@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,8 @@ var KickstarterLocalDefaults = {
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : [["me", "me"]]
+  "dispatchers"             : {"me":{"id":"me", "endpoint":"myself",
+                                     "avoidPorts": {}}}
 };
   
 var KickstarterDistributedDefaults = {
@@ -197,9 +198,18 @@ var KickstarterDistributedDefaults = {
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : [ [ "machine1", "tcp://machine1:8529"],
-                                [ "machine2", "tcp://machine2:8529"],
-                                [ "machine3", "tcp://machine3:8529"] ]
+  "dispatchers"             : { "machine1": 
+                                  { "id": "machine1", 
+                                    "endpoint": "tcp://machine1:8529",
+                                    "avoidPorts": {} },
+                                "machine2":
+                                  { "id": "machine2", 
+                                    "endpoint": "tcp://machine2:8529",
+                                    "avoidPorts": {} },
+                                "machine3":
+                                  { "id": "machine3", 
+                                    "endpoint": "tcp://machine3:8529",
+                                    "avoidPorts": {} } }
 };
 
 var _ = require("underscore");
@@ -224,22 +234,18 @@ function copy (o) {
   return o;
 }
 
-function PortFinder (list, dispatcherEndpoint) {
+function PortFinder (list, dispatcher) {
   if (!Array.isArray(list)) {
     throw "need a list as first argument";
   }
-  if (typeof(dispatcherEndpoint) !== "string") {
-    throw 'need an endpoint or "me" as second argument';
+  if (typeof dispatcher !== "object" ||
+      !dispatcher.hasOwnProperty("endpoint") ||
+      !dispatcher.hasOwnProperty("id") ||
+      !dispatcher.hasOwnProperty("avoidPorts")) {
+    throw 'need a dispatcher object as second argument';
   }
   this.list = list;
-  this.map = {};
-  var i;
-  for (i in this.list) {
-    if (this.list.hasOwnProperty(i)) {
-      this.map[this.list[i]] = true;
-    }
-  }
-  this.dispatcherEndpoint = dispatcherEndpoint;
+  this.dispatcher = dispatcher;
   this.pos = 0;
   this.port = 0;
 }
@@ -249,25 +255,22 @@ PortFinder.prototype.next = function () {
     if (this.pos < this.list.length) {
       this.port = this.list[this.pos++];
     }
-    else if (this.port !== 0) {
+    else if (this.port === 0) {
+      this.port = Math.floor(Math.random()*(65536-1024))+1024;
+    }
+    else {
       this.port++;
       if (this.port > 65535) {
         this.port = 1024;
       }
-      if (this.map.hasOwnProperty(this.port)) {
-        continue;
-      }
-    }
-    else {
-      this.port = Math.floor(Math.random()*(65536-1024))+1024;
-      if (this.map.hasOwnProperty(this.port)) {
-        continue;
-      }
     }
     // Check that port is available:
-    if (this.dispatcherEndpoint !== "me" ||
-        SYS_TEST_PORT("tcp://0.0.0.0:"+this.port)) {
-      return this.port;
+    if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
+      if (this.dispatcher.endpoint !== "myself" ||
+          SYS_TEST_PORT("tcp://0.0.0.0:"+this.port)) {
+        this.dispatcher.avoidPorts[this.port] = true;  // do not use it again
+        return this.port;
+      }
     }
   }
 };
@@ -323,13 +326,14 @@ Kickstarter.prototype.makePlan = function() {
   // This sets up the plan for the cluster according to the options
 
   var config = this.config;
-  var dispatchers = config.dispatchers;
+  var dispatchers = this.dispatchers = copy(config.dispatchers);
 
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
-    dispatchers.me = "me";
+    dispatchers.me = { "id": "myself", "endpoint": "myself", 
+                       "avoidPorts": {} };
   }
-  var nrDisp = Object.keys(dispatchers).length;
+  var dispList = Object.keys(dispatchers);
 
   var pf,pf2;   // lists of port finder objects
   var i;
@@ -342,13 +346,13 @@ Kickstarter.prototype.makePlan = function() {
   for (i = 0; i < config.numberOfAgents; i++) {
     // Find two ports:
     if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.agentExtPorts, dispatchers[d][1]);
-      pf2[d] = new PortFinder(config.agentIntPorts, dispatchers[d][1]);
+      pf[d] = new PortFinder(config.agentExtPorts, dispatchers[dispList[d]]);
+      pf2[d] = new PortFinder(config.agentIntPorts, dispatchers[dispList[d]]);
     }
-    agents.push({"dispatcher":dispatchers[d][0], 
+    agents.push({"dispatcher":dispList[d],
                  "extPort":pf[d].next(),
                  "intPort":pf2[d].next()});
-    if (++d >= dispatchers.length) {
+    if (++d >= dispList.length) {
       d = 0;
     }
   }
@@ -359,15 +363,15 @@ Kickstarter.prototype.makePlan = function() {
   d = 0;
   for (i = 0; i < config.numberOfCoordinators; i++) {
     if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.coordinatorPorts, dispatchers[d][1]);
+      pf[d] = new PortFinder(config.coordinatorPorts, dispatchers[dispList[d]]);
     }
     if (!config.coordinatorIDs.hasOwnProperty(i)) {
       config.coordinatorIDs[i] = "Coordinator"+i;
     }
     coordinators.push({"id":config.coordinatorIDs[i],
-                       "dispatcher":dispatchers[d][0],
+                       "dispatcher":dispList[d],
                        "port":pf[d].next()});
-    if (++d >= dispatchers.length) {
+    if (++d >= dispList.length) {
       d = 0;
     }
   }
@@ -378,15 +382,15 @@ Kickstarter.prototype.makePlan = function() {
   d = 0;
   for (i = 0; i < config.numberOfDBservers; i++) {
     if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.DBserverPorts, dispatchers[d][1]);
+      pf[d] = new PortFinder(config.DBserverPorts, dispatchers[dispList[d]]);
     }
     if (!config.DBserverIDs.hasOwnProperty(i)) {
       config.DBserverIDs[i] = "Primary"+i;
     }
     DBservers.push({"id":config.DBserverIDs[i],
-                    "dispatcher":dispatchers[d][0],
+                    "dispatcher":dispList[d],
                     "port":pf[d].next()});
-    if (++d >= dispatchers.length) {
+    if (++d >= dispList.length) {
       d = 0;
     }
   }
@@ -395,13 +399,11 @@ Kickstarter.prototype.makePlan = function() {
   this.coordinators = coordinators;
   this.DBservers = DBservers;
   this.agents = agents;
-  this.dispatchers = {};
   var launchers = {};
-  for (i = 0; i < dispatchers.length; i++) {
-    this.dispatchers[dispatchers[i][0]] = dispatchers[i][1];
-    launchers[dispatchers[i][0]] = { "DBservers": [], 
-                                     "Coordinators": [],
-                                     "Agents": [] };
+  for (i = 0; i < dispList.length; i++) {
+    launchers[dispList[i]] = { "DBservers": [], 
+                               "Coordinators": [],
+                               "Agents": [] };
   }
 
   // Register agents in launchers:
@@ -424,26 +426,26 @@ Kickstarter.prototype.makePlan = function() {
   var s;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
-    if (s.dispatcher === "me") {
+    if (dispatchers[s.dispatcher].endpoint === "myself") {
       dbs[s.id] = map[s.id] 
                 = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
     }
     else {
       dbs[s.id] = map[s.id] 
-                = '"'+exchangePort(this.dispatchers[s.dispatcher],s.port)+'"';
+             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     }
     launchers[s.dispatcher].DBservers.push(s.id);
   }
   var coo = tmp.Coordinators = {};
   for (i = 0; i < coordinators.length; i++) {
     s = coordinators[i];
-    if (s.dispatcher === "me") {
+    if (dispatchers[s.dispatcher].endpoint === "myself") {
       coo[s.id] = map[s.id] 
                 = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
     }
     else {
       coo[s.id] = map[s.id] 
-                = '"'+exchangePort(this.dispatchers[s.dispatcher],s.port)+'"';
+             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     }
     launchers[s.dispatcher].Coordinators.push(s.id);
   }
@@ -487,18 +489,23 @@ Kickstarter.prototype.makePlan = function() {
                         "intPort": agents[i].intPort }, 
              "peers": [] };
     for (j = 0; j < i; j++) {
-      tmp2.peers.push( exchangePort( this.dispatchers[agents[j].dispatcher],
-                                     agents[j].intPort ) );
+      var ep = dispatchers[agents[j].dispatcher].endpoint;
+      if (ep === "myself") {
+        ep = "tcp://localhost:0";
+      }
+      tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
     }
     tmp.push(tmp2);
   }
   tmp.push( { "action": "sendConfiguration", 
-              "agency": exchangePort( this.dispatchers[agents[0].dispatcher],
-                                      agents[0].extPort ),
+              "agency": agents.map(function(a) {
+                   return exchangePort(dispatchers[a.dispatcher].endpoint,
+                                       a.extPort);}),
               "data": agencyData } );
-  for (i = 0; i < dispatchers.length; i++) {
-    tmp.push( { "action": "startLauncher", "dispatcher": dispatchers[i][0],
-                "name": dispatchers[i][0] } );
+  for (i = 0; i < dispList.length; i++) {
+    tmp.push( { "action": "startLauncher", "dispatcher": dispList[i],
+                "name": dispList[i], "dataPath": config.dataPath,
+                "logPath": config.logPath } );
   }
 };
 
@@ -525,6 +532,16 @@ Kickstarter.prototype.isHealthy = function() {
 
 exports.PortFinder = PortFinder;
 exports.Kickstarter = Kickstarter;
+
+// TODO for kickstarting:
+//
+// * finden des Pfads zum eigenen Executable in JS
+// * etcd in distribution
+// * JS function zum Ausführen von Startup-Programmen (lokal u. delegation)
+// * REST interface zum Ausführen von Startup-Programmen
+// * arangod-Rolle "Launcher" per Kommandozeile
+// * REST interface to SYS_TEST_PORT, ev. mit auth
+// * Dokumentation
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
