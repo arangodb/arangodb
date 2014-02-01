@@ -5,11 +5,11 @@
   "use strict";
   window.versionHelper = {
     fromString: function (s) {
-      var parts = s.replace(/-.*$/g, '').split('.');
+      var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
       return {
-        major: parseInt(parts[0]) || 0,
-        minor: parseInt(parts[1]) || 0,
-        patch: parseInt(parts[2]) || 0
+        major: parseInt(parts[0], 10) || 0,
+        minor: parseInt(parts[1], 10) || 0,
+        patch: parseInt(parts[2], 10) || 0
       };
     },
     toString: function (v) {

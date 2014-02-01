@@ -28,7 +28,6 @@
 var jsunity = require("jsunity");
 
 var fs = require("fs");
-var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        filesystem

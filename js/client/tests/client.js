@@ -1,3 +1,8 @@
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
+/*global require, assertEqual, assertNotEqual,
+  print, print_plain, COMPARE_STRING, NORMALIZE_STRING, 
+  help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
 ///
@@ -24,6 +29,8 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+(function () {
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
@@ -153,8 +160,8 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare : function () {
-      nfc = "Gr\u00FC\u00DF Gott.";
-      nfd = "Gru\u0308\u00DF Gott.";
+      var nfc = "Gr\u00FC\u00DF Gott.";
+      var nfd = "Gru\u0308\u00DF Gott.";
       
       assertNotEqual(nfc, nfd);
       assertNotEqual(COMPARE_STRING(nfc, nfd), true);        
@@ -165,8 +172,8 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Normalize : function () {
-      nfc = "Gr\u00FC\u00DF Gott.";
-      nfd = "Gru\u0308\u00DF Gott.";
+      var nfc = "Gr\u00FC\u00DF Gott.";
+      var nfd = "Gru\u0308\u00DF Gott.";
       
       assertNotEqual(nfc, nfd);
       assertEqual(NORMALIZE_STRING(nfd), nfc);
@@ -179,15 +186,15 @@ function clientTestSuite () {
 
     testICU_Compare_Skiplist_Sorting : function () {
       db._create("ICU_SORTED");
-      db["ICU_SORTED"].ensureSkiplist("test");
-      db["ICU_SORTED"].save({ test : "äää" });
-      db["ICU_SORTED"].save({ test : "aaa" });
-      db["ICU_SORTED"].save({ test : "aab" });
-      db["ICU_SORTED"].save({ test : "äaa" });
-      db["ICU_SORTED"].save({ test : "äää" });
-      db["ICU_SORTED"].save({ test : "Aaa" });
+      db.ICU_SORTED.ensureSkiplist("test");
+      db.ICU_SORTED.save({ test : "äää" });
+      db.ICU_SORTED.save({ test : "aaa" });
+      db.ICU_SORTED.save({ test : "aab" });
+      db.ICU_SORTED.save({ test : "äaa" });
+      db.ICU_SORTED.save({ test : "äää" });
+      db.ICU_SORTED.save({ test : "Aaa" });
         
-      var y = db["ICU_SORTED"].range("test", "A", "z") ; 
+      var y = db.ICU_SORTED.range("test", "A", "z") ; 
         
       assertEqual(y.next().test, "Aaa");
       assertEqual(y.next().test, "aaa");
@@ -207,6 +214,8 @@ function clientTestSuite () {
 jsunity.run(clientTestSuite);
 
 return jsunity.done();
+
+}());
 
 // Local Variables:
 // mode: outline-minor
