@@ -7,7 +7,6 @@ var jsunity = require("jsunity"),
   stub_and_mock = require("org/arangodb/stub_and_mock"),
   stub = stub_and_mock.stub,
   allow = stub_and_mock.allow,
-  expect = stub_and_mock.expect,
   mockConstructor = stub_and_mock.mockConstructor;
 
 fakeContext = {
@@ -343,9 +342,7 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testAddBodyParam: function () {
-      var determinedName,
-        determinedType,
-        paramName = stub(),
+      var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
         jsonSchema = { id: 'a', required: [], properties: {} };
@@ -366,9 +363,7 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testDefineBodyParamAddsJSONSchemaToModels: function () {
-      var determinedName,
-        determinedType,
-        paramName = stub(),
+      var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
         jsonSchema = { id: 'a', required: [], properties: {} };

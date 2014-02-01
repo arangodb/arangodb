@@ -51,7 +51,7 @@ function PreprocessSpec () {
 
 // Low level Spec Suite for the Transform prototype
 function PreprocessorSpec () {
-  var i, result, testFileWithSingleJSDoc, testFileWithJSDocAndMultiline, processedLineOne;
+  var i, testFileWithSingleJSDoc, testFileWithJSDocAndMultiline, processedLineOne;
 
   return {
     setUp: function () {

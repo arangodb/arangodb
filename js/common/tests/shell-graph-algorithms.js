@@ -32,8 +32,6 @@ var jsunity = require("jsunity");
 
 var console = require("console");
 
-var Helper = require("org/arangodb/test-helper").Helper;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------

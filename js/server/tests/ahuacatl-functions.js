@@ -1179,7 +1179,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testKeep : function () {
-      var actual, expected;
+      var actual;
 
       actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ])");
       assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
@@ -1993,7 +1993,7 @@ function ahuacatlFunctionsTestSuite () {
       actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"bart\"))");
       assertEqual([ null ], actual);
 
-      var d3 = cx.save({ _key: "foo", value: "bar" });
+      cx.save({ _key: "foo", value: "bar" });
       expected = [ { value: "bar" } ];
       actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"foo\"))");
       assertEqual([ null ], actual);
@@ -2112,7 +2112,7 @@ function ahuacatlFunctionsTestSuite () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
-      var cx = internal.db._create(cn);
+      internal.db._create(cn);
 
       var expected, actual;
 

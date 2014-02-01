@@ -1,3 +1,6 @@
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
+/*global require, fail, assertTrue, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the endpoints
 ///
@@ -24,6 +27,8 @@
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+(function () {
 
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
@@ -166,7 +171,7 @@ function EndpointsSuite () {
         fail();
       }
       catch (err1) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err1.errorNum)
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err1.errorNum);
       }
       
       try {
@@ -175,7 +180,7 @@ function EndpointsSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err2.errorNum)
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err2.errorNum);
       }
       
       try {
@@ -184,7 +189,7 @@ function EndpointsSuite () {
         fail();
       }
       catch (err3) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err3.errorNum)
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err3.errorNum);
       }
     },
 
@@ -257,7 +262,7 @@ function EndpointsSuite () {
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
       // create a few endpoints
-      db._configureEndpoint("tcp://127.0.0.1:" + (base + 0), [ ]);
+      db._configureEndpoint("tcp://127.0.0.1:" + (base), [ ]);
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 1), [ "UnitTestsDatabase0" ]);
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 2), [ "UnitTestsDatabase1" ]);
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 3), [ "UnitTestsDatabase0", "UnitTestsDatabase1" ]);
@@ -290,7 +295,7 @@ function EndpointsSuite () {
         [ "UnitTestsDatabase1", "UnitTestsDatabase1" ]
       ];
 
-      test("tcp://127.0.0.1:" + (base + 0), endpoints);
+      test("tcp://127.0.0.1:" + (base), endpoints);
 
       endpoints = [ 
         [ "", "UnitTestsDatabase0" ], 
@@ -354,7 +359,7 @@ function EndpointsSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum)
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum);
       }
 
       // _configureEndpoint is forbidden
@@ -364,7 +369,7 @@ function EndpointsSuite () {
         fail();
       }
       catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum)
+        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum);
       }
     }
 
@@ -382,6 +387,7 @@ function EndpointsSuite () {
 jsunity.run(EndpointsSuite);
 
 return jsunity.done();
+}());
 
 // Local Variables:
 // mode: outline-minor
