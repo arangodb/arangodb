@@ -263,6 +263,26 @@ namespace triagens {
         bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable authentication for requests via UNIX domain sockets
+///
+/// @CMDOPT{\--server.disable-authentication-unix-sockets @CA{value}}
+///
+/// Setting @CA{value} to true will turn off authentication on the server side
+/// for requests coming in via UNIX domain sockets. With this flag enabled, 
+/// clients located on the same host as the ArangoDB server can use UNIX domain 
+/// sockets to connect to the server without authentication. 
+/// Requests coming in by other means (e.g. TCP/IP) are not affected by this
+/// option.
+///
+/// The default value is @LIT{false}.
+///
+/// Note: this option is only available on platforms that support UNIX domain
+/// sockets.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableAuthenticationUnixSockets;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
 /// @CMDOPT{\--server.threads @CA{number}}

@@ -44,14 +44,15 @@
 
 void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
                                TRI_vocbase_defaults_t const* defaults) {
-  vocbase->_settings.defaultMaximalSize       = defaults->defaultMaximalSize;
-  vocbase->_settings.removeOnDrop             = defaults->removeOnDrop;
-  vocbase->_settings.removeOnCompacted        = defaults->removeOnCompacted;
-  vocbase->_settings.defaultWaitForSync       = defaults->defaultWaitForSync;
-  vocbase->_settings.forceSyncShapes          = defaults->forceSyncShapes;
-  vocbase->_settings.forceSyncProperties      = defaults->forceSyncProperties;
-  vocbase->_settings.requireAuthentication    = defaults->requireAuthentication;    
-  vocbase->_settings.authenticateSystemOnly   = defaults->authenticateSystemOnly;
+  vocbase->_settings.defaultMaximalSize               = defaults->defaultMaximalSize;
+  vocbase->_settings.removeOnDrop                     = defaults->removeOnDrop;
+  vocbase->_settings.removeOnCompacted                = defaults->removeOnCompacted;
+  vocbase->_settings.defaultWaitForSync               = defaults->defaultWaitForSync;
+  vocbase->_settings.forceSyncShapes                  = defaults->forceSyncShapes;
+  vocbase->_settings.forceSyncProperties              = defaults->forceSyncProperties;
+  vocbase->_settings.requireAuthentication            = defaults->requireAuthentication;    
+  vocbase->_settings.requireAuthenticationUnixSockets = defaults->requireAuthenticationUnixSockets;    
+  vocbase->_settings.authenticateSystemOnly           = defaults->authenticateSystemOnly;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +75,7 @@ TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
   TRI_Insert3ArrayJson(zone, json, "forceSyncShapes", TRI_CreateBooleanJson(zone, defaults->forceSyncShapes));
   TRI_Insert3ArrayJson(zone, json, "forceSyncProperties", TRI_CreateBooleanJson(zone, defaults->forceSyncProperties));
   TRI_Insert3ArrayJson(zone, json, "requireAuthentication", TRI_CreateBooleanJson(zone, defaults->requireAuthentication));
+  TRI_Insert3ArrayJson(zone, json, "requireAuthenticationUnixSockets", TRI_CreateBooleanJson(zone, defaults->requireAuthenticationUnixSockets));
   TRI_Insert3ArrayJson(zone, json, "authenticateSystemOnly", TRI_CreateBooleanJson(zone, defaults->authenticateSystemOnly));
   TRI_Insert3ArrayJson(zone, json, "defaultMaximalSize", TRI_CreateNumberJson(zone, (double) defaults->defaultMaximalSize));
 
@@ -126,6 +128,12 @@ void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->requireAuthentication = optionJson->_value._boolean;
+  }
+
+  optionJson = TRI_LookupArrayJson(json, "requireAuthenticationUnixSockets");
+
+  if (TRI_IsBooleanJson(optionJson)) {
+    defaults->requireAuthenticationUnixSockets = optionJson->_value._boolean;
   }
 
   optionJson = TRI_LookupArrayJson(json, "authenticateSystemOnly");
