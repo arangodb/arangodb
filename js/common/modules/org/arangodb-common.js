@@ -270,7 +270,7 @@ exports.printTable = function  (list, columns, options) {
   }
 
   var pad = '...';
-  var descriptions, matrix, col, what, j, value;
+  var descriptions, matrix, col, what, j;
 
   if (columns === undefined) {
     what = list[0];

@@ -30,9 +30,7 @@ module.define("org/arangodb/graph", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb"),
-  arangosh = require("org/arangodb/arangosh"),
   is = require("org/arangodb/is"),
-  ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor,
   common = require("org/arangodb/graph-common"),
   Edge = common.Edge,
   Graph = common.Graph,

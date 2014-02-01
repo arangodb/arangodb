@@ -3,7 +3,7 @@
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
 /*global document, $*/
-/*global ContextMenu*/
+/*global ContextMenu, uiMatchers*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -66,6 +66,7 @@
         };
         spyOn($.contextMenu, "create").andReturn(fakeMenu);
         conMenu = new ContextMenu(id);
+        uiMatchers.define(this);
       });
 
       it("should create a div in the body", function() {
@@ -95,15 +96,19 @@
         spyOn(call, "back");
         conMenu.addEntry("MyLabel", call.back);
         // Check if entry is inserted
-        entry = document.getElementById(id).firstChild;
+        entry = document.getElementById(id);
         expect(entry).toBeDefined();
-        expect(entry.tagName.toLowerCase()).toEqual("ul");
+        expect(entry).toBeTag("div");
+        expect(entry).toBeOfClass("context-menu");
+        expect(entry).toBeOfClass("context-menu-theme-osx");
         entry = entry.firstChild;
         expect(entry).toBeDefined();
-        expect(entry.tagName.toLowerCase()).toEqual("li");
+        expect(entry).toBeTag("div");
+        expect(entry).toBeOfClass("context-menu-item");
         entry = entry.firstChild;
         expect(entry).toBeDefined();
-        expect(entry.tagName.toLowerCase()).toEqual("button");
+        expect(entry).toBeTag("div");
+        expect(entry).toBeOfClass("context-menu-item-inner");
         // Check clicks
         conMenu.bindMenu(fake);
         expect(call.back).not.toHaveBeenCalled();

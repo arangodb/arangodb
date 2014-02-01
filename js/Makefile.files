@@ -50,10 +50,13 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
+	`find @srcdir@/js/client/tests -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/models -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/views -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/collections -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/routers -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/arango -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/frontend/js/shell -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \

@@ -112,9 +112,9 @@ function GraphViewerWidget(viewerConfig, startNode) {
       var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
         toolbox,
-        //mousePointerBox,
         viewer.nodeShaper,
         viewer.edgeShaper,
+        viewer.start,
         viewer.dispatcherConfig
       );
       toolbox.id = "toolbox";
@@ -154,6 +154,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
 //        mousePointerBox,
         viewer.nodeShaper,
         viewer.edgeShaper,
+        viewer.start,
         viewer.dispatcherConfig
       );
     },

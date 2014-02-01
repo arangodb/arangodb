@@ -40,6 +40,7 @@ ul.headerButtonList > li {
 
 a.headerButton {
  float: left;
+ cursor: pointer;
  margin-top: 2px; 
  margin-left: 5px;
  margin-right: 3px;
@@ -58,7 +59,6 @@ a.headerButton {
 a.headerButton:hover {
   background: #fff;
   color: #000;
-  cursor: pointer;
 }
 
 a.paginationButton, ul.arangoPagination a {
