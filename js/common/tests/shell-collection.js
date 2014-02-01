@@ -870,7 +870,7 @@ function CollectionSuite () {
       db._drop(cn1);
       db._drop(cn2);
       var c1 = db._create(cn1);
-      var c2 = db._create(cn2);
+      db._create(cn2);
 
       try {
         c1.rename(cn2);
@@ -1506,8 +1506,8 @@ function CollectionDbSuite () {
 
       db._drop(cn1);
       db._drop(cn2);
-      var c1 = db._createDocumentCollection(cn1);
-      var c2 = db._createEdgeCollection(cn2);
+      db._createDocumentCollection(cn1);
+      db._createEdgeCollection(cn2);
 
       var collections = db._collections();
       for (var i in collections) {

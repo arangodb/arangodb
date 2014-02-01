@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
 var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
@@ -158,15 +157,15 @@ function HashIndexSuite() {
 
       var d1 = collection.save({ a : 1, b : 1 })._id;
       var d2 = collection.save({ a : 2, b : 1 })._id;
-      var d3 = collection.save({ a : 3, b : 1 })._id;
-      var d4 = collection.save({ a : 4, b : 1 })._id;
-      var d5 = collection.save({ a : 4, b : 2 })._id;
+      collection.save({ a : 3, b : 1 })._id;
+      collection.save({ a : 4, b : 1 })._id;
+      collection.save({ a : 4, b : 2 })._id;
       var d6 = collection.save({ a : 1, b : 1 })._id;
 
       var d7 = collection.save({ a : 1 })._id;
       var d8 = collection.save({ a : 1 })._id;
-      var d9 = collection.save({ a : null, b : 1 })._id;
-      var d10 = collection.save({ a : null, b : 1 })._id;
+      collection.save({ a : null, b : 1 })._id;
+      collection.save({ a : null, b : 1 })._id;
       var d11 = collection.save({ c : 1 })._id;
       var d12 = collection.save({ c : 1 })._id;
 
@@ -214,9 +213,9 @@ function HashIndexSuite() {
     testReadDocumentsUnloaded : function () {
       var idx = collection.ensureHashIndex("a");
 
-      var d1 = collection.save({ a : 1, b : 1 })._id;
+      collection.save({ a : 1, b : 1 })._id;
       var d2 = collection.save({ a : 2, b : 1 })._id;
-      var d3 = collection.save({ a : 3, b : 1 })._id;
+      collection.save({ a : 3, b : 1 })._id;
 
       collection.unload();
       internal.wait(4);

@@ -1,11 +1,9 @@
 require("internal").flushModuleCache();
 
-var jsunity = require("jsunity"),
-  arangodb = require("org/arangodb"),
-  db = arangodb.db;
+var jsunity = require("jsunity");
 
 function BaseMiddlewareSpec () {
-  var BaseMiddleware, request, response, options, next;
+  var request, response, options, next;
 
   return {
     setUp: function () {

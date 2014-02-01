@@ -549,7 +549,7 @@ function GeoIndexErrorHandlingSuite() {
       var d2 = collection.save({ loc : null });
       var d3 = collection.save({ loc : [0] });
       var d4 = collection.save({ loc : [ -100, -200 ] });
-      var d5 = collection.save({ loc : [ -10, -20 ]});
+      collection.save({ loc : [ -10, -20 ]});
 
       assertEqual(1, collection.near(0,0).toArray().length);
 
