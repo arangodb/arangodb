@@ -115,11 +115,11 @@
 }
 
 .nv-axislabel {
-  margin-left: 20px;
+  margin-left: 0px;
 }
 
 .nv-axisMaxMin > text {
-  font: 10px sans-serif;
+  /* font: 10px 'Open Sans', sans-serif; */
 }
 
 .svgCollections {
@@ -128,7 +128,7 @@
 }
 
 .svgClass {
-  height: 155px;
+  height: 142px;
   width: 300px;
 }
 
@@ -166,7 +166,7 @@ li:hover h6, li.hover h6 {
 }
 
 .boxHeader h6 {
-  opacity: 0.8;
+  /* opacity: 0.8; */
   padding-top: 0 !important;
   color: black;
   margin-left: 5px;
@@ -207,7 +207,7 @@ li:hover h6, li.hover h6 {
 }
 
 .nv-x .nv-axislabel {
-  display: none;
+ display: none;
 }
 
 .nv-point {
@@ -525,6 +525,12 @@ li:hover h6, li.hover h6 {
   font-weight: 400;
 }
 
+#dbThumbnailsIn .dashboardH6 {
+  opacity: 1.0 !important;
+  font-size: 12px;
+  font-weight: 300;
+}
+
 @media screen and (-webkit-min-device-pixel-ratio:0) {
    .svgClass{margin-top: 10px !important;}
    .statSingleClient{margin-top: 10.5px !important;}
@@ -532,8 +538,10 @@ li:hover h6, li.hover h6 {
 }
 
 .nvd3 .nv-axis .nv-axisMaxMin text {
+  /*
   font-weight: 400;
   font-size: 12px !important;
+  */
 }
 
 .nvd3 .nv-wrap .nv-axis:last-child {
