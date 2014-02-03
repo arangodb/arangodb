@@ -135,7 +135,7 @@ function ArangoAdapterControls(list, adapter) {
           idprefix, [{
             type: "extendable",
             id: "attribute",
-            objects: prioList
+            objects: adapter.getPrioList()
           }], function () {
             var list = $("input[id^=" + idprefix + "attribute_]"),
               prios = [];

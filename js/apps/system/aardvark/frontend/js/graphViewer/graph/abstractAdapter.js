@@ -118,6 +118,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       }
       node.x = x || initialX.getStart();
       node.y = y || initialY.getStart();
+      node.weight = 1;
       nodes.push(node);
       node._outboundCounter = 0;
       node._inboundCounter = 0;

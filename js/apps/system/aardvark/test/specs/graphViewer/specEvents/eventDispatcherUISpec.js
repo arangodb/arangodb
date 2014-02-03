@@ -40,8 +40,9 @@
 
   describe('Event Dispatcher UI', function () {
     var svg, dispatcherUI, list, $list,
-    nodeShaper, edgeShaper, layouter,
-    nodes, edges, adapter,
+      nodeShaper, edgeShaper, layouter,
+      nodes, edges, adapter,
+      start,
     //mousePointerbox,
     
     addSpies = function() {
@@ -55,11 +56,15 @@
       spyOn(adapter, "loadNode");
       spyOn(adapter, "expandCommunity");
       spyOn(adapter, "explore");
+      spyOn(start, "cb");
     };
 
 
 
     beforeEach(function () {
+      start = {
+        cb: function() {}
+      };
       nodes = [{
         _id: 1,
         x: 3,
@@ -163,7 +168,7 @@
       */
       
       dispatcherUI = new EventDispatcherControls(
-        list, nodeShaper, edgeShaper, completeConfig
+        list, nodeShaper, edgeShaper, start.cb, completeConfig
       );
       
       spyOn(nodeShaper, "changeTo").andCallThrough();
@@ -215,6 +220,10 @@
       expect(function() {
         var e = new EventDispatcherControls(list, nodeShaper);
       }).toThrow("The EdgeShaper has to be given.");
+      
+      expect(function() {
+        var e = new EventDispatcherControls(list, nodeShaper, edgeShaper);
+      }).toThrow("The Start callback has to be given.");
       
     });
     
@@ -600,14 +609,15 @@
       });      
     });
     
-    it('should be able to add a delete control to the list', function() {
-      runs(function() {
+    describe("delete control", function() {
+
+      beforeEach(function() {
         dispatcherUI.addControlDelete();
-      
-        expect($("#control_event_list #control_event_delete").length).toEqual(1);
-      
         helper.simulateMouseEvent("click", "control_event_delete");
-      
+      });
+
+      it("should be added to the list", function() {
+        expect($("#control_event_list #control_event_delete").length).toEqual(1);
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
@@ -621,24 +631,27 @@
             click: jasmine.any(Function)
           }
         });
-      
-        //expect(mousePointerbox.className).toEqual("mousepointer icon-trash");
-      
-        helper.simulateMouseEvent("click", "1");
-        
+      });
+
+      it("should ask for permission and delete nodes", function() {
+        var id = "1";
+        helper.simulateMouseEvent("click", id);
+        helper.simulateMouseEvent("click", "control_event_node_delete_submit");
         expect(adapter.deleteNode).toHaveBeenCalledWith(
           nodes[0],
           jasmine.any(Function)
         );
-        
-        helper.simulateMouseEvent("click", "1-2");
-        
+      });
+
+      it("should ask for permission and delete nodes", function() {
+        var id = "1-2";
+        helper.simulateMouseEvent("click", id);
+        helper.simulateMouseEvent("click", "control_event_edge_delete_submit");
         expect(adapter.deleteEdge).toHaveBeenCalledWith(
           edges[0],
           jasmine.any(Function)
         );
-        
-      });      
+      });
     });
     
     describe('the connect control', function() {
