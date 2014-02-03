@@ -1617,6 +1617,23 @@ function categories:
       DOCUMENT("users/john")
       DOCUMENT([ "users/john", "users/amy" ])
 
+- @FN{SKIPLIST(@FA{collection}, @FA{condition}, @FA{skip}, @FA{limit})}: return all documents 
+  from a skiplist index on collection @FA{collection} that match the specified @FA{condition}.
+  This is a shortcut method to use a skiplist index for retrieving specific documents in 
+  indexed order. The skiplist index supports equality and less than/greater than queries. The
+  @FA{skip} and @FA{limit} parameters are optional but can be specified to further limit the
+  results:
+
+      SKIPLIST(test, { created: [[ '>', 0 ]] }, 0, 100)
+      SKIPLIST(test, { age: [[ '>', 25 ], [ '<=', 65 ]] })
+      SKIPLIST(test, { a: [[ '==', 10 ]], b: [[ '==', 25 ]] }
+
+  The @FA{condition} document must contain an entry for each attribute that is contained in the
+  index. It is not allowed to specify just a subset of attributes that are present in an index.
+  Additionally the attributes in the @FA{condition} document must be specified in the same order 
+  as in the index. 
+  If no suitable skiplist index is found, an error will be raised and the query will be aborted.
+
 High-level operations {#AqlOperations}
 ======================================
 

@@ -146,6 +146,35 @@ v1.5.0 (XXXX-XX-XX)
 v1.4.9 (XXXX-XX-XX)
 -------------------
 
+* added AQL function `SKIPLIST` to directly access skiplist indexes from AQL
+  
+  This is a shortcut method to use a skiplist index for retrieving specific documents in 
+  indexed order. The function capability is rather limited, but it may be used
+  for several cases to speed up queries. The documents are returned in index order if
+  only one condition is used.
+
+      /* return all documents with mycollection.created > 12345678 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] })
+        RETURN doc
+
+      /* return first document with mycollection.created > 12345678 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] }, 0, 1)
+        RETURN doc
+
+      /* return all documents with mycollection.created between 12345678 and 123456790 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ], [ '<=', 123456790 ]] })
+        RETURN doc
+
+      /* return all documents with mycollection.a equal 1 and .b equal 2 */
+      FOR doc IN SKIPLIST(mycollection, { a: [[ '==', 1 ]], b: [[ '==', 2 ]] })
+        RETURN doc
+
+  The function requires a skiplist index with the exact same attributes to 
+  be present on the specified colelction. All attributes present in the skiplist
+  index must be specified in the conditions specified for the `SKIPLIST` function.
+  Attribute declaration order is important, too: attributes must be specified in the 
+  same order in the condition as they have been declared in the skiplist index.
+
 * added command-line option `--server.disable-authentication-unix-sockets`
   
   with this option, authentication can be disabled for all requests coming
