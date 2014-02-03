@@ -2005,6 +2005,106 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test skiplist function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSkiplist1 : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      cx.ensureSkiplist("created");
+
+      var i;
+      for (i = 0; i < 1000; ++i) {
+        cx.save({ created: i });
+      }
+      
+      expected = [ { created: 0 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ]] }, 0, 1) RETURN x"); 
+      assertEqual(expected, actual);
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ], [ '<', 1 ]] }) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 1 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>', 0 ]] }, 0, 1) RETURN x"); 
+      assertEqual(expected, actual);
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>', 0 ], [ '<=', 1 ]] }) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 0 }, { created: 1 }, { created: 2 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ]] }, 0, 3) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 5 }, { created: 6 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ]] }, 5, 2) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 5 }, { created: 6 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 5 ], [ '<=', 6 ]] }, 0, 5) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 5 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 5 ], [ '<=', 6 ]] }, 0, 1) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { created: 2 }, { created: 3 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '<', 4 ]] }, 2, 10) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>', 0 ]] }, 10000, 10) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]] })"); 
+      
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test skiplist function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSkiplist2 : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '==', 0 ]] })"); 
+
+      cx.ensureSkiplist("a", "b");
+
+      var i;
+      for (i = 0; i < 1000; ++i) {
+        cx.save({ a: i, b: i + 1 });
+      }
+      
+      expected = [ { a: 1, b: 2 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '>=', 2 ], [ '<=', 3 ]] }) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      expected = [ { a: 1, b: 2 } ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '==', 2 ]] }) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { b: [[ '==', 2 ]], a: [[ '==', 1 ]] })"); 
+      
+      expected = [ ];
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 2 ]], b: [[ '==', 1 ]] }, 1, 1) RETURN x"); 
+      assertEqual(expected, actual);
+      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 99 ]], b: [[ '==', 17 ]] }, 1, 1) RETURN x"); 
+      assertEqual(expected, actual);
+      
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]] })"); 
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { b: [[ '==', 1 ]] })"); 
+      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { c: [[ '==', 1 ]] })"); 
+      
+      internal.db._drop(cn);
+    },
+      
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test min function
 ////////////////////////////////////////////////////////////////////////////////
     
