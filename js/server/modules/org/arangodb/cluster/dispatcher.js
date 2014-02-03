@@ -60,7 +60,6 @@ function dispatch (startupPlan) {
   else {
     myname = startupPlan.myname;
   }
-  print("dispatcher called, myname is ",myname);
   var dispatchers = startupPlan.dispatchers;
   var cmds = startupPlan.commands;
   var results = [];
@@ -84,7 +83,6 @@ function dispatch (startupPlan) {
                                   "commands": [cmd],
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/dispatch";
-      print("sending ",url);
       var response = download(url, body, {"method": "post"});
       try {
         if (response.code !== 200) {
