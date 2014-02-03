@@ -57,14 +57,6 @@ img.searchSubmit {
   background-size: 50px 50px;
 }
 
-.toolbox > .btn:first-child {
-  margin-top: 0px;
-}
-
-.toolbox > .btn:last-child {
-  margin-bottom: 0px;
-}
-
 .btn-icon {
   padding: 4px 4px;
   background-color: rgb(56, 52, 52);
