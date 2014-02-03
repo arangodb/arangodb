@@ -1548,6 +1548,43 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     
   TRI_primary_collection_t* primary = trx.primaryCollection();
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+
+  TRI_doc_mptr_t document;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isDBserver()) {
+    // compare attributes in shardKeys
+    const string cidString = StringUtils::itoa(primary->base._info._planId);
+
+    TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+
+    if (json == 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+  
+    trx.lockWrite();
+    res = trx.read(&document, key);
+
+    if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION(scope, res);
+    }
+  
+    TRI_shaped_json_t shaped;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
+    TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
+
+    if (shardKeysChanged(col->_dbName, cidString, old, json, false)) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    } 
+  }
+#endif
+
+
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
 
   if (shaped == 0) {
@@ -1555,7 +1592,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  TRI_doc_mptr_t document;
   res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
   res = trx.finish(res);
