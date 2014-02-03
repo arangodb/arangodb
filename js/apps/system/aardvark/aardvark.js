@@ -107,6 +107,12 @@ controller.put("/foxxes/:key", function (req, res) {
 controller.get("/foxxes/thumbnail/:app", function (req, res) {
   res.transformations = [ "base64decode" ];
   res.body = foxxes.thumbnail(req.params("app"));
+
+  // evil mimetype detection attempt...
+  var start = require("internal").base64Decode(res.body.substr(0, 8));
+  if (start.indexOf("PNG") !== -1) {
+    res.contentType = "image/png";
+  }
 }).pathParam("app", {
   description: "The appname which is used to identify the foxx in the list of available foxxes.",
   type: "string",
