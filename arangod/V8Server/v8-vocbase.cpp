@@ -1914,6 +1914,21 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isDBserver()) {
+    // compare attributes in shardKeys
+    const string cidString = StringUtils::itoa(primary->base._info._planId);
+
+    if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
+      TRI_FreeJson(primary->_shaper->_memoryZone, old);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    } 
+  }
+#endif
+
   TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
   TRI_FreeJson(zone, old);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
