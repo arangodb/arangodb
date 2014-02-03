@@ -255,6 +255,116 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_cluster_kickstarter_POST
+/// @brief exposes the kickstarter planning function
+///
+/// @RESTHEADER{POST /_admin/kickstarter,produce a cluster startup plan}
+///
+/// @RESTBODYPARAM{body,json,required}
+///
+/// @RESTDESCRIPTION Given a description of a cluster, this plans the details
+/// of a cluster and returns a JSON description of a plan to start up this 
+/// cluster.
+/// 
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} the posted body was not valid JSON.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/kickstarter",
+  context : "admin",
+  prefix : "false",
+  callback : function (req, res) {
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
+    var userconfig;
+    try {
+      userconfig = JSON.parse(req.requestBody);
+    }
+    catch (err) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "Posted body was not valid JSON.");
+      return;
+    }
+    var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+    try {
+      var k = new Kickstarter(userconfig);
+      res.responseCode = actions.HTTP_OK;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = JSON.stringify({"dispatchers": k.dispatchers,
+                                 "commands": k.commands,
+                                 "config": k.config,
+                                 "agencyData": k.agencyData});
+    }
+    catch (error) {
+      actions.resultException(req, res, error, undefined, false);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_cluster_dispatcher_POST
+/// @brief exposes the dispatcher functionality to start up a cluster 
+/// according to a startup plan as for example provided by the kickstarter.
+///
+/// @RESTHEADER{POST /_admin/dispatch,execute startup commands}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTBODYPARAM{body,json,required}
+///
+/// @RESTDESCRIPTION Given a list of cluster startup commands, this
+/// call executes the plan by either starting up processes personally
+/// or by delegating to other dispatchers.
+/// 
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} the posted body was not valid JSON, or something
+/// went wrong with the startup.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/dispatch",
+  context : "admin",
+  prefix : "false",
+  callback : function (req, res) {
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
+    var startupPlan;
+    try {
+      startupPlan = JSON.parse(req.requestBody);
+    }
+    catch (error) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "Posted body was not valid JSON.");
+      return;
+    }
+    var dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
+    var r;
+    try {
+      r = dispatch(startupPlan);
+      res.responseCode = actions.HTTP_OK;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = JSON.stringify(r);
+    }
+    catch (error2) {
+      actions.resultException(req, res, error2, undefined, false);
+    }
+  }
+});
+      
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

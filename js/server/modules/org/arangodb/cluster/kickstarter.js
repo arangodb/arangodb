@@ -66,101 +66,9 @@
 //   .coordinatorPorts        a list ports to try to use for coordinators
 //  
 
-// Examples of commands produced:
+dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
 
-var x3 = 
-  {
-    "dispatchers": { "machine1": "tcp://192.168.173.101:8529",
-                     "machine2": "tcp://192.168.173.102:8529",
-                     "machine3": "tcp://192.168.173.103:8529" },
-    "commands": [
-      { "action": "startAgent", "dispatcher": "machine1", 
-                                "ports":[4001,7001] },
-      { "action": "startAgent",  "dispatcher": "machine2", 
-                                 "ports":[4001,7001],
-                                 "peers":["tcp://192.168.173.101:7001"] },
-      { "action": "startAgent",  "dispatcher": "machine3", 
-                                 "ports":[4001,7001],
-                                 "peers":["tcp://192.168.173.101:7001",
-                                          "tcp://192.168.173.102:7001"] },
-      { "action": "sendConfiguration", "agency": "tcp://192.168.173.101:4001",
-           "data" :
-           { "mueller":
-               { "Target":
-                   { "MapIDToEndpoint":
-                       { "Pavel": '"tcp://192.168.173.101:8531"',
-                         "Perry": '"tcp://192.168.173.102:8531"',
-                         "Pancho": '"tcp://192.168.173.103:8531"',
-                         "Claus": '"tcp://192.168.173.101:8530"',
-                         "Chantalle": '"tcp://192.168.173.102:8530"',
-                         "Claire": '"tcp://192.168.173.103:8530"' },
-                     "Lock": '"UNLOCKED"',
-                     "Version": '"1"',
-                     "DBServers":
-                       { "Pavel": '"tcp://192.168.173.101:8531"',
-                         "Perry": '"tcp://192.168.173.102:8531"',
-                         "Pancho": '"tcp://192.168.173.103:8531"' },
-                     "Coordinators":
-                       { "Claus": '"tcp://192.168.173.101:8530"',
-                         "Chantalle": '"tcp://192.168.173.102:8530"',
-                         "Claire": '"tcp://192.168.173.103:8530"' },
-                     "Databases":
-                       { "_system": {} },
-                     "Collections":
-                       { "_system": {} } },
-                 "Plan":
-                   { "Lock": '"UNLOCKED"',
-                     "Version": '"1"',
-                     "DBServers":
-                       { "Pavel": '"tcp://192.168.173.101:8531"',
-                         "Perry": '"tcp://192.168.173.102:8531"',
-                         "Pancho": '"tcp://192.168.173.103:8531"' },
-                     "Coordinators":
-                       { "Claus": '"tcp://192.168.173.101:8530"',
-                         "Chantalle": '"tcp://192.168.173.102:8530"',
-                         "Claire": '"tcp://192.168.173.103:8530"' },
-                     "Databases":
-                       { "_system": {} },
-                     "Collections":
-                       { "_system": {} } },
-                 "Current":
-                   { "Lock": '"UNLOCKED"',
-                     "Version": '"1"',
-                     "DBServers": {},
-                     "Coordinators": {},
-                     "Databases":
-                       { "_system": {} },
-                     "Collections":
-                       { "_system": {} },
-                     "ServersRegistered": 
-                       { "Version": '"1"' },
-                     "ShardsCopied": {} },
-                 "Sync":
-                   { "ServerStates": {},
-                     "Problems": {},
-                     "LatestID": '"0"',
-                     "Commands": 
-                       { "Pavel": '"SERVE"',
-                         "Perry": '"SERVE"',
-                         "Pancho": '"SERVE"' },
-                     "HeartbeatInvervalMs": '1000' } },
-                 "Launchers":
-                   { "launcher1":
-                       { "DBservers": ["Pavel"],
-                         "Coordinators": ["Claus"] },
-                     "launcher2":
-                       { "DBservers": ["Perry"],
-                         "Coordinators": ["Chantalle"] },
-                     "launcher3":
-                       { "DBservers": ["Pancho"],
-                         "Coordinators": ["Chantalle"] } } } },
-      { "action": "startLauncher", "dispatcher": "machine1", 
-                                   "name": "launcher1" },
-      { "action": "startLauncher", "dispatcher": "machine2",
-                                   "name": "launcher2" },
-      { "action": "startLauncher", "dispatcher": "machine3",
-                                   "name": "launcher3" } ]
-  };
+// Our default configurations:
 
 var KickstarterLocalDefaults = {
   "agencyPrefix"            : "meier",
@@ -178,7 +86,7 @@ var KickstarterLocalDefaults = {
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : {"me":{"id":"me", "endpoint":"myself",
+  "dispatchers"             : {"me":{"id":"me", "endpoint":"tcp://localhost:",
                                      "avoidPorts": {}}}
 };
   
@@ -212,6 +120,8 @@ var KickstarterDistributedDefaults = {
                                     "avoidPorts": {} } }
 };
 
+// Some helpers using underscore:
+
 var _ = require("underscore");
 
 function objmap (o, f) {
@@ -234,15 +144,19 @@ function copy (o) {
   return o;
 }
 
+// A class to find free ports:
+
 function PortFinder (list, dispatcher) {
   if (!Array.isArray(list)) {
     throw "need a list as first argument";
   }
   if (typeof dispatcher !== "object" ||
       !dispatcher.hasOwnProperty("endpoint") ||
-      !dispatcher.hasOwnProperty("id") ||
-      !dispatcher.hasOwnProperty("avoidPorts")) {
+      !dispatcher.hasOwnProperty("id")) {
     throw 'need a dispatcher object as second argument';
+  }
+  if (!dispatcher.hasOwnProperty("avoidPorts")) {
+    dispatcher.avoidPorts = {};
   }
   this.list = list;
   this.dispatcher = dispatcher;
@@ -266,7 +180,7 @@ PortFinder.prototype.next = function () {
     }
     // Check that port is available:
     if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
-      if (this.dispatcher.endpoint !== "myself" ||
+      if (this.dispatcher.endpoint !== "tcp://localhost:" ||
           SYS_TEST_PORT("tcp://0.0.0.0:"+this.port)) {
         this.dispatcher.avoidPorts[this.port] = true;  // do not use it again
         return this.port;
@@ -282,6 +196,8 @@ function exchangePort (endpoint, newport) {
   }
   return endpoint.substr(0,pos+1)+newport;
 }
+
+// The following function merges default configurations and user configuration.
 
 function fillConfigWithDefaults (config, defaultConfig) {
   var appendAttributes = {"DBserverIDs":true, "coordinatorIDs":true};
@@ -305,8 +221,14 @@ function fillConfigWithDefaults (config, defaultConfig) {
   }
 }
 
-function Kickstarter (userConfig, defaultConfig) {
+// Our Kickstarter class:
+
+function Kickstarter (userConfig) {
   "use strict";
+  if (typeof userConfig !== "object") {
+    throw "userConfig must be an object";
+  }
+  var defaultConfig = userConfig.defaultConfig;
   if (defaultConfig === undefined) {
     defaultConfig = KickstarterLocalDefaults;
   }
@@ -330,7 +252,7 @@ Kickstarter.prototype.makePlan = function() {
 
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
-    dispatchers.me = { "id": "myself", "endpoint": "myself", 
+    dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
                        "avoidPorts": {} };
   }
   var dispList = Object.keys(dispatchers);
@@ -402,14 +324,7 @@ Kickstarter.prototype.makePlan = function() {
   var launchers = {};
   for (i = 0; i < dispList.length; i++) {
     launchers[dispList[i]] = { "DBservers": [], 
-                               "Coordinators": [],
-                               "Agents": [] };
-  }
-
-  // Register agents in launchers:
-  for (i = 0; i < agents.length; i++) {
-    launchers[agents[i].dispatcher].Agents.push({"extPort":agents[i].extPort,
-                                                 "intPort":agents[i].intPort});
+                               "Coordinators": [] };
   }
 
   // Set up agency data:
@@ -426,7 +341,7 @@ Kickstarter.prototype.makePlan = function() {
   var s;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
-    if (dispatchers[s.dispatcher].endpoint === "myself") {
+    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
       dbs[s.id] = map[s.id] 
                 = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
     }
@@ -439,7 +354,7 @@ Kickstarter.prototype.makePlan = function() {
   var coo = tmp.Coordinators = {};
   for (i = 0; i < coordinators.length; i++) {
     s = coordinators[i];
-    if (dispatchers[s.dispatcher].endpoint === "myself") {
+    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
       coo[s.id] = map[s.id] 
                 = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
     }
@@ -490,28 +405,31 @@ Kickstarter.prototype.makePlan = function() {
              "peers": [] };
     for (j = 0; j < i; j++) {
       var ep = dispatchers[agents[j].dispatcher].endpoint;
-      if (ep === "myself") {
-        ep = "tcp://localhost:0";
-      }
       tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
     }
     tmp.push(tmp2);
   }
+  var agencyPos = { "prefix": config.agencyPrefix,
+                    "endpoints": agents.map(function(a) {
+                        return exchangePort(dispatchers[a.dispatcher].endpoint,
+                                            a.extPort);}) };
   tmp.push( { "action": "sendConfiguration", 
-              "agency": agents.map(function(a) {
-                   return exchangePort(dispatchers[a.dispatcher].endpoint,
-                                       a.extPort);}),
+              "agency": agencyPos,
               "data": agencyData } );
   for (i = 0; i < dispList.length; i++) {
     tmp.push( { "action": "startLauncher", "dispatcher": dispList[i],
-                "name": dispList[i], "dataPath": config.dataPath,
-                "logPath": config.logPath } );
+                "name": dispList[i], 
+                "dataPath": config.dataPath,
+                "logPath": config.logPath,
+                "agency": copy(agencyPos) } );
   }
+  this.myname = "me";
 };
 
 Kickstarter.prototype.checkDispatchers = function() {
   // Checks that all dispatchers are active, if none is configured,
   // a local one is started.
+  throw "not yet implemented";
 };
 
 Kickstarter.prototype.getStartupProgram = function() {
@@ -522,12 +440,15 @@ Kickstarter.prototype.getStartupProgram = function() {
 
 Kickstarter.prototype.launch = function() {
   // Starts the cluster according to startup plan
+  dispatch(this);
 };
 
 Kickstarter.prototype.shutdown = function() {
+  throw "not yet implemented";
 };
 
 Kickstarter.prototype.isHealthy = function() {
+  throw "not yet implemented";
 };
 
 exports.PortFinder = PortFinder;
