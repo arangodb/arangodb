@@ -8020,12 +8020,13 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                                  std::string(key));
     collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
   }
-#endif
-
-  if (collection == 0) {
-    // look up the collection
+  else {
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
   }
+#else
+  // look up the collection
+  collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
+#endif
 
   if (collection == 0) {
     if (*key == '_') {
