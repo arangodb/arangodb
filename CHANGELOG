@@ -1,6 +1,8 @@
 v1.4.9 (XXXX-XX-XX)
 -------------------
 
+* call global arangod instance destructor on shutdown
+
 * issue #755: TRAVERSAL does not use strategy, order and itemOrder options
 
   these options were not honored when configuring a traversal via the AQL
