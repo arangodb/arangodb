@@ -436,8 +436,7 @@ bool RestEdgeHandler::createDocument () {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
-/// attributes `_id` and `_key` will be returned.
+/// document's current revision in the `etag` header.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
