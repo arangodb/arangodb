@@ -1041,9 +1041,15 @@ static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
   }
 
   char *abs = TRI_GetAbsolutePath (*name, cwd.c_str());
-
-  v8::Handle<v8::String> res = v8::String::New(abs);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+  v8::Handle<v8::String> res;
+  
+  if (0 != abs) {
+    res = v8::String::New(abs);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+  }
+  else {
+    res = v8::String::New(cwd.c_str(), cwd.size());
+  }
 
   // return result
   return scope.Close(res);
