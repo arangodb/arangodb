@@ -1002,8 +1002,9 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                          errorMsg);
     }
-
   }
+  
+  _collectionsValid = false;
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
@@ -1187,6 +1188,8 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
                          errorMsg);
     }
   }
+
+  _collectionsValid = false;
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);

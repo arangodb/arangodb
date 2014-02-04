@@ -2168,6 +2168,10 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   v8::HandleScope scope;
   
   const string name = TRI_ObjectToString(argv[0]);
+  
+  if (! TRI_IsAllowedNameCollection(parameter._isSystem, name.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
 
   uint64_t numberOfShards = 1;
   vector<string> shardKeys;
@@ -8135,6 +8139,11 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(originalDatabase, name);
 
+    if ((*ci).id() == 0) {
+      // not found
+      return scope.Close(v8::Null());
+    }
+
     collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
   }
   else {
@@ -9170,6 +9179,7 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
+
   return scope.Close(v8::True());
 }
 
