@@ -179,13 +179,18 @@
       this.addMatchers({
         toConformToToolbox: function() {
           var box = this.actual,
+            icon = $("h6", $(box))[0],
+            title = $("h6", $(box))[1],
             foundActive = false,
             failed = false;
           _.each(box.children, function(btn) {
-            expect(btn).toBeTag("button");
-            expect(btn).toBeOfClass("btn btn-icon");
-            expect(btn).toBeOfClass("btn-icon");
-            expect(btn).toBeOfClass("gv-icon-btn");
+            expect(btn).toBeTag("div");
+            expect(btn).toBeOfClass("gv_action_button");
+            expect(icon).toBeTag("h6");
+            expect(icon).toBeOfClass("fa");
+            expect(icon).toBeOfClass("gv_icon_icon");
+            expect(title).toBeTag("h6");
+            expect(title).toBeOfClass("gv_button_title");
             if ($(btn).hasClass("active")) {
               if (foundActive) {
                 failed = true;

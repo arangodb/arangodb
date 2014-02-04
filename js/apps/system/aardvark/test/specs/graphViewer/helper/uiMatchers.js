@@ -92,9 +92,8 @@ var uiMatchers = uiMatchers || {};
         expect(box).toBeOfClass("btn-group-vertical");
         expect(box).toBeOfClass("toolbox");
         _.each(box.children, function(btn) {
-          expect(btn).toBeTag("button");
-          expect(btn).toBeOfClass("btn");
-          expect(btn).toBeOfClass("btn-icon");
+          expect(btn).toBeTag("div");
+          expect(btn).toBeOfClass("gv_action_button");
         });
         return true;
       },
