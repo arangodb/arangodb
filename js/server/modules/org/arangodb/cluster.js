@@ -583,7 +583,7 @@ function dropLocalCollections (plannedCollections) {
         }
       }
       catch (err) {
-        db._useDatabase("_system");
+        db._useDatabase(previousDatabase);
         throw err;
       }
     }
