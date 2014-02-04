@@ -1012,6 +1012,45 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief makes a given path absolute
+///
+/// @FUN{fs.makeAbsolute(@FA{path})}
+///
+/// Returns the given string if it is an absolute path, otherwise an
+/// absolute path to the same location is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "makeAbsolute(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  int err = 0;
+  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  if (0 != err) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, err,"cannot get current working directory");
+  }
+
+  char *abs = TRI_GetAbsolutePath (*name, cwd.c_str());
+
+  v8::Handle<v8::String> res = v8::String::New(abs);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+
+  // return result
+  return scope.Close(res);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory listing
 ///
 /// @FUN{fs.list(@FA{path})}
@@ -3001,6 +3040,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_ABSOLUTE", JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST", JS_List);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
