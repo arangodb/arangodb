@@ -263,10 +263,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     // execute worker
     execv(external->_executable, external->_arguments);
 
-    // should not happen
-    LOG_ERROR("execution of '%s' failed with %d", external->_executable, errno);
-
-    exit(1);
+    _exit(1);
   }
    
   // parent
