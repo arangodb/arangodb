@@ -1159,7 +1159,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
   }
   else {
     // Note that for this case we will never get a 304 "NOT_MODIFIED"
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return scope.Close(v8::True());
   }
 }
