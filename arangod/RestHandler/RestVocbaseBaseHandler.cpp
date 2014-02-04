@@ -261,8 +261,11 @@ void RestVocbaseBaseHandler::generateForbidden () {
 void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid,
                                                          TRI_voc_key_t key,
                                                          TRI_voc_rid_t rid) {
+  const string rev = StringUtils::itoa(rid);
+
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("etag", 4, "\"" + rev + "\"");
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()

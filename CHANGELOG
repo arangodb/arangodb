@@ -155,6 +155,10 @@ v1.5.0 (XXXX-XX-XX)
 v1.4.9 (XXXX-XX-XX)
 -------------------
 
+* return a document's current etag in response header for HTTP HEAD requests on
+  documents that return an HTTP 412 (precondition failed) error. This allows
+  retrieving the document's current revision easily.
+
 * added AQL function `SKIPLIST` to directly access skiplist indexes from AQL
   
   This is a shortcut method to use a skiplist index for retrieving specific documents in 
