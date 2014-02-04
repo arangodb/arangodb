@@ -1,6 +1,16 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* issue #756: set access-control-expose-headers on CORS response
+
+  the following headers are now whitelisted by ArangoDB in CORS responses:
+  - etag
+  - content-encoding
+  - content-length
+  - location
+  - x-arango-errors
+  - x-arango-async-id
+
 * Several UI improvements.
 
 * Exchanged icons in the graphviwer toolbar
