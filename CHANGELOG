@@ -13,6 +13,15 @@ v1.4.10 (XXXX-XX-XX)
 
 * removed 2 tests due to change in ruby library.
 
+* issue #756: set access-control-expose-headers on CORS response
+
+  the following headers are now whitelisted by ArangoDB in CORS responses:
+  - etag
+  - content-encoding
+  - content-length
+  - location
+  - x-arango-errors
+  - x-arango-async-id
 
 v1.4.9 (2014-02-07)
 -------------------
