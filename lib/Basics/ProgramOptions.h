@@ -133,6 +133,30 @@ namespace triagens {
 
         string lastError ();
 
+#if 0
+void guck () {
+  vector<string>::iterator i;
+  map<string,char **>::iterator j;
+
+  cout << "OPTGUCK:" << endl;
+  for (i = _options.begin(); i != _options.end(); ++i) {
+    j = _valuesString.find(*i);
+    if (j == _valuesString.end()) {
+      cout << "OPT: " << *i << " not in _valuesString" << endl;
+    } 
+    else if (0 == j->second) {
+      cout << "OPT: " << *i << " is 0" << endl;
+    }
+    else if (0 == *(j->second)) {
+      cout << "OPT: " << *i << " is *0" << endl;
+    }
+    else {
+      cout << "OPT: " << *i << " with value " << *(j->second) << endl;
+    }
+  }
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

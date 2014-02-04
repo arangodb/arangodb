@@ -45,13 +45,25 @@
 //   .dataPath                a file system path to the directory in which
 //                            all the data directories of agents or servers
 //                            live, this can be relative or even empty, which
-//                            is equivalent to "./", please end with a slash
-//                            if not empty
+//                            is equivalent to "./", it will be made into
+//                            an absolute path by the kickstarter, using
+//                            the current directory when the kickstarter
+//                            runs, use with caution!
+//   .logPath                 path where the log files are written, same
+//                            comments as for .dataPath apply
 //   .dispatchers             an list of pairs of strings, the first entry
 //                            is an ID, the second is an endpoint or "me"
 //                            standing for the local `arangod` itself.
 //                            this list can be empty in which case
 //                            ["me","me"] is automatically added.
+//   .arangodPath             path to the arangod executable on
+//                            all machines in the cluster, will be made
+//                            absolute (if it is not already absolute)
+//                            in the process running the kickstarter
+//   .agentPath               path to the agent executable on 
+//                            all machines in the cluster, will be made
+//                            absolute (if it is not already absolute)
+//                            in the process running the kickstarter
 // some port lists:
 //   for these the following rules apply:
 //     every list overwrites the default list
@@ -66,6 +78,7 @@
 //   .coordinatorPorts        a list ports to try to use for coordinators
 //  
 
+fs = require("fs");
 dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
 
 // Our default configurations:
@@ -82,6 +95,8 @@ var KickstarterLocalDefaults = {
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",
   "logPath"                 : "",
+  "arangodPath"             : "bin/arangod",
+  "agentPath"               : "bin/etcd",
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
@@ -102,6 +117,8 @@ var KickstarterDistributedDefaults = {
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",
   "logPath"                 : "",
+  "arangodPath"             : "bin/arangod",
+  "agentPath"               : "bin/etcd",
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
@@ -240,6 +257,12 @@ function Kickstarter (userConfig) {
   }
   this.config = copy(userConfig);
   fillConfigWithDefaults(this.config, defaultConfig);
+  this.config.dataPath = fs.normalize(fs.makeAbsolute(this.config.dataPath));
+  this.config.logPath = fs.normalize(fs.makeAbsolute(this.config.logPath));
+  this.config.arangodPath = fs.normalize(fs.makeAbsolute(
+                                   this.config.arangodPath));
+  this.config.agentPath = fs.normalize(fs.makeAbsolute(
+                                   this.config.agentPath));
   this.commands = [];
   this.makePlan();
 }
@@ -400,9 +423,13 @@ Kickstarter.prototype.makePlan = function() {
   var tmp2,j;
   for (i = 0; i < agents.length; i++) {
     tmp2 = { "action" : "startAgent", "dispatcher": agents[i].dispatcher,
-             "ports": { "extPort": agents[i].extPort,
-                        "intPort": agents[i].intPort }, 
-             "peers": [] };
+             "extPort": agents[i].extPort,
+             "intPort": agents[i].intPort,
+             "peers": [],
+             "agencyPrefix": config.agencyPrefix,
+             "dataPath": config.dataPath,
+             "logPath": config.logPath,
+             "agentPath": config.agentPath };
     for (j = 0; j < i; j++) {
       var ep = dispatchers[agents[j].dispatcher].endpoint;
       tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
@@ -421,6 +448,7 @@ Kickstarter.prototype.makePlan = function() {
                 "name": dispList[i], 
                 "dataPath": config.dataPath,
                 "logPath": config.logPath,
+                "arangodPath": config.arangodPath,
                 "agency": copy(agencyPos) } );
   }
   this.myname = "me";
