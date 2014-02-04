@@ -60,7 +60,7 @@ function getAddr (endpoint) {
 
 actions.startAgent = function (dispatchers, cmd) {
   var agentDataDir = fs.join(cmd.dataPath, 
-                             "agent"+cmd.agencyPrefix+cmd.extPort)
+                             "agent"+cmd.agencyPrefix+cmd.extPort);
   if (fs.exists(agentDataDir)) {
     fs.removeDirectoryRecursive(agentDataDir,true);
   }
@@ -98,6 +98,7 @@ actions.startLauncher = function (dispatchers, cmd) {
 };
 
 function dispatch (startupPlan) {
+  var myname;
   if (!startupPlan.hasOwnProperty("myname")) {
     myname = "me";
   }

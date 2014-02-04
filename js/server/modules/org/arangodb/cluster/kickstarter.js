@@ -78,8 +78,8 @@
 //   .coordinatorPorts        a list ports to try to use for coordinators
 //  
 
-fs = require("fs");
-dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
+var fs = require("fs");
+var dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
 
 // Our default configurations:
 
