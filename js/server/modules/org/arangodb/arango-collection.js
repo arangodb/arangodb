@@ -301,10 +301,10 @@ ArangoCollection.prototype.first = function (count) {
                                    { }, 
                                    options);
 
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards);
 
     if (results.length) {
-      var body = JSON.parse(results[i].body);
+      var body = JSON.parse(results[0].body);
       return body.result || null;
     }
   }
@@ -382,10 +382,10 @@ ArangoCollection.prototype.last = function (count) {
                                    { }, 
                                    options);
 
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards);
 
     if (results.length) {
-      var body = JSON.parse(results[i].body);
+      var body = JSON.parse(results[0].body);
       return body.result || null;
     }
   }
