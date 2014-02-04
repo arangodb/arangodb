@@ -31,6 +31,7 @@
 var console = require("console");
 var arangodb = require("org/arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
+var ArangoError = arangodb.ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get values from Plan or Current by a prefix
@@ -691,6 +692,18 @@ var shardList = function (dbName, collectionName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief throw an ArangoError
+////////////////////////////////////////////////////////////////////////////////
+
+var raiseError = function (code, msg) {
+  var err = new ArangoError();
+  err.errorNum = code;
+  err.errorMessage = msg;
+  
+  throw err;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for a distributed response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -702,20 +715,36 @@ var wait = function (data, shards) {
     var status = result.status;
         
     if (status === "ERROR") {
-      throw "received an error";
+      raiseError(arangodb.errors.ERROR_INTERNAL.code, "received an error from a DB server");
     }
     else if (status === "TIMEOUT") {
-      throw "received a timeout";
+      raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code, arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
     }
     else if (status === "DROPPED") {
-      throw "operation was dropped";
+      raiseError(arangodb.errors.ERROR_INTERNAL.code, "the operation was dropped");
     }
     else if (status === "RECEIVED") {
       received.push(result);
+      
+      if (result.headers && result.headers.hasOwnProperty('x-arango-response-code')) {
+        var code = parseInt(result.headers['x-arango-response-code'].substr(0, 3), 10);
+
+        if (code >= 400) {
+          var body;
+
+          try {
+            body = JSON.parse(result.body);
+          }
+          catch (err) {
+            raiseError(arangodb.errors.ERROR_INTERNAL.code, "received an error from a DB server");
+          }
+
+          raiseError(body.errorNum, body.errorMessage);
+        }
+      }
     }
     else {
       // something else... wait without GC
-      require("internal").print(result);
       require("internal").wait(0.1, false);
     }
   }

@@ -277,6 +277,263 @@ function ClusterCrudSimpleSuite () {
     assertEqual(0, c.count());
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for any
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeAny = function (c) {
+    var i, n = 1000;
+
+    assertNull(c.any());
+
+    for (i = 0; i < n; ++i) {
+      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    }
+
+    var doc = c.any();
+    assertTrue(doc.hasOwnProperty("_id"));
+    assertTrue(doc.hasOwnProperty("_key"));
+    assertTrue(doc.hasOwnProperty("_rev"));
+    assertTrue(doc.hasOwnProperty("value1"));
+    assertTrue(doc.hasOwnProperty("value2"));
+    assertTrue(doc.hasOwnProperty("value3"));
+    assertEqual(doc._key, doc.value2);
+    assertEqual(1, doc.value3);
+
+    c.truncate();
+    assertNull(c.any());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for truncate
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeTruncate = function (c) {
+    var i, n = 1000;
+
+    for (i = 0; i < n; ++i) {
+      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    }
+
+    assertEqual(n, c.count());
+    
+    c.truncate();
+    assertEqual(0, c.count());
+    
+    c.truncate();
+    assertEqual(0, c.count());
+
+    c.save({ _key : "foo" });
+    assertEqual(1, c.count());
+    
+    c.truncate();
+    assertEqual(0, c.count());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for removeByExample
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeRemoveByExample = function (c) {
+    var i, n = 1000;
+
+    for (i = 0; i < n; ++i) {
+      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    }
+
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.removeByExample({ value1 : 11 }));
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.removeByExample({ value1 : 4, value2 : "test37" }));
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.removeByExample({ foobar : "baz" }));
+    assertEqual(n, c.count());
+    
+    assertEqual(n / 10, c.removeByExample({ value1 : 1 }));
+    assertEqual(n - (n / 10), c.count());
+    
+    assertEqual(n / 10, c.removeByExample({ value1 : 2 }));
+    assertEqual(n - 2 * (n / 10), c.count());
+    
+    assertEqual(1, c.removeByExample({ _key : "test44" }));
+    assertEqual(n - 2 * (n / 10) - 1, c.count());
+    
+    assertEqual(0, c.removeByExample({ _key : "test44" }));
+    
+    assertEqual(n - 2 * (n / 10) - 1, c.removeByExample({ value3 : 1 }));
+    assertEqual(0, c.count());
+
+    assertEqual(0, c.removeByExample({ value3 : 1 }));
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for replaceByExample
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeReplaceByExample = function (c) {
+    var i, n = 1000;
+
+    assertEqual(0, c.replaceByExample({ value3 : 1 }, { value9 : 17 }));
+
+    for (i = 0; i < n; ++i) {
+      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    }
+
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.replaceByExample({ value1 : 11 }, { value1 : 17 }));
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.replaceByExample({ value1 : 4, value2 : "test37" }, { value2 : "foxx" }));
+    assertEqual(n, c.count());
+    
+    assertEqual(0, c.replaceByExample({ foobar : "baz" }, { boom : "bar" }));
+    assertEqual(n, c.count());
+    
+    assertEqual(n / 10, c.replaceByExample({ value1 : 1 }, { value1 : 4 }));
+    assertEqual(0, c.replaceByExample({ value1 : 1 }, { value1 : 4 }));
+    assertEqual(n, c.count());
+    
+    assertEqual(n / 10, c.replaceByExample({ value1 : 2 }, { value1 : 5 }));
+    assertEqual(0, c.replaceByExample({ value1 : 2 }, { value1 : 5 }));
+    assertEqual(n, c.count());
+    
+    assertEqual(1, c.replaceByExample({ _key : "test44" }, { value3 : 2 }));
+    assertEqual(1, c.replaceByExample({ _key : "test44" }, { value3 : 4 }));
+    
+    assertEqual(n, c.replaceByExample({ }, { value3 : 99, value2 : 1 }));
+    assertEqual(0, c.replaceByExample({ value3 : 99, value2 : 2 }, { }));
+    assertEqual(n, c.replaceByExample({ value3 : 99, value2 : 1 }, { value2 : 2, value3 : "test" }));
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for replaceByExample
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeReplaceByExampleShardKeys = function (c) {
+    var i, n = 1000;
+
+    for (i = 0; i < n; ++i) {
+      c.save({ a : (i % 10), b : (i % 100) });
+    }
+
+    assertEqual(0, c.replaceByExample({ a : 11 }, { a : 11, b : 13, c : 1 }));
+
+    try {
+      c.replaceByExample({ a : 1, b : 1 }, { a : 12542, b : 13239, c : 1 });
+      fail();
+    }
+    catch (err1) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
+    }
+    
+    try {
+      c.replaceByExample({ a : 2 }, { a : 2, b : 13, c : 1 });
+      fail();
+    }
+    catch (err2) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+    }
+    
+    try {
+      c.replaceByExample({ a : 2 }, { a : 2, c : 1 });
+      fail();
+    }
+    catch (err3) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+    }
+    
+    assertEqual(n / 100, c.replaceByExample({ a : 7, b : 17 }, { a : 7, b : 17, c : 12 }));
+    assertEqual(n / 100, c.replaceByExample({ a : 7, b : 17, c : 12 }, { a : 7, b : 17, d : 9 }));
+    assertEqual(0, c.replaceByExample({ a : 7, b : 17, c : 12 }, { }));
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for updateByExample
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeUpdateByExample = function (c) {
+    var i, n = 1000;
+
+    assertEqual(0, c.updateByExample({ value3 : 1 }, { value9 : 17 }));
+
+    for (i = 0; i < n; ++i) {
+      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    }
+
+    assertEqual(0, c.updateByExample({ value1 : 11 }, { value1 : 17 }));
+    
+    assertEqual(0, c.updateByExample({ value1 : 4, value2 : "test37" }, { value2 : "foxx" }));
+    
+    assertEqual(0, c.updateByExample({ foobar : "baz" }, { boom : "bar" }));
+    
+    assertEqual(n / 10, c.updateByExample({ value1 : 1 }, { value1 : 4 }));
+    assertEqual(0, c.updateByExample({ value1 : 1 }, { value1 : 4 }));
+    
+    assertEqual(n / 10, c.updateByExample({ value1 : 2 }, { value1 : 5 }));
+    assertEqual(0, c.updateByExample({ value1 : 2 }, { value1 : 5 }));
+    
+    assertEqual(1, c.updateByExample({ _key : "test44" }, { value3 : 2 }));
+    assertEqual(1, c.updateByExample({ _key : "test44" }, { value3 : 4 }));
+    
+    assertEqual(n - 1, c.updateByExample({ value3 : 1 }, { value3 : 99 }));
+    assertEqual(1, c.updateByExample({ value3 : 4 }, { value3 : 99 }));
+
+    assertEqual(n / 10, c.updateByExample({ value3 : 99, value1 : 0 }, { value1 : 9 }));
+    assertEqual(n, c.updateByExample({ value3 : 99 }, { }));
+    assertEqual(2 * (n / 10), c.updateByExample({ value3 : 99, value1 : 9 }, { value12 : 7 }));
+    assertEqual(n, c.updateByExample({ }, { value12 : 7 }));
+    
+    assertEqual(n, c.updateByExample({ value12 : 7 }, { value12 : null }, false));
+    assertEqual(0, c.byExample({ value12: 7 }).toArray().length);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for updateByExample
+////////////////////////////////////////////////////////////////////////////////
+    
+  var executeUpdateByExampleShardKeys = function (c) {
+    var i, n = 1000;
+
+    for (i = 0; i < n; ++i) {
+      c.save({ a : (i % 10), b : (i % 100) });
+    }
+
+    assertEqual(0, c.updateByExample({ a : 11 }, { a : 17 }));
+    assertEqual(0, c.updateByExample({ foobar : "baz" }, { a : 17 }));
+      
+    assertEqual(10, c.updateByExample({ a : 1, b : 1 }, { a : 1, b : 1, c : "test" }));
+    
+    try {
+      c.updateByExample({ a : 1, b : 1 }, { a : 2, b : 1 });
+      fail();
+    }
+    catch (err1) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
+    }
+    
+    assertEqual(10, c.updateByExample({ a : 2, b : 2 }, { d : "test" }));
+    
+    try {
+      c.updateByExample({ a : 1, b : 1 }, { a : 2, d : 4 });
+      fail();
+    }
+    catch (err2) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+    }
+    
+    try {
+      c.updateByExample({ a : 1, b : 1 }, { a : 2 });
+      fail();
+    }
+    catch (err3) {
+      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+    }
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,6 +625,262 @@ function ClusterCrudSimpleSuite () {
     testCountMultipleShards : function () {
       var c = createCollection({ numberOfShards: 5 });
       executeCount(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      var i;
+  
+      for (i = 0; i < 5; ++i) {  
+        c.save({ _key : "test" + i, value1 : i });
+      }
+   
+      var doc = c.first();
+      assertEqual("test0", doc._key); 
+      doc = c.first(2);
+      assertEqual("test0", doc[0]._key); 
+      assertEqual("test1", doc[1]._key); 
+      
+      c.remove("test0");
+      doc = c.first();
+      assertEqual("test1", doc._key); 
+
+      doc = c.first(2);
+      assertEqual(2, doc.length);
+      assertEqual("test1", doc[0]._key); 
+      assertEqual("test2", doc[1]._key); 
+      
+      doc = c.first(17);
+      assertEqual(4, doc.length);
+      assertEqual("test1", doc[0]._key); 
+      assertEqual("test2", doc[1]._key); 
+      assertEqual("test3", doc[2]._key); 
+      assertEqual("test4", doc[3]._key); 
+
+      c.truncate();
+      assertNull(c.first());
+      assertEqual([ ], c.first(4));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+    
+      c.save({ _key: "test" });
+    
+      try {
+        c.first();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err1.errorNum);
+      }
+      
+      try {
+        c.first(4);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testLastOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      var i;
+  
+      for (i = 0; i < 5; ++i) {  
+        c.save({ _key : "test" + i, value1 : i });
+      }
+   
+      var doc = c.last();
+      assertEqual("test4", doc._key); 
+      doc = c.last(2);
+      assertEqual("test4", doc[0]._key); 
+      assertEqual("test3", doc[1]._key); 
+      
+      c.remove("test4");
+      doc = c.last();
+      assertEqual("test3", doc._key); 
+
+      doc = c.last(2);
+      assertEqual(2, doc.length);
+      assertEqual("test3", doc[0]._key); 
+      assertEqual("test2", doc[1]._key); 
+      
+      doc = c.last(17);
+      assertEqual(4, doc.length);
+      assertEqual("test3", doc[0]._key); 
+      assertEqual("test2", doc[1]._key); 
+      assertEqual("test1", doc[2]._key); 
+      assertEqual("test0", doc[3]._key); 
+
+      c.truncate();
+      assertNull(c.last());
+      assertEqual([ ], c.last(4));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testLastMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+    
+      c.save({ _key: "test" });
+    
+      try {
+        c.last();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err1.errorNum);
+      }
+      
+      try {
+        c.last(4);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test any, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testAnyOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      executeAny(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test any, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testAnyMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+      executeAny(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test truncate, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      executeTruncate(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test truncate, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+      executeTruncate(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test removeByExample, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExampleOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      executeRemoveByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test removeByExample, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExampleMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+      executeRemoveByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replaceByExample, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExampleOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      executeReplaceByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replaceByExample, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExampleMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+      executeReplaceByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replaceByExample, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExampleShardKeysOneShard : function () {
+      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      executeReplaceByExampleShardKeys(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replaceByExample, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExampleShardKeysMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      executeReplaceByExampleShardKeys(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test updateByExample, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleOneShard : function () {
+      var c = createCollection({ numberOfShards: 1 });
+      executeUpdateByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test updateByExample, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5 });
+      executeUpdateByExample(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test updateByExample, one shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleShardKeysOneShard : function () {
+      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      executeUpdateByExampleShardKeys(c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test updateByExample, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleShardKeysMultipleShards : function () {
+      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      executeUpdateByExampleShardKeys(c);
     }
 
   };
