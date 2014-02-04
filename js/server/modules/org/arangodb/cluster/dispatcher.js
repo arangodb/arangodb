@@ -33,14 +33,58 @@
 // -----------------------------------------------------------------------------
 
 var download = require("internal").download;
+var executeExternal = require("internal").executeExternal;
+var fs = require("fs");
+var wait = require("internal").wait;
 
 var print = require("internal").print;
 
 var actions = {};
 
+function getAddrPort (endpoint) {
+  var pos = endpoint.indexOf("://");
+  if (pos !== -1) {
+    return endpoint.substr(pos+3);
+  }
+  return endpoint;
+}
+
+function getAddr (endpoint) {
+  var addrPort = getAddrPort(endpoint);
+  var pos = addrPort.indexOf(":");
+  if (pos !== -1) {
+    return addrPort.substr(0,pos);
+  }
+  return addrPort;
+}
+
 actions.startAgent = function (dispatchers, cmd) {
-  print("Starting an agent...");
-  return {"error":false};
+  var agentDataDir = fs.join(cmd.dataPath, 
+                             "agent"+cmd.agencyPrefix+cmd.extPort)
+  if (fs.exists(agentDataDir)) {
+    fs.removeDirectoryRecursive(agentDataDir,true);
+  }
+  // FIXME: could distinguish cases and sometimes only bind to 127.0.0.1???
+  var args = ["-data-dir", agentDataDir,
+              "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
+              "-addr", "0.0.0.0:"+cmd.extPort,
+              "-peer-addr", "0.0.0.0:"+cmd.intPort];
+  var i;
+  if (cmd.peers.length > 0) {
+    args.push("-peers");
+    var st = getAddrPort(cmd.peers[0]);
+    for (i = 1; i < cmd.peers.length; i++) {
+      st = st + "," + getAddrPort(cmd.peers[i]);
+    }
+    args.push(getAddrPort(cmd.peers[0]));
+  }
+  print("Starting agent: command: ",cmd.agentPath);
+  for (i = 0;i < args.length;i++) {
+    print(args[i]);
+  }
+  var pid = executeExternal(cmd.agentPath, args);
+  wait(3);   // Wait a bit, such that the next one will be able to connect
+  return {"error":false, "pid": pid};
 };
 
 actions.sendConfiguration = function (dispatchers, cmd) {
