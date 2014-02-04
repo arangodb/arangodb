@@ -715,13 +715,16 @@ var wait = function (data, shards) {
     var status = result.status;
         
     if (status === "ERROR") {
-      raiseError(arangodb.errors.ERROR_INTERNAL.code, "received an error from a DB server");
+      raiseError(arangodb.errors.ERROR_INTERNAL.code, 
+                 "received an error from a DB server");
     }
     else if (status === "TIMEOUT") {
-      raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code, arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
+      raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code, 
+                 arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
     }
     else if (status === "DROPPED") {
-      raiseError(arangodb.errors.ERROR_INTERNAL.code, "the operation was dropped");
+      raiseError(arangodb.errors.ERROR_INTERNAL.code, 
+                 "the operation was dropped");
     }
     else if (status === "RECEIVED") {
       received.push(result);
@@ -736,10 +739,12 @@ var wait = function (data, shards) {
             body = JSON.parse(result.body);
           }
           catch (err) {
-            raiseError(arangodb.errors.ERROR_INTERNAL.code, "received an error from a DB server");
+            raiseError(arangodb.errors.ERROR_INTERNAL.code, 
+                       "received an error from a DB server");
           }
 
-          raiseError(body.errorNum, body.errorMessage);
+          raiseError(body.errorNum, 
+                     body.errorMessage);
         }
       }
     }
