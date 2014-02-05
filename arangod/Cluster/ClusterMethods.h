@@ -109,8 +109,9 @@ namespace triagens {
                  TRI_voc_rid_t const rev,
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,10 +123,10 @@ namespace triagens {
                  string const& collname,
                  string const& key,
                  TRI_voc_rid_t const rev,
-                 bool notthisref,
+                 map<string, string> const& headers,
                  bool generateDocument,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,8 +154,9 @@ namespace triagens {
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  TRI_json_t* json,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,5 +187,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

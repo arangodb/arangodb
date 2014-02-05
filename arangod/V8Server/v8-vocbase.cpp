@@ -1096,13 +1096,14 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
   string resultBody;
 
   error = triagens::arango::getDocumentOnCoordinator(
-            dbname, collname, key, rev, false,   // no "if-none-match" here!
+            dbname, collname, key, rev, headers,
             generateDocument,
-            responseCode, contentType, resultBody);
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
@@ -1424,12 +1425,13 @@ static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
   string resultBody;
 
   error = triagens::arango::modifyDocumentOnCoordinator(
         dbname, collname, key, rev, policy, waitForSync, isPatch,
-        keepNull, json, responseCode, contentType, resultBody);
+        keepNull, json, headers, responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
   
   if (error != TRI_ERROR_NO_ERROR) {
@@ -2023,12 +2025,13 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> resultHeaders;
   string resultBody;
+  map<string, string> headers;
 
   error = triagens::arango::deleteDocumentOnCoordinator(
-            dbname, collname, key, rev, policy, waitForSync,
-            responseCode, contentType, resultBody);
+            dbname, collname, key, rev, policy, waitForSync, headers,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
