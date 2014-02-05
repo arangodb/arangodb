@@ -224,14 +224,23 @@ namespace triagens {
           if (!ServerState::instance()->isRunningInCluster()) {
             return getCollectionName(cid);
           }
-          TRI_shared_ptr<CollectionInfo> ci
-            = ClusterInfo::instance()->getCollection(_vocbase->_name, 
-                           triagens::basics::StringUtils::itoa(cid));
-          string name = ci->name();
-          if (name.empty()) {
-            name = "_unknown";
+
+          int tries = 0;
+
+          while (tries++ < 2) {
+            TRI_shared_ptr<CollectionInfo> ci
+              = ClusterInfo::instance()->getCollection(_vocbase->_name, 
+                             triagens::basics::StringUtils::itoa(cid));
+            string name = ci->name();
+
+            if (name.empty()) {
+              ClusterInfo::instance()->flush();
+              continue;
+            }
+            return name;
           }
-          return name;
+
+          return "_unknown";
         }
 #endif
 

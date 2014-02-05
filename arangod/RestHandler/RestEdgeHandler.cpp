@@ -183,7 +183,6 @@ bool RestEdgeHandler::createDocument () {
   // extract the from
   bool found;
   char const* from = _request->value("from", found);
-
   if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -351,12 +350,12 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   string const& dbname = _request->originalDatabaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
             dbname, collname, waitForSync, json, from, to,
-            responseCode, contentType, resultBody);
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
@@ -365,7 +364,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }

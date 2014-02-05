@@ -7244,12 +7244,13 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json,
-            responseCode, contentType, resultBody);
+            dbname, collname, waitForSync, json, headers,
+            responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -7319,12 +7320,12 @@ static v8::Handle<v8::Value> JS_SaveEdgeCol_Coordinator (
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
             dbname, collname, waitForSync, json, _from.c_str(), _to.c_str(),
-            responseCode, contentType, resultBody);
+            responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
