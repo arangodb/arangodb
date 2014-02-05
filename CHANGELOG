@@ -8,6 +8,7 @@ v1.5.0 (XXXX-XX-XX)
   - content-encoding
   - content-length
   - location
+  - server
   - x-arango-errors
   - x-arango-async-id
 

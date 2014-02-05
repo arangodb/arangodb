@@ -636,7 +636,7 @@ namespace triagens {
             // access-control-allow-origin header now
             LOG_TRACE("handling CORS response");
             
-            response->setHeader("access-control-expose-headers", strlen("access-control-expose-headers"), "etag, content-encoding, content-length, location, x-arango-errors, x-arango-async-id");
+            response->setHeader("access-control-expose-headers", strlen("access-control-expose-headers"), "etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
             // TODO: check whether anyone actually needs these headers in the browser: x-arango-replication-checkmore, x-arango-replication-lastincluded, x-arango-replication-lasttick, x-arango-replication-active");
 
             // send back original value of "Origin" header
