@@ -13,15 +13,15 @@ rspec --color --format d \
 	api-database-spec.rb \
 	api-document-create-spec.rb \
 	api-document-create-noncluster-spec.rb \
+	api-document-delete-spec.rb \
+	api-document-read-spec.rb \
+	api-document-update-spec.rb \
+	api-document-key-spec.rb \
 	api-documents-spec.rb \
 	api-edge-spec.rb \
 	api-edge-noncluster-spec.rb \
 	api-edges-spec.rb \
 	api-graph-spec.rb \
-	rest-key-spec.rb \
-	rest-read-document-spec.rb \
-	rest-update-document-spec.rb \
-	rest-delete-document-spec.rb \
 	api-import-spec.rb \
 	api-index-spec.rb \
 	api-index-bitarray-spec.rb \
