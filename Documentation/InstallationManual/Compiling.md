@@ -127,7 +127,7 @@ database directory you specified exists and can be written into.
 
 Use your favorite browser to access the URL
 
-    http://127.0.0.1:12345/version
+    http://127.0.0.1:12345/_api/version
 
 This should produce a JSON object like
 
