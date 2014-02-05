@@ -294,7 +294,7 @@ function dropLocalDatabases (plannedDatabases) {
   // check which databases need to be deleted locally
   for (name in localDatabases) {
     if (localDatabases.hasOwnProperty(name)) {
-      if (! plannedDatabases.hasOwnProperty(name)) {
+      if (! plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
         // must drop database
 
         console.info("dropping local database '%s'", name);
@@ -333,7 +333,7 @@ function cleanupCurrentDatabases () {
   var name;
 
   for (name in currentDatabases) {
-    if (currentDatabases.hasOwnProperty(name)) {
+    if (currentDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
       if (! localDatabases.hasOwnProperty(name)) {
         // we found a database we don't have locally
 

@@ -428,7 +428,6 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   // OK or an error:
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
-
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
@@ -562,6 +561,24 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // split the document reference
   const string& collection = suffix[0];
   const string& key = suffix[1];
+  
+  // check for an etag
+  bool isValidRevision;
+  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
+
+  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
+  if (! isValidRevision) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
+    return false;
+  }
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
@@ -615,24 +632,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   const TRI_voc_rid_t rid = document._rid;
 
-  // check for an etag
-  bool isValidRevision;
-  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
-  }
-
-  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
-  }
-
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
       generateDocument(cid, &document, shaper, generateBody);
@@ -669,45 +668,24 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 bool RestDocumentHandler::getDocumentCoordinator (
                               string const& collname,
                               string const& key,
-                              bool generateBody ) {
+                              bool generateBody) {
   string const& dbname = _request->originalDatabaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> resultHeaders;
   string resultBody;
 
-  // check for an etag
-  bool notthisref = false;  // will be set if "if-none-match" is given but
-                            // "if-match" is not
+  // TODO: check if this is ok
   TRI_voc_rid_t rev = 0;
-
-  bool isValidRevision;
-  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
-  }
-  if (ifNoneRid != 0) {
-    notthisref = true;
-    rev = ifNoneRid;
-  }
-
-  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
-  if (! isValidRevision) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
-  }
-  if (ifRid != 0) {  // not that this takes precedence over "if-none-match"
-    notthisref = false;
-    rev = ifRid;
+  bool found;
+  char const* revstr = _request->value("rev", found);
+  if (found) {
+    rev = StringUtils::uint64(revstr);
   }
 
   int error = triagens::arango::getDocumentOnCoordinator(
-            dbname, collname, key, rev, notthisref, generateBody,
-            responseCode, contentType, resultBody);
+            dbname, collname, key, rev, headers, generateBody,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
@@ -716,8 +694,14 @@ bool RestDocumentHandler::getDocumentCoordinator (
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  if (! generateBody) {
+    // a head request...
+    _response->headResponse((size_t) StringUtils::uint64(resultHeaders["content-length"]));
+  }
+  else {
+    _response->body().appendText(resultBody.c_str(), resultBody.size());
+  }
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 #endif
@@ -1569,8 +1553,9 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
                               bool isPatch,
                               TRI_json_t* json) {
   string const& dbname = _request->originalDatabaseName();
+  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> resultHeaders;
   string resultBody;
 
   bool keepNull = true;
@@ -1580,16 +1565,17 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, isPatch, 
-            keepNull, json, responseCode, contentType, resultBody);
+            keepNull, json, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
     return false;
   }
+
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
@@ -1810,12 +1796,13 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
                               bool waitForSync) {
   string const& dbname = _request->originalDatabaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::deleteDocumentOnCoordinator(
-            dbname, collname, key, rev, policy, waitForSync,
-            responseCode, contentType, resultBody);
+            dbname, collname, key, rev, policy, waitForSync, headers,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
@@ -1824,7 +1811,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }

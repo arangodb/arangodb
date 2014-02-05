@@ -81,7 +81,12 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
     const string& key = (*it).first;
 
     // ignore the following headers
-    if (key != "x-arango-async" && key != "origin" && key.substr(0, 14) != "access-control") {
+    if (key != "x-arango-async" && 
+        key != "content-length" && 
+        key != "connection" && 
+        key != "host" &&
+        key != "origin" && 
+        key.substr(0, 14) != "access-control") {
       result.insert(make_pair<string, string>(key, (*it).second));
     }
     ++it;
@@ -322,8 +327,9 @@ int deleteDocumentOnCoordinator (
                 TRI_voc_rid_t const rev,
                 TRI_doc_update_policy_e policy,
                 bool waitForSync,
+                map<string, string> const& headers,
                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                string& contentType,
+                map<string, string>& resultHeaders,
                 string& resultBody) {
 
   // Set a few variables needed for our work:
@@ -361,6 +367,7 @@ int deleteDocumentOnCoordinator (
   if (rev != 0) {
     revstr = "&rev="+StringUtils::itoa(rev);
   }
+
   string policystr;
   if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
     policystr = "&policy=last";
@@ -373,11 +380,10 @@ int deleteDocumentOnCoordinator (
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    map<string, string> headers;
     res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
                           triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(shardID)+"/"+key+
+                          StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key)+
                           "?waitForSync="+(waitForSync ? "true" : "false")+
                           revstr+policystr, "", headers, 60.0);
   
@@ -398,7 +404,7 @@ int deleteDocumentOnCoordinator (
     }
     responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                               (res->result->getHttpReturnCode());
-    contentType = res->result->getContentType(false);
+    resultHeaders = res->result->getHeaderFields();
     resultBody = res->result->getBody().str();
     delete res;
     return TRI_ERROR_NO_ERROR;
@@ -410,13 +416,13 @@ int deleteDocumentOnCoordinator (
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
-    map<string, string>* headers = new map<string, string>;
+    map<string, string>* headersCopy = new map<string, string>(headers);
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
                           triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+key+
+                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key)+
                           "?waitForSync="+(waitForSync ? "true" : "false")+
-                          revstr+policystr, 0, false, headers, NULL, 60.0);
+                          revstr+policystr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -429,8 +435,8 @@ int deleteDocumentOnCoordinator (
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res->answer_code;
-        contentType = res->answer->header("content-type");
         resultBody = string(res->answer->body(), res->answer->bodySize());
+        resultHeaders = res->answer->headers();
       }
     }
     delete res;
@@ -452,10 +458,10 @@ int getDocumentOnCoordinator (
                 string const& collname,
                 string const& key,
                 TRI_voc_rid_t const rev,
-                bool notthisref,
+                map<string, string> const& headers,
                 bool generateDocument,
                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                string& contentType,
+                map<string, string>& resultHeaders,
                 string& resultBody) {
 
   // Set a few variables needed for our work:
@@ -507,17 +513,10 @@ int getDocumentOnCoordinator (
       return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
 
-    // Set up revision string or header:
-    map<string, string> headers;
-    if (notthisref) {
-      headers["If-None-Match"] = revstr;
-      revstr = "";
-    }
-
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(shardID)+"/"+key+
+                          StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key)+
                           revstr, "", headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
@@ -537,7 +536,7 @@ int getDocumentOnCoordinator (
     }
     responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                               (res->result->getHttpReturnCode());
-    contentType = res->result->getContentType(false);
+    resultHeaders = res->result->getHeaderFields();
     resultBody = res->result->getBody().str();
     delete res;
     return TRI_ERROR_NO_ERROR;
@@ -549,18 +548,12 @@ int getDocumentOnCoordinator (
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
-    map<string, string>* headers = new map<string, string>;
-
-    // Set up revision string or header:
-    if (notthisref) {
-      (*headers)["If-None-Match"] = revstr;
-      revstr = "";
-    }
+    map<string, string>* headersCopy = new map<string, string>(headers);
 
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+key+
-                          revstr, 0, false, headers, NULL, 60.0);
+                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key)+
+                          revstr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -573,7 +566,7 @@ int getDocumentOnCoordinator (
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res->answer_code;
-        contentType = res->answer->header("content-type");
+        resultHeaders = res->answer->headers();
         resultBody = string(res->answer->body(), res->answer->bodySize());
       }
     }
@@ -678,8 +671,9 @@ int modifyDocumentOnCoordinator (
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  TRI_json_t* json,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody) {
 
   // Set a few variables needed for our work:
@@ -735,23 +729,22 @@ int modifyDocumentOnCoordinator (
   ClusterCommResult* res;
   string revstr;
   if (rev != 0) {
-    revstr = "?rev="+StringUtils::itoa(rev);
+    revstr = "&rev="+StringUtils::itoa(rev);
   }
   triagens::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
     if (!keepNull) {
-      if (revstr.empty()) {
-        revstr += "?keepNull=";
-      }
-      else {
-        revstr += "&keepNull=";
-      }
-      revstr += "false";
+      revstr += "&keepNull=false";
     }
   }
   else {
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PUT;
+  }
+  
+  string policystr;
+  if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
+    policystr = "&policy=last";
   }
 
   string body = JsonHelper::toString(json);
@@ -763,14 +756,12 @@ int modifyDocumentOnCoordinator (
     // the we are in isPatch==false and the user has actually changed the
     // sharding attributes
 
-    // Set up revision string or header:
-    map<string, string> headers;
-
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(shardID)+"/"+key+
-                          revstr, body, headers, 60.0);
+                          StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key) +
+                          "?waitForSync="+(waitForSync ? "true" : "false")+
+                          revstr + policystr, body, headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
@@ -792,7 +783,7 @@ int modifyDocumentOnCoordinator (
                               (res->result->getHttpReturnCode());
     if (responseCode < triagens::rest::HttpResponse::BAD) {
       // OK, we are done, let's report:
-      contentType = res->result->getContentType(false);
+      resultHeaders = res->result->getHeaderFields();
       resultBody = res->result->getBody().str();
       delete res;
       return TRI_ERROR_NO_ERROR;
@@ -805,12 +796,13 @@ int modifyDocumentOnCoordinator (
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
-    map<string, string>* headers = new map<string, string>;
+    map<string, string>* headersCopy = new map<string, string>(headers);
 
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
                           "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+key+revstr, 
-                          &body, false, headers, NULL, 60.0);
+                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key) + 
+                          "?waitForSync="+(waitForSync ? "true" : "false") + revstr + policystr,
+                          &body, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -823,7 +815,7 @@ int modifyDocumentOnCoordinator (
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res->answer_code;
-        contentType = res->answer->header("content-type");
+        resultHeaders = res->answer->headers();
         resultBody = string(res->answer->body(), res->answer->bodySize());
       }
     }
