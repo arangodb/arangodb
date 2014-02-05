@@ -213,11 +213,11 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // handle does not need to be RFC 2047-encoded
 
     if (_request->compatibility() < 10400L) {
-      // pre-1.4-location header (e.g. /_api/document/xyz)
+      // pre-1.4 location header (e.g. /_api/document/xyz)
       _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + handle));
     }
     else {
-      // 1.4-location header (e.g. /_api/document/xyz)
+      // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
       _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
     }
   }

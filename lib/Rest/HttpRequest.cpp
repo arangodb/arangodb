@@ -530,6 +530,9 @@ void HttpRequest::setHeader (char const* key,
         StringUtils::tolowerInPlace(&overridenType);
 
         _type = getRequestType(overridenType.c_str(), overridenType.size());
+
+        // don't insert this header!!
+        return;
       }
     }
 

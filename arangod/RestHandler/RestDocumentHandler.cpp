@@ -411,21 +411,24 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   string const& dbname = _request->originalDatabaseName();
   string const collname(collection);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json,
-            responseCode, contentType, resultBody);
+            dbname, collname, waitForSync, json, headers,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, error);
     return false;
   }
+
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }

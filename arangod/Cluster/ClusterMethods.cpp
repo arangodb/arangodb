@@ -45,6 +45,52 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief merge headers of a DB server response into the current response
+////////////////////////////////////////////////////////////////////////////////
+
+void mergeResponseHeaders (HttpResponse* response,
+                           map<string, string> const& headers) {
+  map<string, string>::const_iterator it = headers.begin();
+
+  while (it != headers.end()) {
+    // skip first header line (which is the HTTP response code)
+    const string& key = (*it).first;
+
+    // the following headers are ignored
+    if (key != "http/1.1" && 
+        key != "connection" && 
+        key != "content-length" && 
+        key != "server") {
+      response->setHeader(key, (*it).second);
+    }
+    ++it;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a copy of all HTTP headers to forward
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest::HttpRequest* request) {
+  map<string, string> const& headers = request->headers();
+  map<string, string>::const_iterator it = headers.begin();
+  
+  map<string, string> result;
+  
+  while (it != headers.end()) {
+    const string& key = (*it).first;
+
+    // ignore the following headers
+    if (key != "x-arango-async" && key != "origin" && key.substr(0, 14) != "access-control") {
+      result.insert(make_pair<string, string>(key, (*it).second));
+    }
+    ++it;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two JSON
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,8 +217,9 @@ int createDocumentOnCoordinator (
                 string const& collname,
                 bool waitForSync,
                 TRI_json_t* json,
+                map<string, string> const& headers,
                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                string& contentType,
+                map<string, string>& resultHeaders,
                 string& resultBody) {
 
   // Set a few variables needed for our work:
@@ -230,7 +277,6 @@ int createDocumentOnCoordinator (
 
   // Send a synchronous request to that shard using ClusterComm:
   ClusterCommResult* res;
-  map<string, string> headers;
   res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
                         "/_db/"+dbname+"/_api/document?collection="+
@@ -259,7 +305,7 @@ int createDocumentOnCoordinator (
   }
   responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                             (res->result->getHttpReturnCode());
-  contentType = res->result->getContentType(false);
+  resultHeaders = res->result->getHeaderFields();
   resultBody = res->result->getBody().str();
   delete res;
   return TRI_ERROR_NO_ERROR;
@@ -545,7 +591,7 @@ int getDocumentOnCoordinator (
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getAllDocumentsOnCoordinator ( 
+int getAllDocumentsOnCoordinator ( 
                  string const& dbname,
                  string const& collname,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -803,7 +849,7 @@ int createEdgeOnCoordinator (
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody) {
 
   // Set a few variables needed for our work:
@@ -886,7 +932,7 @@ int createEdgeOnCoordinator (
   }
   responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                             (res->result->getHttpReturnCode());
-  contentType = res->result->getContentType(false);
+  resultHeaders = res->result->getHeaderFields();
   resultBody = res->result->getBody().str();
   delete res;
   return TRI_ERROR_NO_ERROR;

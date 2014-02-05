@@ -32,6 +32,7 @@
 #include "Basics/Common.h"
 
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -49,6 +50,19 @@ extern "C" {
 
 namespace triagens {
   namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge headers of a DB server response into the current response
+////////////////////////////////////////////////////////////////////////////////
+
+    void mergeResponseHeaders (triagens::rest::HttpResponse* response,
+                               std::map<std::string, std::string> const& headers);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a copy of all HTTP headers to forward
+////////////////////////////////////////////////////////////////////////////////
+
+    std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two JSON
@@ -79,8 +93,9 @@ namespace triagens {
                  string const& collname,
                  bool waitForSync,
                  TRI_json_t* json,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +169,7 @@ namespace triagens {
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
  
 // -----------------------------------------------------------------------------
