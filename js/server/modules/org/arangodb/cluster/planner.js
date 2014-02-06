@@ -2,9 +2,9 @@
 /*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Cluster kickstart functionality
+/// @brief Cluster planning functionality
 ///
-/// @file js/server/modules/org/arangodb/cluster/kickstarter.js
+/// @file js/server/modules/org/arangodb/cluster/planner.js
 ///
 /// DISCLAIMER
 ///
@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        Kickstarter functionality
+// --SECTION--                                             Planner functionality
 // -----------------------------------------------------------------------------
 
 // possible config attributes (for defaults see below):
@@ -46,8 +46,8 @@
 //                            all the data directories of agents or servers
 //                            live, this can be relative or even empty, which
 //                            is equivalent to "./", it will be made into
-//                            an absolute path by the kickstarter, using
-//                            the current directory when the kickstarter
+//                            an absolute path by the planner, using
+//                            the current directory when the planner
 //                            runs, use with caution!
 //   .logPath                 path where the log files are written, same
 //                            comments as for .dataPath apply
@@ -59,15 +59,15 @@
 //   .arangodPath             path to the arangod executable on
 //                            all machines in the cluster, will be made
 //                            absolute (if it is not already absolute)
-//                            in the process running the kickstarter
+//                            in the process running the planner
 //   .agentPath               path to the agent executable on 
 //                            all machines in the cluster, will be made
 //                            absolute (if it is not already absolute)
-//                            in the process running the kickstarter
+//                            in the process running the planner
 // some port lists:
 //   for these the following rules apply:
 //     every list overwrites the default list
-//     when running out of numbers the kickstarter increments the last one
+//     when running out of numbers the planner increments the last one
 //       used by one for every port needed
 //     
 //   .agentExtPorts           a list port numbers to use for the
@@ -79,11 +79,10 @@
 //  
 
 var fs = require("fs");
-var dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
 
 // Our default configurations:
 
-var KickstarterLocalDefaults = {
+var PlannerLocalDefaults = {
   "agencyPrefix"            : "meier",
   "numberOfAgents"          : 3,
   "numberOfDBservers"       : 2,
@@ -105,7 +104,7 @@ var KickstarterLocalDefaults = {
                                      "avoidPorts": {}}}
 };
   
-var KickstarterDistributedDefaults = {
+var PlannerDistributedDefaults = {
   "agencyPrefix"            : "mueller",
   "numberOfAgents"          : 3,
   "numberOfDBservers"       : 3,
@@ -238,22 +237,22 @@ function fillConfigWithDefaults (config, defaultConfig) {
   }
 }
 
-// Our Kickstarter class:
+// Our Planner class:
 
-function Kickstarter (userConfig) {
+function Planner (userConfig) {
   "use strict";
   if (typeof userConfig !== "object") {
     throw "userConfig must be an object";
   }
   var defaultConfig = userConfig.defaultConfig;
   if (defaultConfig === undefined) {
-    defaultConfig = KickstarterLocalDefaults;
+    defaultConfig = PlannerLocalDefaults;
   }
   if (defaultConfig === "local") {
-    defaultConfig = KickstarterLocalDefaults;
+    defaultConfig = PlannerLocalDefaults;
   }
   else if (defaultConfig === "distributed") {
-    defaultConfig = KickstarterDistributedDefaults;
+    defaultConfig = PlannerDistributedDefaults;
   }
   this.config = copy(userConfig);
   fillConfigWithDefaults(this.config, defaultConfig);
@@ -267,7 +266,7 @@ function Kickstarter (userConfig) {
   this.makePlan();
 }
 
-Kickstarter.prototype.makePlan = function() {
+Planner.prototype.makePlan = function() {
   // This sets up the plan for the cluster according to the options
 
   var config = this.config;
@@ -277,6 +276,15 @@ Kickstarter.prototype.makePlan = function() {
   if (Object.keys(dispatchers).length === 0) {
     dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
                        "avoidPorts": {} };
+    config.onlyLocalhost = true;
+  }
+  else {
+    config.onlyLocalhost = false;
+    var k = Object.keys(dispatchers);
+    if (k.length === 1 && 
+        dispatchers[k[0]].endpoint.substr(0,16) === "tcp://localhost:") {
+      config.onlyLocalhost = true;
+    }
   }
   var dispList = Object.keys(dispatchers);
 
@@ -364,30 +372,18 @@ Kickstarter.prototype.makePlan = function() {
   var s;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
-    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
-      dbs[s.id] = map[s.id] 
-                = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
-    }
-    else {
-      dbs[s.id] = map[s.id] 
-             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
-    }
+    dbs[s.id] = map[s.id] 
+           = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     launchers[s.dispatcher].DBservers.push(s.id);
   }
   var coo = tmp.Coordinators = {};
   for (i = 0; i < coordinators.length; i++) {
     s = coordinators[i];
-    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
-      coo[s.id] = map[s.id] 
-                = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
-    }
-    else {
-      coo[s.id] = map[s.id] 
-             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
-    }
+    coo[s.id] = map[s.id] 
+           = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     launchers[s.dispatcher].Coordinators.push(s.id);
   }
-  tmp.Databases = { "_system" : {} };
+  tmp.Databases = { "_system" : '{"name":"_system"}' };
   tmp.Collections = { "_system" : {} };
 
   // Now Plan:
@@ -429,14 +425,15 @@ Kickstarter.prototype.makePlan = function() {
              "agencyPrefix": config.agencyPrefix,
              "dataPath": config.dataPath,
              "logPath": config.logPath,
-             "agentPath": config.agentPath };
+             "agentPath": config.agentPath,
+             "onlyLocalhost": config.onlyLocalhost };
     for (j = 0; j < i; j++) {
       var ep = dispatchers[agents[j].dispatcher].endpoint;
       tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
     }
     tmp.push(tmp2);
   }
-  var agencyPos = { "prefix": config.agencyPrefix,
+  var agencyPos = { "agencyPrefix": config.agencyPrefix,
                     "endpoints": agents.map(function(a) {
                         return exchangePort(dispatchers[a.dispatcher].endpoint,
                                             a.extPort);}) };
@@ -449,48 +446,40 @@ Kickstarter.prototype.makePlan = function() {
                 "dataPath": config.dataPath,
                 "logPath": config.logPath,
                 "arangodPath": config.arangodPath,
+                "onlyLocalhost": config.onlyLocalhost,
                 "agency": copy(agencyPos) } );
   }
   this.myname = "me";
 };
 
-Kickstarter.prototype.checkDispatchers = function() {
+Planner.prototype.checkDispatchers = function() {
   // Checks that all dispatchers are active, if none is configured,
   // a local one is started.
   throw "not yet implemented";
 };
 
-Kickstarter.prototype.getStartupProgram = function() {
+Planner.prototype.getStartupProgram = function() {
   // Computes the dispatcher commands and returns them as JSON
   return { "dispatchers": this.dispatchers,
            "commands": this.commands };
 };
 
-Kickstarter.prototype.launch = function() {
+Planner.prototype.launch = function() {
   // Starts the cluster according to startup plan
-  dispatch(this);
+  //dispatch(this);
 };
 
-Kickstarter.prototype.shutdown = function() {
+Planner.prototype.shutdown = function() {
   throw "not yet implemented";
 };
 
-Kickstarter.prototype.isHealthy = function() {
+Planner.prototype.isHealthy = function() {
   throw "not yet implemented";
 };
 
 exports.PortFinder = PortFinder;
-exports.Kickstarter = Kickstarter;
-
-// TODO for kickstarting:
-//
-// * finden des Pfads zum eigenen Executable in JS
-// * etcd in distribution
-// * JS function zum Ausführen von Startup-Programmen (lokal u. delegation)
-// * REST interface zum Ausführen von Startup-Programmen
-// * arangod-Rolle "Launcher" per Kommandozeile
-// * REST interface to SYS_TEST_PORT, ev. mit auth
-// * Dokumentation
+exports.Planner = Planner;
+exports.exchangePort = exchangePort;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
