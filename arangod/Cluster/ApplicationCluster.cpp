@@ -231,6 +231,9 @@ bool ApplicationCluster::start () {
            _myId.c_str(),
            _myAddress.c_str(),
            ServerState::roleToString(role).c_str());
+  
+  // initialise ClusterComm library
+  ClusterComm::instance()->initialise();
 
   if (! _disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
@@ -268,11 +271,13 @@ bool ApplicationCluster::start () {
       LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
                          endpoints.c_str());
     }
+
+    while (! _heartbeat->ready()) {
+      // wait until heartbeat is ready
+      usleep(10000);
+    }
   }
   
-  // initialise ClusterComm library
-  ClusterComm::instance()->initialise();
-
   return true;
 }
   

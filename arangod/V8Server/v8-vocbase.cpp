@@ -8870,7 +8870,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
         headers["Authentication"] = TRI_ObjectToString(argv[2]);
         res = cc->syncRequest("", 0, "server:"+sid, 
                               triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                              "/_api/database/user", 0, headers, 0.0);
+                              "/_api/database/user", string(""), headers, 0.0);
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
           string body = res->result->getBody().str();
@@ -8930,15 +8930,23 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
       ! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-  
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
-  
+
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
+    if (argc == 0) {
+      // check if we are in the system database
+      char const* name = GetCurrentDatabaseName();
+      if (! TRI_EqualString(name, "_system")) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+      }
+    }
+  
     return scope.Close(JS_ListDatabases_Coordinator(argv));
   }
 #endif
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
 
   TRI_vector_string_t names;
   TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
@@ -8989,10 +8997,22 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   
   // First work with the arguments to create a JSON entry:
   const string name = TRI_ObjectToString(argv[0]);
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+
+  if (! TRI_IsAllowedNameVocBase(false, name.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (0 == json) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  uint64_t id = ClusterInfo::instance()->uniqid();
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                               StringUtils::itoa(id).c_str()));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                TRI_ObjectToString(argv[0]).c_str()));
@@ -9071,13 +9091,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
 #ifdef TRI_ENABLE_CLUSTER
-  // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
+    // check if we are in the system database
+    char const* name = GetCurrentDatabaseName();
+    if (! TRI_EqualString(name, "_system")) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    }
+    
     return scope.Close(JS_CreateDatabase_Coordinator(argv));
   }
 #endif
-
-  const string name = TRI_ObjectToString(argv[0]);
+  
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
  
@@ -9130,6 +9154,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
   }
+  
+  const string name = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_t* database;
   int res = TRI_CreateDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), &defaults, &database);
@@ -9230,6 +9256,11 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
+    char const* name = GetCurrentDatabaseName();
+    if (! TRI_EqualString(name, "_system")) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    }
+
     return scope.Close(JS_DropDatabase_Coordinator(argv));
   }
 #endif
