@@ -905,7 +905,8 @@ int createEdgeOnCoordinator (
                         "/_db/"+dbname+"/_api/edge?collection="+
                         StringUtils::urlEncode(shardID)+"&waitForSync="+
                         (waitForSync ? "true" : "false")+
-                        "&from="+from+"&to="+to, body, headers, 60.0);
+                        "&from="+StringUtils::urlEncode(from)+"&to="+StringUtils::urlEncode(to), 
+                        body, headers, 60.0);
   
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:

@@ -967,7 +967,6 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     
   v8::HandleScope globalScope;
 
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
   v8::TryCatch tryCatch;
 
