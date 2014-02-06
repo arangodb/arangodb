@@ -30,7 +30,6 @@ var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getQueryExplanation = helper.getQueryExplanation;
-var errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
