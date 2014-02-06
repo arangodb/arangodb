@@ -289,10 +289,11 @@ Kickstarter.prototype.launch = function () {
 
   var error = false;
   var i;
+  var res;
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      var res = launchActions[cmd.action](dispatchers, cmd, false);
+      res = launchActions[cmd.action](dispatchers, cmd, false);
       results.push(res);
       if (res.error === true) {
         error = true;
@@ -315,7 +316,7 @@ Kickstarter.prototype.launch = function () {
       }
       else {
         try {
-          var res = JSON.parse(response.body);
+          res = JSON.parse(response.body);
           results.push(res.runInfo[0]);
         }
         catch (err) {
@@ -347,10 +348,11 @@ Kickstarter.prototype.relaunch = function () {
 
   var error = false;
   var i;
+  var res;
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      var res = launchActions[cmd.action](dispatchers, cmd, true);
+      res = launchActions[cmd.action](dispatchers, cmd, true);
       results.push(res);
       if (res.error === true) {
         error = true;
@@ -372,7 +374,7 @@ Kickstarter.prototype.relaunch = function () {
                       "response": response});
       }
       try {
-        var res = JSON.parse(response.body);
+        res = JSON.parse(response.body);
         results.push(res.runInfo[0]);
       }
       catch (err) {
@@ -403,11 +405,12 @@ Kickstarter.prototype.shutdown = function() {
 
   var error = false;
   var i;
+  var res;
   for (i = cmds.length-1; i >= 0; i--) {
     cmd = cmds[i];
     var run = runInfo[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      var res = shutdownActions[cmd.action](dispatchers, cmd, run);
+      res = shutdownActions[cmd.action](dispatchers, cmd, run);
       if (res.error === true) {
         error = true;
       }
@@ -430,7 +433,7 @@ Kickstarter.prototype.shutdown = function() {
       }
       else {
         try {
-          var res = JSON.parse(response.body);
+          res = JSON.parse(response.body);
           results.push(res.results[0]);
         }
         catch (err) {
