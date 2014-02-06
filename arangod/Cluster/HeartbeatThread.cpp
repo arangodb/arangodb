@@ -67,7 +67,8 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _interval(interval),
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
     _numFails(0),
-    _stop(0) {
+    _stop(0),
+    _ready(0) {
 
   assert(_dispatcher != 0);
   allowAsynchronousCancelation();
@@ -98,7 +99,7 @@ HeartbeatThread::~HeartbeatThread () {
 
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
-
+  
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
   
@@ -108,6 +109,11 @@ void HeartbeatThread::run () {
   // value of Sync/Commands/my-id at startup 
   uint64_t lastCommandIndex = getLastCommandIndex(); 
   const bool isCoordinator = ServerState::instance()->isCoordinator();
+
+  if (isCoordinator) {
+    ready(true);
+  }
+
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -131,7 +137,16 @@ void HeartbeatThread::run () {
       }
     }
 
-    if (! isCoordinator) {
+    if (_stop) {
+      break;
+    }
+    
+    if (isCoordinator) {
+      // coordinator just sleeps
+      const double remain = interval - (TRI_microtime() - start);
+      usleep((unsigned long) (remain * 1000.0 * 1000.0));
+    }
+    else {
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
@@ -153,7 +168,11 @@ void HeartbeatThread::run () {
           }
         }
 
-        if (! changed && ! _stop) {
+        if (_stop) {
+          break;
+        }
+
+        if (! changed) {
           const double remain = interval - (TRI_microtime() - start);
 
           if (remain > 0.0) {
@@ -182,7 +201,7 @@ void HeartbeatThread::run () {
     }
   }
 
-  // another thread is waiting for this value to shut down properly
+  // another thread is waiting for this value to appear in order to shut down properly
   _stop = 2;
   
   LOG_TRACE("stopped heartbeat thread");
@@ -254,7 +273,7 @@ bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
   ClusterInfo::instance()->flush();
 
   // schedule a job for the change
-  triagens::rest::Job* job = new DBServerJob(_server, _applicationV8);
+  triagens::rest::Job* job = new DBServerJob(this, _server, _applicationV8);
 
   assert(job != 0);
 

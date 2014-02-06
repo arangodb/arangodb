@@ -889,7 +889,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
     res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode == triagens::rest::HttpResponse::PRECONDITION_FAILED) {
-        return setErrormsg(TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS, errorMsg);
+        return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,

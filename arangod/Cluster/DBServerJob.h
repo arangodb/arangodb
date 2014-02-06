@@ -34,6 +34,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "BasicsC/logging.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Rest/Handler.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8/v8-utils.h"
@@ -66,9 +67,11 @@ namespace triagens {
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        DBServerJob (TRI_server_t* server,
+        DBServerJob (HeartbeatThread* heartbeat,
+                     TRI_server_t* server,
                      ApplicationV8* applicationV8) 
           : Job("HttpServerJob"),
+            _heartbeat(heartbeat),
             _server(server),
             _applicationV8(applicationV8),
             _shutdown(0),
@@ -140,6 +143,7 @@ namespace triagens {
           }
 
           bool result = execute();
+          _heartbeat->ready(true);
 
           if (result) {
             return triagens::rest::Job::JOB_DONE;
@@ -220,6 +224,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the heartbeat thread
+////////////////////////////////////////////////////////////////////////////////
+
+        HeartbeatThread* _heartbeat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server

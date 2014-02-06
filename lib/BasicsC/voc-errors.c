@@ -116,7 +116,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CLUSTER_TIMEOUT, "timeout in cluster operation");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN, "could not remove collection from plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, "could not remove collection from current");
-  REG_ERROR(ERROR_CLUSTER_DATABASE_NAME_EXISTS, "database name already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN, "could not create database in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "could not create database");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN, "could not remove database from plan");
@@ -202,7 +201,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
-  REG_ERROR(WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN, "the index garbage collector has shutdown and no further entries can be processed");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
