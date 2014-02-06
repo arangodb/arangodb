@@ -28,26 +28,26 @@ monitoring of the server.
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingGET
-@copydetails JSF_sharding_test_GET
+@copydetails JSF_cluster_test_GET
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingPUT
-@copydetails JSF_sharding_test_PUT
+@copydetails JSF_cluster_test_PUT
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingPOST
-@copydetails JSF_sharding_test_POST
+@copydetails JSF_cluster_test_POST
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingDELETE
-@copydetails JSF_sharding_test_DELETE
+@copydetails JSF_cluster_test_DELETE
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingPATCH
-@copydetails JSF_sharding_test_PATCH
+@copydetails JSF_cluster_test_PATCH
 
 @CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingHEAD
-@copydetails JSF_sharding_test_HEAD
+@copydetails JSF_cluster_test_HEAD
 
 @BNAVIGATE_HttpSystem

@@ -138,6 +138,7 @@ dist_man_MANS += \
 
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
+	Doxygen/js/actions/api-cluster.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
