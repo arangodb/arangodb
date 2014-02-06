@@ -34,6 +34,8 @@
 
 var download = require("internal").download;
 var executeExternal = require("internal").executeExternal;
+var killExternal = require("internal").killExternal;
+
 var fs = require("fs");
 var wait = require("internal").wait;
 
@@ -41,7 +43,9 @@ var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 
 var print = require("internal").print;
 
-var actions = {};
+var launchActions = {};
+var relaunchActions = {};
+var shutdownActions = {};
 
 function getAddrPort (endpoint) {
   var pos = endpoint.indexOf("://");
@@ -68,11 +72,60 @@ function getPort (endpoint) {
   return 8529;
 }
 
-actions.startAgent = function (dispatchers, cmd) {
+function sendToAgency (agencyURL, path, obj) {
+  var res;
+  var body;
+  print("Sending ",path," to agency...");
+  if (typeof obj === "string") {
+    var count = 0;
+    while (count++ <= 2) {
+      body = "value="+encodeURIComponent(obj);
+      //print("sending:",agencyURL+path,"\nwith body",body);
+      res = download(agencyURL+path,body,
+          {"method":"PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+      //print("Code ", res.code); 
+      if (res.code === 201) {
+        return true;
+      }
+    }
+    return res;
+  }
+  if (typeof obj !== "object") {
+    return "Strange object found: not a string or object";
+  }
+  var keys = Object.keys(obj);
+  var i;
+  if (keys.length !== 0) {
+    for (i = 0; i < keys.length; i++) {
+      res = sendToAgency (agencyURL, path+"/"+encode(keys[i]), obj[keys[i]]);
+      if (res !== true) {
+        return res;
+      }
+    }
+    return true;
+  }
+  // Create a directory
+  var count2 = 0;
+  while (count2++ <= 2) {
+    body = "dir=true";
+    res = download(agencyURL+path,body,
+          {"method": "PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+    if (res.code === 201) {
+      return true;
+    }
+  }
+  return res;
+}
+
+launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   var agentDataDir = fs.join(cmd.dataPath, 
                              "agent"+cmd.agencyPrefix+cmd.extPort);
-  if (fs.exists(agentDataDir)) {
-    fs.removeDirectoryRecursive(agentDataDir,true);
+  if (!isRelaunch) {
+    if (fs.exists(agentDataDir)) {
+      fs.removeDirectoryRecursive(agentDataDir,true);
+    }
   }
   var args = ["-data-dir", agentDataDir,
               "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
@@ -123,70 +176,27 @@ function encode (st) {
   return encodeURIComponent(st2);
 }
 
-function sendToAgency (agencyURL, path, obj) {
-  var res;
-  var body;
-  print("Sending ",path," to agency...");
-  if (typeof obj === "string") {
-    var count = 0;
-    while (count++ <= 2) {
-      body = "value="+encodeURIComponent(obj);
-      //print("sending:",agencyURL+path,"\nwith body",body);
-      res = download(agencyURL+path,body,
-          {"method":"PUT", "followRedirects": true,
-           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-      //print("Code ", res.code); 
-      if (res.code === 201) {
-        return true;
-      }
-    }
-    return res;
+launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
+  if (isRelaunch) {
+    // nothing to do here
+    return {"error":false, "isSendConfiguration": true};
   }
-  if (typeof obj !== "object") {
-    return "Strange object found: not a string or object";
-  }
-  var keys = Object.keys(obj);
-  var i;
-  if (keys.length !== 0) {
-    for (i = 0; i < keys.length; i++) {
-      res = sendToAgency (agencyURL, path+"/"+encode(keys[i]), obj[keys[i]]);
-      if (res !== true) {
-        return res;
-      }
-    }
-    return true;
-  }
-  // Create a directory
-  var count2 = 0;
-  while (count2++ <= 2) {
-    body = "dir=true";
-    res = download(agencyURL+path,body,
-          {"method": "PUT", "followRedirects": true,
-           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-    if (res.code === 201) {
-      return true;
-    }
-  }
-  return res;
-}
-
-actions.sendConfiguration = function (dispatchers, cmd) {
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
   var res = sendToAgency(url, "", cmd.data);
   if (res === true) {
-    return {"error":false, "isAgencyConfiguration": true};
+    return {"error":false, "isSendConfiguration": true};
   }
-  return {"error":true, "isAgencyConfiguration": true, "suberror": res};
+  return {"error":true, "isSendConfiguration": true, "suberror": res};
 };
 
-actions.startLauncher = function (dispatchers, cmd) {
+launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
   print("Downloading ",url+"Launchers/"+cmd.name);
   var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
                                                    followRedirects:true});
   if (res.code !== 200) {
-    return {"error": true, "isStartLauncher": true, "suberror": res};
+    return {"error": true, "isStartServers": true, "suberror": res};
   }
   var body = JSON.parse( res.body );
   var info = JSON.parse(body.node.value);
@@ -203,7 +213,7 @@ actions.startLauncher = function (dispatchers, cmd) {
     res = download(url+"Target/MapIDToEndpoint/"+id);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
-              "isStartLauncher": true, "suberror": res};
+              "isStartServers": true, "suberror": res};
     }
     print("Starting server ",id);
     body = JSON.parse(res.body);
@@ -221,33 +231,61 @@ actions.startLauncher = function (dispatchers, cmd) {
     }
     args.push("--log.file");
     var logfile = fs.join(cmd.dataPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
-    if (fs.exists(logfile)) {
-      fs.remove(logfile);
-    }
     args.push(logfile);
-    var datadir = fs.join(cmd.dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
-    if (fs.exists(datadir)) {
-      fs.removeDirectoryRecursive(datadir,true);
+    if (!isRelaunch) {
+      if (fs.exists(logfile)) {
+        fs.remove(logfile);
+      }
     }
-    fs.makeDirectory(datadir);
+    var datadir = fs.join(cmd.dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
     args.push(datadir);
+    if (!isRelaunch) {
+      if (fs.exists(datadir)) {
+        fs.removeDirectoryRecursive(datadir,true);
+      }
+      fs.makeDirectory(datadir);
+    }
     pids.push(executeExternal(cmd.arangodPath, args));
   }
   return {"error": false, "pids": pids};
 };
 
-function Kickstarter (startupPlan) {
-  this.startupPlan = startupPlan;
-  if (!startupPlan.hasOwnProperty("myname")) {
-    startupPlan.myname = "me";
+shutdownActions.startAgent = function (dispatchers, cmd, run) {
+  print("Killing agent ", run.pid);
+  killExternal(run.pid);
+  return {"error": false};
+}
+
+shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
+  print("Waiting for 10 seconds for servers before killing agency.");
+  wait(10);
+  return {"error": false};
+}
+
+shutdownActions.startServers = function (dispatchers, cmd, run) {
+  var i;
+  for (i = 0;i < run.pids.length;i++) {
+    print("Killing ", run.pids[i]);
+    killExternal(run.pids[i]);
+  }
+  return {"error": false};
+}
+
+function Kickstarter (clusterPlan, myname) {
+  this.clusterPlan = clusterPlan;
+  if (myname === undefined) {
+    this.myname = "me";
+  }
+  else {
+    this.myname = myname;
   }
 }
 
 Kickstarter.prototype.launch = function () {
-  var startupPlan = this.startupPlan;
-  var myname = startupPlan.myname;
-  var dispatchers = startupPlan.dispatchers;
-  var cmds = startupPlan.commands;
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
   var results = [];
   var cmd;
 
@@ -256,7 +294,7 @@ Kickstarter.prototype.launch = function () {
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      var res = actions[cmd.action](dispatchers, cmd);
+      var res = launchActions[cmd.action](dispatchers, cmd, false);
       results.push(res);
       if (res.error === true) {
         error = true;
@@ -265,10 +303,12 @@ Kickstarter.prototype.launch = function () {
     }
     else {
       var ep = dispatchers[cmd.dispatcher].endpoint;
-      var body = JSON.stringify({ "dispatchers": dispatchers,
-                                  "commands": [cmd],
+      var body = JSON.stringify({ "action": "launch",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
                                   "myname": cmd.dispatcher });
-      var url = "http" + ep.substr(3) + "/_admin/dispatch";
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
       var response = download(url, body, {"method": "post"});
       try {
         if (response.code !== 200) {
@@ -283,12 +323,127 @@ Kickstarter.prototype.launch = function () {
       }
     }
   }
+  this.runInfo = results;
+  if (error) {
+    return {"error": true, "errorMessage": "some error during launch",
+            "runInfo": results};
+  }
+  return {"error": false, "errorMessage": "none",
+          "runInfo": results};
+};
+
+Kickstarter.prototype.relaunch = function () {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  for (i = 0; i < cmds.length; i++) {
+    cmd = cmds[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      var res = launchActions[cmd.action](dispatchers, cmd, true);
+      results.push(res);
+      if (res.error === true) {
+        error = true;
+        break;
+      }
+    }
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "relaunch",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "post"});
+      try {
+        if (response.code !== 200) {
+          error = true;
+        }
+        results.push(JSON.parse(response.body));
+      }
+      catch (err) {
+        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        error = true;
+        break;
+      }
+    }
+  }
+  this.runInfo = results;
+  if (error) {
+    return {"error": true, "errorMessage": "some error during launch",
+            "runInfo": results};
+  }
+  return {"error": false, "errorMessage": "none",
+          "runInfo": results};
+};
+
+
+Kickstarter.prototype.shutdown = function() {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var runInfo = this.runInfo;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  for (i = cmds.length-1; i >= 0; i--) {
+    cmd = cmds[i];
+    run = runInfo[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      var res = shutdownActions[cmd.action](dispatchers, cmd, run);
+      if (res.error === true) {
+        error = true;
+      }
+      results.push(res);
+    }
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "shutdown",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd],
+                                        "runInfo": [run]},
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "post"});
+      try {
+        if (response.code !== 200) {
+          error = true;
+          results.push(JSON.parse(response.body));
+        }
+      }
+      catch (err) {
+        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        error = true;
+        break;
+      }
+    }
+  }
+  results = results.reverse();
   if (error) {
     return {"error": true, "errorMessage": "some error during launch",
             "results": results};
   }
-  return {"error": false, "errorMessage": "none",
-          "results": results};
+  return {"error": false, "errorMessage": "none", "results": results};
+};
+
+Kickstarter.prototype.isHealthy = function() {
+  throw "not yet implemented";
+};
+
+Kickstarter.prototype.checkDispatchers = function() {
+  // Checks that all dispatchers are active, if none is configured,
+  // a local one is started.
+  throw "not yet implemented";
 };
 
 exports.Kickstarter = Kickstarter;
