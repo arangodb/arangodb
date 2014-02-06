@@ -72,6 +72,23 @@ function getPort (endpoint) {
   return 8529;
 }
 
+function encode (st) {
+  var st2 = "";
+  var i;
+  for (i = 0; i < st.length; i++) {
+    if (st[i] === "_") {
+      st2 += "@U";
+    }
+    else if (st[i] === "@") {
+      st2 += "@@";
+    } 
+    else {
+      st2 += st[i];
+    }
+  }
+  return encodeURIComponent(st2);
+}
+
 function sendToAgency (agencyURL, path, obj) {
   var res;
   var body;
@@ -159,23 +176,6 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   }
 };
 
-function encode (st) {
-  var st2 = "";
-  var i;
-  for (i = 0; i < st.length; i++) {
-    if (st[i] === "_") {
-      st2 += "@U";
-    }
-    else if (st[i] === "@") {
-      st2 += "@@";
-    } 
-    else {
-      st2 += st[i];
-    }
-  }
-  return encodeURIComponent(st2);
-}
-
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
@@ -254,13 +254,13 @@ shutdownActions.startAgent = function (dispatchers, cmd, run) {
   print("Killing agent ", run.pid);
   killExternal(run.pid);
   return {"error": false};
-}
+};
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
   print("Waiting for 10 seconds for servers before killing agency.");
   wait(10);
   return {"error": false};
-}
+};
 
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
@@ -269,7 +269,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     killExternal(run.pids[i]);
   }
   return {"error": false};
-}
+};
 
 function Kickstarter (clusterPlan, myname) {
   this.clusterPlan = clusterPlan;
@@ -397,7 +397,7 @@ Kickstarter.prototype.shutdown = function() {
   var i;
   for (i = cmds.length-1; i >= 0; i--) {
     cmd = cmds[i];
-    run = runInfo[i];
+    var run = runInfo[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
       var res = shutdownActions[cmd.action](dispatchers, cmd, run);
       if (res.error === true) {
