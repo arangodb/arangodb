@@ -96,11 +96,9 @@ function sendToAgency (agencyURL, path, obj) {
     var count = 0;
     while (count++ <= 2) {
       body = "value="+encodeURIComponent(obj);
-      //print("sending:",agencyURL+path,"\nwith body",body);
       res = download(agencyURL+path,body,
           {"method":"PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-      //print("Code ", res.code); 
       if (res.code === 201) {
         return true;
       }
@@ -178,6 +176,8 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
+    print("Waiting 10 seconds for agency to come alive...");
+    wait(10);
     return {"error":false, "isSendConfiguration": true};
   }
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
@@ -203,7 +203,6 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   print("Starting servers...");
   var i;
-  print(info);
   var servers = info.DBservers.concat(info.Coordinators);
   pids = [];
   for (i = 0; i < servers.length; i++) {
