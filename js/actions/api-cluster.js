@@ -338,6 +338,7 @@ actions.defineHttp({
       return;
     }
     var input;
+    print(req.requestBody);
     try {
       input = JSON.parse(req.requestBody);
     }
@@ -346,6 +347,7 @@ actions.defineHttp({
                           "Posted body was not valid JSON.");
       return;
     }
+    print(input);
     if (!input.hasOwnProperty("clusterPlan")) {
       actions.resultError(req, res, actions.HTTP_BAD,
                           'Posted body needs a "clusterPlan" property.');
@@ -392,8 +394,10 @@ actions.defineHttp({
       }
       Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
       try {
+        print("hallo");
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
+        print(input.runInfo);
         r = k.shutdown();
         res.responseCode = actions.HTTP_OK;
         res.contentType = "application/json; charset=utf-8";
