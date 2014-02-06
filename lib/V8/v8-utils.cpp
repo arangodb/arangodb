@@ -623,7 +623,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
       // follow redirects?
       if (followRedirects && 
-          (returnCode == 301 || returnCode == 302)) {
+          (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
         url = response->getHeaderField(string("location"), found);
 

@@ -703,7 +703,7 @@ void TRI_KillExternalProcess (pid_t pid) {
   }
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
-    int val = kill(external->_pid , SIGKILL);
+    int val = kill(external->_pid , SIGTERM);
 
     if (val) {
       external->_status = TRI_EXT_KILL_FAILED;
