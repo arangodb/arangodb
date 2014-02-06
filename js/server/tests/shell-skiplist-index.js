@@ -30,8 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
-var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -42,7 +40,6 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListSuite() {
-  var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionSkiplist";
   var collection = null;
 

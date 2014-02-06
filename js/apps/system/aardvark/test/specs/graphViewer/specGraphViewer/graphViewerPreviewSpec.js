@@ -170,7 +170,8 @@
           jasmine.any(Object),
           {
             label: "label",
-            color: jasmine.any(Object)
+            color: jasmine.any(Object),
+            shape: jasmine.any(Object)
           }
         );
       });

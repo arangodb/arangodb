@@ -73,7 +73,7 @@ function StatementSuite () {
 
     testConstructNoQuery : function () {
       try {
-        var st = new ArangoStatement(db);
+        new ArangoStatement(db);
         fail();
       }
       catch (e) {
@@ -396,8 +396,8 @@ function StatementSuite () {
       var st = new ArangoStatement(db, { query : "for u in [ 1 ] return @value" });
       st.bind("list", [ 1, 2, 3 ]);
       try {
-        var result = st.execute();
-        assertFalse(true);
+        st.execute();
+        fail(); 
       }
       catch (e) {
         assertEqual(1551, e.errorNum);
@@ -413,7 +413,7 @@ function StatementSuite () {
       st.bind("value", 1);
       try {
         st.bind("value", 1);
-        assertFalse(true);
+        fail(); 
       }
       catch (e) {
       }

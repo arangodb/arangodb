@@ -468,7 +468,6 @@ ArangoCollection.prototype.removeByExample = function (example,
 
       throw err;
     }
-
       
     shards.forEach(function (shard) {
       ArangoClusterComm.asyncRequest("put", 
@@ -478,7 +477,8 @@ ArangoCollection.prototype.removeByExample = function (example,
                                      JSON.stringify({ 
                                        collection: shard,
                                        example: example,
-                                       waitForSync: waitForSync
+                                       waitForSync: waitForSync,
+                                       limit: limit || undefined
                                      }), 
                                      { }, 
                                      options);
@@ -570,7 +570,8 @@ ArangoCollection.prototype.replaceByExample = function (example,
                                        collection: shard,
                                        example: example,
                                        newValue: newValue,
-                                       waitForSync: waitForSync
+                                       waitForSync: waitForSync,
+                                       limit: limit || undefined
                                      }), 
                                      { }, 
                                      options);
@@ -666,7 +667,8 @@ ArangoCollection.prototype.updateByExample = function (example,
                                        example: example,
                                        newValue: newValue,
                                        waitForSync: waitForSync,
-                                       keepNull: keepNull
+                                       keepNull: keepNull,
+                                       limit: limit || undefined
                                      }), 
                                      { }, 
                                      options);

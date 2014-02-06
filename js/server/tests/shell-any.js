@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
+/// @brief test the random document selector 
 ///
 /// @file
 ///
@@ -28,7 +28,6 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
-var internal = require("internal");
 var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
