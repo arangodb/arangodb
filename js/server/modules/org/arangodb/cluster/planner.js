@@ -441,7 +441,9 @@ Planner.prototype.makePlan = function() {
               "agency": agencyPos,
               "data": agencyData } );
   for (i = 0; i < dispList.length; i++) {
-    tmp.push( { "action": "startLauncher", "dispatcher": dispList[i],
+    tmp.push( { "action": "startServers", "dispatcher": dispList[i],
+                "DBservers": copy(launchers[dispList[i]].DBservers),
+                "Coordinators": copy(launchers[dispList[i]].Coordinators),
                 "name": dispList[i], 
                 "dataPath": config.dataPath,
                 "logPath": config.logPath,
@@ -452,29 +454,10 @@ Planner.prototype.makePlan = function() {
   this.myname = "me";
 };
 
-Planner.prototype.checkDispatchers = function() {
-  // Checks that all dispatchers are active, if none is configured,
-  // a local one is started.
-  throw "not yet implemented";
-};
-
-Planner.prototype.getStartupProgram = function() {
+Planner.prototype.getPlan = function() {
   // Computes the dispatcher commands and returns them as JSON
   return { "dispatchers": this.dispatchers,
            "commands": this.commands };
-};
-
-Planner.prototype.launch = function() {
-  // Starts the cluster according to startup plan
-  //dispatch(this);
-};
-
-Planner.prototype.shutdown = function() {
-  throw "not yet implemented";
-};
-
-Planner.prototype.isHealthy = function() {
-  throw "not yet implemented";
 };
 
 exports.PortFinder = PortFinder;
