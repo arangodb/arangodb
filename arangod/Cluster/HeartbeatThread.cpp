@@ -29,6 +29,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerJob.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -248,6 +249,9 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
 bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
                                         uint64_t& remotePlanVersion) {
   LOG_TRACE("found a plan update");
+  
+  // invalidate our local cache
+  ClusterInfo::instance()->flush();
 
   // schedule a job for the change
   triagens::rest::Job* job = new DBServerJob(_server, _applicationV8);

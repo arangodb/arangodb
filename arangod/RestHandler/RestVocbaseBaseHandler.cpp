@@ -349,12 +349,12 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-#ifndef TRI_ENABLE_CLUSTER
-    const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
-#else
+#ifdef TRI_ENABLE_CLUSTER
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+#else
+    const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 #endif
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
