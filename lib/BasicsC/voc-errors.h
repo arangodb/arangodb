@@ -264,43 +264,40 @@ extern "C" {
 /// - 1459: @LIT{could not remove collection from current}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a collection in the Current hierarchy in the agency.
-/// - 1460: @LIT{database name already exists}
-///   Will be raised when a coordinator in a cluster tries to create a database
-///   and the database name already exists.
-/// - 1461: @LIT{could not create database in plan}
+/// - 1460: @LIT{could not create database in plan}
 ///   Will be raised when a coordinator in a cluster cannot create an entry for
 ///   a new database in the Plan hierarchy in the agency.
-/// - 1462: @LIT{could not create database}
+/// - 1461: @LIT{could not create database}
 ///   Will be raised when a coordinator in a cluster notices that some
 ///   DBServers report problems when creating databases for a new cluster wide
 ///   database.
-/// - 1463: @LIT{could not remove database from plan}
+/// - 1462: @LIT{could not remove database from plan}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Plan hierarchy in the agency.
-/// - 1464: @LIT{could not remove database from current}
+/// - 1463: @LIT{could not remove database from current}
 ///   Will be raised when a coordinator in a cluster cannot remove an entry for
 ///   a database in the Current hierarchy in the agency.
-/// - 1465: @LIT{no responsible shard found}
+/// - 1464: @LIT{no responsible shard found}
 ///   Will be raised when a coordinator in a cluster cannot determine the shard
 ///   that is responsible for a given document.
-/// - 1466: @LIT{cluster internal HTTP connection broken}
+/// - 1465: @LIT{cluster internal HTTP connection broken}
 ///   Will be raised when a coordinator in a cluster loses an HTTP connection
 ///   to a DBserver in the cluster whilst transferring data.
-/// - 1467: @LIT{must not specify _key for this collection}
+/// - 1466: @LIT{must not specify _key for this collection}
 ///   Will be raised when a coordinator in a cluster finds that the _key
 ///   attribute was specified in a sharded collection the uses not only _key as
 ///   sharding attribute.
-/// - 1468: @LIT{got contradicting answers from different shards}
+/// - 1467: @LIT{got contradicting answers from different shards}
 ///   Will be raised if a coordinator in a cluster gets conflicting results
 ///   from different shards, which should never happen.
-/// - 1469: @LIT{not all sharding attributes given}
+/// - 1468: @LIT{not all sharding attributes given}
 ///   Will be raised if a coordinator tries to find out which shard is
 ///   responsible for a partial document, but cannot do this because not all
 ///   sharding attributes are specified.
-/// - 1470: @LIT{must not change the value of a shardkey attribute}
+/// - 1469: @LIT{must not change the value of a shardkey attribute}
 ///   Will be raised if there is an attempt to update the value of a shard
 ///   attribute.
-/// - 1471: @LIT{unsupported operation or parameter}
+/// - 1470: @LIT{unsupported operation or parameter}
 ///   Will be raised when there is an attempt to carry out an operation that is
 ///   not supported in the context of a sharded collection.
 /// - 1500: @LIT{query killed}
@@ -481,10 +478,6 @@ extern "C" {
 ///   Will be returned if the key was not found in the structure.
 /// - 10003: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
-/// - 11000: @LIT{the index garbage collector has shutdown and no further entries can be processed}
-///   Will be raised when an attempt to add an item to the index garbage
-///   collector fails due to the fact that the state of the collector is in
-///   shutdown mode.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1593,18 +1586,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          (1459)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1460: ERROR_CLUSTER_DATABASE_NAME_EXISTS
-///
-/// database name already exists
-///
-/// Will be raised when a coordinator in a cluster tries to create a database
-/// and the database name already exists.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS                            (1460)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
+/// @brief 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
 ///
 /// could not create database in plan
 ///
@@ -1612,10 +1594,10 @@ void TRI_InitialiseErrorMessages (void);
 /// new database in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               (1461)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               (1460)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1462: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
+/// @brief 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
 ///
 /// could not create database
 ///
@@ -1623,10 +1605,10 @@ void TRI_InitialiseErrorMessages (void);
 /// report problems when creating databases for a new cluster wide database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       (1462)
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       (1461)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
+/// @brief 1462: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
 ///
 /// could not remove database from plan
 ///
@@ -1634,10 +1616,10 @@ void TRI_InitialiseErrorMessages (void);
 /// database in the Plan hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               (1463)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               (1462)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1464: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
+/// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
 ///
 /// could not remove database from current
 ///
@@ -1645,10 +1627,10 @@ void TRI_InitialiseErrorMessages (void);
 /// database in the Current hierarchy in the agency.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1464)
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1463)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1465: ERROR_CLUSTER_SHARD_GONE
+/// @brief 1464: ERROR_CLUSTER_SHARD_GONE
 ///
 /// no responsible shard found
 ///
@@ -1656,10 +1638,10 @@ void TRI_InitialiseErrorMessages (void);
 /// that is responsible for a given document.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_SHARD_GONE                                      (1465)
+#define TRI_ERROR_CLUSTER_SHARD_GONE                                      (1464)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1466: ERROR_CLUSTER_CONNECTION_LOST
+/// @brief 1465: ERROR_CLUSTER_CONNECTION_LOST
 ///
 /// cluster internal HTTP connection broken
 ///
@@ -1667,10 +1649,10 @@ void TRI_InitialiseErrorMessages (void);
 /// a DBserver in the cluster whilst transferring data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1466)
+#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1465)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1467: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
+/// @brief 1466: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
 ///
 /// must not specify _key for this collection
 ///
@@ -1679,10 +1661,10 @@ void TRI_InitialiseErrorMessages (void);
 /// sharding attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1467)
+#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1466)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1468: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
+/// @brief 1467: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
 ///
 /// got contradicting answers from different shards
 ///
@@ -1690,10 +1672,10 @@ void TRI_InitialiseErrorMessages (void);
 /// different shards, which should never happen.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1468)
+#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1467)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1469: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
+/// @brief 1468: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
 ///
 /// not all sharding attributes given
 ///
@@ -1702,10 +1684,10 @@ void TRI_InitialiseErrorMessages (void);
 /// sharding attributes are specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1469)
+#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1468)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1470: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
+/// @brief 1469: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
 ///
 /// must not change the value of a shardkey attribute
 ///
@@ -1713,10 +1695,10 @@ void TRI_InitialiseErrorMessages (void);
 /// attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1470)
+#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1469)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1471: ERROR_CLUSTER_UNSUPPORTED
+/// @brief 1470: ERROR_CLUSTER_UNSUPPORTED
 ///
 /// unsupported operation or parameter
 ///
@@ -1724,7 +1706,7 @@ void TRI_InitialiseErrorMessages (void);
 /// not supported in the context of a sharded collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1471)
+#define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -2493,19 +2475,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 11000: WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN
-///
-/// the index garbage collector has shutdown and no further entries can be
-/// processed
-///
-/// Will be raised when an attempt to add an item to the index garbage
-/// collector fails due to the fact that the state of the collector is in
-/// shutdown mode.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN               (11000)
 
 
 ////////////////////////////////////////////////////////////////////////////////
