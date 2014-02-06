@@ -39,6 +39,8 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 
 @CHAPTER_REF{UserManualFoxxManager}: Installing and uninstalling Foxx applications
 
+@CHAPTER_REF{Sharding}: Using ArangoDB on a cluster of computers
+
 @CHAPTER_REF{HandlingEndpoints}: Making the server listen on multiple ports
 
 @CHAPTER_REF{CommandLine}: All the command-line options
