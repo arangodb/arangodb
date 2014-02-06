@@ -113,14 +113,14 @@ distributed amongst your DBservers:
 
     arangosh [_system]> example = db._create("example",{numberOfShards:6});
     [ArangoCollection 1000001, "example" (type document, status loaded)]
-    arangosh [_system]> example.save({"name":"Hans", "age":44});
+    arangosh [_system]> x = example.save({"name":"Hans", "age":44});
     { 
       "error" : false, 
       "_id" : "example/1000008", 
       "_rev" : "13460426", 
       "_key" : "1000008" 
     }
-    arangosh [_system]> example.document("1000008");
+    arangosh [_system]> example.document(x._key);
     { 
       "age" : 44, 
       "name" : "Hans", 
