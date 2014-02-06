@@ -140,11 +140,13 @@ void HeartbeatThread::run () {
     if (_stop) {
       break;
     }
-    
+      
     if (isCoordinator) {
       // coordinator just sleeps
       const double remain = interval - (TRI_microtime() - start);
-      usleep((unsigned long) (remain * 1000.0 * 1000.0));
+      if (remain > 0.0) {
+        usleep((unsigned long) (remain * 1000.0 * 1000.0));
+      }
     }
     else {
       // get the current version of the Plan
@@ -196,6 +198,13 @@ void HeartbeatThread::run () {
               }
             }
           }
+        }
+      }
+      else {
+        const double remain = interval - (TRI_microtime() - start);
+
+        if (remain > 0.0) {
+          usleep((unsigned long) (remain * 1000.0 * 1000.0));
         }
       }
     }
