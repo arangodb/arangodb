@@ -44,7 +44,6 @@ var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 var print = require("internal").print;
 
 var launchActions = {};
-var relaunchActions = {};
 var shutdownActions = {};
 
 function getAddrPort (endpoint) {

@@ -317,21 +317,24 @@ button.btn-server {
 a.headerButton {
  float: left;
  cursor: pointer;
- margin-top: 0px; 
+ margin-top: 2px; 
  margin-left: 5px;
- margin-right: 5px;
- min-height: 19px;
+ margin-right: 3px;
+ min-height: 15px;
  border-radius: 3px;
  position: relative;
  box-shadow: none;
- background: #8AA051 !important;
- /*
- background: #8f8d8c !important;
- */
- color:#FFFFFF !important;
- height:20px;
- width:13px;
- padding: 5px 11px 2px 9px;
+ background: #ddd;
+ color: #555;
+ height: 17px;
+ width: 9px;
+ padding: 4px 9px 2px 9px;
+ border: 1px solid #222;
+}
+
+a.headerButton:hover {
+  background: #fff;
+  color: #000;
 }
 
 a.paginationButton, ul.arangoPagination a {
@@ -340,16 +343,67 @@ a.paginationButton, ul.arangoPagination a {
 
 /* better look of some icons */
 a.headerButton .icon_arangodb_filter {
-  top: 1px !important;
+  top: 3px !important;
 }
 
 a.headerButton .icon_arangodb_import {
-  top: -1px !important;
+  top: 1px !important;
+}
+
+a.headerButton .icon_arangodb_checklist {
+  top: 3px !important;
+  right: 5px;
 }
 
 a.headerButton .icon_arangodb_arrowleft,
 a.headerButton .icon_arangodb_arrowright {
   font-weight:bold;
+}
+/* Graph Viewer */
+
+div.toolbox > div.gv_action_button:first-child {
+  margin-top: 0px;
+}
+
+div.toolbox > div.gv_action_button:last-child {
+  margin-bottom: 0px;
+}
+
+div.gv_action_button {
+ text-align: center;
+ position: relative;
+ width: 50px;
+ height: 50px;
+ background-color: #333333;
+ color: white;
+ cursor: pointer;
+ margin-top: 2px;
+ margin-bottom: 2px;
+}
+
+div.gv_action_button:hover {
+
+}
+
+div.gv_action_button.active {
+  background-color: #8AA051;
+}
+
+h6.gv_icon_icon,
+h6.gv_button_title {
+ position: absolute;
+ margin: 0px;
+ left: 0px;
+ right: 0px;
+}
+
+h6.gv_icon_icon {
+  font-size: 22px;
+  top: 6px;
+}
+
+h6.gv_button_title {
+ bottom: 1px;
 }
 
 /*

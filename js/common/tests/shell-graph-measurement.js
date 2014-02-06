@@ -37,7 +37,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity"),
-  Helper = require("org/arangodb/test-helper").Helper,
   console = require("console");
 
 // -----------------------------------------------------------------------------

@@ -1,3 +1,6 @@
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
+/*global require, fail, assertTrue, assertFalse, assertEqual, assertMatch, assertNotNull */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the foxx manager
 ///
@@ -25,6 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
 var jsunity = require("jsunity");
 var fm = require("org/arangodb/foxx/manager");
 var arango = require("org/arangodb").arango;
@@ -119,8 +123,8 @@ function FoxxManagerSuite () {
           assertTrue(entry.hasOwnProperty("description"));
           assertTrue(entry.hasOwnProperty("version"));
           assertTrue(entry.hasOwnProperty("path"));
+          return;
         }
-        return;
        }
 
       fail();
@@ -185,7 +189,7 @@ function FoxxManagerSuite () {
         assertTrue(entry.hasOwnProperty("author"));
         assertTrue(entry.hasOwnProperty("versions"));
 
-        versions = entry.versions;
+        var version;
 
         for (version in entry.versions) {
           if (entry.versions.hasOwnProperty(version)) {
@@ -302,7 +306,7 @@ function FoxxManagerSuite () {
       try {
         fm.uninstall("/itz");
       }
-      catch (err) {
+      catch (err1) {
       }
 
       try {
@@ -310,7 +314,7 @@ function FoxxManagerSuite () {
         fm.uninstall("/itz");
         fail();
       }
-      catch (err) {
+      catch (err2) {
       }
     },
 
@@ -361,7 +365,7 @@ function FoxxManagerSuite () {
       try {
         fm.uninstall("/itz");
       }
-      catch (err) {
+      catch (err1) {
       }
 
       try {
@@ -369,7 +373,7 @@ function FoxxManagerSuite () {
         fm.unmount("/itz");
         fail();
       }
-      catch (err) {
+      catch (err2) {
       }
     },
 
@@ -407,6 +411,8 @@ function FoxxManagerSuite () {
 jsunity.run(FoxxManagerSuite);
 
 return jsunity.done();
+
+}());
 
 // Local Variables:
 // mode: outline-minor

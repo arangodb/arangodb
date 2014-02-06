@@ -89,7 +89,7 @@ function CollectionVolatileSuite () {
     testCreationError : function () {
       try {
         // cannot set isVolatile and waitForSync at the same time
-        var c = internal.db._create(cn, { isVolatile : true, waitForSync : true });
+        internal.db._create(cn, { isVolatile : true, waitForSync : true });
         fail();
       }
       catch (err) {

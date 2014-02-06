@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,11 +209,15 @@ BaseMiddleware = function () {
 
     if (trace) {
       if (response.hasOwnProperty("body")) {
+        var bodyLength = 0;
+        if (response.body !== undefined) {
+          bodyLength = parseInt(response.body.length, 10);
+        }
         console.log("%s, outgoing response with status %s of type %s, body length: %d",
                     options.mount,
                     response.responseCode,
                     response.contentType,
-                    parseInt(response.body.length, 10));
+                    bodyLength);
       } else if (response.hasOwnProperty("bodyFromFile")) {
         console.log("%s, outgoing response with status %s of type %s, body file: %s",
                     options.mount,
