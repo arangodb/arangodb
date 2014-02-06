@@ -25,7 +25,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var console = require("console");
 var internal = require("internal");
 var jsunity = require("jsunity");
 

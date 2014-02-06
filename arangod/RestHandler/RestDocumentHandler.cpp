@@ -496,16 +496,18 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the document or collection was not found
-///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the document has
 /// the same version
 ///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// document has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -916,7 +918,8 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// document has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `etag` header.
 ///
 /// @EXAMPLES
 ///
@@ -1065,7 +1068,9 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// document has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -1257,7 +1262,9 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// document has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -1638,8 +1645,10 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the current
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
 ///

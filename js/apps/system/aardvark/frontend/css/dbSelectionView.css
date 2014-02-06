@@ -1,8 +1,8 @@
 span.selectDB > select {
   line-height: 20px;
-  height: 20px;
+  height: 30px;
   width: 150px;
-  margin: -3px 0px 2px 0px;
+  margin: -5px 0px;
   border-radius: 0px !important;
   border: 1px solid;
 }

@@ -35,7 +35,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -46,7 +45,6 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function BitarrayIndexSuite() {
-  var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionBitarray";
   var collection = null;
   
