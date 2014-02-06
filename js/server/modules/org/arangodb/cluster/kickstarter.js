@@ -309,16 +309,23 @@ Kickstarter.prototype.launch = function () {
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "post"});
-      try {
-        if (response.code !== 200) {
-          error = true;
-        }
-        results.push(JSON.parse(response.body));
-      }
-      catch (err) {
-        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+      var response = download(url, body, {"method": "POST"});
+      if (response.code !== 200) {
         error = true;
+        results.push({"error":true, "errorMessage": "bad HTTP response code",
+                      "response": response});
+      }
+      else {
+        try {
+          var res = JSON.parse(response.body);
+          results.push(res.runInfo[0]);
+        }
+        catch (err) {
+          error = true;
+          results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        }
+      }
+      if (error) {
         break;
       }
     }
@@ -360,12 +367,15 @@ Kickstarter.prototype.relaunch = function () {
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "post"});
+      var response = download(url, body, {"method": "POST"});
+      if (response.code !== 200) {
+        error = true;
+        results.push({"error":true, "errorMessage": "bad HTTP response code",
+                      "response": response});
+      }
       try {
-        if (response.code !== 200) {
-          error = true;
-        }
-        results.push(JSON.parse(response.body));
+        var res = JSON.parse(response.body);
+        results.push(res.runInfo[0]);
       }
       catch (err) {
         results.push({"error":true, "errorMessage": "exception in JSON.parse"});
@@ -410,27 +420,32 @@ Kickstarter.prototype.shutdown = function() {
       var body = JSON.stringify({ "action": "shutdown",
                                   "clusterPlan": {
                                         "dispatchers": dispatchers,
-                                        "commands": [cmd],
-                                        "runInfo": [run]},
+                                        "commands": [cmd] },
+                                  "runInfo": [run],
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "post"});
-      try {
-        if (response.code !== 200) {
-          error = true;
-          results.push(JSON.parse(response.body));
-        }
-      }
-      catch (err) {
-        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+      var response = download(url, body, {"method": "POST"});
+      if (response.code !== 200) {
         error = true;
-        break;
+        results.push({"error":true, "errorMessage": "bad HTTP response code",
+                      "response": response});
+      }
+      else {
+        try {
+          var res = JSON.parse(response.body);
+          results.push(res.results[0]);
+        }
+        catch (err) {
+          results.push({"error":true, 
+                        "errorMessage": "exception in JSON.parse"});
+          error = true;
+        }
       }
     }
   }
   results = results.reverse();
   if (error) {
-    return {"error": true, "errorMessage": "some error during launch",
+    return {"error": true, "errorMessage": "some error during shutdown",
             "results": results};
   }
   return {"error": false, "errorMessage": "none", "results": results};
