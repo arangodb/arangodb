@@ -1466,7 +1466,10 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be deleted.
 ///
-/// Returns the number of documents that were deleted
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were deleted.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1579,7 +1582,10 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be replaced.
 ///
-/// Returns the number of documents that were replaced
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were replaced.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1707,7 +1713,11 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be updated.
 ///
-/// Returns the number of documents that were updated
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were updated.
+///
 ///
 /// @RESTRETURNCODES
 ///

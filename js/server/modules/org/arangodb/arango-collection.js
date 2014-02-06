@@ -255,7 +255,7 @@ ArangoCollection.prototype.any = function () {
 /// collection. If the collection does not contain any documents, the result 
 /// returned is @LIT{null}.
 ///
-/// Note: this method is not supported on sharded collections with more than
+/// Note: this method is not supported in sharded collections with more than
 /// one shard.
 ///
 /// @EXAMPLES
@@ -280,8 +280,8 @@ ArangoCollection.prototype.first = function (count) {
 
     if (shards.length !== 1) {
       var err = new ArangoError();
-      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      err.errorMessage = "operation is not supported in clustered collections with multiple shards";
+      err.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
+      err.errorMessage = "operation is not supported in sharded collections";
 
       throw err;
     }
@@ -336,7 +336,7 @@ ArangoCollection.prototype.first = function (count) {
 /// collection. If the collection does not contain any documents, the result 
 /// returned is @LIT{null}.
 ///
-/// Note: this method is not supported on sharded collections with more than
+/// Note: this method is not supported in sharded collections with more than
 /// one shard.
 ///
 /// @EXAMPLES
@@ -361,8 +361,8 @@ ArangoCollection.prototype.last = function (count) {
 
     if (shards.length !== 1) {
       var err = new ArangoError();
-      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      err.errorMessage = "operation is not supported in clustered collections with multiple shards";
+      err.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
+      err.errorMessage = "operation is not supported in sharded collections";
 
       throw err;
     }
@@ -453,23 +453,22 @@ ArangoCollection.prototype.removeByExample = function (example,
     return 0;
   }
 
-  var deleted = 0;
-  var documents;
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
-    if (limit > 0) {
-      var err = new ArangoError();
-      err.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      err.errorMessage = "limit not supported in clustered operation";
-
-      throw err;
-    }
-
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    
+    if (limit > 0 && shards.length > 1) {
+      var err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
+      err.errorMessage = "limit is not supported in sharded collections";
+
+      throw err;
+    }
+
       
     shards.forEach(function (shard) {
       ArangoClusterComm.asyncRequest("put", 
@@ -485,29 +484,45 @@ ArangoCollection.prototype.removeByExample = function (example,
                                      options);
     });
 
+    var deleted = 0;
     var results = cluster.wait(coord, shards), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
 
       deleted += (body.deleted || 0);
     }
-  }
-  else {
-    documents = this.byExample(example);
-    if (limit > 0) {
-      documents = documents.limit(limit);
-    }
 
-    while (documents.hasNext()) {
-      var document = documents.next();
- 
-      if (this.remove(document, true, waitForSync)) {
-        deleted++;
+    return deleted;
+  }
+    
+  return require("internal").db._executeTransaction({
+    collections: {
+      write: this.name()
+    },
+    action: function (params) {
+      var collection = params.c;
+      var documents = collection.byExample(params.example);
+      if (params.limit > 0) {
+        documents = documents.limit(params.limit);
       }
-    }
-  }
 
-  return deleted;
+      var deleted = 0;
+      while (documents.hasNext()) {
+        var document = documents.next();
+
+        if (collection.remove(document, true, params.wfs)) {
+          deleted++;
+        }
+      }
+      return deleted;
+    },
+    params: {
+      c: this,
+      example: example,
+      limit: limit,
+      wfs: waitForSync
+    }
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,24 +545,22 @@ ArangoCollection.prototype.replaceByExample = function (example,
     throw err1;
   }
 
-  var replaced = 0;
-  var documents;
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
-    if (limit > 0) {
-      var err2 = new ArangoError();
-      err2.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      err2.errorMessage = "limit not supported in clustered operation";
-
-      throw err2;
-    }
-
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      
+    
+    if (limit > 0 && shards.length > 1) {
+      var err2 = new ArangoError();
+      err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
+      err2.errorMessage = "limit is not supported in sharded collections"; 
+
+      throw err2;
+    }
+
     shards.forEach(function (shard) {
       ArangoClusterComm.asyncRequest("put", 
                                      "shard:" + shard, 
@@ -563,29 +576,46 @@ ArangoCollection.prototype.replaceByExample = function (example,
                                      options);
     });
 
+    var replaced = 0;
     var results = cluster.wait(coord, shards), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
 
       replaced += (body.replaced || 0);
     }
+
+    return replaced;
   }
-  else {
-    documents = this.byExample(example);
-    if (limit > 0) {
-      documents = documents.limit(limit);
-    }
-
-    while (documents.hasNext()) {
-      var document = documents.next();
-
-      if (this.replace(document, newValue, true, waitForSync)) {
-        replaced++;
+    
+  return require("internal").db._executeTransaction({
+    collections: {
+      write: this.name()
+    },
+    action: function (params) {
+      var collection = params.c;
+      var documents = collection.byExample(params.example);
+      if (params.limit > 0) {
+        documents = documents.limit(params.limit);
       }
-    }
-  }
 
-  return replaced;
+      var replaced = 0;
+      while (documents.hasNext()) {
+        var document = documents.next();
+
+        if (collection.replace(document, params.newValue, true, params.wfs)) {
+          replaced++;
+        }
+      }
+      return replaced;
+    },
+    params: {
+      c: this,
+      example: example,
+      newValue: newValue,
+      limit: limit,
+      wfs: waitForSync
+    }
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,24 +640,22 @@ ArangoCollection.prototype.updateByExample = function (example,
     throw err1;
   }
   
-  var updated = 0;
-  var documents;
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
-    if (limit > 0) {
-      var err2 = new ArangoError();
-      err2.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      err2.errorMessage = "limit not supported in clustered operation";
-
-      throw err2;
-    }
-
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      
+    
+    if (limit > 0 && shards.length > 1) {
+      var err2 = new ArangoError();
+      err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
+      err2.errorMessage = "limit is not supported in sharded collections";
+
+      throw err2;
+    }
+
     shards.forEach(function (shard) {
       ArangoClusterComm.asyncRequest("put", 
                                      "shard:" + shard, 
@@ -644,29 +672,47 @@ ArangoCollection.prototype.updateByExample = function (example,
                                      options);
     });
 
+    var updated = 0;
     var results = cluster.wait(coord, shards), i;
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
 
       updated += (body.updated || 0);
     }
-  }
-  else {
-    documents = this.byExample(example);
-    if (limit > 0) {
-      documents = documents.limit(limit);
-    }
 
-    while (documents.hasNext()) {
-      var document = documents.next();
- 
-      if (this.update(document, newValue, true, keepNull, waitForSync)) {
-        updated++;
+    return updated;
+  }
+
+  return require("internal").db._executeTransaction({
+    collections: {
+      write: this.name()
+    },
+    action: function (params) {
+      var collection = params.c;
+      var documents = collection.byExample(params.example);
+      if (params.limit > 0) {
+        documents = documents.limit(params.limit);
       }
-    }
-  }
 
-  return updated;
+      var updated = 0;
+      while (documents.hasNext()) {
+        var document = documents.next();
+
+        if (collection.update(document, params.newValue, true, params.keepNull, params.wfs)) {
+          updated++;
+        }
+      }
+      return updated;
+    },
+    params: {
+      c: this,
+      example: example,
+      newValue: newValue,
+      keepNull: keepNull,
+      limit: limit,
+      wfs: waitForSync
+    }
+  });
 };
 
 // -----------------------------------------------------------------------------
