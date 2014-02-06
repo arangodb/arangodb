@@ -22,6 +22,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{HttpUser}
 @CHAPTER_REF{HttpJob}
 @CHAPTER_REF{HttpEndpoint}
+@CHAPTER_REF{HttpSharding}
 @CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{Communication}
 @CHAPTER_REF{NamingConventions}
