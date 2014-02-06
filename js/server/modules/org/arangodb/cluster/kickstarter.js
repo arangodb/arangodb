@@ -2,9 +2,9 @@
 /*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Cluster startup functionality by dispatchers
+/// @brief Cluster kickstarting functionality using dispatchers
 ///
-/// @file js/server/modules/org/arangodb/cluster/dispatcher.js
+/// @file js/server/modules/org/arangodb/cluster/kickstarter.js
 ///
 /// DISCLAIMER
 ///
@@ -29,13 +29,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         Dispatcher functionality
+// --SECTION--                                         Kickstarter functionality
 // -----------------------------------------------------------------------------
 
 var download = require("internal").download;
 var executeExternal = require("internal").executeExternal;
 var fs = require("fs");
 var wait = require("internal").wait;
+
+var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 
 var print = require("internal").print;
 
@@ -58,17 +60,32 @@ function getAddr (endpoint) {
   return addrPort;
 }
 
+function getPort (endpoint) {
+  var pos = endpoint.lastIndexOf(":");
+  if (pos !== -1) {
+    return parseInt(endpoint.substr(pos+1),10);
+  }
+  return 8529;
+}
+
 actions.startAgent = function (dispatchers, cmd) {
   var agentDataDir = fs.join(cmd.dataPath, 
                              "agent"+cmd.agencyPrefix+cmd.extPort);
   if (fs.exists(agentDataDir)) {
     fs.removeDirectoryRecursive(agentDataDir,true);
   }
-  // FIXME: could distinguish cases and sometimes only bind to 127.0.0.1???
   var args = ["-data-dir", agentDataDir,
               "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
-              "-addr", "0.0.0.0:"+cmd.extPort,
-              "-peer-addr", "0.0.0.0:"+cmd.intPort];
+              "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:" 
+                                               : "0.0.0.0:")+cmd.extPort,
+              "-addr", getAddrPort(
+                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
+                                       cmd.extPort)),
+              "-peer-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
+                                                    : "0.0.0.0:")+cmd.intPort,
+              "-peer-addr", getAddrPort(
+                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
+                                       cmd.intPort)) ];
   var i;
   if (cmd.peers.length > 0) {
     args.push("-peers");
@@ -78,33 +95,157 @@ actions.startAgent = function (dispatchers, cmd) {
     }
     args.push(getAddrPort(cmd.peers[0]));
   }
-  print("Starting agent: command: ",cmd.agentPath);
-  for (i = 0;i < args.length;i++) {
-    print(args[i]);
-  }
   var pid = executeExternal(cmd.agentPath, args);
-  wait(3);   // Wait a bit, such that the next one will be able to connect
-  return {"error":false, "pid": pid};
+  var res;
+  while (true) {
+    wait(0.5);   // Wait a bit to give it time to startup
+    res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
+    if (res.code === 200) {
+      return {"error":false, "isAgent": true, "pid": pid};
+    }
+  }
 };
 
+function encode (st) {
+  var st2 = "";
+  var i;
+  for (i = 0; i < st.length; i++) {
+    if (st[i] === "_") {
+      st2 += "@U";
+    }
+    else if (st[i] === "@") {
+      st2 += "@@";
+    } 
+    else {
+      st2 += st[i];
+    }
+  }
+  return encodeURIComponent(st2);
+}
+
+function sendToAgency (agencyURL, path, obj) {
+  var res;
+  var body;
+  print("Sending ",path," to agency...");
+  if (typeof obj === "string") {
+    var count = 0;
+    while (count++ <= 2) {
+      body = "value="+encodeURIComponent(obj);
+      //print("sending:",agencyURL+path,"\nwith body",body);
+      res = download(agencyURL+path,body,
+          {"method":"PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+      //print("Code ", res.code); 
+      if (res.code === 201) {
+        return true;
+      }
+    }
+    return res;
+  }
+  if (typeof obj !== "object") {
+    return "Strange object found: not a string or object";
+  }
+  var keys = Object.keys(obj);
+  var i;
+  if (keys.length !== 0) {
+    for (i = 0; i < keys.length; i++) {
+      res = sendToAgency (agencyURL, path+"/"+encode(keys[i]), obj[keys[i]]);
+      if (res !== true) {
+        return res;
+      }
+    }
+    return true;
+  }
+  // Create a directory
+  var count2 = 0;
+  while (count2++ <= 2) {
+    body = "dir=true";
+    res = download(agencyURL+path,body,
+          {"method": "PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+    if (res.code === 201) {
+      return true;
+    }
+  }
+  return res;
+}
+
 actions.sendConfiguration = function (dispatchers, cmd) {
-  print("Sending configuration...");
-  return {"error":false};
+  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
+  var res = sendToAgency(url, "", cmd.data);
+  if (res === true) {
+    return {"error":false, "isAgencyConfiguration": true};
+  }
+  return {"error":true, "isAgencyConfiguration": true, "suberror": res};
 };
 
 actions.startLauncher = function (dispatchers, cmd) {
-  print("Starting launcher...");
-  return {"error":false};
+  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
+            cmd.agency.agencyPrefix+"/";
+  print("Downloading ",url+"Launchers/"+cmd.name);
+  var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
+                                                   followRedirects:true});
+  if (res.code !== 200) {
+    return {"error": true, "isStartLauncher": true, "suberror": res};
+  }
+  var body = JSON.parse( res.body );
+  var info = JSON.parse(body.node.value);
+  var id,ep,args,pids,port;
+
+  print("Starting servers...");
+  var i;
+  print(info);
+  var servers = info.DBservers.concat(info.Coordinators);
+  pids = [];
+  for (i = 0; i < servers.length; i++) {
+    id = servers[i];
+    print("Downloading ",url+"Target/MapIDToEndpoint/"+id);
+    res = download(url+"Target/MapIDToEndpoint/"+id);
+    if (res.code !== 200) {
+      return {"error": true, "pids": pids,
+              "isStartLauncher": true, "suberror": res};
+    }
+    print("Starting server ",id);
+    body = JSON.parse(res.body);
+    ep = JSON.parse(body.node.value);
+    port = getPort(ep);
+    args = ["--cluster.my-id", id, 
+            "--cluster.agency-prefix", cmd.agency.agencyPrefix,
+            "--cluster.agency-endpoint", cmd.agency.endpoints[0],
+            "--server.endpoint"];
+    if (cmd.onlyLocalhost) {
+      args.push("tcp://127.0.0.1:"+port);
+    }
+    else {
+      args.push("tcp://0.0.0.0:"+port);
+    }
+    args.push("--log.file");
+    var logfile = fs.join(cmd.dataPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
+    if (fs.exists(logfile)) {
+      fs.remove(logfile);
+    }
+    args.push(logfile);
+    var datadir = fs.join(cmd.dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
+    if (fs.exists(datadir)) {
+      fs.removeDirectoryRecursive(datadir,true);
+    }
+    fs.makeDirectory(datadir);
+    args.push(datadir);
+    pids.push(executeExternal(cmd.arangodPath, args));
+  }
+  return {"error": false, "pids": pids};
 };
 
-function dispatch (startupPlan) {
-  var myname;
+function Kickstarter (startupPlan) {
+  this.startupPlan = startupPlan;
   if (!startupPlan.hasOwnProperty("myname")) {
-    myname = "me";
+    startupPlan.myname = "me";
   }
-  else {
-    myname = startupPlan.myname;
-  }
+}
+
+Kickstarter.prototype.launch = function () {
+  var startupPlan = this.startupPlan;
+  var myname = startupPlan.myname;
   var dispatchers = startupPlan.dispatchers;
   var cmds = startupPlan.commands;
   var results = [];
@@ -143,14 +284,14 @@ function dispatch (startupPlan) {
     }
   }
   if (error) {
-    return {"error": true, "errorMessage": "some error during dispatch",
+    return {"error": true, "errorMessage": "some error during launch",
             "results": results};
   }
   return {"error": false, "errorMessage": "none",
           "results": results};
-}
+};
 
-exports.dispatch = dispatch;
+exports.Kickstarter = Kickstarter;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
