@@ -357,10 +357,9 @@ actions.defineHttp({
       return;
     }
     var action = input.action;
+    var Kickstarter, k, r;
     if (action === "launch") {
-      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
-      var k;
-      var r;
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.launch();
@@ -373,9 +372,7 @@ actions.defineHttp({
       }
     }
     else if (action === "relaunch") {
-      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
-      var k;
-      var r;
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.relaunch();
@@ -383,8 +380,8 @@ actions.defineHttp({
         res.contentType = "application/json; charset=utf-8";
         res.body = JSON.stringify(r);
       }
-      catch (error2) {
-        actions.resultException(req, res, error2, undefined, false);
+      catch (error3) {
+        actions.resultException(req, res, error3, undefined, false);
       }
     }
     else if (action === "shutdown") {
@@ -393,9 +390,7 @@ actions.defineHttp({
                             'Posted body needs a "runInfo" property.');
         return;
       }
-      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
-      var k;
-      var r;
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
@@ -404,8 +399,8 @@ actions.defineHttp({
         res.contentType = "application/json; charset=utf-8";
         res.body = JSON.stringify(r);
       }
-      catch (error3) {
-        actions.resultException(req, res, error3, undefined, false);
+      catch (error4) {
+        actions.resultException(req, res, error4, undefined, false);
       }
     }
     else {
