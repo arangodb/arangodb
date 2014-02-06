@@ -255,7 +255,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_kickstarter_POST
+/// @fn JSF_cluster_planner_POST
 /// @brief exposes the kickstarter planning function
 ///
 /// @RESTHEADER{POST /_admin/kickstarter,produce a cluster startup plan}
@@ -274,7 +274,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/kickstarter",
+  url : "_admin/clusterPlanner",
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
@@ -291,15 +291,13 @@ actions.defineHttp({
                           "Posted body was not valid JSON.");
       return;
     }
-    var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+    var Planner = require("org/arangodb/cluster/planner").Planner;
     try {
-      var k = new Kickstarter(userconfig);
+      var p = new Planner(userconfig);
       res.responseCode = actions.HTTP_OK;
       res.contentType = "application/json; charset=utf-8";
-      res.body = JSON.stringify({"dispatchers": k.dispatchers,
-                                 "commands": k.commands,
-                                 "config": k.config,
-                                 "agencyData": k.agencyData});
+      res.body = JSON.stringify({"clusterPlan": p.getPlan(),
+                                 "config": p.config});
     }
     catch (error) {
       actions.resultException(req, res, error, undefined, false);
@@ -331,7 +329,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/dispatch",
+  url : "_admin/clusterDispatch",
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
@@ -339,25 +337,80 @@ actions.defineHttp({
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
       return;
     }
-    var startupPlan;
+    var input;
     try {
-      startupPlan = JSON.parse(req.requestBody);
+      input = JSON.parse(req.requestBody);
     }
     catch (error) {
       actions.resultError(req, res, actions.HTTP_BAD,
                           "Posted body was not valid JSON.");
       return;
     }
-    var dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
-    var r;
-    try {
-      r = dispatch(startupPlan);
-      res.responseCode = actions.HTTP_OK;
-      res.contentType = "application/json; charset=utf-8";
-      res.body = JSON.stringify(r);
+    if (!input.hasOwnProperty("clusterPlan")) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          'Posted body needs a "clusterPlan" property.');
+      return;
     }
-    catch (error2) {
-      actions.resultException(req, res, error2, undefined, false);
+    if (!input.hasOwnProperty("myname")) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          'Posted body needs a "myname" property.');
+      return;
+    }
+    var action = input.action;
+    if (action === "launch") {
+      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      var k;
+      var r;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        r = k.launch();
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error2) {
+        actions.resultException(req, res, error2, undefined, false);
+      }
+    }
+    else if (action === "relaunch") {
+      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      var k;
+      var r;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        r = k.relaunch();
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error2) {
+        actions.resultException(req, res, error2, undefined, false);
+      }
+    }
+    else if (action === "shutdown") {
+      if (!input.hasOwnProperty("runInfo")) {
+        actions.resultError(req, res, actions.HTTP_BAD,
+                            'Posted body needs a "runInfo" property.');
+        return;
+      }
+      var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      var k;
+      var r;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        k.runInfo = input.runInfo;
+        r = k.shutdown();
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error3) {
+        actions.resultException(req, res, error3, undefined, false);
+      }
+    }
+    else {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          'Action '+action+' not yet implemented.');
     }
   }
 });

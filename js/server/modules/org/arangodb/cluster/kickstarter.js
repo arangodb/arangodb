@@ -2,7 +2,7 @@
 /*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Cluster kickstart functionality
+/// @brief Cluster kickstarting functionality using dispatchers
 ///
 /// @file js/server/modules/org/arangodb/cluster/kickstarter.js
 ///
@@ -29,429 +29,415 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        Kickstarter functionality
+// --SECTION--                                         Kickstarter functionality
 // -----------------------------------------------------------------------------
 
-// possible config attributes (for defaults see below):
-//   .agencyPrefix            prefix for this cluster in agency
-//   .numberOfAgents          number of agency servers
-//   .numberOfDBservers       number of DB servers
-//   .startSecondaries        boolean, whether or not to use secondaries
-//   .numberOfCoordinators    number of coordinators
-//   .DBserverIDs             a list of DBserver IDs, the defaults will
-//                            be appended to this list here
-//   .coordinatorIDs          a list of coordinator IDs, the defaults will
-//                            be appended to this list here
-//   .dataPath                a file system path to the directory in which
-//                            all the data directories of agents or servers
-//                            live, this can be relative or even empty, which
-//                            is equivalent to "./", it will be made into
-//                            an absolute path by the kickstarter, using
-//                            the current directory when the kickstarter
-//                            runs, use with caution!
-//   .logPath                 path where the log files are written, same
-//                            comments as for .dataPath apply
-//   .dispatchers             an list of pairs of strings, the first entry
-//                            is an ID, the second is an endpoint or "me"
-//                            standing for the local `arangod` itself.
-//                            this list can be empty in which case
-//                            ["me","me"] is automatically added.
-//   .arangodPath             path to the arangod executable on
-//                            all machines in the cluster, will be made
-//                            absolute (if it is not already absolute)
-//                            in the process running the kickstarter
-//   .agentPath               path to the agent executable on 
-//                            all machines in the cluster, will be made
-//                            absolute (if it is not already absolute)
-//                            in the process running the kickstarter
-// some port lists:
-//   for these the following rules apply:
-//     every list overwrites the default list
-//     when running out of numbers the kickstarter increments the last one
-//       used by one for every port needed
-//     
-//   .agentExtPorts           a list port numbers to use for the
-//                            external ports of agents,
-//   .agentIntPorts           a list port numbers to use for the
-//                            internal ports of agents,
-//   .DBserverPorts           a list ports to try to use for DBservers
-//   .coordinatorPorts        a list ports to try to use for coordinators
-//  
+var download = require("internal").download;
+var executeExternal = require("internal").executeExternal;
+var killExternal = require("internal").killExternal;
 
 var fs = require("fs");
-var dispatch = require("org/arangodb/cluster/dispatcher").dispatch;
+var wait = require("internal").wait;
 
-// Our default configurations:
+var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 
-var KickstarterLocalDefaults = {
-  "agencyPrefix"            : "meier",
-  "numberOfAgents"          : 3,
-  "numberOfDBservers"       : 2,
-  "startSecondaries"        : false,
-  "numberOfCoordinators"    : 1,
-  "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                               "Pit", "Pia", "Pablo" ],
-  "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
-                               "Claas", "Clemens", "Chris" ],
-  "dataPath"                : "",
-  "logPath"                 : "",
-  "arangodPath"             : "bin/arangod",
-  "agentPath"               : "bin/etcd",
-  "agentExtPorts"           : [4001],
-  "agentIntPorts"           : [7001],
-  "DBserverPorts"           : [8629],
-  "coordinatorPorts"        : [8530],
-  "dispatchers"             : {"me":{"id":"me", "endpoint":"tcp://localhost:",
-                                     "avoidPorts": {}}}
-};
-  
-var KickstarterDistributedDefaults = {
-  "agencyPrefix"            : "mueller",
-  "numberOfAgents"          : 3,
-  "numberOfDBservers"       : 3,
-  "startSecondaries"        : false,
-  "numberOfCoordinators"    : 3,
-  "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                               "Pit", "Pia", "Pablo" ],
-  "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
-                               "Claas", "Clemens", "Chris" ],
-  "dataPath"                : "",
-  "logPath"                 : "",
-  "arangodPath"             : "bin/arangod",
-  "agentPath"               : "bin/etcd",
-  "agentExtPorts"           : [4001],
-  "agentIntPorts"           : [7001],
-  "DBserverPorts"           : [8629],
-  "coordinatorPorts"        : [8530],
-  "dispatchers"             : { "machine1": 
-                                  { "id": "machine1", 
-                                    "endpoint": "tcp://machine1:8529",
-                                    "avoidPorts": {} },
-                                "machine2":
-                                  { "id": "machine2", 
-                                    "endpoint": "tcp://machine2:8529",
-                                    "avoidPorts": {} },
-                                "machine3":
-                                  { "id": "machine3", 
-                                    "endpoint": "tcp://machine3:8529",
-                                    "avoidPorts": {} } }
-};
+var print = require("internal").print;
 
-// Some helpers using underscore:
+var launchActions = {};
+var relaunchActions = {};
+var shutdownActions = {};
 
-var _ = require("underscore");
-
-function objmap (o, f) {
-  var r = {};
-  var k = _.keys(o);
-  var i;
-  for (i = 0;i < k.length; i++) {
-    r[k[i]] = f(o[k[i]]);
+function getAddrPort (endpoint) {
+  var pos = endpoint.indexOf("://");
+  if (pos !== -1) {
+    return endpoint.substr(pos+3);
   }
-  return r;
+  return endpoint;
 }
 
-function copy (o) {
-  if (_.isArray(o)) {
-    return _.map(o,copy);
+function getAddr (endpoint) {
+  var addrPort = getAddrPort(endpoint);
+  var pos = addrPort.indexOf(":");
+  if (pos !== -1) {
+    return addrPort.substr(0,pos);
   }
-  if (_.isObject(o)) {
-    return objmap(o,copy);
-  }
-  return o;
+  return addrPort;
 }
 
-// A class to find free ports:
-
-function PortFinder (list, dispatcher) {
-  if (!Array.isArray(list)) {
-    throw "need a list as first argument";
-  }
-  if (typeof dispatcher !== "object" ||
-      !dispatcher.hasOwnProperty("endpoint") ||
-      !dispatcher.hasOwnProperty("id")) {
-    throw 'need a dispatcher object as second argument';
-  }
-  if (!dispatcher.hasOwnProperty("avoidPorts")) {
-    dispatcher.avoidPorts = {};
-  }
-  this.list = list;
-  this.dispatcher = dispatcher;
-  this.pos = 0;
-  this.port = 0;
-}
-
-PortFinder.prototype.next = function () {
-  while (true) {   // will be left by return when port is found
-    if (this.pos < this.list.length) {
-      this.port = this.list[this.pos++];
-    }
-    else if (this.port === 0) {
-      this.port = Math.floor(Math.random()*(65536-1024))+1024;
-    }
-    else {
-      this.port++;
-      if (this.port > 65535) {
-        this.port = 1024;
-      }
-    }
-    // Check that port is available:
-    if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
-      if (this.dispatcher.endpoint !== "tcp://localhost:" ||
-          SYS_TEST_PORT("tcp://0.0.0.0:"+this.port)) {
-        this.dispatcher.avoidPorts[this.port] = true;  // do not use it again
-        return this.port;
-      }
-    }
-  }
-};
- 
-function exchangePort (endpoint, newport) {
+function getPort (endpoint) {
   var pos = endpoint.lastIndexOf(":");
-  if (pos < 0) {
-    return endpoint+":"+newport;
+  if (pos !== -1) {
+    return parseInt(endpoint.substr(pos+1),10);
   }
-  return endpoint.substr(0,pos+1)+newport;
+  return 8529;
 }
 
-// The following function merges default configurations and user configuration.
-
-function fillConfigWithDefaults (config, defaultConfig) {
-  var appendAttributes = {"DBserverIDs":true, "coordinatorIDs":true};
-  var n;
-  for (n in defaultConfig) {
-    if (defaultConfig.hasOwnProperty(n)) {
-      if (appendAttributes.hasOwnProperty(n)) {
-        if (!config.hasOwnProperty(n)) {
-          config[n] = copy(defaultConfig[n]);
-        }
-        else {
-          config[n].concat(defaultConfig[n]);
-        }
-      }
-      else {
-        if (!config.hasOwnProperty(n)) {
-          config[n] = copy(defaultConfig[n]);
-        }
+function sendToAgency (agencyURL, path, obj) {
+  var res;
+  var body;
+  print("Sending ",path," to agency...");
+  if (typeof obj === "string") {
+    var count = 0;
+    while (count++ <= 2) {
+      body = "value="+encodeURIComponent(obj);
+      //print("sending:",agencyURL+path,"\nwith body",body);
+      res = download(agencyURL+path,body,
+          {"method":"PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+      //print("Code ", res.code); 
+      if (res.code === 201) {
+        return true;
       }
     }
+    return res;
   }
-}
-
-// Our Kickstarter class:
-
-function Kickstarter (userConfig) {
-  "use strict";
-  if (typeof userConfig !== "object") {
-    throw "userConfig must be an object";
+  if (typeof obj !== "object") {
+    return "Strange object found: not a string or object";
   }
-  var defaultConfig = userConfig.defaultConfig;
-  if (defaultConfig === undefined) {
-    defaultConfig = KickstarterLocalDefaults;
-  }
-  if (defaultConfig === "local") {
-    defaultConfig = KickstarterLocalDefaults;
-  }
-  else if (defaultConfig === "distributed") {
-    defaultConfig = KickstarterDistributedDefaults;
-  }
-  this.config = copy(userConfig);
-  fillConfigWithDefaults(this.config, defaultConfig);
-  this.config.dataPath = fs.normalize(fs.makeAbsolute(this.config.dataPath));
-  this.config.logPath = fs.normalize(fs.makeAbsolute(this.config.logPath));
-  this.config.arangodPath = fs.normalize(fs.makeAbsolute(
-                                   this.config.arangodPath));
-  this.config.agentPath = fs.normalize(fs.makeAbsolute(
-                                   this.config.agentPath));
-  this.commands = [];
-  this.makePlan();
-}
-
-Kickstarter.prototype.makePlan = function() {
-  // This sets up the plan for the cluster according to the options
-
-  var config = this.config;
-  var dispatchers = this.dispatchers = copy(config.dispatchers);
-
-  // If no dispatcher is there, configure a local one (ourselves):
-  if (Object.keys(dispatchers).length === 0) {
-    dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
-                       "avoidPorts": {} };
-  }
-  var dispList = Object.keys(dispatchers);
-
-  var pf,pf2;   // lists of port finder objects
+  var keys = Object.keys(obj);
   var i;
-
-  // Distribute agents to dispatchers (round robin, choosing ports)
-  var d = 0;
-  var agents = [];
-  pf = [];   // will be filled lazily
-  pf2 = [];  // will be filled lazily
-  for (i = 0; i < config.numberOfAgents; i++) {
-    // Find two ports:
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.agentExtPorts, dispatchers[dispList[d]]);
-      pf2[d] = new PortFinder(config.agentIntPorts, dispatchers[dispList[d]]);
+  if (keys.length !== 0) {
+    for (i = 0; i < keys.length; i++) {
+      res = sendToAgency (agencyURL, path+"/"+encode(keys[i]), obj[keys[i]]);
+      if (res !== true) {
+        return res;
+      }
     }
-    agents.push({"dispatcher":dispList[d],
-                 "extPort":pf[d].next(),
-                 "intPort":pf2[d].next()});
-    if (++d >= dispList.length) {
-      d = 0;
+    return true;
+  }
+  // Create a directory
+  var count2 = 0;
+  while (count2++ <= 2) {
+    body = "dir=true";
+    res = download(agencyURL+path,body,
+          {"method": "PUT", "followRedirects": true,
+           "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
+    if (res.code === 201) {
+      return true;
     }
   }
+  return res;
+}
 
-  // Distribute coordinators to dispatchers
-  var coordinators = [];
-  pf = [];
-  d = 0;
-  for (i = 0; i < config.numberOfCoordinators; i++) {
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.coordinatorPorts, dispatchers[dispList[d]]);
-    }
-    if (!config.coordinatorIDs.hasOwnProperty(i)) {
-      config.coordinatorIDs[i] = "Coordinator"+i;
-    }
-    coordinators.push({"id":config.coordinatorIDs[i],
-                       "dispatcher":dispList[d],
-                       "port":pf[d].next()});
-    if (++d >= dispList.length) {
-      d = 0;
+launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
+  var agentDataDir = fs.join(cmd.dataPath, 
+                             "agent"+cmd.agencyPrefix+cmd.extPort);
+  if (!isRelaunch) {
+    if (fs.exists(agentDataDir)) {
+      fs.removeDirectoryRecursive(agentDataDir,true);
     }
   }
-
-  // Distribute DBservers to dispatchers (secondaries if wanted)
-  var DBservers = [];
-  pf = [];
-  d = 0;
-  for (i = 0; i < config.numberOfDBservers; i++) {
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.DBserverPorts, dispatchers[dispList[d]]);
+  var args = ["-data-dir", agentDataDir,
+              "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
+              "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:" 
+                                               : "0.0.0.0:")+cmd.extPort,
+              "-addr", getAddrPort(
+                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
+                                       cmd.extPort)),
+              "-peer-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
+                                                    : "0.0.0.0:")+cmd.intPort,
+              "-peer-addr", getAddrPort(
+                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
+                                       cmd.intPort)) ];
+  var i;
+  if (cmd.peers.length > 0) {
+    args.push("-peers");
+    var st = getAddrPort(cmd.peers[0]);
+    for (i = 1; i < cmd.peers.length; i++) {
+      st = st + "," + getAddrPort(cmd.peers[i]);
     }
-    if (!config.DBserverIDs.hasOwnProperty(i)) {
-      config.DBserverIDs[i] = "Primary"+i;
-    }
-    DBservers.push({"id":config.DBserverIDs[i],
-                    "dispatcher":dispList[d],
-                    "port":pf[d].next()});
-    if (++d >= dispList.length) {
-      d = 0;
+    args.push(getAddrPort(cmd.peers[0]));
+  }
+  var pid = executeExternal(cmd.agentPath, args);
+  var res;
+  while (true) {
+    wait(0.5);   // Wait a bit to give it time to startup
+    res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
+    if (res.code === 200) {
+      return {"error":false, "isAgent": true, "pid": pid};
     }
   }
+};
 
-  // Store this plan in object:
-  this.coordinators = coordinators;
-  this.DBservers = DBservers;
-  this.agents = agents;
-  var launchers = {};
-  for (i = 0; i < dispList.length; i++) {
-    launchers[dispList[i]] = { "DBservers": [], 
-                               "Coordinators": [] };
+function encode (st) {
+  var st2 = "";
+  var i;
+  for (i = 0; i < st.length; i++) {
+    if (st[i] === "_") {
+      st2 += "@U";
+    }
+    else if (st[i] === "@") {
+      st2 += "@@";
+    } 
+    else {
+      st2 += st[i];
+    }
   }
+  return encodeURIComponent(st2);
+}
 
-  // Set up agency data:
-  var agencyData = this.agencyData = {};
-  var prefix = agencyData[config.agencyPrefix] = {};
-  var tmp;
+launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
+  if (isRelaunch) {
+    // nothing to do here
+    return {"error":false, "isSendConfiguration": true};
+  }
+  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
+  var res = sendToAgency(url, "", cmd.data);
+  if (res === true) {
+    return {"error":false, "isSendConfiguration": true};
+  }
+  return {"error":true, "isSendConfiguration": true, "suberror": res};
+};
 
-  // First the Target, we collect Launchers information at the same time:
-  tmp = prefix.Target = {};
-  tmp.Lock = '"UNLOCKED"';
-  tmp.Version = '"1"';
-  var dbs = tmp.DBServers = {};
-  var map = tmp.MapIDToEndpoint = {};
-  var s;
-  for (i = 0; i < DBservers.length; i++) {
-    s = DBservers[i];
-    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
-      dbs[s.id] = map[s.id] 
-                = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
+launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
+  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
+            cmd.agency.agencyPrefix+"/";
+  print("Downloading ",url+"Launchers/"+cmd.name);
+  var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
+                                                   followRedirects:true});
+  if (res.code !== 200) {
+    return {"error": true, "isStartServers": true, "suberror": res};
+  }
+  var body = JSON.parse( res.body );
+  var info = JSON.parse(body.node.value);
+  var id,ep,args,pids,port;
+
+  print("Starting servers...");
+  var i;
+  print(info);
+  var servers = info.DBservers.concat(info.Coordinators);
+  pids = [];
+  for (i = 0; i < servers.length; i++) {
+    id = servers[i];
+    print("Downloading ",url+"Target/MapIDToEndpoint/"+id);
+    res = download(url+"Target/MapIDToEndpoint/"+id);
+    if (res.code !== 200) {
+      return {"error": true, "pids": pids,
+              "isStartServers": true, "suberror": res};
+    }
+    print("Starting server ",id);
+    body = JSON.parse(res.body);
+    ep = JSON.parse(body.node.value);
+    port = getPort(ep);
+    args = ["--cluster.my-id", id, 
+            "--cluster.agency-prefix", cmd.agency.agencyPrefix,
+            "--cluster.agency-endpoint", cmd.agency.endpoints[0],
+            "--server.endpoint"];
+    if (cmd.onlyLocalhost) {
+      args.push("tcp://127.0.0.1:"+port);
     }
     else {
-      dbs[s.id] = map[s.id] 
-             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
+      args.push("tcp://0.0.0.0:"+port);
     }
-    launchers[s.dispatcher].DBservers.push(s.id);
+    args.push("--log.file");
+    var logfile = fs.join(cmd.dataPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
+    args.push(logfile);
+    if (!isRelaunch) {
+      if (fs.exists(logfile)) {
+        fs.remove(logfile);
+      }
+    }
+    var datadir = fs.join(cmd.dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
+    args.push(datadir);
+    if (!isRelaunch) {
+      if (fs.exists(datadir)) {
+        fs.removeDirectoryRecursive(datadir,true);
+      }
+      fs.makeDirectory(datadir);
+    }
+    pids.push(executeExternal(cmd.arangodPath, args));
   }
-  var coo = tmp.Coordinators = {};
-  for (i = 0; i < coordinators.length; i++) {
-    s = coordinators[i];
-    if (dispatchers[s.dispatcher].endpoint === "tcp://localhost:") {
-      coo[s.id] = map[s.id] 
-                = '"'+exchangePort("tcp://127.0.0.1:0",s.port)+'"';
+  return {"error": false, "pids": pids};
+};
+
+shutdownActions.startAgent = function (dispatchers, cmd, run) {
+  print("Killing agent ", run.pid);
+  killExternal(run.pid);
+  return {"error": false};
+}
+
+shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
+  print("Waiting for 10 seconds for servers before killing agency.");
+  wait(10);
+  return {"error": false};
+}
+
+shutdownActions.startServers = function (dispatchers, cmd, run) {
+  var i;
+  for (i = 0;i < run.pids.length;i++) {
+    print("Killing ", run.pids[i]);
+    killExternal(run.pids[i]);
+  }
+  return {"error": false};
+}
+
+function Kickstarter (clusterPlan, myname) {
+  this.clusterPlan = clusterPlan;
+  if (myname === undefined) {
+    this.myname = "me";
+  }
+  else {
+    this.myname = myname;
+  }
+}
+
+Kickstarter.prototype.launch = function () {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  for (i = 0; i < cmds.length; i++) {
+    cmd = cmds[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      var res = launchActions[cmd.action](dispatchers, cmd, false);
+      results.push(res);
+      if (res.error === true) {
+        error = true;
+        break;
+      }
     }
     else {
-      coo[s.id] = map[s.id] 
-             = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "launch",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "post"});
+      try {
+        if (response.code !== 200) {
+          error = true;
+        }
+        results.push(JSON.parse(response.body));
+      }
+      catch (err) {
+        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        error = true;
+        break;
+      }
     }
-    launchers[s.dispatcher].Coordinators.push(s.id);
   }
-  tmp.Databases = { "_system" : {} };
-  tmp.Collections = { "_system" : {} };
-
-  // Now Plan:
-  prefix.Plan = copy(tmp);
-  delete prefix.Plan.MapIDToEndpoint;
-
-  // Now Current:
-  prefix.Current = { "Lock"             : '"UNLOCKED"',
-                     "Version"          : '"1"',
-                     "DBservers"        : {},
-                     "Coordinators"     : {},
-                     "Databases"        : {"_system":{}},
-                     "Collections"      : {"_system":{}},
-                     "ServersRegistered": {"Version":'"1"'},
-                     "ShardsCopied"     : {} };
-
-  // Now Sync:
-  prefix.Sync = { "ServerStates"       : {},
-                  "Problems"           : {},
-                  "LatestID"           : '"0"',
-                  "Commands"           : {},
-                  "HeartbeatIntervalMs": '1000' };
-  tmp = prefix.Sync.Commands;
-  for (i = 0; i < DBservers; i++) {
-    tmp[DBservers[i].id] = '"SERVE"';
+  this.runInfo = results;
+  if (error) {
+    return {"error": true, "errorMessage": "some error during launch",
+            "runInfo": results};
   }
+  return {"error": false, "errorMessage": "none",
+          "runInfo": results};
+};
 
-  // Finally Launchers:
-  prefix.Launchers = objmap(launchers, JSON.stringify);
+Kickstarter.prototype.relaunch = function () {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var results = [];
+  var cmd;
 
-  // make commands
-  tmp = this.commands = [];
-  var tmp2,j;
-  for (i = 0; i < agents.length; i++) {
-    tmp2 = { "action" : "startAgent", "dispatcher": agents[i].dispatcher,
-             "extPort": agents[i].extPort,
-             "intPort": agents[i].intPort,
-             "peers": [],
-             "agencyPrefix": config.agencyPrefix,
-             "dataPath": config.dataPath,
-             "logPath": config.logPath,
-             "agentPath": config.agentPath };
-    for (j = 0; j < i; j++) {
-      var ep = dispatchers[agents[j].dispatcher].endpoint;
-      tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
+  var error = false;
+  var i;
+  for (i = 0; i < cmds.length; i++) {
+    cmd = cmds[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      var res = launchActions[cmd.action](dispatchers, cmd, true);
+      results.push(res);
+      if (res.error === true) {
+        error = true;
+        break;
+      }
     }
-    tmp.push(tmp2);
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "relaunch",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "post"});
+      try {
+        if (response.code !== 200) {
+          error = true;
+        }
+        results.push(JSON.parse(response.body));
+      }
+      catch (err) {
+        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        error = true;
+        break;
+      }
+    }
   }
-  var agencyPos = { "prefix": config.agencyPrefix,
-                    "endpoints": agents.map(function(a) {
-                        return exchangePort(dispatchers[a.dispatcher].endpoint,
-                                            a.extPort);}) };
-  tmp.push( { "action": "sendConfiguration", 
-              "agency": agencyPos,
-              "data": agencyData } );
-  for (i = 0; i < dispList.length; i++) {
-    tmp.push( { "action": "startLauncher", "dispatcher": dispList[i],
-                "name": dispList[i], 
-                "dataPath": config.dataPath,
-                "logPath": config.logPath,
-                "arangodPath": config.arangodPath,
-                "agency": copy(agencyPos) } );
+  this.runInfo = results;
+  if (error) {
+    return {"error": true, "errorMessage": "some error during launch",
+            "runInfo": results};
   }
-  this.myname = "me";
+  return {"error": false, "errorMessage": "none",
+          "runInfo": results};
+};
+
+
+Kickstarter.prototype.shutdown = function() {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var runInfo = this.runInfo;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  for (i = cmds.length-1; i >= 0; i--) {
+    cmd = cmds[i];
+    run = runInfo[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      var res = shutdownActions[cmd.action](dispatchers, cmd, run);
+      if (res.error === true) {
+        error = true;
+      }
+      results.push(res);
+    }
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "shutdown",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd],
+                                        "runInfo": [run]},
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "post"});
+      try {
+        if (response.code !== 200) {
+          error = true;
+          results.push(JSON.parse(response.body));
+        }
+      }
+      catch (err) {
+        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+        error = true;
+        break;
+      }
+    }
+  }
+  results = results.reverse();
+  if (error) {
+    return {"error": true, "errorMessage": "some error during launch",
+            "results": results};
+  }
+  return {"error": false, "errorMessage": "none", "results": results};
+};
+
+Kickstarter.prototype.isHealthy = function() {
+  throw "not yet implemented";
 };
 
 Kickstarter.prototype.checkDispatchers = function() {
@@ -460,37 +446,7 @@ Kickstarter.prototype.checkDispatchers = function() {
   throw "not yet implemented";
 };
 
-Kickstarter.prototype.getStartupProgram = function() {
-  // Computes the dispatcher commands and returns them as JSON
-  return { "dispatchers": this.dispatchers,
-           "commands": this.commands };
-};
-
-Kickstarter.prototype.launch = function() {
-  // Starts the cluster according to startup plan
-  dispatch(this);
-};
-
-Kickstarter.prototype.shutdown = function() {
-  throw "not yet implemented";
-};
-
-Kickstarter.prototype.isHealthy = function() {
-  throw "not yet implemented";
-};
-
-exports.PortFinder = PortFinder;
 exports.Kickstarter = Kickstarter;
-
-// TODO for kickstarting:
-//
-// * finden des Pfads zum eigenen Executable in JS
-// * etcd in distribution
-// * JS function zum Ausführen von Startup-Programmen (lokal u. delegation)
-// * REST interface zum Ausführen von Startup-Programmen
-// * arangod-Rolle "Launcher" per Kommandozeile
-// * REST interface to SYS_TEST_PORT, ev. mit auth
-// * Dokumentation
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
