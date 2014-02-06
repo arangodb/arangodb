@@ -50,6 +50,7 @@ WIKI = \
 	HttpMisc \
 	HttpQuery \
 	HttpReplication \
+	HttpSharding \
 	HttpSimple \
 	HttpSystem \
 	HttpTransactions \
@@ -82,6 +83,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	RestoreManual \
+	Sharding \
 	SimpleQueries \
 	ToolsManual \
 	Transactions \
