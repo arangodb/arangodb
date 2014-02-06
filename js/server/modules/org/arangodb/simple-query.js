@@ -76,7 +76,12 @@ SimpleQueryAll.prototype.execute = function () {
       var shards = cluster.shardList(dbName, this._collection.name());
       var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
       var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      var limit = this._skip + this._limit;
+      var limit = 0;
+      if (this._limit > 0) {
+        if (this._skip >= 0) {
+          limit = this._skip + this._limit;
+        }
+      }
 
       shards.forEach(function (shard) {
         ArangoClusterComm.asyncRequest("put", 
@@ -96,6 +101,11 @@ SimpleQueryAll.prototype.execute = function () {
       var _documents = [ ], total = 0;
       var result = cluster.wait(coord, shards);
       var toSkip = this._skip, toLimit = this._limit;
+
+      if (toSkip < 0) {
+        // negative skip is special
+        toLimit = null;
+      }
 
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
@@ -123,6 +133,11 @@ SimpleQueryAll.prototype.execute = function () {
 
         _documents = _documents.concat(body.result);
       });
+     
+      if (this._skip < 0) {
+        // apply negative skip
+        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+      }
 
       documents = { 
         documents: _documents, 
@@ -314,7 +329,12 @@ SimpleQueryByExample.prototype.execute = function () {
       var shards = cluster.shardList(dbName, this._collection.name());
       var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
       var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      var limit = this._skip + this._limit;
+      var limit = 0;
+      if (this._limit > 0) {
+        if (this._skip >= 0) {
+          limit = this._skip + this._limit;
+        }
+      }
       var example = this._example;
       
       shards.forEach(function (shard) {
@@ -336,6 +356,11 @@ SimpleQueryByExample.prototype.execute = function () {
       var _documents = [ ];
       var result = cluster.wait(coord, shards);
       var toSkip = this._skip, toLimit = this._limit;
+      
+      if (toSkip < 0) {
+        // negative skip is special
+        toLimit = null;
+      }
 
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
@@ -362,6 +387,11 @@ SimpleQueryByExample.prototype.execute = function () {
 
         _documents = _documents.concat(body.result);
       });
+      
+      if (this._skip < 0) {
+        // apply negative skip
+        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+      }
 
       documents = { 
         documents: _documents, 

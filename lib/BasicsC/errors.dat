@@ -166,6 +166,7 @@ ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1467,"must not specify _key for this collecti
 ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1468,"got contradicting answers from different shards","Will be raised if a coordinator in a cluster gets conflicting results from different shards, which should never happen."
 ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,1469,"not all sharding attributes given","Will be raised if a coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1470,"must not change the value of a shardkey attribute","Will be raised if there is an attempt to update the value of a shard attribute."
+ERROR_CLUSTER_UNSUPPORTED,1471,"unsupported operation or parameter","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
 
 ################################################################################
 ## ArangoDB query errors

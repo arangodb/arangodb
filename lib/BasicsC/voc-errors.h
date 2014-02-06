@@ -300,6 +300,9 @@ extern "C" {
 /// - 1470: @LIT{must not change the value of a shardkey attribute}
 ///   Will be raised if there is an attempt to update the value of a shard
 ///   attribute.
+/// - 1471: @LIT{unsupported operation or parameter}
+///   Will be raised when there is an attempt to carry out an operation that is
+///   not supported in the context of a sharded collection.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1711,6 +1714,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1470)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1471: ERROR_CLUSTER_UNSUPPORTED
+///
+/// unsupported operation or parameter
+///
+/// Will be raised when there is an attempt to carry out an operation that is
+/// not supported in the context of a sharded collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1471)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

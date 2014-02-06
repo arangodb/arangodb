@@ -104,6 +104,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
+/// Note: this flag is not supported in a cluster. Using it will result in an
+/// error.
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until the edge document has been synced to disk.
 ///
