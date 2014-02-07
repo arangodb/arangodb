@@ -1,5 +1,8 @@
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
+/*global require, fail, assertTrue */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the foxx manager
+/// @brief test the authentication
 ///
 /// @file
 ///
@@ -25,6 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
 var jsunity = require("jsunity");
 var arango = require("org/arangodb").arango;
 var db = require("internal").db;
@@ -241,9 +245,9 @@ function AuthSuite () {
 jsunity.run(AuthSuite);
 
 return jsunity.done();
+}());
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

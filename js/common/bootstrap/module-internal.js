@@ -19,7 +19,7 @@
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
-  SYS_PLATFORM */
+  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -52,7 +52,6 @@
   // cannot use strict here as we are going to delete globals
 
   var exports = require("internal");
-  var fs = require("fs");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
@@ -660,6 +659,33 @@
   if (typeof SYS_HTTP_STATISTICS !== "undefined") {
     exports.httpStatistics = SYS_HTTP_STATISTICS;
     delete SYS_HTTP_STATISTICS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an external process
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_EXECUTE_EXTERNAL !== "undefined") {
+    exports.executeExternal = SYS_EXECUTE_EXTERNAL;
+    delete SYS_EXECUTE_EXTERNAL;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_KILL_EXTERNAL !== "undefined") {
+    exports.killExternal = SYS_KILL_EXTERNAL;
+    delete SYS_KILL_EXTERNAL;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a status of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_STATUS_EXTERNAL !== "undefined") {
+    exports.statusExternal = SYS_STATUS_EXTERNAL;
+    delete SYS_STATUS_EXTERNAL;
   }
 
 // -----------------------------------------------------------------------------

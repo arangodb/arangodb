@@ -18,6 +18,7 @@ TOC {#CommandLineTOC}
     - @ref CommandLineConsole "console"
     - @ref CommandLineArangoEndpoint "server.endpoint"
     - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
+    - @ref CommandLineArangoDisableAuthenticationUnixSockets "server.disable-authentication-unix-sockets"
     - @ref CommandLineArangoAuthenticateSystemOnly "server.authenticate-system-only"
     - @ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"
     - @ref CommandLineArangoDefaultApiCompatibility "server.default-api-compatibility"

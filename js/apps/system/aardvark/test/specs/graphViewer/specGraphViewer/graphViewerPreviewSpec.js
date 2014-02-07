@@ -72,7 +72,7 @@
           cont.offsetWidth,
           cont.offsetHeight,
           {
-          	type: "preview",
+            type: "preview",
             width: width,
             height: height
           },
@@ -138,7 +138,7 @@
           ui;
         spy.shapes = oldShapes;
 
-        ui  = new GraphViewerPreview(cont, config);
+        ui = new GraphViewerPreview(cont, config);
         expect(window.NodeShaper).wasCalledWith(
           jasmine.any(Object),
           {
@@ -170,7 +170,8 @@
           jasmine.any(Object),
           {
             label: "label",
-            color: jasmine.any(Object)
+            color: jasmine.any(Object),
+            shape: jasmine.any(Object)
           }
         );
       });
