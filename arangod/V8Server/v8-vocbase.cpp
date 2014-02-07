@@ -8872,7 +8872,8 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
     vector<ServerID> DBServers;
     while (++tries <= 2) {
       DBServers = ci->getCurrentDBServers();
-      if (DBServers.size() != 0) {
+
+      if (! DBServers.empty()) {
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
         ClusterCommResult* res;
