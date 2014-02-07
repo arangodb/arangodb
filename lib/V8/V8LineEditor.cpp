@@ -28,10 +28,10 @@
 #include "V8LineEditor.h"
 
 #ifdef TRI_HAVE_LINENOISE
+extern "C" {
 #include <linenoise.h>
-#endif
-
-#ifdef TRI_HAVE_READLINE
+}
+#else
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
@@ -39,11 +39,13 @@
 #include "BasicsC/tri-strings.h"
 #include "V8/v8-utils.h"
 
-#ifdef TRI_HAVE_READLINE
+#ifndef TRI_HAVE_LINENOISE
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
 #endif
 #endif
+
+#include "Basics/StringUtils.h"
 
 using namespace std;
 
@@ -59,15 +61,11 @@ using namespace std;
 /// @brief word break characters
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_READLINE
-
 static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
 };
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -76,8 +74,6 @@ static char WordBreakCharacters[] = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief completion generator
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_READLINE
 
 static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
@@ -186,14 +182,114 @@ static char* CompletionGenerator (char const* text, int state) {
     return 0;
   }
 }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief linenoise completion generator
+////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_LINENOISE
+static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions * lc) {
+  vector<string> completions;
+    // locate global object or sub-object
+    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+    string path;
+    char* prefix;
+
+    if (*text != '\0') {
+      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+
+      if (1 < splitted._length) {
+        for (size_t i = 0;  i < splitted._length - 1;  ++i) {
+          v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
+
+          if (! current->Has(name)) {
+            TRI_DestroyVectorString(&splitted);
+            return;
+          }
+
+          v8::Handle<v8::Value> val = current->Get(name);
+
+          if (! val->IsObject()) {
+            TRI_DestroyVectorString(&splitted);
+            return;
+          }
+
+          current = val->ToObject();
+          path = path + splitted._buffer[i] + ".";
+        }
+
+        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
+      }
+      else {
+        prefix = TRI_DuplicateString(text);
+      }
+
+      TRI_DestroyVectorString(&splitted);
+    }
+    else {
+      prefix = TRI_DuplicateString(text);
+    }
+
+    v8::HandleScope scope;
+
+    // compute all possible completions
+    v8::Handle<v8::Array> properties;
+    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
+
+    if (current->HasOwnProperty(cpl)) {
+      v8::Handle<v8::Value> funcVal = current->Get(cpl);
+
+      if (funcVal->IsFunction()) {
+        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
+        v8::Handle<v8::Value> args;
+        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+
+        if (cpls->IsArray()) {
+          properties = v8::Handle<v8::Array>::Cast(cpls);
+        }
+      }
+    }
+    else {
+      properties = current->GetPropertyNames();
+    }
+
+    // locate
+    if (! properties.IsEmpty()) {
+      const uint32_t n = properties->Length();
+
+      for (uint32_t i = 0;  i < n;  ++i) {
+        v8::Handle<v8::Value> v = properties->Get(i);
+
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+        char const* s = *str;
+
+        if (s != 0 && *s) {
+          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+          string name = path + s + suffix;
+
+          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+             linenoiseAddCompletion(lc, name.c_str());
+             completions.push_back(name);
+          }
+        }
+      }
+    }
+
+
+    lc->multiLine = 1;
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+
+}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempted completion
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_READLINE
+#ifdef TRI_HAVE_LINENOISE
+static void AttemptedCompletion(char const* text, linenoiseCompletions * lc) {
+	LinenoiseCompletionGenerator(text, lc);
+}
+#else
 
 static char** AttemptedCompletion (char const* text, int start, int end) {
   char** result;
@@ -241,9 +337,13 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 
 bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
-#ifdef TRI_HAVE_READLINE
+#ifdef TRI_HAVE_LINENOISE
+	  linenoiseSetCompletionCallback(AttemptedCompletion);
+#else
+
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
+
 #endif
   }
 
