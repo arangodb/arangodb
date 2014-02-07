@@ -338,6 +338,11 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
   size_t n;
   bool result = true;
 
+  if (context->_isCoordinator) {
+    // coordinator does not have any barriers
+    return true;
+  }
+
   // iterate in forward order
   n = context->_collections._length;
   for (i = 0; i < n; ++i) {
@@ -377,6 +382,11 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
 
 void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
   size_t i;
+  
+  if (context->_isCoordinator) {
+    // coordinator does not have any barriers
+    return;
+  }
 
   // iterate in reverse order
   i = context->_collections._length;

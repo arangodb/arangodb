@@ -184,6 +184,7 @@ static void ProcessOptions (TRI_aql_context_t* context) {
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query,
                                          const size_t queryLength,
+                                         bool isCoordinator,
                                          TRI_json_t* userOptions) {
   TRI_aql_context_t* context;
   int res;
@@ -287,6 +288,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   }
   
   ProcessOptions(context);
+
+  context->_isCoordinator = isCoordinator;
 
   return context;
 }

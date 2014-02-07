@@ -2352,8 +2352,15 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
 
     if (h != NULL && h->_index == NULL) {
       // no index, process incrementally
-      ProcessCollection(generator, expressionNode, true);
-      hint->_isIncremental = true;
+      bool incremental = true;
+
+      if (generator->_context->_isCoordinator) {
+        // coordinator cannot process data incrementally
+        incremental = false;
+      }
+
+      ProcessCollection(generator, expressionNode, incremental);
+      hint->_isIncremental = incremental;
     }
     else {
       ProcessNode(generator, expressionNode);

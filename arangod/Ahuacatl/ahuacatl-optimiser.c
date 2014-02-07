@@ -302,6 +302,10 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
     return;
   }
 
+  if (collection->_collection == NULL) {
+    return;
+  }
+
   hint->_collection = collection;
 
   primary = collection->_collection->_collection;

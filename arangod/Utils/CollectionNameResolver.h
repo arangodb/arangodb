@@ -134,7 +134,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_CLUSTER
         TRI_voc_cid_t getCollectionIdCluster (const string& name) const {
-          if (!ServerState::instance()->isRunningInCluster()) {
+          if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionId(name);
           }
           if (name[0] >= '0' && name[0] <= '9') {
