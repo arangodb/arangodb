@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster planning functionality
 ///
-/// @file js/server/modules/org/arangodb/cluster/planner.js
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -238,6 +238,48 @@ function fillConfigWithDefaults (config, defaultConfig) {
 }
 
 // Our Planner class:
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Cluster_Planner_Constructor
+/// @brief the cluster planner constructor
+///
+/// @FUN{new Planner(@FA{userConfig})}
+///
+/// This constructor builds a cluster planner object. The one and only
+/// argument is an object that can have the following properties:
+///
+///   - `numberOfAgents`: the number of agents in the agency,
+///     usually there is no reason to deviate from the default of 3
+///   - `numberOfDBservers`: the number of DBservers in the
+///     cluster.
+///   - `numberOfCoordinators`: the number of coordinators in the cluster.
+///
+/// All these values have default values. Here is the current set of
+/// default values:
+/// 
+///     {
+///       "agencyPrefix"            : "meier",
+///       "numberOfAgents"          : 3,
+///       "numberOfDBservers"       : 2,
+///       "startSecondaries"        : false,
+///       "numberOfCoordinators"    : 1,
+///       "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", 
+///                                    "Pierre", "Pit", "Pia", "Pablo" ],
+///       "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", 
+///                                    "Claudia", "Claas", "Clemens", "Chris" ],
+///       "dataPath"                : "",
+///       "logPath"                 : "",
+///       "arangodPath"             : "bin/arangod",
+///       "agentPath"               : "bin/etcd",
+///       "agentExtPorts"           : [4001],
+///       "agentIntPorts"           : [7001],
+///       "DBserverPorts"           : [8629],
+///       "coordinatorPorts"        : [8530],
+///       "dispatchers"             : {"me":{"id":"me", 
+///                                          "endpoint":"tcp://localhost:",
+///                                          "avoidPorts": {}}}
+///     };
+///
+////////////////////////////////////////////////////////////////////////////////
 
 function Planner (userConfig) {
   "use strict";
