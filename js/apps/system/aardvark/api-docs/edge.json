@@ -84,12 +84,12 @@
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the edge or collection was not found ",
-                            "code": "404"
-                        },
-                        {
                             "reason": "is returned if the \"If-None-Match\" header is given and the edge has  the same version ",
                             "code": "304"
+                        },
+                        {
+                            "reason": "is returned if the edge or collection was not found ",
+                            "code": "404"
                         }
                     ],
                     "parameters": [
@@ -158,12 +158,12 @@
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the edge document or collection was not found ",
-                            "code": "404"
-                        },
-                        {
                             "reason": "is returned if the \"If-None-Match\" header is given and the edge document has same version ",
                             "code": "304"
+                        },
+                        {
+                            "reason": "is returned if the edge document or collection was not found ",
+                            "code": "404"
                         }
                     ],
                     "parameters": [
@@ -303,7 +303,7 @@
                             "description": "The handle of the edge document. "
                         },
                         {
-                            "dataType": "String",
+                            "dataType": "Boolean",
                             "paramType": "query",
                             "name": "keepNull",
                             "description": "If the intention is to delete existing attributes with the patch command,  the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing edge document that are contained in the patch document with an attribute value of <em>null</em>. "
