@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster kickstarting functionality using dispatchers
 ///
-/// @file js/server/modules/org/arangodb/cluster/kickstarter.js
+/// @file
 ///
 /// DISCLAIMER
 ///
