@@ -147,4 +147,7 @@ currently using. We will probably see a speedup in a later release.
 The basic CRUD operations already have a relatively good performance,
 the simple queries are in need of further optimisations as well.
 
+See @ref JSModuleCluster "the corresponding chapter of the reference manual"
+for detailed information about the `Planner` and `Kickstarter` classes.
+
 @NAVIGATE_Sharding
