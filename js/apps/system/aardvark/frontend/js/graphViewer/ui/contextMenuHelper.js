@@ -40,16 +40,17 @@ function ContextMenu(id) {
       menu,
 
     addEntry = function(label, callback) {
-      var li, button;
-      li = document.createElement("li");
-      button = document.createElement("button");
-      button.onclick = function() {
+      var item, inner;
+      item = document.createElement("div");
+      item.className = "context-menu-item";
+      inner = document.createElement("div");
+      inner.className = "context-menu-item-inner";
+      inner.appendChild(document.createTextNode(label));
+      inner.onclick = function() {
         callback(d3.select(menu.target).data()[0]);
       };
-      button.className = "btn btn-primary gv_context_button";
-      button.appendChild(document.createTextNode(label));
-      li.appendChild(button);
-      ul.appendChild(li);
+      item.appendChild(inner);
+      div.appendChild(item);
     },
 
     bindMenu = function($objects) {
@@ -70,11 +71,9 @@ function ContextMenu(id) {
         div.parentElement.removeChild(div);
       }
       div = document.createElement("div");
+      div.className = "context-menu context-menu-theme-osx";
       div.id = id;
-      ul = document.createElement("ul");
       document.body.appendChild(div);
-      div.appendChild(ul);
-      ul = div.firstChild;
       return div;
     };
 

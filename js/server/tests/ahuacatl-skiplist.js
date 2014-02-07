@@ -36,7 +36,6 @@ var getQueryExplanation = helper.getQueryExplanation;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlSkiplistTestSuite () {
-  var errors = internal.errors;
   var skiplist;
 
   return {

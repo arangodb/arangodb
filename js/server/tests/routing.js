@@ -38,7 +38,6 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteSingle () {
-  var errors = internal.errors;
   var cn = "_routing";
 
   return {

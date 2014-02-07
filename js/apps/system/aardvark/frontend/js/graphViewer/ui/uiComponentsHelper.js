@@ -62,17 +62,6 @@ var uiComponentsHelper = uiComponentsHelper || {};
   };
   
   uiComponentsHelper.createIconButtonBKP = function(icon, prefix, callback) {
-    var button = document.createElement("button"),
-      i = document.createElement("i");
-    button.className = "btn btn-icon";
-    button.id = prefix;
-    button.appendChild(i);
-    i.className = "icon-" + icon + " icon-white";
-    button.onclick = callback;
-    return button;
-  };
-  
-  uiComponentsHelper.createIconButton = function(icon, prefix, callback) {
     var button = document.createElement("button");
     button.className = "btn btn-icon gv-icon-btn " + icon;
     button.id = prefix;
@@ -83,6 +72,27 @@ var uiComponentsHelper = uiComponentsHelper || {};
       $(button).toggleClass("active", true);
       callback();
     };
+    return button;
+  };
+  
+  uiComponentsHelper.createIconButton = function(iconInfo, prefix, callback) {
+    var button = document.createElement("div"),
+        icon = document.createElement("h6"),
+        label = document.createElement("h6");
+    button.className = "gv_action_button";
+    button.id = prefix;
+    button.onclick = function() {
+      $(".gv_action_button").each(function(i, btn) {
+        $(btn).toggleClass("active", false);
+      });
+      $(button).toggleClass("active", true);
+      callback();
+    };
+    icon.className = "fa gv_icon_icon fa-" + iconInfo.icon;
+    label.className = "gv_button_title";
+    button.appendChild(icon);
+    button.appendChild(label);
+    label.appendChild(document.createTextNode(iconInfo.title));
     return button;
   };
   

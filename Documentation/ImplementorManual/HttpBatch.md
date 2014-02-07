@@ -13,7 +13,7 @@ To mititage this problem, ArangoDB offers a batch request API that
 clients can use to send multiple operations in one batch to
 ArangoDB. This method is especially useful when the client has to send
 many HTTP requests with a small body/payload and the individual
-request resulsts do not depend on each other.
+request results do not depend on each other.
 
 Clients can use ArangoDB's batch API by issuing a multipart HTTP POST
 request to the URL `/_api/batch` handler. The handler will accept the

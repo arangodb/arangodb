@@ -151,8 +151,6 @@ function transactionInvocationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReturnValues : function () {
-      var result;
-
       var tests = [
         { expected: 1, trx: { collections: { }, action: function () { return 1; } } },
         { expected: undefined, trx: { collections: { }, action: function () { } } },
@@ -2850,8 +2848,6 @@ function transactionCountSuite () {
           write: [ cn1 ]
         },
         action : function () {
-          var d1;
-
           c1.save({ _key: "baz" });
           assertEqual(3, c1.count());
 
@@ -2883,8 +2879,6 @@ function transactionCountSuite () {
           write: [ cn1 ]
         },
         action : function () {
-          var d1;
-
           c1.save({ _key: "baz" });
           assertEqual(3, c1.count());
 
