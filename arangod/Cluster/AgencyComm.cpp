@@ -244,6 +244,30 @@ std::string AgencyCommResult::errorDetails () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the internal result buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyCommResult::clear () {
+  // free existing values if any 
+  std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
+
+  while (it != _values.end()) {
+    if ((*it).second._json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
+    }
+    ++it;
+  }
+
+  _values.clear();
+
+  _location   = "";
+  _message    = "";
+  _body       = "";
+  _index      = 0;
+  _statusCode = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively flatten the JSON response into a map
 ///
 /// stripKeyPrefix is decoded, as is the _globalPrefix
@@ -350,7 +374,7 @@ bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
     return false;
   }
 
-  _values.clear();
+  clear(); 
 
   // get "node" attribute
   TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
@@ -512,8 +536,6 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
     return true;
   }
   
-  AgencyCommResult result;
-
   if (_version == 0) {
     TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1); 
 
@@ -522,13 +544,15 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
     }
 
     // no Version key found, now set it
-    result = comm.casValue(_key + "/Version", 
-                           json,
-                           false,
-                           0.0, 
-                           0.0);
+    AgencyCommResult result = comm.casValue(_key + "/Version", 
+                                            json,
+                                            false,
+                                            0.0, 
+                                            0.0);
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    
+    return result.successful();
   }
   else {
     // Version key found, now update it
@@ -545,17 +569,17 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
       return false;
     }
 
-    result = comm.casValue(_key + "/Version", 
-                           oldJson,
-                           newJson,
-                           0.0, 
-                           0.0);
+    AgencyCommResult result = comm.casValue(_key + "/Version", 
+                                            oldJson,
+                                            newJson,
+                                            0.0, 
+                                            0.0);
     
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
+  
+    return result.successful();
   }
-
-  return result.successful();
 }
 
 // -----------------------------------------------------------------------------
@@ -986,6 +1010,7 @@ bool AgencyComm::increaseVersion (std::string const& key) {
       return false;
     }
 
+    result.clear();
     result = casValue(key,
                       json,
                       false, 
@@ -1004,7 +1029,7 @@ bool AgencyComm::increaseVersion (std::string const& key) {
   if (it == result._values.end()) {
     return false;
   }
-    
+
   uint64_t version = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
   // version key found, now update it
@@ -1020,6 +1045,8 @@ bool AgencyComm::increaseVersion (std::string const& key) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
     return false;
   }
+
+  result.clear();
 
   result = casValue(key, 
                     oldJson,
@@ -1305,6 +1332,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
   AgencyCommResult result;
 
   while (tries++ < maxTries) {
+    result.clear();
     result = getValues(key, false);
     
     if (result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
@@ -1352,6 +1380,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
       return AgencyCommResult();
     }
 
+    result.clear();
     result = casValue(key, oldJson, newJson, 0.0, timeout);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newJson);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);

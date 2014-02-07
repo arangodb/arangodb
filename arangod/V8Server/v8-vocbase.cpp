@@ -1580,11 +1580,21 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
     TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
 
+    if (old == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
     if (shardKeysChanged(col->_dbName, cidString, old, json, false)) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     } 
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
 #endif
 

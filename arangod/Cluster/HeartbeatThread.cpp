@@ -179,6 +179,8 @@ void HeartbeatThread::run () {
 
           if (remain > 0.0) {
             // watch Plan/Version for changes
+            result.clear();
+
             result = _agency.watchValue("Plan/Version",
                                         agencyIndex + 1,   
                                         remain,
