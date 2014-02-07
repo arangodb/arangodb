@@ -680,7 +680,7 @@ function ClusterCrudSimpleSuite () {
         fail();
       }
       catch (err1) {
-        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err1.errorNum);
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err1.errorNum);
       }
       
       try {
@@ -688,7 +688,7 @@ function ClusterCrudSimpleSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err2.errorNum);
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err2.errorNum);
       }
     },
 
@@ -745,7 +745,7 @@ function ClusterCrudSimpleSuite () {
         fail();
       }
       catch (err1) {
-        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err1.errorNum);
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err1.errorNum);
       }
       
       try {
@@ -753,7 +753,7 @@ function ClusterCrudSimpleSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err2.errorNum);
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err2.errorNum);
       }
     },
 
