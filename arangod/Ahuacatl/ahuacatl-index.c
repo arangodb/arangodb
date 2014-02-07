@@ -316,6 +316,10 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
   size_t i, n;
+  
+  if (context->_isCoordinator) {
+    return NULL;
+  }
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 

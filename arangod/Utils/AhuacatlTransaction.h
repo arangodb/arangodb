@@ -28,6 +28,10 @@
 #ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
 #define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#endif
+
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
@@ -65,6 +69,13 @@ namespace triagens {
                              const triagens::arango::CollectionNameResolver& resolver,
                              TRI_aql_context_t* const context) :
           Transaction<T>(vocbase, TRI_GetIdServer(), resolver, false) {
+
+#ifdef TRI_ENABLE_CLUSTER
+          if (ServerState::instance()->isCoordinator()) {
+            // coordinator must NOT register collections here (because it has none)
+            return;
+          }
+#endif
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
