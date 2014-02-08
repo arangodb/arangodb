@@ -92,6 +92,12 @@
       ]
     },
 
+    "css/sass.css": {
+      "files": [
+        "frontend/scss/b.css"
+      ]
+    },
+
     "css/style.css": {
       "files": [
         "frontend/css/openSansFont.css",
