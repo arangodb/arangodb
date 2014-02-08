@@ -1,0 +1,12 @@
+// Horizontal offset, vertical offset, blur, spread, color
+@mixin box-shadow($params) {
+  -webkit-box-shadow: $params;
+  -moz-box-shadow: $params;
+  box-shadow: $params;
+}
+
+@mixin border-radius($r) {
+  -moz-border-radius: $r;
+  -webkit-border-radius: $r;
+  border-radius: $r;
+}

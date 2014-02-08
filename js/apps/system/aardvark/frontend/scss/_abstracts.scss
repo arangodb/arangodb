@@ -1,0 +1,45 @@
+%clickable {
+  cursor: pointer;
+}
+
+%negative {
+  background-color: $c_negative;
+  &:hover {
+    background-color: $c_negative_hover;
+  }
+}
+
+%icon-negative {
+  color: $c_negative;
+  &:hover {
+    color: $c_negative_hover;
+  }
+}
+
+%positive {
+  background-color: $c_positive;
+  &:hover {
+    background-color: $c_positive_hover;
+  }
+}
+
+%icon-positive {
+  color: $c_positive;
+  &:hover {
+    color: $c_positive_hover;
+  }
+}
+
+%neutral {
+  background-color: $c_neutral;
+  &:hover {
+    background-color: $c_neutral_hover;
+  }
+}
+
+%icon-neutral {
+  color: $c_neutral;
+  &:hover {
+    color: $c_neutral_hover;
+  }
+}
