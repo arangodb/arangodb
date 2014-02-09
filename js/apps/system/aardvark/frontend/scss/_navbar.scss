@@ -1,20 +1,8 @@
 nav.navbar {
-  position: fixed;
-  width: 100%;
-  left: 0px;
-  right: 0px;
+  @extend %fixedbar;
   top: 0px;
   height: 34px;
   margin-bottom: 3px;
-  background-color: $c_nav_bg;
-  color: $c_white;
-  z-index: 1000;
-}
-
-div.navcontainer {
-  margin: 0px auto;
-  // TODO: @media tags
-  width: 970px;
 }
 
 div.navlogo {

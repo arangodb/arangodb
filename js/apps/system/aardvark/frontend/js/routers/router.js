@@ -454,7 +454,6 @@
       var roundDiv = parseInt(divider, 10);
       var newWidth = roundDiv*spanWidth -2;
       var marginWidth = ((containerWidth+30) - newWidth)/2;
-      this.footerView.handleResize(marginWidth);
       $('#content').width(newWidth)
       .css('margin-left', marginWidth)
       .css('margin-right', marginWidth);
