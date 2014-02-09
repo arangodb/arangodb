@@ -1,56 +1,122 @@
-.dropdown-menu li > a:hover, .dropdown-menu li > a:focus, .dropdown-submenu:hover > a {
-  background-image:none;
-  background-color: #8AA051 !important;
-}
-
-.navbar .nav > .active > a, .navbar .nav > .active > a:hover, .navbar .nav > .active > a:focus {
-  background-color: #8AA051 !important;
-  color: white !important;
-  box-shadow: 0 0px 0px rgba(0, 0, 0, 0.0) inset !important;
-}
-.navbar .nav > li > a:focus {
-  background-color: #333232 !important;
-}
-
-.navbar .nav a.tab {
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.navbar .nav > li > a:hover {
-  background-color: #8AA051 !important;
-  color: white !important
-}
-
-.arango-nav .dropdown-toggle, .arango-nav .dropdown-toggle:hover, .arango-nav .dropdown:hover, .arango-nav .dropdown:active {
-  background-color: rgba(0, 0, 0, 0) !important;
-  color: white !important;
-  margin-bottom: -8px !important;
-}
-
-body, input, textarea, .page-title span, .pingback a.url {
-  /*font-family: "Helvetica",sans-serif;*/
-  font-family: 'Open Sans', sans-serif !important;
-  font-weight: 400;
-}
-
-.arango-top-nav {
-  background-color: #333232;
-}
-
-.arango-nav {
+nav.navbar {
+  position: fixed;
+  width: 100%;
+  left: 0px;
+  right: 0px;
+  top: 0px;
   height: 34px;
-  min-height: 34px;
-  background-color: #333232;
+  margin-bottom: 3px;
+  background-color: $c_nav_bg;
+  color: $c_white;
+  z-index: 1000;
 }
 
-.arango-logo {
-  height: 34px;
-  padding: 0 !important;
+div.navcontainer {
+  margin: 0px auto;
+  // TODO: @media tags
+  width: 970px;
 }
 
-.applications-menu {
+div.navlogo {
+  @extend %pull-left;
+}
+
+div.navmenu {
+  @extend %pull-right;
+}
+
+ul.navlist {
+  list-style: none;
+  li {
+    @extend %pull-left;
+    margin-left: 1px;
+  }
+  > li.active,
+  li.dropdown-item:hover,
+  > li:hover {
+    background-color: $c_positive;
+  }
+}
+
+a.tab {
+  padding: {
+    top: 7px;
+    left: 10px;
+    bottom: 10px;
+    right: 10px;
+  }
+  color: $c_white;
   display: block;
+}
+
+ul.link-dropdown-menu {
+  @extend %pull-left;
+  position: absolute;
+  top: 80%;
+  right: 0px;
+  z-index: 1000;
+  display: none;
+  padding: 5px 0px;
+  margin: 2px 0px 0px;
+  list-style: none;
+  background-color: $c_white;
+  border: {
+    style: solid;
+    color: rgba(0, 0, 0, 0.2);
+    width: 1px;
+  }
+  @include border-radius(6px);
+
+  li {
+    line-height: 20px;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  li.dropdown-header {
+    font: {
+      weight: bold;
+      size: 11px;
+    }
+    color: $c_dark_grey;
+    padding: 0px 20px;
+    text-transform: uppercase;
+  }
+
+  li.divider {
+    background-color: $c_grey;
+    height: 1px;
+    margin: 10px 1px;
+  }
+
+  a {
+    color: $c_nav_bg;
+    padding: 0px 20px;
+  }
+}
+
+
+.link-dropdown-menu:before {
+  position: absolute;
+  top: -7px;
+  right: 7px;
+  display: inline-block;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #ccc;
+  border-left: 7px solid transparent;
+  border-bottom-color: rgba(0, 0, 0, 0.2);
+  content: '';
+}
+
+.link-dropdown-menu:after {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  display: inline-block;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #ffffff;
+  border-left: 6px solid transparent;
+  content: '';
 }
 
 #arangoCollectionSelect {
