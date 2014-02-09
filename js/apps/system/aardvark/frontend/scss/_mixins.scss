@@ -10,3 +10,16 @@
   -webkit-border-radius: $r;
   border-radius: $r;
 }
+
+@mixin border-triangle($width, $color) {
+  position: absolute;
+  border: {
+    width: $width;
+    style: solid;
+    color: $c_transp;
+    top: none;
+    bottom-color: $color;
+  }
+  display: inline-block;
+  content: '';
+}

@@ -62,7 +62,7 @@ ul.link-dropdown-menu {
   background-color: $c_white;
   border: {
     style: solid;
-    color: rgba(0, 0, 0, 0.2);
+    color: $c_semi_transp;
     width: 1px;
   }
   @include border-radius(6px);
@@ -95,28 +95,17 @@ ul.link-dropdown-menu {
   }
 }
 
-
 .link-dropdown-menu:before {
   position: absolute;
   top: -7px;
   right: 7px;
-  display: inline-block;
-  border-right: 7px solid transparent;
-  border-bottom: 7px solid #ccc;
-  border-left: 7px solid transparent;
-  border-bottom-color: rgba(0, 0, 0, 0.2);
-  content: '';
+  @include border-triangle(7px, $c_semi_transp); 
 }
 
 .link-dropdown-menu:after {
-  position: absolute;
   top: -6px;
   right: 8px;
-  display: inline-block;
-  border-right: 6px solid transparent;
-  border-bottom: 6px solid #ffffff;
-  border-left: 6px solid transparent;
-  content: '';
+  @include border-triangle(7px, $c_white);
 }
 
 #arangoCollectionSelect {
