@@ -829,7 +829,6 @@ function require (path) {
     var module = this.createModule(description, 'package', pkg);
 
     if (module !== null) {
-      module._modulePath = description.mainPath;
       parent.defineModule(name, module);
     }
 
@@ -908,11 +907,20 @@ function require (path) {
     var description = this._package.loadPackageFile(path);
 
     if (description !== null) {
-      module = this.createModule(description, 'module', this._package);
+      if (description.type === "js") {
+        module = this.createModule(description, 'module', this._package);
 
-      if (module !== null) {
-        this._package.defineModule(path, module);
-        return module;
+        if (module !== null) {
+          this._package.defineModule(path, module);
+          return module;
+        }
+      }
+      else if (description.type === "json") {
+        return JSON.parse(description.content);
+      }
+      else {
+        throw new Error("unknown module type '" + description.type + "' for file '"
+                      + description.path + "'");
       }
     }
 
@@ -1111,24 +1119,39 @@ function require (path) {
     }
 
     n = p + main + ".js";
+
     if (fs.exists(n)) {
       return { name: main,
                path: 'file://' + n,
-               content: fs.read(n) };
+               content: fs.read(n),
+               type: "js" };
     }
     
     n = p + main + "/index.js";
+
     if (fs.exists(n)) {
       return { name: main,
                path: 'file://' + n,
-               content: fs.read(n) };
+               content: fs.read(n),
+               type: "js" };
     }
     
     n = p + main;
+
     if (fs.exists(n)) {
+      var type = "unknown";
+
+      if (/\.js$/.test(main)) {
+        type = "js";
+      }
+      else if (/\.json$/.test(main)) {
+        type = "json";
+      }
+      
       return { name: main,
                path: 'file://' + n,
-               content: fs.read(n) };
+               content: fs.read(n),
+               type: type };
     }
     
     return null;
