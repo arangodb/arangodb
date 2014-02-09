@@ -9,69 +9,70 @@
 "use strict";
 
 buster.testCase("sinon.fakeServerWithClock", {
-    setUp: function () {
-        this.server = sinon.fakeServerWithClock.create();
-    },
+    "without pre-existing fake clock": {
+        setUp: function () {
+            this.server = sinon.fakeServerWithClock.create();
+        },
 
-    tearDown: function () {
-        this.server.restore();
-        if (this.clock) { this.clock.restore(); }
-    },
+        tearDown: function () {
+            this.server.restore();
+            if (this.clock) { this.clock.restore(); }
+        },
 
-    "calls 'super' when adding requests": sinon.test(function () {
-        var addRequest = this.stub(sinon.fakeServer, "addRequest");
-        var xhr = {};
-        this.server.addRequest(xhr);
+        "calls 'super' when adding requests": sinon.test(function () {
+            var addRequest = this.stub(sinon.fakeServer, "addRequest");
+            var xhr = {};
+            this.server.addRequest(xhr);
 
-        assert(addRequest.calledWith(xhr));
-        assert(addRequest.calledOn(this.server));
-    }),
+            assert(addRequest.calledWith(xhr));
+            assert(addRequest.calledOn(this.server));
+        }),
 
-    "sets reference to clock when adding async request": function () {
-        this.server.addRequest({ async: true });
+        "sets reference to clock when adding async request": function () {
+            this.server.addRequest({ async: true });
 
-        assert.isObject(this.server.clock);
-        assert.isFunction(this.server.clock.tick);
-    },
+            assert.isObject(this.server.clock);
+            assert.isFunction(this.server.clock.tick);
+        },
 
-    "sets longest timeout from setTimeout": function () {
-        this.server.addRequest({ async: true });
+        "sets longest timeout from setTimeout": function () {
+            this.server.addRequest({ async: true });
 
-        setTimeout(function () {}, 12);
-        setTimeout(function () {}, 29);
-        setInterval(function () {}, 12);
-        setTimeout(function () {}, 27);
+            setTimeout(function () {}, 12);
+            setTimeout(function () {}, 29);
+            setInterval(function () {}, 12);
+            setTimeout(function () {}, 27);
 
-        assert.equals(this.server.longestTimeout, 29);
-    },
+            assert.equals(this.server.longestTimeout, 29);
+        },
 
-    "sets longest timeout from setInterval": function () {
-        this.server.addRequest({ async: true });
+        "sets longest timeout from setInterval": function () {
+            this.server.addRequest({ async: true });
 
-        setTimeout(function () {}, 12);
-        setTimeout(function () {}, 29);
-        setInterval(function () {}, 132);
-        setTimeout(function () {}, 27);
+            setTimeout(function () {}, 12);
+            setTimeout(function () {}, 29);
+            setInterval(function () {}, 132);
+            setTimeout(function () {}, 27);
 
-        assert.equals(this.server.longestTimeout, 132);
-    },
+            assert.equals(this.server.longestTimeout, 132);
+        },
 
-    "resets clock": function () {
-        this.server.addRequest({ async: true });
+        "resets clock": function () {
+            this.server.addRequest({ async: true });
 
-        this.server.respond("");
+            this.server.respond("");
+            assert.same(setTimeout, sinon.timers.setTimeout);
+        },
 
-        assert.same(setTimeout, sinon.timers.setTimeout);
-    },
+        "does not reset clock second time": function () {
+            this.server.addRequest({ async: true });
+            this.server.respond("");
+            this.clock = sinon.useFakeTimers();
+            this.server.addRequest({ async: true });
+            this.server.respond("");
 
-    "does not reset clock second time": function () {
-        this.server.addRequest({ async: true });
-        this.server.respond("");
-        this.clock = sinon.useFakeTimers();
-        this.server.addRequest({ async: true });
-        this.server.respond("");
-
-        refute.same(setTimeout, sinon.timers.setTimeout);
+            refute.same(setTimeout, sinon.timers.setTimeout);
+        }
     },
 
     "existing clock": {

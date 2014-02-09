@@ -15,8 +15,9 @@
 "use strict";
 
 (function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
+    var commonJSModule = typeof module !== 'undefined' && module.exports;
     var push = [].push;
+    var match;
 
     if (!sinon && commonJSModule) {
         sinon = require("../sinon");
@@ -24,6 +25,12 @@
 
     if (!sinon) {
         return;
+    }
+
+    match = sinon.match;
+
+    if (!match && commonJSModule) {
+        match = require("./match");
     }
 
     function mock(object) {
@@ -206,6 +213,14 @@
             return expectation.callCount == expectation.maxCalls;
         }
 
+        function verifyMatcher(possibleMatcher, arg){
+            if (match && match.isMatcher(possibleMatcher)) {
+                return possibleMatcher.test(arg);
+            } else {
+                return true;
+            }
+        }
+
         return {
             minCalls: 1,
             maxCalls: 1,
@@ -315,6 +330,12 @@
                 }
 
                 for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
+
+                    if (!verifyMatcher(this.expectedArguments[i],args[i])) {
+                        sinon.expectation.fail(this.method + " received wrong arguments " + sinon.format(args) +
+                            ", didn't match " + this.expectedArguments.toString());
+                    }
+
                     if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
                         sinon.expectation.fail(this.method + " received wrong arguments " + sinon.format(args) +
                             ", expected " + sinon.format(this.expectedArguments));
@@ -347,6 +368,10 @@
                 }
 
                 for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
+                    if (!verifyMatcher(this.expectedArguments[i],args[i])) {
+                        return false;
+                    }
+
                     if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
                         return false;
                     }

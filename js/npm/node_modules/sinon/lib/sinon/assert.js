@@ -15,7 +15,7 @@
 "use strict";
 
 (function (sinon, global) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
+    var commonJSModule = typeof module !== "undefined" && module.exports;
     var slice = Array.prototype.slice;
     var assert;
 
@@ -83,7 +83,7 @@
     function exposedName(prefix, prop) {
         return !prefix || /^fail/.test(prop) ? prop :
             prefix + prop.slice(0, 1).toUpperCase() + prop.slice(1);
-    };
+    }
 
     assert = {
         failException: "AssertError",
