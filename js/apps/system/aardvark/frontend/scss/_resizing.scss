@@ -1,0 +1,38 @@
+div.resizecontainer {
+  margin: 0px auto;
+}
+
+@media (max-width: 798px) {
+  #arangoCollectionUl {
+    display: none;
+  }
+  #collectionsDropdown ul {
+    width: auto !important;
+  }
+  #arangoCollectionSelect {
+    display: inline-block;
+  }
+}
+
+@media (min-width: 799px) and (max-width: 1041px) {
+  #arangoCollectionUl a {
+    font-size: 11px;
+    padding: 7px 5px 10px;
+  }
+}
+
+
+@media (min-width: 1042px) and (max-width: 1284px) {
+  #arangoCollectionUl a {
+    font-size: 13px;
+  }
+}
+
+@for $i from 0 through 10 {
+  $min: 241px + $i * 243;
+  @media (min-width: $min + 72) and (max-width: $min + 243 + 71) {
+    div.resizecontainer {
+      width: $min;
+    }
+  }
+}

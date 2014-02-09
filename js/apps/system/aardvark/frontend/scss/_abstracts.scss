@@ -10,6 +10,16 @@
   cursor: pointer;
 }
 
+%fixedbar {
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  width: 100%;
+  background-color: $c_nav_bg;
+  color: $c_white;
+  z-index: 1000;
+}
+
 %negative {
   background-color: $c_negative;
   &:hover {

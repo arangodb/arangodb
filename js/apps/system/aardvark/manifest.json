@@ -111,7 +111,6 @@
         "frontend/css/layout.css",
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
-        "frontend/css/footerView.css",
         "frontend/css/shellView.css",
         "frontend/css/queryView.css",
         "frontend/css/dashboardView.css",
