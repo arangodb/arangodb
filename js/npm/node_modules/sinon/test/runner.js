@@ -8,7 +8,7 @@
 
         module.exports = buster.extend(buster, require("buster-test"), {
             assertions: require("buster-assertions"),
-            format: require("buster-format"),
+            format: require("formatio"),
             eventedLogger: require("buster-evented-logger")
         });
     }

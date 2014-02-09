@@ -16,6 +16,10 @@
                             "code": "400"
                         },
                         {
+                            "reason": "If the transaction specification contains an unknown collection, the server will respond with <em>HTTP 404</em>. ",
+                            "code": "404"
+                        },
+                        {
                             "reason": "Exceptions thrown by users will make the server respond with a return code of  <em>HTTP 500</em>  ",
                             "code": "500"
                         }
