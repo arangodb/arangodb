@@ -1,3 +1,13 @@
+v1.4.10 (XXXX-XX-XX)
+--------------------
+
+* added node.js "events" and "stream"
+
+* updated npm packages
+
+* added loading of .json file
+
+
 v1.4.9 (2014-02-07)
 -------------------
 
