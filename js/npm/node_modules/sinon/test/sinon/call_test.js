@@ -836,7 +836,7 @@ if (typeof require === "function" && typeof module === "object") {
             setUp: function () {
                 this.CustomConstructor = function () {};
                 this.customPrototype = this.CustomConstructor.prototype;
-                this.StubConstructor = sinon.spy(this, "CustomConstructor");
+                sinon.spy(this, "CustomConstructor");
             },
 
             "creates original object": function () {
@@ -1211,7 +1211,7 @@ if (typeof require === "function" && typeof module === "object") {
                 assert.equals(spy.printf('%c'), '4 times');
             },
             "calls" : {
-                oneLine : function () {
+                "oneLine" : function () {
                     function test(arg, expected) {
                         var spy = sinon.spy();
                         spy(arg);
@@ -1229,7 +1229,7 @@ if (typeof require === "function" && typeof module === "object") {
                     test(['a'], 'spy(["a"])');
                     test({ a : 'a' }, 'spy({ a: "a" })');
                 },
-                multiline : function () {
+                "multiline" : function () {
                     var str = 'spy\ntest';
                     var spy = sinon.spy();
 
