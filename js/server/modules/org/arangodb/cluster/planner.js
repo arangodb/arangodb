@@ -49,7 +49,10 @@
 //                            the endpoint. Further optional properties
 //                            are "avoidPorts" which is an object in which
 //                            all port numbers that should not be used
-//                            are bound to "true". 
+//                            are bound to "true", and "arangodExtraArgs",
+//                            which is a list of additional command line
+//                            arguments which will be given to DBservers
+//                            and coordinators started by this dispatcher.
 //                            If `.dispatchers` is empty (no property), then an
 //                            entry for the local arangod itself is
 //                            automatically added.
@@ -133,15 +136,18 @@ var PlannerDistributedDefaults = {
   "coordinatorPorts"        : [8530],
   "dispatchers"             : { "machine1": 
                                   { "endpoint": "tcp://machine1:8529",
-                                    "avoidPorts": {} },
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []},
                                 "machine2":
                                   { "id": "machine2", 
                                     "endpoint": "tcp://machine2:8529",
-                                    "avoidPorts": {} },
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []},
                                 "machine3":
                                   { "id": "machine3", 
                                     "endpoint": "tcp://machine3:8529",
-                                    "avoidPorts": {} } }
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []} }
 };
 
 // Some helpers using underscore:
@@ -289,6 +295,9 @@ Planner.prototype.makePlan = function() {
       dispatchers[id].id = id;
       if (!dispatchers[id].hasOwnProperty("avoidPorts")) {
         dispatchers[id].avoidPorts = {};
+      }
+      if (!dispatchers[id].hasOwnProperty("arangodExtraArgs")) {
+        dispatchers[id].arangodExtraArgs = [];
       }
     }
   }

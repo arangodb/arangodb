@@ -259,10 +259,12 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     body = JSON.parse(res.body);
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
-    args = ["--cluster.my-id", id, 
-            "--cluster.agency-prefix", cmd.agency.agencyPrefix,
-            "--cluster.agency-endpoint", cmd.agency.endpoints[0],
-            "--server.endpoint"];
+    args = [];
+    args.concat(dispatchers[cmd.dispatcher].arangodExtraArgs);
+    args.concat(["--cluster.my-id", id, 
+                 "--cluster.agency-prefix", cmd.agency.agencyPrefix,
+                 "--cluster.agency-endpoint", cmd.agency.endpoints[0],
+                 "--server.endpoint"]);
     if (cmd.onlyLocalhost) {
       args.push("tcp://127.0.0.1:"+port);
     }
