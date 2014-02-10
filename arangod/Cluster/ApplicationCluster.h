@@ -66,7 +66,8 @@ namespace triagens {
 
         ApplicationCluster (struct TRI_server_s*,
                             triagens::rest::ApplicationDispatcher*,
-                            triagens::arango::ApplicationV8*);
+                            triagens::arango::ApplicationV8*,
+                            char* executablePath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -276,6 +277,11 @@ namespace triagens {
 
          bool _enableCluster;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our own executable name
+////////////////////////////////////////////////////////////////////////////////
+
+          std::string _myExecutablePath;
     };
   }
 }
