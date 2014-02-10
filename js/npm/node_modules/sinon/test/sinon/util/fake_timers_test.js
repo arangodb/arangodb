@@ -14,6 +14,8 @@ if (typeof require == "function" && typeof module == "object") {
     sinon.extend(sinon, require("../../../lib/sinon/util/fake_timers"));
 }
 
+var globalDate = Date;
+
 buster.testCase("sinon.clock", {
     setUp: function () {
         this.global = typeof global != "undefined" ? global : window;
@@ -92,6 +94,73 @@ buster.testCase("sinon.clock", {
         }
     },
 
+    "setImmediate": {
+        setUp: function () {
+            this.clock = sinon.clock.create();
+        },
+
+        "returns numeric id": function () {
+            var result = this.clock.setImmediate(function () { });
+
+            assert.isNumber(result);
+        },
+
+        "calls the given callback immediately": function () {
+            var stub = sinon.stub.create();
+
+            this.clock.setImmediate(stub);
+            this.clock.tick(0);
+
+            assert(stub.called);
+        },
+
+        "throws if no arguments": function () {
+            var clock = this.clock;
+
+            assert.exception(function () {
+                clock.setImmediate();
+            });
+        },
+
+        "manages separate timers per clock instance": function () {
+            var clock1 = sinon.clock.create();
+            var clock2 = sinon.clock.create();
+            var stubs = [sinon.stub.create(), sinon.stub.create()];
+
+            clock1.setImmediate(stubs[0]);
+            clock2.setImmediate(stubs[1]);
+            clock2.tick(0);
+
+            assert.isFalse(stubs[0].called);
+            assert(stubs[1].called);
+        },
+
+        "passes extra parameters through to the callback": function () {
+            var stub = sinon.stub.create();
+
+            this.clock.setImmediate(stub, 'value1', 2);
+            this.clock.tick(1);
+
+            assert(stub.calledWithExactly('value1', 2));
+        }
+    },
+
+    "clearImmediate": {
+        setUp: function () {
+            this.clock = sinon.clock.create();
+        },
+
+        "removes immediate callbacks": function () {
+            var callback = sinon.stub.create();
+
+            var id = this.clock.setImmediate(callback);
+            this.clock.clearImmediate(id);
+            this.clock.tick(1);
+
+            assert.isFalse(callback.called);
+        }
+    },
+
     "tick": {
         setUp: function () {
             this.clock = sinon.useFakeTimers(0);
@@ -150,6 +219,27 @@ buster.testCase("sinon.clock", {
             assert(spies[1].called);
             assert(spies[2].called);
             assert(spies[3].called);
+        },
+
+        "triggers multiple simultaneous timers with zero callAt": function () {
+            var test = this;
+            var spies = [
+                sinon.spy(function() {
+                    test.clock.setTimeout(spies[1], 0)
+                }),
+                sinon.spy(),
+                sinon.spy()
+            ];
+
+            // First spy calls another setTimeout with delay=0
+            this.clock.setTimeout(spies[0], 0);
+            this.clock.setTimeout(spies[2], 10);
+
+            this.clock.tick(10);
+
+            assert(spies[0].called);
+            assert(spies[1].called);
+            assert(spies[2].called);
         },
 
         "waits after setTimeout was called": function () {
@@ -437,7 +527,7 @@ buster.testCase("sinon.clock", {
         }
     },
 
-    "terval": {
+    "setInterval": {
         setUp: function () {
             this.clock = sinon.clock.create();
         },
@@ -500,7 +590,7 @@ buster.testCase("sinon.clock", {
 
     "date": {
         setUp: function () {
-            this.now = new Date().getTime() - 3000;
+            this.now = new globalDate().getTime() - 3000;
             this.clock = sinon.clock.create(this.now);
             this.Date = this.global.Date;
         },
@@ -689,7 +779,6 @@ buster.testCase("sinon.clock", {
             assert.same(this.clock.Date.prototype.toUTCString, Date.prototype.toUTCString);
         },
 
-
         "toSource": {
             requiresSupportFor: { "Date.toSource": !!Date.toSource },
 
@@ -736,7 +825,7 @@ buster.testCase("sinon.clock", {
             assert.isFunction(this.clock.tick);
         },
 
-        "haves clock property": function () {
+        "has clock property": function () {
             this.clock = sinon.useFakeTimers();
 
             assert.same(setTimeout.clock, this.clock);
@@ -841,27 +930,30 @@ buster.testCase("sinon.clock", {
             assert.same(clearInterval, sinon.timers.clearInterval);
         },
 
-        "//deletes global property if it originally did not have own property": 
-        "Not quite sure why this test was initially commented out - TODO: Fix"
-        /*function () {
-            // remove this properties from the global object ("hasOwnProperty" false)
-            // delete this.global.clearTimeout;
-            // delete this.global.setInterval;
-            // // set these properties to the global object ("hasOwnProperty" true)
-            // this.global.clearInterval = this.global.clearInterval;
-            // this.global.setTimeout = this.global.clearInterval;
+        "deletes global property on restore if it was inherited onto the global object": function () {
+            // Give the global object an inherited 'tick' method
+            delete this.global.tick;
+            this.global.__proto__.tick = function() { };
 
-            // this.clock = sinon.useFakeTimers();
-            // this.clock.restore();
+            this.clock = sinon.useFakeTimers('tick');
+            assert.isTrue(this.global.hasOwnProperty("tick"));
+            this.clock.restore();
 
-            // // these properties should be removed from the global object directly.
-            // assert.isFalse(this.global.hasOwnProperty("clearTimeout"));
-            // assert.isFalse(this.global.hasOwnProperty("setInterval"));
+            assert.isFalse(this.global.hasOwnProperty("tick"));
+            delete this.global.__proto__.tick;
+        },
 
-            // // these properties should be added back into the global object directly.
-            // assert(this.global.hasOwnProperty("clearInterval"));
-            // assert(this.global.hasOwnProperty("setTimeout"));
-        }*/,
+        "restores global property on restore if it is present on the global object itself": function () {
+            // Directly give the global object a tick method
+            this.global.tick = function () { };
+
+            this.clock = sinon.useFakeTimers('tick');
+            assert.isTrue(this.global.hasOwnProperty("tick"));
+            this.clock.restore();
+
+            assert.isTrue(this.global.hasOwnProperty("tick"));
+            delete this.global.tick;
+        },
 
         "fakes Date constructor": function () {
             this.clock = sinon.useFakeTimers(0);
@@ -892,11 +984,19 @@ buster.testCase("sinon.clock", {
             refute.defined(Date.now);
         },
 
+        "mirrors custom Date properties": function () {
+            var f = function () { };
+            this.global.Date.format = f;
+            sinon.useFakeTimers();
+
+            assert.equals(Date.format, f);
+        },
+
         "restores Date constructor": function () {
             this.clock = sinon.useFakeTimers(0);
             this.clock.restore();
 
-            assert.same(Date, sinon.timers.Date);
+            assert.same(globalDate, sinon.timers.Date);
         },
 
         "fakes provided methods": function () {

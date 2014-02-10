@@ -8,7 +8,7 @@ Introduction to Javascript Modules{#JSModulesIntro}
 ===================================================
 
 The ArangoDB uses a <a href="http://wiki.commonjs.org/wiki">CommonJS</a>
-compatible module and package concept. You can use the function @FN{require} in
+compatible module and package concept. You can use the function `require` in
 order to load a module or package. It returns the exported variables and
 functions of the module or package.
 
@@ -39,8 +39,7 @@ ArangoDB Specific Modules{#JSModulesArangoDB}
 ---------------------------------------------
 
 A lot of the modules, however, are ArangoDB specific. These are described in the
-following chapters. You can use the command-line option
-@CO{startup.modules-path} to specify the location of the JavaScript files.
+following chapters.
 
 Node Modules{#JSModulesNode}
 ----------------------------

@@ -41,13 +41,13 @@ if (typeof sinon == "undefined") {
     };
 
     sinon.EventTarget = {
-        addEventListener: function addEventListener(event, listener, useCapture) {
+        addEventListener: function addEventListener(event, listener) {
             this.eventListeners = this.eventListeners || {};
             this.eventListeners[event] = this.eventListeners[event] || [];
             push.call(this.eventListeners[event], listener);
         },
 
-        removeEventListener: function removeEventListener(event, listener, useCapture) {
+        removeEventListener: function removeEventListener(event, listener) {
             var listeners = this.eventListeners && this.eventListeners[event] || [];
 
             for (var i = 0, l = listeners.length; i < l; ++i) {
