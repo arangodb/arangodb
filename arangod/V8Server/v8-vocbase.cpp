@@ -713,19 +713,31 @@ static void ReleaseCollection (TRI_vocbase_col_t const* collection) {
 /// @brief returns the index representation
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
+static v8::Handle<v8::Value> IndexRep (char const* collectionName, 
+                                       TRI_json_t const* idx) {
   v8::HandleScope scope;
 
-  assert(idx);
-  assert(col);
+  assert(idx != 0);
 
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
   string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
-  const string id = string(col->_info._name) + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  const string id = string(collectionName) + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
   rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), id.size()));
 
   return scope.Close(rep);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the index representation
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> IndexRep (TRI_collection_t const* col, 
+                                       TRI_json_t const* idx) {
+  v8::HandleScope scope;
+
+  assert(col != 0);
+  return scope.Close(IndexRep(col->_info._name, idx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +812,102 @@ static int AttributeNamesFromArguments (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static bool ComparePathIndexCoordinator (TRI_json_t const* lhs,
+                                         TRI_json_t const* rhs) {
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "type"),
+                               TRI_LookupArrayJson(rhs, "type"))) {
+    return false;
+  }
+  
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "unique"),
+                               TRI_LookupArrayJson(rhs, "unique"))) {
+    return false;
+  }
+  
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
+                               TRI_LookupArrayJson(rhs, "fields"))) {
+    return false;
+  }
+  
+  return true;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure an index
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsurePathIndexCoordinator (TRI_vocbase_col_t const* col,
+                                                         bool unique,
+                                                         bool create,
+                                                         TRI_idx_type_e type,
+                                                         TRI_vector_pointer_t const* fields) {
+  v8::HandleScope scope;
+
+  string const databaseName(col->_dbName);
+  string const cid = StringUtils::itoa(col->_cid);
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  
+  if (json == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+    
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+ 
+  TRI_json_t* flds = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (flds == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  TRI_json_t* resultJson = 0; 
+
+  for (size_t i = 0; i < fields->_length; ++i) {
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) fields->_buffer[i]));
+  }
+  
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
+
+  string errorMsg;
+  int myerrno = ci->ensureIndexCoordinator(databaseName, 
+                                           cid, 
+                                           json,
+                                           create,
+                                           &ComparePathIndexCoordinator, 
+                                           resultJson,
+                                           errorMsg, 
+                                           360.0);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
+  if (myerrno != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // TODO: protect against races on _name
+  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(index);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure a hash or skip-list index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -826,18 +934,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   }
 
   TRI_vocbase_t* vocbase = col->_vocbase;
+  assert(vocbase != 0);
   
-  CollectionNameResolver resolver(vocbase);
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-
   // .............................................................................
   // Create a list of paths, these will be used to create a list of shapes
   // which will be used by the hash index.
@@ -847,7 +945,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
 
   string errorString;
-  res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
@@ -859,7 +957,31 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> ret = EnsurePathIndexCoordinator(col, unique, create, type, &attributes);
+
+    TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
+    TRI_DestroyVectorPointer(&attributes);
+
+    return scope.Close(ret);
+  }
+#endif  
   
+  CollectionNameResolver resolver(vocbase);
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
+    TRI_DestroyVectorPointer(&attributes);
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+
   // .............................................................................
   // Actually create the index here
   // .............................................................................
@@ -2290,6 +2412,9 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   int myerrno = ci->createCollectionCoordinator( databaseName, cid, 
                                                  numberOfShards, json,
                                                  errorMsg, 240.0 );
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
@@ -5477,8 +5602,6 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
-
-
 
   return scope.Close(v8::True());
 }

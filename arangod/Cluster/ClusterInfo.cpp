@@ -32,6 +32,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/vector.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -1110,7 +1111,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
-      if (res._values.size() == numberOfShards) {
+      if (res._values.size() == (size_t) numberOfShards) {
         map<string, AgencyCommResultEntry>::iterator it;
         string tmpMsg = "";
         bool tmpHaveError = false;
@@ -1148,7 +1149,6 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
   }
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop collection in coordinator, the return value is an ArangoDB
@@ -1353,6 +1353,194 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
   }
 
   return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure an index in coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::ensureIndexCoordinator (string const& databaseName, 
+                                         string const& collectionID,
+                                         TRI_json_t const* json,
+                                         bool create,
+                                         bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+                                         TRI_json_t*& resultJson,
+                                         string& errorMsg, 
+                                         double timeout) {
+  AgencyComm ac;
+  
+  const double realTimeout = getTimeout(timeout);
+  const double endTime = TRI_microtime() + realTimeout;
+  const double interval = getPollInterval();
+
+  resultJson = 0;
+  TRI_json_t* newIndex = 0;
+  int numberOfShards = 0;
+
+  {
+    TRI_json_t* collectionJson = 0;
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+
+    {
+      // check if a collection with the same name is already planned
+      loadPlannedCollections(false);
+
+      READ_LOCKER(_lock);
+
+      TRI_shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+
+      if (c->empty()) {
+        return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
+      }
+
+      TRI_json_t const* indexes = c->getIndexes();
+
+      if (TRI_IsListJson(indexes)) {
+        for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+          TRI_json_t const* other = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+          bool isSame = compare(json, other);
+
+          if (isSame) {
+            // found an existing index...
+            resultJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other);
+            TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+            return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+        }
+      }
+
+      // no existing index found. 
+      if (! create) {
+        assert(resultJson == 0);
+        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+
+
+      // now create a new index
+      numberOfShards = c->numberOfShards();
+      collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
+    }
+
+    if (collectionJson == 0) {
+      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+    }
+    
+    TRI_json_t* idx = TRI_LookupArrayJson(collectionJson, "indexes");
+    if (idx == 0) {
+      idx = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+      if (idx == 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+        return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+      }
+
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", idx);
+      idx = TRI_LookupArrayJson(collectionJson, "indexes");
+    }
+
+    if (idx == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+    }
+    
+    newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+    if (newIndex == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+    }
+
+    // inject a new index id
+    uint64_t id = uniqid();
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         newIndex, 
+                         "id", 
+                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, triagens::basics::StringUtils::itoa(id).c_str()));
+        
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
+
+    AgencyCommResult result = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, 
+                                          collectionJson, 
+                                          0.0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+
+    if (! result.successful()) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+      // TODO
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
+                          errorMsg);
+    }
+        
+    // wipe cache
+    flush();
+  }
+
+  assert(numberOfShards > 0);
+
+  // Now wait for the index to appear and be complete:
+  AgencyCommResult res = ac.getValues("Current/Version", false);
+  if (! res.successful()) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+                       errorMsg);
+  }
+  uint64_t index = res._index;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endTime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where + "/", false)) {
+      if (res._values.size() == (size_t) numberOfShards) {
+        map<string, AgencyCommResultEntry>::iterator it;
+        string tmpMsg = "";
+        bool tmpHaveError = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
+            tmpHaveError = true;
+            tmpMsg += " shardID:"+it->first+":";
+            TRI_json_t const* errorMessage 
+                  = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(errorMessage)) {
+              tmpMsg += string(errorMessage->_value._string.data,
+                               errorMessage->_value._string.length-1);
+            }
+            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            if (TRI_IsNumberJson(errorNum)) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
+                          errorNum->_value._number));
+              tmpMsg += ")";
+            }
+          }
+        }
+        if (tmpHaveError) {
+          errorMsg = "Error in creation of index: " + tmpMsg;
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+          // TODO
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+        }
+    
+        resultJson = newIndex;
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+
+        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      }
+    }
+    
+    res = ac.watchValue("Current/Version", index, interval, false);
+    index = res._index;
+  }
+          
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+          
+  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

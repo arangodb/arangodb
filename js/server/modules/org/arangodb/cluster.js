@@ -142,6 +142,21 @@ function getShardMap (plannedCollections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the indexes of a collection as a map
+////////////////////////////////////////////////////////////////////////////////
+
+function getIndexMap (shard) {
+  var indexes = { }, i;
+  var idx = arangodb.db._collection(shard).getIndexes();
+
+  for (i = 0; i < idx.length; ++i) {
+    indexes[idx.id] = idx[i];
+  }
+
+  return indexes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an action under a write-lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -502,6 +517,24 @@ function createLocalCollections (plannedCollections) {
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
                                     [ database, shard, payload ]);
+                      }
+                    }
+
+                    if (payload.hasOwnProperty("indexes")) {
+                      var indexes = getIndexMap(shard);
+                      var idx;
+
+                      for (idx in payload.indexes) {
+                        if (payload.indexes.hasOwnProperty(idx)) {
+                          if (! indexes.hasOwnProperty(payload.indexes[idx].id)) {
+                            console.info("creating index '%s/%s': %s", 
+                                         database, 
+                                         shard,
+                                         JSON.stringify(payload.indexes[idx]));
+    //index = collection.ensureUniqueConstraint.apply(collection, fields);
+    //index = collection.ensureHashIndex.apply(collection, fields);
+                          }
+                        }
                       }
                     }
                   }
