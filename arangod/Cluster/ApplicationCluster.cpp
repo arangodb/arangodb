@@ -171,10 +171,17 @@ bool ApplicationCluster::start () {
   int err = 0;
   string cwd = triagens::basics::FileUtils::currentDirectory(&err);
   if (0 == err) {
-    char *abs = TRI_GetAbsolutePath (_myExecutablePath.c_str(), cwd.c_str());
-    ServerState::instance()->setExecutablePath(string(abs));
+    char *abs = TRI_GetAbsolutePath(_myExecutablePath.c_str(), cwd.c_str());
+    if (abs != 0) {
+      ServerState::instance()->setExecutablePath(string(abs));
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+    }
+
     abs = TRI_GetAbsolutePath (_server->_basePath, cwd.c_str());
-    ServerState::instance()->setBasePath(string(abs));
+    if (abs != 0) {
+      ServerState::instance()->setBasePath(string(abs));
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+    }
   }
   else {
     ServerState::instance()->setExecutablePath(_myExecutablePath);

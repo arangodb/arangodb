@@ -109,6 +109,39 @@ void TRI_InitIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_TypeNameIndex (TRI_idx_type_e type) {
+  switch (type) {
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+      return "primary";
+    case TRI_IDX_TYPE_GEO1_INDEX:
+      return "geo1";
+    case TRI_IDX_TYPE_GEO2_INDEX:
+      return "geo2";
+    case TRI_IDX_TYPE_HASH_INDEX:
+      return "hash";
+    case TRI_IDX_TYPE_EDGE_INDEX:
+      return "edge";
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return "fulltext";
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return "skiplist";
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      return "bitarray";
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return "cap";
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    default:
+      return "unknown";
+  }
+
+  assert(false);
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validate an index id
 ////////////////////////////////////////////////////////////////////////////////
 
