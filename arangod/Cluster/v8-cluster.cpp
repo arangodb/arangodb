@@ -1714,7 +1714,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
   TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
-  TRI_AddMethodVocbase(rt, "exePath", JS_ExecutablePathServerState);
+  TRI_AddMethodVocbase(rt, "executablePath", JS_ExecutablePathServerState);
   TRI_AddMethodVocbase(rt, "basePath", JS_BasePathServerState);
   TRI_AddMethodVocbase(rt, "initialised", JS_InitialisedServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);

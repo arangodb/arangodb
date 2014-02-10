@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
+/*global module, require, exports, ArangoServerState, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster kickstarting functionality using dispatchers
@@ -134,20 +134,30 @@ function sendToAgency (agencyURL, path, obj) {
 }
 
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
-  var agentDataDir = fs.join(cmd.dataPath, 
-                             "agent"+cmd.agencyPrefix+cmd.extPort);
+
+  print("Starting agent...");
+
+  // First find out our own data directory:
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var dataPath = fs.makeAbsolute(cmd.dataPath);
+  if (dataPath !== cmd.dataPath) {   // path was relative
+    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+  }
+
+  var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
   if (!isRelaunch) {
     if (fs.exists(agentDataDir)) {
       fs.removeDirectoryRecursive(agentDataDir,true);
     }
   }
+  var extEndpoint = getAddrPort(
+                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
+                                       cmd.extPort));
   var args = ["-data-dir", agentDataDir,
               "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
               "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:" 
                                                : "0.0.0.0:")+cmd.extPort,
-              "-addr", getAddrPort(
-                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
-                                       cmd.extPort)),
+              "-addr", extEndpoint,
               "-peer-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
                                                     : "0.0.0.0:")+cmd.intPort,
               "-peer-addr", getAddrPort(
@@ -162,13 +172,25 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     }
     args.push(getAddrPort(cmd.peers[0]));
   }
-  var pid = executeExternal(cmd.agentPath, args);
+  var agentPath = fs.makeAbsolute(cmd.agentPath);
+  if (agentPath !== cmd.agentPath) {
+    if (cmd.agentPath === "") {
+      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                       "..", "etcd" ));
+    }
+    else {
+      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                       "..", cmd.agentPath ));
+    }
+  }
+  var pid = executeExternal(agentPath, args);
   var res;
   while (true) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
-      return {"error":false, "isAgent": true, "pid": pid};
+      return {"error":false, "isAgent": true, "pid": pid, 
+              "endpoint": extEndpoint};
     }
   }
 };
@@ -189,6 +211,18 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
+
+  // First find out our own data directory to setup base for relative paths:
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var dataPath = fs.makeAbsolute(cmd.dataPath);
+  if (dataPath !== cmd.dataPath) {   // path was relative
+    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+  }
+  var logPath = fs.makeAbsolute(cmd.logPath);
+  if (logPath !== cmd.logPath) {    // path was relative
+    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+  }
+
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
   print("Downloading ",url+"Launchers/"+cmd.name);
@@ -199,12 +233,20 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
   var body = JSON.parse( res.body );
   var info = JSON.parse(body.node.value);
-  var id,ep,args,pids,port;
+  var id,ep,args,pids,port,endpoints,roles;
 
   print("Starting servers...");
   var i;
   var servers = info.DBservers.concat(info.Coordinators);
+  roles = [];
+  for (i = 0; i < info.DBservers.length; i++) {
+    roles.push("DBserver");
+  }
+  for (i = 0; i < info.Coordinators.length; i++) {
+    roles.push("Coordinator");
+  }
   pids = [];
+  endpoints = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
     print("Downloading ",url+"Target/MapIDToEndpoint/"+id);
@@ -228,14 +270,14 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       args.push("tcp://0.0.0.0:"+port);
     }
     args.push("--log.file");
-    var logfile = fs.join(cmd.dataPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
+    var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
     args.push(logfile);
     if (!isRelaunch) {
       if (fs.exists(logfile)) {
         fs.remove(logfile);
       }
     }
-    var datadir = fs.join(cmd.dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
+    var datadir = fs.join(dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
     args.push(datadir);
     if (!isRelaunch) {
       if (fs.exists(datadir)) {
@@ -243,19 +285,30 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       }
       fs.makeDirectory(datadir);
     }
-    pids.push(executeExternal(cmd.arangodPath, args));
+    var arangodPath = fs.makeAbsolute(cmd.arangodPath);
+    if (arangodPath !== cmd.arangodPath) {
+      if (cmd.arangodPath === "") {
+        arangodPath = ArangoServerState.executablePath();
+      }
+      else {
+        arangodPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                           "..", cmd.arangodPath ));
+      }
+    }
+    pids.push(executeExternal(arangodPath, args));
+    endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
-  return {"error": false, "pids": pids};
+  return {"error": false, "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
-  print("Killing agent ", run.pid);
+  print("Shutting down agent ", run.pid);
   killExternal(run.pid);
   return {"error": false};
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  print("Waiting for 10 seconds for servers before killing agency.");
+  print("Waiting for 10 seconds for servers before shutting down agency.");
   wait(10);
   return {"error": false};
 };
@@ -263,7 +316,7 @@ shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   for (i = 0;i < run.pids.length;i++) {
-    print("Killing ", run.pids[i]);
+    print("Shutting down ", run.pids[i]);
     killExternal(run.pids[i]);
   }
   return {"error": false};
