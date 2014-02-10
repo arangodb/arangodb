@@ -414,7 +414,7 @@ actions.defineHttp({
 /// @fn JSF_cluster_check_port_GET
 /// @brief allows to check whether a given port is usable
 ///
-/// @RESTHEADER{POST /_admin/kickstarter,produce a cluster startup plan}
+/// @RESTHEADER{POST /_admin/clusterCheckPort,produce a cluster startup plan}
 ///
 /// @RESTQUERYPARAMETERS
 ///
