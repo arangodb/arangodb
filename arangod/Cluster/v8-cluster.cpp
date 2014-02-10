@@ -755,36 +755,37 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
     TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfo(<database-id>, <collection-id>)");
   }
  
-  CollectionInfo ci = ClusterInfo::instance()->getCollection(TRI_ObjectToString(argv[0]), 
-                                                             TRI_ObjectToString(argv[1]));
+  TRI_shared_ptr<CollectionInfo> ci 
+        = ClusterInfo::instance()->getCollection(TRI_ObjectToString(argv[0]), 
+                                                 TRI_ObjectToString(argv[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  const std::string cid = triagens::basics::StringUtils::itoa(ci.id());
-  const std::string& name = ci.name();
+  const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
+  const std::string& name = ci->name();
   result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
   result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
-  result->Set(v8::String::New("type"), v8::Number::New((int) ci.type()));
-  result->Set(v8::String::New("status"), v8::Number::New((int) ci.status()));
+  result->Set(v8::String::New("type"), v8::Number::New((int) ci->type()));
+  result->Set(v8::String::New("status"), v8::Number::New((int) ci->status()));
 
-  const string statusString = ci.statusString();
+  const string statusString = ci->statusString();
   result->Set(v8::String::New("statusString"),
               v8::String::New(statusString.c_str(), statusString.size()));
 
-  result->Set(v8::String::New("deleted"), v8::Boolean::New(ci.deleted()));
-  result->Set(v8::String::New("doCompact"), v8::Boolean::New(ci.doCompact()));
-  result->Set(v8::String::New("isSystem"), v8::Boolean::New(ci.isSystem()));
-  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(ci.isVolatile()));
-  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(ci.waitForSync()));
-  result->Set(v8::String::New("journalSize"), v8::Number::New(ci.journalSize()));
+  result->Set(v8::String::New("deleted"), v8::Boolean::New(ci->deleted()));
+  result->Set(v8::String::New("doCompact"), v8::Boolean::New(ci->doCompact()));
+  result->Set(v8::String::New("isSystem"), v8::Boolean::New(ci->isSystem()));
+  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(ci->isVolatile()));
+  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(ci->waitForSync()));
+  result->Set(v8::String::New("journalSize"), v8::Number::New(ci->journalSize()));
 
-  const std::vector<std::string>& sks = ci.shardKeys();
+  const std::vector<std::string>& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(sks.size());
   for (uint32_t i = 0, n = sks.size(); i < n; ++i) {
     shardKeys->Set(i, v8::String::New(sks[i].c_str(), sks[i].size()));
   }
   result->Set(v8::String::New("shardKeys"), shardKeys);
 
-  const std::map<std::string, std::string>& sis = ci.shardIds();
+  const std::map<std::string, std::string>& sis = ci->shardIds();
   v8::Handle<v8::Object> shardIds = v8::Object::New();
   std::map<std::string, std::string>::const_iterator it = sis.begin();
   while (it != sis.end()) {
@@ -813,24 +814,25 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
  
   ShardID shardID = TRI_ObjectToString(argv[2]);
 
-  CollectionInfo ci = ClusterInfo::instance()->getCollection(
-       TRI_ObjectToString(argv[0]), 
-       TRI_ObjectToString(argv[1]));
+  TRI_shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+                                           TRI_ObjectToString(argv[0]),
+                                           TRI_ObjectToString(argv[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New();
   // First some stuff from Plan for which Current does not make sense:
-  const std::string cid = triagens::basics::StringUtils::itoa(ci.id());
-  const std::string& name = ci.name();
+  const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
+  const std::string& name = ci->name();
   result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
   result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
 
-  CollectionInfoCurrent cic = ClusterInfo::instance()->getCollectionCurrent(
-       TRI_ObjectToString(argv[0]), cid);
+  TRI_shared_ptr<CollectionInfoCurrent> cic 
+          = ClusterInfo::instance()->getCollectionCurrent(
+                                     TRI_ObjectToString(argv[0]), cid);
 
-  result->Set(v8::String::New("type"), v8::Number::New((int) ci.type()));
+  result->Set(v8::String::New("type"), v8::Number::New((int) ci->type()));
   // Now the Current information, if we actually got it:
-  TRI_vocbase_col_status_e s = cic.status(shardID);
-  result->Set(v8::String::New("status"), v8::Number::New((int) cic.status(shardID)));
+  TRI_vocbase_col_status_e s = cic->status(shardID);
+  result->Set(v8::String::New("status"), v8::Number::New((int) cic->status(shardID)));
   if (s == TRI_VOC_COL_STATUS_CORRUPTED) {
     return scope.Close(result);
   }
@@ -838,13 +840,13 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   result->Set(v8::String::New("statusString"),
               v8::String::New(statusString.c_str(), statusString.size()));
 
-  result->Set(v8::String::New("deleted"), v8::Boolean::New(cic.deleted(shardID)));
-  result->Set(v8::String::New("doCompact"), v8::Boolean::New(cic.doCompact(shardID)));
-  result->Set(v8::String::New("isSystem"), v8::Boolean::New(cic.isSystem(shardID)));
-  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(cic.isVolatile(shardID)));
-  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(cic.waitForSync(shardID)));
-  result->Set(v8::String::New("journalSize"), v8::Number::New(cic.journalSize(shardID)));
-  const std::string serverID = cic.responsibleServer(shardID);
+  result->Set(v8::String::New("deleted"), v8::Boolean::New(cic->deleted(shardID)));
+  result->Set(v8::String::New("doCompact"), v8::Boolean::New(cic->doCompact(shardID)));
+  result->Set(v8::String::New("isSystem"), v8::Boolean::New(cic->isSystem(shardID)));
+  result->Set(v8::String::New("isVolatile"), v8::Boolean::New(cic->isVolatile(shardID)));
+  result->Set(v8::String::New("waitForSync"), v8::Boolean::New(cic->waitForSync(shardID)));
+  result->Set(v8::String::New("journalSize"), v8::Number::New(cic->journalSize(shardID)));
+  const std::string serverID = cic->responsibleServer(shardID);
   result->Set(v8::String::New("DBServer"), v8::String::New(serverID.c_str(), serverID.size()));
 
   // TODO: fill "indexes"
@@ -852,11 +854,11 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   result->Set(v8::String::New("indexes"), indexes);
 
   // Finally, report any possible error:
-  bool error = cic.error(shardID);
+  bool error = cic->error(shardID);
   result->Set(v8::String::New("error"), v8::Boolean::New(error));
   if (error) {
-    result->Set(v8::String::New("errorNum"), v8::Number::New(cic.errorNum(shardID)));
-    const string errorMessage = cic.errorMessage(shardID);
+    result->Set(v8::String::New("errorNum"), v8::Number::New(cic->errorNum(shardID)));
+    const string errorMessage = cic->errorMessage(shardID);
     result->Set(v8::String::New("errorMessage"),
                 v8::String::New(errorMessage.c_str(), errorMessage.size()));
   }
@@ -1017,6 +1019,36 @@ static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers executable path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecutablePathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "executablePath()");
+  }
+
+  const std::string exePath = ServerState::instance()->getExecutablePath();
+  return scope.Close(v8::String::New(exePath.c_str(), exePath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers base path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_BasePathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "basePath()");
+  }
+
+  const std::string basePath = ServerState::instance()->getBasePath();
+  return scope.Close(v8::String::New(basePath.c_str(), basePath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialised
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1136,8 +1168,10 @@ static void PrepareClusterCommRequest (
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
                          v8::Isolate::GetCurrent()->GetData();
 
+  assert(argv.Length() >= 4);
+
   reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
-  if (argv.Length() > 0 && argv[0]->IsString()) {
+  if (argv[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, argv[0]);
     string methstring = *UTF8;
     reqType = triagens::rest::HttpRequest::translateMethod(methstring);
@@ -1146,28 +1180,11 @@ static void PrepareClusterCommRequest (
     }
   }
 
-  destination.clear();
-  if (argv.Length() > 1) {
-    destination = TRI_ObjectToString(argv[1]);
-  }
-  if (destination == "") {
-    destination = "shard:shardBlubb";
-  }
+  destination = TRI_ObjectToString(argv[1]);
   
-  string dbname;
-  if (argv.Length() > 2) {
-    dbname = TRI_ObjectToString(argv[2]);
-  } 
-  if (dbname == "") {
-    dbname = "_system";
-  }
-  path.clear();
-  if (argv.Length() > 3) {
-    path = TRI_ObjectToString(argv[3]);
-  }
-  if (path == "") {
-    path = "/_admin/version";
-  }
+  string dbname = TRI_ObjectToString(argv[2]);
+  
+  path = TRI_ObjectToString(argv[3]);
   path = "/_db/" + dbname + path;
 
   body.clear();
@@ -1339,20 +1356,19 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   triagens::rest::HttpRequest::HttpRequestType reqType;
   string destination;
   string path;
-  string body;
+  string *body = new string();
   map<string, string>* headerFields = new map<string, string>;
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path,*body,headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
   res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination, 
-                         reqType, path, body.c_str(), body.size(), 
-                         headerFields, 0, timeout);
+                         reqType, path, body, true, headerFields, 0, timeout);
 
   if (res == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
@@ -1403,14 +1419,13 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(argv, reqType, destination, path, body,headerFields,
+  PrepareClusterCommRequest(argv, reqType, destination, path, body, headerFields,
                             clientTransactionID, coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
   res = cc->syncRequest(clientTransactionID, coordTransactionID, destination, 
-                         reqType, path, body.c_str(), body.size(), 
-                         *headerFields, timeout);
+                         reqType, path, body, *headerFields, timeout);
 
   delete headerFields;
 
@@ -1435,7 +1450,7 @@ static v8::Handle<v8::Value> JS_Enquire (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "wait(operationID)");
+    TRI_V8_EXCEPTION_USAGE(scope, "enquire(operationID)");
   }
   
   if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
@@ -1699,6 +1714,8 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
   TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
+  TRI_AddMethodVocbase(rt, "executablePath", JS_ExecutablePathServerState);
+  TRI_AddMethodVocbase(rt, "basePath", JS_BasePathServerState);
   TRI_AddMethodVocbase(rt, "initialised", JS_InitialisedServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);

@@ -474,12 +474,238 @@ function ahuacatlQueryPathsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for SHORTEST_PATH() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryShortestPathTestSuite () {
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
+
+  var aqlfunctions = require("org/arangodb/aql/functions");
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D", "E", "F", "G", "H" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B", 1 ], [ "B", "C", 5 ], [ "C", "D", 1 ], [ "A", "D", 12 ], [ "D", "C", 3 ], [ "C", "B", 2 ], [ "D", "E", 6 ], [ "B", "F", 1 ], [ "E", "G", 5 ], [ "G", "H", 2 ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        var w = item[2];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r, weight: w });
+      });
+
+      try {
+        aqlfunctions.unregister("UnitTests::distance");
+      }
+      catch (err) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = null;
+      edgeCollection = null;
+
+      try {
+        aqlfunctions.unregister("UnitTests::distance");
+      }
+      catch (err) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path using dijkstra
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraOutbound : function () {
+      var config = {
+        paths: true,
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN [ p.vertex._key, p.path.vertices[*]._key, p.path.edges[*]._key ]", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ 
+        [ "A", [ "A" ], [ ] ],
+        [ "D", [ "A", "D" ], [ "AD" ] ],
+        [ "E", [ "A", "D", "E" ], [ "AD", "DE" ] ],
+        [ "G", [ "A", "D", "E", "G" ], [ "AD", "DE", "EG" ] ],
+        [ "H", [ "A", "D", "E", "G", "H" ], [ "AD", "DE", "EG", "GH" ] ]
+      ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path using dijkstra
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraInbound : function () {
+      var config = {
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/H', '" + vn + "/A', 'inbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "H", "G", "E", "D", "A" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with custom distance function
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraDistance : function () {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex1, vertex2, edge) { 
+        return edge.weight; 
+      }, false);
+
+      var config = {
+        distance: "UnitTests::distance",
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with vertex filter function
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraVertexFilter1 : function () {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex, path) {
+        if (vertex._key === 'B' || vertex._key === 'C') {
+          return [ 'exclude', 'prune' ];
+        }
+      }, false);
+
+      var config = {
+        filterVertices: "UnitTests::distance",
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "A", "D", "E", "G", "H" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with vertex filter function
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraVertexFilter2 : function () {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex, path) {
+        return [ 'exclude', 'prune' ];
+      }, false);
+
+      var config = {
+        filterVertices: "UnitTests::distance",
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with edge filter function
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraEdgeFilter : function () {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex, edge, path) {
+        return edge.weight <= 6;
+      }, false);
+
+      var config = {
+        followEdges: "UnitTests::distance",
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path, with cycles
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraCycles : function () {
+      [ [ "B", "A" ], [ "C", "A" ], [ "D", "B" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+
+      var config = {
+        paths: true,
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN [ p.vertex._key, p.path.vertices[*]._key, p.path.edges[*]._key ]", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ 
+        [ "A", [ "A" ], [ ] ],
+        [ "D", [ "A", "D" ], [ "AD" ] ],
+        [ "E", [ "A", "D", "E" ], [ "AD", "DE" ] ],
+        [ "G", [ "A", "D", "E", "G" ], [ "AD", "DE", "EG" ] ],
+        [ "H", [ "A", "D", "E", "G", "H" ], [ "AD", "DE", "EG", "GH" ] ]
+      ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path, non-connected vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraNotConnected : function () {
+      // this item is not connected to any other
+      vertexCollection.save({ _key: "J", name: "J" });
+
+      var config = {
+        paths: true,
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/J', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ ], actual);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for TRAVERSAL() filter function
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryTraversalFilterTestSuite () {
-  var vn = "UnitTestsTraverseVertices";
-  var en = "UnitTestsTraverseEdges";
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
+      
+  var aqlfunctions = require("org/arangodb/aql/functions");
 
   return {
 
@@ -514,6 +740,12 @@ function ahuacatlQueryTraversalFilterTestSuite () {
         var r = item[1];
         edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
       });
+
+      try {
+        aqlfunctions.unregister("UnitTests::filter");
+      }
+      catch (err) {
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,6 +755,41 @@ function ahuacatlQueryTraversalFilterTestSuite () {
     tearDown : function () {
       db._drop(vn);
       db._drop(en);
+
+      try {
+        aqlfunctions.unregister("UnitTests::filter");
+      }
+      catch (err) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test vertex filter with custom function
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalVertexFilterCallback : function () {
+      aqlfunctions.register("UnitTests::filter", function (config, vertex, path) {
+        if (vertex._key.substr(0, 3) === '1-1') {
+          return;
+        }
+        return 'exclude';
+      });
+
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        filterVertices: "UnitTests::filter"
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1-1", "1-1-1", "1-1-2" ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,6 +911,32 @@ function ahuacatlQueryTraversalFilterTestSuite () {
 
       var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
       assertEqual([ "1", "1-1", "1-1-2", "1-2-1", "1-3", "1-3-2" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test edge filter with custom function
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalEdgeFilterCallback : function () {
+      aqlfunctions.register("UnitTests::filter", function (config, vertex, edge, path) {
+        return ! vertex.isDeleted;
+      });
+
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true,
+        followEdges: "UnitTests::filter"
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/1', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "1", "1-1", "1-1-2", "1-3", "1-3-2" ], actual);
     }
 
   };
@@ -654,11 +947,10 @@ function ahuacatlQueryTraversalFilterTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryTraversalTestSuite () {
-  var vn = "UnitTestsTraverseVertices";
-  var en = "UnitTestsTraverseEdges";
-
-  var vertices;
-  var edges;
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
 
   return {
 
@@ -691,6 +983,51 @@ function ahuacatlQueryTraversalTestSuite () {
     tearDown : function () {
       db._drop(vn);
       db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalBreadthFirst : function () {
+      var config = {
+        strategy: "breadthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "none", 
+          edges: "path"
+        },
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ "A", "B", "D", "C", "C", "A", "A", "D", "B", "C", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min-depth filtering, track paths
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalTrackPaths : function () {
+      var config = {
+        paths: true,
+        minDepth: 1,
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        _sort: true
+      };
+
+      var actual = getQueryResults("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN [ p.vertex._key, p.path.vertices[*]._key, p.path.edges[*]._key ]", { "@v" : vn, "@e" : en }); 
+
+      assertEqual([ 
+        [ "B", [ "A", "B" ], [ "AB" ] ],
+        [ "C", [ "A", "B", "C" ], [ "AB", "BC" ] ],
+        [ "D", [ "A", "D" ], [ "AD" ] ]
+      ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -910,11 +1247,10 @@ function ahuacatlQueryTraversalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryTraversalTreeTestSuite () {
-  var vn = "UnitTestsTraverseVertices";
-  var en = "UnitTestsTraverseEdges";
-
-  var vertices;
-  var edges;
+  var vn = "UnitTestsTraversalVertices";
+  var en = "UnitTestsTraversalEdges";
+  var vertexCollection;
+  var edgeCollection;
 
   return {
 
@@ -994,6 +1330,7 @@ function ahuacatlQueryTraversalTreeTestSuite () {
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryPathsTestSuite);
+jsunity.run(ahuacatlQueryShortestPathTestSuite);
 jsunity.run(ahuacatlQueryTraversalFilterTestSuite);
 jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);

@@ -66,7 +66,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ConsoleThread (rest::ApplicationServer*,
+        ConsoleThread (triagens::rest::ApplicationServer*,
                        ApplicationV8*,
                        struct TRI_vocbase_s*);
 

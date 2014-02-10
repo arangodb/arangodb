@@ -66,12 +66,34 @@ describe ArangoDB do
     after do
       ArangoDB.delete(api + "/#{name}")
     end
+    
+    it "creates a new database, old return code" do
+      body = "{\"name\" : \"#{name}\" }"
+      doc = ArangoDB.log_post("#{prefix}-create", api, :body => body, :headers => { "X-Arango-Version" => "1.4" })
+     
+      doc.code.should eq(200)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
+    it "creates a new database, new return code" do
+      body = "{\"name\" : \"#{name}\" }"
+      doc = ArangoDB.log_post("#{prefix}-create", api, :body => body, :headers => { "X-Arango-Version" => "1.5" })
+     
+      doc.code.should eq(201)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
 
     it "creates a new database" do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-create", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       response = doc.parsed_response
       response["result"].should eq(true)
@@ -115,10 +137,10 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-re-create", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
-      doc = ArangoDB.log_post("#{prefix}-post", api, :body => body)
+      doc = ArangoDB.log_post("#{prefix}-re-create", api, :body => body)
       doc.code.should eq(409)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
@@ -132,7 +154,7 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-drop", api, :body => body)
 
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
       doc = ArangoDB.log_delete("#{prefix}-drop", cmd)
@@ -158,7 +180,7 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-create-properties", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       response = doc.parsed_response
       response["result"].should eq(true)
@@ -206,7 +228,7 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\", \"users\": [ { \"username\": \"admin\", \"password\": \"secret\", \"extra\": { \"gender\": \"m\" } }, { \"username\": \"foxx\", \"active\": false } ] }"
       doc = ArangoDB.log_post("#{prefix}-create-users", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       response = doc.parsed_response
       response["result"].should eq(true)
@@ -268,7 +290,7 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\", \"users\": [ { \"username\": \"\" } ] }"
       doc = ArangoDB.log_post("#{prefix}-create-users-invalid", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       response = doc.parsed_response
       response["result"].should eq(true)
@@ -305,7 +327,7 @@ describe ArangoDB do
       body = "{\"name\" : \"#{name}\" }"
       doc = ArangoDB.log_post("#{prefix}-check-system", api, :body => body)
      
-      doc.code.should eq(200)
+      doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       response = doc.parsed_response
       response["result"].should eq(true)

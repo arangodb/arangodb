@@ -221,6 +221,45 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster coordinator case, parse a key and possible revision
+////////////////////////////////////////////////////////////////////////////////
+
+static int parseKeyAndRef(v8::Handle<v8::Value> arg, string& key,
+                          TRI_voc_rid_t& rev) {
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
+                             v8::Isolate::GetCurrent()->GetData();
+  rev = 0;
+  if (arg->IsString()) {
+    key = TRI_ObjectToString(arg);
+  }
+  else if (arg->IsObject()) {
+    v8::Handle<v8::Object> obj = arg.As<v8::Object>();
+    if (obj->Has(v8g->_KeyKey) && obj->Get(v8g->_KeyKey)->IsString()) {
+      key = TRI_ObjectToString(obj->Get(v8g->_KeyKey));
+    }
+    else if (obj->Has(v8g->_IdKey) && obj->Get(v8g->_IdKey)->IsString()) {
+      key = TRI_ObjectToString(obj->Get(v8g->_IdKey));
+      // part after / will be taken below
+    }
+    else {
+      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    }
+    if (obj->Has(v8g->_RevKey) && obj->Get(v8g->_RevKey)->IsString()) {
+      rev = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
+    }
+  }
+  else {
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+  }
+
+  size_t pos = key.find('/');
+  if (pos != string::npos) {
+    key = key.substr(pos+1);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of the current database
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -289,10 +328,11 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase,
   TRI_vector_pointer_t result;
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
   
-  const std::vector<CollectionInfo>& collections = ClusterInfo::instance()->getCollections(database);
+  std::vector<TRI_shared_ptr<CollectionInfo> > const& collections 
+      = ClusterInfo::instance()->getCollections(database);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    TRI_vocbase_col_t* c = CollectionInfoToVocBaseCol(vocbase, collections[i],
+    TRI_vocbase_col_t* c = CollectionInfoToVocBaseCol(vocbase,*(collections[i]),
                                                       database);
 
     if (c != 0) {
@@ -314,11 +354,13 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase,
   TRI_vector_string_t result;
   TRI_InitVectorString(&result, TRI_UNKNOWN_MEM_ZONE);
   
-  const std::vector<CollectionInfo>& collections = ClusterInfo::instance()->getCollections(database);
+  std::vector<TRI_shared_ptr<CollectionInfo> > const& collections 
+      = ClusterInfo::instance()->getCollections(database);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    const std::string& name = collections[i].name();
-    char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size());
+    const std::string& name = collections[i]->name();
+    char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(),
+                                                          name.size());
 
     if (s != 0) {
       TRI_PushBackVectorString(&result, s);
@@ -1037,23 +1079,31 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 #ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
                                   TRI_vocbase_col_t const* collection,
-                                  TRI_voc_key_t key,
-                                  TRI_voc_rid_t rid,
+                                  v8::Arguments const& argv,
                                   bool generateDocument) {
   v8::HandleScope scope;
 
   // First get the initial data:
   string const dbname(collection->_dbName);
+  // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
+  string key;
+  TRI_voc_rid_t rev = 0;
+  int error = parseKeyAndRef(argv[0], key, rev);
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
   string resultBody;
 
-  int error = triagens::arango::getDocumentOnCoordinator(
-            dbname, collname, key, rid, false,   // no "if-none-match" here!
+  error = triagens::arango::getDocumentOnCoordinator(
+            dbname, collname, key, rev, headers,
             generateDocument,
-            responseCode, contentType, resultBody);
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
@@ -1064,28 +1114,37 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
   // For the error processing we have to distinguish whether we are in
   // the ".exists" case (generateDocument==false) or the ".document" case
   // (generateDocument==true).
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  TRI_json_t* json = 0;
+  if (generateDocument) {
+    json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  }
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
     if (!TRI_IsArrayJson(json)) {
       if (generateDocument) {
+        if (0 != json) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
         TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
       }
       else {
         return scope.Close(v8::False());
       }
     }
-    int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
-    if (0 != subjson && TRI_IsNumberJson(subjson)) {
-      errorNum = static_cast<int>(subjson->_value._number);
-    }
-    string errorMessage;
-    subjson = TRI_LookupArrayJson(json, "errorMessage");
-    if (0 != subjson && TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
-                            subjson->_value._string.length-1);
-    }
     if (generateDocument) {
+      int errorNum = 0;
+      string errorMessage;
+      if (0 != json) {
+        TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+        if (0 != subjson && TRI_IsNumberJson(subjson)) {
+          errorNum = static_cast<int>(subjson->_value._number);
+        }
+        subjson = TRI_LookupArrayJson(json, "errorMessage");
+        if (0 != subjson && TRI_IsStringJson(subjson)) {
+          errorMessage = string(subjson->_value._string.data,
+                                subjson->_value._string.length-1);
+        }
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
       TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
     }
     else {
@@ -1094,11 +1153,16 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
   }
   if (generateDocument) {
     v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (0 != json) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return scope.Close(ret);
   }
   else {
     // Note that for this case we will never get a 304 "NOT_MODIFIED"
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     return scope.Close(v8::True());
   }
 }
@@ -1141,6 +1205,12 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, true));
+  }
+#endif
+
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -1152,12 +1222,6 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return DocumentVocbaseCol_Coordinator(col, key, rid, true);
-  }
-#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -1257,11 +1321,15 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, false));
+  }
+#endif
+
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
-
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -1286,12 +1354,6 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     // for any other error that happens, we'll rethrow it
     return scope.Close(v8::ThrowException(err));
   }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return DocumentVocbaseCol_Coordinator(col, key, rid, false);
-  }
-#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -1330,6 +1392,84 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 
   TRI_V8_EXCEPTION(scope, res);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modifies a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
+                                  TRI_vocbase_col_t const* collection,
+                                  TRI_doc_update_policy_e policy,
+                                  bool waitForSync,
+                                  bool isPatch,
+                                  bool keepNull, // only counts if isPatch==true
+                                  v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // First get the initial data:
+  string const dbname(collection->_dbName);
+  string const collname(collection->_name);
+
+  string key;
+  TRI_voc_rid_t rev = 0;
+  int error = parseKeyAndRef(argv[0], key, rev);
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+
+  TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+  if (0 == json || json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
+  string resultBody;
+
+  error = triagens::arango::modifyDocumentOnCoordinator(
+        dbname, collname, key, rev, policy, waitForSync, isPatch,
+        keepNull, json, headers, responseCode, resultHeaders, resultBody);
+  // Note that the json has been freed inside!
+  
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+
+  // report what the DBserver told us: this could now be 201/202 or
+  // 400/404
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+    if (!TRI_IsArrayJson(json)) {
+      if (0 != json) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+    int errorNum = 0;
+    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+      errorNum = static_cast<int>(subjson->_value._number);
+    }
+    string errorMessage;
+    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    if (0 != subjson && TRI_IsStringJson(subjson)) {
+      errorMessage = string(subjson->_value._string.data,
+                            subjson->_value._string.length-1);
+    }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
+  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+  if (0 != json) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+  return scope.Close(ret);
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
@@ -1378,11 +1518,18 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
+                                        false,  // isPatch
+                                        true,   // keepNull, does not matter
+                                        argv));
+  }
+#endif
+
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
-
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -1405,6 +1552,53 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     
   TRI_primary_collection_t* primary = trx.primaryCollection();
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+
+  TRI_doc_mptr_t document;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isDBserver()) {
+    // compare attributes in shardKeys
+    const string cidString = StringUtils::itoa(primary->base._info._planId);
+
+    TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+
+    if (json == 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+  
+    trx.lockWrite();
+    res = trx.read(&document, key);
+
+    if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION(scope, res);
+    }
+  
+    TRI_shaped_json_t shaped;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
+    TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
+
+    if (old == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    if (shardKeysChanged(col->_dbName, cidString, old, json, false)) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    } 
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
+  }
+#endif
+
+
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
 
   if (shaped == 0) {
@@ -1412,7 +1606,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  TRI_doc_mptr_t document;
   res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
   res = trx.finish(res);
@@ -1698,11 +1891,18 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
+                                        true,  // isPatch
+                                        !nullMeansRemove,     // keepNull
+                                        argv));
+  }
+#endif
+
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
-
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
@@ -1764,6 +1964,21 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isDBserver()) {
+    // compare attributes in shardKeys
+    const string cidString = StringUtils::itoa(primary->base._info._planId);
+
+    if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
+      TRI_FreeJson(primary->_shaper->_memoryZone, old);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    } 
+  }
+#endif
+
   TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
   TRI_FreeJson(zone, old);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1803,23 +2018,30 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 #ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
                                   TRI_vocbase_col_t const* collection,
-                                  TRI_voc_key_t key,
-                                  TRI_voc_rid_t rid,
                                   TRI_doc_update_policy_e policy,
-                                  bool waitForSync) {
+                                  bool waitForSync,
+                                  v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
   string const dbname(collection->_dbName);
   string const collname(collection->_name);
 
-  triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
-  string resultBody;
+  string key;
+  TRI_voc_rid_t rev = 0;
+  int error = parseKeyAndRef(argv[0], key, rev);
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
 
-  int error = triagens::arango::deleteDocumentOnCoordinator(
-            dbname, collname, key, rid, policy, waitForSync,
-            responseCode, contentType, resultBody);
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  map<string, string> resultHeaders;
+  string resultBody;
+  map<string, string> headers;
+
+  error = triagens::arango::deleteDocumentOnCoordinator(
+            dbname, collname, key, rev, policy, waitForSync, headers,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
@@ -1829,6 +2051,9 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
     if (!TRI_IsArrayJson(json)) {
+      if (0 != json) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
@@ -1842,10 +2067,13 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
   v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (0 != json) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
   return scope.Close(ret);
 }
 #endif
@@ -1891,6 +2119,13 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(
+               RemoveVocbaseCol_Coordinator(col, policy, forceSync, argv));
+  }
+#endif
+
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -1902,12 +2137,6 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return RemoveVocbaseCol_Coordinator(col, key, rid, policy, forceSync);
-  }
-#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -1952,6 +2181,10 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   v8::HandleScope scope;
   
   const string name = TRI_ObjectToString(argv[0]);
+  
+  if (! TRI_IsAllowedNameCollection(parameter._isSystem, name.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
 
   uint64_t numberOfShards = 1;
   vector<string> shardKeys;
@@ -1995,8 +2228,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
   }
     
-  if (shardKeys.empty()) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "no shard keys specified");
+  if (shardKeys.empty() || shardKeys.size() > 8) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shard keys");
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2020,12 +2253,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   std::map<std::string, std::string> shards; 
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server
-    const string serverId = dbServers[i % dbServers.size()];
+    string serverId = dbServers[i % dbServers.size()];
 
     // determine shard id
-    const string shardId = "s" + StringUtils::itoa(id + 1 + i);
+    string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
-    shards.insert(std::make_pair<std::string, std::string>(shardId, serverId));
+    shards.insert(std::make_pair(shardId, serverId));
   }
  
   // now create the JSON for the collection 
@@ -2062,8 +2295,9 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   }
   ci->loadPlannedCollections();
 
-  CollectionInfo const& c = ci->getCollection( databaseName, cid );
-  TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, c,
+  TRI_shared_ptr<CollectionInfo> const& c 
+      = ci->getCollection( databaseName, cid );
+  TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, *c,
                                                           databaseName.c_str());
   return scope.Close(TRI_WrapCollection(newcoll));
 }
@@ -5052,8 +5286,20 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    // TODO: fix this
-    return scope.Close(v8::Number::New(0));
+    // First get the initial data:
+    string const dbname(collection->_dbName);
+  
+    // TODO: someone might rename the collection while we're reading its name...
+    string const collname(collection->_name);
+
+    uint64_t count = 0;
+    int error = triagens::arango::countOnCoordinator(dbname, collname, count);
+
+    if (error != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, error);
+    }
+
+    return scope.Close(v8::Number::New(count));
   }
 #endif  
 
@@ -5211,15 +5457,29 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
 
   // First we need the collection ID as a string:
   string const cid = StringUtils::itoa(collection->_cid);
+  
+  // delete the collection name from the db.<xxx> cache
+  string cacheKey(collection->_name);
+  cacheKey.push_back('*');
+  v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
+
+  v8::Handle<v8::Value> db = v8::Context::GetCurrent()->Global()->Get(v8::String::New("db"));
+  if (db->IsObject()) {
+    v8::Handle<v8::Object> dbObj = v8::Handle<v8::Object>::Cast(db);
+    dbObj->Delete(cacheName);
+  }
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
-
+  
   int myerrno = ci->dropCollectionCoordinator( databaseName, cid, 
                                                errorMsg, 120.0);
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
+
+
+
   return scope.Close(v8::True());
 }
 
@@ -5249,14 +5509,14 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+  
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_DropVocbaseCol_Coordinator(collection);
+    return scope.Close(JS_DropVocbaseCol_Coordinator(collection));
   }
 #endif
-
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
 
@@ -6428,7 +6688,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   }
   
 #ifdef TRI_ENABLE_CLUSTER
-  if (! collection->_isLocal) {
+  if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
     TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
 
@@ -6496,6 +6756,14 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->IsVolatileKey, info._isVolatile ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(info._maximalSize));
     result->Set(v8g->WaitForSyncKey, info._waitForSync ? v8::True() : v8::False());
+
+    TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
+    v8::Handle<v8::Array> shardKeys = v8::Array::New();
+    const vector<string> sks = (*c).shardKeys();
+    for (size_t i = 0; i < sks.size(); ++i) {
+      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
+    }
+    result->Set(v8::String::New("shardKeys"), shardKeys);
 
     if (info._keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(info._keyOptions)->ToObject());
@@ -6971,6 +7239,8 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
 
   // First get the initial data:
   string const dbname(collection->_dbName);
+
+  // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
   // Now get the arguments:
@@ -6979,18 +7249,21 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
   }
   TRI_json_t* json = TRI_ObjectToJson(argv[0]);
   const bool waitForSync = ExtractForceSync(argv, 2);
-  if (json->_type != TRI_JSON_ARRAY) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (!TRI_IsArrayJson(json)) {
+    if (0 != json) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> headers;
+  map<string, string> resultHeaders;
   string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json,
-            responseCode, contentType, resultBody);
+            dbname, collname, waitForSync, json, headers,
+            responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -7001,6 +7274,9 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
     if (!TRI_IsArrayJson(json)) {
+      if (0 != json) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
@@ -7014,10 +7290,88 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
   v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (0 != json) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves an edge, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> JS_SaveEdgeCol_Coordinator (
+                                  TRI_vocbase_col_t* collection,
+                                  v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // First get the initial data:
+  string const dbname(collection->_dbName);
+
+  // TODO: someone might rename the collection while we're reading its name...
+  string const collname(collection->_name);
+
+  // Now get the arguments:
+  if (argv.Length() < 3 || argv.Length() > 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+  }
+  string _from = TRI_ObjectToString(argv[0]);
+  string _to = TRI_ObjectToString(argv[1]);
+  TRI_json_t* json = TRI_ObjectToJson(argv[2]);
+  const bool waitForSync = ExtractForceSync(argv, 3);
+  if (!TRI_IsArrayJson(json)) {
+    if (0 != json) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  map<string, string> resultHeaders;
+  string resultBody;
+
+  int error = triagens::arango::createEdgeOnCoordinator(
+            dbname, collname, waitForSync, json, _from.c_str(), _to.c_str(),
+            responseCode, resultHeaders, resultBody);
+  // Note that the json has been freed inside!
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, error);
+  }
+  // report what the DBserver told us: this could now be 201/202 or
+  // 400/404
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  if (responseCode >= triagens::rest::HttpResponse::BAD) {
+    if (!TRI_IsArrayJson(json)) {
+      if (0 != json) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+    int errorNum = 0;
+    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+      errorNum = static_cast<int>(subjson->_value._number);
+    }
+    string errorMessage;
+    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    if (0 != subjson && TRI_IsStringJson(subjson)) {
+      errorMessage = string(subjson->_value._string.data,
+                            subjson->_value._string.length-1);
+    }
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
+  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+  if (0 != json) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
   return scope.Close(ret);
 }
 #endif
@@ -7065,11 +7419,14 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return JS_SaveVocbaseCol_Coordinator(collection, argv);
+    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+      return scope.Close(JS_SaveVocbaseCol_Coordinator(collection, argv));
+    }
+    else {
+      return scope.Close(JS_SaveEdgeCol_Coordinator(collection, argv));
+    }
   }
 #endif
-
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
@@ -7324,8 +7681,10 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
-    return scope.Close(v8::Number::New((int) ci.status()));
+    TRI_shared_ptr<CollectionInfo> const& ci 
+        = ClusterInfo::instance()->getCollection(databaseName, 
+                                        StringUtils::itoa(collection->_cid));
+    return scope.Close(v8::Number::New((int) ci->status()));
   } 
   // fallthru intentional 
 #endif
@@ -7359,7 +7718,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
   
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
@@ -7374,7 +7733,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeBarrier(barrier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());
@@ -7447,8 +7806,10 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
-    return scope.Close(v8::Number::New((int) ci.type()));
+    TRI_shared_ptr<CollectionInfo> const& ci 
+        = ClusterInfo::instance()->getCollection(databaseName,
+                                      StringUtils::itoa(collection->_cid));
+    return scope.Close(v8::Number::New((int) ci->type()));
   } 
   // fallthru intentional 
 #endif
@@ -7524,7 +7885,18 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    std::string const databaseName = std::string(collection->_dbName);
+    
+    if (! ClusterInfo::instance()->doesDatabaseExist(databaseName)) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
+    }
+
+    return scope.Close(v8::Number::New((int) TRI_COL_VERSION_15));
+  } 
+  // fallthru intentional 
+#endif
   
   TRI_col_info_t info;
 
@@ -7663,18 +8035,17 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
 
-    CollectionInfo const& ci = ClusterInfo::instance()->getCollection(originalDatabase, std::string(key));
-    collection = CollectionInfoToVocBaseCol(vocbase, ci, originalDatabase);
+    TRI_shared_ptr<CollectionInfo> const& ci 
+        = ClusterInfo::instance()->getCollection(originalDatabase,
+                                                 std::string(key));
+    collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
   }
   else {
-    // look up the collection regularly
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
   }
 #else
-
   // look up the collection
   collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
-
 #endif
 
   if (collection == 0) {
@@ -7779,9 +8150,15 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
     const std::string name = TRI_ObjectToString(val);
-    const CollectionInfo& ci = ClusterInfo::instance()->getCollection(originalDatabase, name);
+    TRI_shared_ptr<CollectionInfo> const& ci 
+        = ClusterInfo::instance()->getCollection(originalDatabase, name);
 
-    collection = CollectionInfoToVocBaseCol(vocbase, ci, originalDatabase);
+    if ((*ci).id() == 0) {
+      // not found
+      return scope.Close(v8::Null());
+    }
+
+    collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
   }
   else {
     collection = GetCollectionFromArgument(vocbase, val);
@@ -8495,7 +8872,8 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
     vector<ServerID> DBServers;
     while (++tries <= 2) {
       DBServers = ci->getCurrentDBServers();
-      if (DBServers.size() != 0) {
+
+      if (! DBServers.empty()) {
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
         ClusterCommResult* res;
@@ -8503,7 +8881,7 @@ static v8::Handle<v8::Value> JS_ListDatabases_Coordinator
         headers["Authentication"] = TRI_ObjectToString(argv[2]);
         res = cc->syncRequest("", 0, "server:"+sid, 
                               triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                              "/_api/database/user", 0, 0, headers, 0.0);
+                              "/_api/database/user", string(""), headers, 0.0);
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
           string body = res->result->getBody().str();
@@ -8563,15 +8941,23 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
       ! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-  
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
-  
+
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_ListDatabases_Coordinator(argv);
+    if (argc == 0) {
+      // check if we are in the system database
+      char const* name = GetCurrentDatabaseName();
+      if (! TRI_EqualString(name, "_system")) {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+      }
+    }
+  
+    return scope.Close(JS_ListDatabases_Coordinator(argv));
   }
 #endif
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
 
   TRI_vector_string_t names;
   TRI_InitVectorString(&names, TRI_UNKNOWN_MEM_ZONE);
@@ -8622,10 +9008,22 @@ static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const&
   
   // First work with the arguments to create a JSON entry:
   const string name = TRI_ObjectToString(argv[0]);
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+
+  if (! TRI_IsAllowedNameVocBase(false, name.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (0 == json) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  uint64_t id = ClusterInfo::instance()->uniqid();
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                               StringUtils::itoa(id).c_str()));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                TRI_ObjectToString(argv[0]).c_str()));
@@ -8704,13 +9102,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
 #ifdef TRI_ENABLE_CLUSTER
-  // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_CreateDatabase_Coordinator(argv);
+    // check if we are in the system database
+    char const* name = GetCurrentDatabaseName();
+    if (! TRI_EqualString(name, "_system")) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    }
+    
+    return scope.Close(JS_CreateDatabase_Coordinator(argv));
   }
 #endif
-
-  const string name = TRI_ObjectToString(argv[0]);
+  
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
  
@@ -8724,6 +9126,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
+  v8::Local<v8::String> keyRequireAuthenticationUnixSockets = v8::String::New("requireAuthenticationUnixSockets");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
   
   // overwrite database defaults from argv[2]
@@ -8753,11 +9156,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     if (options->Has(keyRequireAuthentication)) {
       defaults.requireAuthentication = options->Get(keyRequireAuthentication)->BooleanValue();
     }
+
+    if (options->Has(keyRequireAuthenticationUnixSockets)) {
+      defaults.requireAuthenticationUnixSockets = options->Get(keyRequireAuthenticationUnixSockets)->BooleanValue();
+    }
     
     if (options->Has(keyAuthenticateSystemOnly)) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
   }
+  
+  const string name = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_t* database;
   int res = TRI_CreateDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), &defaults, &database);
@@ -8816,6 +9225,7 @@ static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& a
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
   }
+
   return scope.Close(v8::True());
 }
 
@@ -8857,7 +9267,12 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return JS_DropDatabase_Coordinator(argv);
+    char const* name = GetCurrentDatabaseName();
+    if (! TRI_EqualString(name, "_system")) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    }
+
+    return scope.Close(JS_DropDatabase_Coordinator(argv));
   }
 #endif
 
@@ -9353,6 +9768,10 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
       return false;
     }
 
+    if (! obj->Has(v8g->_RevKey)) {
+      return true;
+    }
+
     rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
 
     if (rid == 0) {
@@ -9628,8 +10047,13 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
+#ifndef TRI_ENABLE_CLUSTER
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+#else
+    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+#endif
   }
 
   // and return
@@ -9850,7 +10274,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
-  TRI_AddMethodVocbase(rt, "truncate", JS_TruncateVocbaseCol);
+  TRI_AddMethodVocbase(rt, "TRUNCATE", JS_TruncateVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "truncateDatafile", JS_TruncateDatafileVocbaseCol);
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);

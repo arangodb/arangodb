@@ -10,6 +10,8 @@ TOC {#SimpleQueriesTOC}
     - @ref SimpleQueryAny "collection.any"
     - @ref SimpleQueryCollectionCount "collection.count"
     - @ref SimpleQueryToArray "collection.toArray"
+    - @ref SimpleQueryFirst "collection.first"
+    - @ref SimpleQueryLast "collection.last"
   - @ref SimpleQueriesGeoQueries
     - @ref SimpleQueryNear "collection.near"
     - @ref SimpleQueryWithin "collection.within"

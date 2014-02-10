@@ -41,17 +41,18 @@
 #include <mach/vm_map.h>
 #endif
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
+
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SystemProcess
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief contains all data documented by "proc"
@@ -124,18 +125,9 @@ process_state_t;
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SystemProcess
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief original process name
@@ -178,17 +170,138 @@ static bool MustFreeEnvironment = false;
 static size_t MaximalProcessTitleSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief all external processes
 ////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_pointer_t ExternalProcesses;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for protected access to vector ExternalProcesses
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_mutex_t ExternalProcessesLock;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates pipe pair
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreatePipes (int* pipe_server_to_child,
+                         int* pipe_child_to_server) {
+
+  if (pipe(pipe_server_to_child) == -1) {
+    LOG_ERROR("cannot create pipe");
+    return false;
+  }
+
+  if (pipe(pipe_child_to_server) == -1) {
+    LOG_ERROR("cannot create pipe");
+
+    close(pipe_server_to_child[0]);
+    close(pipe_server_to_child[1]);
+
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts external process
+////////////////////////////////////////////////////////////////////////////////
+
+static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
+  int pipe_server_to_child[2];
+  int pipe_child_to_server[2];
+  int processPid;
+  bool ok;
+
+  if (usePipes) {
+    ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
+
+    if (! ok) {
+      external->_status = TRI_EXT_PIPE_FAILED;
+      return;
+    }
+  }
+  
+  processPid = fork();
+   
+  // child process
+  if (processPid == 0) {
+     
+    // set stdin and stdout of child process 
+    if (usePipes) {
+      dup2(pipe_server_to_child[0], 0);
+      dup2(pipe_child_to_server[1], 1);
+
+      fcntl(0, F_SETFD, 0);
+      fcntl(1, F_SETFD, 0);
+      fcntl(2, F_SETFD, 0);
+ 
+      // close pipes
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+    else {
+      close(0);
+      fcntl(1, F_SETFD, 0);
+      fcntl(2, F_SETFD, 0);
+    }
+ 
+    // ignore signals in worker process
+    signal(SIGINT,  SIG_IGN);
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGHUP,  SIG_IGN);
+    signal(SIGUSR1, SIG_IGN);
+      
+    // execute worker
+    execv(external->_executable, external->_arguments);
+
+    _exit(1);
+  }
+   
+  // parent
+  if (processPid == -1) {
+    LOG_ERROR("fork failed");
+
+    if (usePipes) {
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+
+    external->_status = TRI_EXT_FORK_FAILED;
+    return;
+  }
+ 
+  LOG_DEBUG("fork succeeded %d", processPid);
+
+  if (usePipes) {
+    close(pipe_server_to_child[0]);
+    close(pipe_child_to_server[1]);
+ 
+    external->_writePipe = pipe_server_to_child[1];
+    external->_readPipe = pipe_child_to_server[0];
+  }
+  else {
+    external->_writePipe = -1;
+    external->_readPipe = -1;
+  }
+
+  external->_pid = processPid;
+  external->_status = TRI_EXT_RUNNING;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SystemProcess
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
@@ -472,21 +585,147 @@ void TRI_SetProcessTitle (char const* title) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
+
+TRI_external_id_t TRI_CreateExternalProcess (const char* executable,
+                                             const char** arguments,
+                                             size_t n) {
+  TRI_external_t* external;
+  TRI_external_id_t pid;
+  size_t i;
+
+  // create the external structure
+  external = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true);
+
+  external->_executable = TRI_DuplicateString(executable);
+  external->_numberArguments = n;
+
+  external->_arguments = TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true);
+  external->_arguments[0] = TRI_DuplicateString(executable);
+
+  for (i = 0;  i < n;  ++i) {
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
+  }
+
+  external->_arguments[n + 1] = NULL;
+  external->_status = TRI_EXT_NOT_STARTED;
+
+  StartExternalProcess(external, false);
+
+  TRI_LockMutex(&ExternalProcessesLock);
+  TRI_PushBackVectorPointer(&ExternalProcesses, external);
+  pid = external->_pid;
+  TRI_UnlockMutex(&ExternalProcessesLock);
+
+  return pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_external_status_t TRI_CheckExternalProcess (pid_t pid) {
+  TRI_external_status_t status;
+  TRI_external_t* external;
+  int loc;
+  int opts;
+  pid_t res;
+  size_t i;
+
+  TRI_LockMutex(&ExternalProcessesLock);
+
+  status._status = TRI_EXT_NOT_FOUND;
+  status._exitStatus = 0;
+
+  for (i = 0;  i < ExternalProcesses._length;  ++i) {
+    external = TRI_AtVectorPointer(&ExternalProcesses, i);
+
+    if (external->_pid == pid) {
+      break;
+    }
+  }
+
+  if (i == ExternalProcesses._length) {
+    TRI_UnlockMutex(&ExternalProcessesLock);
+    return status;
+  }
+
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
+    opts = WNOHANG | WUNTRACED;
+    res = waitpid(external->_pid, &loc, opts);
+
+    if (res == 0) {
+      external->_exitStatus = 0;
+    }
+    else if (WIFEXITED(loc)) {
+      external->_status = TRI_EXT_TERMINATED;
+      external->_exitStatus = WEXITSTATUS(loc);
+    }
+    else if (WIFSIGNALED(loc)) {
+      external->_status = TRI_EXT_ABORTED;
+      external->_exitStatus = 0;
+    }
+    else if (WIFSTOPPED(loc)) {
+      external->_status = TRI_EXT_STOPPED;
+      external->_exitStatus = 0;
+    }
+  }
+
+  status._status = external->_status;
+  status._exitStatus = external->_exitStatus;
+
+  TRI_UnlockMutex(&ExternalProcessesLock);
+  return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_KillExternalProcess (pid_t pid) {
+  TRI_external_t* external;
+  size_t i;
+
+  TRI_LockMutex(&ExternalProcessesLock);
+
+  for (i = 0;  i < ExternalProcesses._length;  ++i) {
+    external = TRI_AtVectorPointer(&ExternalProcesses, i);
+
+    if (external->_pid == pid) {
+      break;
+    }
+  }
+
+  if (i == ExternalProcesses._length) {
+    TRI_UnlockMutex(&ExternalProcessesLock);
+    return;
+  }
+
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
+    int val = kill(external->_pid , SIGTERM);
+
+    if (val) {
+      external->_status = TRI_EXT_KILL_FAILED;
+    }
+    else {
+      TRI_RemoveVectorPointer(&ExternalProcesses, i);
+    }
+  }
+  else {
+    TRI_RemoveVectorPointer(&ExternalProcesses, i);
+  }
+
+  TRI_UnlockMutex(&ExternalProcessesLock);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                            modules initialisation
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SystemProcess
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the process components
@@ -500,10 +739,13 @@ void TRI_InitialiseProcess (int argc, char* argv[]) {
   ProcessName = TRI_DuplicateString(argv[0]);
   ARGC = argc;
   ARGV = argv;
+
+  TRI_InitVectorPointer(&ExternalProcesses, TRI_CORE_MEM_ZONE);
+  TRI_InitMutex(&ExternalProcessesLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the process components
+/// @brief shuts down the process components
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess () {
@@ -523,11 +765,14 @@ void TRI_ShutdownProcess () {
     TRI_Free(TRI_CORE_MEM_ZONE, environ);
   }
 #endif
+
+  TRI_DestroyVectorPointer(&ExternalProcesses);
+  TRI_DestroyMutex(&ExternalProcessesLock);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

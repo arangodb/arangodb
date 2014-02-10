@@ -1,14 +1,20 @@
 /* Sets the default values shared for content views*/
-#content
-{
-  background-color: rgba(0, 0, 0, 0.15);
-  margin-top: 30px;
+#content {
+  background-color: rgba(0, 0, 0, 0.0675);
+  margin-top: 25px;
   margin-bottom: 33px;
   min-height: 80px;
   height: 100%;
   width: 100%;
   margin-left: 20px;
   margin-left: 0;
+}
+
+div.content {
+  padding-top: 13px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-bottom: 5px;
 }
 /* layout.css
 #aboutDiv {
@@ -34,10 +40,6 @@ queryView.css
 documentsView.css
 #documentsFooterBox {
   height: 56px;
-}
-
-.arangoDropdown {
-  margin-bottom: -10px;
 }
 
 #documentsDiv {

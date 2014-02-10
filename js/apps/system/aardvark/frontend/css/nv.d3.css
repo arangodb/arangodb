@@ -93,11 +93,15 @@ svg {
 
 
 svg text {
-  font: normal 12px Arial;
+  font-weight: 300; 
+  font-size: 10px;
+  font-family: 'Open Sans', sans-serif;
 }
 
 svg .title {
- font: bold 14px Arial;
+ font-weight: 400; 
+ font-size: 14px;
+ font-family: 'Open Sans', sans-serif;
 }
 
 .nvd3 .nv-background {
@@ -170,7 +174,6 @@ svg .title {
 }
 
 .nvd3 .nv-axis .nv-axisMaxMin text {
-  font-weight: bold;
 }
 
 .nvd3 .x  .nv-axis .nv-axisMaxMin text,
@@ -178,8 +181,6 @@ svg .title {
 .nvd3 .x3 .nv-axis .nv-axisMaxMin text {
   text-anchor: middle
 }
-
-
 
 /**********
 *  Brush
@@ -278,7 +279,7 @@ svg .title {
 }
 
 .nvd3.nv-pie .hover path {
-  fill-opacity: .7;
+  fill-opacity: .8;
 /*
   stroke-width: 6px;
   stroke-opacity: 1;
@@ -296,7 +297,7 @@ svg .title {
 
 .nvd3 .nv-groups path.nv-line {
   fill: none;
-  stroke-width: 2.5px;
+  stroke-width: 1.25px;
   /*
   stroke-linecap: round;
   shape-rendering: geometricPrecision;

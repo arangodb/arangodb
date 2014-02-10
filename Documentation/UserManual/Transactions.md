@@ -113,7 +113,7 @@ attribute:
         write: "users"
       },
       action: function () {
-        /* all operations go here */
+        // all operations go here 
       }
     });
 
@@ -126,7 +126,7 @@ of a Javascript function:
       collections: {
         write: "users"
       },
-      action: "function () { /* all operations go here */ }"
+      action: "function () { doSomething(); }"
     });
 
 Please note that any operations specified in `action` will be executed on the 
@@ -161,7 +161,7 @@ be thrown and not caught inside the transaction:
         var db = require("internal").db;
         db.users.save({ _key: "hello" });
 
-        /* will abort and roll back the transaction */
+        // will abort and roll back the transaction 
         throw "doh!";
       }
     });
@@ -180,7 +180,7 @@ case, the user can return any legal Javascript value from the function:
         var db = require("internal").db;
         db.users.save({ _key: "hello" });
 
-        /* will commit the transaction and return the value "hello" */
+        // will commit the transaction and return the value "hello" 
         return "hello"; 
       }
     });
@@ -195,7 +195,7 @@ The `c1` collection needs to be declared in the `write` attribute of the
 The `action` attribute contains the actual transaction code to be executed.
 This code contains all data modification operations (3 in this example).
 
-    /* setup */
+    // setup
     db._create("c1");
 
     db._executeTransaction({
@@ -210,13 +210,13 @@ This code contains all data modification operations (3 in this example).
       }
     });
 
-    db.c1.count(); /* 3 */
+    db.c1.count(); // 3 
 
 
 Aborting the transaction by throwing an exception in the `action` function
 will revert all changes, so as if the transaction never happened:
     
-    /* setup */
+    // setup
     db._create("c1");
 
     db._executeTransaction({
@@ -226,22 +226,22 @@ will revert all changes, so as if the transaction never happened:
       action: function () {
         var db = require("internal").db;
         db.c1.save({ _key: "key1" });
-        db.c1.count(); /* 1 */
+        db.c1.count(); // 1 
 
         db.c1.save({ _key: "key2" });
-        db.c1.count(); /* 2 */
+        db.c1.count(); // 2 
 
         throw "doh!";
       }
     });
 
-    db.c1.count(); /* 0 */
+    db.c1.count(); // 0 
 
 
 The automatic rollback is also executed when an internal exception is thrown 
 at some point during transaction execution:
 
-    /* setup */
+    // setup 
     db._create("c1");
 
     db._executeTransaction({
@@ -252,33 +252,33 @@ at some point during transaction execution:
         var db = require("internal").db;
         db.c1.save({ _key: "key1" });
         
-        /* will throw duplicate a key error, not explicitly requested by the user */
+        // will throw duplicate a key error, not explicitly requested by the user 
         db.c1.save({ _key: "key1" });  
 
-        /* we'll never get here... */
+        // we'll never get here... 
       }
     });
 
-    db.c1.count(); /* 0 */
+    db.c1.count(); // 0 
 
 
 As required by the *consistency* principle, aborting or rolling back a 
 transaction will also restore secondary indexes to the state at transaction
 start. The following example using a cap constraint should illustrate that:
 
-    /* setup */
+    // setup 
     db._create("c1");
     
-    /* limit the number of documents to 3 */
+    // limit the number of documents to 3 
     db.c1.ensureCapConstraint(3); 
 
-    /* insert 3 documents */
+    // insert 3 documents 
     db.c1.save({ _key: "key1" });
     db.c1.save({ _key: "key2" });
     db.c1.save({ _key: "key3" });
 
-    /* this will push out key1 */
-    /* we now have these keys: [ "key1", "key2", "key3" ] */
+    // this will push out key1 
+    // we now have these keys: [ "key1", "key2", "key3" ] 
     db.c1.save({ _key: "key4" });
 
 
@@ -288,15 +288,15 @@ start. The following example using a cap constraint should illustrate that:
       },
       action: function () {
         var db = require("internal").db;
-        /* this will push out key2. we now have keys [ "key3", "key4", "key5" ] */
+        // this will push out key2. we now have keys [ "key3", "key4", "key5" ] 
         db.c1.save({ _key: "key5" }); 
 
-        /* will abort the transaction */
+        // will abort the transaction 
         throw "doh!"
       }
     });
 
-    /* we now have these keys back: [ "key2", "key3", "key4" ] */
+    // we now have these keys back: [ "key2", "key3", "key4" ] 
 
 Cross-collection transactions
 =============================
@@ -305,7 +305,7 @@ There's also the possibility to run a transaction across multiple collections.
 In this case, multiple collections need to be declared in the `collections`
 attribute, e.g.:
 
-    /* setup */
+    // setup 
     db._create("c1");
     db._create("c2");
 
@@ -320,14 +320,14 @@ attribute, e.g.:
       }
     });
 
-    db.c1.count(); /* 1 */
-    db.c2.count(); /* 1 */
+    db.c1.count(); // 1 
+    db.c2.count(); // 1
 
 
 Again, throwing an exception from inside the `action` function will make the 
 transaction abort and roll back all changes in all collections:
 
-    /* setup */
+    // setup 
     db._create("c1");
     db._create("c2");
 
@@ -342,16 +342,16 @@ transaction abort and roll back all changes in all collections:
           db.c2.save({ _key: "key" + i });
         }
 
-        db.c1.count(); /* 100 */
-        db.c2.count(); /* 100 */
+        db.c1.count(); // 100 
+        db.c2.count(); // 100 
 
-        /* abort */
+        // abort 
         throw "doh!"
       }
     });
 
-    db.c1.count(); /* 0 */
-    db.c2.count(); /* 0 */
+    db.c1.count(); // 0 
+    db.c2.count(); // 0 
 
 Passing parameters to transactions {#TransactionsParameters}
 ============================================================
@@ -434,12 +434,12 @@ Example:
         read: "users"
       },
       action: function () {
-        /* execute an AQL query that traverses a graph starting at a "users" vertex. 
-           it is yet unknown into which other collections the query will traverse */
+        // execute an AQL query that traverses a graph starting at a "users" vertex. 
+        // it is yet unknown into which other collections the query will traverse 
         db._createStatement({ 
           query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
         }).execute().toArray().forEach(function (d) {
-          /* ... */
+          // ...
         });
       }
     });
@@ -560,7 +560,7 @@ into one transaction.
 Additionally, transactions in ArangoDB cannot be nested, i.e. a transaction 
 must not call any other transaction. If an attempt is made to call a transaction 
 from inside a running transaction, the server will throw error `1651 (nested 
-transactions detected`).
+transactions detected)`.
 
 It is also disallowed to execute user transaction on some of ArangoDB's own system
 collections. This shouldn't be a problem for regular usage as system collections will

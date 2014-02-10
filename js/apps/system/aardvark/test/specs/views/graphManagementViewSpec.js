@@ -95,15 +95,16 @@
 
       });
 
-      it("should be able to delete", function() {
+      it("should navigate to graph delete view", function() {
+        spyOn(window.App, "navigate");
         var lg = graphs.get("g3");
-        spyOn(lg, "destroy").andCallFake(function(opt) {
-          opt.success(); 
-        });
-        spyOn(view, "render");
         $("#" + g3._key + " > span").click();
-        expect(lg.destroy).toHaveBeenCalled();
-        expect(view.render).toHaveBeenCalled();
+        expect(window.App.navigate).toHaveBeenCalledWith(
+          "graphManagement/delete/" + g3._key,
+          {
+            trigger: true
+          }
+        );
       });
 
     });

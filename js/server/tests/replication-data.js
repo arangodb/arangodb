@@ -81,7 +81,6 @@ function ReplicationSuite () {
 
     var masterState = replication.logger.state();
     assertTrue(masterState.state.running);
-    var lastTick = masterState.state.lastLogTick;
 
     replication.logger.stop();
     masterState = replication.logger.state();
@@ -183,7 +182,7 @@ function ReplicationSuite () {
       };
 
       try {
-        replication.applier.properties();
+        replication.applier.properties(configuration);
       }
       catch (err) {
         require("internal").print(err);
@@ -203,7 +202,7 @@ function ReplicationSuite () {
       };
 
       try {
-        replication.applier.properties();
+        replication.applier.properties(configuration);
       }
       catch (err) {
         assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
@@ -222,7 +221,7 @@ function ReplicationSuite () {
       };
 
       try {
-        replication.applier.properties();
+        replication.applier.properties(configuration);
       }
       catch (err) {
         assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
@@ -512,7 +511,7 @@ function ReplicationSuite () {
     testTransaction3 : function () {
       compare(
         function (state) {
-          var c = db._create(cn), i;
+          db._create(cn);
 
           db._executeTransaction({
             collections: { 
@@ -546,7 +545,7 @@ function ReplicationSuite () {
     testTransaction4 : function () {
       compare(
         function (state) {
-          var c = db._create(cn), i;
+          db._create(cn);
 
           db._executeTransaction({
             collections: { 
@@ -592,7 +591,7 @@ function ReplicationSuite () {
     testTransactionBig : function () {
       compare(
         function (state) {
-          var c = db._create(cn), i;
+          db._create(cn);
 
           db._executeTransaction({
             collections: { 

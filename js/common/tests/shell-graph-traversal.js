@@ -75,10 +75,10 @@ function GraphTraversalSuite () {
       var v2 = g.addVertex("v2");
       var v3 = g.addVertex("v3");
       var v4 = g.addVertex("v4");
-      var e1 = g.addEdge(v1, v2, "v1v2");
-      var e3 = g.addEdge(v2, v3, "v2v3");
-      var e4 = g.addEdge(v1, v4, "v1v4");
-      var e5 = g.addEdge(v4, v3, "v4v3");
+      g.addEdge(v1, v2, "v1v2");
+      g.addEdge(v2, v3, "v2v3");
+      g.addEdge(v1, v4, "v1v4");
+      g.addEdge(v4, v3, "v4v3");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

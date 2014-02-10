@@ -72,6 +72,15 @@ add_executable(
     BitIndexes/bitarray.c
     BitIndexes/bitarrayIndex.c
     CapConstraint/cap-constraint.c
+    Cluster/AgencyComm.cpp
+    Cluster/ApplicationCluster.cpp
+    Cluster/ClusterComm.cpp
+    Cluster/ClusterInfo.cpp
+    Cluster/ClusterMethods.cpp
+    Cluster/HeartbeatThread.cpp
+    Cluster/RestShardHandler.cpp
+    Cluster/ServerState.cpp
+    Cluster/v8-cluster.cpp
     FulltextIndex/fulltext-handles.c
     FulltextIndex/fulltext-index.c
     FulltextIndex/fulltext-list.c
@@ -96,6 +105,7 @@ add_executable(
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
+    RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
     SkipLists/skiplistIndex.c

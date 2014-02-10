@@ -1,5 +1,5 @@
 #databaseDiv {
-  padding: 5px;
+  padding: 13px 5px 0px 5px;
 }
 
 .databaseButtons {
@@ -44,19 +44,11 @@
 #databaseTable td span {
   float: right;
   color: #B30000;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 #databaseTable td {
     padding:12px 18px;
-}
-
-#databaseTable tr:nth-child(odd) { 
-  background-color: #F1F0EE;
-}
-
-#databaseTable tr:nth-child(even) {
-  background-color: #FFFFFF;
 }
 
 #createDatabaseModal table {

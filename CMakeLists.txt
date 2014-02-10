@@ -398,6 +398,19 @@ if (ARM_LIB_PATH)
 endif ()
 
 ################################################################################
+### @brief BOOST
+################################################################################
+
+set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost_1_55_0/include CACHE path "BOOST include path")
+set(BOOST_VERSION "1.55.0" CACHE string "BOOST version")
+
+if (BOOST_INCLUDE)
+  include_directories(${BOOST_INCLUDE})
+endif ()
+
+add_definitions("-DTRI_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+################################################################################
 ### @brief ICU
 ################################################################################
 
@@ -732,11 +745,18 @@ if (MSVC)
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
 
-  set(CPACK_PACKAGE_ICON ${ARANGO_IMG})
+  set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
 
   set(CPACK_NSIS_MODIFY_PATH ON)
   set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
+  set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
+  
+  # set(CPACK_PACKAGE_EXECUTABLES "arangosh;Arango Shell;arangod;Arango Server")
+  set(CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '${ARANGO_ICON}'
+                                     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '${ARANGO_ICON}'
+                                     ")
+  set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
 
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")

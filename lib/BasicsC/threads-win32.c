@@ -179,10 +179,10 @@ bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(v
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopThread (TRI_thread_t* thread) {
-  if (TerminateThread(thread, 0) == 0) {
+  if (TerminateThread(*thread, 0) == 0) {
     DWORD result = GetLastError();
     
-    LOG_ERROR("threads-win32.c:TRI_StopThread:could not stop thread -->%d",result);
+    LOG_ERROR("threads-win32.c:TRI_StopThread:could not stop thread -->%d", result);
 
     return TRI_ERROR_INTERNAL;
   }

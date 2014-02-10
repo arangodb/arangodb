@@ -116,15 +116,17 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CLUSTER_TIMEOUT, "timeout in cluster operation");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN, "could not remove collection from plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, "could not remove collection from current");
-  REG_ERROR(ERROR_CLUSTER_DATABASE_NAME_EXISTS, "database name already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN, "could not create database in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "could not create database");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN, "could not remove database from plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, "could not remove database from current");
-  REG_ERROR(ERROR_SHARD_GONE, "no responsible shard found");
+  REG_ERROR(ERROR_CLUSTER_SHARD_GONE, "no responsible shard found");
   REG_ERROR(ERROR_CLUSTER_CONNECTION_LOST, "cluster internal HTTP connection broken");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY, "must not specify _key for this collection");
   REG_ERROR(ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, "got contradicting answers from different shards");
+  REG_ERROR(ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, "not all sharding attributes given");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES, "must not change the value of a shardkey attribute");
+  REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -199,7 +201,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
-  REG_ERROR(WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN, "the index garbage collector has shutdown and no further entries can be processed");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

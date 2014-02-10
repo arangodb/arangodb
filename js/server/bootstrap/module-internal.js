@@ -181,10 +181,17 @@
         }
           
         try {
-          var found = aal.firstExample({ type: "mount", mount: "/_admin/" + appName });
+          var mount;
+          if (appName === 'aardvark') {
+            mount = '/_admin/' + appName;
+          }
+          else {
+            mount = '/system/' + appName;
+          }
+          var found = aal.firstExample({ type: "mount", mount: mount });
 
           if (found === null) {
-            fm.mount(appName, "/_admin/" + appName, {reload: false});
+            fm.mount(appName, mount, {reload: false});
           }
         }
         catch (err) {

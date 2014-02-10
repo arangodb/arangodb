@@ -816,7 +816,7 @@ class CallbackTest : public ClusterCommCallback {
     }
 };
 
-static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
@@ -824,7 +824,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
   if (argv.Length() != 9) {
     TRI_V8_EXCEPTION_USAGE(scope, 
-      "SYS_SHARDING_TEST(<req>, <res>, <dest>, <path>, <clientTransactionID>, "
+      "SYS_CLUSTER_TEST(<req>, <res>, <dest>, <path>, <clientTransactionID>, "
       "<headers>, <body>, <timeout>, <asyncMode>)");
   }
 
@@ -898,7 +898,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
 
   if (asyncMode) {
     res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination, 
-                         reqType, path, body.c_str(), body.size(), headerFields, 
+                         reqType, path, &body, false, headerFields, 
                          new CallbackTest("Hello Callback"), timeout);
 
     if (res == 0) {
@@ -906,7 +906,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
                                "couldn't queue async request");
     }
     
-    LOG_DEBUG("JS_ShardingTest: request has been submitted");
+    LOG_DEBUG("JS_ClusterTest: request has been submitted");
 
     OperationID opID = res->operationID;
     delete res;
@@ -925,22 +925,22 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       if (status >= CL_COMM_SENT) {
         break;
       }
-      LOG_DEBUG("JS_ShardingTest: request not yet sent");
+      LOG_DEBUG("JS_ClusterTest: request not yet sent");
       
       usleep(50000);
     }
 
-    LOG_DEBUG("JS_ShardingTest: request has been sent, status: %d",status);
+    LOG_DEBUG("JS_ClusterTest: request has been sent, status: %d",status);
 
     res = cc->wait("", 0, opID, "");
 
     if (0 == res) {
       r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));
-      LOG_DEBUG("JS_ShardingTest: out of memory");
+      LOG_DEBUG("JS_ClusterTest: out of memory");
     }
     else if (res->status == CL_COMM_TIMEOUT) {
       r->Set(v8::String::New("timeout"),v8::BooleanObject::New(true));
-      LOG_DEBUG("JS_ShardingTest: timeout");
+      LOG_DEBUG("JS_ClusterTest: timeout");
     }
     else if (res->status == CL_COMM_ERROR) {
       if (res->result && res->result->isComplete()) {
@@ -961,13 +961,13 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
         r->Set(v8g->ErrorMessageKey,
                v8::String::New("got no HTTP response, DBserver seems gone"));
       }
-      LOG_DEBUG("JS_ShardingTest: communications error");
+      LOG_DEBUG("JS_ClusterTest: communications error");
     }
     else if (res->status == CL_COMM_DROPPED) {
       // Note that this can basically not happen
       r->Set(v8::String::New("errorMessage"),
              v8::String::New("request dropped whilst waiting for answer"));
-      LOG_DEBUG("JS_ShardingTest: dropped");
+      LOG_DEBUG("JS_ClusterTest: dropped");
     }
     else {   // Everything is OK
       // The headers:
@@ -985,37 +985,36 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
         r->Set(v8::String::New("body"), v8::String::New(res->answer->body(),
                                                     res->answer->bodySize()));
       }
-      LOG_DEBUG("JS_ShardingTest: success");
+      LOG_DEBUG("JS_ClusterTest: success");
     }
   }
   else {   // synchronous mode
     res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination, 
-                          reqType, path, body.c_str(), body.size(), 
-                          *headerFields, timeout);
+                          reqType, path, body, *headerFields, timeout);
     delete headerFields;
     if (res != 0) {
-      LOG_DEBUG("JS_ShardingTest: request has been sent synchronously, "
+      LOG_DEBUG("JS_ClusterTest: request has been sent synchronously, "
                 "status: %d",res->status);
     }
 
     if (0 == res) {
       r->Set(v8::String::New("errorMsg"),v8::String::New("out of memory"));
-      LOG_DEBUG("JS_ShardingTest: out of memory");
+      LOG_DEBUG("JS_ClusterTest: out of memory");
     }
     else if (res->status == CL_COMM_TIMEOUT) {
       r->Set(v8::String::New("timeout"),v8::BooleanObject::New(true));
-      LOG_DEBUG("JS_ShardingTest: timeout");
+      LOG_DEBUG("JS_ClusterTest: timeout");
     }
     else if (res->status == CL_COMM_ERROR) {
       r->Set(v8::String::New("errorMessage"),
              v8::String::New("could not send request, DBServer gone"));
-      LOG_DEBUG("JS_ShardingTest: communications error");
+      LOG_DEBUG("JS_ClusterTest: communications error");
     }
     else if (res->status == CL_COMM_DROPPED) {
       // Note that this can basically not happen
       r->Set(v8::String::New("errorMessage"),
              v8::String::New("request dropped whilst waiting for answer"));
-      LOG_DEBUG("JS_ShardingTest: dropped");
+      LOG_DEBUG("JS_ClusterTest: dropped");
     }
     else {   // Everything is OK
       // The headers:
@@ -1032,7 +1031,7 @@ static v8::Handle<v8::Value> JS_ShardingTest (v8::Arguments const& argv) {
       string theBody = res->result->getBody().str();
       r->Set(v8::String::New("body"), v8::String::New(theBody.c_str(),
                                                       theBody.size()));
-      LOG_DEBUG("JS_ShardingTest: success");
+      LOG_DEBUG("JS_ClusterTest: success");
 
     }
   }
@@ -1077,7 +1076,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
 #ifdef TRI_ENABLE_CLUSTER
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SHARDING_TEST", JS_ShardingTest);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest);
 #endif
 }
 

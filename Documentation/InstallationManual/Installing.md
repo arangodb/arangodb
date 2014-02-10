@@ -79,8 +79,8 @@ graphical user interface to start and stop the server.
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
 
-If you are using @S_EXTREF{http://mxcl.github.com/homebrew/,homebrew},
-then you can install the ArangoDB using `brew` as follows:
+If you are using @EXTREF_S{http://brew.sh/,homebrew}, then you can install 
+the ArangoDB using `brew` as follows:
 
     brew install arangodb
 

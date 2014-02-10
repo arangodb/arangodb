@@ -104,6 +104,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
+/// Note: this flag is not supported in a cluster. Using it will result in an
+/// error.
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until the edge document has been synced to disk.
 ///
@@ -183,7 +186,6 @@ bool RestEdgeHandler::createDocument () {
   // extract the from
   bool found;
   char const* from = _request->value("from", found);
-
   if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -269,12 +271,18 @@ bool RestEdgeHandler::createDocument () {
   edge._toKey   = 0;
 
   string wrongPart;
+  // Note that in a DBserver in a cluster, the following call will
+  // actually parse the first part of `from` as a cluster-wide
+  // collection name, exactly as it is needed here!
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
     wrongPart = "'from'";
   }
   else {
+    // Note that in a DBserver in a cluster, the following call will
+    // actually parse the first part of `from` as a cluster-wide
+    // collection name, exactly as it is needed here!
     res = parseDocumentId(to, edge._toCid, edge._toKey);
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'to'";
@@ -343,17 +351,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  char const* from,
                                                  char const* to) {
   string const& dbname = _request->originalDatabaseName();
+
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
+  map<string, string> resultHeaders;
   string resultBody;
 
-  // Not yet implemented:
-  generateTransactionError(collname.c_str(), TRI_ERROR_INTERNAL);
-  return false;
-
-  int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json,
-            responseCode, contentType, resultBody);
+  int error = triagens::arango::createEdgeOnCoordinator(
+            dbname, collname, waitForSync, json, from, to,
+            responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
@@ -362,7 +367,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
   _response = createResponse(responseCode);
-  _response->setContentType(contentType);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
@@ -408,16 +413,18 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{200}
 /// is returned if the edge was found
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the edge or collection was not found
-///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the edge has 
 /// the same version
 ///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge or collection was not found
+///
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
-/// edge has a different version
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -475,16 +482,17 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{200}
 /// is returned if the edge document was found
 ///
-/// @RESTRETURNCODE{404}
-/// is returned if the edge document or collection was not found
-///
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the edge document has
 /// same version
 ///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge document or collection was not found
+///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `etag` header.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,8 +614,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// is returned if the collection or the edge document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,7 +635,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{keepNull,string,optional}
+/// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// If the intention is to delete existing attributes with the patch command, 
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
@@ -706,8 +716,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// is returned if the collection or the edge document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -767,8 +779,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the current edge
-/// document has a different version
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version. The response will also contain the found
+/// document's current revision in the `_rev` attribute. Additionally, the 
+/// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

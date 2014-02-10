@@ -40,20 +40,23 @@ function ContextMenu(id) {
       menu,
 
     addEntry = function(label, callback) {
-      var li, button;
-      li = document.createElement("li");
-      button = document.createElement("button");
-      button.onclick = function() {
+      var item, inner;
+      item = document.createElement("div");
+      item.className = "context-menu-item";
+      inner = document.createElement("div");
+      inner.className = "context-menu-item-inner";
+      inner.appendChild(document.createTextNode(label));
+      inner.onclick = function() {
         callback(d3.select(menu.target).data()[0]);
       };
-      button.className = "btn btn-primary gv_context_button";
-      button.appendChild(document.createTextNode(label));
-      li.appendChild(button);
-      ul.appendChild(li);
+      item.appendChild(inner);
+      div.appendChild(item);
     },
 
     bindMenu = function($objects) {
-      menu = $.contextMenu.create(jqId, {shadow: false});
+      menu = $.contextMenu.create(jqId, {
+        shadow: false
+      });
       $objects.each(function() {
         $(this).bind('contextmenu', function(e){
           menu.show(this,e);
@@ -64,14 +67,13 @@ function ContextMenu(id) {
     
     divFactory = function() {
       div = document.getElementById(id);
-      if (!div) {
-        div = document.createElement("div");
-        div.id = id;
-        ul = document.createElement("ul");
-        document.body.appendChild(div);
-        div.appendChild(ul);
+      if (div) {
+        div.parentElement.removeChild(div);
       }
-      ul = div.firstChild;
+      div = document.createElement("div");
+      div.className = "context-menu context-menu-theme-osx";
+      div.id = id;
+      document.body.appendChild(div);
       return div;
     };
 

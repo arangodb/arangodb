@@ -14,102 +14,12 @@ describe ArangoDB do
 ################################################################################
 
     context "error handling:" do
-      it "returns an error if url is missing from" do
-        cn = "UnitTestsCollectionEdge"
-        cmd = "/_api/edge?collection=#{cn}&createCollection=true"
-        body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-missing-from-to", cmd, :body => body)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        ArangoDB.drop_collection(cn)
-      end
-
-      it "returns an error if from/to are malformed" do
-        cn = "UnitTestsCollectionEdge"
-        cmd = "/_api/edge?collection=#{cn}&createCollection=true&from=1&to=1"
-        body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-bad-from-to", cmd, :body => body)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
-        doc.parsed_response['code'].should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        ArangoDB.drop_collection(cn)
-      end
-      
-      it "returns an error if from/to are incomplete" do
-        cn = "UnitTestsCollectionEdge"
-        cmd = "/_api/edge?collection=#{cn}&createCollection=true&from=test&to=test"
-        body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-incomplete-from-to", cmd, :body => body)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
-        doc.parsed_response['code'].should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        ArangoDB.drop_collection(cn)
-      end
-      
-      it "returns an error if vertex-handle is missing" do
-        cn = "UnitTestsCollectionEdge"
-        ArangoDB.drop_collection(cn)
-        ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
-        cmd = "/_api/edges/#{cn}"
-        doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
-        doc.parsed_response['code'].should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        ArangoDB.drop_collection(cn)
-      end
-
-      it "returns an error if vertex-handle is empty" do
-        cn = "UnitTestsCollectionEdge"
-        ArangoDB.drop_collection(cn)
-        ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
-        cmd = "/_api/edges/#{cn}?vertex="
-        doc = ArangoDB.log_get("#{prefix}-empty-handle", cmd)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
-        doc.parsed_response['code'].should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        ArangoDB.drop_collection(cn)
-      end
-      
       it "returns an error if collection does not exist" do
         cn = "UnitTestsCollectionEdge"
         ArangoDB.drop_collection(cn)
         cmd = "/_api/edge?collection=#{cn}&from=test&to=test"
         body = "{}"
         doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
-
-        doc.code.should eq(404)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1203)
-        doc.parsed_response['code'].should eq(404)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      end
-      
-      it "returns an error if collection does not exist" do
-        cn = "UnitTestsCollectionEdge"
-        ArangoDB.drop_collection(cn)
-        cmd = "/_api/edges/#{cn}?vertex=test"
-        doc = ArangoDB.log_get("#{prefix}-no-collection-query", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -262,30 +172,6 @@ describe ArangoDB do
         doc.parsed_response['_to'].should match(@reVertex)
         doc.parsed_response['e'].should eq(2)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        # check ANY edges
-        cmd = "/_api/edges/#{@ce}?vertex=#{id1}"
-        doc = ArangoDB.log_get("#{prefix}-read-edges-any", cmd);
-
-        doc.code.should eq(200)
-        doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(3)
-
-        # check IN edges
-        cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=in"
-        doc = ArangoDB.log_get("#{prefix}-read-edges-in", cmd);
-
-        doc.code.should eq(200)
-        doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(1)
-
-        # check OUT edges
-        cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=out"
-        doc = ArangoDB.log_get("#{prefix}-read-edges-out", cmd);
-
-        doc.code.should eq(200)
-        doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(2)
       end
 
       it "using collection names in from and to" do

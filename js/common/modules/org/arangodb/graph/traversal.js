@@ -104,8 +104,13 @@ abortedException.prototype = new Error();
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionDatasourceFactory (edgeCollection) {
+  var c = edgeCollection;
+  if (typeof c === 'string') {
+    c = db._collection(c);
+  }
+
   return {
-    edgeCollection: edgeCollection,
+    edgeCollection: c,
 
     getVertexId: function (vertex) {
       return vertex._id;
@@ -627,14 +632,14 @@ function checkReverse (config) {
       result = true;
     }
   }
-  else if (config.order  === ArangoTraverser.PRE_ORDER) {
+  else if (config.order === ArangoTraverser.PRE_ORDER) {
     // pre order
     if (config.itemOrder === ArangoTraverser.BACKWARD && 
-        config.strategy  === ArangoTraverser.BREADTH_FIRST) {
+        config.strategy === ArangoTraverser.BREADTH_FIRST) {
       result = true;
     }
     else if (config.itemOrder === ArangoTraverser.FORWARD && 
-             config.strategy  === ArangoTraverser.DEPTH_FIRST) {
+             config.strategy === ArangoTraverser.DEPTH_FIRST) {
       result = true; 
     }
   }
@@ -946,14 +951,13 @@ function dijkstraSearch () {
         var i, n;
 
         if (currentNode.vertex._id === endVertex._id) {
-          var vertices = this.vertexList(currentNode);
-          if (config.order !== ArangoTraverser.PRE_ORDER) {
-            vertices.reverse();
-          }
+          var vertices = this.vertexList(currentNode).reverse();
           
           n = vertices.length;
           for (i = 0; i < n; ++i) {
-            config.visitor(config, result, vertices[i].vertex, this.buildPath(vertices[i]));
+            if (! vertices[i].hide) {
+              config.visitor(config, result, vertices[i].vertex, this.buildPath(vertices[i]));
+            }
           }
           return;
         }
@@ -967,9 +971,19 @@ function dijkstraSearch () {
         }
 
         currentNode.visited = true;
-        var dist = currentNode.dist;
-
+        
         var path = this.buildPath(currentNode);
+        var filterResult = parseFilterResult(config.filter(config, currentNode.vertex, path));
+ 
+        if (! filterResult.visit) {
+          currentNode.hide = true;
+        }
+
+        if (! filterResult.expand) {
+          continue;
+        }
+
+        var dist = currentNode.dist;
         var connected = config.expander(config, currentNode.vertex, path); 
         n = connected.length;
 
@@ -1187,7 +1201,7 @@ ArangoTraverser = function (config) {
     }
     if (typeof value === 'string') {
       value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null) {
+      if (map[value] !== null && map[value] !== undefined) {
         return map[value];
       }
     }

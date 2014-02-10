@@ -1489,7 +1489,17 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     // assume the command succeeds
     promptError = false;
-    TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+
+    // execute command and register its result in __LAST__
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+
+    if (v.IsEmpty()) {
+      context->Global()->Set(TRI_V8_SYMBOL("_last"), v8::Undefined());
+    }
+    else {
+      context->Global()->Set(TRI_V8_SYMBOL("_last"), v);
+    }
+
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {

@@ -28,6 +28,8 @@
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
 #include "Basics/JsonHelper.h"
+#include "BasicsC/files.h"
+#include "Basics/FileUtils.h"
 #include "BasicsC/logging.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -56,7 +58,8 @@ using namespace triagens::arango;
 
 ApplicationCluster::ApplicationCluster (TRI_server_t* server,
                                         triagens::rest::ApplicationDispatcher* dispatcher,
-                                        ApplicationV8* applicationV8) 
+                                        ApplicationV8* applicationV8,
+                                        char* executablePath) 
   : ApplicationFeature("Sharding"),
     _server(server),
     _dispatcher(dispatcher),
@@ -68,7 +71,8 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _agencyPrefix(),
     _myId(),
     _myAddress(),
-    _enableCluster(false) {
+    _enableCluster(false),
+    _myExecutablePath(executablePath) {
 
   assert(_dispatcher != 0);
 }
@@ -162,6 +166,21 @@ bool ApplicationCluster::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::start () {
+
+  // Some information about ourselves eventually used by dispatcher in cluster:
+  int err = 0;
+  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  if (0 == err) {
+    char *abs = TRI_GetAbsolutePath (_myExecutablePath.c_str(), cwd.c_str());
+    ServerState::instance()->setExecutablePath(string(abs));
+    abs = TRI_GetAbsolutePath (_server->_basePath, cwd.c_str());
+    ServerState::instance()->setBasePath(string(abs));
+  }
+  else {
+    ServerState::instance()->setExecutablePath(_myExecutablePath);
+    ServerState::instance()->setBasePath(_server->_basePath);
+  }
+ 
   if (! enabled()) {
     return true;
   }
@@ -211,7 +230,7 @@ bool ApplicationCluster::start () {
   }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
- 
+
   // initialise ConnectionManager library
   httpclient::ConnectionManager::instance()->initialise();
 
@@ -231,6 +250,9 @@ bool ApplicationCluster::start () {
            _myId.c_str(),
            _myAddress.c_str(),
            ServerState::roleToString(role).c_str());
+  
+  // initialise ClusterComm library
+  ClusterComm::instance()->initialise();
 
   if (! _disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
@@ -268,11 +290,13 @@ bool ApplicationCluster::start () {
       LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
                          endpoints.c_str());
     }
+
+    while (! _heartbeat->ready()) {
+      // wait until heartbeat is ready
+      usleep(10000);
+    }
   }
   
-  // initialise ClusterComm library
-  ClusterComm::instance()->initialise();
-
   return true;
 }
   

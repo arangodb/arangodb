@@ -133,6 +133,7 @@ add_library(
     STATIC
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp
+    SimpleHttpClient/ConnectionManager.cpp
     SimpleHttpClient/SslClientConnection.cpp
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
@@ -195,6 +196,7 @@ add_library(
     V8/v8-utils.cpp
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp
+    SimpleHttpClient/ConnectionManager.cpp
     SimpleHttpClient/SslClientConnection.cpp
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp

@@ -142,6 +142,7 @@ RequestContext = function (executionBuffer, models, route) {
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
+    "integer": "/[0-9]+/",
     "string": "/.+/"
   };
 
@@ -181,10 +182,12 @@ extend(RequestContext.prototype, {
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
-      docs = this.route.docs,
       constraint = url.constraint || {};
 
     constraint[paramName] = this.typeToRegex[attributes.type];
+    if (!constraint[paramName]) {
+      throw new Error("Illegal attribute type: " + attributes.type);
+    }
     this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
     this.docs.addPathParam(paramName, attributes.description, attributes.type);
     return this;
