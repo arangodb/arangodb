@@ -31,7 +31,4 @@ HTTP Interface for Sharding {#HttpSharding}
 @anchor HttpShardingClusterCheckPortGET
 @copydetails JSF_cluster_check_port_GET
 
-
-
-
 @BNAVIGATE_HttpSharding
