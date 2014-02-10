@@ -819,11 +819,6 @@ static int AttributeNamesFromArguments (v8::Arguments const& argv,
 #ifdef TRI_ENABLE_CLUSTER
 static bool ComparePathIndexCoordinator (TRI_json_t const* lhs,
                                          TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "type"),
-                               TRI_LookupArrayJson(rhs, "type"))) {
-    return false;
-  }
-  
   if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "unique"),
                                TRI_LookupArrayJson(rhs, "unique"))) {
     return false;
@@ -839,7 +834,7 @@ static bool ComparePathIndexCoordinator (TRI_json_t const* lhs,
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure an index
+/// @brief ensure a path index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
@@ -871,14 +866,13 @@ static v8::Handle<v8::Value> EnsurePathIndexCoordinator (TRI_vocbase_col_t const
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  TRI_json_t* resultJson = 0; 
-
   for (size_t i = 0; i < fields->_length; ++i) {
     TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) fields->_buffer[i]));
   }
   
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
 
+  TRI_json_t* resultJson = 0; 
   string errorMsg;
   int myerrno = ci->ensureIndexCoordinator(databaseName, 
                                            cid, 
@@ -1076,6 +1070,93 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static bool CompareFulltextIndexCoordinator (TRI_json_t const* lhs,
+                                             TRI_json_t const* rhs) {
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "minLength"),
+                               TRI_LookupArrayJson(rhs, "minLength"))) {
+    return false;
+  }
+  
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
+                               TRI_LookupArrayJson(rhs, "fields"))) {
+    return false;
+  }
+  
+  return true;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure a fulltext index, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsureFulltextIndexCoordinator (TRI_vocbase_col_t const* col,
+                                                             bool create,
+                                                             string const& attributeName,
+                                                             int minWordLength) {
+  v8::HandleScope scope;
+
+  string const databaseName(col->_dbName);
+  string const cid = StringUtils::itoa(col->_cid);
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  
+  if (json == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+    
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
+ 
+  TRI_json_t* flds = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+
+  if (flds == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, attributeName.c_str()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
+
+  TRI_json_t* resultJson = 0; 
+  string errorMsg;
+  int myerrno = ci->ensureIndexCoordinator(databaseName, 
+                                           cid, 
+                                           json,
+                                           create,
+                                           &CompareFulltextIndexCoordinator, 
+                                           resultJson,
+                                           errorMsg, 
+                                           360.0);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
+  if (myerrno != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // TODO: protect against races on _name
+  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(index);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1111,8 +1192,16 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> ret = EnsureFulltextIndexCoordinator(col, create, attributeName, minWordLength);
+    return scope.Close(ret);
+  }
+#endif  
   
   TRI_vocbase_t* vocbase = col->_vocbase;
+  assert(vocbase != 0);
   
   CollectionNameResolver resolver(vocbase);
   ReadTransactionType trx(vocbase, resolver, col->_cid);
@@ -5753,13 +5842,15 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   v8::HandleScope scope;
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
-
+  
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
   TRI_primary_collection_t* primary = collection->_collection;
 

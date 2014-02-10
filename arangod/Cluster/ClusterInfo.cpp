@@ -1402,6 +1402,13 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       if (TRI_IsListJson(indexes)) {
         for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
           TRI_json_t const* other = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+  
+          if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(json, "type"),
+                                       TRI_LookupArrayJson(other, "type"))) {
+            // compare index types first. they must match
+            continue;
+          }
+  
           bool isSame = compare(json, other);
 
           if (isSame) {
