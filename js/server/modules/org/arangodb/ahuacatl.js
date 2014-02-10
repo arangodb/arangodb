@@ -32,6 +32,7 @@ var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
+var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -797,6 +798,11 @@ function GET_DOCUMENTS (collection, offset, limit) {
   if (limit === undefined) {
     limit = null;
   }
+
+  if (isCoordinator) {
+    return COLLECTION(collection).all(offset, limit).toArray();
+  }
+
   return COLLECTION(collection).ALL(offset, limit).documents;
 }
 

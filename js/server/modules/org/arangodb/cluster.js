@@ -142,6 +142,21 @@ function getShardMap (plannedCollections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the indexes of a collection as a map
+////////////////////////////////////////////////////////////////////////////////
+
+function getIndexMap (shard) {
+  var indexes = { }, i;
+  var idx = arangodb.db._collection(shard).getIndexes();
+
+  for (i = 0; i < idx.length; ++i) {
+    indexes[idx.id] = idx[i];
+  }
+
+  return indexes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an action under a write-lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -366,6 +381,58 @@ function handleDatabaseChanges (plan, current) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index in a shard
+////////////////////////////////////////////////////////////////////////////////
+
+function createIndex (shard, index) {
+  var collection = arangodb.db._collection(shard);
+                            
+  switch (index.type) { 
+    case "hash":
+      if (index.unique) {
+        collection.ensureUniqueConstraint.apply(collection, index.fields);
+      }
+      else {
+        collection.ensureHashIndex.apply(collection, index.fields);
+      }
+      break;
+    case "skiplist":
+      if (index.unique) {
+        collection.ensureUniqueSkiplist.apply(collection, index.fields);
+      }
+      else {
+        collection.ensureSkiplist.apply(collection, index.fields);
+      }
+      break;
+    case "fulltext":
+      collection.ensureFulltextIndex(index.fields[0], index.minLength);
+      break;
+    case "geo1":
+      if (index.unique) {
+        collection.ensureGeoConstraint(index.fields[0], 
+                                       index.geoJson, 
+                                       index.ignoreNull);
+      }
+      else {
+        collection.ensureGeoIndex(index.fields[0], 
+                                  index.geoJson, 
+                                  index.ignoreNull);
+      }
+      break;
+    case "geo2":
+      if (index.unique) {
+        collection.ensureGeoConstraint(index.fields[0], 
+                                       index.fields[1], 
+                                       index.ignoreNull);
+      }
+      else {
+        collection.ensureGeoIndex(index.fields[0], index.fields[1]);
+      }
+      break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -502,6 +569,26 @@ function createLocalCollections (plannedCollections) {
                         writeLocked({ part: "Current" }, 
                                     createCollectionAgency, 
                                     [ database, shard, payload ]);
+                      }
+                    }
+
+                    if (payload.hasOwnProperty("indexes")) {
+                      var indexes = getIndexMap(shard);
+                      var idx;
+
+                      for (idx in payload.indexes) {
+                        if (payload.indexes.hasOwnProperty(idx)) {
+                          var index = payload.indexes[idx];
+
+                          if (! indexes.hasOwnProperty(index.id)) {
+                            console.info("creating index '%s/%s': %s", 
+                                         database, 
+                                         shard,
+                                         JSON.stringify(index));
+
+                            createIndex(shard, index);
+                          }
+                        }
                       }
                     }
                   }

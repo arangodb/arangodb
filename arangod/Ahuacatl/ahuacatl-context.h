@@ -86,6 +86,7 @@ typedef struct TRI_aql_context_s {
   
   struct TRI_json_s*          _userOptions;
   bool                        _fullCount;
+  bool                        _isCoordinator;
 }
 TRI_aql_context_t;
 
@@ -109,6 +110,7 @@ TRI_aql_context_t;
 TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
                                          const char* const,
                                          const size_t,
+                                         bool,
                                          struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
