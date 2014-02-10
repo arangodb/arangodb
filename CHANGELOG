@@ -172,6 +172,12 @@ v1.4.10 (XXXX-XX-XX)
 
 * added loading of .json file
 
+* Fixed http return code in graph api with waitForSync parameter.
+
+* Fixed documentation in graph, simple and index api.
+
+* removed 2 tests due to change in ruby library.
+
 
 v1.4.9 (2014-02-07)
 -------------------
