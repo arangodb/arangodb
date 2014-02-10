@@ -381,6 +381,58 @@ function handleDatabaseChanges (plan, current) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index in a shard
+////////////////////////////////////////////////////////////////////////////////
+
+function createIndex (shard, index) {
+  var collection = arangodb.db._collection(shard);
+                            
+  switch (index.type) { 
+    case "hash":
+      if (index.unique) {
+        collection.ensureUniqueConstraint.apply(collection, index.fields);
+      }
+      else {
+        collection.ensureHashIndex.apply(collection, index.fields);
+      }
+      break;
+    case "skiplist":
+      if (index.unique) {
+        collection.ensureUniqueSkiplist.apply(collection, index.fields);
+      }
+      else {
+        collection.ensureSkiplist.apply(collection, index.fields);
+      }
+      break;
+    case "fulltext":
+      collection.ensureFulltextIndex(index.fields[0], index.minLength);
+      break;
+    case "geo1":
+      if (index.unique) {
+        collection.ensureGeoConstraint(index.fields[0], 
+                                       index.geoJson, 
+                                       index.ignoreNull);
+      }
+      else {
+        collection.ensureGeoIndex(index.fields[0], 
+                                  index.geoJson, 
+                                  index.ignoreNull);
+      }
+      break;
+    case "geo2":
+      if (index.unique) {
+        collection.ensureGeoConstraint(index.fields[0], 
+                                       index.fields[1], 
+                                       index.ignoreNull);
+      }
+      else {
+        collection.ensureGeoIndex(index.fields[0], index.fields[1]);
+      }
+      break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -526,35 +578,15 @@ function createLocalCollections (plannedCollections) {
 
                       for (idx in payload.indexes) {
                         if (payload.indexes.hasOwnProperty(idx)) {
-                          if (! indexes.hasOwnProperty(payload.indexes[idx].id)) {
-                            var c = db._collection(shard);
-                            
+                          var index = payload.indexes[idx];
+
+                          if (! indexes.hasOwnProperty(index.id)) {
                             console.info("creating index '%s/%s': %s", 
                                          database, 
                                          shard,
-                                         JSON.stringify(payload.indexes[idx]));
+                                         JSON.stringify(index));
 
-                            switch (payload.indexes[idx].type) {
-                              case "hash":
-                                if (payload.indexes[idx].unique) {
-                                  c.ensureUniqueConstraint.apply(c, payload.indexes[idx].fields);
-                                }
-                                else {
-                                  c.ensureHashIndex.apply(c, payload.indexes[idx].fields);
-                                }
-                                break;
-                              case "skiplist":
-                                if (payload.indexes[idx].unique) {
-                                  c.ensureUniqueSkiplist.apply(c, payload.indexes[idx].fields);
-                                }
-                                else {
-                                  c.ensureSkiplist.apply(c, payload.indexes[idx].fields);
-                                }
-                                break;
-                              case "fulltext":
-                                c.ensureFulltextIndex(payload.indexes[idx].fields[0], payload.indexes[idx].minLength);
-                                break;
-                            }
+                            createIndex(shard, index);
                           }
                         }
                       }
