@@ -94,7 +94,7 @@
 
     "css/sass.css": {
       "files": [
-        "frontend/scss/b.css"
+        "frontend/scss/generated.css"
       ]
     },
 
