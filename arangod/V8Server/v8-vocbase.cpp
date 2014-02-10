@@ -1055,7 +1055,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&(trx.primaryCollection()->base), json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (create) {
@@ -1212,8 +1212,6 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-
   // .............................................................................
   // Actually create the index here
   // .............................................................................
@@ -1221,10 +1219,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   bool created;
   TRI_index_t* idx;
 
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-
   if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection(document, 
+    idx = TRI_EnsureFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
                                                     attributeName.c_str(), 
                                                     indexSubstrings, 
                                                     minWordLength, 
@@ -1237,7 +1233,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
   else {
     trx.lockRead();
-    idx = TRI_LookupFulltextIndexDocumentCollection(document, 
+    idx = TRI_LookupFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
                                                     attributeName.c_str(), 
                                                     indexSubstrings, 
                                                     minWordLength);
@@ -1266,7 +1262,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&(trx.primaryCollection()->base), json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (create) {
@@ -3029,7 +3025,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  // TODO: protect this from races on _name!!
+  // TODO: protect against races on _name
   v8::Handle<v8::Value> index = IndexRep(col->_name, json);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -6044,6 +6040,84 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static bool CompareCapConstraintCoordinator (TRI_json_t const* lhs,
+                                             TRI_json_t const* rhs) {
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "size"),
+                               TRI_LookupArrayJson(rhs, "size"))) {
+    return false;
+  }
+  
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "byteSize"),
+                               TRI_LookupArrayJson(rhs, "byteSize"))) {
+    return false;
+  }
+
+  return true;
+}
+#endif
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure a cap constraint, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsureCapConstraintCoordinator (TRI_vocbase_col_t const* col,
+                                                             bool create,
+                                                             size_t count,
+                                                             int64_t size) {
+  v8::HandleScope scope;
+
+  string const databaseName(col->_dbName);
+  string const cid = StringUtils::itoa(col->_cid);
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  
+  if (json == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+    
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "cap"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, size));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+ 
+  TRI_json_t* resultJson = 0; 
+  string errorMsg;
+  int myerrno = ci->ensureIndexCoordinator(databaseName, 
+                                           cid, 
+                                           json,
+                                           create,
+                                           &CompareCapConstraintCoordinator, 
+                                           resultJson,
+                                           errorMsg, 
+                                           360.0);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
+  if (myerrno != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // TODO: protect against races on _name
+  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(index);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ///
 /// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
@@ -6076,21 +6150,15 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
   
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  assert(vocbase != 0);
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-  TRI_index_t* idx = 0;
-  bool created;
-
   size_t count = 0;
   int64_t size = 0;
   
@@ -6098,7 +6166,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
     int64_t v = TRI_ObjectToInt64(argv[0]);
 
     if (v < 0 || v > UINT32_MAX) {
-      ReleaseCollection(collection);
       TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be a valid number")
     }
     count = (size_t) v;
@@ -6109,36 +6176,53 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   }
 
   if (count == 0 && size <= 0) {
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>, <byteSize>)");
   }
 
   if (size < 0 || (size > 0 && size < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_PARAMETER(scope, 
                                "<size> must be at least 1 or <byteSize> must be at least " 
                                TRI_CAP_CONSTRAINT_MIN_SIZE_STR);
   }
 
-  idx = TRI_EnsureCapConstraintDocumentCollection(document, 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> ret = EnsureCapConstraintCoordinator(col, true, count, size);
+
+    return scope.Close(ret);
+  }
+#endif  
+
+
+  CollectionNameResolver resolver(vocbase);
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+  
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  bool created;
+  TRI_index_t* idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
                                                   count, 
                                                   size, 
                                                   &created, 
                                                   TRI_GetIdServer());
 
   if (idx == 0) {
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
-  TRI_json_t* json = idx->json(idx,false);
+  TRI_json_t* json = idx->json(idx, false);
 
   if (json == 0) {
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
+  v8::Handle<v8::Value> index = IndexRep(col->_name, json);
+  
+  trx.finish(res);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -6146,15 +6230,119 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
   }
 
-  ReleaseCollection(collection);
   return scope.Close(index);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static bool CompareBitarrayCoordinator (TRI_json_t const* lhs,
+                                        TRI_json_t const* rhs) {
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "undefined"),
+                               TRI_LookupArrayJson(rhs, "undefined"))) {
+    return false;
+  }
+  
+  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
+                               TRI_LookupArrayJson(rhs, "fields"))) {
+    return false;
+  }
+  
+  return true;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure a bitarray index, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsureBitarrayCoordinator (TRI_vocbase_col_t const* col,
+                                                        bool create,
+                                                        bool supportUndef,
+                                                        TRI_vector_pointer_t const* attributes,
+                                                        TRI_vector_pointer_t const* values) {
+  v8::HandleScope scope;
+
+  string const databaseName(col->_dbName);
+  string const cid = StringUtils::itoa(col->_cid);
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  
+  if (json == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+    
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "bitarray"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, supportUndef));
+
+  TRI_json_t* flds = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (flds == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // copy fields
+  for (size_t i = 0; i < attributes->_length; ++i) {
+    TRI_json_t* tuple = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (tuple == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, flds);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, tuple, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) TRI_AtVectorPointer(attributes, i)));
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, tuple, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t const*) TRI_AtVectorPointer(values, i)));
+
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, tuple);
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
+
+  TRI_json_t* resultJson = 0; 
+  string errorMsg;
+  int myerrno = ci->ensureIndexCoordinator(databaseName, 
+                                           cid, 
+                                           json,
+                                           create,
+                                           &CompareBitarrayCoordinator, 
+                                           resultJson,
+                                           errorMsg, 
+                                           360.0);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
+  if (myerrno != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // TODO: protect against races on _name
+  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(index);
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
+static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, 
+                                             bool supportUndef) {
   v8::HandleScope scope;
   bool ok;
   string errorString;
@@ -6164,26 +6352,15 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   v8::Handle<v8::Value> theIndex;
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
+  
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  // .............................................................................
-  // Check that we have a valid collection
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  const TRI_vocbase_col_t* collection = UseCollection(argv.Holder(), &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  assert(vocbase != 0);
 
   // .............................................................................
   // Ensure that there is at least one string parameter sent to this method
@@ -6191,10 +6368,9 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
     LOG_WARNING("bitarray index creation failed -- invalid parameters (require key_1,values_1,...,key_n,values_n)");
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_USAGE(scope, "ensureBitarray(path 1, <list of values 1>, <path 2>, <list of values 2>, ...)");
   }
-
+  
 
   // .............................................................................
   // Create a list of paths, these will be used to create a list of shapes
@@ -6294,15 +6470,49 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   // .............................................................................
 
   if (ok) {
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> ret = EnsureBitarrayCoordinator(col, true, supportUndef, &attributes, &values);
+
+    // free memory  
+    for (size_t j = 0; j < attributes._length; ++j) {
+      char* attribute = (char*) TRI_AtVectorPointer(&attributes, j);
+      TRI_Free(TRI_CORE_MEM_ZONE, attribute);
+    }
+    TRI_DestroyVectorPointer(&attributes);
+  
+    for (size_t j = 0; j < values._length; ++j) {
+      TRI_json_t* value = (TRI_json_t*) TRI_AtVectorPointer(&values, j);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
+    }
+    TRI_DestroyVectorPointer(&values);
+
+    return scope.Close(ret);
+  }
+#endif  
+
     char* errorStr = 0;
-    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, 
-                                                              &attributes, 
-                                                              &values, 
-                                                              supportUndef, 
-                                                              &indexCreated, 
-                                                              &errorCode, 
-                                                              &errorStr,
-                                                              TRI_GetIdServer());
+  
+    CollectionNameResolver resolver(vocbase);
+    ReadTransactionType trx(vocbase, resolver, col->_cid);
+
+    int res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      ok = false;
+      errorCode = res;
+      errorString = string(TRI_errno_string(res));
+    }
+    else { 
+      bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+                                                                &attributes, 
+                                                                &values, 
+                                                                supportUndef, 
+                                                                &indexCreated, 
+                                                                &errorCode, 
+                                                                &errorStr,
+                                                                TRI_GetIdServer());
+    }
 
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
@@ -6340,7 +6550,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     // Create a json represention of the index
     // ...........................................................................
 
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex,false);
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, false);
 
     if (json == NULL) {
       errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -6349,7 +6559,9 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     }
 
     else {
-      theIndex = IndexRep(&primary->base, json);
+      // TODO: protect against races on _name
+      theIndex = IndexRep(col->_name, json);
+
       if (theIndex->IsObject()) {
         theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(indexCreated));
       }
@@ -6357,9 +6569,6 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }
-
-
-  ReleaseCollection(collection);
 
   if (! ok || bitarrayIndex == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(errorCode, errorString)));
@@ -8486,6 +8695,11 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
         = ClusterInfo::instance()->getCollection(originalDatabase,
                                                  std::string(key));
     collection = CollectionInfoToVocBaseCol(vocbase, *ci, originalDatabase);
+
+    if (collection != 0 && collection->_cid == 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+      return scope.Close(v8::Undefined());
+    }
   }
   else {
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);

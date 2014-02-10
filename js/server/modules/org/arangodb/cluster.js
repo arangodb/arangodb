@@ -429,6 +429,12 @@ function createIndex (shard, index) {
         collection.ensureGeoIndex(index.fields[0], index.fields[1]);
       }
       break;
+    case "bitarray":
+      collection.ensureBitarray.apply(collection, index.fields[0]);
+      break;
+    case "cap":
+      collection.ensureCapConstraint(index.size || 0, index.byteSize || 0);
+      break;
   }
 }
 
