@@ -87,6 +87,34 @@ buster.testCase("sinon", {
             }, "TypeError");
         },
 
+        "originating stack traces": {
+
+            setUp: function () {
+                this.oldError = Error;
+                this.oldTypeError = TypeError;
+                var i = 0;
+                Error = TypeError = function () {
+                    this.stack = ':STACK' + ++i + ':';
+                }
+            },
+
+            tearDown: function () {
+                Error = this.oldError;
+                TypeError = this.oldTypeError;
+            },
+
+            "throws with stack trace showing original wrapMethod call": function () {
+                var object = { method: function () {} };
+                sinon.wrapMethod(object, "method", function () { return 'original' });
+
+                try {
+                    sinon.wrapMethod(object, "method", function () {});
+                } catch(e) {
+                    assert.equals(e.stack, ':STACK2:\n--------------\n:STACK1:');
+                }
+            }
+        },
+
         "in browser": {
             requiresSupportFor: {
                 "window object": typeof window !== "undefined"
@@ -229,6 +257,26 @@ buster.testCase("sinon", {
             var arr2 = [1, 2, 3, "hey", "there"];
 
             assert(sinon.deepEqual(arr1, arr2));
+        },
+
+        "passes equal arrays with custom properties": function () {
+            var arr1 = [1, 2, 3, "hey", "there"];
+            var arr2 = [1, 2, 3, "hey", "there"];
+
+            arr1.foo = "bar";
+            arr2.foo = "bar";
+
+            assert(sinon.deepEqual(arr1, arr2));
+        },
+
+        "fails arrays with unequal custom properties": function () {
+            var arr1 = [1, 2, 3, "hey", "there"];
+            var arr2 = [1, 2, 3, "hey", "there"];
+
+            arr1.foo = "bar";
+            arr2.foo = "not bar";
+
+            assert.isFalse(sinon.deepEqual(arr1, arr2));
         },
 
         "passes equal objects": function () {
@@ -404,7 +452,7 @@ buster.testCase("sinon", {
     },
 
     "format": {
-        "formats with buster by default": function () {
+        "formats with formatio by default": function () {
             assert.equals(sinon.format({ id: 42 }), "{ id: 42 }");
         },
 
@@ -489,7 +537,7 @@ buster.testCase("sinon", {
 
         "retains non function values": function() {
             var TYPE = "some-value";
-            var Class = function() {}
+            var Class = function() {};
             Class.prototype.type = TYPE;
 
             var stub = sinon.createStubInstance(Class);

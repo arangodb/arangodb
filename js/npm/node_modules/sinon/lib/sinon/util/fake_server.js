@@ -57,7 +57,6 @@ sinon.fakeServer = (function () {
     }
 
     function match(response, request) {
-        var requestMethod = this.getHTTPMethod(request);
         var requestUrl = request.url;
 
         if (!/^https?:\/\//.test(requestUrl) || rCurrLoc.test(requestUrl)) {
@@ -67,7 +66,7 @@ sinon.fakeServer = (function () {
         if (matchOne(response, this.getHTTPMethod(request), requestUrl)) {
             if (typeof response.response == "function") {
                 var ru = response.url;
-                var args = [request].concat(!ru ? [] : requestUrl.match(ru).slice(1));
+                var args = [request].concat(ru && typeof ru.exec == "function" ? ru.exec(requestUrl).slice(1) : []);
                 return response.response.apply(response, args);
             }
 
@@ -105,16 +104,16 @@ sinon.fakeServer = (function () {
 
             xhrObj.onSend = function () {
                 server.handleRequest(this);
+
+                if (server.autoRespond && !server.responding) {
+                    setTimeout(function () {
+                        server.responding = false;
+                        server.respond();
+                    }, server.autoRespondAfter || 10);
+
+                    server.responding = true;
+                }
             };
-
-            if (this.autoRespond && !this.responding) {
-                setTimeout(function () {
-                    server.responding = false;
-                    server.respond();
-                }, this.autoRespondAfter || 10);
-
-                this.responding = true;
-            }
         },
 
         getHTTPMethod: function getHTTPMethod(request) {
@@ -167,9 +166,10 @@ sinon.fakeServer = (function () {
         respond: function respond() {
             if (arguments.length > 0) this.respondWith.apply(this, arguments);
             var queue = this.queue || [];
+            var requests = queue.splice(0);
             var request;
 
-            while(request = queue.shift()) {
+            while(request = requests.shift()) {
                 this.processRequest(request);
             }
         },
@@ -183,7 +183,7 @@ sinon.fakeServer = (function () {
                 var response = this.response || [404, {}, ""];
 
                 if (this.responses) {
-                    for (var i = 0, l = this.responses.length; i < l; i++) {
+                    for (var l = this.responses.length, i = l - 1; i >= 0; i--) {
                         if (match.call(this, this.responses[i], request)) {
                             response = this.responses[i].response;
                             break;
@@ -207,6 +207,6 @@ sinon.fakeServer = (function () {
     };
 }());
 
-if (typeof module == "object" && typeof require == "function") {
+if (typeof module !== 'undefined' && module.exports) {
     module.exports = sinon;
 }

@@ -342,7 +342,6 @@ buster.testCase("sinon.test", {
 
             "injects server and clock when only enabling them": function () {
                 var testCase = this.boundTestCase();
-                var obj = {};
 
                 sinon.config = {
                     useFakeTimers: true,
@@ -393,6 +392,9 @@ buster.testCase("sinon.test", {
                     Date: Date,
                     setTimeout: setTimeout,
                     clearTimeout: clearTimeout,
+                    // clear & setImmediate are not yet available in all environments
+                    setImmediate: (typeof setImmediate !== "undefined" ? setImmediate : undefined),
+                    clearImmediate: (typeof clearImmediate !== "undefined" ? clearImmediate : undefined),
                     setInterval: setInterval,
                     clearInterval: clearInterval
                 };
@@ -401,6 +403,8 @@ buster.testCase("sinon.test", {
             refute.same(props.Date, sinon.timers.Date);
             refute.same(props.setTimeout, sinon.timers.setTimeout);
             assert.same(props.clearTimeout, sinon.timers.clearTimeout);
+            assert.same(props.setImmediate, sinon.timers.setImmediate);
+            assert.same(props.clearImmediate, sinon.timers.clearImmediate);
             assert.same(props.setInterval, sinon.timers.setInterval);
             assert.same(props.clearInterval, sinon.timers.clearInterval);
         },
@@ -424,7 +428,6 @@ buster.testCase("sinon.test", {
 
         "injects functions into test case by default": function () {
             var testCase = this.boundTestCase();
-            var obj = {};
 
             sinon.test(testCase.fn).call(testCase);
 
@@ -437,7 +440,6 @@ buster.testCase("sinon.test", {
 
         "injects sandbox": function () {
             var testCase = this.boundTestCase();
-            var obj = {};
 
             sinon.config = {
                 properties: ["sandbox", "spy"]

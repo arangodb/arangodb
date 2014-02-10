@@ -16,7 +16,7 @@
 "use strict";
 
 (function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
+    var commonJSModule = typeof module !== 'undefined' && module.exports;
     var push = [].push;
     var hasOwnProperty = Object.prototype.hasOwnProperty;
 
