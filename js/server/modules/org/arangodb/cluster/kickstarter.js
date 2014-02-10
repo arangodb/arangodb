@@ -324,6 +324,26 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   return {"error": false};
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Cluster_Kickstarter_Constructor
+/// @brief the cluster kickstarter constructor
+///
+/// @FUN{new require("org/arangodb/cluster/kickstarter").Kickstarter(@FA{plan})}
+///
+/// This constructor constructs a kickstarter object. Its first
+/// argument is a cluster plan as for example provided by the planner
+/// (see @ref JSF_Cluster_Planner_Constructor and the general
+/// explanations before this reference). The second argument is 
+/// optional and is taken to be "me" if omitted, it is the ID of the
+/// dispatcher this object should consider itself to be. If the plan
+/// contains startup commands for the dispatcher with this ID, these
+/// commands are executed immediately. Otherwise they are handed over
+/// to another responsible dispatcher via a REST call.
+///
+/// The resulting object of this constructors allows to launch,
+/// shutdown, relaunch the cluster described in the plan.
+////////////////////////////////////////////////////////////////////////////////
+
 function Kickstarter (clusterPlan, myname) {
   this.clusterPlan = clusterPlan;
   if (myname === undefined) {
@@ -333,6 +353,32 @@ function Kickstarter (clusterPlan, myname) {
     this.myname = myname;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Kickstarter_prototype_launch
+/// @brief starts a cluster
+///
+/// @FUN{@FA{Kickstarter}.launch()}
+///
+/// This starts up a cluster as described in the plan which was given to
+/// the constructor. To this end, other dispatchers are contacted as 
+/// necessary. All startup commands for the local dispatcher are
+/// executed immediately.
+///
+/// The result is an object that contains information about the started
+/// processes, this object is also stored in the Kickstarter object
+/// itself. We do not go into details here about the data structure,
+/// but the most important information are the process IDs of the 
+/// started processes. The corresponding shutdown method (see @ref 
+/// JSF_Kickstarter_prototype_shutdown) needs this information to
+/// shut down all processes.
+///
+/// Note that all data in the DBservers and all log files and all agency
+/// information in the cluster is deleted by this call. This is because
+/// it is intended to set up a cluster for the first time. See
+/// the relaunch method (see @ref JSF_Kickstarter_prototype_relaunch)
+/// for restarting a cluster without data loss.
+////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.launch = function () {
   var clusterPlan = this.clusterPlan;
@@ -393,6 +439,31 @@ Kickstarter.prototype.launch = function () {
           "runInfo": results};
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Kickstarter_prototype_relaunch
+/// @brief restarts a cluster without deleting its data
+///
+/// @FUN{@FA{Kickstarter}.relaunch()}
+///
+/// This starts up a cluster as described in the plan which was given to
+/// the constructor. To this end, other dispatchers are contacted as 
+/// necessary. All startup commands for the local dispatcher are
+/// executed immediately.
+///
+/// The result is an object that contains information about the started
+/// processes, this object is also stored in the Kickstarter object
+/// itself. We do not go into details here about the data structure,
+/// but the most important information are the process IDs of the 
+/// started processes. The corresponding shutdown method (see @ref 
+/// JSF_Kickstarter_prototype_shutdown) needs this information to
+/// shut down all processes.
+///
+/// Note that this methods needs that all data in the DBservers and the
+/// agency information in the cluster are already set up properly. See
+/// the launch method (see @ref JSF_Kickstarter_prototype_launch) for
+/// starting a cluster for the first time.
+////////////////////////////////////////////////////////////////////////////////
+
 Kickstarter.prototype.relaunch = function () {
   var clusterPlan = this.clusterPlan;
   var myname = this.myname;
@@ -448,6 +519,17 @@ Kickstarter.prototype.relaunch = function () {
           "runInfo": results};
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Kickstarter_prototype_shutdown
+/// @brief starts a cluster
+///
+/// @FUN{@FA{Kickstarter}.shutdown()}
+///
+/// This shuts down a cluster as described in the plan which was given to
+/// the constructor. To this end, other dispatchers are contacted as 
+/// necessary. All processes in the cluster are gracefully shut down
+/// in the right order.
+////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.shutdown = function() {
   var clusterPlan = this.clusterPlan;

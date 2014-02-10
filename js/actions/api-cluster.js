@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST */
+/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -256,15 +256,15 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_cluster_planner_POST
-/// @brief exposes the kickstarter planning function
+/// @brief exposes the cluster planning functionality
 ///
-/// @RESTHEADER{POST /_admin/kickstarter,produce a cluster startup plan}
+/// @RESTHEADER{POST /_admin/clusterPlanner,produce a cluster startup plan}
 ///
 /// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION Given a description of a cluster, this plans the details
 /// of a cluster and returns a JSON description of a plan to start up this 
-/// cluster.
+/// cluster. See @ref JSF_Cluster_Planner_Constructor for details.
 /// 
 /// @RESTRETURNCODES
 ///
@@ -310,13 +310,13 @@ actions.defineHttp({
 /// @brief exposes the dispatcher functionality to start up a cluster 
 /// according to a startup plan as for example provided by the kickstarter.
 ///
-/// @RESTHEADER{POST /_admin/dispatch,execute startup commands}
+/// @RESTHEADER{POST /_admin/clusterDispatch,execute startup commands}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTBODYPARAM{body,json,required}
 ///
-/// @RESTDESCRIPTION Given a list of cluster startup commands, this
+/// @RESTDESCRIPTION Given a cluster plan (see JSF_cluster_planner_POST), this
 /// call executes the plan by either starting up processes personally
 /// or by delegating to other dispatchers.
 /// 
@@ -410,6 +410,58 @@ actions.defineHttp({
   }
 });
       
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_cluster_check_port_GET
+/// @brief allows to check whether a given port is usable
+///
+/// @RESTHEADER{POST /_admin/kickstarter,produce a cluster startup plan}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{port,integer,required}
+///
+/// @RESTDESCRIPTION Checks whether the requested port is usable.
+/// 
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} the parameter port was not given or is no integer.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/clusterCheckPort",
+  context : "admin",
+  prefix : "false",
+  callback : function (req, res) {
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
+    var port;
+    if (!req.parameters.hasOwnProperty("port")) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "required parameter port was not given");
+      return;
+    }
+    try {
+      port = parseInt(req.parameters.port, 10);
+      if (port < 1 || port > 65535) {
+        throw "banana";
+      }
+    }
+    catch (err) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "Given port was not a proper integer.");
+      return;
+    }
+    var r = SYS_TEST_PORT("tcp://0.0.0.0:"+port);
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = "application/json; charset=utf-8";
+    res.body = JSON.stringify(r);
+  }
+});
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
