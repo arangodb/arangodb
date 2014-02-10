@@ -42,28 +42,39 @@
 //                            be appended to this list here
 //   .coordinatorIDs          a list of coordinator IDs, the defaults will
 //                            be appended to this list here
+//   .dispatchers             an object with a property for each dispatcher,
+//                            the property name is the ID of the dispatcher
+//                            and the value should be an object with
+//                            at least the property "endpoint" containing
+//                            the endpoint. Further optional properties
+//                            are "avoidPorts" which is an object in which
+//                            all port numbers that should not be used
+//                            are bound to "true", and "arangodExtraArgs",
+//                            which is a list of additional command line
+//                            arguments which will be given to DBservers
+//                            and coordinators started by this dispatcher.
+//                            If `.dispatchers` is empty (no property), then an
+//                            entry for the local arangod itself is
+//                            automatically added.
 //   .dataPath                a file system path to the directory in which
-//                            all the data directories of agents or servers
-//                            live, this can be relative or even empty, which
-//                            is equivalent to "./", it will be made into
-//                            an absolute path by the planner, using
-//                            the current directory when the planner
-//                            runs, use with caution!
+//                            all the data directories of agents or
+//                            servers live, this can be relative or even
+//                            empty, which is equivalent to "./", if it
+//                            is relative, then it will be made into an
+//                            absolute path by the dispatcher, using
+//                            the parent directory of its own database
+//                            directory
 //   .logPath                 path where the log files are written, same
 //                            comments as for .dataPath apply
-//   .dispatchers             an list of pairs of strings, the first entry
-//                            is an ID, the second is an endpoint or "me"
-//                            standing for the local `arangod` itself.
-//                            this list can be empty in which case
-//                            ["me","me"] is automatically added.
 //   .arangodPath             path to the arangod executable on
-//                            all machines in the cluster, will be made
-//                            absolute (if it is not already absolute)
-//                            in the process running the planner
+//                            all machines in the cluster, if this is empty
+//                            the dispatcher will replace it with its own
+//                            executable
 //   .agentPath               path to the agent executable on 
-//                            all machines in the cluster, will be made
-//                            absolute (if it is not already absolute)
-//                            in the process running the planner
+//                            all machines in the cluster, if this is empty
+//                            then the executable "etcd" in the same directory
+//                            as the arangod executable of the dispatcher
+//                            will be used.
 // some port lists:
 //   for these the following rules apply:
 //     every list overwrites the default list
@@ -94,16 +105,17 @@ var PlannerLocalDefaults = {
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",
   "logPath"                 : "",
-  "arangodPath"             : "bin/arangod",
-  "agentPath"               : "bin/etcd",
+  "arangodPath"             : "",
+  "agentPath"               : "",
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : {"me":{"id":"me", "endpoint":"tcp://localhost:",
-                                     "avoidPorts": {}}}
+  "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}}
 };
   
+// The following is just a further example:
+
 var PlannerDistributedDefaults = {
   "agencyPrefix"            : "mueller",
   "numberOfAgents"          : 3,
@@ -123,17 +135,19 @@ var PlannerDistributedDefaults = {
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
   "dispatchers"             : { "machine1": 
-                                  { "id": "machine1", 
-                                    "endpoint": "tcp://machine1:8529",
-                                    "avoidPorts": {} },
+                                  { "endpoint": "tcp://machine1:8529",
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []},
                                 "machine2":
                                   { "id": "machine2", 
                                     "endpoint": "tcp://machine2:8529",
-                                    "avoidPorts": {} },
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []},
                                 "machine3":
                                   { "id": "machine3", 
                                     "endpoint": "tcp://machine3:8529",
-                                    "avoidPorts": {} } }
+                                    "avoidPorts": {},
+                                    "arangodExtraArgs": []} }
 };
 
 // Some helpers using underscore:
@@ -237,7 +251,6 @@ function fillConfigWithDefaults (config, defaultConfig) {
   }
 }
 
-// Our Planner class:
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_Cluster_Planner_Constructor
 /// @brief the cluster planner constructor
@@ -256,28 +269,6 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// All these values have default values. Here is the current set of
 /// default values:
 /// 
-///     {
-///       "agencyPrefix"            : "meier",
-///       "numberOfAgents"          : 3,
-///       "numberOfDBservers"       : 2,
-///       "startSecondaries"        : false,
-///       "numberOfCoordinators"    : 1,
-///       "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", 
-///                                    "Pierre", "Pit", "Pia", "Pablo" ],
-///       "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", 
-///                                    "Claudia", "Claas", "Clemens", "Chris" ],
-///       "dataPath"                : "",
-///       "logPath"                 : "",
-///       "arangodPath"             : "bin/arangod",
-///       "agentPath"               : "bin/etcd",
-///       "agentExtPorts"           : [4001],
-///       "agentIntPorts"           : [7001],
-///       "DBserverPorts"           : [8629],
-///       "coordinatorPorts"        : [8530],
-///       "dispatchers"             : {"me":{"id":"me", 
-///                                          "endpoint":"tcp://localhost:",
-///                                          "avoidPorts": {}}}
-///     };
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -286,24 +277,8 @@ function Planner (userConfig) {
   if (typeof userConfig !== "object") {
     throw "userConfig must be an object";
   }
-  var defaultConfig = userConfig.defaultConfig;
-  if (defaultConfig === undefined) {
-    defaultConfig = PlannerLocalDefaults;
-  }
-  if (defaultConfig === "local") {
-    defaultConfig = PlannerLocalDefaults;
-  }
-  else if (defaultConfig === "distributed") {
-    defaultConfig = PlannerDistributedDefaults;
-  }
   this.config = copy(userConfig);
-  fillConfigWithDefaults(this.config, defaultConfig);
-  this.config.dataPath = fs.normalize(fs.makeAbsolute(this.config.dataPath));
-  this.config.logPath = fs.normalize(fs.makeAbsolute(this.config.logPath));
-  this.config.arangodPath = fs.normalize(fs.makeAbsolute(
-                                   this.config.arangodPath));
-  this.config.agentPath = fs.normalize(fs.makeAbsolute(
-                                   this.config.agentPath));
+  fillConfigWithDefaults(this.config, PlannerLocalDefaults);
   this.commands = [];
   this.makePlan();
 }
@@ -314,6 +289,18 @@ Planner.prototype.makePlan = function() {
   var config = this.config;
   var dispatchers = this.dispatchers = copy(config.dispatchers);
 
+  var id;
+  for (id in dispatchers) {
+    if (dispatchers.hasOwnProperty(id)) {
+      dispatchers[id].id = id;
+      if (!dispatchers[id].hasOwnProperty("avoidPorts")) {
+        dispatchers[id].avoidPorts = {};
+      }
+      if (!dispatchers[id].hasOwnProperty("arangodExtraArgs")) {
+        dispatchers[id].arangodExtraArgs = [];
+      }
+    }
+  }
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
     dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 

@@ -1019,6 +1019,36 @@ static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers executable path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecutablePathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "executablePath()");
+  }
+
+  const std::string exePath = ServerState::instance()->getExecutablePath();
+  return scope.Close(v8::String::New(exePath.c_str(), exePath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the servers base path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_BasePathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "basePath()");
+  }
+
+  const std::string basePath = ServerState::instance()->getBasePath();
+  return scope.Close(v8::String::New(basePath.c_str(), basePath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialised
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1684,6 +1714,8 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
   TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
+  TRI_AddMethodVocbase(rt, "executablePath", JS_ExecutablePathServerState);
+  TRI_AddMethodVocbase(rt, "basePath", JS_BasePathServerState);
   TRI_AddMethodVocbase(rt, "initialised", JS_InitialisedServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);

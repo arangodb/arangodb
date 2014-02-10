@@ -533,7 +533,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   
 #ifdef TRI_ENABLE_CLUSTER
-  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
+  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8, _argv[0]);
 
   if (_applicationCluster == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
