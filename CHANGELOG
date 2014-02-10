@@ -1,10 +1,80 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* issue #756: set access-control-expose-headers on CORS response
+
+  the following headers are now whitelisted by ArangoDB in CORS responses:
+  - etag
+  - content-encoding
+  - content-length
+  - location
+  - server
+  - x-arango-errors
+  - x-arango-async-id
+
+* Several UI improvements.
+
+* Exchanged icons in the graphviewer toolbar
+
 * always start networking and HTTP listeners when starting the server (even in 
   console mode)
 
-* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
+
+* fail if invalid `strategy`, `order` or `itemOrder` attribute values
+  are passed to the AQL TRAVERSAL function. Omitting these attributes 
+  is not considered an error, but specifying an invalid value for any
+  of these attributes will make an AQL query fail.
+
+* added SHORTEST_PATH AQL function 
+
+  this calculates the shortest paths between two vertices, using the Dijkstra
+  algorithm, employing a min-heap
+
+  By default, ArangoDB does not know the distance between any two vertices and
+  will use a default distance of 1. A custom distance function can be registered
+  as an AQL user function to make the distance calculation use any document 
+  attributes or custom logic:
+    
+      RETURN SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        distance: "myfunctions::citydistance"
+      }) 
+
+      // using the following custom distance function
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+      }, false);
+
+* issue #751: Create database through API should return HTTP status code 201
+
+  By default, the server now returns HTTP 201 (created) when creating a new
+  database successfully. To keep compatibility with older ArangoDB versions, the
+  startup parameter `--server.default-api-compatibility` can be set to a value
+  of `10400` to indicate API compatibility with ArangoDB 1.4. The compatibility
+  can also be enforced by setting the `X-Arango-Version` HTTP header in a 
+  client request to this API on a per-request basis.
 
 * allow direct access from the `db` object to collections whose names start 
   with an underscore (e.g. db._users).
@@ -116,6 +186,93 @@ v1.5.0 (XXXX-XX-XX)
 * added the option to return the number of elements indexed to the
   result of <collection>.getIndexes() for each index. This is
   currently only implemented for hash indices and skiplist indices.
+
+
+v1.4.9 (XXXX-XX-XX)
+-------------------
+
+* return a document's current etag in response header for HTTP HEAD requests on
+  documents that return an HTTP 412 (precondition failed) error. This allows
+  retrieving the document's current revision easily.
+
+* added AQL function `SKIPLIST` to directly access skiplist indexes from AQL
+  
+  This is a shortcut method to use a skiplist index for retrieving specific documents in 
+  indexed order. The function capability is rather limited, but it may be used
+  for several cases to speed up queries. The documents are returned in index order if
+  only one condition is used.
+
+      /* return all documents with mycollection.created > 12345678 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] })
+        RETURN doc
+
+      /* return first document with mycollection.created > 12345678 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] }, 0, 1)
+        RETURN doc
+
+      /* return all documents with mycollection.created between 12345678 and 123456790 */
+      FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ], [ '<=', 123456790 ]] })
+        RETURN doc
+
+      /* return all documents with mycollection.a equal 1 and .b equal 2 */
+      FOR doc IN SKIPLIST(mycollection, { a: [[ '==', 1 ]], b: [[ '==', 2 ]] })
+        RETURN doc
+
+  The function requires a skiplist index with the exact same attributes to 
+  be present on the specified colelction. All attributes present in the skiplist
+  index must be specified in the conditions specified for the `SKIPLIST` function.
+  Attribute declaration order is important, too: attributes must be specified in the 
+  same order in the condition as they have been declared in the skiplist index.
+
+* added command-line option `--server.disable-authentication-unix-sockets`
+  
+  with this option, authentication can be disabled for all requests coming
+  in via UNIX domain sockets, enabling clients located on the same host as
+  the ArangoDB server to connect without authentication.
+  Other connections (e.g. TCP/IP) are not affected by this option.
+ 
+  The default value for this option is `false`.
+  Note: this option is only supported on platforms that support Unix domain
+  sockets.
+
+* call global arangod instance destructor on shutdown
+
+* issue #755: TRAVERSAL does not use strategy, order and itemOrder options
+
+  these options were not honored when configuring a traversal via the AQL
+  TRAVERSAL function. Now, these options are used if specified.
+
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
+
+* issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
+
+
+v1.4.8 (2014-01-31)
+-------------------
+
+* install foxx apps in the web interface
+
+* fixed a segfault in the import API
 
 
 v1.4.7 (2014-01-23)

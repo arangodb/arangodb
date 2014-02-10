@@ -228,7 +228,7 @@ ArangoCollection.prototype.all = function () {
 /// @LIT{{ a : { c : 1 } }} 
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. E.g., the document
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
 ///
 /// @LIT{{ a : { c : 1 }\, b : 1 }} 
 ///
@@ -243,7 +243,7 @@ ArangoCollection.prototype.all = function () {
 /// @LIT{{ a.c : 1 }}, 
 ///
 /// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. E.g., both documents 
+/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
 ///
 /// @LIT{{ a : { c : 1 }\, b : 1 }} and 
 ///

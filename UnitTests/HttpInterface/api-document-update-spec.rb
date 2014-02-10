@@ -128,10 +128,6 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionBasics"
         @cid = ArangoDB.create_collection(@cn)
-
-        cmd = "/_api/collection/#{@cid}/properties"
-        body = "{ \"waitForSync\" : true }"
-        doc = ArangoDB.put(cmd, :body => body)
       end
 
       after do
@@ -225,6 +221,9 @@ describe ArangoDB do
         cmd = "/_api/collection/#{@cid}/properties"
         body = "{ \"waitForSync\" : false }"
         doc = ArangoDB.put(cmd, :body => body)
+
+        # wait for dbservers to pick up the change
+        sleep(2)
 
         # update document 
         cmd = "/_api/document/#{did}"

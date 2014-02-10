@@ -120,15 +120,17 @@
     "ERROR_CLUSTER_TIMEOUT"        : { "code" : 1457, "message" : "timeout in cluster operation" }, 
     "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN" : { "code" : 1458, "message" : "could not remove collection from plan" }, 
     "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT" : { "code" : 1459, "message" : "could not remove collection from current" }, 
-    "ERROR_CLUSTER_DATABASE_NAME_EXISTS" : { "code" : 1460, "message" : "database name already exists" }, 
-    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN" : { "code" : 1461, "message" : "could not create database in plan" }, 
-    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE" : { "code" : 1462, "message" : "could not create database" }, 
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN" : { "code" : 1463, "message" : "could not remove database from plan" }, 
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT" : { "code" : 1464, "message" : "could not remove database from current" }, 
-    "ERROR_SHARD_GONE"             : { "code" : 1465, "message" : "no responsible shard found" }, 
-    "ERROR_CLUSTER_CONNECTION_LOST" : { "code" : 1466, "message" : "cluster internal HTTP connection broken" }, 
-    "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1467, "message" : "must not specify _key for this collection" }, 
-    "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1468, "message" : "got contradicting answers from different shards" }, 
+    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN" : { "code" : 1460, "message" : "could not create database in plan" }, 
+    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE" : { "code" : 1461, "message" : "could not create database" }, 
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN" : { "code" : 1462, "message" : "could not remove database from plan" }, 
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT" : { "code" : 1463, "message" : "could not remove database from current" }, 
+    "ERROR_CLUSTER_SHARD_GONE"     : { "code" : 1464, "message" : "no responsible shard found" }, 
+    "ERROR_CLUSTER_CONNECTION_LOST" : { "code" : 1465, "message" : "cluster internal HTTP connection broken" }, 
+    "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1466, "message" : "must not specify _key for this collection" }, 
+    "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1467, "message" : "got contradicting answers from different shards" }, 
+    "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1468, "message" : "not all sharding attributes given" }, 
+    "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1469, "message" : "must not change the value of a shardkey attribute" }, 
+    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" }, 
@@ -202,8 +204,7 @@
     "RESULT_KEY_EXISTS"            : { "code" : 10000, "message" : "element not inserted into structure, because key already exists" }, 
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
     "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
-    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }, 
-    "WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN" : { "code" : 11000, "message" : "the index garbage collector has shutdown and no further entries can be processed" }
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }
   };
 }());
 

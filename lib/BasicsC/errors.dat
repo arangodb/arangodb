@@ -155,15 +155,17 @@ ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,1456,"could not create collection","Wi
 ERROR_CLUSTER_TIMEOUT,1457,"timeout in cluster operation","Will be raised when a coordinator in a cluster runs into a timeout for some cluster wide operation."
 ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,1458,"could not remove collection from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,1459,"could not remove collection from current","Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Current hierarchy in the agency."
-ERROR_CLUSTER_DATABASE_NAME_EXISTS,1460,"database name already exists","Will be raised when a coordinator in a cluster tries to create a database and the database name already exists."
-ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,1461,"could not create database in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new database in the Plan hierarchy in the agency."
-ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,1462,"could not create database","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating databases for a new cluster wide database."
-ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1463,"could not remove database from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency."
-ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1464,"could not remove database from current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
-ERROR_SHARD_GONE,1465,"no responsible shard found","Will be raised when a coordinator in a cluster cannot determine the shard that is responsible for a given document."
-ERROR_CLUSTER_CONNECTION_LOST,1466,"cluster internal HTTP connection broken","Will be raised when a coordinator in a cluster loses an HTTP connection to a DBserver in the cluster whilst transferring data."
-ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1467,"must not specify _key for this collection","Will be raised when a coordinator in a cluster finds that the _key attribute was specified in a sharded collection the uses not only _key as sharding attribute."
-ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1468,"got contradicting answers from different shards","Will be raised if a coordinator in a cluster gets conflicting results from different shards, which should never happen."
+ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,1460,"could not create database in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new database in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,1461,"could not create database","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating databases for a new cluster wide database."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,1462,"could not remove database from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency."
+ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,1463,"could not remove database from current","Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency."
+ERROR_CLUSTER_SHARD_GONE,1464,"no responsible shard found","Will be raised when a coordinator in a cluster cannot determine the shard that is responsible for a given document."
+ERROR_CLUSTER_CONNECTION_LOST,1465,"cluster internal HTTP connection broken","Will be raised when a coordinator in a cluster loses an HTTP connection to a DBserver in the cluster whilst transferring data."
+ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1466,"must not specify _key for this collection","Will be raised when a coordinator in a cluster finds that the _key attribute was specified in a sharded collection the uses not only _key as sharding attribute."
+ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1467,"got contradicting answers from different shards","Will be raised if a coordinator in a cluster gets conflicting results from different shards, which should never happen."
+ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,1468,"not all sharding attributes given","Will be raised if a coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified."
+ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1469,"must not change the value of a shardkey attribute","Will be raised if there is an attempt to update the value of a shard attribute."
+ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
 
 ################################################################################
 ## ArangoDB query errors
@@ -301,9 +303,3 @@ RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key alread
 RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
 RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."
-
-################################################################################
-## WARNING when a thread is in a state of shutdown
-################################################################################
-
-WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN,11000,"the index garbage collector has shutdown and no further entries can be processed","Will be raised when an attempt to add an item to the index garbage collector fails due to the fact that the state of the collector is in shutdown mode."

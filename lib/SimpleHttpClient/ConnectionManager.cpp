@@ -91,7 +91,7 @@ ConnectionManager::ServerConnections::~ServerConnections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionManager::SingleServerConnection* 
-ConnectionManager::leaseConnection(string& endpoint) {
+ConnectionManager::leaseConnection (std::string& endpoint) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
   SingleServerConnection* c;
@@ -138,6 +138,11 @@ ConnectionManager::leaseConnection(string& endpoint) {
     delete e;
     return 0;
   }
+  if (!g->connect()) {
+    delete g;
+    delete e;
+    return 0;
+  }
   c = new SingleServerConnection(g,e,endpoint);
   if (0 == c) {
     delete g;
@@ -158,9 +163,14 @@ ConnectionManager::leaseConnection(string& endpoint) {
 /// @brief return leased connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::returnConnection(SingleServerConnection* c) {
+void ConnectionManager::returnConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
+
+  if (!c->connection->isConnected()) {
+    brokenConnection(c);
+    return;
+  }
 
   // First find the collections list:
   {
@@ -190,7 +200,7 @@ void ConnectionManager::returnConnection(SingleServerConnection* c) {
 /// @brief report a leased connection as being broken
 ////////////////////////////////////////////////////////////////////////////////
 
-void ConnectionManager::brokenConnection(SingleServerConnection* c) {
+void ConnectionManager::brokenConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
 

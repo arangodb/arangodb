@@ -1873,8 +1873,6 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
@@ -2273,9 +2271,14 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
+#ifndef TRI_ENABLE_CLUSTER
     const string extra = helper->_resolver->getCollectionName(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
                          helper->_resolver->getCollectionName(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+#else
+    const string extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                         helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
   
+#endif
     localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
@@ -2442,50 +2445,24 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the n first documents in the collection
-///
-/// @FUN{@FA{collection}.first(@FA{count})}
-///
-/// The @FN{first} method returns the n first documents from the collection, in 
-/// order of document insertion/update time. 
-///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
-/// in the collection, then the result will contain as many documents as there
-/// are in the collection.
-/// The result list is ordered, with the "oldest" documents being positioned at 
-/// the beginning of the result list.
-///
-/// When called without an argument, the result is the first document from the
-/// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.first(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
-///
-/// @code
-/// arangod> db.example.first()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "first(<count>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "FIRST(<count>)");
   }
-
+  
   int64_t count = 1;
   bool returnList = false;
 
   // if argument is supplied, we'll return a list - otherwise we simply return the first doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
@@ -2498,8 +2475,6 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
 
@@ -2727,41 +2702,13 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the n last documents in the collection
-///
-/// @FUN{@FA{collection}.last(@FA{count})}
-///
-/// The @FN{first} method returns the n last documents from the collection, in 
-/// order of document insertion/update time. 
-///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
-/// in the collection, then the result will contain as many documents as there
-/// are in the collection.
-/// The result list is ordered, with the "latest" documents being positioned at 
-/// the beginning of the result list.
-///
-/// When called without an argument, the result is the last document from the
-/// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.last(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
-///
-/// @code
-/// arangod> db.example.last()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "last(<count>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "LAST(<count>)");
   }
 
   int64_t count = 1;
@@ -2769,8 +2716,10 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 
   // if argument is supplied, we'll return a list - otherwise we simply return the last doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
@@ -3117,7 +3066,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->VocbaseColTempl;
 
   TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
-  TRI_AddMethodVocbase(rt, "any", JS_AnyQuery);
+  TRI_AddMethodVocbase(rt, "ANY", JS_AnyQuery);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);
@@ -3126,10 +3075,10 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
   TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
-  TRI_AddMethodVocbase(rt, "first", JS_FirstQuery);
+  TRI_AddMethodVocbase(rt, "FIRST", JS_FirstQuery);
   TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
-  TRI_AddMethodVocbase(rt, "last", JS_LastQuery);
+  TRI_AddMethodVocbase(rt, "LAST", JS_LastQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
 
   // internal method. not intended to be used by end-users

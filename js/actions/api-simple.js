@@ -1031,18 +1031,12 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_first
 /// @brief returns the first document(s) of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/first,executes simple query first}
+/// @RESTHEADER{PUT /_api/simple/first,returns the first document(s) of a collection}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION
-///
-/// The request body must be a JSON object with the following attributes:
-/// - `collection`: the name of the collection
-/// 
-/// - `count`: the number of documents to return at most. Specifiying count is 
-///   optional. If it is not specified, it defaults to 1.
 ///
 /// This will return the first documents from the collection, in the order of
 /// insertion/update time. When the `count` argument is supplied, the result
@@ -1051,6 +1045,15 @@ actions.defineHttp({
 /// If the `count` argument is not supplied, the result is the "oldest" document
 /// of the collection, or `null` if the collection is empty.
 ///
+/// The request body must be a JSON object with the following attributes:
+/// - `collection`: the name of the collection
+/// 
+/// - `count`: the number of documents to return at most. Specifiying count is 
+///   optional. If it is not specified, it defaults to 1.
+///
+/// Note: this method is not supported for sharded collections with more than 
+/// one shard.
+/// 
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1146,12 +1149,17 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_last
 /// @brief returns the last document(s) of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/last,executes simple query last}
+/// @RESTHEADER{PUT /_api/simple/last,returns the last document(s) of a collection}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION
+///
+/// This will return the last documents from the collection, in the order of
+/// insertion/update time. When the `count` argument is supplied, the result
+/// will be a list of documents, with the "latest" document being first in the
+/// result list.
 ///
 /// The request body must be a JSON object with the following attributes:
 /// - `collection`: the name of the collection
@@ -1159,14 +1167,12 @@ actions.defineHttp({
 /// - `count`: the number of documents to return at most. Specifiying count is 
 ///   optional. If it is not specified, it defaults to 1.
 ///
-/// This will return the last documents from the collection, in the order of
-/// insertion/update time. When the `count` argument is supplied, the result
-/// will be a list of documents, with the "latest" document being first in the
-/// result list.
-///
 /// If the `count` argument is not supplied, the result is the "latest" document
 /// of the collection, or `null` if the collection is empty.
 ///
+/// Note: this method is not supported for sharded collections with more than
+/// one shard.
+/// 
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1460,7 +1466,10 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be deleted.
 ///
-/// Returns the number of documents that were deleted
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were deleted.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1573,7 +1582,10 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be replaced.
 ///
-/// Returns the number of documents that were replaced
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were replaced.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1701,7 +1713,11 @@ actions.defineHttp({
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be updated.
 ///
-/// Returns the number of documents that were updated
+/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Using it will result in an error.
+///
+/// Returns the number of documents that were updated.
+///
 ///
 /// @RESTRETURNCODES
 ///

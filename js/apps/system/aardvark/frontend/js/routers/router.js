@@ -30,6 +30,7 @@
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
+      "graphManagement/delete/:name"        : "graphDelete",
 
 
       "test"                                : "test"
@@ -85,6 +86,8 @@
         collection: window.arangoCollectionsStore
       });
 
+      // this.initVersionCheck();
+
       var self = this;
       $(window).resize(function() {
         self.handleResize();
@@ -101,6 +104,97 @@
         }
       });
     },
+
+/*
+    initVersionCheck: function () {
+      // this checks for version updates
+
+      var self = this;
+      var versionCheck = function () {
+        $.ajax({ 
+          async: true,
+          crossDomain: true,
+          dataType: "jsonp",
+          url: "https://www.arangodb.org/repositories/versions.php?callback=parseVersions",
+          success: function (json) {
+            if (typeof json !== 'object') {
+              return;
+            }
+
+            // turn our own version string into a version object
+            var currentVersion = window.versionHelper.fromString(self.footerView.system.version);
+ 
+            // get our mainline version
+            var mainLine = window.versionHelper.toStringMainLine(currentVersion);
+            
+            var mainLines = Object.keys(json).sort(window.versionHelper.compareVersionStrings);
+            var latestMainLine;
+            mainLines.forEach(function (l) {
+              if (json[l].stable) {
+                if (window.versionHelper.compareVersionStrings(l, mainLine) > 0) {
+                  latestMainLine = json[l];
+                } 
+              }
+            });
+            
+            var update;
+
+            if (latestMainLine !== undefined &&
+                Object.keys(latestMainLine.versions.length > 0) {
+              var mainLineVersions = Object.keys(latestMainLine.versions);
+              mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
+              var latest = mainLineVersions[mainLineVersions.length - 1];
+
+              update = {
+                type: "major", 
+                version: latest,
+                changes: latestMainLine.versions[latest].changes
+              }; 
+            }
+
+            // check which stable mainline versions are available remotely
+            if (update === undefined && 
+                json.hasOwnProperty(mainLine) && 
+                json[mainLine].stable &&
+                json[mainLine].hasOwnProperty("versions") &&
+                Object.keys(json[mainLine].versions).length > 0) {
+              // sort by version numbers
+              var mainLineVersions = Object.keys(json[mainLine].versions);
+              mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
+              var latest = mainLineVersions[mainLineVersions.length - 1];
+
+              var result = window.versionHelper.compareVersions(
+                currentVersion, 
+                window.versionHelper.fromString(latest)
+              );
+              if (result < 0) {
+                update = {
+                  type: "minor", 
+                  version: latest,
+                  changes: json[mainLine].versions[latest].changes
+                }; 
+              }
+            }
+
+            if (update !== undefined) {
+              var msg = "A newer version of ArangoDB (" + update.version + 
+                        ") has become available. You may want to check the " +
+                        "changelog at <a href=\"" + update.changes + "\">" + 
+                        update.changes + "</a>";
+              arangoHelper.arangoNotification(msg, 15000);
+
+            }
+          },
+          error: function () {  
+            // re-schedule the version check
+            window.setTimeout(versionCheck, 60000);
+          }
+        });
+      };
+
+      window.setTimeout(versionCheck, 5000);
+    },
+*/
 
     logsAllowed: function () {
       return (window.databaseName === '_system');
@@ -301,6 +395,16 @@
       this.naviView.selectMenuItem('graphviewer-menu');
     },
 
+    graphDelete: function(name) {
+      if (!this.deleteGraphView) {
+        this.deleteGraphView = new window.DeleteGraphView({
+          collection: this.graphs
+        });
+      }
+      this.deleteGraphView.render(name);
+      this.naviView.selectMenuItem('graphviewer-menu');
+    },
+
     applications: function() {
       if (this.applicationsView === undefined) {
         this.applicationsView = new window.ApplicationsView({
@@ -343,10 +447,12 @@
       this.foxxList.fetch({
         async: false
       });
-      var installAppView = new window.foxxMountView({
-        model: this.foxxList.findWhere({_key: appkey})
-      });
-      installAppView.render();
+      if (!this.installAppView) {
+        this.installAppView = new window.foxxMountView({
+          collection: this.foxxList
+        });
+      }
+      this.installAppView.render(appkey);
     },
 
     appDocumentation: function(key) {

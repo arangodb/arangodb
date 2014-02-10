@@ -11,14 +11,17 @@ rspec --color --format d \
 	api-batch-spec.rb \
 	api-collection-spec.rb \
 	api-database-spec.rb \
+	api-document-create-spec.rb \
+	api-document-create-noncluster-spec.rb \
+	api-document-delete-spec.rb \
+	api-document-read-spec.rb \
+	api-document-update-spec.rb \
+	api-document-key-spec.rb \
 	api-documents-spec.rb \
+	api-edge-spec.rb \
+	api-edge-noncluster-spec.rb \
+	api-edges-spec.rb \
 	api-graph-spec.rb \
-	rest-key-spec.rb \
-	rest-create-document-spec.rb \
-	rest-read-document-spec.rb \
-	rest-update-document-spec.rb \
-	rest-delete-document-spec.rb \
-	rest-edge-spec.rb \
 	api-import-spec.rb \
 	api-index-spec.rb \
 	api-index-bitarray-spec.rb \
@@ -27,7 +30,12 @@ rspec --color --format d \
 	api-explain-spec.rb \
 	api-cursor-spec.rb \
 	api-statistics-spec.rb \
-	api-simple-spec.rb \
+        api-simple-all-spec.rb \
+        api-simple-example-spec.rb \
+        api-simple-fulltext-spec.rb \
+        api-simple-geo-spec.rb \
+        api-simple-range-spec.rb \
+        api-simple-spec.rb \
         api-structures.rb \
 	api-transactions-spec.rb \
 	api-traversal-spec.rb \

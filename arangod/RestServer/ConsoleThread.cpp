@@ -125,7 +125,7 @@ void ConsoleThread::inner () {
   // .............................................................................
 
   const string pretty = "start_pretty_print();";
-  TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), pretty.size()), v8::String::New("(internal)"), false);
+  TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), (int) pretty.size()), v8::String::New("(internal)"), false);
 
   V8LineEditor console(_context->_context, ".arangod.history");
 

@@ -529,6 +529,81 @@ connected edges):
 A custom expander can also be used as an edge filter because it has full control
 over which edges will be returned.
 
+Following are two examples of custom expanders that pick edges based on attributes
+of the edges and the connected vertices.
+
+Finding the connected edges / vertices based on an attribute `when` in the 
+connected vertices. The goal is to follow the edge that leads to the vertex
+with the highest value in the `when` attribute:
+ 
+    var config = {
+      ...
+      expander: function (config, vertex, path) {
+        var datasource = config.datasource;
+        // determine all outgoing edges
+        var outEdges = datasource.getOutEdges(vertex);
+      
+        if (outEdges.length === 0) {
+          return [ ];
+        }  
+
+        var data = [ ];
+        outEdges.forEach(function (edge) {
+          data.push({ edge: edge, vertex: datasource.getInVertex(edge) });
+        });
+
+        // sort outgoing vertices according to "when" attribute value
+        data.sort(function (l, r) {
+          if (l.vertex.when === r.vertex.when) {
+            return 0;  
+          }
+
+          return (l.vertex.when < r.vertex.when ? 1 : -1);
+        });
+
+        // pick first vertex found (with highest "when" attribute value)
+        return [ data[0] ];
+      }
+      ...
+    };
+
+Finding the connected edges / vertices based on an attribute `when` in the 
+edge itself. The goal is to pick the one edge (out of potentially many) that
+has the highest `when` attribute value:
+
+    var config = {
+      ...
+      expander: function (config, vertex, path) {
+        var datasource = config.datasource;
+        // determine all outgoing edges
+        var outEdges = datasource.getOutEdges(vertex);
+     
+        if (outEdges.length === 0) {
+          return [ ]; // return an empty list
+        }
+
+        // sort all outgoing edges according to "when" attribute
+        outEdges.sort(function (l, r) {
+          if (l.when === r.when) {
+            return 0;
+          }
+          return (l.when < r.when ? -1 : 1);
+        });
+ 
+        // return first edge (the one with highest "when" value)
+        var edge = outEdges[0];
+        try {
+          var v = datasource.getInVertex(edge);
+          return [ { edge: edge, vertex: v } ];   
+        }
+        catch (e) { }
+
+        return [ ];
+      }
+      ...
+    };
+
+
 Configuration Overview{#TraversalsObjectConfiguration}
 ------------------------------------------------------
 
@@ -587,10 +662,10 @@ To set up the collections and populate them with initial data, the following scr
     db._create("v");
     db._createEdgeCollection("e");
 
-    /* vertices: root node */
+    // vertices: root node 
     db.v.save({ _key: "world", name: "World", type: "root" });
 
-    /* vertices: continents */
+    // vertices: continents 
     db.v.save({ _key: "continent-africa", name: "Africa", type: "continent" });
     db.v.save({ _key: "continent-asia", name: "Asia", type: "continent" });
     db.v.save({ _key: "continent-australia", name: "Australia", type: "continent" });
@@ -598,7 +673,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "continent-north-america", name: "North America", type: "continent" });
     db.v.save({ _key: "continent-south-america", name: "South America", type: "continent" });
 
-    /* vertices: countries */
+    // vertices: countries 
     db.v.save({ _key: "country-afghanistan", name: "Afghanistan", type: "country", code: "AFG" });
     db.v.save({ _key: "country-albania", name: "Albania", type: "country", code: "ALB" });
     db.v.save({ _key: "country-algeria", name: "Algeria", type: "country", code: "DZA" });
@@ -640,7 +715,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "country-germany", name: "Germany", type: "country", code: "DEU" });
     db.v.save({ _key: "country-people-s-republic-of-china", name: "People's Republic of China", type: "country", code: "CHN" });
 
-    /* vertices: capitals */
+    // vertices: capitals 
     db.v.save({ _key: "capital-algiers", name: "Algiers", type: "capital" });
     db.v.save({ _key: "capital-andorra-la-vella", name: "Andorra la Vella", type: "capital" });
     db.v.save({ _key: "capital-asmara", name: "Asmara", type: "capital" });
@@ -682,7 +757,7 @@ To set up the collections and populate them with initial data, the following scr
     db.v.save({ _key: "capital-yaounde", name: "Yaounde", type: "capital" });
     db.v.save({ _key: "capital-zagreb", name: "Zagreb", type: "capital" });
 
-    /* edges: continent -> world */
+    // edges: continent -> world 
     db.e.save("v/continent-africa", "v/world", { type: "is-in" });
     db.e.save("v/continent-asia", "v/world", { type: "is-in" });
     db.e.save("v/continent-australia", "v/world", { type: "is-in" });
@@ -690,7 +765,7 @@ To set up the collections and populate them with initial data, the following scr
     db.e.save("v/continent-north-america", "v/world", { type: "is-in" });
     db.e.save("v/continent-south-america", "v/world", { type: "is-in" });
 
-    /* edges: country -> continent */
+    // edges: country -> continent 
     db.e.save("v/country-afghanistan", "v/continent-asia", { type: "is-in" });
     db.e.save("v/country-albania", "v/continent-europe", { type: "is-in" });
     db.e.save("v/country-algeria", "v/continent-africa", { type: "is-in" });
@@ -732,7 +807,7 @@ To set up the collections and populate them with initial data, the following scr
     db.e.save("v/country-germany", "v/continent-europe", { type: "is-in" });
     db.e.save("v/country-people-s-republic-of-china", "v/continent-asia", { type: "is-in" });
 
-    /* edges: capital -> country */
+    // edges: capital -> country 
     db.e.save("v/capital-algiers", "v/country-algeria", { type: "is-in" });
     db.e.save("v/capital-andorra-la-vella", "v/country-andorra", { type: "is-in" });
     db.e.save("v/capital-asmara", "v/country-eritrea", { type: "is-in" });

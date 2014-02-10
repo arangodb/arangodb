@@ -300,6 +300,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationV8(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
+    _disableAuthenticationUnixSockets(false),
     _dispatcherThreads(8),
     _dispatcherQueueSize(8192),
     _databasePath(),
@@ -532,7 +533,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   
 #ifdef TRI_ENABLE_CLUSTER
-  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
+  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8, _argv[0]);
 
   if (_applicationCluster == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
@@ -552,6 +553,9 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
+#ifdef TRI_HAVE_LINUX_SOCKETS
+    ("server.disable-authentication-unix-sockets", &_disableAuthenticationUnixSockets, "disable authentication for requests via UNIX domain sockets")
+#endif
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
@@ -891,10 +895,8 @@ int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
-  ConsoleThread* console = 0;
-
-  console = new ConsoleThread(_applicationServer, _applicationV8, vocbase);
-  console->start();
+  ConsoleThread console(_applicationServer, _applicationV8, vocbase);
+  console.start();
 
   _applicationServer->wait();
   
@@ -902,13 +904,12 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   // and cleanup
   // .............................................................................
   
-  if (console != 0) {
-    console->stop();
+  console.stop();
 
-    while (! console->done()) {
-      usleep(100000); // spin while console is still needed
-    }
-    delete console;
+  int iterations = 0;
+
+  while (! console.done() && ++iterations < 30) {
+    usleep(100000); // spin while console is still needed
   }
   
   return EXIT_SUCCESS;
@@ -966,7 +967,6 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     
   v8::HandleScope globalScope;
 
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
   v8::TryCatch tryCatch;
 
@@ -1025,13 +1025,14 @@ void ArangoServer::openDatabases () {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
-  defaults.defaultMaximalSize            = _defaultMaximalSize;
-  defaults.removeOnDrop                  = _removeOnDrop;
-  defaults.removeOnCompacted             = _removeOnCompacted;
-  defaults.defaultWaitForSync            = _defaultWaitForSync;
-  defaults.forceSyncProperties           = _forceSyncProperties;
-  defaults.requireAuthentication         = ! _disableAuthentication;
-  defaults.authenticateSystemOnly        = _authenticateSystemOnly;
+  defaults.defaultMaximalSize               = _defaultMaximalSize;
+  defaults.removeOnDrop                     = _removeOnDrop;
+  defaults.removeOnCompacted                = _removeOnCompacted;
+  defaults.defaultWaitForSync               = _defaultWaitForSync;
+  defaults.forceSyncProperties              = _forceSyncProperties;
+  defaults.requireAuthentication            = ! _disableAuthentication;
+  defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
+  defaults.authenticateSystemOnly           = _authenticateSystemOnly;
 
   assert(_server != 0);
 

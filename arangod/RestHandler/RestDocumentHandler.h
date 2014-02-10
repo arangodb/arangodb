@@ -114,14 +114,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-      bool createDocumentCoordinator (char const* collection,
-                                      bool waitForSync,
-                                      TRI_json_t* json);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,6 +167,16 @@ namespace triagens {
 
       virtual bool deleteDocument ();
 
+#ifdef TRI_ENABLE_CLUSTER
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool createDocumentCoordinator (char const* collection,
+                                      bool waitForSync,
+                                      TRI_json_t* json);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +194,26 @@ namespace triagens {
       bool getDocumentCoordinator (string const& collname,
                                    string const& key,
                                    bool generateBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all documents, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool getAllDocumentsCoordinator (string const& collname);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool modifyDocumentCoordinator (string const& collname,
+                                      string const& key,
+                                      TRI_voc_rid_t const rev,
+                                      TRI_doc_update_policy_e policy,
+                                      bool waitForSync,
+                                      bool isPatch,
+                                      TRI_json_t* json);
+
+#endif
 
     };
   }

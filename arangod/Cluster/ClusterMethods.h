@@ -32,6 +32,7 @@
 #include "Basics/Common.h"
 
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -43,8 +44,45 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 namespace triagens {
   namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge headers of a DB server response into the current response
+////////////////////////////////////////////////////////////////////////////////
+
+    void mergeResponseHeaders (triagens::rest::HttpResponse* response,
+                               std::map<std::string, std::string> const& headers);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a copy of all HTTP headers to forward
+////////////////////////////////////////////////////////////////////////////////
+
+    std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest::HttpRequest* request);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a list of attributes have the same values in two JSON
+/// documents
+////////////////////////////////////////////////////////////////////////////////
+
+    bool shardKeysChanged (std::string const& dbname,
+                           std::string const& collname,
+                           struct TRI_json_s const* oldJson,
+                           struct TRI_json_s const* newJson,
+                           bool isPatch);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief counts number of documents in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int countOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 uint64_t& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
@@ -55,8 +93,9 @@ namespace triagens {
                  string const& collname,
                  bool waitForSync,
                  TRI_json_t* json,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,8 +109,9 @@ namespace triagens {
                  TRI_voc_rid_t const rev,
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
+                 map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
+                 map<string, string>& resultHeaders,
                  string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,12 +123,57 @@ namespace triagens {
                  string const& collname,
                  string const& key,
                  TRI_voc_rid_t const rev,
-                 bool notthisref,
+                 map<string, string> const& headers,
                  bool generateDocument,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 map<string, string>& resultHeaders,
+                 string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all documents in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int getAllDocumentsOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,
                  string& resultBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modify a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int modifyDocumentOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 bool isPatch,
+                 bool keepNull,   // only counts for isPatch == true
+                 TRI_json_t* json,
+                 map<string, string> const& headers,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 map<string, string>& resultHeaders,
+                 string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an edge in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int createEdgeOnCoordinator ( 
+                 string const& dbname,
+                 string const& collname,
+                 bool waitForSync,
+                 TRI_json_t* json,
+                 char const* from,
+                 char const* to,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 map<string, string>& resultHeaders,
+                 string& resultBody);
+ 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -102,5 +187,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

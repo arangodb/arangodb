@@ -16,7 +16,8 @@
 
 .span3 h5 {
   font-family: 'Open Sans', sans-serif !important;
-  font-weight: 500;
+  font-weight: 300;
+  font-size: 12px;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -42,27 +43,25 @@
 
 .span3 .ICON {
   position: absolute;
+  right: 0px;
   margin-top: 5px;
   margin-right: 5px;
   opacity: 0.5;
   cursor: pointer;
-  font-size: 25px;
+  font-size: 18px;
 }
+
+.span3 .ICON:hover {
+  opacity: 1.0;
+}
+
 .span3 .glyphicon-edit {
   margin-top: 4px !important;
   font-size: 19.5px;
 }
 
-.span3 .ICON{
-  right: 0px;
-}
-
 .span3 .spanInfo {
   right: 25px;
-}
-
-.span3 .ICON:hover {
-  opacity: 1.0;
 }
 
 .spanDisabled {
@@ -77,4 +76,9 @@
 
 .span3 .badge-success {
   font-weight: 300;
+}
+
+.badge, .label, .btn {
+  text-shadow: none !important;
+  font-size: 11px;
 }

@@ -1,11 +1,7 @@
-svg.graphViewer {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgba(0,0,0,0.125);
-  margin-left: 74px;
-}
-
 .gv_manageButtonContainer {
   margin-top: 10px;
+}
+
+input.gv_searchInput {
+  border: 1px solid #cccccc;
 }

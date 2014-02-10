@@ -91,11 +91,31 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/shape-accessor.c \
 	lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp \
-	lib/Utilities/LineEditor-readline.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Zip/ioapi.c \
 	lib/Zip/unzip.c \
 	lib/Zip/zip.c
+
+if ENABLE_READLINE
+
+lib_libarango_a_SOURCES += \
+	lib/Utilities/LineEditor-readline.cpp
+
+else
+if ENABLE_LINENOISE
+
+lib_libarango_a_SOURCES += \
+	lib/Utilities/LineEditor-linenoise.cpp \
+	3rdParty/linenoise/linenoise.c \
+	3rdParty/linenoise/utf8.c
+
+else
+
+lib_libarango_a_SOURCES += \
+	lib/Utilities/LineEditor-dummy.cpp
+
+endif
+endif
 
 ################################################################################
 ### @brief library "libarango.a", client part

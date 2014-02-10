@@ -162,10 +162,10 @@ function UniqueConstraintSuite() {
       assertEqual(true, idx.isNewlyCreated);
 
       var d1 = collection.save({ a : 1, b : 1 })._id;
-      var d2 = collection.save({ a : 2, b : 1 })._id;
-      var d3 = collection.save({ a : 3, b : 1 })._id;
-      var d4 = collection.save({ a : 4, b : 1 })._id;
-      var d5 = collection.save({ a : 4, b : 2 })._id;
+      collection.save({ a : 2, b : 1 })._id;
+      collection.save({ a : 3, b : 1 })._id;
+      collection.save({ a : 4, b : 1 })._id;
+      collection.save({ a : 4, b : 2 })._id;
 
       collection.save({ a : 1 });
       collection.save({ a : 1 });

@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global _*/
-/* global eventLibrary */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -119,7 +118,7 @@ function EventLibrary() {
   this.InsertNode = function (config) {
     self.checkNodeEditorConfig(config);
     var adapter = config.adapter,
-    nodeShaper = config.shaper;
+      nodeShaper = config.shaper;
     
     return function(data, callback, x, y) {
       var cb, d;

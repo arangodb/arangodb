@@ -505,32 +505,38 @@
 
         if (self.detailGraph === identifier) {
           d3.select("#detailGraphChart svg")
-          .call(chart)
-          .datum([{
-            values: self.seriesData[identifier].values,
-            key: identifier,
-            color: "#8AA051" 
-          }])
-          .transition().duration(500);
+            .call(chart)
+            .datum([{
+              values: self.seriesData[identifier].values,
+              key: identifier,
+              color: "#8aa14c"
+            }])
+            .attr("stroke-width", "0.5")
+            .transition().duration(500);
         }
-
+        
         //disable ticks/label for small charts
         d3.select("#" + identifier + "Chart svg")
           .call(chart)
           .datum([ {
             values: self.seriesData[identifier].values,
             key: identifier,
-            color: "#8AA051" }
+            color: "#8aa14c" }
           ])
-        .transition().duration(500);
+          .attr("stroke-width", "0.5")
+          .transition().duration(500);
+      
+          // Claudius: hide y-axis labels for small charts
+          $('#' + identifier + ' .nv-y.nv-axis text').attr('display', 'none');  
       });
 
       this.loadGraphState();
-
+      // #8AA051
       //fix position for last x-value label in detailgraph
       $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
       //fix position of small graphs
       $('.svgClass .nv-lineChart').attr('transform','translate(5,5)');
+      
     },
 
     calculateSeries: function (flush) {

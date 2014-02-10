@@ -234,6 +234,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     info.serverAddress = _endpoint->getHost();
     info.serverPort    = _endpoint->getPort();
     info.endpoint      = _endpoint->getSpecification();
+    info.endpointType  = _endpoint->getDomainType();
 
     return handleConnected(connectionSocket, info);
   }

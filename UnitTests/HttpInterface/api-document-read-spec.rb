@@ -453,7 +453,6 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
         doc.headers['content-length'].should eq(content_length)
         doc.body.should eq(nil)
 

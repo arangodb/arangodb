@@ -29,6 +29,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerJob.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -66,7 +67,8 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _interval(interval),
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
     _numFails(0),
-    _stop(0) {
+    _stop(0),
+    _ready(0) {
 
   assert(_dispatcher != 0);
   allowAsynchronousCancelation();
@@ -97,7 +99,7 @@ HeartbeatThread::~HeartbeatThread () {
 
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
-
+  
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
   
@@ -106,9 +108,12 @@ void HeartbeatThread::run () {
 
   // value of Sync/Commands/my-id at startup 
   uint64_t lastCommandIndex = getLastCommandIndex(); 
-  bool valueFound = false;
-
   const bool isCoordinator = ServerState::instance()->isCoordinator();
+
+  if (isCoordinator) {
+    ready(true);
+  }
+
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -123,12 +128,35 @@ void HeartbeatThread::run () {
       break;
     }
 
-    if (! isCoordinator) {
+    {
+      // send an initial GET request to Sync/Commands/my-id
+      AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
+  
+      if (result.successful()) {
+        handleStateChange(result, lastCommandIndex);
+      }
+    }
+
+    if (_stop) {
+      break;
+    }
+      
+    if (isCoordinator) {
+      // coordinator just sleeps
+      const double remain = interval - (TRI_microtime() - start);
+      if (remain > 0.0) {
+        usleep((unsigned long) (remain * 1000.0 * 1000.0));
+      }
+    }
+    else {
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
       if (result.successful()) {
         result.parse("", false);
+
+        bool changed = false;
+        const uint64_t agencyIndex = result.index();
 
         std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
@@ -138,73 +166,53 @@ void HeartbeatThread::run () {
 
           if (planVersion > lastPlanVersion) {
             handlePlanChange(planVersion, lastPlanVersion);
+            changed = true;
           }
         }
-      }
-    }
 
-    {
-      // send an initial GET request to Sync/Commands/my-id
-      AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
-
-      if (result.successful()) {
-        handleStateChange(result, lastCommandIndex);
-        valueFound = true;
-      }
-    }
-    
-    if (_stop) {
-      break;
-    }
-  
-
-    {
-      // watch Sync/Commands/my-id for changes
-
-      // TODO: check if this is CPU-intensive and whether we need to sleep
-      AgencyCommResult result = _agency.watchValue("Sync/Commands/" + _myId, 
-                                                   lastCommandIndex + 1, 
-                                                   interval,
-                                                   false); 
-      
-      if (_stop) {
-        break;
-      }
-
-      if (result.successful()) {
-        // value has changed!
-        handleStateChange(result, lastCommandIndex);
-
-        // sleep a while 
-        CONDITION_LOCKER(guard, _condition);
-        guard.wait(_interval);
-      }
-      else {
-        // check for a specific AGENCY error code 
-        if (result.httpCode() == triagens::rest::HttpResponse::BAD && result.errorCode() == 401) {
-          // the requested history has been cleared
-          // pick up new index from the agency
-          const uint64_t agencyIndex = result.index();
-          if (agencyIndex > 0) {
-            lastCommandIndex = agencyIndex;
-          }
+        if (_stop) {
+          break;
         }
-        if (valueFound) {
-          // value did not change, but we already blocked waiting for a change...
-          // nothing to do here
-        }
-        else {
+
+        if (! changed) {
           const double remain = interval - (TRI_microtime() - start);
 
           if (remain > 0.0) {
-            usleep((useconds_t) (remain * 1000.0 * 1000.0)); 
+            // watch Plan/Version for changes
+            result.clear();
+
+            result = _agency.watchValue("Plan/Version",
+                                        agencyIndex + 1,   
+                                        remain,
+                                        false); 
+
+            if (result.successful()) {
+              result.parse("", false);
+              it = result._values.begin();
+
+              if (it != result._values.end()) {
+                // there is a plan version
+                uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+
+                if (planVersion > lastPlanVersion) {
+                  handlePlanChange(planVersion, lastPlanVersion);
+                }
+              }
+            }
           }
+        }
+      }
+      else {
+        const double remain = interval - (TRI_microtime() - start);
+
+        if (remain > 0.0) {
+          usleep((unsigned long) (remain * 1000.0 * 1000.0));
         }
       }
     }
   }
 
-  // another thread is waiting for this value to shut down properly
+  // another thread is waiting for this value to appear in order to shut down properly
   _stop = 2;
   
   LOG_TRACE("stopped heartbeat thread");
@@ -271,9 +279,12 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
 bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
                                         uint64_t& remotePlanVersion) {
   LOG_TRACE("found a plan update");
+  
+  // invalidate our local cache
+  ClusterInfo::instance()->flush();
 
   // schedule a job for the change
-  triagens::rest::Job* job = new DBServerJob(_server, _applicationV8);
+  triagens::rest::Job* job = new DBServerJob(this, _server, _applicationV8);
 
   assert(job != 0);
 

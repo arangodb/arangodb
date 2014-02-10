@@ -134,7 +134,7 @@ CollectionInfoCurrent::CollectionInfoCurrent () {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfoCurrent::CollectionInfoCurrent (ShardID const& shardID, TRI_json_t* json) {
-  _jsons.insert(make_pair<ShardID, TRI_json_t*>(shardID, json));
+  _jsons.insert(make_pair(shardID, json));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +449,7 @@ void ClusterInfo::loadPlannedDatabases () {
 
       // steal the json
       (*it).second._json = 0;
-      _plannedDatabases.insert(std::make_pair<DatabaseID, TRI_json_t*>(name, options));
+      _plannedDatabases.insert(std::make_pair(name, options));
 
       ++it;
     }
@@ -503,7 +503,7 @@ void ClusterInfo::loadCurrentDatabases () {
       if (it2 == _currentDatabases.end()) {
         // insert an empty list for this database
         std::map<ServerID, TRI_json_t*> empty;
-        it2 = _currentDatabases.insert(std::make_pair<DatabaseID, std::map<ServerID, TRI_json_t*> >(database, empty)).first; 
+        it2 = _currentDatabases.insert(std::make_pair(database, empty)).first; 
       }
        
       if (parts.size() == 2) {
@@ -511,7 +511,7 @@ void ClusterInfo::loadCurrentDatabases () {
         TRI_json_t* json = (*it).second._json;
         // steal the JSON
         (*it).second._json = 0;
-        (*it2).second.insert(std::make_pair<ServerID, TRI_json_t*>(parts[1], json));
+        (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
       ++it;
@@ -576,7 +576,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       if (it2 == _collections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.insert(std::make_pair<DatabaseID, DatabaseCollections>(database, empty));
+        _collections.insert(std::make_pair(database, empty));
         it2 = _collections.find(database);
       }
 
@@ -584,26 +584,25 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       // steal the json
       (*it).second._json = 0;
 
-      const CollectionInfo collectionData(json);
+      TRI_shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
-      *shardKeys = collectionData.shardKeys();
+      *shardKeys = collectionData->shardKeys();
       _shardKeys.insert(
-            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
-                     (collection, TRI_shared_ptr<vector<string> > (shardKeys)));
-      map<ShardID, ServerID> shardIDs = collectionData.shardIds();
+                    make_pair(collection, TRI_shared_ptr<vector<string> > (shardKeys)));
+      map<ShardID, ServerID> shardIDs = collectionData->shardIds();
       vector<string>* shards = new vector<string>;
       map<ShardID, ServerID>::iterator it3;
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
         shards->push_back(it3->first);
       }
       _shards.insert(
-            make_pair<CollectionID, TRI_shared_ptr<vector<string> > >
-                     (collection,TRI_shared_ptr<vector<string> >(shards)));
+              make_pair(collection,TRI_shared_ptr<vector<string> >(shards)));
         
       // insert the collection into the existing map
         
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collection, collectionData));
-      (*it2).second.insert(std::make_pair<CollectionID, CollectionInfo>(collectionData.name(), collectionData));
+      (*it2).second.insert(std::make_pair(collection, collectionData));
+      (*it2).second.insert(std::make_pair(collectionData->name(), 
+                                          collectionData));
 
     }
     _collectionsValid = true;
@@ -619,7 +618,8 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
+TRI_shared_ptr<CollectionInfo> ClusterInfo::getCollection 
+                                          (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
   int tries = 0;
 
@@ -648,7 +648,7 @@ CollectionInfo ClusterInfo::getCollection (DatabaseID const& databaseID,
     loadPlannedCollections(true);
   }
 
-  return CollectionInfo();
+  return TRI_shared_ptr<CollectionInfo>(new CollectionInfo());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,17 +681,18 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
 
 TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
                                                      CollectionID const& collectionID) {
-  CollectionInfo ci = getCollection(databaseID, collectionID);
+  TRI_shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
   
-  return getCollectionProperties(ci);
+  return getCollectionProperties(*ci);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<CollectionInfo> ClusterInfo::getCollections (DatabaseID const& databaseID) {
-  std::vector<CollectionInfo> result;
+const std::vector<TRI_shared_ptr<CollectionInfo> > ClusterInfo::getCollections 
+                         (DatabaseID const& databaseID) {
+  std::vector<TRI_shared_ptr<CollectionInfo> > result;
 
   // always reload
   loadPlannedCollections(true);
@@ -777,7 +778,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       if (it2 == _collectionsCurrent.end()) {
         // not yet, so create an entry for the database
         DatabaseCollectionsCurrent empty;
-        _collectionsCurrent.insert(std::make_pair<DatabaseID, DatabaseCollectionsCurrent>(database, empty));
+        _collectionsCurrent.insert(std::make_pair(database, empty));
         it2 = _collectionsCurrent.find(database);
       }
 
@@ -789,13 +790,13 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       DatabaseCollectionsCurrent::iterator it3;
       it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
-        const CollectionInfoCurrent collectionDataCurrent(shardID, json);
-        it2->second.insert(make_pair<CollectionID, CollectionInfoCurrent>
-                              (collection, collectionDataCurrent));
+        TRI_shared_ptr<CollectionInfoCurrent> collectionDataCurrent
+                    (new CollectionInfoCurrent(shardID, json));
+        it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
       }
       else {
-        it3->second.add(shardID, json);
+        it3->second->add(shardID, json);
       }
         
       // Note that we have only inserted the CollectionInfoCurrent under
@@ -809,7 +810,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       std::string DBserver = triagens::basics::JsonHelper::getStringValue
                     (json, "DBServer", "");
       if (DBserver != "") {
-        _shardIds.insert(make_pair<ShardID, ServerID>(shardID, DBserver));
+        _shardIds.insert(make_pair(shardID, DBserver));
       }
     }
     _collectionsCurrentValid = true;
@@ -827,7 +828,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent ClusterInfo::getCollectionCurrent 
+TRI_shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent 
            (DatabaseID const& databaseID,
             CollectionID const& collectionID) {
   int tries = 0;
@@ -857,7 +858,7 @@ CollectionInfoCurrent ClusterInfo::getCollectionCurrent
     loadCurrentCollections(true);
   }
 
-  return CollectionInfoCurrent();
+  return TRI_shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
 }
 
 
@@ -888,7 +889,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
     res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode == triagens::rest::HttpResponse::PRECONDITION_FAILED) {
-        return setErrormsg(TRI_ERROR_CLUSTER_DATABASE_NAME_EXISTS, errorMsg);
+        return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
@@ -1001,8 +1002,9 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                          errorMsg);
     }
-
   }
+  
+  _collectionsValid = false;
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
@@ -1187,6 +1189,8 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
     }
   }
 
+  _collectionsValid = false;
+
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
@@ -1195,11 +1199,14 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   }
   uint64_t index = res._index;
 
+  // monitor the entry for the collection
   const string where = "Current/Collections/" + databaseName + "/" + collectionID; 
   while (TRI_microtime() <= endTime) {
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
+      // if there are no more active shards for the collection...
       if (res._values.size() == 0) {
+        // ...remove the entire directory for the collection
         AgencyCommLocker locker("Current", "WRITE");
         if (locker.successful()) {
           res = ac.removeValues("Current/Collections/"+databaseName+"/"+
@@ -1321,7 +1328,7 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_vocbase_col_status_e old = triagens::basics::JsonHelper::getNumericValue<TRI_vocbase_col_status_e>(json, "status", TRI_VOC_COL_STATUS_CORRUPTED);
+  TRI_vocbase_col_status_e old = (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue<int>(json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
   
   if (old == status) {
     // no status change
@@ -1377,7 +1384,7 @@ void ClusterInfo::loadServers () {
     while (it != result._values.end()) {
       const std::string server = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
 
-      _servers.insert(std::make_pair<ServerID, std::string>((*it).first, server));
+      _servers.insert(std::make_pair((*it).first, server));
       ++it;
     }
 
@@ -1451,7 +1458,7 @@ void ClusterInfo::loadCurrentDBServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _DBServers.insert(std::make_pair<ServerID, ServerID>((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      _DBServers.insert(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
     _DBServersValid = true;
@@ -1562,16 +1569,20 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
 /// values for some of the sharding attributes is silently ignored
 /// and treated as if these values were `null`. In the second mode
 /// (`docComplete`==false) leads to an error which is reported by
-/// returning an empty string as the shardID. If the collection is
-/// found, the flag `usesDefaultShardingAttributes` is used set to
-/// `true` if `_key` is the one and only sharding attribute and is
-/// set to `false` otherwise.
+/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// error code that can be returned.
+///
+/// In either case, if the collection is found, the variable
+/// shardID is set to the ID of the responsible shard and the flag
+/// `usesDefaultShardingAttributes` is used set to `true` if and only if
+/// `_key` is the one and only sharding attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
-                                          TRI_json_t const* json,
-                                          bool docComplete,
-                                          bool& usesDefaultShardingAttributes) {
+int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
+                                      TRI_json_t const* json,
+                                      bool docComplete,
+                                      ShardID& shardID,
+                                      bool& usesDefaultShardingAttributes) {
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
@@ -1583,6 +1594,7 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   TRI_shared_ptr<vector<string> > shardKeysPtr;
   char const** shardKeys = 0;
   TRI_shared_ptr<vector<ShardID> > shards;
+  bool found = false;
 
   while (++tries <= 2) {
     {
@@ -1604,6 +1616,7 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
             }
             usesDefaultShardingAttributes = shardKeysPtr->size() == 1 &&
                                             shardKeysPtr->at(0) == "_key";
+            found = true;
             break;  // all OK
           }
         }
@@ -1611,15 +1624,24 @@ ShardID ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     }
     loadPlannedCollections();
   }
-  if (0 == shardKeys) {
-    return string("");
+  if (!found) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   
+  int error;
   uint64_t hash = TRI_HashJsonByAttributes(json, shardKeys, 
-                                           shardKeysPtr->size());
+                                           shardKeysPtr->size(),
+                                           docComplete, &error);
+  static char const* magicPhrase 
+      = "Foxx you have stolen the goose, give she back again!";
+  static size_t const len = 52;
+  // To improve our hash function:
+  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
+
   delete[] shardKeys;
 
-  return shards->at(hash % shards->size());
+  shardID = shards->at(hash % shards->size());
+  return error;
 }
 
 

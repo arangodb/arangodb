@@ -284,7 +284,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief decode a base64-encoded string
+/// @brief decodes a base64-encoded string
 ///
 /// @FUN{internal.base64Decode(@FA{value})}
 ///
@@ -312,7 +312,7 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base64-encode a string
+/// @brief encodes a string as base64
 ///
 /// @FUN{internal.base64Encode(@FA{value})}
 ///
@@ -340,7 +340,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a Javascript snippet, but do not execute it
+/// @brief parses a Javascript snippet, but do not execute it
 ///
 /// @FUN{internal.parse(@FA{script})}
 ///
@@ -458,6 +458,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     }
 
     v8::Handle<v8::Array> options = v8::Handle<v8::Array>::Cast(argv[2]);
+
     if (options.IsEmpty()) {
       TRI_V8_EXCEPTION_USAGE(scope, signature);
     }
@@ -622,7 +623,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
       // follow redirects?
       if (followRedirects && 
-          (returnCode == 301 || returnCode == 302)) {
+          (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
         url = response->getHeaderField(string("location"), found);
 
@@ -647,11 +648,12 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       map<string, string>::const_iterator it;
 
       v8::Handle<v8::Object> headers = v8::Object::New();
+
       for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
         headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
       }
-      result->Set(v8::String::New("headers"), headers);
 
+      result->Set(v8::String::New("headers"), headers);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
@@ -839,7 +841,7 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of a file
+/// @brief gets the size of a file
 ///
 /// @FUN{fs.size(@FA{path})}
 ///
@@ -887,7 +889,7 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the temporary directory
+/// @brief returns the temporary directory
 ///
 /// @FUN{fs.getTempPath()}
 ///
@@ -914,7 +916,7 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name for a (new) temporary file
+/// @brief returns the name for a (new) temporary file
 ///
 /// @FUN{fs.getTempFile(@FA{directory}, @FA{createFile})}
 ///
@@ -1010,7 +1012,52 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the directory tree
+/// @brief makes a given path absolute
+///
+/// @FUN{fs.makeAbsolute(@FA{path})}
+///
+/// Returns the given string if it is an absolute path, otherwise an
+/// absolute path to the same location is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "makeAbsolute(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  int err = 0;
+  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  if (0 != err) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, err,"cannot get current working directory");
+  }
+
+  char *abs = TRI_GetAbsolutePath (*name, cwd.c_str());
+  v8::Handle<v8::String> res;
+  
+  if (0 != abs) {
+    res = v8::String::New(abs);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+  }
+  else {
+    res = v8::String::New(cwd.c_str(), cwd.size());
+  }
+
+  // return result
+  return scope.Close(res);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the directory listing
 ///
 /// @FUN{fs.list(@FA{path})}
 ///
@@ -1097,7 +1144,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a directory
+/// @brief creates a directory
 ///
 /// @FUN{fs.makeDirectory(@FA{path})}
 ///
@@ -1381,7 +1428,7 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief md5 sum
+/// @brief computes the md5 sum of a text
 ///
 /// @FUN{internal.md5(@FA{text})}
 ///
@@ -1422,7 +1469,7 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate random numbers
+/// @brief generates random numbers
 ///
 /// @FUN{internal.genRandomNumbers(@FA{length})}
 ///
@@ -1444,7 +1491,7 @@ static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate random alpha-numbers
+/// @brief generates random alpha-numbers
 ///
 /// @FUN{internal.genRandomAlphaNumbers(@FA{length})}
 ///
@@ -1465,7 +1512,7 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gernate a salt
+/// @brief generates a salt
 ///
 /// @FUN{internal.genRandomSalt()}
 ///
@@ -1484,7 +1531,7 @@ static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief nonce generator
+/// @brief generates a nonce
 ///
 /// @FUN{internal.createNonce()}
 ///
@@ -1661,7 +1708,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a random number using OpenSSL
+/// @brief generates a random number using OpenSSL
 ///
 /// @FUN{internal.rand()}
 ///
@@ -2087,7 +2134,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sha256 sum
+/// @brief computes the sha256 sum
 ///
 /// @FUN{internal.sha256(@FA{text})}
 ///
@@ -2154,34 +2201,48 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>)");
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>, <gc>)");
   }
 
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
-  v8::V8::LowMemoryNotification();
-  while(! v8::V8::IdleNotification()) {
+  bool gc = true; // default is to trigger the gc
+  if (argv.Length() > 1) {
+    gc = TRI_ObjectToBoolean(argv[1]);
   }
 
-  size_t i = 0;
-  while (TRI_microtime() < until) {
-    if (++i % 1000 == 0) {
-      // garbage collection only every x iterations, otherwise we'll use too much CPU
-      v8::V8::LowMemoryNotification();
-      while(! v8::V8::IdleNotification()) {
-      }
+  if (gc) {
+    // wait with gc
+    v8::V8::LowMemoryNotification();
+    while(! v8::V8::IdleNotification()) {
     }
 
-    usleep(100);
+    size_t i = 0;
+    while (TRI_microtime() < until) {
+      if (++i % 1000 == 0) {
+        // garbage collection only every x iterations, otherwise we'll use too much CPU
+        v8::V8::LowMemoryNotification();
+        while(! v8::V8::IdleNotification()) {
+        }
+      }
+
+      usleep(100);
+    }
+  }
+  else {
+    // wait without gc
+    while (TRI_microtime() < until) {
+      usleep(100);
+    }
   }
 
   return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally cause a segfault
+/// @brief intentionally causes a segfault
 ///
 /// @FUN{internal.debugSegfault(@FA{message})}
 ///
@@ -2206,7 +2267,7 @@ static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set a failure point
+/// @brief sets a failure point
 ///
 /// @FUN{internal.debugSetFailAt(@FA{point})}
 ///
@@ -2229,7 +2290,7 @@ static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a failure point
+/// @brief removes a failure point
 ///
 /// @FUN{internal.debugRemoveFailAt(@FA{point})}
 ///
@@ -2252,7 +2313,7 @@ static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clear all failure points
+/// @brief clears all failure points
 ///
 /// @FUN{internal.debugClearFailAt()}
 ///
@@ -2358,6 +2419,162 @@ static v8::Handle<v8::Value> JS_HttpStatistics (v8::Arguments const& argv) {
   result->Set(v8::String::New("requestsOther"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_ILLEGAL]._count));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a external program
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (2 < argv.Length() || argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "executeExternal(<filename>, [<arguments>])");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
+  }
+
+  char** arguments = 0;
+  size_t n = 0;
+
+  if (2 <= argv.Length()) {
+    v8::Handle<v8::Value> a = argv[1];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      n = arr->Length();
+      arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+
+      for (size_t i = 0;  i < n;  ++i) {
+        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
+
+        if (*arg == 0) {
+          arguments[i] = TRI_DuplicateString("");
+        }
+        else {
+          arguments[i] = TRI_DuplicateString(*arg);
+        }
+      }
+    }
+    else {
+      n = 1;
+      arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+
+        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
+
+        if (*arg == 0) {
+          arguments[0] = TRI_DuplicateString("");
+        }
+        else {
+          arguments[0] = TRI_DuplicateString(*arg);
+        }
+    }
+  }
+
+  TRI_external_id_t external = TRI_CreateExternalProcess(*name, (const char**) arguments, n);
+
+  if (arguments != 0) {
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+    }
+
+    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+  }
+
+  // return the result
+  return scope.Close(v8::Number::New(external));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the status of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+  TRI_external_status_t external = TRI_CheckExternalProcess(pid);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  const char* status = "UNKNOWN";
+
+  switch (external._status) {
+    case TRI_EXT_NOT_STARTED: status = "NOT-STARTED"; break;
+    case TRI_EXT_PIPE_FAILED: status = "FAILED"; break;
+    case TRI_EXT_FORK_FAILED: status = "FAILED"; break;
+    case TRI_EXT_RUNNING: status = "RUNNING"; break;
+    case TRI_EXT_NOT_FOUND: status = "NOT-FOUND"; break;
+    case TRI_EXT_TERMINATED: status = "TERMINATED"; break;
+    case TRI_EXT_ABORTED: status = "ABORTED"; break;
+    case TRI_EXT_STOPPED: status = "STOPPED"; break;
+    case TRI_EXT_KILL_FAILED: status = "ZOMBIE"; break;
+  }
+
+  result->Set(v8::String::New("status"), v8::String::New(status));
+
+  if (external._status == TRI_EXT_TERMINATED) {
+    result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
+  }
+
+  // return the result
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
+  }
+
+  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+
+  TRI_KillExternalProcess(pid);
+
+  // return the result
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a port is available
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "testPort(<address>)");
+  }
+
+  string address = TRI_ObjectToString(argv[0]);
+  Endpoint* endpoint = Endpoint::serverFactory(address);
+  TRI_socket_t s = endpoint->connect(1, 1);
+  
+  if (s.fileDescriptor == 0) {
+    endpoint->disconnect();
+  }
+
+  delete endpoint;
+
+  // return the result
+  return scope.Close(v8::Boolean::New(s.fileDescriptor != 0));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2706,7 +2923,7 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a v8 object
+/// @brief normalizes a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
@@ -2763,6 +2980,10 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
   return scope.Close(result);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            modules initialisation
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
@@ -2825,6 +3046,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_ABSOLUTE", JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST", JS_List);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
@@ -2838,20 +3060,22 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64DECODE", JS_Base64Decode);
   TRI_AddGlobalFunctionVocbase(context, "SYS_BASE64ENCODE", JS_Base64Encode);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLIENT_STATISTICS", JS_ClientStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_EXTERNAL", JS_ExecuteExternal);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_KILL_EXTERNAL", JS_KillExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
   TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
@@ -2862,6 +3086,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
 
