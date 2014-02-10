@@ -527,12 +527,34 @@ function createLocalCollections (plannedCollections) {
                       for (idx in payload.indexes) {
                         if (payload.indexes.hasOwnProperty(idx)) {
                           if (! indexes.hasOwnProperty(payload.indexes[idx].id)) {
+                            var c = db._collection(shard);
+                            
                             console.info("creating index '%s/%s': %s", 
                                          database, 
                                          shard,
                                          JSON.stringify(payload.indexes[idx]));
-    //index = collection.ensureUniqueConstraint.apply(collection, fields);
-    //index = collection.ensureHashIndex.apply(collection, fields);
+
+                            switch (payload.indexes[idx].type) {
+                              case "hash":
+                                if (payload.indexes[idx].unique) {
+                                  c.ensureUniqueConstraint.apply(c, payload.indexes[idx].fields);
+                                }
+                                else {
+                                  c.ensureHashIndex.apply(c, payload.indexes[idx].fields);
+                                }
+                                break;
+                              case "skiplist":
+                                if (payload.indexes[idx].unique) {
+                                  c.ensureUniqueSkiplist.apply(c, payload.indexes[idx].fields);
+                                }
+                                else {
+                                  c.ensureSkiplist.apply(c, payload.indexes[idx].fields);
+                                }
+                                break;
+                              case "fulltext":
+                                c.ensureFulltextIndex(payload.indexes[idx].fields[0], payload.indexes[idx].minLength);
+                                break;
+                            }
                           }
                         }
                       }
