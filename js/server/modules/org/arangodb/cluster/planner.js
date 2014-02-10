@@ -32,64 +32,8 @@
 // --SECTION--                                             Planner functionality
 // -----------------------------------------------------------------------------
 
-// possible config attributes (for defaults see below):
-//   .agencyPrefix            prefix for this cluster in agency
-//   .numberOfAgents          number of agency servers
-//   .numberOfDBservers       number of DB servers
-//   .startSecondaries        boolean, whether or not to use secondaries
-//   .numberOfCoordinators    number of coordinators
-//   .DBserverIDs             a list of DBserver IDs, the defaults will
-//                            be appended to this list here
-//   .coordinatorIDs          a list of coordinator IDs, the defaults will
-//                            be appended to this list here
-//   .dispatchers             an object with a property for each dispatcher,
-//                            the property name is the ID of the dispatcher
-//                            and the value should be an object with
-//                            at least the property "endpoint" containing
-//                            the endpoint. Further optional properties
-//                            are "avoidPorts" which is an object in which
-//                            all port numbers that should not be used
-//                            are bound to "true", and "arangodExtraArgs",
-//                            which is a list of additional command line
-//                            arguments which will be given to DBservers
-//                            and coordinators started by this dispatcher.
-//                            If `.dispatchers` is empty (no property), then an
-//                            entry for the local arangod itself is
-//                            automatically added.
-//   .dataPath                a file system path to the directory in which
-//                            all the data directories of agents or
-//                            servers live, this can be relative or even
-//                            empty, which is equivalent to "./", if it
-//                            is relative, then it will be made into an
-//                            absolute path by the dispatcher, using
-//                            the parent directory of its own database
-//                            directory
-//   .logPath                 path where the log files are written, same
-//                            comments as for .dataPath apply
-//   .arangodPath             path to the arangod executable on
-//                            all machines in the cluster, if this is empty
-//                            the dispatcher will replace it with its own
-//                            executable
-//   .agentPath               path to the agent executable on 
-//                            all machines in the cluster, if this is empty
-//                            then the executable "etcd" in the same directory
-//                            as the arangod executable of the dispatcher
-//                            will be used.
-// some port lists:
-//   for these the following rules apply:
-//     every list overwrites the default list
-//     when running out of numbers the planner increments the last one
-//       used by one for every port needed
-//     
-//   .agentExtPorts           a list port numbers to use for the
-//                            external ports of agents,
-//   .agentIntPorts           a list port numbers to use for the
-//                            internal ports of agents,
-//   .DBserverPorts           a list ports to try to use for DBservers
-//   .coordinatorPorts        a list ports to try to use for coordinators
-//  
-
 var fs = require("fs");
+var download = require("internal").download;
 
 // Our default configurations:
 
@@ -103,15 +47,16 @@ var PlannerLocalDefaults = {
                                "Pit", "Pia", "Pablo" ],
   "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
                                "Claas", "Clemens", "Chris" ],
-  "dataPath"                : "",
-  "logPath"                 : "",
-  "arangodPath"             : "",
-  "agentPath"               : "",
+  "dataPath"                : "",   // means same dir as dispatcher data
+  "logPath"                 : "",   // means same dir as dispatcher data
+  "arangodPath"             : "",   // means same executable as dispatcher
+  "agentPath"               : "",   // means `etcd` in same place as dispatcher
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
   "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}}
+                              // this means only we as a local instance
 };
   
 // The following is just a further example:
@@ -128,8 +73,9 @@ var PlannerDistributedDefaults = {
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",
   "logPath"                 : "",
-  "arangodPath"             : "bin/arangod",
-  "agentPath"               : "bin/etcd",
+  "arangodPath"             : "",
+  "agentPath"               : "etcd",   // means `etcd` in same place as
+                                        // dispatcher executable
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
@@ -210,8 +156,19 @@ PortFinder.prototype.next = function () {
     }
     // Check that port is available:
     if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
-      if (this.dispatcher.endpoint !== "tcp://localhost:" ||
-          SYS_TEST_PORT("tcp://0.0.0.0:"+this.port)) {
+      var available = true;
+      if (this.dispatcher.endpoint !== "tcp://localhost:") {
+        available = SYS_TEST_PORT("tcp://0.0.0.0:"+this.port);
+      }
+      else {
+        var url = "http" + this.dispatcher.endpoint.substr(3) + 
+                  "/_admin/clusterCheckPort?port="+this.port;
+        var r = download(url, "", {"method": "GET"});
+        if (r.code === 200) {
+          available = JSON.parse(r.body);
+        }
+      }
+      if (available) {
         this.dispatcher.avoidPorts[this.port] = true;  // do not use it again
         return this.port;
       }
@@ -230,22 +187,11 @@ function exchangePort (endpoint, newport) {
 // The following function merges default configurations and user configuration.
 
 function fillConfigWithDefaults (config, defaultConfig) {
-  var appendAttributes = {"DBserverIDs":true, "coordinatorIDs":true};
   var n;
   for (n in defaultConfig) {
     if (defaultConfig.hasOwnProperty(n)) {
-      if (appendAttributes.hasOwnProperty(n)) {
-        if (!config.hasOwnProperty(n)) {
-          config[n] = copy(defaultConfig[n]);
-        }
-        else {
-          config[n].concat(defaultConfig[n]);
-        }
-      }
-      else {
-        if (!config.hasOwnProperty(n)) {
-          config[n] = copy(defaultConfig[n]);
-        }
+      if (!config.hasOwnProperty(n)) {
+        config[n] = copy(defaultConfig[n]);
       }
     }
   }
@@ -255,21 +201,130 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// @fn JSF_Cluster_Planner_Constructor
 /// @brief the cluster planner constructor
 ///
-/// @FUN{new Planner(@FA{userConfig})}
+/// @FUN{new require("org/arangodb/cluster/planner").Planner(@FA{userConfig})}
 ///
 /// This constructor builds a cluster planner object. The one and only
-/// argument is an object that can have the following properties:
+/// argument is an object that can have the properties described below.
+/// The planner can plan clusters on a single machine (basically for
+/// testing purposes) and on multiple machines. The resulting "cluster plans"
+/// can be used by the kickstarter (see @ref 
+/// JSF_Cluster_Kickstarter_Constructor) to start up the processes comprising
+/// the cluster, including the agency. To this end, there has to be one
+/// dispatcher on every machine participating in the cluster. A dispatcher
+/// is a simple instance of ArangoDB, compiled with the cluster extensions,
+/// but not running in cluster mode. This is why the configuration option
+/// `dispatchers` below is of central importance.
 ///
 ///   - `numberOfAgents`: the number of agents in the agency,
-///     usually there is no reason to deviate from the default of 3
+///     usually there is no reason to deviate from the default of 3. The 
+///     planner distributes them amongst the dispatchers, if possible.
+///   - `agencyPrefix`: a string that is used as prefix for all keys of
+///     configuration data stored in the agency.
 ///   - `numberOfDBservers`: the number of DBservers in the
-///     cluster.
-///   - `numberOfCoordinators`: the number of coordinators in the cluster.
+///     cluster. The planner distributes them evenly amongst the dispatchers.
+///   - `startSecondaries`: a boolean flag indicating whether or not
+///     secondary servers are started. In this version, this flag is
+///     silently ignored, since we do not yet have secondary servers.
+///   - `numberOfCoordinators`: the number of coordinators in the cluster,
+///     the planner distributes them evenly amongst the dispatchers.
+///   - `DBserverIDs`: a list of DBserver IDs (strings). If the planner 
+///     runs out of IDs it creates its own ones using `DBserver`
+///     concatenated with a unique number.
+///   - `coordinatorIDs`: a list of coordinator IDs (strings). If the planner 
+///     runs out of IDs it creates its own ones using `Coordinator`
+///     concatenated with a unique number.
+///   - `dispatchers`: an object with a property for each dispatcher,
+///     the property name is the ID of the dispatcher and the value
+///     should be an object with at least the property `endpoint`
+///     containing the endpoint of the corresponding dispatcher. 
+///     Further optional properties are `avoidPorts` which is an object
+///     in which all port numbers that should not be used are bound to
+///     `true`, and `arangodExtraArgs`, which is a list of additional
+///     command line arguments that will be given to DBservers and
+///     coordinators started by this dispatcher. If `.dispatchers` is
+///     empty (no property), then an entry for the local arangod itself
+///     is automatically added. Note that if the only configured 
+///     dispatcher has endpoint `tcp://localhost:`, all processes
+///     are started in a special "local" mode and are configured to
+///     bind their endpoints only to the localhost device. In all other
+///     cases both agents and `arangod` instances bind their endpoints 
+///     to all available network devices.
+///   - `dataPath`: this is a string and describes the path under which
+///     the agents, the DBservers and the coordinators store their
+///     data directories. This can either be an absolute path (in which 
+///     case all machines in the clusters must use the same path), or
+///     it can be a relative path. In the latter case it describes the
+///     data path relative to the path under which the dispatcher stores
+///     its own data directory. For example, if the data directory
+///     given on the command line of the dispatcher is
+///     `/etc/arangod/data` and the value of the `dataPath` property is an
+///     empty string , then the DBservers started by this dispatcher
+///     will have their data directories under `/etc/arangod` as well.
+///     These directories will be called `data-PREFIX-ID` where `PREFIX`
+///     is replaced with the agency prefix (see above) and `ID` is the
+///     ID of the DBserver or coordinator.
+///   - `logPath`: this is a string and describes the path under which
+///     the DBservers and the coordinators store their log file. The
+///     same mechanism for absolute and relative paths apply as under
+///     `dataPath`.
+///   - `arangodPath`: this is a string and describes the path to the
+///     actual executable `arangod` that will be started for the
+///     DBservers and coordinators. If this is an absolute path, it
+///     obviously has to be the same on all machines in the cluster
+///     as described for `dataPath`. If it is an empty string, the
+///     dispatcher uses the same executable that was used to start
+///     itself. If it is a non-empty relative path, then this path is
+///     meant relative to the directory in which the actual executable
+///     of the dispatcher resides.
+///   - `agentPath`: this is a string and describes the path to the
+///     actual executable that will be started for the agents in the
+///     agency. If this is an absolute path, it obviously has to be
+///     the same on all machines in the cluster, as described for
+///     `dataPath`. If it is an empty string, the dispatcher uses `etcd`
+///     in the same directory as the executable that was used to start
+///     itself. If it is a non-empty relative path, then this path is
+///     meant relative to the directory in which the executable of the
+///     dispatcher resides.
+///   - `agentExtPorts`: a list of port numbers to use for the external
+///     ports of the agents. When running out of numbers in this list,
+///     the planner increments the last one used by one for every port
+///     needed. Note that the planner checks availability of the ports
+///     during the planning phase by contacting the dispatchers on the
+///     different machines, and uses only ports that are free during
+///     the planning phase. Obviously, if those ports are connected
+///     before the actual startup, things can go wrong.
+///   - `agentIntPorts`: a list of port numbers to use for the internal
+///     ports of the agents. The same comments as for `agentExtPorts`
+///     apply.
+///   - `DBserverPorts`: a list of port numbers to use for the
+///     DBservers. The same comments as for `agentExtPorts` apply.
+///   - `coordinatorPorts`: a list of port numbers to use for the
+///     coordinators. The same comments as for `agentExtPorts` apply.
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
 /// 
-///
+///     {
+///       "agencyPrefix"            : "meier",
+///       "numberOfAgents"          : 3,
+///       "numberOfDBservers"       : 2,
+///       "startSecondaries"        : false,
+///       "numberOfCoordinators"    : 1,
+///       "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
+///                                    "Pit", "Pia", "Pablo" ],
+///       "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
+///                                    "Claas", "Clemens", "Chris" ],
+///       "dataPath"                : "",   // means same dir as dispatcher data
+///       "logPath"                 : "",   // means same dir as dispatcher data
+///       "arangodPath"             : "",   // means same executable as dispatcher
+///       "agentPath"               : "",   // means `etcd` in same place as dispatcher
+///       "agentExtPorts"           : [4001],
+///       "agentIntPorts"           : [7001],
+///       "DBserverPorts"           : [8629],
+///       "coordinatorPorts"        : [8530],
+///       "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}}
+///                                   // this means only we as a local instance
+///     };
 ////////////////////////////////////////////////////////////////////////////////
 
 function Planner (userConfig) {
@@ -282,6 +337,10 @@ function Planner (userConfig) {
   this.commands = [];
   this.makePlan();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual planning method
+////////////////////////////////////////////////////////////////////////////////
 
 Planner.prototype.makePlan = function() {
   // This sets up the plan for the cluster according to the options
@@ -482,6 +541,17 @@ Planner.prototype.makePlan = function() {
   }
   this.myname = "me";
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Planner_prototype_getPlan
+/// @brief returns the cluster plan as a JavaScript object.
+///
+/// @FUN{@FA{Planner}.getPlan()}
+///
+/// returns the cluster plan as a JavaScript object. The result of this
+/// method can be given to the constructor of a Kickstarter (see 
+/// @ref JSF_Cluster_Kickstarter_Constructor).
+////////////////////////////////////////////////////////////////////////////////
 
 Planner.prototype.getPlan = function() {
   // Computes the dispatcher commands and returns them as JSON
