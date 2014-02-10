@@ -33,6 +33,7 @@
 #include "Basics/JsonHelper.h"
 #include "Cluster/AgencyComm.h"
 #include "VocBase/collection.h"
+#include "VocBase/index.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -164,6 +165,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the indexes
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t const* getIndexes () const {
+          return triagens::basics::JsonHelper::getArrayElement(_json, "indexes");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a copy of the key options
 /// the caller is responsible for freeing it 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,6 +219,26 @@ namespace triagens {
         std::map<std::string, std::string> shardIds () const {
           TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
           return triagens::basics::JsonHelper::stringObject(node);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of shards
+////////////////////////////////////////////////////////////////////////////////
+
+        int numberOfShards () const {
+          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
+          if (TRI_IsArrayJson(node)) {
+            return (node->_value._objects._length / 2);
+          }
+          return 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the json
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t const* getJson () const {
+          return _json;
         }
 
 // -----------------------------------------------------------------------------
@@ -863,18 +892,17 @@ namespace triagens {
                                             TRI_vocbase_col_status_e status);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (re-)load the information about all DBservers from the agency
-/// Usually one does not have to call this directly.
+/// @brief ensure an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCurrentDBServers ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of all DBServers in the cluster that have
-/// currently registered
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<ServerID> getCurrentDBServers ();
+        int ensureIndexCoordinator (string const& databaseName, 
+                                    string const& collectionID,
+                                    TRI_json_t const* json,
+                                    bool create,
+                                    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+                                    TRI_json_t*& resultJson,
+                                    string& errorMsg, 
+                                    double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
@@ -890,6 +918,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string getServerEndpoint (ServerID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about all DBservers from the agency
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadCurrentDBServers ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of all DBServers in the cluster that have
+/// currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ServerID> getCurrentDBServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 

@@ -721,7 +721,7 @@ bool TRI_IsBooleanJson (TRI_json_t const* json) {
 /// @brief adds a new sub-object to a list object, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t* object) {
+void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t const* object) {
   TRI_json_t copy;
 
   assert(list->_type == TRI_JSON_LIST);
@@ -735,7 +735,7 @@ void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t
 /// @brief adds a new sub-object to a list object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
+int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t const* object) {
   assert(list->_type == TRI_JSON_LIST);
   assert(object);
 
