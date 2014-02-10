@@ -32,6 +32,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -1398,8 +1399,16 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       }
 
       TRI_json_t const* indexes = c->getIndexes();
+      numberOfShards = c->numberOfShards();
 
       if (TRI_IsListJson(indexes)) {
+        bool hasSameIndexType = false;
+        TRI_json_t const* type = TRI_LookupArrayJson(json, "type");
+
+        if (! TRI_IsStringJson(type)) {
+          return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
+        }
+
         for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
           TRI_json_t const* other = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
   
@@ -1408,6 +1417,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
             // compare index types first. they must match
             continue;
           }
+
+          hasSameIndexType = true;
   
           bool isSame = compare(json, other);
 
@@ -1416,6 +1427,19 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
             resultJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other);
             TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          }
+        }
+
+        if (TRI_EqualString(type->_value._string.data, "cap")) {
+          // special handling for cap constraints
+          if (hasSameIndexType) { 
+            // there can only be one cap constraint
+            return setErrormsg(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, errorMsg);
+          }
+
+          if (numberOfShards > 1) {
+            // there must be at most one shard if there should be a cap constraint
+            return setErrormsg(TRI_ERROR_CLUSTER_UNSUPPORTED, errorMsg);
           }
         }
       }
@@ -1428,7 +1452,6 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
 
       // now create a new index
-      numberOfShards = c->numberOfShards();
       collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
     }
 
