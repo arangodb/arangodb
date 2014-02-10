@@ -297,6 +297,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
                                            "..", cmd.arangodPath ));
       }
     }
+    print(arangodPath, args);
     pids.push(executeExternal(arangodPath, args));
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
