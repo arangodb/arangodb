@@ -10,7 +10,7 @@
   cursor: pointer;
 }
 
-.foxxElement .glyphicon-info-sign {
+.foxxElement .icon_arangodb_info {
   font-size: 18px;
   margin-right: 3px;
   position: absolute;
@@ -19,7 +19,7 @@
   opacity: 0.7;
 }
 
-.foxxElement .glyphicon-info-sign:hover {
+.foxxElement .icon_arangodb_info:hover {
   opacity: 1;
 }
 
