@@ -396,17 +396,6 @@ namespace triagens {
         string _modulesPath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief semicolon separated list of package directories
-///
-/// @CMDOPT{\--javascript.package-path @CA{directory}}
-///
-/// Specifies the @CA{directory} path where the JavaScript packages are located.
-/// Multiple paths can be specified separated with commas.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _packagePath;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
 /// This variable is automatically set based on the value of 

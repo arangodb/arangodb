@@ -4,7 +4,7 @@
 (function() {
   "use strict";
   window.FooterView = Backbone.View.extend({
-    el: '.footer',
+    el: '#footerBar',
     system: {},
     isOffline: true,
     firstLogin: true,
@@ -103,16 +103,10 @@
         $(this.el).html(this.template.render({
           name: this.system.name,
           version: this.system.version,
-          database: this.system.database,
-          margin: this.resizeMargin
+          database: this.system.database
         }));
         this.dbSelectionView.render($("#dbSelect"));
       }
-    },
-
-    handleResize: function(newMargin) {
-      this.resizeMargin = newMargin;
-      this.render();
     },
 
     handleSelectDatabase: function() {
@@ -126,8 +120,7 @@
       $(this.el).html(this.template.render({
         name: this.system.name,
         version: this.system.version,
-        database: this.system.database,
-        margin: this.resizeMargin
+        database: this.system.database
       }));
       this.dbSelectionView.render($("#dbSelect"));
       return this;
