@@ -420,6 +420,7 @@ bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
+                                                        TRI_idx_iid_t,
                                                         size_t,
                                                         int64_t,
                                                         bool*,
@@ -462,6 +463,7 @@ struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
+                                                               TRI_idx_iid_t,
                                                                const TRI_vector_pointer_t*,
                                                                const TRI_vector_pointer_t*,
                                                                bool,
@@ -517,6 +519,7 @@ struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
+                                                           TRI_idx_iid_t,
                                                            char const*,
                                                            bool,
                                                            bool,
@@ -529,6 +532,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
+                                                           TRI_idx_iid_t,
                                                            char const*,
                                                            char const*,
                                                            bool,
@@ -580,6 +584,7 @@ struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
+                                                           TRI_idx_iid_t,
                                                            TRI_vector_pointer_t const*,
                                                            bool,
                                                            bool*,
@@ -617,6 +622,7 @@ struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+                                                               TRI_idx_iid_t,
                                                                TRI_vector_pointer_t const*,
                                                                bool,
                                                                bool*,
@@ -655,6 +661,7 @@ struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
+                                                               TRI_idx_iid_t,
                                                                const char*,
                                                                const bool,
                                                                int,
