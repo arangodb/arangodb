@@ -234,6 +234,10 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///       - `allowDBservers`, which is a boolean value indicating
 ///         whether or not DBservers should be started on this dispatcher,
 ///         the default is `true`
+///       - `username`, which is a string that contains the user name
+///         for authentication with this dispatcher, defaults to "root"
+///       - `passwd`, which is a string that contains the password
+///         for authentication with this dispatcher, defaults to empty
 ///
 ///     If `.dispatchers` is empty (no property), then an entry for the
 ///     local arangod itself is automatically added. Note that if the
