@@ -111,7 +111,6 @@ SERVER_OPT := \
 	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.gc-interval 1 \
-	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
 	--ruby.action-directory @top_srcdir@/mr/actions \
@@ -122,7 +121,6 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--no-colors \
 	--quiet
 

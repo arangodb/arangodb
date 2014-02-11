@@ -1,6 +1,10 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* made module loader more node compatible
+
+* added coffee script support
+
 * issue #756: set access-control-expose-headers on CORS response
 
   the following headers are now whitelisted by ArangoDB in CORS responses:
