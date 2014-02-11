@@ -8,10 +8,12 @@
     colid: 0,
     docid: 0,
     currentKey: 0,
+    oldDocumentState: "",
     documentCache: { },
 
     init: function () {
       this.initTable();
+
     },
 
     events: {
@@ -20,12 +22,46 @@
       "click .addAttribute"                     : "addLine",
       "click #documentTableID .deleteAttribute" : "deleteLine",
       "click #sourceView"                       : "sourceView",
-      "click #editFirstAttribute"               : "editFirst",
+      "click .editFirstAttribute"               : "editFirst",
       "click #documentTableID tr"               : "clicked",
       "click .editSecondAttribute"              : "editSecond",
-      "keydown .sorting_1"                      : "listenKey",
       "keydown #documentviewMain"               : "listenGlobalKey",
-      "blur #documentviewMain textarea"         : "checkFocus"
+      "blur #documentviewMain textarea"         : "checkFocus",
+      "keydown #documentTableID tr td:first-child textarea" : "keyPressedTextareaLeft",
+      "keydown #documentTableID tr .rightCell textarea" : "keyPressedTextareaRight"
+    },
+
+    keyPressedTextareaLeft: function(e) {
+      //attributes inline-textarea-tab edit-mode
+      if (e.keyCode === 9) {
+        var altTarget = $(e.currentTarget).parent().parent().next().next();
+        e.preventDefault();
+        $('.btn-success').click();
+        $(altTarget).click();
+      }
+      else if (e.keyCode === 13) {
+        $('.btn-success').click();
+      }
+    },
+
+    keyPressedTextareaRight: function(e) {
+      //values inline-textarea-tab edit-mode
+      if (e.keyCode === 9) {
+        e.preventDefault();
+        var temp = $(e.currentTarget).parent().parent().parent().next().children();
+        $('.btn-success').click();
+        var altTarget = temp[0];
+        while ($(altTarget).text() === '_id' ||
+               $(altTarget).text() === '_rev' ||
+               $(altTarget).text() === '_key') {
+               var temp2 = $(altTarget).parent().next().children();
+               altTarget = temp2[0];
+        }
+        $(altTarget).click();
+      }
+      else if (e.ctrlKey && e.keyCode === 13) {
+        $('.btn-success').click();
+      }
     },
 
     checkFocus: function(e) {
@@ -46,12 +82,6 @@
     listenGlobalKey: function(e) {
       if (e.keyCode === 27) {
         this.checkFocus();
-      }
-    },
-
-    listenKey: function(e) {
-      if (e.keyCode === 13) {
-        $('.btn-success').click();
       }
     },
 
@@ -98,6 +128,7 @@
     editFirst: function (e) {
       var element = e.currentTarget;
       var prevElement = $(element).parent().prev();
+      console.log(prevElement);
       $(prevElement).click();
     },
     editSecond: function (e) {
@@ -110,9 +141,16 @@
     },
     saveDocument: function () {
       var model, result;
+      model = window.arangoDocumentStore.models[0].attributes;
+      model = JSON.stringify(model);
+
+      //check if there are any changes, if not quit
+      if (model === this.oldDocumentState) {
+          $('.addAttribute').removeClass('disabledBtn');
+        return;
+      }
+
       if (this.type === 'document') {
-        model = window.arangoDocumentStore.models[0].attributes;
-        model = JSON.stringify(model);
         result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
         if (result === true) {
           arangoHelper.arangoNotification('Document saved');
@@ -124,8 +162,6 @@
         }
       }
       else if (this.type === 'edge') {
-        model = window.arangoDocumentStore.models[0].attributes;
-        model = JSON.stringify(model);
         result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
         if (result === true) {
           arangoHelper.arangoNotification('Edge saved');
@@ -183,11 +219,10 @@
             var linkedDoc = self.getLinkedDoc(value);
 
             if (linkedDoc !== null && linkedDoc !== undefined) {
-              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' + 
+              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' +
                         self.escaped(JSON.stringify(linkedDoc)) + '"></span>';
-            
-              html = '<a href="#collection/' + value + 
-                     '" class="docLink" title="Go to document">' + self.escaped(value) + 
+              html = '<a href="#collection/' + value +
+                     '" class="docLink" title="Go to document">' + self.escaped(value) +
                      '</a>';
             }
             else {
@@ -221,6 +256,19 @@
         }
       });
       this.makeEditable();
+
+      $(document).bind('keydown', function(e) {
+        if (e.ctrlKey && e.keyCode === 65) {
+          if ($('#addNewRowEntry')) {
+            $('#addNewRowEntry').click();
+            self.jumpToPageBottom();
+          }
+        }
+      });
+    },
+
+    jumpToPageBottom: function jumpToPageBottom() {
+      $('html, body').scrollTop($(document).height() - $(window).height());
     },
 
     addLine: function (event) {
@@ -365,8 +413,15 @@
           $(".btn-success").click();
           var aPos = documentEditTable.fnGetPosition(this);
           var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
+          var model;
           if (aPos[1] === 0) {
+
+            //save current document state
+            model = window.arangoDocumentStore.models[0].attributes;
+            self.oldDocumentState = JSON.stringify(model);
+
             //check if this row was newly created
+
             if (value === self.currentKey) {
               return value;
             }
@@ -374,6 +429,11 @@
           }
           if (aPos[1] === 2) {
             var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
+
+            //save current document state
+            model = window.arangoDocumentStore.models[0].attributes;
+            self.oldDocumentState = JSON.stringify(model);
+
             if (typeof oldContent === 'object') {
               //grep hidden row and paste in visible row
               return value2html(oldContent);
