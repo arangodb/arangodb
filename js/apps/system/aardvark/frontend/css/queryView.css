@@ -301,3 +301,7 @@
   font-size: 20px;
   margin-bottom: 5px;
 }
+
+#queryDiv .icon_arangodb:hover {
+  cursor: pointer;
+}
