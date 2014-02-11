@@ -41,7 +41,7 @@ var wait = require("internal").wait;
 
 var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 
-var print = require("internal").print;
+var console = require("console");
 
 var launchActions = {};
 var shutdownActions = {};
@@ -92,7 +92,8 @@ function encode (st) {
 function sendToAgency (agencyURL, path, obj) {
   var res;
   var body;
-  print("Sending ",path," to agency...");
+  
+  console.info("Sending %s to agency...", path);
   if (typeof obj === "string") {
     var count = 0;
     while (count++ <= 2) {
@@ -136,7 +137,7 @@ function sendToAgency (agencyURL, path, obj) {
 
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 
-  print("Starting agent...");
+  console.info("Starting agent...");
 
   // First find out our own data directory:
   var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
@@ -202,7 +203,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
-    print("Waiting 10 seconds for agency to come alive...");
+    console.info("Waiting 10 seconds for agency to come alive...");
     wait(10);
     return {"error":false, "isSendConfiguration": true};
   }
@@ -229,7 +230,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
-  print("Downloading ",url+"Launchers/"+cmd.name);
+  console.info("Downloading %sLaunchers/%s", url, cmd.name);
   var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
                                                    followRedirects:true});
   if (res.code !== 200) {
@@ -239,7 +240,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   var info = JSON.parse(body.node.value);
   var id,ep,args,pids,port,endpoints,roles;
 
-  print("Starting servers...");
+  console.info("Starting servers...");
   var i;
   var servers = info.DBservers.concat(info.Coordinators);
   roles = [];
@@ -253,13 +254,13 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   endpoints = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
-    print("Downloading ",url+"Target/MapIDToEndpoint/"+id);
+    console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
     res = download(url+"Target/MapIDToEndpoint/"+id);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
               "isStartServers": true, "suberror": res};
     }
-    print("Starting server ",id);
+    console.info("Starting server %s",id);
     body = JSON.parse(res.body);
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
@@ -308,13 +309,13 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
-  print("Shutting down agent", run.pid);
+  console.info("Shutting down agent %s", run.pid);
   killExternal(run.pid);
   return {"error": false, "isStartAgent": true};
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  print("Waiting for 10 seconds for servers before shutting down agency.");
+  console.info("Waiting for 10 seconds for servers before shutting down agency.");
   wait(10);
   return {"error": false, "isSendConfiguration": true};
 };
@@ -322,7 +323,7 @@ shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   for (i = 0;i < run.pids.length;i++) {
-    print("Shutting down", run.pids[i]);
+    console.info("Shutting down %s", run.pids[i].toString());
     killExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
@@ -330,7 +331,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 
 cleanupActions.startAgent = function (dispatchers, cmd) {
 
-  print("Cleaning up agent...");
+  console.info("Cleaning up agent...");
 
   // First find out our own data directory:
   var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
@@ -352,6 +353,8 @@ cleanupActions.sendConfiguration = function (dispatchers, cmd) {
 };
 
 cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
+
+  console.info("Cleaning up DBservers...");
 
   // First find out our own data directory to setup base for relative paths:
   var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
@@ -692,7 +695,15 @@ Kickstarter.prototype.cleanup = function() {
                       "response": response});
       }
       else {
-        results.push({"error":false});
+        try {
+          res = JSON.parse(response.body);
+          results.push(res.results[0]);
+        }
+        catch (err) {
+          results.push({"error":true, 
+                        "errorMessage": "exception in JSON.parse"});
+          error = true;
+        }
       }
     }
   }
