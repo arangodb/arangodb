@@ -157,13 +157,15 @@ PortFinder.prototype.next = function () {
     // Check that port is available:
     if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
       var available = true;
-      if (this.dispatcher.endpoint !== "tcp://localhost:") {
+      if (this.dispatcher.endpoint === "tcp://localhost:") {
         available = SYS_TEST_PORT("tcp://0.0.0.0:"+this.port);
       }
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
                   "/_admin/clusterCheckPort?port="+this.port;
+        print("Doing: ",url);
         var r = download(url, "", {"method": "GET"});
+        print("ResultCOde:", r.code);
         if (r.code === 200) {
           available = JSON.parse(r.body);
         }
