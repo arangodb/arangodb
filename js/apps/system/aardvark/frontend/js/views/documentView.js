@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, forin: true */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, value2html, templateEngine */
+/*global document */
+
 (function() {
   "use strict";
   window.DocumentView = Backbone.View.extend({
@@ -66,10 +68,14 @@
         returnval = false;
       }
 
+      var checkWhiteSpaces = focused.replace(/ /g,'');
+      if (checkWhiteSpaces !== focused) {
+        arangoHelper.arangoNotification("No whitespaces allowed");
+        returnval = false;
+      }
+
       $.each(data, function(key, val) {
         if (val[0] === focused) {
-          console.log("currentkeystate: "+self.currentKeyState);
-          console.log("focused :"+focused);
           if (val[0] === self.currentKeyState) {
             returnval = true;
           }
@@ -167,7 +173,6 @@
     editFirst: function (e) {
       var element = e.currentTarget;
       var prevElement = $(element).parent().prev();
-      console.log(prevElement);
       $(prevElement).click();
     },
     editSecond: function (e) {
@@ -469,7 +474,6 @@
             model = window.arangoDocumentStore.models[0].attributes;
             self.oldDocumentState = JSON.stringify(model);
             //save current key state
-            console.log(value);
             self.currentKeyState = value;
 
             //check if this row was newly created
