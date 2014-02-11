@@ -1,0 +1,73 @@
+div#collectionsThumbnailsIn {
+  margin-left: 0px;
+}
+
+
+li.tile {
+  @extend %pull-left;
+  position:relative;
+  text-align:center;
+  height:100px;
+  width: 230px;
+  margin: {
+    left: 6px;
+    right: 6px;
+    bottom: 13px;
+  }
+  @include box-shadow(none);
+
+  h5 {
+    font-size: 12px;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: $c_white;
+    background: $c_bar_bg;
+    padding: 4px 8px;
+    margin: 0;
+  }
+
+  div.iconSet {
+    position: absolute; 
+    top: 5px;
+    right: 5px;
+
+    span {
+      @extend %clickable;
+      @extend %pull-right;
+      opacity: 0.5;
+      font-size: 18px;
+      padding-left: 7px;
+
+      &:hover {
+        opacity: 1.0;
+      }
+      &.disabled {
+        opacity: 0.2;
+        cursor: default;
+      }
+    }
+  }
+
+  .badge-success {
+    font-weight: 300;
+  }
+
+  .unloaded div {
+    border-bottom: 16px solid #FF8F35;
+  }
+
+  .deleted div {
+    border-bottom: 16px solid red;
+  }
+}
+
+.collectionName {
+  text-align:left;
+  font-weight: 300;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+}
+
