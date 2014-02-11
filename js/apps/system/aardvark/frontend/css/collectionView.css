@@ -20,37 +20,6 @@
   min-height: 230px ;
 }
 
-#change-collection .glyphicon-plus-sign,
-#change-collection .glyphicon-remove-circle {
-  float: right;
-  font-size: 27px;
-  color: #788F3D;
-  position: absolute;
-  right: 15px;
-  top: 55px;
-}
-
-#newIndexView .glyphicon-remove-circle {
-  color: #DA4F49;
-}
-
-#change-collection .glyphicon-minus-sign {
-  color: #DA4F49;
-  font-size: 20px;
-  margin-left: 10px;
-}
-
-#change-collection .glyphicon-ban-circle {
-  color: black;
-  opacity: 0.6;
-  font-size: 20px;
-  margin-left: 10px;
-}
-
-#change-collection .glyphicon-ban-circle:hover {
-  cursor: default !important;
-}
-
 #change-collection #collectionEditIndexTable {
   margin-top: 20px;
 }
