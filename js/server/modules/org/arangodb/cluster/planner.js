@@ -215,6 +215,33 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// but not running in cluster mode. This is why the configuration option
 /// `dispatchers` below is of central importance.
 ///
+///   - `dispatchers`: an object with a property for each dispatcher,
+///     the property name is the ID of the dispatcher and the value
+///     should be an object with at least the property `endpoint`
+///     containing the endpoint of the corresponding dispatcher. 
+///     Further optional properties are:
+///
+///       - `avoidPorts` which is an object
+///         in which all port numbers that should not be used are bound to
+///         `true`, default is empty, that is, all ports can be used
+///       - `arangodExtraArgs`, which is a list of additional
+///         command line arguments that will be given to DBservers and
+///         coordinators started by this dispatcher, the default is
+///         an empty list
+///       - `allowCoordinators`, which is a boolean value indicating
+///         whether or not coordinators should be started on this
+///         dispatcher, the default is `true`
+///       - `allowDBservers`, which is a boolean value indicating
+///         whether or not DBservers should be started on this dispatcher,
+///         the default is `true`
+///
+///     If `.dispatchers` is empty (no property), then an entry for the
+///     local arangod itself is automatically added. Note that if the
+///     only configured dispatcher has endpoint `tcp://localhost:`,
+///     all processes are started in a special "local" mode and are
+///     configured to bind their endpoints only to the localhost device.
+///     In all other cases both agents and `arangod` instances bind
+///     their endpoints to all available network devices.
 ///   - `numberOfAgents`: the number of agents in the agency,
 ///     usually there is no reason to deviate from the default of 3. The 
 ///     planner distributes them amongst the dispatchers, if possible.
@@ -233,22 +260,6 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///   - `coordinatorIDs`: a list of coordinator IDs (strings). If the planner 
 ///     runs out of IDs it creates its own ones using `Coordinator`
 ///     concatenated with a unique number.
-///   - `dispatchers`: an object with a property for each dispatcher,
-///     the property name is the ID of the dispatcher and the value
-///     should be an object with at least the property `endpoint`
-///     containing the endpoint of the corresponding dispatcher. 
-///     Further optional properties are `avoidPorts` which is an object
-///     in which all port numbers that should not be used are bound to
-///     `true`, and `arangodExtraArgs`, which is a list of additional
-///     command line arguments that will be given to DBservers and
-///     coordinators started by this dispatcher. If `.dispatchers` is
-///     empty (no property), then an entry for the local arangod itself
-///     is automatically added. Note that if the only configured 
-///     dispatcher has endpoint `tcp://localhost:`, all processes
-///     are started in a special "local" mode and are configured to
-///     bind their endpoints only to the localhost device. In all other
-///     cases both agents and `arangod` instances bind their endpoints 
-///     to all available network devices.
 ///   - `dataPath`: this is a string and describes the path under which
 ///     the agents, the DBservers and the coordinators store their
 ///     data directories. This can either be an absolute path (in which 
@@ -358,12 +369,19 @@ Planner.prototype.makePlan = function() {
       if (!dispatchers[id].hasOwnProperty("arangodExtraArgs")) {
         dispatchers[id].arangodExtraArgs = [];
       }
+      if (!dispatchers[id].hasOwnProperty("allowCoordinators")) {
+        dispatchers[id].allowCoordinators = true;
+      }
+      if (!dispatchers[id].hasOwnProperty("allowDBservers")) {
+        dispatchers[id].allowDBservers = true;
+      }
     }
   }
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
     dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
-                       "avoidPorts": {} };
+                       "avoidPorts": {}, "allowCoordinators": true,
+                       "allowDBservers": true };
     config.onlyLocalhost = true;
   }
   else {
@@ -400,39 +418,59 @@ Planner.prototype.makePlan = function() {
 
   // Distribute coordinators to dispatchers
   var coordinators = [];
+  var count;
   pf = [];
   d = 0;
-  for (i = 0; i < config.numberOfCoordinators; i++) {
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.coordinatorPorts, dispatchers[dispList[d]]);
+  i = 0;
+  var wrap = d;
+  var oldi = i;
+  while (i < config.numberOfCoordinators) {
+    if (dispatchers[dispList[d]].allowCoordinators) {
+      if (!pf.hasOwnProperty(d)) {
+        pf[d] = new PortFinder(config.coordinatorPorts, 
+                               dispatchers[dispList[d]]);
+      }
+      if (!config.coordinatorIDs.hasOwnProperty(i)) {
+        config.coordinatorIDs[i] = "Coordinator"+i;
+      }
+      coordinators.push({"id":config.coordinatorIDs[i],
+                         "dispatcher":dispList[d],
+                         "port":pf[d].next()});
+      i++;
     }
-    if (!config.coordinatorIDs.hasOwnProperty(i)) {
-      config.coordinatorIDs[i] = "Coordinator"+i;
-    }
-    coordinators.push({"id":config.coordinatorIDs[i],
-                       "dispatcher":dispList[d],
-                       "port":pf[d].next()});
     if (++d >= dispList.length) {
       d = 0;
+    }
+    if (d === wrap && oldi === i) {
+      break;
     }
   }
 
   // Distribute DBservers to dispatchers (secondaries if wanted)
   var DBservers = [];
   pf = [];
-  d = 0;
-  for (i = 0; i < config.numberOfDBservers; i++) {
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.DBserverPorts, dispatchers[dispList[d]]);
+  i = 0;
+  wrap = d;
+  oldi = i;
+  while (i < config.numberOfDBservers) {
+    if (dispatchers[dispList[d]].allowDBservers) {
+      if (!pf.hasOwnProperty(d)) {
+        pf[d] = new PortFinder(config.DBserverPorts, 
+                               dispatchers[dispList[d]]);
+      }
+      if (!config.DBserverIDs.hasOwnProperty(i)) {
+        config.DBserverIDs[i] = "Primary"+i;
+      }
+      DBservers.push({"id":config.DBserverIDs[i],
+                      "dispatcher":dispList[d],
+                      "port":pf[d].next()});
+      i++;
     }
-    if (!config.DBserverIDs.hasOwnProperty(i)) {
-      config.DBserverIDs[i] = "Primary"+i;
-    }
-    DBservers.push({"id":config.DBserverIDs[i],
-                    "dispatcher":dispList[d],
-                    "port":pf[d].next()});
     if (++d >= dispList.length) {
       d = 0;
+    }
+    if (d === wrap && oldi === i) {
+      break;
     }
   }
 
