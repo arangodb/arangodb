@@ -1,13 +1,14 @@
 div.resizecontainer {
   margin: 0px auto;
-}
-div.resizecontainer:after {
-  clear: both;
-  content: ".";
-  display: block;
-  font-size: 0px;
-  height: 0px;
-  visibility: hidden;
+
+  &:after {
+    clear: both;
+    content: ".";
+    display: block;
+    font-size: 0px;
+    height: 0px;
+    visibility: hidden;
+  }
 }
 
 @media (max-width: 798px) {
@@ -35,8 +36,8 @@ div.resizecontainer:after {
   }
 }
 
-@for $i from 0 through 10 {
-  $min: 241px + $i * 243;
+@for $i from 0 through 11 {
+  $min: 242px * $i;
   @media (min-width: $min + 72) and (max-width: $min + 243 + 71) {
     div.resizecontainer {
       width: $min;
