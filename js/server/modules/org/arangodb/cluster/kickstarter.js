@@ -389,7 +389,7 @@ isHealthyActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Checking health of agent %s", run.pid);
   var r = statusExternal(run.pid);
   r.isStartAgent = true;
-  r.error = (r.status === "RUNNING" || r.status === "TERMINATED");
+  r.error = false;
   return r;
 };
 

@@ -297,7 +297,8 @@ actions.defineHttp({
       res.responseCode = actions.HTTP_OK;
       res.contentType = "application/json; charset=utf-8";
       res.body = JSON.stringify({"clusterPlan": p.getPlan(),
-                                 "config": p.config});
+                                 "config": p.config,
+                                 "error": false});
     }
     catch (error) {
       actions.resultException(req, res, error, undefined, false);
@@ -450,7 +451,9 @@ actions.defineHttp({
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
+        print("Hallo1",k.runInfo);
         r = k.isHealthy();
+        print("Hallo2",r);
         res.responseCode = actions.HTTP_OK;
         res.contentType = "application/json; charset=utf-8";
         res.body = JSON.stringify(r);
