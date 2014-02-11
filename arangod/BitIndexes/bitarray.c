@@ -347,7 +347,9 @@ int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t* ba,
 int TRI_LookupBitMaskBitarray (TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* resultStorage) {
   // int result;
   uint8_t numBits;
-  int i_blockNum,j_bitNum,k_colNum;
+  size_t i_blockNum;
+  int j_bitNum;
+  size_t k_colNum;
   TRI_master_table_position_t position;
   uint64_t compareMask = mask->_mask | mask->_ignoreMask;
 
@@ -444,7 +446,10 @@ int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t* ba,
                                   TRI_index_iterator_t* resultStorage) {
   // int result;
   uint8_t numBits;
-  int i_blockNum,j_bitNum,k_colNum,m_mask;
+  size_t i_blockNum;
+  int j_bitNum;
+  size_t k_colNum;
+  size_t m_mask;
   TRI_master_table_position_t position;
 
   // ...........................................................................
