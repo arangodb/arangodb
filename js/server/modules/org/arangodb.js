@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+module.isSystem = true;
+
 var common = require("org/arangodb-common");
 var key;
 
