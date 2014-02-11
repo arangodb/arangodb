@@ -939,25 +939,6 @@ function require (path) {
     return null;
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all known module names
-////////////////////////////////////////////////////////////////////////////////
-
-  Package.prototype.moduleNames = function () {
-    'use strict';
-
-    var name;
-    var names = [];
-
-    for (name in this._moduleCache) {
-      if (this._moduleCache.hasOwnProperty(name)) {
-        names.push(name);
-      }
-    }
-
-    return names;
-  };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Module
 // -----------------------------------------------------------------------------
@@ -1504,8 +1485,8 @@ function require (path) {
 
     return new Module("/application-module",
                       pkg,
-                      "/application-module",
-                      "system:///",
+                      "/",
+                      path2FileUri(libpath),
                       true);
   };
 
