@@ -35,6 +35,7 @@
 var download = require("internal").download;
 var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
+var statusExternal = require("internal").statusExternal;
 
 var fs = require("fs");
 var wait = require("internal").wait;
@@ -46,6 +47,7 @@ var console = require("console");
 var launchActions = {};
 var shutdownActions = {};
 var cleanupActions = {};
+var isHealthyActions = {};
 
 function getAddrPort (endpoint) {
   var pos = endpoint.indexOf("://");
@@ -383,6 +385,28 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   return {"error": false, "isStartServers": true};
 };
 
+isHealthyActions.startAgent = function (dispatchers, cmd, run) {
+  console.info("Checking health of agent %s", run.pid);
+  var r = statusExternal(run.pid);
+  r.isStartAgent = true;
+  r.error = (r.status === "RUNNING" || r.status === "TERMINATED");
+  return r;
+};
+
+isHealthyActions.sendConfiguration = function (dispatchers, cmd, run) {
+  return {"error": false, "isSendConfiguration": true};
+};
+
+isHealthyActions.startServers = function (dispatchers, cmd, run) {
+  var i;
+  var r = [];
+  for (i = 0;i < run.pids.length;i++) {
+    console.info("Checking health of server %s", run.pids[i].toString());
+    r.push(statusExternal(run.pids[i]));
+  }
+  return {"error": false, "isStartServers": true, "status": r};
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_Cluster_Kickstarter_Constructor
 /// @brief the cluster kickstarter constructor
@@ -655,6 +679,7 @@ Kickstarter.prototype.shutdown = function() {
 /// @FUN{@FA{Kickstarter}.cleanup()}
 ///
 /// This cleans up all the data and logs of a previously shut down cluster.
+/// To this end, other dispatchers are contacted as necessary. 
 /// Use shutdown (see @ref JSF_Kickstarter_prototype_shutdown) first and
 /// use with caution, since potentially a lot of data is being erased with
 /// this call!
@@ -714,14 +739,74 @@ Kickstarter.prototype.cleanup = function() {
   return {"error": false, "errorMessage": "none", "results": results};
 };
 
-Kickstarter.prototype.isHealthy = function() {
-  throw "not yet implemented";
-};
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Kickstarter_prototype_isHealthy
+/// @brief checks that all processes of a running cluster are healthy
+///
+/// @FUN{@FA{Kickstarter}.isHealthy()}
+///
+/// This checks that all processes belonging to a running cluster are
+/// healthy. To this end, other dispatchers are contacted as necessary.
+/// At this stage it is only checked that the processes are still up and
+/// running.
+////////////////////////////////////////////////////////////////////////////////
 
-Kickstarter.prototype.checkDispatchers = function() {
-  // Checks that all dispatchers are active, if none is configured,
-  // a local one is started.
-  throw "not yet implemented";
+Kickstarter.prototype.isHealthy = function() {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var runInfo = this.runInfo;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  var res;
+  for (i = cmds.length-1; i >= 0; i--) {
+    cmd = cmds[i];
+    var run = runInfo[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      res = isHealthyActions[cmd.action](dispatchers, cmd, run);
+      if (res.error === true) {
+        error = true;
+      }
+      results.push(res);
+    }
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "isHealthy",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
+                                  "runInfo": [run],
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "POST"});
+      if (response.code !== 200) {
+        error = true;
+        results.push({"error":true, "errorMessage": "bad HTTP response code",
+                      "response": response});
+      }
+      else {
+        try {
+          res = JSON.parse(response.body);
+          results.push(res.results[0]);
+        }
+        catch (err) {
+          results.push({"error":true, 
+                        "errorMessage": "exception in JSON.parse"});
+          error = true;
+        }
+      }
+    }
+  }
+  results = results.reverse();
+  if (error) {
+    return {"error": true, "errorMessage": "some error during shutdown",
+            "results": results};
+  }
+  return {"error": false, "errorMessage": "none", "results": results};
 };
 
 exports.Kickstarter = Kickstarter;

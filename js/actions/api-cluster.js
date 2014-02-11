@@ -333,10 +333,13 @@ actions.defineHttp({
 ///         and log files are untouched and need to be there already
 ///       - "cleanup": use this after a shutdown to remove all data in the
 ///         data directories and all log files, use with caution
+///       - "isHealthy": checks whether or not the processes involved
+///         in the cluster are running or not. The additional property
+///         `runInfo` (see above) must be bound as well
 ///
-///   - `runInfo": this is needed for the "shutdown" action only and should
-///     be the structure that "launch" or "relaunch" returned. It contains
-///     runtime information like process IDs.
+///   - `runInfo": this is needed for the "shutdown" and "isHealthy" actions 
+///     only and should be the structure that "launch" or "relaunch"
+///     returned. It contains runtime information like process IDs.
 ///
 /// This call executes the plan by either doing the work personally
 /// or by delegating to other dispatchers.
@@ -437,6 +440,25 @@ actions.defineHttp({
         actions.resultException(req, res, error5, undefined, false);
       }
     }
+    else if (action === "isHealthy") {
+      if (!input.hasOwnProperty("runInfo")) {
+        actions.resultError(req, res, actions.HTTP_BAD,
+                            'Posted body needs a "runInfo" property.');
+        return;
+      }
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        k.runInfo = input.runInfo;
+        r = k.isHealthy();
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error6) {
+        actions.resultException(req, res, error6, undefined, false);
+      }
+    }
     else {
       actions.resultError(req, res, actions.HTTP_BAD,
                           'Action '+action+' not yet implemented.');
@@ -448,7 +470,7 @@ actions.defineHttp({
 /// @fn JSF_cluster_check_port_GET
 /// @brief allows to check whether a given port is usable
 ///
-/// @RESTHEADER{POST /_admin/clusterCheckPort,produce a cluster startup plan}
+/// @RESTHEADER{GET /_admin/clusterCheckPort,check whether a given port is usable}
 ///
 /// @RESTQUERYPARAMETERS
 ///
