@@ -1,0 +1,106 @@
+nav.navbar {
+  @extend %fixedbar;
+  top: 0px;
+  height: 34px;
+  margin-bottom: 3px;
+}
+
+div.navlogo {
+  @extend %pull-left;
+}
+
+div.navmenu {
+  @extend %pull-right;
+}
+
+ul.navlist {
+  list-style: none;
+  li {
+    @extend %pull-left;
+    margin-left: 1px;
+  }
+  > li.active,
+  li.dropdown-item:hover,
+  > li:hover {
+    background-color: $c_positive;
+  }
+}
+
+a.tab {
+  padding: {
+    top: 7px;
+    left: 10px;
+    bottom: 10px;
+    right: 10px;
+  }
+  color: $c_white;
+  display: block;
+}
+
+ul.link-dropdown-menu {
+  @extend %pull-left;
+  position: absolute;
+  top: 80%;
+  right: 0px;
+  z-index: 1000;
+  display: none;
+  padding: 5px 0px;
+  margin: 2px 0px 0px;
+  list-style: none;
+  background-color: $c_white;
+  border: {
+    style: solid;
+    color: $c_semi_transp;
+    width: 1px;
+  }
+  @include border-radius(6px);
+
+  li {
+    line-height: 20px;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  li.dropdown-header {
+    font: {
+      weight: bold;
+      size: 11px;
+    }
+    color: $c_dark_grey;
+    padding: 0px 20px;
+    text-transform: uppercase;
+  }
+
+  li.divider {
+    background-color: $c_grey;
+    height: 1px;
+    margin: 10px 1px;
+  }
+
+  a {
+    color: $c_nav_bg;
+    padding: 0px 20px;
+  }
+}
+
+.link-dropdown-menu:before {
+  position: absolute;
+  top: -7px;
+  right: 7px;
+  @include border-triangle(7px, $c_semi_transp); 
+}
+
+.link-dropdown-menu:after {
+  top: -6px;
+  right: 8px;
+  @include border-triangle(7px, $c_white);
+}
+
+#arangoCollectionSelect {
+  display: none;
+  float: right;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-right: 15px;
+}
+

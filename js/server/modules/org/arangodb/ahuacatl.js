@@ -3957,6 +3957,7 @@ function TRAVERSAL_FUNC (func,
   }
 
   var result = [ ];
+
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v, e);

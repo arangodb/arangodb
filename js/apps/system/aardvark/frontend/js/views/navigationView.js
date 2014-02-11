@@ -17,12 +17,6 @@
       return this;
     },
 
-    handleResize: function (margin) {
-      $('.arango-logo').css('margin-left', margin - 41);
-      $('.nav-collapse').css('margin-right', margin + 7);
-    },
-
-
     navigateBySelect: function() {
       var navigateTo = $("#arangoCollectionSelect").find("option:selected").val();
       window.App.navigate(navigateTo, {trigger: true});
@@ -31,8 +25,13 @@
     navigateByTab: function(e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
+      if (navigateTo === "links") {
+        $("#link_dropdown").slideToggle(200);
+        e.preventDefault();
+        return;
+      }
       window.App.navigate(navigateTo, {trigger: true});
-      e.stopPropagation();
+      e.preventDefault();
     },
     handleSelectNavigation: function () {
       $("#arangoCollectionSelect").change(function() {
@@ -43,7 +42,7 @@
 
 
     selectMenuItem: function (menuItem) {
-      $('.nav li').removeClass('active');
+      $('.navlist li').removeClass('active');
       if (menuItem) {
         $('.' + menuItem).addClass('active');
       }
