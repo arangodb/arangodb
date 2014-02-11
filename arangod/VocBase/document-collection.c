@@ -4496,6 +4496,7 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         size_t count,
                                                         int64_t size,
                                                         bool* created,
@@ -4513,7 +4514,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
+  idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -4912,6 +4913,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     char const* location,
                                                     bool geoJson,
                                                     bool unique,
@@ -4931,7 +4933,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -4961,6 +4963,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     char const* latitude,
                                                     char const* longitude,
                                                     bool unique,
@@ -4980,7 +4983,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5187,6 +5190,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
                                                     bool* created,
@@ -5205,7 +5209,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   // given the list of attributes (as strings)
-  idx = CreateHashIndexDocumentCollection(document, attributes, 0, unique, created);
+  idx = CreateHashIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5403,6 +5407,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
                                                         bool* created, 
@@ -5420,7 +5425,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateSkiplistIndexDocumentCollection(document, attributes, 0, unique, created);
+  idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5681,6 +5686,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
                                                         int minWordLength,
@@ -5699,7 +5705,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, 0, created);
+  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5959,6 +5965,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         const TRI_vector_pointer_t* attributes,
                                                         const TRI_vector_pointer_t* values,
                                                         bool supportUndef,
@@ -5982,7 +5989,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, 0, supportUndef, created, errorCode, errorStr);
+  idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, iid, supportUndef, created, errorCode, errorStr);
 
   if (idx != NULL) {
     if (created) {
