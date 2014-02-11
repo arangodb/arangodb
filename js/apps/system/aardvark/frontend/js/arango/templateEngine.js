@@ -14,4 +14,5 @@
     return exports;
   };
   window.templateEngine = new TemplateEngine("js/templates/"); 
+  window.plannerTemplateEngine = new TemplateEngine("js/plannerTemplates/"); 
 }());
