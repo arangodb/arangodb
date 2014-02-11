@@ -631,7 +631,9 @@ namespace triagens {
             // the request contained an Origin header. We have to send back the
             // access-control-allow-origin header now
             LOGGER_TRACE("handling CORS response");
-
+            
+            response->setHeader("access-control-expose-headers", strlen("access-control-expose-headers"), "etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
+            
             // send back original value of "Origin" header
             response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), this->_origin);
 

@@ -118,8 +118,6 @@ function get_api_indexes (req, res) {
 ///
 /// - `id`: The identifier of the index.
 ///
-/// - `type`: The type of the collection.
-///
 /// All other attributes are type-dependent.
 ///
 /// @RESTRETURNCODES
