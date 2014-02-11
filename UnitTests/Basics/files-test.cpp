@@ -67,6 +67,7 @@ struct CFilesSetup {
     filename->appendText(_directory);
     filename->appendText("/tmp-");
     filename->appendInteger(++counter);
+    filename->appendInteger((uint32_t) TRI_UInt32Random());
 
     FILE* fd = fopen(filename->c_str(), "wb");
 
