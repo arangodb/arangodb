@@ -1220,7 +1220,18 @@ function require (path) {
     var i;
 
     for (i = 0;  i < globalPackages.length;  ++i) {
-      globalPackages[i]._moduleCache = {};
+      var c = globalPackages[i]._moduleCache;
+      var k = Object.keys(c);
+      var j;
+
+      for (j = 0;  j < k.length;  ++j) {
+        var m = c[k[j]];
+
+        if (! m.isSystem) {
+          delete c[k[j]];
+        }
+      }
+
       globalPackages[i]._packageCache = {};
     }
   };
