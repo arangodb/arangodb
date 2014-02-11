@@ -452,13 +452,19 @@ actions.defineHttp({
     }
     catch (err) {
       actions.resultError(req, res, actions.HTTP_BAD,
-                          "Given port was not a proper integer.");
+                          "given port was not a proper integer");
       return;
     }
-    var r = SYS_TEST_PORT("tcp://0.0.0.0:"+port);
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json; charset=utf-8";
-    res.body = JSON.stringify(r);
+    try {
+      var r = SYS_TEST_PORT("tcp://0.0.0.0:"+port);
+      res.responseCode = actions.HTTP_OK;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = JSON.stringify(r);
+    }
+    catch (err2) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "exception in port test");
+    }
   }
 });
 
