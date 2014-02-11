@@ -314,17 +314,12 @@
       this.makeEditable();
 
       $(document).bind('keydown', function(e) {
-        if (e.ctrlKey && e.keyCode === 65) {
+        if (e.ctrlKey && e.keyCode === 65 || e.ctrlKey && e.keyCode === 78) {
           if ($('#addNewRowEntry')) {
             $('#addNewRowEntry').click();
-            self.jumpToPageBottom();
           }
         }
       });
-    },
-
-    checkFieldValue: function () {
-      
     },
 
     jumpToPageBottom: function () {
@@ -361,6 +356,7 @@
         }
       });
 
+      self.jumpToPageBottom();
       arangoHelper.fixTooltips(".icon_arangodb", "left");
     },
 
