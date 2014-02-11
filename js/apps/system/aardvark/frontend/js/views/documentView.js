@@ -149,7 +149,7 @@
         }
       }
 
-      arangoHelper.fixTooltips(".glyphicon", "left");
+      arangoHelper.fixTooltips(".icon_arangodb", "left");
       arangoHelper.fixTooltips(".docLink", "top");
     },
     clicked: function (a) {
@@ -355,7 +355,7 @@
         }
       });
 
-      arangoHelper.fixTooltips(".glyphicon", "left");
+      arangoHelper.fixTooltips(".icon_arangodb", "left");
     },
 
     deleteLine: function (a) {
