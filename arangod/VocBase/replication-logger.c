@@ -346,6 +346,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
   }
 
   idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) primary,
+                                                  0,
                                                   maxEvents,
                                                   maxEventsSize,
                                                   NULL,
