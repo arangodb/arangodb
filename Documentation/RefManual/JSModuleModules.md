@@ -49,23 +49,26 @@ Node Modules{#JSModulesNode}
 
 ArangoDB also support some <a href="http://www.nodejs.org/">node</a> modules.
 
-- <a href="http://www.nodejs.org/api/assert.html">"assert"</a> implements 
+- <a href="http://nodejs.org/api/assert.html">"assert"</a> implements 
   assertion and testing functions.
 
-- <a href="http://www.nodejs.org/api/buffer.html">"buffer"</a> implements
+- <a href="http://nodejs.org/api/buffer.html">"buffer"</a> implements
   a binary data type for JavaScript.
 
-- <a href="http://www.nodejs.org/api/path.html">"path"</a> implements
+- <a href="http://nodejs.org/api/path.html">"path"</a> implements
   functions dealing with filenames and paths.
 
-- <a href="http://www.nodejs.org/api/punycode.html">"punycode"</a> implements
+- <a href="http://nodejs.org/api/punycode.html">"punycode"</a> implements
   conversion functions for
   <a href="http://en.wikipedia.org/wiki/Punycode">punycode</a> encoding.
 
-- <a href="http://www.nodejs.org/api/querystring.html">"querystring"</a>
+- <a href="http://nodejs.org/api/querystring.html">"querystring"</a>
   provides utilities for dealing with query strings.
 
-- <a href="http://www.nodejs.org/api/url.html">"url"</a>
+- <a href="http://nodejs.org/api/stream.html">"stream"</a>
+  provides a streaming interface.
+
+- <a href="http://nodejs.org/api/url.html">"url"</a>
   has utilities for URL resolution and parsing.
 
 Node Packages{#JSModulesNPM}
@@ -73,14 +76,22 @@ Node Packages{#JSModulesNPM}
 
 The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
 
-- <a href="http://underscorejs.org/">"underscore"</a> is a utility-belt library
-  for JavaScript that provides a lot of the functional programming support that 
-  you would expect in Prototype.js (or Ruby), but without extending any of the
-  built-in JavaScript objects.
+- <a href="http://docs.busterjs.org/en/latest/modules/buster-format/">"buster-format"</a>
+
+- <a href="http://matthewmueller.github.io/cheerio/">"Cheerio.JS"</a>
 
 - <a href="http://coffeescript.org/">"coffee-script"</a> implements a
   coffee-script to JavaScript compiler. ArangoDB supports the `compile` 
   function of the package, but not the `eval` functions.
+
+- <a href="https://github.com/fb55/htmlparser2">"htmlparser2"</a>
+
+- <a href="http://sinonjs.org/">"Sinon.JS"</a>
+
+- <a href="http://underscorejs.org/">"underscore"</a> is a utility-belt library
+  for JavaScript that provides a lot of the functional programming support that 
+  you would expect in Prototype.js (or Ruby), but without extending any of the
+  built-in JavaScript objects.
 
 You can use the command-line option @CO{startup.package-path} to specify the
 location of the node packages.
@@ -92,11 +103,11 @@ require{#JSModulesRequire}
 
 @FN{require} checks if the module or package specified by @FA{path} has already
 been loaded.  If not, the content of the file is executed in a new
-context. Within the context you can use the global variable @LIT{exports} in
+context. Within the context you can use the global variable `exports` in
 order to export variables and functions. This variable is returned by
 @FN{require}.
 
-Assume that your module file is @LIT{test1.js} and contains
+Assume that your module file is `test1.js` and contains
 
     exports.func1 = function() {
       print("1");
@@ -106,13 +117,13 @@ Assume that your module file is @LIT{test1.js} and contains
 
 Then you can use @FN{require} to load the file and access the exports.
 
-    unix> ./arangod --console /tmp/vocbase
-    arangod> var test1 = require("test1");
+    unix> ./arangosh
+    arangosh> var test1 = require("test1");
 
-    arangod> test1.const1;
+    arangosh> test1.const1;
     1
 
-    arangod> test1.func1();
+    arangosh> test1.func1();
     1
 
 @FN{require} follows the specification
@@ -122,22 +133,18 @@ Modules Path versus Modules Collection{#JSModulesPath}
 ======================================================
 
 ArangoDB comes with predefined modules defined in the file-system under the path
-specified by @CO{startup.modules-path}. In a standard installation this point to
-the system share directory. Even if you are an administrator of ArangoDB you
-might not have write permissions to this location. On the other hand, in order
-to deploy some extension for ArangoDB, you might need to install additional
-JavaScript modules. This would require you to become root and copy the files
-into the share directory. In order to ease the deployment of extensions,
-ArangoDB uses a second mechanism to look up JavaScript modules.
+specified by @CO{startup.startup-directory}. In a standard installation this
+point to the system share directory. Even if you are an administrator of
+ArangoDB you might not have write permissions to this location. On the other
+hand, in order to deploy some extension for ArangoDB, you might need to install
+additional JavaScript modules. This would require you to become root and copy
+the files into the share directory. In order to ease the deployment of
+extensions, ArangoDB uses a second mechanism to look up JavaScript modules.
 
 JavaScript modules can either be stored in the filesystem as regular file or in
 the database collection `_modules`.
 
-Given the directory paths
-
-    /usr/share/arangodb/A;/usr/share/arangodb/B
-
-for @CO{startup.modules-path}. If you execute
+If you execute
 
     require("com/example/extension")
 
@@ -151,16 +158,11 @@ follows
 
 - ArangoDB will then check, if there is a file called 
 
-    /usr/share/arangodb/A/com/example/extension.js
+    com/example/extension.js
 
-  If such a file exists, it is executed in a new module context and the value of
-  `exports` object is returned. This value is also stored in the module cache.
-
-- Next the file
-  
-    /usr/share/arangodb/B/com/example/extension.js
-
-  is checked.
+  in the system search path. If such a file exists, it is executed in a new
+  module context and the value of `exports` object is returned. This value is
+  also stored in the module cache.
 
 - If no file can be found, ArangoDB will check if the collection `_modules`
   contains a document of the form
@@ -170,26 +172,11 @@ follows
         content: "...."
       }
   
-  If such a document exists, then the value of the `content` attribute must
-  contain the JavaScript code of the module. This string is executed in a new
-  module context and the value of `exports` object is returned. This value is
-  also stored in the module cache.
-
-Path Normalization{#JSModulesNormalization}
--------------------------------------------
-
-If you `require` a module, the path is normalized according the CommonJS rules
-and an absolute path is used to look up the module. However, the leading `/` is
-omitted.  Therefore, you should always use absolute paths without a leading `/`
-when storing modules in the `_modules` collection.
-
-For example, if you execute
-
-    require("./lib/../extra/world");
-
-within a module `com/example` the path used for look-up will be
-
-    com/example/extra/world
+  Note that the leading `/´ is important - even if you call `require` without a
+  leading `/´.  If such a document exists, then the value of the `content`
+  attribute must contain the JavaScript code of the module. This string is
+  executed in a new module context and the value of `exports` object is
+  returned. This value is also stored in the module cache.
 
 Modules Cache{#JSModulesCache}
 ------------------------------
