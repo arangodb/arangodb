@@ -45,6 +45,7 @@ var print = require("internal").print;
 
 var launchActions = {};
 var shutdownActions = {};
+var cleanupActions = {};
 
 function getAddrPort (endpoint) {
   var pos = endpoint.indexOf("://");
@@ -185,14 +186,17 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   }
   var pid = executeExternal(agentPath, args);
   var res;
-  while (true) {
+  var count = 0;
+  while (++count < 20) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
-      return {"error":false, "isAgent": true, "pid": pid, 
+      return {"error":false, "isStartAgent": true, "pid": pid, 
               "endpoint": extEndpoint};
     }
   }
+  return {"error":true, "isStartAgent": true, 
+          "errorMessage": "agency did not come alive"};
 };
 
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
@@ -299,28 +303,81 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     pids.push(executeExternal(arangodPath, args));
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
-  return {"error": false, "pids": pids, "endpoints": endpoints, "roles": roles};
+  return {"error": false, "isStartServers": true, 
+          "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
-  print("Shutting down agent ", run.pid);
+  print("Shutting down agent", run.pid);
   killExternal(run.pid);
-  return {"error": false};
+  return {"error": false, "isStartAgent": true};
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
   print("Waiting for 10 seconds for servers before shutting down agency.");
   wait(10);
-  return {"error": false};
+  return {"error": false, "isSendConfiguration": true};
 };
 
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   for (i = 0;i < run.pids.length;i++) {
-    print("Shutting down ", run.pids[i]);
+    print("Shutting down", run.pids[i]);
     killExternal(run.pids[i]);
   }
-  return {"error": false};
+  return {"error": false, "isStartServers": true};
+};
+
+cleanupActions.startAgent = function (dispatchers, cmd) {
+
+  print("Cleaning up agent...");
+
+  // First find out our own data directory:
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var dataPath = fs.makeAbsolute(cmd.dataPath);
+  if (dataPath !== cmd.dataPath) {   // path was relative
+    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+  }
+
+  var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
+  if (fs.exists(agentDataDir)) {
+    fs.removeDirectoryRecursive(agentDataDir,true);
+  }
+  return {"error":false, "isStartAgent": true};
+};
+
+cleanupActions.sendConfiguration = function (dispatchers, cmd) {
+  // nothing to do here
+  return {"error":false, "isSendConfiguration": true};
+};
+
+cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
+
+  // First find out our own data directory to setup base for relative paths:
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var dataPath = fs.makeAbsolute(cmd.dataPath);
+  if (dataPath !== cmd.dataPath) {   // path was relative
+    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+  }
+  var logPath = fs.makeAbsolute(cmd.logPath);
+  if (logPath !== cmd.logPath) {    // path was relative
+    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+  }
+
+  var servers = cmd.DBservers.concat(cmd.Coordinators);
+  var i;
+  for (i = 0; i < servers.length; i++) {
+    var id = servers[i];
+    var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
+    if (fs.exists(logfile)) {
+      fs.remove(logfile);
+    }
+    var datadir = fs.join(dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
+    if (fs.exists(datadir)) {
+      fs.removeDirectoryRecursive(datadir,true);
+    }
+  }
+  return {"error": false, "isStartServers": true};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,6 +640,64 @@ Kickstarter.prototype.shutdown = function() {
   results = results.reverse();
   if (error) {
     return {"error": true, "errorMessage": "some error during shutdown",
+            "results": results};
+  }
+  return {"error": false, "errorMessage": "none", "results": results};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_Kickstarter_prototype_cleanup
+/// @brief cleans up all the data of a cluster that has been shutdown
+///
+/// @FUN{@FA{Kickstarter}.cleanup()}
+///
+/// This cleans up all the data and logs of a previously shut down cluster.
+/// Use shutdown (see @ref JSF_Kickstarter_prototype_shutdown) first and
+/// use with caution, since potentially a lot of data is being erased with
+/// this call!
+////////////////////////////////////////////////////////////////////////////////
+
+Kickstarter.prototype.cleanup = function() {
+  var clusterPlan = this.clusterPlan;
+  var myname = this.myname;
+  var dispatchers = clusterPlan.dispatchers;
+  var cmds = clusterPlan.commands;
+  var results = [];
+  var cmd;
+
+  var error = false;
+  var i;
+  var res;
+  for (i = 0; i < cmds.length; i++) {
+    cmd = cmds[i];
+    if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
+      res = cleanupActions[cmd.action](dispatchers, cmd);
+      results.push(res);
+      if (res.error === true) {
+        error = true;
+      }
+    }
+    else {
+      var ep = dispatchers[cmd.dispatcher].endpoint;
+      var body = JSON.stringify({ "action": "cleanup",
+                                  "clusterPlan": {
+                                        "dispatchers": dispatchers,
+                                        "commands": [cmd] },
+                                  "myname": cmd.dispatcher });
+      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var response = download(url, body, {"method": "POST"});
+      if (response.code !== 200) {
+        error = true;
+        results.push({"error":true, "errorMessage": "bad HTTP response code",
+                      "response": response});
+      }
+      else {
+        results.push({"error":false});
+      }
+    }
+  }
+  if (error) {
+    return {"error": true, "errorMessage": "some error during cleanup",
             "results": results};
   }
   return {"error": false, "errorMessage": "none", "results": results};
