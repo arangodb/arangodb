@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+module.isSystem = true;
+
 var internal = require("internal");
 
 var fs = require("fs");
