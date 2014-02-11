@@ -43,4 +43,7 @@ Here are the details of the functionality:
 @anchor JSModuleClusterKickstarterRelaunch
 @copydetails JSF_Kickstarter_prototype_relaunch
 
+@anchor JSModuleClusterKickstarterCleanup
+@copydetails JSF_Kickstarter_prototype_cleanup
+
 @BNAVIGATE_JSModuleCluster

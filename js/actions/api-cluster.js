@@ -307,8 +307,9 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_cluster_dispatcher_POST
-/// @brief exposes the dispatcher functionality to start up a cluster 
-/// according to a startup plan as for example provided by the kickstarter.
+/// @brief exposes the dispatcher functionality to start up, shutdown,
+/// relaunch or cleanup a cluster according to a cluster plan as for
+/// example provided by the kickstarter.
 ///
 /// @RESTHEADER{POST /_admin/clusterDispatch,execute startup commands}
 ///
@@ -316,8 +317,28 @@ actions.defineHttp({
 ///
 /// @RESTBODYPARAM{body,json,required}
 ///
-/// @RESTDESCRIPTION Given a cluster plan (see JSF_cluster_planner_POST), this
-/// call executes the plan by either starting up processes personally
+/// @RESTDESCRIPTION The body must be an object with the following properties:
+/// 
+///   - `clusterPlan`: is a cluster plan (see JSF_cluster_planner_POST), 
+///   - `myname`: is the ID of this dispatcher, this is used to decide
+///     which commands are executed locally and which are forwarded
+///     to other dispatchers
+///   - `action`: can be one of the following:
+///
+///       - "launch": the cluster is launched for the first time, all
+///         data directories and log files are cleaned and created
+///       - "shutdown": the cluster is shut down, the additional property
+///         `runInfo` (see below) must be bound as well
+///       - "relaunch": the cluster is launched again, all data directories
+///         and log files are untouched and need to be there already
+///       - "cleanup": use this after a shutdown to remove all data in the
+///         data directories and all log files, use with caution
+///
+///   - `runInfo": this is needed for the "shutdown" action only and should
+///     be the structure that "launch" or "relaunch" returned. It contains
+///     runtime information like process IDs.
+///
+/// This call executes the plan by either doing the work personally
 /// or by delegating to other dispatchers.
 /// 
 /// @RESTRETURNCODES
@@ -401,6 +422,19 @@ actions.defineHttp({
       }
       catch (error4) {
         actions.resultException(req, res, error4, undefined, false);
+      }
+    }
+    else if (action === "cleanup") {
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        r = k.cleanup();
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error5) {
+        actions.resultException(req, res, error5, undefined, false);
       }
     }
     else {

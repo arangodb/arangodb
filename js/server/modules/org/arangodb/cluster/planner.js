@@ -163,9 +163,7 @@ PortFinder.prototype.next = function () {
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
                   "/_admin/clusterCheckPort?port="+this.port;
-        print("Doing: ",url);
         var r = download(url, "", {"method": "GET"});
-        print("ResultCOde:", r.code);
         if (r.code === 200) {
           available = JSON.parse(r.body);
         }
