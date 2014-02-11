@@ -129,12 +129,6 @@ static JSLoader StartupLoader;
 static string StartupModules = "";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path for JavaScript packages
-////////////////////////////////////////////////////////////////////////////////
-
-static string StartupPackages = "";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief path for JavaScript bootstrap files
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -435,7 +429,6 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.execute-string", &ExecuteString, "execute Javascript code from string")
     ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
     ("javascript.gc-interval", &GcInterval, "JavaScript request-based garbage collection interval (each x commands)")
-    ("javascript.package-path", &StartupPackages, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
@@ -1846,7 +1839,7 @@ int main (int argc, char* argv[]) {
 
   TRI_InitV8Buffer(context);
 
-  TRI_InitV8Utils(context, StartupPath, StartupModules, StartupPackages);
+  TRI_InitV8Utils(context, StartupPath, StartupModules);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

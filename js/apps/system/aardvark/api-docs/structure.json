@@ -202,7 +202,7 @@
                             "description": "The Handle of the Document. "
                         },
                         {
-                            "dataType": "String",
+                            "dataType": "Boolean",
                             "paramType": "query",
                             "name": "keepNull",
                             "description": "If the intention is to delete existing attributes with the patch command,  the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of <em>null</em>. "

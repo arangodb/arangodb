@@ -29,13 +29,6 @@
   margin:0;
 }
 
-.collectionName {
-  text-align:left;
-  font-weight: 300 !important;
-  position:absolute;
-  bottom:0px;
-}
-
 .thumbnail {
   padding:0;
   box-shadow: 0 0 0  !important;
