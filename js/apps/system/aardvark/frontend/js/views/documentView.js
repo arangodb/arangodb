@@ -8,6 +8,7 @@
     colid: 0,
     docid: 0,
     currentKey: 0,
+    currentKeyState: "",
     oldDocumentState: "",
     documentCache: { },
 
@@ -33,15 +34,52 @@
 
     keyPressedTextareaLeft: function(e) {
       //attributes inline-textarea-tab edit-mode
+      //check if action is required (empty field)
+
       if (e.keyCode === 9) {
+        if (!this.validateKey()) {
+          e.preventDefault();
+          return;
+        }
         var altTarget = $(e.currentTarget).parent().parent().next().next();
         e.preventDefault();
         $('.btn-success').click();
         $(altTarget).click();
       }
       else if (e.keyCode === 13) {
+        if (!this.validateKey()) {
+          e.preventDefault();
+          return;
+        }
         $('.btn-success').click();
       }
+    },
+
+    validateKey: function () {
+      var self = this;
+      var returnval = true;
+      var data = $('#documentTableID').dataTable().fnGetData();
+      var focused = $('textarea').val();
+
+      if (!focused.trim()) {
+        arangoHelper.arangoNotification("Empty field");
+        returnval = false;
+      }
+
+      $.each(data, function(key, val) {
+        if (val[0] === focused) {
+          console.log("currentkeystate: "+self.currentKeyState);
+          console.log("focused :"+focused);
+          if (val[0] === self.currentKeyState) {
+            returnval = true;
+          }
+          else {
+            arangoHelper.arangoNotification("Key already exists!");
+            returnval = false;
+          }
+        }
+      });
+      return returnval;
     },
 
     keyPressedTextareaRight: function(e) {
@@ -76,7 +114,8 @@
           $('#addRow').removeClass('disabledBtn');
         }
       });
-    $('td').removeClass('validateError');
+      $('td').removeClass('validateError');
+      return true;
     },
 
     listenGlobalKey: function(e) {
@@ -172,7 +211,13 @@
           arangoHelper.arangoError('Edge error');
         }
       }
+      this.scrollToFocused();
     },
+
+    scrollToFocused: function () {
+      //function to center focused element
+    },
+
     breadcrumb: function () {
       var name = window.location.hash.split("/");
       $('#transparentHeader').append(
@@ -267,7 +312,11 @@
       });
     },
 
-    jumpToPageBottom: function jumpToPageBottom() {
+    checkFieldValue: function () {
+      
+    },
+
+    jumpToPageBottom: function () {
       $('html, body').scrollTop($(document).height() - $(window).height());
     },
 
@@ -321,7 +370,7 @@
         "bDeferRender": true,
         "iDisplayLength": -1,
         "aoColumns": [
-          {"sClass":"writeable", "bSortable": false, "sWidth":"200px" },
+          {"sClass":"writeable keyRow", "bSortable": false, "sWidth":"200px" },
           {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "20px"},
           {"sClass":"writeable rightCell", "bSortable": false},
           {"bVisible": false },
@@ -419,6 +468,9 @@
             //save current document state
             model = window.arangoDocumentStore.models[0].attributes;
             self.oldDocumentState = JSON.stringify(model);
+            //save current key state
+            console.log(value);
+            self.currentKeyState = value;
 
             //check if this row was newly created
 
@@ -469,9 +521,12 @@
       }
 
     },
+
+    //broken
     validate: function (settings, td) {
       var returnval = true;
-      if ($(td).hasClass('sorting_1') === true) {
+      /*
+      if ($(td).hasClass('keyRow') === true) {
         var toCheck = $('textarea').val();
         var data = $('#documentTableID').dataTable().fnGetData();
 
@@ -489,7 +544,7 @@
             returnval = false;
           }
         });
-      }
+      }*/
       return returnval;
     },
     getTypedValue: function (value) {
