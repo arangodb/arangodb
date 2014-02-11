@@ -451,9 +451,7 @@ actions.defineHttp({
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
-        print("Hallo1",k.runInfo);
         r = k.isHealthy();
-        print("Hallo2",r);
         res.responseCode = actions.HTTP_OK;
         res.contentType = "application/json; charset=utf-8";
         res.body = JSON.stringify(r);
