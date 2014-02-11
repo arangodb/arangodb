@@ -1,0 +1,63 @@
+%pull-left {
+  float: left;
+}
+
+%pull-right {
+  float: right;
+}
+
+%clickable {
+  cursor: pointer;
+}
+
+%fixedbar {
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  width: 100%;
+  background-color: $c_nav_bg;
+  color: $c_white;
+  z-index: 1000;
+}
+
+%negative {
+  background-color: $c_negative;
+  &:hover {
+    background-color: $c_negative_hover;
+  }
+}
+
+%icon-negative {
+  color: $c_negative;
+  &:hover {
+    color: $c_negative_hover;
+  }
+}
+
+%positive {
+  background-color: $c_positive;
+  &:hover {
+    background-color: $c_positive_hover;
+  }
+}
+
+%icon-positive {
+  color: $c_positive;
+  &:hover {
+    color: $c_positive_hover;
+  }
+}
+
+%neutral {
+  background-color: $c_neutral;
+  &:hover {
+    background-color: $c_neutral_hover;
+  }
+}
+
+%icon-neutral {
+  color: $c_neutral;
+  &:hover {
+    color: $c_neutral_hover;
+  }
+}

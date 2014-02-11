@@ -1,4 +1,4 @@
-<ul class="arango-nav nav pull-right" id="arangoCollectionUl">
+<ul class="navlist" id="arangoCollectionUl">
   <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard">Dashboard</a></li>
   <% if (isSystem) { %>
     <li id="databaseNavi" class="databases-menu"><a id="databases" class="tab" href="#databases">Databases</a></li>
@@ -13,22 +13,22 @@
   <% } %>
   <li class="api-menu"><a id="api" class="tab" href="#api">API</a></li>
   <li class="dropdown">
-    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Links <b class="caret"></b></a>
-    <ul class="dropdown-menu">
-      <li class="nav-header">Documentation</li>
-      <li><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank">JS Shell Documentation</a></li>
-      <li><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL Documentation</a></li>
-      <li><a href="https://www.arangodb.org/manuals/current/" target="_blank">General Documentation</a></li>
+    <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
+    <ul class="link-dropdown-menu" id="link_dropdown">
+      <li class="dropdown-header">Documentation</li>
+      <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank">JS Shell Documentation</a></li>
+      <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL Documentation</a></li>
+      <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/" target="_blank">General Documentation</a></li>
       <li class="divider"></li>
-      <li class="nav-header">ArangoDB</li>
-      <li><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub Repository</a></li>
-      <li><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
+      <li class="dropdown-header">ArangoDB</li>
+      <li class="dropdown-item"><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub Repository</a></li>
+      <li class="dropdown-item"><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
       <li class="divider"></li>
-      <li class="nav-header">Social</li>
-      <li><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
-      <li><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a></li>
-      <li><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a></li>
-      <li><a href="https://groups.google.com/group/arangodb" target="_blank">Google Groups</a></li>
+      <li class="dropdown-header">Social</li>
+      <li class="dropdown-item"><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
+      <li class="dropdown-item"><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a></li>
+      <li class="dropdown-item"><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a></li>
+      <li class="dropdown-item"><a href="https://groups.google.com/group/arangodb" target="_blank">Google Groups</a></li>
     </ul>
   </li>
 </ul>
