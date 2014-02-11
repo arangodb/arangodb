@@ -373,13 +373,20 @@ function require (path) {
       throw new Error("corrupted package origin '" + origin + "'");
     }
 
-    var mc = internal.db._collection(m[1]);
+    var n;
 
-    if (mc === null || typeof mc.firstExample !== "function") {
+    try {
+      var mc = internal.db._collection(m[1]);
+
+      if (mc === null || typeof mc.firstExample !== "function") {
+        return null;
+      }
+
+      n = mc.firstExample({ path: path });
+    }
+    catch (err) {
       return null;
     }
-
-    var n = mc.firstExample({ path: path });
 
     if (n === null) {
       return null;
