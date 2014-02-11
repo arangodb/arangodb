@@ -547,11 +547,16 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       relative = "/";
       if (found != string::npos) {
         relative.append(url.substr(found + 1));
-        endpoint = "tcp://" + url.substr(7, found - 7) + ":80";
+        endpoint = url.substr(7, found - 7);
       }
       else {
-        endpoint = "tcp://" + url.substr(7) + ":80";
+        endpoint = url.substr(7);
       }
+      found = endpoint.find(":");
+      if (found == string::npos) {
+        endpoint = endpoint + ":80";
+      }
+      endpoint = "tcp://" + endpoint;
     }
     else if (url.substr(0, 8) == "https://") {
       size_t found = url.find('/', 8);
@@ -559,11 +564,16 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       relative = "/";
       if (found != string::npos) {
         relative.append(url.substr(found + 1));
-        endpoint = "ssl://" + url.substr(8, found - 8) + ":443";
+        endpoint = url.substr(8, found - 8);
       }
       else {
-        endpoint = "ssl://" + url.substr(8) + ":443";
+        endpoint = url.substr(8);
       }
+      found = endpoint.find(":");
+      if (found == string::npos) {
+        endpoint = endpoint + ":443";
+      }
+      endpoint = "ssl://" + endpoint;
     }
     else {
       TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
@@ -2565,6 +2575,10 @@ static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
 
   string address = TRI_ObjectToString(argv[0]);
   Endpoint* endpoint = Endpoint::serverFactory(address);
+  if (0 == endpoint) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                      "address description invalid, cannot create endpoint");
+  }
   TRI_socket_t s = endpoint->connect(1, 1);
   
   if (s.fileDescriptor == 0) {
