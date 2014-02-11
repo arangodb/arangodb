@@ -962,6 +962,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     return scope.Close(ret);
   }
 #endif  
+
+  TRI_idx_iid_t iid = 0;
   
   CollectionNameResolver resolver(vocbase);
   ReadTransactionType trx(vocbase, resolver, col->_cid);
@@ -986,7 +988,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
       
   if (type == TRI_IDX_TYPE_HASH_INDEX) {
     if (create) {
-      idx = TRI_EnsureHashIndexDocumentCollection(document, 
+      idx = TRI_EnsureHashIndexDocumentCollection(document,
+                                                  iid, 
                                                   &attributes, 
                                                   unique, 
                                                   &created, 
@@ -1005,6 +1008,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (create) {
       idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
+                                                      iid,
                                                       &attributes, 
                                                       unique, 
                                                       &created, 
@@ -1203,6 +1207,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_vocbase_t* vocbase = col->_vocbase;
   assert(vocbase != 0);
   
+  TRI_idx_iid_t iid = 0;
+
   CollectionNameResolver resolver(vocbase);
   ReadTransactionType trx(vocbase, resolver, col->_cid);
   
@@ -1220,7 +1226,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_index_t* idx;
 
   if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+    idx = TRI_EnsureFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(),
+                                                    iid, 
                                                     attributeName.c_str(), 
                                                     indexSubstrings, 
                                                     minWordLength, 
@@ -2872,6 +2879,8 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   int off = unique ? 1 : 0;
   bool ignoreNull = false;
     
+  TRI_idx_iid_t iid = 0;
+    
   // .............................................................................
   // case: <location>
   // .............................................................................
@@ -2893,7 +2902,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       return scope.Close(ret);
     }
 #endif  
-  
+ 
     CollectionNameResolver resolver(vocbase);
     ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2904,6 +2913,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     }
 
     idx = TRI_EnsureGeoIndex1DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+                                                iid,
                                                 *loc, 
                                                 false, 
                                                 unique, 
@@ -2943,7 +2953,8 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION(scope, res);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+    idx = TRI_EnsureGeoIndex1DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(),
+                                                iid, 
                                                 *loc, 
                                                 TRI_ObjectToBoolean(argv[1]), 
                                                 unique, 
@@ -2989,6 +3000,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     }
 
     idx = TRI_EnsureGeoIndex2DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+                                                iid,
                                                 *lat, 
                                                 *lon, 
                                                 unique, 
@@ -6193,6 +6205,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   }
 #endif  
 
+  TRI_idx_iid_t iid = 0;
 
   CollectionNameResolver resolver(vocbase);
   ReadTransactionType trx(vocbase, resolver, col->_cid);
@@ -6205,10 +6218,11 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   bool created;
   TRI_index_t* idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                  count, 
-                                                  size, 
-                                                  &created, 
-                                                  TRI_GetIdServer());
+                                                               iid,
+                                                               count, 
+                                                               size, 
+                                                               &created, 
+                                                               TRI_GetIdServer());
 
   if (idx == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
@@ -6492,6 +6506,8 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv,
 #endif  
 
     char* errorStr = 0;
+
+    TRI_idx_iid_t iid = 0;
   
     CollectionNameResolver resolver(vocbase);
     ReadTransactionType trx(vocbase, resolver, col->_cid);
@@ -6505,6 +6521,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv,
     }
     else { 
       bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
+                                                                iid,
                                                                 &attributes, 
                                                                 &values, 
                                                                 supportUndef, 
@@ -7657,9 +7674,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-  
   PREVENT_EMBEDDED_TRANSACTION(scope);  
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, 
                                         collection, 
