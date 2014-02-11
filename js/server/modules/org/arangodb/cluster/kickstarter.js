@@ -803,7 +803,7 @@ Kickstarter.prototype.isHealthy = function() {
   }
   results = results.reverse();
   if (error) {
-    return {"error": true, "errorMessage": "some error during shutdown",
+    return {"error": true, "errorMessage": "some error during isHealthy check",
             "results": results};
   }
   return {"error": false, "errorMessage": "none", "results": results};
