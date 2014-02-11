@@ -7,7 +7,7 @@
 
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
-      "click .tab": "navigateByTab",
+      "click .tab": "navigateByTab"
     },
 
     template: templateEngine.createTemplate("navigationView.ejs"),
