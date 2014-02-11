@@ -184,6 +184,7 @@
       window.location.hash = window.location.hash + "/source";
     },
     saveDocument: function () {
+      var self = this;
       var model, result;
       model = window.arangoDocumentStore.models[0].attributes;
       model = JSON.stringify(model);
@@ -200,6 +201,7 @@
           arangoHelper.arangoNotification('Document saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
+          self.scrollToFocused();
         }
         else if (result === false) {
           arangoHelper.arangoAlert('Document error');
@@ -211,16 +213,20 @@
           arangoHelper.arangoNotification('Edge saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
+          self.scrollToFocused();
         }
         else if (result === false) {
           arangoHelper.arangoError('Edge error');
         }
       }
-      this.scrollToFocused();
     },
 
     scrollToFocused: function () {
       //function to center focused element
+      window.setTimeout(function() {
+        var heightPosition = $(window).scrollTop();
+        $(window).scrollTop(heightPosition-55);
+      }, 150);
     },
 
     breadcrumb: function () {
