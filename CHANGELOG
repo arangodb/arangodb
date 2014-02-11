@@ -1,16 +1,9 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
-* issue #756: set access-control-expose-headers on CORS response
+* made module loader more node compatible
 
-  the following headers are now whitelisted by ArangoDB in CORS responses:
-  - etag
-  - content-encoding
-  - content-length
-  - location
-  - server
-  - x-arango-errors
-  - x-arango-async-id
+* added coffee script support
 
 * Several UI improvements.
 
@@ -177,6 +170,17 @@ v1.4.10 (XXXX-XX-XX)
 * Fixed documentation in graph, simple and index api.
 
 * removed 2 tests due to change in ruby library.
+
+* issue #756: set access-control-expose-headers on CORS response
+
+  the following headers are now whitelisted by ArangoDB in CORS responses:
+  - etag
+  - content-encoding
+  - content-length
+  - location
+  - server
+  - x-arango-errors
+  - x-arango-async-id
 
 
 v1.4.9 (2014-02-07)
