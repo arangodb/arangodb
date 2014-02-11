@@ -12,6 +12,9 @@ compatible module and package concept. You can use the function `require` in
 order to load a module or package. It returns the exported variables and
 functions of the module or package.
 
+There are some extensions to the CommonJS concept to allow ArangoDB to load
+Node.js modules as well.
+
 CommonJS Modules{#JSModulesCommonJS}
 ------------------------------------
 
@@ -38,8 +41,8 @@ the following
 ArangoDB Specific Modules{#JSModulesArangoDB}
 ---------------------------------------------
 
-A lot of the modules, however, are ArangoDB specific. These are described in the
-following chapters.
+A lot of the modules, however, are ArangoDB specific. These modules
+are described in the following chapters.
 
 Node Modules{#JSModulesNode}
 ----------------------------
