@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, forin: true */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, value2html, templateEngine */
+/*global document */
+
 (function() {
   "use strict";
   window.DocumentView = Backbone.View.extend({
@@ -8,10 +10,13 @@
     colid: 0,
     docid: 0,
     currentKey: 0,
+    currentKeyState: "",
+    oldDocumentState: "",
     documentCache: { },
 
     init: function () {
       this.initTable();
+
     },
 
     events: {
@@ -20,12 +25,87 @@
       "click .addAttribute"                     : "addLine",
       "click #documentTableID .deleteAttribute" : "deleteLine",
       "click #sourceView"                       : "sourceView",
-      "click #editFirstAttribute"               : "editFirst",
+      "click .editFirstAttribute"               : "editFirst",
       "click #documentTableID tr"               : "clicked",
       "click .editSecondAttribute"              : "editSecond",
-      "keydown .sorting_1"                      : "listenKey",
       "keydown #documentviewMain"               : "listenGlobalKey",
-      "blur #documentviewMain textarea"         : "checkFocus"
+      "blur #documentviewMain textarea"         : "checkFocus",
+      "keydown #documentTableID tr td:first-child textarea" : "keyPressedTextareaLeft",
+      "keydown #documentTableID tr .rightCell textarea" : "keyPressedTextareaRight"
+    },
+
+    keyPressedTextareaLeft: function(e) {
+      //attributes inline-textarea-tab edit-mode
+      //check if action is required (empty field)
+
+      if (e.keyCode === 9) {
+        if (!this.validateKey()) {
+          e.preventDefault();
+          return;
+        }
+        var altTarget = $(e.currentTarget).parent().parent().next().next();
+        e.preventDefault();
+        $('.btn-success').click();
+        $(altTarget).click();
+      }
+      else if (e.keyCode === 13) {
+        if (!this.validateKey()) {
+          e.preventDefault();
+          return;
+        }
+        $('.btn-success').click();
+      }
+    },
+
+    validateKey: function () {
+      var self = this;
+      var returnval = true;
+      var data = $('#documentTableID').dataTable().fnGetData();
+      var focused = $('textarea').val();
+
+      if (!focused.trim()) {
+        arangoHelper.arangoNotification("Empty field");
+        returnval = false;
+      }
+
+      var checkWhiteSpaces = focused.replace(/ /g,'');
+      if (checkWhiteSpaces !== focused) {
+        arangoHelper.arangoNotification("No whitespaces allowed");
+        returnval = false;
+      }
+
+      $.each(data, function(key, val) {
+        if (val[0] === focused) {
+          if (val[0] === self.currentKeyState) {
+            returnval = true;
+          }
+          else {
+            arangoHelper.arangoNotification("Key already exists!");
+            returnval = false;
+          }
+        }
+      });
+      return returnval;
+    },
+
+    keyPressedTextareaRight: function(e) {
+      //values inline-textarea-tab edit-mode
+      if (e.keyCode === 9) {
+        e.preventDefault();
+        var temp = $(e.currentTarget).parent().parent().parent().next().children();
+        $('.btn-success').click();
+        var altTarget = temp[0];
+        while ($(altTarget).text() === '_id' ||
+               $(altTarget).text() === '_rev' ||
+               $(altTarget).text() === '_key') {
+               var temp2 = $(altTarget).parent().next().children();
+               altTarget = temp2[0];
+        }
+        $(altTarget).click();
+      }
+      else if (e.ctrlKey && e.keyCode === 13) {
+        $('.btn-success').click();
+      }
     },
 
     checkFocus: function(e) {
@@ -40,18 +120,13 @@
           $('#addRow').removeClass('disabledBtn');
         }
       });
-    $('td').removeClass('validateError');
+      $('td').removeClass('validateError');
+      return true;
     },
 
     listenGlobalKey: function(e) {
       if (e.keyCode === 27) {
         this.checkFocus();
-      }
-    },
-
-    listenKey: function(e) {
-      if (e.keyCode === 13) {
-        $('.btn-success').click();
       }
     },
 
@@ -74,7 +149,7 @@
         }
       }
 
-      arangoHelper.fixTooltips(".glyphicon", "left");
+      arangoHelper.fixTooltips(".icon_arangodb", "left");
       arangoHelper.fixTooltips(".docLink", "top");
     },
     clicked: function (a) {
@@ -109,34 +184,51 @@
       window.location.hash = window.location.hash + "/source";
     },
     saveDocument: function () {
+      var self = this;
       var model, result;
+      model = window.arangoDocumentStore.models[0].attributes;
+      model = JSON.stringify(model);
+
+      //check if there are any changes, if not quit
+      if (model === this.oldDocumentState) {
+          $('.addAttribute').removeClass('disabledBtn');
+        return;
+      }
+
       if (this.type === 'document') {
-        model = window.arangoDocumentStore.models[0].attributes;
-        model = JSON.stringify(model);
         result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
         if (result === true) {
           arangoHelper.arangoNotification('Document saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
+          self.scrollToFocused();
         }
         else if (result === false) {
           arangoHelper.arangoAlert('Document error');
         }
       }
       else if (this.type === 'edge') {
-        model = window.arangoDocumentStore.models[0].attributes;
-        model = JSON.stringify(model);
         result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
         if (result === true) {
           arangoHelper.arangoNotification('Edge saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
+          self.scrollToFocused();
         }
         else if (result === false) {
           arangoHelper.arangoError('Edge error');
         }
       }
     },
+
+    scrollToFocused: function () {
+      //function to center focused element
+      window.setTimeout(function() {
+        var heightPosition = $(window).scrollTop();
+        $(window).scrollTop(heightPosition-55);
+      }, 150);
+    },
+
     breadcrumb: function () {
       var name = window.location.hash.split("/");
       $('#transparentHeader').append(
@@ -183,11 +275,10 @@
             var linkedDoc = self.getLinkedDoc(value);
 
             if (linkedDoc !== null && linkedDoc !== undefined) {
-              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' + 
+              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' +
                         self.escaped(JSON.stringify(linkedDoc)) + '"></span>';
-            
-              html = '<a href="#collection/' + value + 
-                     '" class="docLink" title="Go to document">' + self.escaped(value) + 
+              html = '<a href="#collection/' + value +
+                     '" class="docLink" title="Go to document">' + self.escaped(value) +
                      '</a>';
             }
             else {
@@ -221,6 +312,18 @@
         }
       });
       this.makeEditable();
+
+      $(document).bind('keydown', function(e) {
+        if (e.ctrlKey && e.keyCode === 65 || e.ctrlKey && e.keyCode === 78) {
+          if ($('#addNewRowEntry')) {
+            $('#addNewRowEntry').click();
+          }
+        }
+      });
+    },
+
+    jumpToPageBottom: function () {
+      $('html, body').scrollTop($(document).height() - $(window).height());
     },
 
     addLine: function (event) {
@@ -253,7 +356,8 @@
         }
       });
 
-      arangoHelper.fixTooltips(".glyphicon", "left");
+      self.jumpToPageBottom();
+      arangoHelper.fixTooltips(".icon_arangodb", "left");
     },
 
     deleteLine: function (a) {
@@ -273,7 +377,7 @@
         "bDeferRender": true,
         "iDisplayLength": -1,
         "aoColumns": [
-          {"sClass":"writeable", "bSortable": false, "sWidth":"200px" },
+          {"sClass":"writeable keyRow", "bSortable": false, "sWidth":"200px" },
           {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "20px"},
           {"sClass":"writeable rightCell", "bSortable": false},
           {"bVisible": false },
@@ -365,8 +469,17 @@
           $(".btn-success").click();
           var aPos = documentEditTable.fnGetPosition(this);
           var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
+          var model;
           if (aPos[1] === 0) {
+
+            //save current document state
+            model = window.arangoDocumentStore.models[0].attributes;
+            self.oldDocumentState = JSON.stringify(model);
+            //save current key state
+            self.currentKeyState = value;
+
             //check if this row was newly created
+
             if (value === self.currentKey) {
               return value;
             }
@@ -374,6 +487,11 @@
           }
           if (aPos[1] === 2) {
             var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
+
+            //save current document state
+            model = window.arangoDocumentStore.models[0].attributes;
+            self.oldDocumentState = JSON.stringify(model);
+
             if (typeof oldContent === 'object') {
               //grep hidden row and paste in visible row
               return value2html(oldContent);
@@ -409,9 +527,12 @@
       }
 
     },
+
+    //broken
     validate: function (settings, td) {
       var returnval = true;
-      if ($(td).hasClass('sorting_1') === true) {
+      /*
+      if ($(td).hasClass('keyRow') === true) {
         var toCheck = $('textarea').val();
         var data = $('#documentTableID').dataTable().fnGetData();
 
@@ -429,7 +550,7 @@
             returnval = false;
           }
         });
-      }
+      }*/
       return returnval;
     },
     getTypedValue: function (value) {

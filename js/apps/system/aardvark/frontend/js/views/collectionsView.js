@@ -59,7 +59,7 @@
       $('#searchInput').val('');
       $('#searchInput').val(val);
 
-      arangoHelper.fixTooltips(".glyphicon, .arangoicon", "left");
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
 
       return this;
     },
