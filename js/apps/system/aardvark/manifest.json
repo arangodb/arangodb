@@ -21,6 +21,16 @@
       ]
     },
 
+    "planner.html": {
+      "files": [
+        "frontend/html/start.html.part",
+        "frontend/html/headplanner.html.part",
+        "frontend/html/body.html.part",
+        "frontend/html/scriptsplanner.html.part",
+        "frontend/html/end.html.part"
+      ]
+    },
+
     "ace.js": {
       "files": [
         "frontend/src/ace.js"
