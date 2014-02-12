@@ -139,6 +139,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestJobHandler.cpp \
+	lib/Admin/RestShutdownHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
 	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \

@@ -68,7 +68,6 @@ Kickstarter.prototype.launch = function () {
                               JSON.stringify({"action": "launch",
                                               "clusterPlan": this.clusterPlan,
                                               "myname": this.myname}));
-  arangosh.checkRequestResult(r);
   this.runInfo = r.runInfo;
   return r;
 };
@@ -80,7 +79,6 @@ Kickstarter.prototype.shutdown = function () {
                                               "clusterPlan": this.clusterPlan,
                                               "myname": this.myname,
                                               "runInfo": this.runInfo}));
-  arangosh.checkRequestResult(r);
   return r;
 };
 
@@ -90,7 +88,6 @@ Kickstarter.prototype.relaunch = function () {
                               JSON.stringify({"action": "relaunch",
                                               "clusterPlan": this.clusterPlan,
                                               "myname": this.myname}));
-  arangosh.checkRequestResult(r);
   this.runInfo = r.runInfo;
   return r;
 };
@@ -101,7 +98,6 @@ Kickstarter.prototype.cleanup = function () {
                               JSON.stringify({"action": "cleanup",
                                               "clusterPlan": this.clusterPlan,
                                               "myname": this.myname}));
-  arangosh.checkRequestResult(r);
   return r;
 };
 
@@ -112,14 +108,11 @@ Kickstarter.prototype.isHealthy = function () {
                                               "clusterPlan": this.clusterPlan,
                                               "myname": this.myname,
                                               "runInfo": this.runInfo}));
-  arangosh.checkRequestResult(r);
   return r;
 };
 
 exports.Planner = Planner;
 exports.Kickstarter = Kickstarter;
-
-    
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
