@@ -170,9 +170,9 @@
       ]
     },
 
-    "planner.css": {
+    "css/planner.css": {
       "files": [
-        
+        "frontend/scss/planner.css"
       ]
     },
 
