@@ -10,21 +10,22 @@
     },
 
     planTest: function() {
-              console.log("Startup");
       if (!this.planTestView) {
         this.planTestView = new window.PlanTestView();
       }
-              console.log("Renderung");
       this.planTestView.render();
     },
 
     initialize: function () {
-                  console.log("initio");
       /*
       this.footerView = new window.FooterView();
       this.footerView.render();
       */
-    }
+   },
+
+   handleResize: function() {
+     // Not needed here
+   }
   });
 
 }());
