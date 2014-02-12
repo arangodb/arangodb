@@ -5678,8 +5678,6 @@ static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv
 
 static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  PREVENT_EMBEDDED_TRANSACTION(scope);
   
   return scope.Close(EnsureIndex(argv, false, "lookupIndex"));  
 }
