@@ -3848,7 +3848,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   TRI_index_t* matchedIndex = NULL;
   TRI_vector_t* indexPaths = NULL;
   size_t j;
-  size_t k;
 
   // ...........................................................................
   // go through every index and see if we have a match
@@ -3857,6 +3856,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   for (j = 0;  j < collection->_allIndexes._length;  ++j) {
     TRI_index_t* idx = collection->_allIndexes._buffer[j];
     bool found       = true;
+    size_t k;
 
     // .........................................................................
     // check if the type of the index matches
@@ -3866,7 +3866,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // check if uniqueness matches
     // .........................................................................
@@ -3875,13 +3874,11 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // Now perform checks which are specific to the type of index
     // .........................................................................
 
     switch (type) {
-
       case TRI_IDX_TYPE_BITARRAY_INDEX: {
         TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
         indexPaths = &(baIndex->_paths);
@@ -3921,14 +3918,13 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // go through all the attributes and see if they match
     // .........................................................................
 
     for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*)(TRI_AtVector(indexPaths, k)));
-      TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
+      TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
+      TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
 
       if (indexShape != givenShape) {
         found = false;
@@ -3945,8 +3941,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
   return matchedIndex;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores a bitarray based index (template)
@@ -4492,6 +4486,21 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t* document) {
+  TRI_primary_collection_t* primary = &document->base;
+
+  // check if we already know a cap constraint
+  if (primary->_capConstraint != NULL) {
+    return &primary->_capConstraint->base;
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4614,10 +4623,10 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndex1DocumentCollection(document, loc, geoJson, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson, unique, ignoreNull);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2DocumentCollection(document, lat, lon, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude, unique, ignoreNull);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -4847,12 +4856,22 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_shape_pid_t location,
+                                                    char const* location,
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull) {
-  size_t n;
-  size_t i;
+  TRI_shape_pid_t loc;
+  TRI_shaper_t* shaper;
+  size_t i, n;
+
+  shaper = document->base._shaper;
+    
+  loc = shaper->findAttributePathByName(shaper, location);
+
+  if (loc == 0) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
   n = document->_allIndexes._length;
 
@@ -4864,7 +4883,9 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_location != 0 && geo->_location == location && geo->_geoJson == geoJson && idx->_unique == unique) {
+      if (geo->_location != 0 && geo->_location == loc && 
+          geo->_geoJson == geoJson && 
+          idx->_unique == unique) {
         if (! unique || geo->base._ignoreNull == ignoreNull) {
           return idx;
         }
@@ -4880,12 +4901,24 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_shape_pid_t latitude,
-                                                    TRI_shape_pid_t longitude,
+                                                    char const* latitude,
+                                                    char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull) {
-  size_t n;
-  size_t i;
+  TRI_shape_pid_t lat;
+  TRI_shape_pid_t lon;
+  TRI_shaper_t* shaper;
+  size_t i, n;
+  
+  shaper = document->base._shaper;
+  
+  lat = shaper->findAttributePathByName(shaper, latitude);
+  lon = shaper->findAttributePathByName(shaper, longitude);
+
+  if (lat == 0 || lon == 0) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
   n = document->_allIndexes._length;
 
@@ -4897,7 +4930,11 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_latitude != 0 && geo->_longitude != 0 && geo->_latitude == latitude && geo->_longitude == longitude && idx->_unique == unique) {
+      if (geo->_latitude != 0 && 
+          geo->_longitude != 0 && 
+          geo->_latitude == lat && 
+          geo->_longitude == lon && 
+          idx->_unique == unique) {
         if (! unique || geo->base._ignoreNull == ignoreNull) {
           return idx;
         }

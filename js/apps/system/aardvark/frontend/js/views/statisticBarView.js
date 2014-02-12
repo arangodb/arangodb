@@ -2,33 +2,18 @@
 /*global Backbone, templateEngine, $, window*/
 (function () {
     "use strict";
-    window.NavigationView = Backbone.View.extend({
-        el: '#navigationBar',
+    window.StatisticBarView = Backbone.View.extend({
+        el: '#statisticBar',
 
         events: {
             "change #arangoCollectionSelect": "navigateBySelect",
             "click .tab": "navigateByTab"
         },
 
-        initialize: function () {
-            this.dbSelectionView = new window.DBSelectionView({
-                collection: window.arangoDatabase,
-                current: window.currentDB
-            });
-        },
-
-        handleSelectDatabase: function() {
-            this.dbSelectionView.render($("#dbSelect"));
-        },
-
-
-        template: templateEngine.createTemplate("navigationView.ejs"),
+        template: templateEngine.createTemplate("statisticBarView.ejs"),
 
         render: function () {
-            $(this.el).html(this.template.render({
-                isSystem: window.currentDB.get("isSystem")
-            }));
-            this.dbSelectionView.render($("#dbSelect"));
+            $(this.el).html(this.template.render({isSystem: window.currentDB.get("isSystem")}));
             return this;
         },
 
@@ -47,11 +32,6 @@
             }
             if (navigateTo === "tools") {
                 $("#tools_dropdown").slideToggle(200);
-                e.preventDefault();
-                return;
-            }
-            if (navigateTo === "dbselection") {
-                $("#dbs_dropdown").slideToggle(200);
                 e.preventDefault();
                 return;
             }

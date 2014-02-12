@@ -192,7 +192,10 @@ exports.save = function (username, passwd, active, extra) {
       data.extra = extra;
     }
 
-    return users.save(data);
+    var doc = users.save(data);
+    // not exports.reload() as this is an abstract method...
+    require("org/arangodb/users").reload();
+    return doc;
   }
     
   var err = new ArangoError();
@@ -270,8 +273,12 @@ exports.replace = function (username, passwd, active, extra) {
   if (extra !== undefined) {
     data.extra = extra;
   }
-
-  return users.replace(user, data);
+  
+  var doc = users.replace(user, data);
+    
+  // not exports.reload() as this is an abstract method...
+  require("org/arangodb/users").reload();
+  return doc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,8 +346,13 @@ exports.update = function (username, passwd, active, extra) {
   if (extra !== undefined) {
     data.extra = extra;
   }
+  
+  var doc = users.update(user, data);
+  
+  // not exports.reload() as this is an abstract method...
+  require("org/arangodb/users").reload();
 
-  return users.update(user, data);
+  return doc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +396,12 @@ exports.remove = function (username) {
     throw err;
   }
 
-  return users.remove(user._id);
+  var doc = users.remove(user._id);
+
+  // not exports.reload() as this is an abstract method...
+  require("org/arangodb/users").reload();
+
+  return doc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

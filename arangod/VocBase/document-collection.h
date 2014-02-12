@@ -416,6 +416,12 @@ bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -497,7 +503,7 @@ struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
-                                                           TRI_shape_pid_t,
+                                                           char const*,
                                                            bool,
                                                            bool,
                                                            bool);
@@ -509,8 +515,8 @@ struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
-                                                           TRI_shape_pid_t,
-                                                           TRI_shape_pid_t,
+                                                           char const*,
+                                                           char const*,
                                                            bool,
                                                            bool);
 

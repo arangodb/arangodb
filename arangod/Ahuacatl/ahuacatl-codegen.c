@@ -1831,6 +1831,7 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
   collectionName = TRI_AQL_NODE_STRING(nameNode);
 
   switch (hint->_index->_idx->_type) {
+    case TRI_IDX_TYPE_UNKNOWN:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:

@@ -139,7 +139,7 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoDocument.js',
       'frontend/js/collections/arangoDatabase.js',
       'frontend/js/collections/arangoLogs.js',
-      'frontend/js/collections/arangoSession.js',
+      'frontend/js/collections/arangoUsers.js',
       'frontend/js/collections/arangoStatisticsCollection.js',
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
