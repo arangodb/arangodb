@@ -171,6 +171,8 @@ module.exports = function(karma) {
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
       'frontend/js/views/loginView.js',
+      'frontend/js/views/statisticBarView.js',
+      'frontend/js/views/userBarView.js',
 
       // Router
       'frontend/js/routers/router.js',
