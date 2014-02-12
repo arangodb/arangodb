@@ -314,7 +314,7 @@
       this.makeEditable();
 
       $(document).bind('keydown', function(e) {
-        if (e.ctrlKey && e.keyCode === 65 || e.ctrlKey && e.keyCode === 78) {
+        if ((e.ctrlKey && e.keyCode === 65) || (e.ctrlKey && e.keyCode === 78)) {
           if ($('#addNewRowEntry')) {
             $('#addNewRowEntry').click();
           }
