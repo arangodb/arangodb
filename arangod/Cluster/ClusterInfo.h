@@ -905,6 +905,16 @@ namespace triagens {
                                     double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop an index in coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+        int dropIndexCoordinator (string const& databaseName, 
+                                  string const& collectionID,
+                                  TRI_idx_iid_t iid,
+                                  string& errorMsg,
+                                  double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about servers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////

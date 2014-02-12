@@ -5929,6 +5929,53 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
+                                                   v8::Handle<v8::Value> const& val) {
+  v8::HandleScope scope;
+  
+  string collectionName = "";
+  TRI_idx_iid_t iid = 0;
+  
+  // extract the index identifier from a string
+  if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
+    if (! IsIndexHandle(val, collectionName, iid)) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+    }
+  }
+
+  // extract the index identifier from an object
+  else if (val->IsObject()) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
+
+    if (! IsIndexHandle(iidVal, collectionName, iid)) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+    }
+  }
+
+  if (collectionName != "") {
+    if (collectionName != collection->_name &&
+        collectionName != StringUtils::itoa(collection->_cid)) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
+    }
+  }
+
+
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+  string errorMsg;
+    
+  int res = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid, iid, errorMsg, 0.0);
+
+  return scope.Close(v8::Boolean::New(res == TRI_ERROR_NO_ERROR));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
 /// @FUN{@FA{collection}.dropIndex(@FA{index})}
@@ -5951,43 +5998,51 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   v8::HandleScope scope;
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-
   if (argv.Length() != 1) {
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DropIndexCoordinator(collection, argv[0]));
+  }
+#endif
+
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+
+  v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], true, &err);
 
   if (idx == 0) {
     if (err.IsEmpty()) {
-      ReleaseCollection(collection);
       return scope.Close(v8::False());
     }
     else {
-      ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(err));
     }
   }
 
   if (idx->_iid == 0) {
-    ReleaseCollection(collection);
     return scope.Close(v8::False());
   }
 
   // .............................................................................
-  // inside a write transaction
+  // inside a write transaction, write-lock is acquired by TRI_DropIndex...
   // .............................................................................
 
   bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetIdServer());
@@ -5996,8 +6051,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // outside a write transaction
   // .............................................................................
 
-  ReleaseCollection(collection);
-  return scope.Close(ok ? v8::True() : v8::False());
+  return scope.Close(v8::Boolean::New(ok));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9427,8 +9481,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
 
   // try to extract the collection name, key, and revision from the object passed
   if (! ExtractDocumentHandle(val, collectionName, key, rid)) {
-    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                                            "<document-handle> must be a valid document-handle"));
+    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
   }
 
   // we have at least a key, we also might have a collection name
@@ -9439,8 +9492,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     // only a document key without collection name was passed
     if (collection == 0) {
       // we do not know the collection
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                                               "<document-handle> must be a document-handle"));
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
     }
     // we use the current collection's name
     collectionName = resolver.getCollectionName(collection->_cid);
@@ -9449,9 +9501,9 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     // we read a collection name from the document id
     // check cross-collection requests
     if (collection != 0) {
-      if (collectionName != resolver.getCollectionName(collection->_cid)) {
-        return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
-                                                 "cannot execute cross collection query"));
+      if (collectionName != resolver.getCollectionName(collection->_cid) &&
+          collectionName != StringUtils::itoa(collection->_cid)) {
+        return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
       }
     }
   }
@@ -9463,8 +9515,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     const TRI_vocbase_col_t* col = resolver.getCollectionStruct(collectionName);
     if (col == 0) {
       // collection not found
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                               "collection of <document-handle> is unknown"));
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
     }
 
     collection = col;
@@ -9484,7 +9535,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
                                       v8::Handle<v8::Value> val,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {
-  // reset the collection identifier and the revision
+  // reset the collection identifier
   string collectionName = "";
   TRI_idx_iid_t iid = 0;
 
@@ -9492,16 +9543,15 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
   assert(collection != 0);
   assert(collection->_collection != 0);
 
-  // extract the document identifier and revision from a string
+  // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-                                   "<index-handle> must be an index-handle");
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return 0;
     }
   }
 
-  // extract the document identifier and revision from a string
+  // extract the index identifier from an object
   else if (val->IsObject()) {
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -9509,18 +9559,17 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
     v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-                                   "expecting an index-handle in id");
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return 0;
     }
   }
 
   if (collectionName != "") {
-    if (collectionName != collection->_name) {
+    if (collectionName != collection->_name && 
+        collectionName != StringUtils::itoa(collection->_cid)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
-                                   "cannot execute cross collection index");
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
       return 0;
     }
   }
@@ -9529,7 +9578,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
 
   if (idx == 0) {
     if (! ignoreNotFound) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, "index is unknown");
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
 

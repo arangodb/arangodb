@@ -756,7 +756,7 @@ bool TRI_ValidateDocumentIdKeyGenerator (char const* key,
   char c = *p;
 
   // extract collection name
-  if (! (c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+  if (! (c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
     return false;
   }
 
