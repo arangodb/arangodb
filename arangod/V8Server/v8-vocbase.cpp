@@ -358,7 +358,7 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase,
       = ClusterInfo::instance()->getCollections(database);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    const std::string& name = collections[i]->name();
+    string const& name = collections[i]->name();
     char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(),
                                                           name.size());
 
@@ -694,7 +694,7 @@ static void ReleaseCollection (TRI_vocbase_col_t const* collection) {
 /// @brief returns the index representation
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> IndexRep (char const* collectionName, 
+static v8::Handle<v8::Value> IndexRep (string const& collectionName, 
                                        TRI_json_t const* idx) {
   v8::HandleScope scope;
 
@@ -703,22 +703,883 @@ static v8::Handle<v8::Value> IndexRep (char const* collectionName,
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
   string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
-  const string id = string(collectionName) + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  const string id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
   rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), id.size()));
 
   return scope.Close(rep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the index representation
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> IndexRep (TRI_collection_t const* col, 
-                                       TRI_json_t const* idx) {
+#ifdef TRI_ENABLE_CLUSTER
+static bool IndexComparator (TRI_json_t const* lhs,
+                             TRI_json_t const* rhs) {
+  TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
+  assert(TRI_IsStringJson(typeJson));
+
+  // type must be identical
+  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupArrayJson(rhs, "type"))) {
+    return false;
+  }
+  
+  TRI_idx_type_e type = TRI_TypeIndex(typeJson->_value._string.data);
+
+
+  // unique must be identical if present
+  TRI_json_t* value = TRI_LookupArrayJson(lhs, "unique");
+  if (TRI_IsBooleanJson(value)) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "unique"))) {
+      return false;
+    }
+  }
+
+ 
+  if (type == TRI_IDX_TYPE_GEO1_INDEX) {
+    // geoJson must be identical if present
+    value = TRI_LookupArrayJson(lhs, "geoJson");
+    if (TRI_IsBooleanJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "geoJson"))) {
+        return false;
+      }
+    }
+  }
+  else if (type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    // minLength
+    value = TRI_LookupArrayJson(lhs, "minLength");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "minLength"))) {
+        return false;
+      }
+    }
+  }
+  else if (type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
+    // size, byteSize
+    value = TRI_LookupArrayJson(lhs, "size");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "size"))) {
+        return false;
+      }
+    }
+    
+    value = TRI_LookupArrayJson(lhs, "byteSize");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "byteSize"))) {
+        return false;
+      }
+    }
+  }
+
+  // fields must be identical if present
+  value = TRI_LookupArrayJson(lhs, "fields");
+  if (TRI_IsListJson(value)) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the unique flag from the data
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExtractBoolFlag (v8::Handle<v8::Object> const& obj,
+                      char const* name,
+                      bool defaultValue) {
+  // extract unique flag
+  if (obj->Has(TRI_V8_SYMBOL(name))) {
+    return TRI_ObjectToBoolean(obj->Get(TRI_V8_SYMBOL(name)));
+  }
+
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the fields list and add them to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  vector<string> fields;
+
+  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+    // "fields" is a list of fields
+    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+
+    const uint32_t n = fieldList->Length();
+
+    if (n % 2 != 0) {
+      // must have an even number of fields
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    
+    for (uint32_t i = 0; i < n; i += 2) {
+      if (! fieldList->Get(i)->IsString()) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      const string f = TRI_ObjectToString(fieldList->Get(i));
+
+      if (f.empty() || f[0] == '_') {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+      }
+
+      if (! fieldList->Get(i + 1)->IsArray()) {
+        // parameter at uneven position must be a list
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.push_back(f);
+    }
+  }
+  
+  if (fields.empty()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
+
+  if (fieldJson == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+     
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the fields list and add them to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexFields (v8::Handle<v8::Object> const& obj,
+                        TRI_json_t* json,
+                        int numFields = 0) {
+  vector<string> fields;
+
+  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+    // "fields" is a list of fields
+    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+
+    const uint32_t n = fieldList->Length();
+    
+    for (uint32_t i = 0; i < n; ++i) {
+      if (! fieldList->Get(i)->IsString()) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      const string f = TRI_ObjectToString(fieldList->Get(i));
+
+      if (f.empty() || f[0] == '_') {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.push_back(f);
+    }
+  }
+  
+  if (fields.empty() || 
+      (numFields > 0 && (int) fields.size() != numFields)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
+
+  if (fieldJson == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+     
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the geojson flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const& obj,
+                            TRI_json_t* json) {
+  bool geoJson = ExtractBoolFlag(obj, "geoJson", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the unique flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const& obj,
+                            TRI_json_t* json) {
+  bool unique = ExtractBoolFlag(obj, "unique", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the ignoreNull flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexIgnoreNullFlag (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  bool ignoreNull = ExtractBoolFlag(obj, "ignoreNull", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the undefined flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const& obj,
+                               TRI_json_t* json) {
+  bool undefined = ExtractBoolFlag(obj, "undefined", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a geo1 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 1);
+  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexIgnoreNullFlag(obj, json);
+  ProcessIndexGeoJsonFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a geo2 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 2);
+  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexIgnoreNullFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json);
+  ProcessIndexUniqueFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json);
+  ProcessIndexUniqueFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessBitarrayIndexFields(obj, json);
+  ProcessIndexUndefinedFlag(obj, json);
+
+  if (TRI_LookupArrayJson(json, "unique") != NULL) {
+    // unique bitarrays are not supported
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 1);
+
+  // handle "minLength" attribute
+  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+  if (obj->Has(TRI_V8_SYMBOL("minLength")) && obj->Get(TRI_V8_SYMBOL("minLength"))->IsNumber()) {
+    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("minLength")));
+  }
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  // handle "size" attribute
+  size_t count = 0;
+  if (obj->Has(TRI_V8_SYMBOL("size")) && obj->Get(TRI_V8_SYMBOL("size"))->IsNumber()) {
+    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size")));
+  
+    if (value < 0 || value > UINT32_MAX) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    count = (size_t) value;
+  }
+
+  // handle "byteSize" attribute
+  int64_t byteSize = 0;
+  if (obj->Has(TRI_V8_SYMBOL("byteSize")) && obj->Get(TRI_V8_SYMBOL("byteSize"))->IsNumber()) {
+    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("byteSize")));
+  }
+
+  if (count == 0 && byteSize <= 0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+    
+  if (byteSize < 0 || (byteSize > 0 && byteSize < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, byteSize));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of an index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceIndexJson (v8::Arguments const& argv,
+                             TRI_json_t*& json) {
+  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+
+  // extract index type  
+  TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
+  if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
+    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
+
+    if (*typeString == 0) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    type = TRI_TypeIndex(*typeString);
+  }
+
+  if (type == TRI_IDX_TYPE_UNKNOWN) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  if (obj->Has(TRI_V8_SYMBOL("id"))) {
+    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_SYMBOL("id")), true);
+    if (id > 0) {
+      char* idString = TRI_StringUInt64(id);
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+    }
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                       json, 
+                       "type", 
+                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
+  
+  int res = TRI_ERROR_INTERNAL;
+
+  switch (type) {
+    case TRI_IDX_TYPE_UNKNOWN: 
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      break;
+    }
+
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX: {
+      break;
+    }
+
+    case TRI_IDX_TYPE_GEO1_INDEX:
+      res = EnhanceJsonIndexGeo1(obj, json);
+      break;
+    case TRI_IDX_TYPE_GEO2_INDEX:
+      res = EnhanceJsonIndexGeo2(obj, json);
+      break;
+    case TRI_IDX_TYPE_HASH_INDEX:
+      res = EnhanceJsonIndexHash(obj, json);
+      break;
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      res = EnhanceJsonIndexSkiplist(obj, json);
+      break;
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      res = EnhanceJsonIndexBitarray(obj, json);
+      break;
+    case TRI_IDX_TYPE_FULLTEXT_INDEX: 
+      res = EnhanceJsonIndexFulltext(obj, json);
+      break;
+    case TRI_IDX_TYPE_CAP_CONSTRAINT: 
+      res = EnhanceJsonIndexCap(obj, json);
+      break;
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* collection,
+                                                     TRI_json_t const* json,
+                                                     bool create) {
   v8::HandleScope scope;
 
-  assert(col != 0);
-  return scope.Close(IndexRep(col->_info._name, idx));
+  assert(collection != 0);
+  assert(json != 0);
+
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+  // TODO: protect against races on _name
+  string const collectionName(collection->_name);
+
+  TRI_json_t* resultJson = 0; 
+  string errorMsg;
+  int res = ClusterInfo::instance()->ensureIndexCoordinator(databaseName, 
+                                                            cid, 
+                                                            json,
+                                                            create,
+                                                            &IndexComparator,
+                                                            resultJson,
+                                                            errorMsg, 
+                                                            360.0);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  v8::Handle<v8::Value> ret = IndexRep(collectionName, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index, locally
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collection,
+                                               TRI_json_t const* json,
+                                               bool create) {
+  v8::HandleScope scope;
+
+  assert(collection != 0);
+  assert(json != 0);
+  
+  // extract type
+  TRI_json_t* value = TRI_LookupArrayJson(json, "type");
+  assert(TRI_IsStringJson(value));
+
+  TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
+ 
+  // extract unique
+  bool unique = false;
+  value = TRI_LookupArrayJson(json, "unique");
+  if (TRI_IsBooleanJson(value)) {
+    unique = value->_value._boolean;
+  }
+  
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+
+  TRI_vector_pointer_t values;
+  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
+ 
+  // extract id 
+  TRI_idx_iid_t iid = 0;
+  value = TRI_LookupArrayJson(json, "id");
+  if (TRI_IsStringJson(value)) {
+    iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
+  }
+
+  // extract fields
+  value = TRI_LookupArrayJson(json, "fields");
+  if (TRI_IsListJson(value)) {
+    // note: "fields" is not mandatory for all index types
+    if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+      // copy all field names (attributes) plus the values (json)
+      for (size_t i = 0; i < value->_value._objects._length; i += 2) {
+        // add attribute
+        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
+        assert(TRI_IsStringJson(v));
+        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+        
+        // add value
+        v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i + 1);
+        assert(TRI_IsListJson(v));
+        TRI_PushBackVectorPointer(&values, (void*) v);
+      }
+    }
+    else {
+      // copy all field names (attributes)
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
+
+        assert(TRI_IsStringJson(v));
+        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+      }
+    }
+  }
+  
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorPointer(&values);
+    TRI_DestroyVectorPointer(&attributes);
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  const string collectionName = string(collection->_name);
+
+  bool created = false;
+  TRI_index_t* idx = 0;
+
+  switch (type) {
+    case TRI_IDX_TYPE_UNKNOWN:
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      // these indexes cannot be created directly
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+
+    case TRI_IDX_TYPE_GEO1_INDEX: {
+      assert(attributes._length == 1);
+      
+      bool ignoreNull = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      if (TRI_IsBooleanJson(value)) {
+        ignoreNull = value->_value._boolean;
+      }
+      
+      bool geoJson = false;
+      value = TRI_LookupArrayJson(json, "geoJson");
+      if (TRI_IsBooleanJson(value)) {
+        geoJson = value->_value._boolean;
+      }
+
+      if (create) {
+        idx = TRI_EnsureGeoIndex1DocumentCollection(document, 
+                                                    iid,
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    geoJson, 
+                                                    unique, 
+                                                    ignoreNull, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupGeoIndex1DocumentCollection(document, 
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                     geoJson, 
+                                                     unique, 
+                                                     ignoreNull);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_GEO2_INDEX: {
+      assert(attributes._length == 2);
+      
+      bool ignoreNull = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      if (TRI_IsBooleanJson(value)) {
+        ignoreNull = value->_value._boolean;
+      }
+
+      if (create) {
+        idx = TRI_EnsureGeoIndex2DocumentCollection(document, 
+                                                    iid,
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
+                                                    unique, 
+                                                    ignoreNull, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupGeoIndex2DocumentCollection(document, 
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
+                                                     unique, 
+                                                     ignoreNull);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_HASH_INDEX: {
+      assert(attributes._length > 0);
+
+      if (create) {
+        idx = TRI_EnsureHashIndexDocumentCollection(document,
+                                                    iid, 
+                                                    &attributes, 
+                                                    unique, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupHashIndexDocumentCollection(document, 
+                                                    &attributes, 
+                                                    unique);
+      }
+
+      break;
+    }
+
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      assert(attributes._length > 0);
+
+      if (create) {
+        idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
+                                                        iid,
+                                                        &attributes, 
+                                                        unique, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupSkiplistIndexDocumentCollection(document, 
+                                                        &attributes, 
+                                                        unique);
+      }
+      break;
+    }
+      
+    case TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      assert(attributes._length == 1);
+
+      int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "minLength");
+      if (TRI_IsNumberJson(value)) {
+        minWordLength = (int) value->_value._number;
+      }
+
+      if (create) {
+        idx = TRI_EnsureFulltextIndexDocumentCollection(document,
+                                                        iid, 
+                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                        false, 
+                                                        minWordLength, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupFulltextIndexDocumentCollection(document, 
+                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                        false,
+                                                        minWordLength);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_BITARRAY_INDEX: {
+      assert(attributes._length > 0);
+
+      bool supportUndefined = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "undefined");
+      if (TRI_IsBooleanJson(value)) {
+        supportUndefined = value->_value._boolean;
+      }
+
+      if (create) {
+        int errorCode = TRI_ERROR_NO_ERROR;
+        char* errorStr = 0;
+
+        idx = TRI_EnsureBitarrayIndexDocumentCollection(document,
+                                                        iid,
+                                                        &attributes, 
+                                                        &values, 
+                                                        supportUndefined, 
+                                                        &created, 
+                                                        &errorCode, 
+                                                        &errorStr,
+                                                        TRI_GetIdServer());
+        if (errorCode != 0) {
+          TRI_set_errno(errorCode);
+        }
+      
+        if (errorStr != 0) {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, errorStr);
+        }
+      }
+      else {
+        idx = TRI_LookupBitarrayIndexDocumentCollection(document,
+                                                        &attributes);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_CAP_CONSTRAINT: {
+      size_t size = 0;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "size");
+      if (TRI_IsNumberJson(value)) {
+        size = (size_t) value->_value._number;
+      }
+
+      int64_t byteSize = 0;
+      value = TRI_LookupArrayJson(json, "byteSize");
+      if (TRI_IsNumberJson(value)) {
+        byteSize = (int64_t) value->_value._number;
+      }
+
+      if (create) {
+        idx = TRI_EnsureCapConstraintDocumentCollection(document,
+                                                        iid,
+                                                        size, 
+                                                        byteSize, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupCapConstraintDocumentCollection(document);
+      }
+      break;
+    }
+  }
+
+  if (idx == 0 && create) {
+    // something went wrong during creation
+    int res = TRI_errno();
+    TRI_DestroyVectorPointer(&values);
+    TRI_DestroyVectorPointer(&attributes);
+
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  
+  TRI_DestroyVectorPointer(&values);
+  TRI_DestroyVectorPointer(&attributes);
+
+
+  if (idx == 0 && ! create) {
+    // no index found
+    return scope.Close(v8::Null());
+  }
+
+  // found some index to return
+  TRI_json_t* indexJson = idx->json(idx, false);
+
+  if (indexJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  v8::Handle<v8::Value> ret = IndexRep(collectionName, indexJson);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+  
+  if (ret->IsObject()) {
+    ret->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(create && created));
+  }
+
+  return scope.Close(ret);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
+                                          bool create,
+                                          char const* functionName) {
+  v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+  
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    string name(functionName);
+    name.append("(<description>)");
+    TRI_V8_EXCEPTION_USAGE(scope, name.c_str());
+  }
+
+  TRI_json_t* json = 0;
+  int res = EnhanceIndexJson(argv, json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  assert(json != 0);
+  
+  v8::Handle<v8::Value> ret;
+
+#ifdef TRI_ENABLE_CLUSTER
+  // ensure an index, coordinator case
+  if (ServerState::instance()->isCoordinator()) {
+    ret = EnsureIndexCoordinator(collection, json, create);
+  }
+  else {
+    ret = EnsureIndexLocal(collection, json, create);
+  }
+#else
+  ret = EnsureIndexLocal(collection, json, create);
+#endif
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return scope.Close(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1864,7 +2725,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
         for (uint32_t i = 0 ; i < k->Length(); ++i) {
           v8::Handle<v8::Value> v = k->Get(i);
           if (v->IsString()) {
-            const std::string key = TRI_ObjectToString(v);
+            string const key = TRI_ObjectToString(v);
 
             // system attributes are not allowed (except _key)
             if (! key.empty() && (key[0] != '_' || key == "_key")) {
@@ -2100,81 +2961,6 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   return scope.Close(result);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool IndexComparator (TRI_json_t const* lhs,
-                             TRI_json_t const* rhs) {
-  TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
-  assert(TRI_IsStringJson(typeJson));
-
-  // type must be identical
-  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupArrayJson(rhs, "type"))) {
-    return false;
-  }
-  
-  TRI_idx_type_e type = TRI_TypeIndex(typeJson->_value._string.data);
-
-
-  // unique must be identical if present
-  TRI_json_t* value = TRI_LookupArrayJson(lhs, "unique");
-  if (TRI_IsBooleanJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "unique"))) {
-      return false;
-    }
-  }
-
- 
-  if (type == TRI_IDX_TYPE_GEO1_INDEX) {
-    // geoJson must be identical if present
-    value = TRI_LookupArrayJson(lhs, "geoJson");
-    if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "geoJson"))) {
-        return false;
-      }
-    }
-  }
-  else if (type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    // minLength
-    value = TRI_LookupArrayJson(lhs, "minLength");
-    if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "minLength"))) {
-        return false;
-      }
-    }
-  }
-  else if (type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
-    // size, byteSize
-    value = TRI_LookupArrayJson(lhs, "size");
-    if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "size"))) {
-        return false;
-      }
-    }
-    
-    value = TRI_LookupArrayJson(lhs, "byteSize");
-    if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "byteSize"))) {
-        return false;
-      }
-    }
-  }
-
-  // fields must be identical if present
-  value = TRI_LookupArrayJson(lhs, "fields");
-  if (TRI_IsListJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an Ahuacatl error in a javascript object
@@ -4845,800 +5631,6 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the unique flag from the data
-////////////////////////////////////////////////////////////////////////////////
-
-bool ExtractBoolFlag (v8::Handle<v8::Object> const& obj,
-                      char const* name,
-                      bool defaultValue) {
-  // extract unique flag
-  if (obj->Has(TRI_V8_SYMBOL(name))) {
-    return TRI_ObjectToBoolean(obj->Get(TRI_V8_SYMBOL(name)));
-  }
-
-  return defaultValue;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
-                                TRI_json_t* json) {
-  vector<string> fields;
-
-  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
-    // "fields" is a list of fields
-    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
-
-    const uint32_t n = fieldList->Length();
-
-    if (n % 2 != 0) {
-      // must have an even number of fields
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    
-    for (uint32_t i = 0; i < n; i += 2) {
-      if (! fieldList->Get(i)->IsString()) {
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      const string f = TRI_ObjectToString(fieldList->Get(i));
-
-      if (f.empty() || f[0] == '_') {
-        // accessing internal attributes is disallowed
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
-        // duplicate attribute name
-        return TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
-      }
-
-      if (! fieldList->Get(i + 1)->IsArray()) {
-        // parameter at uneven position must be a list
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      fields.push_back(f);
-    }
-  }
-  
-  if (fields.empty()) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
-
-  if (fieldJson == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-     
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexFields (v8::Handle<v8::Object> const& obj,
-                        TRI_json_t* json,
-                        int numFields = 0) {
-  vector<string> fields;
-
-  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
-    // "fields" is a list of fields
-    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
-
-    const uint32_t n = fieldList->Length();
-    
-    for (uint32_t i = 0; i < n; ++i) {
-      if (! fieldList->Get(i)->IsString()) {
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      const string f = TRI_ObjectToString(fieldList->Get(i));
-
-      if (f.empty() || f[0] == '_') {
-        // accessing internal attributes is disallowed
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
-        // duplicate attribute name
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      fields.push_back(f);
-    }
-  }
-  
-  if (fields.empty() || 
-      (numFields > 0 && (int) fields.size() != numFields)) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
-
-  if (fieldJson == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-     
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the geojson flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const& obj,
-                            TRI_json_t* json) {
-  bool geoJson = ExtractBoolFlag(obj, "geoJson", false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the unique flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const& obj,
-                            TRI_json_t* json) {
-  bool unique = ExtractBoolFlag(obj, "unique", false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the ignoreNull flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexIgnoreNullFlag (v8::Handle<v8::Object> const& obj,
-                                TRI_json_t* json) {
-  bool ignoreNull = ExtractBoolFlag(obj, "ignoreNull", false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
-  
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the undefined flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const& obj,
-                               TRI_json_t* json) {
-  bool undefined = ExtractBoolFlag(obj, "undefined", false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a geo1 index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 1);
-  ProcessIndexUniqueFlag(obj, json);
-  ProcessIndexIgnoreNullFlag(obj, json);
-  ProcessIndexGeoJsonFlag(obj, json);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a geo2 index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 2);
-  ProcessIndexUniqueFlag(obj, json);
-  ProcessIndexIgnoreNullFlag(obj, json);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json);
-  ProcessIndexUniqueFlag(obj, json);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json);
-  ProcessIndexUniqueFlag(obj, json);
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessBitarrayIndexFields(obj, json);
-  ProcessIndexUndefinedFlag(obj, json);
-
-  if (TRI_LookupArrayJson(json, "unique") != NULL) {
-    // unique bitarrays are not supported
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 1);
-
-  // handle "minLength" attribute
-  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (obj->Has(TRI_V8_SYMBOL("minLength")) && obj->Get(TRI_V8_SYMBOL("minLength"))->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("minLength")));
-  }
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const& obj,
-                                TRI_json_t* json) {
-  // handle "size" attribute
-  size_t count = 0;
-  if (obj->Has(TRI_V8_SYMBOL("size")) && obj->Get(TRI_V8_SYMBOL("size"))->IsNumber()) {
-    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size")));
-  
-    if (value < 0 || value > UINT32_MAX) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    count = (size_t) value;
-  }
-
-  // handle "byteSize" attribute
-  int64_t byteSize = 0;
-  if (obj->Has(TRI_V8_SYMBOL("byteSize")) && obj->Get(TRI_V8_SYMBOL("byteSize"))->IsNumber()) {
-    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("byteSize")));
-  }
-
-  if (count == 0 && byteSize <= 0) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-    
-  if (byteSize < 0 || (byteSize > 0 && byteSize < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-  
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, byteSize));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of an index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceIndexJson (v8::Arguments const& argv,
-                             TRI_json_t*& json) {
-  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
-
-  // extract index type  
-  TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
-  if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
-    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
-
-    if (*typeString == 0) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    type = TRI_TypeIndex(*typeString);
-  }
-
-  if (type == TRI_IDX_TYPE_UNKNOWN) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (json == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  
-  if (obj->Has(TRI_V8_SYMBOL("id"))) {
-    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_SYMBOL("id")), true);
-    if (id > 0) {
-      char* idString = TRI_StringUInt64(id);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
-      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-    }
-  }
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                       json, 
-                       "type", 
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
-  
-  int res = TRI_ERROR_INTERNAL;
-
-  switch (type) {
-    case TRI_IDX_TYPE_UNKNOWN: 
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
-      break;
-    }
-
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX: {
-      break;
-    }
-
-    case TRI_IDX_TYPE_GEO1_INDEX:
-      res = EnhanceJsonIndexGeo1(obj, json);
-      break;
-    case TRI_IDX_TYPE_GEO2_INDEX:
-      res = EnhanceJsonIndexGeo2(obj, json);
-      break;
-    case TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(obj, json);
-      break;
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(obj, json);
-      break;
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-      res = EnhanceJsonIndexBitarray(obj, json);
-      break;
-    case TRI_IDX_TYPE_FULLTEXT_INDEX: 
-      res = EnhanceJsonIndexFulltext(obj, json);
-      break;
-    case TRI_IDX_TYPE_CAP_CONSTRAINT: 
-      res = EnhanceJsonIndexCap(obj, json);
-      break;
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures an index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* collection,
-                                                     TRI_json_t const* json,
-                                                     bool create) {
-  v8::HandleScope scope;
-
-  assert(collection != 0);
-  assert(json != 0);
-
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int res = ClusterInfo::instance()->ensureIndexCoordinator(databaseName, 
-                                                            cid, 
-                                                            json,
-                                                            create,
-                                                            &IndexComparator,
-                                                            resultJson,
-                                                            errorMsg, 
-                                                            360.0);
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-  
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> ret = IndexRep(collection->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(ret);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures an index, locally
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collection,
-                                               TRI_json_t const* json,
-                                               bool create) {
-  v8::HandleScope scope;
-
-  assert(collection != 0);
-  assert(json != 0);
-  
-  // extract type
-  TRI_json_t* value = TRI_LookupArrayJson(json, "type");
-  assert(TRI_IsStringJson(value));
-
-  TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
- 
-  // extract unique
-  bool unique = false;
-  value = TRI_LookupArrayJson(json, "unique");
-  if (TRI_IsBooleanJson(value)) {
-    unique = value->_value._boolean;
-  }
-  
-  TRI_vector_pointer_t attributes;
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-
-  TRI_vector_pointer_t values;
-  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
- 
-  // extract id 
-  TRI_idx_iid_t iid = 0;
-  value = TRI_LookupArrayJson(json, "id");
-  if (TRI_IsStringJson(value)) {
-    iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
-  }
-
-  // extract fields
-  value = TRI_LookupArrayJson(json, "fields");
-  if (TRI_IsListJson(value)) {
-    // note: "fields" is not mandatory for all index types
-    if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
-      // copy all field names (attributes) plus the values (json)
-      for (size_t i = 0; i < value->_value._objects._length; i += 2) {
-        // add attribute
-        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
-        assert(TRI_IsStringJson(v));
-        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
-        
-        // add value
-        v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i + 1);
-        assert(TRI_IsListJson(v));
-        TRI_PushBackVectorPointer(&values, (void*) v);
-      }
-    }
-    else {
-      // copy all field names (attributes)
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
-
-        assert(TRI_IsStringJson(v));
-        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
-      }
-    }
-  }
-  
-  CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
-
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorPointer(&values);
-    TRI_DestroyVectorPointer(&attributes);
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
-
-  bool created = false;
-  TRI_index_t* idx = 0;
-
-  switch (type) {
-    case TRI_IDX_TYPE_UNKNOWN:
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX:
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
-      // these indexes cannot be created directly
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
-    }
-
-    case TRI_IDX_TYPE_GEO1_INDEX: {
-      assert(attributes._length == 1);
-      
-      bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
-      if (TRI_IsBooleanJson(value)) {
-        ignoreNull = value->_value._boolean;
-      }
-      
-      bool geoJson = false;
-      value = TRI_LookupArrayJson(json, "geoJson");
-      if (TRI_IsBooleanJson(value)) {
-        geoJson = value->_value._boolean;
-      }
-
-      if (create) {
-        idx = TRI_EnsureGeoIndex1DocumentCollection(document, 
-                                                    iid,
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                    geoJson, 
-                                                    unique, 
-                                                    ignoreNull, 
-                                                    &created, 
-                                                    TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupGeoIndex1DocumentCollection(document, 
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                     geoJson, 
-                                                     unique, 
-                                                     ignoreNull);
-      }
-      break;
-    }
-
-    case TRI_IDX_TYPE_GEO2_INDEX: {
-      assert(attributes._length == 2);
-      
-      bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
-      if (TRI_IsBooleanJson(value)) {
-        ignoreNull = value->_value._boolean;
-      }
-
-      if (create) {
-        idx = TRI_EnsureGeoIndex2DocumentCollection(document, 
-                                                    iid,
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
-                                                    unique, 
-                                                    ignoreNull, 
-                                                    &created, 
-                                                    TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupGeoIndex2DocumentCollection(document, 
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
-                                                     unique, 
-                                                     ignoreNull);
-      }
-      break;
-    }
-
-    case TRI_IDX_TYPE_HASH_INDEX: {
-      assert(attributes._length > 0);
-
-      if (create) {
-        idx = TRI_EnsureHashIndexDocumentCollection(document,
-                                                    iid, 
-                                                    &attributes, 
-                                                    unique, 
-                                                    &created, 
-                                                    TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupHashIndexDocumentCollection(document, 
-                                                    &attributes, 
-                                                    unique);
-      }
-
-      break;
-    }
-
-    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      assert(attributes._length > 0);
-
-      if (create) {
-        idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
-                                                        iid,
-                                                        &attributes, 
-                                                        unique, 
-                                                        &created, 
-                                                        TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupSkiplistIndexDocumentCollection(document, 
-                                                        &attributes, 
-                                                        unique);
-      }
-      break;
-    }
-      
-    case TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      assert(attributes._length == 1);
-
-      int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "minLength");
-      if (TRI_IsNumberJson(value)) {
-        minWordLength = (int) value->_value._number;
-      }
-
-      if (create) {
-        idx = TRI_EnsureFulltextIndexDocumentCollection(document,
-                                                        iid, 
-                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                        false, 
-                                                        minWordLength, 
-                                                        &created, 
-                                                        TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupFulltextIndexDocumentCollection(document, 
-                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                        false,
-                                                        minWordLength);
-      }
-      break;
-    }
-
-    case TRI_IDX_TYPE_BITARRAY_INDEX: {
-      assert(attributes._length > 0);
-
-      bool supportUndefined = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "undefined");
-      if (TRI_IsBooleanJson(value)) {
-        supportUndefined = value->_value._boolean;
-      }
-
-      if (create) {
-        int errorCode = TRI_ERROR_NO_ERROR;
-        char* errorStr = 0;
-
-        idx = TRI_EnsureBitarrayIndexDocumentCollection(document,
-                                                        iid,
-                                                        &attributes, 
-                                                        &values, 
-                                                        supportUndefined, 
-                                                        &created, 
-                                                        &errorCode, 
-                                                        &errorStr,
-                                                        TRI_GetIdServer());
-        if (errorCode != 0) {
-          TRI_set_errno(errorCode);
-        }
-      
-        if (errorStr != 0) {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, errorStr);
-        }
-      }
-      else {
-        idx = TRI_LookupBitarrayIndexDocumentCollection(document,
-                                                        &attributes);
-      }
-      break;
-    }
-
-    case TRI_IDX_TYPE_CAP_CONSTRAINT: {
-      size_t size = 0;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "size");
-      if (TRI_IsNumberJson(value)) {
-        size = (size_t) value->_value._number;
-      }
-
-      int64_t byteSize = 0;
-      value = TRI_LookupArrayJson(json, "byteSize");
-      if (TRI_IsNumberJson(value)) {
-        byteSize = (int64_t) value->_value._number;
-      }
-
-      if (create) {
-        idx = TRI_EnsureCapConstraintDocumentCollection(document,
-                                                        iid,
-                                                        size, 
-                                                        byteSize, 
-                                                        &created, 
-                                                        TRI_GetIdServer());
-      }
-      else {
-        idx = TRI_LookupCapConstraintDocumentCollection(document);
-      }
-      break;
-    }
-  }
-
-  if (idx == 0 && create) {
-    // something went wrong during creation
-    int res = TRI_errno();
-    TRI_DestroyVectorPointer(&values);
-    TRI_DestroyVectorPointer(&attributes);
-
-    TRI_V8_EXCEPTION(scope, res);
-  }
-  
-  TRI_DestroyVectorPointer(&values);
-  TRI_DestroyVectorPointer(&attributes);
-
-
-  if (idx == 0 && ! create) {
-    // no index found
-    return scope.Close(v8::Null());
-  }
-
-  // found some index to return
-  TRI_json_t* indexJson = idx->json(idx, false);
-
-  if (indexJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-  
-  v8::Handle<v8::Value> ret = IndexRep(&document->base.base, indexJson);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
-  
-  if (ret->IsObject()) {
-    ret->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(create && created));
-  }
-
-  return scope.Close(ret);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures an index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
-                                          bool create,
-                                          char const* functionName) {
-  v8::HandleScope scope;
-  
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-  
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    string name(functionName);
-    name.append("(<description>)");
-    TRI_V8_EXCEPTION_USAGE(scope, name.c_str());
-  }
-
-  TRI_json_t* json = 0;
-  int res = EnhanceIndexJson(argv, json);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (json != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  assert(json != 0);
-  
-  v8::Handle<v8::Value> ret;
-
-#ifdef TRI_ENABLE_CLUSTER
-  // ensure an index, coordinator case
-  if (ServerState::instance()->isCoordinator()) {
-    ret = EnsureIndexCoordinator(collection, json, create);
-  }
-  else {
-    ret = EnsureIndexLocal(collection, json, create);
-  }
-#else
-  ret = EnsureIndexLocal(collection, json, create);
-#endif
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  return scope.Close(ret);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
@@ -6186,6 +6178,42 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the indexes, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* collection) {
+  v8::HandleScope scope;
+    
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+  string const collectionName(collection->_name);
+    
+  TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
+  
+  v8::Handle<v8::Array> ret = v8::Array::New();
+
+  if (! (*c).empty()) {
+    TRI_json_t const* json = (*c).getIndexes();
+
+    if (TRI_IsListJson(json)) {
+      uint32_t j = 0;
+
+      for (size_t i = 0;  i < json->_value._objects._length; ++i) {
+        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+        if (v != 0) {
+          ret->Set(j++, IndexRep(collectionName, v));
+        }
+      }
+    }
+  }
+
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
 /// @FUN{getIndexes(@FA{withStats})}
@@ -6213,8 +6241,12 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+ 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(GetIndexesCoordinator(collection));
+  }
+#endif
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6224,12 +6256,12 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
-  TRI_collection_t* c = (TRI_collection_t*) &(document->base.base);
-
+  
   // READ-LOCK start
   trx.lockRead();
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  const string collectionName = string(collection->_name);
 
   // get list of indexes
   TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, withStats);
@@ -6237,7 +6269,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   trx.finish(res);
   // READ-LOCK end
 
-  if (! indexes) {
+  if (indexes == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -6248,8 +6280,8 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   for (uint32_t i = 0, j = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
 
-    if (idx != NULL) {
-      result->Set(j++, IndexRep(c, idx));
+    if (idx != 0) {
+      result->Set(j++, IndexRep(collectionName, idx));
       TRI_FreeJson(TRI_CORE_MEM_ZONE, idx);
     }
   }
@@ -6288,7 +6320,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "selected database is not a cluster database");
     }
     
-    const std::string cid = StringUtils::itoa(collection->_cid);
+    string const cid = StringUtils::itoa(collection->_cid);
     int res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -7854,7 +7886,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
 
-  const std::string name = TRI_ObjectToString(val);
+  string const name = TRI_ObjectToString(val);
   return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
 }
 
@@ -7907,7 +7939,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
-    const std::string name = TRI_ObjectToString(val);
+    string const name = TRI_ObjectToString(val);
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(originalDatabase, name);
 

@@ -381,16 +381,6 @@ function handleDatabaseChanges (plan, current) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index in a shard
-////////////////////////////////////////////////////////////////////////////////
-
-function createIndex (shard, index) {
-  var collection = arangodb.db._collection(shard);
-                           
-  return collection.ensureIndex(index); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -544,7 +534,7 @@ function createLocalCollections (plannedCollections) {
                                          shard,
                                          JSON.stringify(index));
 
-                            createIndex(shard, index);
+                            arangodb.db._collection(shard).ensureIndex(index);
                           }
                         }
                       }
