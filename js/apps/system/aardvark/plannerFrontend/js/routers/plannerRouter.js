@@ -4,27 +4,38 @@
 (function() {
   "use strict";
 
-  window.Router = Backbone.Router.extend({
+  window.plannerRouter = Backbone.Router.extend({
     routes: {
-      "planTest"                                : "planTest"
+      "planTest"                                : "planTest",
+      "planScenarioSelector"                    : "planScenarioSelector"
     },
 
     planTest: function() {
-              console.log("Startup");
       if (!this.planTestView) {
         this.planTestView = new window.PlanTestView();
       }
-              console.log("Renderung");
       this.planTestView.render();
     },
 
+    planScenarioSelector: function() {
+      if (!this.PlanScenarioSelector) {
+          this.PlanScenarioSelector = new window.PlanScenarioSelectorView();
+      }
+      this.PlanScenarioSelector.render();
+    },
+
+
+
     initialize: function () {
-                  console.log("initio");
       /*
       this.footerView = new window.FooterView();
       this.footerView.render();
       */
-    }
+   },
+
+   handleResize: function() {
+     // Not needed here
+   }
   });
 
 }());

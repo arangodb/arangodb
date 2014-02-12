@@ -1,5 +1,33 @@
-<form>
-  <label>Server:</label><input type="text" id="host" placeholder="Server" class="serverInput" ></input>:<input type="text" class="portInput" id="port" placeholder="port"></input>
-  <label>Coordinators:</label><input type="text" id="coordintors" placeholder="1"></input>
-  <label>DBServers:</label><input type="text" id="dbs"placeholder="1"></input>
+<ul class="thumbnails2">
+  <div class="headerBar">
+    <a class="arangoHeader">Plan a single server test configuration</a>
+  </div>
+</ul>
+
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+  <fieldset>
+    <div class="control-group">
+      <label for="host" class="control-label">Server:</label>
+      <div class="controls">
+        <input type="text" id="host" placeholder="Server" class="input-xlarge"></input>:<input type="text" maxlength="5" class="input-small" id="port" placeholder="port"></input>
+      </div>
+    </div>
+    <div class="control-group">
+      <label for="coordinators" class="control-label">Coordinators:</label>
+      <div class="controls">
+        <input type="text" id="coordinators" placeholder="1" class="input-xlarge"></input>
+      </div>
+    </div>
+    <div class="control-group">
+      <label for="coordinators" class="control-label">DB Servers:</label>
+      <div class="controls">
+        <input type="text" id="dbs" placeholder="1" class="input-xlarge"></input>
+      </div>
+    </div>
+  </fieldset>
+  <div class="control-group">
+    <div class="controls">
+      <button class="btn btn-success" id="startPlan">Create Cluster</button>    
+    </div>
+  </div>
 </form>
