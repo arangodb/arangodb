@@ -224,9 +224,10 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 /// @brief cluster coordinator case, parse a key and possible revision
 ////////////////////////////////////////////////////////////////////////////////
 
-static int parseKeyAndRef(v8::Handle<v8::Value> arg, 
-                          string& key,
-                          TRI_voc_rid_t& rev) {
+#ifdef TRI_ENABLE_CLUSTER
+static int parseKeyAndRef (v8::Handle<v8::Value> arg, 
+                           string& key,
+                           TRI_voc_rid_t& rev) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   rev = 0;
   if (arg->IsString()) {
@@ -258,6 +259,7 @@ static int parseKeyAndRef(v8::Handle<v8::Value> arg,
   }
   return TRI_ERROR_NO_ERROR;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of the current database
@@ -5932,6 +5934,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 /// @brief drops an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
                                                    v8::Handle<v8::Value> const& val) {
   v8::HandleScope scope;
@@ -5974,6 +5977,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 
   return scope.Close(v8::Boolean::New(res == TRI_ERROR_NO_ERROR));
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
