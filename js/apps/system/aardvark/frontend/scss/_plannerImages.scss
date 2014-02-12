@@ -1,0 +1,12 @@
+.scenarioImage{
+  @extend %clickable;
+  height : 70%;
+  width  : auto;
+
+}
+
+li.bigtile {
+  @extend li.tile;
+  height:250px;
+  width: 345px;
+}

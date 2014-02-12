@@ -7,16 +7,16 @@
 
   describe("PlanScenarioSelector View", function() {
 
-    var myView;
-    window.App = function() {};
-    window.App.navigate = function() {};
+  var myView;
 
     beforeEach(function() {
-      $('body').append('<div id="content" class="removeMe"></div>');
-
-      myView = new window.CollectionView({
-        model: arangoCollection
-      });
+        $('body').append('<div id="content" class="removeMe"></div>');
+        window.App = {
+            navigate: function() {}
+        };
+        spyOn(window.App, "navigate");
+        myView = new window.PlanScenarioSelectorView();
+        myView.render();
 
     });
 
@@ -25,21 +25,22 @@
     });
 
 
-    describe("Collection Changes", function() {
-      it("Check if changes were submitted", function() {
+    describe("select scenario", function() {
+        it("multiServerSymmetrical", function() {
+            $("#multiServerSymmetrical").click();
+            expect(App.navigate).toHaveBeenCalledWith("planSymmetrical", {trigger: true});
 
-        var pressedEnter = false;
-        myView.render();
-
-        spyOn(myView, 'saveModifiedCollection').andCallFake(function(request) {
-          pressedEnter = true;
         });
 
-        myView.saveModifiedCollection();
-        expect(pressedEnter).toBeTruthy();
-      });
+        it("multiServerAsymmetrical", function() {
+          $("#multiServerAsymmetrical").click();
+          expect(App.navigate).toHaveBeenCalledWith("planAsymmetrical", {trigger: true});
 
-
+        });
+        it("singleServer", function() {
+          $("#singleServer").click();
+          expect(App.navigate).toHaveBeenCalledWith("planTest", {trigger: true});
+        });
     });
   });
 }());
