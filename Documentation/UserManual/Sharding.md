@@ -72,7 +72,7 @@ Start up a regular ArangoDB, either in console mode or connect to it with
 the Arango shell `arangosh`. Then you can ask it to plan a cluster for
 you:
 
-    arangodb> var Planner = require("org/arangodb/cluster/planner").Planner;
+    arangodb> var Planner = require("org/arangodb/cluster").Planner;
     arangodb> p = new Planner({numberOfDBservers:3, numberOfCoordinators:2});
     [object Object]
 
@@ -127,7 +127,7 @@ data directories and log files, so if you have previously used the same
 cluster plan you will lose all your data. Use the `relaunch` method
 described below instead in that case.
 
-    arangodb> var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+    arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
     arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 
@@ -201,7 +201,7 @@ running on the network addresses `tcp://192.168.173.78:8529` and
 instance installed and running, please make sure that both bind to
 all network devices, such that they can talk to each other.
 
-    arangodb> var Planner = require("org/arangodb/cluster/planner").Planner;
+    arangodb> var Planner = require("org/arangodb/cluster").Planner;
     arangodb> var p = new Planner({
          dispatchers: {"me":{"endpoint":"tcp://192.168.173.78:8529"},
                        "theother":{"endpoint":"tcp://192.168.173.13:6789"}}, 
@@ -211,6 +211,8 @@ With this you create a cluster plan involving two machines. The planner
 will put one DBserver and one coordinator on each machine. You can now
 launch this cluster exactly as above:
 
+    arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+    arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 
 Likewise, the methods `shutdown`, `relaunch`, `isHealthy` and `cleanup`

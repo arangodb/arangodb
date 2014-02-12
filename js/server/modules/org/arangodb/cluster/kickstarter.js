@@ -36,6 +36,7 @@ var download = require("internal").download;
 var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
+var base64Encode = require("internal").base64Encode;
 
 var fs = require("fs");
 var wait = require("internal").wait;
@@ -324,8 +325,16 @@ shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
 
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
+  var url;
+  for (i = 0;i < run.endpoints.length;i++) {
+    console.info("Using API to shutdown %s", run.pids[i].toString());
+    url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
+    download(url);
+  }
+  console.info("Waiting 10 seconds for servers to shutdown gracefully...");
+  wait(10);
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Shutting down %s", run.pids[i].toString());
+    console.info("Shutting down %s the hard way...", run.pids[i].toString());
     killExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
@@ -492,7 +501,14 @@ Kickstarter.prototype.launch = function () {
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "POST"});
+      var hdrs = {};
+      if (dispatchers[cmd.dispatcher].username !== undefined &&
+          dispatchers[cmd.dispatcher].passwd !== undefined) {
+        hdrs.Authorization = "Basic "+
+                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
+                                     dispatchers[cmd.dispatcher].passwd);
+      }
+      var response = download(url, body, {"method": "POST", "headers": hdrs});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -576,7 +592,14 @@ Kickstarter.prototype.relaunch = function () {
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "POST"});
+      var hdrs = {};
+      if (dispatchers[cmd.dispatcher].username !== undefined &&
+          dispatchers[cmd.dispatcher].passwd !== undefined) {
+        hdrs.Authorization = "Basic "+
+                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
+                                     dispatchers[cmd.dispatcher].passwd);
+      }
+      var response = download(url, body, {"method": "POST", "headers": hdrs});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -645,7 +668,14 @@ Kickstarter.prototype.shutdown = function() {
                                   "runInfo": [run],
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "POST"});
+      var hdrs = {};
+      if (dispatchers[cmd.dispatcher].username !== undefined &&
+          dispatchers[cmd.dispatcher].passwd !== undefined) {
+        hdrs.Authorization = "Basic "+
+                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
+                                     dispatchers[cmd.dispatcher].passwd);
+      }
+      var response = download(url, body, {"method": "POST", "headers": hdrs});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -713,7 +743,14 @@ Kickstarter.prototype.cleanup = function() {
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "POST"});
+      var hdrs = {};
+      if (dispatchers[cmd.dispatcher].username !== undefined &&
+          dispatchers[cmd.dispatcher].passwd !== undefined) {
+        hdrs.Authorization = "Basic "+
+                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
+                                     dispatchers[cmd.dispatcher].passwd);
+      }
+      var response = download(url, body, {"method": "POST", "headers": hdrs});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -782,7 +819,14 @@ Kickstarter.prototype.isHealthy = function() {
                                   "runInfo": [run],
                                   "myname": cmd.dispatcher });
       var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
-      var response = download(url, body, {"method": "POST"});
+      var hdrs = {};
+      if (dispatchers[cmd.dispatcher].username !== undefined &&
+          dispatchers[cmd.dispatcher].passwd !== undefined) {
+        hdrs.Authorization = "Basic "+
+                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
+                                     dispatchers[cmd.dispatcher].passwd);
+      }
+      var response = download(url, body, {"method": "POST", "headers": hdrs});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",

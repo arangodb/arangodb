@@ -59,7 +59,7 @@
         "frontend/js/models/**",
         "frontend/js/collections/**",
         "frontend/js/views/**",
-        "frontend/js/routers/router.js",
+        "frontend/js/routers/plannerRouter.js",
         "frontend/js/routers/startApp.js"
       ]
     },
@@ -183,8 +183,7 @@
         "plannerFrontend/js/collections/**",
         "frontend/js/views/footerView.js",
         "plannerFrontend/js/views/**",
-        "plannerFrontend/js/router/**",
-        "frontend/js/routers/startApp.js"
+        "plannerFrontend/js/router/**"
       ]
     }
   },

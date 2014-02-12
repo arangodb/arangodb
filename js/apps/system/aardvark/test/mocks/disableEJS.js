@@ -3,9 +3,8 @@
 
 (function() {
   "use strict";
-  var FakeTE = function() {
-    var prefix = "base/frontend/js/templates/",
-      exports = {};
+  var FakeTE = function(prefix) {
+    var exports = {};
     exports.createTemplate = function(path) {
       var param = {
         url: prefix + path
@@ -14,5 +13,6 @@
     };
     return exports;
   };
-  window.templateEngine = new FakeTE();
+  window.templateEngine = new FakeTE("base/frontend/js/templates/");
+  window.plannerTemplateEngine = new FakeTE("base/plannerFrontend/js/templates/");
 }());
