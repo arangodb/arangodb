@@ -155,7 +155,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
                                  ApplicationDispatcher* dispatcher,
-                                 AsyncJobManager* jobManager),
+                                 AsyncJobManager* jobManager,
                                  ApplicationServer* applicationServer) {
 
   // add "/version" handler
