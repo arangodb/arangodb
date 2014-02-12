@@ -17,6 +17,6 @@ Accessing Fulltext Indexes from the Shell{#IndexFulltextShell}
 ==============================================================
 
 @anchor IndexFulltextShellEnsureFulltextIndex
-@copydetails JS_EnsureFulltextIndexVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureFulltextIndex
 
 @BNAVIGATE_IndexFulltext
