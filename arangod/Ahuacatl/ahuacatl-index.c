@@ -261,6 +261,7 @@ static bool CanUseIndex (const TRI_index_t* const idx) {
 
   // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
   switch (idx->_type) {
+    case TRI_IDX_TYPE_UNKNOWN:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:

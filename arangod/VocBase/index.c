@@ -112,6 +112,42 @@ void TRI_InitIndex (TRI_index_t* idx,
 /// @brief return the name of an index type
 ////////////////////////////////////////////////////////////////////////////////
 
+TRI_idx_type_e TRI_TypeIndex (char const* type) {
+  if (TRI_EqualString(type, "primary")) {
+    return TRI_IDX_TYPE_PRIMARY_INDEX;
+  }
+  else if (TRI_EqualString(type, "edge")) {
+    return TRI_IDX_TYPE_EDGE_INDEX;
+  }
+  else if (TRI_EqualString(type, "hash")) {
+    return TRI_IDX_TYPE_HASH_INDEX;
+  }
+  else if (TRI_EqualString(type, "skiplist")) {
+    return TRI_IDX_TYPE_SKIPLIST_INDEX;
+  }
+  else if (TRI_EqualString(type, "fulltext")) {
+    return TRI_IDX_TYPE_FULLTEXT_INDEX;
+  }
+  else if (TRI_EqualString(type, "bitarray")) {
+    return TRI_IDX_TYPE_BITARRAY_INDEX;
+  }
+  else if (TRI_EqualString(type, "cap")) {
+    return TRI_IDX_TYPE_CAP_CONSTRAINT;
+  }
+  else if (TRI_EqualString(type, "geo1")) {
+    return TRI_IDX_TYPE_GEO1_INDEX;
+  }
+  else if (TRI_EqualString(type, "geo2")) {
+    return TRI_IDX_TYPE_GEO2_INDEX;
+  }
+
+  return TRI_IDX_TYPE_UNKNOWN;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
 char const* TRI_TypeNameIndex (TRI_idx_type_e type) {
   switch (type) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
@@ -133,12 +169,12 @@ char const* TRI_TypeNameIndex (TRI_idx_type_e type) {
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return "cap";
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    default:
-      return "unknown";
+    case TRI_IDX_TYPE_UNKNOWN:
+    default: {
+    }
   }
 
-  assert(false);
-  return "unknown";
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
