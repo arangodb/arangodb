@@ -26,7 +26,7 @@
   border-width: 1px;
   border-style: solid;
   border-bottom: 0px;
-  height: 20px;
+  height: 27px;
   background-color: #F0F0F0;
 }
 
@@ -295,4 +295,13 @@
 
 #queryDropdownIn #delete-edit-query {
   margin-left: 0 !important;
+}
+
+#queryDiv .icon_arangodb {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+#queryDiv .icon_arangodb:hover {
+  cursor: pointer;
 }

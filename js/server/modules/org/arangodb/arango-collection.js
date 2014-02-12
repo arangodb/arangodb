@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global ArangoClusterComm, ArangoClusterInfo, require, exports */
+/*global ArangoClusterComm, ArangoClusterInfo, require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection

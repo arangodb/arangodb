@@ -1,3 +1,24 @@
+.writeable .jediTextarea {
+  width: 100%;
+}
+
+#documentTableID tr td:first-child textarea {
+  resize: none !important;
+  height: 20px !important;
+}
+
+#documentTableID tr .jediTextarea .btn-success {
+  margin-right: -13px !important;
+}
+
+.writeable .jediTextarea textarea {
+  width: 100%;
+}
+
+#documentTableID .rightCell textarea {
+  resize: vertical !important;
+}
+
 .sorting_1 textarea {
   display: inline !important;
   max-width: 120px !important;
@@ -78,6 +99,11 @@
 
 .deleteAttribute {
   color: #B30000;
+  margin-right: -4px;
+}
+
+.deleteAttribute:hover {
+  color: #B30000;
 }
 
 .editSecondAttribute, .editFirstAttribute, .docPreview {
@@ -88,6 +114,11 @@
   color: #444444;
   font-size: 16px;
   padding-top: 4px;
+}
+
+.editSecondAttribute:hover, .editFirstAttribute:hover {
+  cursor: pointer;
+  color: #444444;
 }
 
 .editFirstAttribute, .docPreview{
@@ -103,6 +134,11 @@
   font-size: 22px;
   float:right;
   padding-top: 2px;
+  cursor: pointer;
+}
+
+.addAttribute:hover {
+  color: #5E7B36;
 }
 
 #documentTableID .icon_arangodb_edit {
@@ -129,6 +165,10 @@ table.dataTable thead th {
   padding-bottom: 6px;
 }
 
+#documentTableID td {
+  cursor: default;
+}
+
 #documentTableID .writeable {
   cursor: pointer;
 }
@@ -136,8 +176,6 @@ table.dataTable thead th {
 .read_only {
   cursor: default !important;
 }
-
-
 
 #documentTableID .icon-edit {
   margin-top: 0;
@@ -197,19 +235,10 @@ table.dataTable thead th {
   text-overflow: ellipsis;
   -o-text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 600px !important;
 }
 
 .rightCell form {
-  max-width: 600px; 
-  min-width: 300px; 
   width: 100% !important;
-}
-
-.rightCell textarea {
-  max-width: 580px;
-  min-width: 580px;
-  resize: vertical;
 }
 
 .arangoTab {

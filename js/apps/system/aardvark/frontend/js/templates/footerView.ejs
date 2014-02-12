@@ -3,7 +3,6 @@
   if (name) {
     n = name || "";
     v = version || "";
-    db = database || "";
   }
 %>
 <div class="footer-left">
@@ -11,5 +10,5 @@
 </div>
 
 <div class="footer-right">
-  <p><% if(n) { %>Server: <%=n%> <%=v%>, Database: <span id="dbSelect" class="selectDB"></span><% } %></p>
+  <p><% if(n) { %>Server: <%=n%> <%=v%> <% } %></p>
 </div>

@@ -546,7 +546,7 @@
         });
 
         // we added some icons, so we need to fix their tooltips
-        arangoHelper.fixTooltips(".glyphicon, .arangoicon", "top");
+        arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
 
         $(".prettify").snippet("javascript", {
           style: "nedit",
@@ -590,7 +590,7 @@
         placement: "left"
       });
         
-      arangoHelper.fixTooltips(".glyphicon, .arangoicon", "top");
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
 
       return this;
     },
@@ -806,7 +806,7 @@
 
         $.each(this.index.indexes, function(k,v) {
           if (v.type === 'primary' || v.type === 'edge') {
-            actionString = '<span class="glyphicon glyphicon-ban-circle" ' +
+            actionString = '<span class="icon_arangodb_locked" ' +
               'data-original-title="No action"></span>';
           }
           else {

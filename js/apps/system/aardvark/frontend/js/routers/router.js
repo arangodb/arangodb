@@ -51,7 +51,7 @@
         async: false
       });
 
-      window.activeSession = new window.ArangoSession();
+      window.activeUser = new window.ArangoUsers();
 
       window.arangoDatabase = new window.ArangoDatabase();
 
@@ -79,8 +79,12 @@
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView();
+      this.statView = new window.StatisticBarView();
+      this.userBarView = new window.UserBarView();
       this.footerView.render();
       this.naviView.render();
+      this.statView.render();
+      this.userBarView.render();
       this.graphView = new window.GraphView({
         graphs: this.graphs,
         collection: window.arangoCollectionsStore
@@ -200,8 +204,8 @@
       return (window.databaseName === '_system');
     },
 
-    checkSession: function () {
-      if (window.activeSession.models.length === 0) {
+    checkUser: function () {
+      if (window.activeUser.models.length === 0) {
         this.navigate("login", {trigger: true});
         return false;
       }
@@ -211,7 +215,7 @@
     login: function () {
       if (!this.loginView) {
         this.loginView = new window.loginView({
-          collection: window.activeSession
+          collection: window.activeUser
         });
       }
       this.loginView.render();
