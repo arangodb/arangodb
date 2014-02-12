@@ -1,2 +1,2 @@
-arango> a5 = db.example.replace("1432124/3903044", { a : 5 });
+arango> a5 = db.example.replace("example/3903044", { a : 5 });
 { "_id" : "example/3903044", "_key" : "3903044", "_rev" : "4099652", "_oldRev" : "4034116" }
