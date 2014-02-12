@@ -24,14 +24,14 @@
       if (!this.planSymmetricView) {
         this.planSymmetricView = new window.PlanSymmetricView();
       }
-      this.planTestView.render();
+      this.planSymmetricView.render(true);
     },
 
     planAsymmetric: function() {
-      if (!this.planAsymmetricView) {
-        this.planAsymmetricView = new window.PlanAsymmetricView();
+      if (!this.planSymmetricView) {
+        this.planSymmetricView = new window.PlanSymmetricView();
       }
-      this.planAsymmetricView.render();
+      this.planSymmetricView.render(false);
     },
 
     planScenarioSelector: function() {
