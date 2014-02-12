@@ -72,13 +72,35 @@ var _ = require("underscore");
 var testFuncs = {};
 var print = require("internal").print;
 
-function startInstance (cluster) {
-  // to be done
+var Planner = require("org/arangodb/cluster").Planner;
+var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+
+function startInstance (options) {
+  if (options.cluster) {
+    var p = new Planner({"numberOfDBservers":2, 
+                         "numberOfCoordinators":1,
+                         "dispatchers": {"me":{"endpoint":"tcp://localhost:"}}
+                        });
+    options.kickstarter = new Kickstarter(p.getPlan());
+    options.kickstarter.launch();
+    var runInfo = options.kickstarter.runInfo;
+    var roles = runInfo[runInfo.length-1].roles;
+    var endpoints = runInfo[runInfo.length-1].endpoints;
+    var pos = roles.indexOf("Coordinator");
+    return endpoints[pos];
+  }
+  print("not yet implemented");
   return "tcp://localhost:PORT";
 }
 
-function shutdownInstance (cluster) {
-  // to be done
+function shutdownInstance (options) {
+  if (options.cluster) {
+    options.kickstarter.shutdown();
+    options.kickstarter.cleanup();
+    delete options.kickstarter;
+    return;
+  }
+  print("not yet implemented");
 }
 
 testFuncs.shell_server = function (options) {
