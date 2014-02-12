@@ -26,7 +26,7 @@
       $("#coordinators").val(coords);
       $("#dbs").val(dbs);
       spyOn($, "ajax");
-
+      spyOn(window, "alert");
     });
 
     afterEach(function() {
@@ -50,24 +50,28 @@
       $("#host").val("");
       $("#startPlan").click();
       expect($.ajax).not.toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith("Please define a Host");
     });
 
     it("should not start a cluster if dispatcher host is missing", function() {
       $("#port").val("");
       $("#startPlan").click();
       expect($.ajax).not.toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith("Please define a Port");
     });
 
     it("should not start a cluster if coordinator number is missing", function() {
       $("#coordinators").val("");
       $("#startPlan").click();
       expect($.ajax).not.toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith("Please define a number of Coordinators");
     });
 
     it("should not start a cluster if db number is missing", function() {
       $("#dbs").val("");
       $("#startPlan").click();
       expect($.ajax).not.toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith("Please define a number of DBServers");
     });
 
   });
