@@ -839,11 +839,16 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
         bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
       
         if (! ok) {
-          if (_performUpgrade) {
-            LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
+          if (context->_context->Global()->Has(v8::String::New("UPGRADE_STARTED"))) {
+            if (_performUpgrade) {
+              LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
+            }
+            else {
+              LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
+            }
           }
           else {
-            LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
+            LOG_FATAL_AND_EXIT("JavaScript error during server start");
           }
         }
   

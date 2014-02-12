@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
-/*global require, exports, module, UPGRADE_ARGS */
+/*global require, exports, module, UPGRADE_ARGS, UPGRADE_STARTED */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server, will optionally perform
@@ -53,6 +53,8 @@
   // whether or not we are initialising an empty / a new database
   var isInitialisation;
 
+  // set this global variable to inform the server we actually got until here...
+  UPGRADE_STARTED = true;
 
   var logger = {
     info: function (msg) {
