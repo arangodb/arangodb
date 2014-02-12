@@ -1636,14 +1636,21 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
+
+    bool found = false;
         
     // copy remaining indexes back into collection
     for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
       TRI_json_t const* v = TRI_LookupListJson(indexes, i);
       TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
 
-      if (! TRI_IsStringJson(id) || idString == string(id->_value._string.data)) {
+      if (! TRI_IsStringJson(id)) {
+        continue;
+      }
+      
+      if (idString == string(id->_value._string.data)) {
         // found our index, ignore it when copying
+        found = true;
         continue;
       }
 
@@ -1651,6 +1658,12 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     }
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", copy);
+
+    if (! found) {
+      // did not find the sought index
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+      return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
+    }
 
     AgencyCommResult result = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, 
                                           collectionJson, 
