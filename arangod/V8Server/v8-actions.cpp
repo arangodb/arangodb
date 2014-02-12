@@ -809,8 +809,8 @@ class CallbackTest : public ClusterCommCallback {
     CallbackTest(string msg) : _msg(msg) {}
     virtual ~CallbackTest() {}
     virtual bool operator() (ClusterCommResult* res) {
-      LOG_DEBUG("ClusterCommCallback called on operation %ld",
-                res->operationID);
+      LOG_DEBUG("ClusterCommCallback called on operation %llu",
+                (unsigned long long) res->operationID);
       LOG_DEBUG("Message: %s", _msg.c_str());
       return false;  // Keep it in the queue
     }
