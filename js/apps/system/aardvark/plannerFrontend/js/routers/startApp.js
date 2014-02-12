@@ -4,7 +4,7 @@
 (function() {
   "use strict";
   $(document).ready(function() {
-    window.App = new window.plannerRouter();
+    window.App = new window.PlannerRouter();
     Backbone.history.start();
     window.App.handleResize();
   });
