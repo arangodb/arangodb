@@ -26,7 +26,7 @@
       return this;
     },
     events: {
-      "click #save-modified-collection"       :    "saveModifiedCollection",
+      "click #save-modified-collection"       :    "saveModifiedCollection(true)",
       "hidden #change-collection"             :    "hidden",
       "click #delete-modified-collection"     :    "deleteCollection",
       "click #load-modified-collection"       :    "loadCollection",
@@ -38,7 +38,7 @@
     },
     listenKey: function(e) {
       if (e.keyCode === 13) {
-        this.saveModifiedCollection();
+        this.saveModifiedCollection(true);
       }
     },
     hidden: function () {
@@ -99,7 +99,12 @@
       $('#change-collection-size').val(calculatedSize);
       $('#change-collection').modal('show');
     },
-    saveModifiedCollection: function() {
+    saveModifiedCollection: function(run) {
+
+      if (run !== true) {
+        return 0;
+      }
+
       var newname = $('#change-collection-name').val();
       if (newname === '') {
         arangoHelper.arangoError('No collection name entered!');

@@ -1,8 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global window, Backbone, $, window */
 
-window.ArangoSession = Backbone.Collection.extend({
-  model: window.Session,
+window.ArangoUsers = Backbone.Collection.extend({
+  model: window.Users,
 
   activeUser: "",
   activeUserSettings: {
@@ -10,7 +10,7 @@ window.ArangoSession = Backbone.Collection.extend({
     "shell" : {},
     "testing": true
   },
-  
+
   url: "../api/user",
 
   initialize: function() {
@@ -49,7 +49,6 @@ window.ArangoSession = Backbone.Collection.extend({
   },
 
   saveUserSettings: function () {
-
     var self = this;
     $.ajax({
       cache: false,

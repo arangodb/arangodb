@@ -68,7 +68,7 @@
       };
       spyOn(storeDummy, "fetch");
       spyOn(window, "arangoCollections").andReturn(storeDummy);
-      spyOn(window, "ArangoSession").andReturn(sessionDummy);
+      spyOn(window, "ArangoUsers").andReturn(sessionDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "GraphCollection").andReturn(graphsDummy);
