@@ -43,6 +43,7 @@
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
 #include "Admin/RestHandlerCreator.h"
+#include "Admin/RestShutdownHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
@@ -154,13 +155,20 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
                                  ApplicationDispatcher* dispatcher,
-                                 AsyncJobManager* jobManager) {
+                                 AsyncJobManager* jobManager,
+                                 ApplicationServer* applicationServer) {
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
 
+  // add "/_admin/shutdown" handler
+  factory->addPrefixHandler("/_admin/shutdown",
+                   RestHandlerCreator<RestShutdownHandler>::createData<void*>,
+                   static_cast<void*>(applicationServer));
+
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +828,7 @@ int ArangoServer::startupServer () {
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
   DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
 
   // add action handler
   handlerFactory->addPrefixHandler(

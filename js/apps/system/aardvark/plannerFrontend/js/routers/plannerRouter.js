@@ -31,7 +31,11 @@
       this.footerView = new window.FooterView();
       this.footerView.render();
       */
-    }
+   },
+
+   handleResize: function() {
+     // Not needed here
+   }
   });
 
 }());

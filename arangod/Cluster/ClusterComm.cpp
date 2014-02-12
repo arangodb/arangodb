@@ -211,7 +211,8 @@ ClusterCommResult* ClusterComm::asyncRequest (
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
-  LOG_DEBUG("In asyncRequest, put into queue %ld", op->operationID);
+  LOG_DEBUG("In asyncRequest, put into queue %llu", 
+            (unsigned long long) op->operationID);
   somethingToSend.signal();
 
   return res;
@@ -791,7 +792,7 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   IndexIterator i;
   ClusterCommOperation* op;
 
-  LOG_DEBUG("In moveFromSendToReceived %ld", operationID);
+  LOG_DEBUG("In moveFromSendToReceived %llu", (unsigned long long) operationID);
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
