@@ -10,7 +10,7 @@
       "planTest"             : "planTest",
       "planSymmetric"        : "planSymmetric",
       "planAsymmetric"       : "planAsymmetric",
-      "planScenarioSelector" : "planScenarioSelector"
+      "" : "planScenarioSelector"
     },
 
     planTest: function() {
