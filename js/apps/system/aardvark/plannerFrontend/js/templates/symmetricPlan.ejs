@@ -1,1 +1,32 @@
-<div/>
+<ul class="thumbnails2">
+  <div class="headerBar">
+    <% if (isSymmetric) { %>
+      <a class="arangoHeader">Plan a symmetric cluster</a>
+    <% } else { %>
+      <a class="arangoHeader">Plan a asymmetric cluster</a>
+    <% } %>
+  </div>
+</ul>
+
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+  <fieldset id="server_list">
+    <div class="control-group">
+      <label for="host_1" class="control-label">Server:</label>
+      <div class="controls">
+        <input type="text" id="host_1" placeholder="Server" class="input-xlarge"></input>:<input type="text" maxlength="5" class="input-small" id="port_1" placeholder="port"></input>
+        <button id="add_label" class="graphViewer-icon-button gv-icon-small add"></button>
+      </div>
+      <label class="checkbox inline">
+        <input type="checkbox" id="coordinator_1" value="isCoordinator" class="isCoordinator"> Coordinator
+      </label>
+      <label class="checkbox inline">
+        <input type="checkbox" id="dbserver_1" value="isDBServer" class="isCoordinator"> DBServer
+      </label>
+    </div>
+  </fieldset>              
+  <div class="control-group">
+    <div class="controls">
+      <button class="btn btn-success" id="startPlan">Create Cluster</button>    
+    </div>
+  </div>
+</form>
