@@ -168,8 +168,8 @@ input,select,option {
   border-radius: 0 !important;
 }
 
-.glyphicon:hover {
-  cursor: pointer !important;
+button {
+  font-family: 'Open Sans', sans-serif !important;
 }
 
 .arangoicon:hover {

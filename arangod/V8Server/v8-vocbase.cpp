@@ -224,10 +224,10 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 /// @brief cluster coordinator case, parse a key and possible revision
 ////////////////////////////////////////////////////////////////////////////////
 
-static int parseKeyAndRef(v8::Handle<v8::Value> arg, string& key,
+static int parseKeyAndRef(v8::Handle<v8::Value> arg, 
+                          string& key,
                           TRI_voc_rid_t& rev) {
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
-                             v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   rev = 0;
   if (arg->IsString()) {
     key = TRI_ObjectToString(arg);
@@ -421,25 +421,6 @@ static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
 
   return scope.Close(v8::String::New(id.c_str(), id.size()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate an attribute name
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ValidateAttributeName (const char* attributeName,
-                                   const bool allowInternal) {
-  if (attributeName == 0 || *attributeName == '\0') {
-    // empty name => fail
-    return false;
-  }
-
-  if (! allowInternal && *attributeName == '_') {
-    // internal attributes (_from, _to, _id, _key, ...) cannot be indexed => fail
-    return false;
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,549 +719,6 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t const* col,
 
   assert(col != 0);
   return scope.Close(IndexRep(col->_info._name, idx));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts argument strings to TRI_vector_pointer_t
-////////////////////////////////////////////////////////////////////////////////
-
-static int AttributeNamesFromArguments (v8::Arguments const& argv,
-                                        TRI_vector_pointer_t* result,
-                                        size_t start,
-                                        size_t end,
-                                        string& error) {
-
-  // ...........................................................................
-  // convert the arguments into a "C" string and stuff them into a vector
-  // ...........................................................................
-
-  for (int j = start;  j < argv.Length();  ++j) {
-    v8::Handle<v8::Value> argument = argv[j];
-
-    if (! argument->IsString() ) {
-      error = "invalid attribute name";
-
-      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    }
-
-    TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
-    char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
-
-    if (cArgument == 0) {
-      error = "out of memory";
-
-      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    TRI_ASSERT_MAINTAINER(cArgument != 0);
-
-    // cannot index internal attributes such as _key, _rev, _id, _from, _to...
-    if (! ValidateAttributeName(cArgument, false)) {
-      error = "invalid attribute name";
-
-      TRI_Free(TRI_CORE_MEM_ZONE, cArgument);
-      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    }
-
-    TRI_PushBackVectorPointer(result, cArgument);
-  }
-
-  // .............................................................................
-  // check that each parameter is unique
-  // .............................................................................
-
-  for (size_t j = 0;  j < result->_length;  ++j) {
-    char* left = (char*) result->_buffer[j];
-
-    for (size_t k = j + 1;  k < result->_length;  ++k) {
-      char* right = (char*) result->_buffer[k];
-
-      if (TRI_EqualString(left, right)) {
-        error = "duplicate attribute names";
-
-        TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-        return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      }
-    }
-
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool ComparePathIndexCoordinator (TRI_json_t const* lhs,
-                                         TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "unique"),
-                               TRI_LookupArrayJson(rhs, "unique"))) {
-    return false;
-  }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
-                               TRI_LookupArrayJson(rhs, "fields"))) {
-    return false;
-  }
-  
-  return true;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a path index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsurePathIndexCoordinator (TRI_vocbase_col_t const* col,
-                                                         bool unique,
-                                                         bool create,
-                                                         TRI_idx_type_e type,
-                                                         TRI_vector_pointer_t const* fields) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
- 
-  TRI_json_t* flds = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (flds == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  for (size_t i = 0; i < fields->_length; ++i) {
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) fields->_buffer[i]));
-  }
-  
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &ComparePathIndexCoordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a hash or skip-list index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
-                                              v8::Arguments const& argv,
-                                              bool unique,
-                                              bool create,
-                                              TRI_idx_type_e type) {
-  v8::HandleScope scope;
-  
-  if (create) {
-    PREVENT_EMBEDDED_TRANSACTION(scope);
-  }
- 
-  if (argv.Length() == 0) {
-    const string errorString = cmd + "(<path>, ...)";
-    TRI_V8_EXCEPTION_USAGE(scope, errorString);
-  }
-
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  TRI_vocbase_t* vocbase = col->_vocbase;
-  assert(vocbase != 0);
-  
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the hash index.
-  // .............................................................................
-
-  TRI_vector_pointer_t attributes;
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-
-  string errorString;
-  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
-
-  // .............................................................................
-  // Some sort of error occurred -- display error message and abort index creation
-  // (or index retrieval).
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorPointer(&attributes);
-
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
-  }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> ret = EnsurePathIndexCoordinator(col, unique, create, type, &attributes);
-
-    TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
-    TRI_DestroyVectorPointer(&attributes);
-
-    return scope.Close(ret);
-  }
-#endif  
-
-  TRI_idx_iid_t iid = 0;
-  
-  CollectionNameResolver resolver(vocbase);
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-  res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
-    TRI_DestroyVectorPointer(&attributes);
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  bool created;
-  TRI_index_t* idx;
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-      
-  if (type == TRI_IDX_TYPE_HASH_INDEX) {
-    if (create) {
-      idx = TRI_EnsureHashIndexDocumentCollection(document,
-                                                  iid, 
-                                                  &attributes, 
-                                                  unique, 
-                                                  &created, 
-                                                  TRI_GetIdServer());
-
-      if (idx == 0) {
-        res = TRI_errno();
-      }
-    }
-    else {
-      trx.lockRead();
-      idx = TRI_LookupHashIndexDocumentCollection(document, &attributes, unique);
-      trx.unlockRead();
-    }
-  }
-  else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    if (create) {
-      idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
-                                                      iid,
-                                                      &attributes, 
-                                                      unique, 
-                                                      &created, 
-                                                      TRI_GetIdServer());
-
-      if (idx == 0) {
-        res = TRI_errno();
-      }
-    }
-    else {
-      trx.lockRead();
-      idx = TRI_LookupSkiplistIndexDocumentCollection(document, &attributes, unique);
-      trx.unlockRead();
-    }
-  }
-  else {
-    LOG_ERROR("unknown index type %d", (int) type);
-    res = TRI_ERROR_INTERNAL;
-    idx = 0;
-  }
-      
-  // .............................................................................
-  // remove the memory allocated to the list of attributes used for the hash index
-  // .............................................................................
-
-  TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, &attributes);
-  TRI_DestroyVectorPointer(&attributes);
-
-  if (idx == 0) {
-    if (create) {
-      trx.abort();
-      TRI_V8_EXCEPTION(scope, res);
-    }
-    else {
-      trx.finish(TRI_ERROR_NO_ERROR);
-      return scope.Close(v8::Null());
-    }
-  }
-
-  // .............................................................................
-  // return the newly assigned index identifier
-  // .............................................................................
-
-  TRI_json_t* json = idx->json(idx, false);
-
-  if (json == 0) {
-    trx.finish(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  v8::Handle<v8::Value> index = IndexRep(&(trx.primaryCollection()->base), json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (create) {
-    if (index->IsObject()) {
-      index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
-    }
-  }
-
-  trx.finish(TRI_ERROR_NO_ERROR);
-
-  return scope.Close(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool CompareFulltextIndexCoordinator (TRI_json_t const* lhs,
-                                             TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "minLength"),
-                               TRI_LookupArrayJson(rhs, "minLength"))) {
-    return false;
-  }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
-                               TRI_LookupArrayJson(rhs, "fields"))) {
-    return false;
-  }
-  
-  return true;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a fulltext index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureFulltextIndexCoordinator (TRI_vocbase_col_t const* col,
-                                                             bool create,
-                                                             string const& attributeName,
-                                                             int minWordLength) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
- 
-  TRI_json_t* flds = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-
-  if (flds == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, attributeName.c_str()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &CompareFulltextIndexCoordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
-                                                  const bool create) {
-  v8::HandleScope scope;
-
-  if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureFulltextIndex(<attribute>, <minLength>)");
-  }
-  
-  if (create) {
-    PREVENT_EMBEDDED_TRANSACTION(scope);  
-  }
-
-  string attributeName = TRI_ObjectToString(argv[0]);
-
-  if (! ValidateAttributeName(attributeName.c_str(), false)) {
-    TRI_V8_TYPE_ERROR(scope, "invalid index attribute name");
-  }
-
-  // 2013-01-17: deactivated substring indexing option because there is no working implementation
-  // we might activate the option later
-  bool indexSubstrings = false;
-
-  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (argv.Length() == 2 && argv[1]->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(argv[1]);
-  }
-
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-  
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> ret = EnsureFulltextIndexCoordinator(col, create, attributeName, minWordLength);
-    return scope.Close(ret);
-  }
-#endif  
-  
-  TRI_vocbase_t* vocbase = col->_vocbase;
-  assert(vocbase != 0);
-  
-  TRI_idx_iid_t iid = 0;
-
-  CollectionNameResolver resolver(vocbase);
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
-  
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  bool created;
-  TRI_index_t* idx;
-
-  if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(),
-                                                    iid, 
-                                                    attributeName.c_str(), 
-                                                    indexSubstrings, 
-                                                    minWordLength, 
-                                                    &created, 
-                                                    TRI_GetIdServer());
-
-    if (idx == 0) {
-      res = TRI_errno();
-    }
-  }
-  else {
-    trx.lockRead();
-    idx = TRI_LookupFulltextIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                    attributeName.c_str(), 
-                                                    indexSubstrings, 
-                                                    minWordLength);
-    trx.unlockRead();
-  }
-
-  if (idx == 0) {
-    if (create) {
-      trx.abort();
-      TRI_V8_EXCEPTION(scope, res);
-    }
-    else {
-      trx.finish(TRI_ERROR_NO_ERROR);
-      return scope.Close(v8::Null());
-    }
-  }
-
-  // .............................................................................
-  // return the newly assigned index identifier
-  // .............................................................................
-
-  TRI_json_t* json = idx->json(idx, false);
-
-  if (json == 0) {
-    trx.finish(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  v8::Handle<v8::Value> index = IndexRep(&(trx.primaryCollection()->base), json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (create) {
-    if (index->IsObject()) {
-      index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
-    }
-  }
-  
-  trx.finish(TRI_ERROR_NO_ERROR);
-  
-  return scope.Close(index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2669,385 +2107,74 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static bool CompareGeoIndex1Coordinator (TRI_json_t const* lhs,
-                                         TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "unique"),
-                               TRI_LookupArrayJson(rhs, "unique"))) {
+static bool IndexComparator (TRI_json_t const* lhs,
+                             TRI_json_t const* rhs) {
+  TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
+  assert(TRI_IsStringJson(typeJson));
+
+  // type must be identical
+  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupArrayJson(rhs, "type"))) {
     return false;
   }
   
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
-                               TRI_LookupArrayJson(rhs, "fields"))) {
-    return false;
+  TRI_idx_type_e type = TRI_TypeIndex(typeJson->_value._string.data);
+
+
+  // unique must be identical if present
+  TRI_json_t* value = TRI_LookupArrayJson(lhs, "unique");
+  if (TRI_IsBooleanJson(value)) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "unique"))) {
+      return false;
+    }
   }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "geoJson"),
-                               TRI_LookupArrayJson(rhs, "geoJson"))) {
-    return false;
+
+ 
+  if (type == TRI_IDX_TYPE_GEO1_INDEX) {
+    // geoJson must be identical if present
+    value = TRI_LookupArrayJson(lhs, "geoJson");
+    if (TRI_IsBooleanJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "geoJson"))) {
+        return false;
+      }
+    }
   }
-  
+  else if (type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    // minLength
+    value = TRI_LookupArrayJson(lhs, "minLength");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "minLength"))) {
+        return false;
+      }
+    }
+  }
+  else if (type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
+    // size, byteSize
+    value = TRI_LookupArrayJson(lhs, "size");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "size"))) {
+        return false;
+      }
+    }
+    
+    value = TRI_LookupArrayJson(lhs, "byteSize");
+    if (TRI_IsNumberJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "byteSize"))) {
+        return false;
+      }
+    }
+  }
+
+  // fields must be identical if present
+  value = TRI_LookupArrayJson(lhs, "fields");
+  if (TRI_IsListJson(value)) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
+      return false;
+    }
+  }
+
   return true;
 }
 #endif
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a geo index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureGeoIndex1Coordinator (TRI_vocbase_col_t const* col,
-                                                         bool create,
-                                                         bool unique,
-                                                         bool geoJson,
-                                                         bool ignoreNull,
-                                                         char const* location) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "geo1"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-
-  if (unique) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
-  }
- 
-  TRI_json_t* flds = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-
-  if (flds == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, location));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &CompareGeoIndex1Coordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool CompareGeoIndex2Coordinator (TRI_json_t const* lhs,
-                                         TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "unique"),
-                               TRI_LookupArrayJson(rhs, "unique"))) {
-    return false;
-  }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
-                               TRI_LookupArrayJson(rhs, "fields"))) {
-    return false;
-  }
-  
-  return true;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a geo index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureGeoIndex2Coordinator (TRI_vocbase_col_t const* col,
-                                                         bool create,
-                                                         bool unique,
-                                                         bool ignoreNull,
-                                                         char const* latitude,
-                                                         char const* longitude) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "geo2"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-
-  if (unique) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
-  }
- 
-  TRI_json_t* flds = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 2);
-
-  if (flds == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, latitude));
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, longitude));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &CompareGeoIndex2Coordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a geo index or constraint exists
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool unique) {
-  v8::HandleScope scope;
- 
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-  
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  TRI_vocbase_t* vocbase = col->_vocbase;
-  assert(vocbase != 0);
-  
-  TRI_index_t* idx = 0;
-  bool created;
-  int off = unique ? 1 : 0;
-  bool ignoreNull = false;
-    
-  TRI_idx_iid_t iid = 0;
-    
-  // .............................................................................
-  // case: <location>
-  // .............................................................................
-
-  if (argv.Length() == 1 + off) {
-    TRI_Utf8ValueNFC loc(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-
-    if (*loc == 0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
-    }
-
-    if (unique) {
-      ignoreNull = TRI_ObjectToBoolean(argv[1]);
-    }
-  
-#ifdef TRI_ENABLE_CLUSTER
-    if (ServerState::instance()->isCoordinator()) {
-      v8::Handle<v8::Value> ret = EnsureGeoIndex1Coordinator(col, true, unique, false, ignoreNull, *loc);
-      return scope.Close(ret);
-    }
-#endif  
- 
-    CollectionNameResolver resolver(vocbase);
-    ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    idx = TRI_EnsureGeoIndex1DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                iid,
-                                                *loc, 
-                                                false, 
-                                                unique, 
-                                                ignoreNull, 
-                                                &created, 
-                                                TRI_GetIdServer());
-  }
-
-  // .............................................................................
-  // case: <location>, <geoJson>
-  // .............................................................................
-
-  else if (argv.Length() == 2 + off && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
-    TRI_Utf8ValueNFC loc(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-
-    if (*loc == 0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
-    }
-
-    if (unique) {
-      ignoreNull = TRI_ObjectToBoolean(argv[2]);
-    }
-    
-#ifdef TRI_ENABLE_CLUSTER
-    if (ServerState::instance()->isCoordinator()) {
-      v8::Handle<v8::Value> ret = EnsureGeoIndex1Coordinator(col, true, unique, TRI_ObjectToBoolean(argv[1]), ignoreNull, *loc);
-      return scope.Close(ret);
-    }
-#endif  
-    
-    CollectionNameResolver resolver(vocbase);
-    ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    idx = TRI_EnsureGeoIndex1DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(),
-                                                iid, 
-                                                *loc, 
-                                                TRI_ObjectToBoolean(argv[1]), 
-                                                unique, 
-                                                ignoreNull, 
-                                                &created, 
-                                                TRI_GetIdServer());
-  }
-
-  // .............................................................................
-  // case: <latitude>, <longitude>
-  // .............................................................................
-
-  else if (argv.Length() == 2 + off) {
-    TRI_Utf8ValueNFC lat(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-    TRI_Utf8ValueNFC lon(TRI_UNKNOWN_MEM_ZONE, argv[1]);
-
-    if (*lat == 0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<latitude> must be an attribute path");
-    }
-
-    if (*lon == 0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<longitude> must be an attribute path");
-    }
-
-    if (unique) {
-      ignoreNull = TRI_ObjectToBoolean(argv[2]);
-    }
-    
-#ifdef TRI_ENABLE_CLUSTER
-    if (ServerState::instance()->isCoordinator()) {
-      v8::Handle<v8::Value> ret = EnsureGeoIndex2Coordinator(col, true, unique, ignoreNull, *lat, *lon);
-      return scope.Close(ret);
-    }
-#endif  
-    
-    CollectionNameResolver resolver(vocbase);
-    ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    idx = TRI_EnsureGeoIndex2DocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                iid,
-                                                *lat, 
-                                                *lon, 
-                                                unique, 
-                                                ignoreNull, 
-                                                &created, 
-                                                TRI_GetIdServer());
-  }
-
-  // .............................................................................
-  // error case
-  // .............................................................................
-
-  else {
-    if (unique) {
-      TRI_V8_EXCEPTION_USAGE(
-        scope, 
-        "ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) "  \
-        "or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)");
-    }
-    else {
-      TRI_V8_EXCEPTION_USAGE(
-        scope,
-        "ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])");
-    }
-  }
-
-  if (idx == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
-  }
-
-  TRI_json_t* json = idx->json(idx,false);
-
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, json);
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
-  }
-
-  return scope.Close(index);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an Ahuacatl error in a javascript object
@@ -5719,6 +4846,843 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the unique flag from the data
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExtractBoolFlag (v8::Handle<v8::Object> const& obj,
+                      char const* name,
+                      bool defaultValue) {
+  // extract unique flag
+  if (obj->Has(TRI_V8_SYMBOL(name))) {
+    return TRI_ObjectToBoolean(obj->Get(TRI_V8_SYMBOL(name)));
+  }
+
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the fields list and add them to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  vector<string> fields;
+
+  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+    // "fields" is a list of fields
+    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+
+    const uint32_t n = fieldList->Length();
+
+    if (n % 2 != 0) {
+      // must have an even number of fields
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    
+    for (uint32_t i = 0; i < n; i += 2) {
+      if (! fieldList->Get(i)->IsString()) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      const string f = TRI_ObjectToString(fieldList->Get(i));
+
+      if (f.empty() || f[0] == '_') {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+      }
+
+      if (! fieldList->Get(i + 1)->IsArray()) {
+        // parameter at uneven position must be a list
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.push_back(f);
+    }
+  }
+  
+  if (fields.empty()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
+
+  if (fieldJson == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+     
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the fields list and add them to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexFields (v8::Handle<v8::Object> const& obj,
+                        TRI_json_t* json,
+                        int numFields = 0) {
+  vector<string> fields;
+
+  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+    // "fields" is a list of fields
+    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+
+    const uint32_t n = fieldList->Length();
+    
+    for (uint32_t i = 0; i < n; ++i) {
+      if (! fieldList->Get(i)->IsString()) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      const string f = TRI_ObjectToString(fieldList->Get(i));
+
+      if (f.empty() || f[0] == '_') {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.push_back(f);
+    }
+  }
+  
+  if (fields.empty() || 
+      (numFields > 0 && (int) fields.size() != numFields)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
+
+  if (fieldJson == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+     
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the geojson flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const& obj,
+                            TRI_json_t* json) {
+  bool geoJson = ExtractBoolFlag(obj, "geoJson", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the unique flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const& obj,
+                            TRI_json_t* json) {
+  bool unique = ExtractBoolFlag(obj, "unique", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the ignoreNull flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexIgnoreNullFlag (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  bool ignoreNull = ExtractBoolFlag(obj, "ignoreNull", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the undefined flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const& obj,
+                               TRI_json_t* json) {
+  bool undefined = ExtractBoolFlag(obj, "undefined", false);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a geo1 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 1);
+  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexIgnoreNullFlag(obj, json);
+  ProcessIndexGeoJsonFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a geo2 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 2);
+  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexIgnoreNullFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const& obj,
+                                 TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json);
+  ProcessIndexUniqueFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json);
+  ProcessIndexUniqueFlag(obj, json);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessBitarrayIndexFields(obj, json);
+  ProcessIndexUndefinedFlag(obj, json);
+
+  if (TRI_LookupArrayJson(json, "unique") != NULL) {
+    // unique bitarrays are not supported
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const& obj,
+                                     TRI_json_t* json) {
+  int res = ProcessIndexFields(obj, json, 1);
+
+  // handle "minLength" attribute
+  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+  if (obj->Has(TRI_V8_SYMBOL("minLength")) && obj->Get(TRI_V8_SYMBOL("minLength"))->IsNumber()) {
+    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("minLength")));
+  }
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const& obj,
+                                TRI_json_t* json) {
+  // handle "size" attribute
+  size_t count = 0;
+  if (obj->Has(TRI_V8_SYMBOL("size")) && obj->Get(TRI_V8_SYMBOL("size"))->IsNumber()) {
+    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size")));
+  
+    if (value < 0 || value > UINT32_MAX) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    count = (size_t) value;
+  }
+
+  // handle "byteSize" attribute
+  int64_t byteSize = 0;
+  if (obj->Has(TRI_V8_SYMBOL("byteSize")) && obj->Get(TRI_V8_SYMBOL("byteSize"))->IsNumber()) {
+    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("byteSize")));
+  }
+
+  if (count == 0 && byteSize <= 0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+    
+  if (byteSize < 0 || (byteSize > 0 && byteSize < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, byteSize));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of an index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceIndexJson (v8::Arguments const& argv,
+                             TRI_json_t*& json) {
+  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+
+  // extract index type  
+  TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
+  if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
+    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
+
+    if (*typeString == 0) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    type = TRI_TypeIndex(*typeString);
+  }
+
+  if (type == TRI_IDX_TYPE_UNKNOWN) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  if (obj->Has(TRI_V8_SYMBOL("id"))) {
+    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_SYMBOL("id")), true);
+    if (id > 0) {
+      char* idString = TRI_StringUInt64(id);
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+    }
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                       json, 
+                       "type", 
+                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
+  
+  int res = TRI_ERROR_INTERNAL;
+
+  switch (type) {
+    case TRI_IDX_TYPE_UNKNOWN: 
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      break;
+    }
+
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX: {
+      break;
+    }
+
+    case TRI_IDX_TYPE_GEO1_INDEX:
+      res = EnhanceJsonIndexGeo1(obj, json);
+      break;
+    case TRI_IDX_TYPE_GEO2_INDEX:
+      res = EnhanceJsonIndexGeo2(obj, json);
+      break;
+    case TRI_IDX_TYPE_HASH_INDEX:
+      res = EnhanceJsonIndexHash(obj, json);
+      break;
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      res = EnhanceJsonIndexSkiplist(obj, json);
+      break;
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      res = EnhanceJsonIndexBitarray(obj, json);
+      break;
+    case TRI_IDX_TYPE_FULLTEXT_INDEX: 
+      res = EnhanceJsonIndexFulltext(obj, json);
+      break;
+    case TRI_IDX_TYPE_CAP_CONSTRAINT: 
+      res = EnhanceJsonIndexCap(obj, json);
+      break;
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* collection,
+                                                     TRI_json_t const* json,
+                                                     bool create) {
+  v8::HandleScope scope;
+
+  assert(collection != 0);
+  assert(json != 0);
+
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+
+  TRI_json_t* resultJson = 0; 
+  string errorMsg;
+  int res = ClusterInfo::instance()->ensureIndexCoordinator(databaseName, 
+                                                            cid, 
+                                                            json,
+                                                            create,
+                                                            &IndexComparator,
+                                                            resultJson,
+                                                            errorMsg, 
+                                                            360.0);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+  }
+
+  if (resultJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  // TODO: protect against races on _name
+  v8::Handle<v8::Value> ret = IndexRep(collection->_name, resultJson);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
+  
+  return scope.Close(ret);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index, locally
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collection,
+                                               TRI_json_t const* json,
+                                               bool create) {
+  v8::HandleScope scope;
+
+  assert(collection != 0);
+  assert(json != 0);
+  
+  // extract type
+  TRI_json_t* value = TRI_LookupArrayJson(json, "type");
+  assert(TRI_IsStringJson(value));
+
+  TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
+ 
+  // extract unique
+  bool unique = false;
+  value = TRI_LookupArrayJson(json, "unique");
+  if (TRI_IsBooleanJson(value)) {
+    unique = value->_value._boolean;
+  }
+  
+  TRI_vector_pointer_t attributes;
+  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
+
+  TRI_vector_pointer_t values;
+  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
+ 
+  // extract id 
+  TRI_idx_iid_t iid = 0;
+  value = TRI_LookupArrayJson(json, "id");
+  if (TRI_IsStringJson(value)) {
+    iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
+  }
+
+  // extract fields
+  value = TRI_LookupArrayJson(json, "fields");
+  if (TRI_IsListJson(value)) {
+    // note: "fields" is not mandatory for all index types
+    if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+      // copy all field names (attributes) plus the values (json)
+      for (size_t i = 0; i < value->_value._objects._length; i += 2) {
+        // add attribute
+        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
+        assert(TRI_IsStringJson(v));
+        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+        
+        // add value
+        v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i + 1);
+        assert(TRI_IsListJson(v));
+        TRI_PushBackVectorPointer(&values, (void*) v);
+      }
+    }
+    else {
+      // copy all field names (attributes)
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
+
+        assert(TRI_IsStringJson(v));
+        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+      }
+    }
+  }
+  
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorPointer(&values);
+    TRI_DestroyVectorPointer(&attributes);
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+
+  bool created = false;
+  TRI_index_t* idx = 0;
+
+  switch (type) {
+    case TRI_IDX_TYPE_UNKNOWN:
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      // these indexes cannot be created directly
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    }
+
+    case TRI_IDX_TYPE_GEO1_INDEX: {
+      assert(attributes._length == 1);
+      
+      bool ignoreNull = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      if (TRI_IsBooleanJson(value)) {
+        ignoreNull = value->_value._boolean;
+      }
+      
+      bool geoJson = false;
+      value = TRI_LookupArrayJson(json, "geoJson");
+      if (TRI_IsBooleanJson(value)) {
+        geoJson = value->_value._boolean;
+      }
+
+      if (create) {
+        idx = TRI_EnsureGeoIndex1DocumentCollection(document, 
+                                                    iid,
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    geoJson, 
+                                                    unique, 
+                                                    ignoreNull, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupGeoIndex1DocumentCollection(document, 
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                     geoJson, 
+                                                     unique, 
+                                                     ignoreNull);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_GEO2_INDEX: {
+      assert(attributes._length == 2);
+      
+      bool ignoreNull = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      if (TRI_IsBooleanJson(value)) {
+        ignoreNull = value->_value._boolean;
+      }
+
+      if (create) {
+        idx = TRI_EnsureGeoIndex2DocumentCollection(document, 
+                                                    iid,
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
+                                                    unique, 
+                                                    ignoreNull, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupGeoIndex2DocumentCollection(document, 
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
+                                                     unique, 
+                                                     ignoreNull);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_HASH_INDEX: {
+      assert(attributes._length > 0);
+
+      if (create) {
+        idx = TRI_EnsureHashIndexDocumentCollection(document,
+                                                    iid, 
+                                                    &attributes, 
+                                                    unique, 
+                                                    &created, 
+                                                    TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupHashIndexDocumentCollection(document, 
+                                                    &attributes, 
+                                                    unique);
+      }
+
+      break;
+    }
+
+    case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      assert(attributes._length > 0);
+
+      if (create) {
+        idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
+                                                        iid,
+                                                        &attributes, 
+                                                        unique, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupSkiplistIndexDocumentCollection(document, 
+                                                        &attributes, 
+                                                        unique);
+      }
+      break;
+    }
+      
+    case TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      assert(attributes._length == 1);
+
+      int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "minLength");
+      if (TRI_IsNumberJson(value)) {
+        minWordLength = (int) value->_value._number;
+      }
+
+      if (create) {
+        idx = TRI_EnsureFulltextIndexDocumentCollection(document,
+                                                        iid, 
+                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                        false, 
+                                                        minWordLength, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupFulltextIndexDocumentCollection(document, 
+                                                        (char const*) TRI_AtVectorPointer(&attributes, 0),
+                                                        false,
+                                                        minWordLength);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_BITARRAY_INDEX: {
+      assert(attributes._length > 0);
+
+      bool supportUndefined = false;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "undefined");
+      if (TRI_IsBooleanJson(value)) {
+        supportUndefined = value->_value._boolean;
+      }
+
+      if (create) {
+        int errorCode = TRI_ERROR_NO_ERROR;
+        char* errorStr = 0;
+
+        idx = TRI_EnsureBitarrayIndexDocumentCollection(document,
+                                                        iid,
+                                                        &attributes, 
+                                                        &values, 
+                                                        supportUndefined, 
+                                                        &created, 
+                                                        &errorCode, 
+                                                        &errorStr,
+                                                        TRI_GetIdServer());
+        if (errorCode != 0) {
+          TRI_set_errno(errorCode);
+        }
+      
+        if (errorStr != 0) {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, errorStr);
+        }
+      }
+      else {
+        idx = TRI_LookupBitarrayIndexDocumentCollection(document,
+                                                        &attributes);
+      }
+      break;
+    }
+
+    case TRI_IDX_TYPE_CAP_CONSTRAINT: {
+      size_t size = 0;
+      TRI_json_t* value = TRI_LookupArrayJson(json, "size");
+      if (TRI_IsNumberJson(value)) {
+        size = (size_t) value->_value._number;
+      }
+
+      int64_t byteSize = 0;
+      value = TRI_LookupArrayJson(json, "byteSize");
+      if (TRI_IsNumberJson(value)) {
+        byteSize = (int64_t) value->_value._number;
+      }
+
+      if (create) {
+        idx = TRI_EnsureCapConstraintDocumentCollection(document,
+                                                        iid,
+                                                        size, 
+                                                        byteSize, 
+                                                        &created, 
+                                                        TRI_GetIdServer());
+      }
+      else {
+        idx = TRI_LookupCapConstraintDocumentCollection(document);
+      }
+      break;
+    }
+  }
+
+  if (idx == 0 && create) {
+    // something went wrong during creation
+    int res = TRI_errno();
+    TRI_DestroyVectorPointer(&values);
+    TRI_DestroyVectorPointer(&attributes);
+
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  
+  TRI_DestroyVectorPointer(&values);
+  TRI_DestroyVectorPointer(&attributes);
+
+
+  if (idx == 0 && ! create) {
+    // no index found
+    return scope.Close(v8::Null());
+  }
+
+  // found some index to return
+  TRI_json_t* indexJson = idx->json(idx, false);
+
+  if (indexJson == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  v8::Handle<v8::Value> ret = IndexRep(&document->base.base, indexJson);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+  
+  if (ret->IsObject()) {
+    ret->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(create && created));
+  }
+
+  return scope.Close(ret);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
+                                          bool create,
+                                          char const* functionName) {
+  v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+  
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    string name(functionName);
+    name.append("(<description>)");
+    TRI_V8_EXCEPTION_USAGE(scope, name.c_str());
+  }
+
+  TRI_json_t* json = 0;
+  int res = EnhanceIndexJson(argv, json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (json != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  assert(json != 0);
+  
+  v8::Handle<v8::Value> ret;
+
+#ifdef TRI_ENABLE_CLUSTER
+  // ensure an index, coordinator case
+  if (ServerState::instance()->isCoordinator()) {
+    ret = EnsureIndexCoordinator(collection, json, create);
+  }
+  else {
+    ret = EnsureIndexLocal(collection, json, create);
+  }
+#else
+  ret = EnsureIndexLocal(collection, json, create);
+#endif
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  return scope.Close(ret);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that an index exists
+///
+/// @FUN{@FA{collection}.ensureIndex(@FA{index-description})}
+///
+/// Ensures that an index according to the @FA{index-description} exists. A
+/// new index will be created if none exists with the given description.
+///
+/// The @FA{index-description} must contain at a `type` attribute. `type` can
+/// be one of the following values:
+/// - `hash`: hash index
+/// - `skiplist`: skiplist index
+/// - `fulltext`: fulltext index
+/// - `bitarray`: bitarray index
+/// - `geo1`: geo index, with one attribute
+/// - `geo2`: geo index, with two attributes
+/// - `cap`: cap constraint
+///
+/// Calling this method returns an index object. Whether or not the index 
+/// object existed before the call or was created due to the call is indicated
+/// in the return attribute `isNewlyCreated`.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+  
+  return scope.Close(EnsureIndex(argv, true, "ensureIndex"));  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  return scope.Close(EnsureIndex(argv, false, "lookupIndex"));  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
 ///
 /// @FUN{@FA{collection}.count()}
@@ -5737,6 +5701,10 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+  
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "count()");
   }
 
 #ifdef TRI_ENABLE_CLUSTER
@@ -6049,900 +6017,6 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   ReleaseCollection(collection);
   return scope.Close(ok ? v8::True() : v8::False());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool CompareCapConstraintCoordinator (TRI_json_t const* lhs,
-                                             TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "size"),
-                               TRI_LookupArrayJson(rhs, "size"))) {
-    return false;
-  }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "byteSize"),
-                               TRI_LookupArrayJson(rhs, "byteSize"))) {
-    return false;
-  }
-
-  return true;
-}
-#endif
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a cap constraint, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureCapConstraintCoordinator (TRI_vocbase_col_t const* col,
-                                                             bool create,
-                                                             size_t count,
-                                                             int64_t size) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "cap"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, size));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
- 
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &CompareCapConstraintCoordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a cap constraint exists
-///
-/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
-///
-/// Creates a size restriction aka cap for the collection of @FA{size}
-/// documents and/or @FA{byteSize} data size. If the restriction is in place 
-/// and the (@FA{size} plus one) document is added to the collection, or the
-/// total active data size in the collection exceeds @FA{byteSize}, then the 
-/// least recently created or updated documents are removed until all 
-/// constraints are satisfied.
-///
-/// It is allowed to specify either @FA{size} or @FA{byteSize}, or both at
-/// the same time. If both are specified, then the automatic document removal
-/// will be triggered by the first non-met constraint.
-///
-/// Note that at most one cap constraint is allowed per collection.
-///
-/// Note that this does not imply any restriction of the number of revisions
-/// of documents.
-///
-/// @EXAMPLES
-///
-/// Restrict the number of document to at most 10 documents:
-///
-/// @verbinclude ensure-cap-constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-  
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  TRI_vocbase_t* vocbase = col->_vocbase;
-  assert(vocbase != 0);
-  
-  size_t count = 0;
-  int64_t size = 0;
-  
-  if (argv.Length() > 0) {
-    int64_t v = TRI_ObjectToInt64(argv[0]);
-
-    if (v < 0 || v > UINT32_MAX) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be a valid number")
-    }
-    count = (size_t) v;
-  }
-
-  if (argv.Length() > 1) {
-    size = (int64_t) TRI_ObjectToInt64(argv[1]);
-  }
-
-  if (count == 0 && size <= 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>, <byteSize>)");
-  }
-
-  if (size < 0 || (size > 0 && size < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, 
-                               "<size> must be at least 1 or <byteSize> must be at least " 
-                               TRI_CAP_CONSTRAINT_MIN_SIZE_STR);
-  }
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> ret = EnsureCapConstraintCoordinator(col, true, count, size);
-
-    return scope.Close(ret);
-  }
-#endif  
-
-  TRI_idx_iid_t iid = 0;
-
-  CollectionNameResolver resolver(vocbase);
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
-  
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  bool created;
-  TRI_index_t* idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                               iid,
-                                                               count, 
-                                                               size, 
-                                                               &created, 
-                                                               TRI_GetIdServer());
-
-  if (idx == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
-  }
-
-  TRI_json_t* json = idx->json(idx, false);
-
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  v8::Handle<v8::Value> index = IndexRep(col->_name, json);
-  
-  trx.finish(res);
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (index->IsObject()) {
-    index->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(created));
-  }
-
-  return scope.Close(index);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index comparator, used by the coordinator to detect if two index
-/// contents are the same
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static bool CompareBitarrayCoordinator (TRI_json_t const* lhs,
-                                        TRI_json_t const* rhs) {
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "undefined"),
-                               TRI_LookupArrayJson(rhs, "undefined"))) {
-    return false;
-  }
-  
-  if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(lhs, "fields"),
-                               TRI_LookupArrayJson(rhs, "fields"))) {
-    return false;
-  }
-  
-  return true;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure a bitarray index, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> EnsureBitarrayCoordinator (TRI_vocbase_col_t const* col,
-                                                        bool create,
-                                                        bool supportUndef,
-                                                        TRI_vector_pointer_t const* attributes,
-                                                        TRI_vector_pointer_t const* values) {
-  v8::HandleScope scope;
-
-  string const databaseName(col->_dbName);
-  string const cid = StringUtils::itoa(col->_cid);
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  
-  if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-    
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "bitarray"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, supportUndef));
-
-  TRI_json_t* flds = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (flds == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // copy fields
-  for (size_t i = 0; i < attributes->_length; ++i) {
-    TRI_json_t* tuple = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (tuple == 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, flds);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_V8_EXCEPTION_MEMORY(scope);
-    }
-
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, tuple, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) TRI_AtVectorPointer(attributes, i)));
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, tuple, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t const*) TRI_AtVectorPointer(values, i)));
-
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, flds, tuple);
-  }
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", flds);
-
-  TRI_json_t* resultJson = 0; 
-  string errorMsg;
-  int myerrno = ci->ensureIndexCoordinator(databaseName, 
-                                           cid, 
-                                           json,
-                                           create,
-                                           &CompareBitarrayCoordinator, 
-                                           resultJson,
-                                           errorMsg, 
-                                           360.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
- 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
-  }
-
-  if (resultJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // TODO: protect against races on _name
-  v8::Handle<v8::Value> index = IndexRep(col->_name, resultJson);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
-  
-  return scope.Close(index);
-}
-#endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, 
-                                             bool supportUndef) {
-  v8::HandleScope scope;
-  bool ok;
-  string errorString;
-  int errorCode;
-  TRI_index_t* bitarrayIndex = 0;
-  bool indexCreated;
-  v8::Handle<v8::Value> theIndex;
-  
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-  
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (col == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  TRI_vocbase_t* vocbase = col->_vocbase;
-  assert(vocbase != 0);
-
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................
-
-  if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
-    LOG_WARNING("bitarray index creation failed -- invalid parameters (require key_1,values_1,...,key_n,values_n)");
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureBitarray(path 1, <list of values 1>, <path 2>, <list of values 2>, ...)");
-  }
-  
-
-  // .............................................................................
-  // Create a list of paths, these will be used to create a list of shapes
-  // which will be used by the index.
-  // .............................................................................
-
-  TRI_vector_pointer_t attributes;
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-  TRI_vector_pointer_t values;
-  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
-  ok = true;
-
-  // .............................................................................
-  // Parameters into this ensureBitarray(...) method are passed pairs. That is,
-  // for every attribute next to it immediately on the right we have a list. For
-  // example: ensureBitarray("a",[0,1,2])
-  //          ensureBitarray("a",[0,1,2,["x","y"]],
-  //                         "b",["red","white",[1,2,3,[[12,13,14]]]])
-  // .............................................................................
-
-  for (int j = 0;  j < argv.Length();  ++j) {
-    v8::Handle<v8::Value> argument = argv[j];
-
-    // ...........................................................................
-    // Determine if we are expecting a string (attribute) or a list (set of values)
-    // ...........................................................................
-
-    if ((j % 2) == 0) { // we are expecting a string
-
-      if (! argument->IsString() ) {
-        errorString = "invalid parameter -- expected string parameter";
-        errorCode   = TRI_ERROR_BAD_PARAMETER;
-        ok = false;
-        break;
-      }
-
-      TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
-      char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
-      TRI_PushBackVectorPointer(&attributes, cArgument);
-
-    }
-
-    else { // we are expecting a value or set of values
-
-      // .........................................................................
-      // Check that the javascript argument is in fact an array (list)
-      // .........................................................................
-
-      if (! argument->IsArray() ) {
-        errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_BAD_PARAMETER;
-        ok = false;
-        break;
-      }
-
-      // .........................................................................
-      // Attempt to convert the V8 javascript function argument into a TRI_json_t
-      // .........................................................................
-
-      TRI_json_t* value = TRI_ObjectToJson(argument);
-
-
-      // .........................................................................
-      // If the conversion from V8 value into a TRI_json_t fails, exit
-      // .........................................................................
-
-      if (! TRI_IsListJson(value)) {
-        if (value != 0) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
-        }
-
-        errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_BAD_PARAMETER;
-        ok = false;
-        break;
-      }
-
-      TRI_PushBackVectorPointer(&values, value);
-    }
-  }
-
-
-  if (ok) {
-    // ...........................................................................
-    // Check that we have as many attributes as values
-    // ...........................................................................
-
-    if (attributes._length != values._length) {
-      errorString = "invalid parameter -- expected an array (list)";
-      errorCode   = TRI_ERROR_BAD_PARAMETER;
-      ok = false;
-    }
-  }
-
-  // .............................................................................
-  // Actually create the index here
-  // .............................................................................
-
-  if (ok) {
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> ret = EnsureBitarrayCoordinator(col, true, supportUndef, &attributes, &values);
-
-    // free memory  
-    for (size_t j = 0; j < attributes._length; ++j) {
-      char* attribute = (char*) TRI_AtVectorPointer(&attributes, j);
-      TRI_Free(TRI_CORE_MEM_ZONE, attribute);
-    }
-    TRI_DestroyVectorPointer(&attributes);
-  
-    for (size_t j = 0; j < values._length; ++j) {
-      TRI_json_t* value = (TRI_json_t*) TRI_AtVectorPointer(&values, j);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
-    }
-    TRI_DestroyVectorPointer(&values);
-
-    return scope.Close(ret);
-  }
-#endif  
-
-    char* errorStr = 0;
-
-    TRI_idx_iid_t iid = 0;
-  
-    CollectionNameResolver resolver(vocbase);
-    ReadTransactionType trx(vocbase, resolver, col->_cid);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ok = false;
-      errorCode = res;
-      errorString = string(TRI_errno_string(res));
-    }
-    else { 
-      bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection((TRI_document_collection_t*) trx.primaryCollection(), 
-                                                                iid,
-                                                                &attributes, 
-                                                                &values, 
-                                                                supportUndef, 
-                                                                &indexCreated, 
-                                                                &errorCode, 
-                                                                &errorStr,
-                                                                TRI_GetIdServer());
-    }
-
-    if (bitarrayIndex == 0) {
-      if (errorStr == 0) {
-         errorString = "index could not be created from document collection";
-      }
-      else {
-         errorString = string(errorStr);
-         TRI_Free(TRI_CORE_MEM_ZONE, errorStr); // strings are created in the CORE MEMORY ZONE
-      }
-      ok = false;
-    }
-  }
-
-
-  // .............................................................................
-  // remove the memory allocated to the list of attributes and values used for the
-  // specification of the index
-  // .............................................................................
-
-  for (size_t j = 0; j < attributes._length; ++j) {
-    char* attribute = (char*) TRI_AtVectorPointer(&attributes, j);
-    TRI_Free(TRI_CORE_MEM_ZONE, attribute);
-  }
-  TRI_DestroyVectorPointer(&attributes);
-  
-  for (size_t j = 0; j < values._length; ++j) {
-    TRI_json_t* value = (TRI_json_t*) TRI_AtVectorPointer(&values, j);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
-  }
-  TRI_DestroyVectorPointer(&values);
-
-
-  if (ok && bitarrayIndex != 0) {
-    // ...........................................................................
-    // Create a json represention of the index
-    // ...........................................................................
-
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, false);
-
-    if (json == NULL) {
-      errorCode = TRI_ERROR_OUT_OF_MEMORY;
-      errorString = "out of memory";
-      ok = false;
-    }
-
-    else {
-      // TODO: protect against races on _name
-      theIndex = IndexRep(col->_name, json);
-
-      if (theIndex->IsObject()) {
-        theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(indexCreated));
-      }
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    }
-  }
-
-  if (! ok || bitarrayIndex == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(errorCode, errorString)));
-  }
-
-  return scope.Close(theIndex);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
-///
-/// Creates a bitarray index on documents using attributes as paths to the
-/// fields (@FA{field1},..., @FA{fieldn}). A value (@FA{value1},...,@FA{valuen})
-/// consists of an array of possible values that the field can take. At least
-/// one field and one set of possible values must be given.
-///
-/// All documents, which do not have *all* of the attribute paths are ignored
-/// (that is, are not part of the bitarray index, they are however stored within
-/// the collection). A document which contains all of the attribute paths yet
-/// has one or more values which are *not* part of the defined range of values
-/// will be rejected and the document will not inserted within the
-/// collection. Note that, if a bitarray index is created subsequent to
-/// any documents inserted in the given collection, then the creation of the
-/// index will fail if one or more documents are rejected (due to
-/// attribute values being outside the designated range).
-///
-/// In case that the index was successfully created, the index identifier is
-/// returned.
-///
-/// In the example below we create a bitarray index with one field and that
-/// field can have the values of either `0` or `1`. Any document which has the
-/// attribute `x` defined and does not have a value of `0` or `1` will be
-/// rejected and therefore not inserted within the collection. Documents without
-/// the attribute `x` defined will not take part in the index.
-///
-/// @code
-/// arango> arangod> db.example.ensureBitarray("x", [0,1]);
-/// {
-///   "id" : "2755894/3607862",
-///   "unique" : false,
-///   "type" : "bitarray",
-///   "fields" : [["x", [0, 1]]],
-///   "undefined" : false,
-///   "isNewlyCreated" : true
-/// }
-/// @endcode
-///
-/// In the example below we create a bitarray index with one field and that
-/// field can have the values of either `0`, `1` or *other* (indicated by
-/// `[]`). Any document which has the attribute `x` defined will take part in
-/// the index. Documents without the attribute `x` defined will not take part in
-/// the index.
-///
-/// @code
-/// arangod> db.example.ensureBitarray("x", [0,1,[]]);
-/// {
-///   "id" : "2755894/4263222",
-///   "unique" : false,
-///   "type" : "bitarray",
-///   "fields" : [["x", [0, 1, [ ]]]],
-///   "undefined" : false,
-///   "isNewlyCreated" : true
-/// }
-/// @endcode
-///
-/// In the example below we create a bitarray index with two fields. Field `x`
-/// can have the values of either `0` or `1`; while field `y` can have the values
-/// of `2` or `"a"`. A document which does not have *both* attributes `x` and `y`
-/// will not take part within the index.  A document which does have both attributes
-/// `x` and `y` defined must have the values `0` or `1` for attribute `x` and
-/// `2` or `a` for attribute `y`, otherwise the document will not be inserted
-/// within the collection.
-///
-/// @code
-/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
-/// {
-///   "id" : "2755894/5246262",
-///   "unique" : false,
-///   "type" : "bitarray",
-///   "fields" : [["x", [0, 1]], ["y", [0, 1]]],
-///   "undefined" : false,
-///   "isNewlyCreated" : false
-/// }
-/// @endcode
-///
-/// In the example below we create a bitarray index with two fields. Field `x`
-/// can have the values of either `0` or `1`; while field `y` can have the
-/// values of `2`, `"a"` or *other* . A document which does not have *both*
-/// attributes `x` and `y` will not take part within the index.  A document
-/// which does have both attributes `x` and `y` defined must have the values `0`
-/// or `1` for attribute `x` and any value for attribute `y` will be acceptable,
-/// otherwise the document will not be inserted within the collection.
-///
-/// @code
-/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
-/// {
-///   "id" : "2755894/5770550",
-///   "unique" : false,
-///   "type" : "bitarray",
-///   "fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]],
-///   "undefined" : false,
-///   "isNewlyCreated" : true
-/// }
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureBitarrayVocbaseCol (v8::Arguments const& argv) {
-  return EnsureBitarray(argv, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureUndefBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
-///
-/// Creates a bitarray index on all documents using attributes as paths to
-/// the fields. At least one attribute and one set of possible values must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude fluent14
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureUndefBitarrayVocbaseCol (v8::Arguments const& argv) {
-  return EnsureBitarray(argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a geo index exists
-///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
-///
-/// Creates a geo-spatial index on all documents using @FA{location} as path to
-/// the coordinates. The value of the attribute must be a list with at least two
-/// double values. The list must contain the latitude (first value) and the
-/// longitude (second value). All documents, which do not have the attribute
-/// path or with value that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier is
-/// returned.
-///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location}, @LIT{true})}
-///
-/// As above which the exception, that the order within the list is longitude
-/// followed by latitude. This corresponds to the format described in
-///
-/// http://geojson.org/geojson-spec.html#positions
-///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{latitude}, @FA{longitude})}
-///
-/// Creates a geo-spatial index on all documents using @FA{latitude} and
-/// @FA{longitude} as paths the latitude and the longitude. The value of the
-/// attribute @FA{latitude} and of the attribute @FA{longitude} must a
-/// double. All documents, which do not have the attribute paths or which values
-/// are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @EXAMPLES
-///
-/// Create an geo index for a list attribute:
-///
-/// @verbinclude ensure-geo-index-list
-///
-/// Create an geo index for a hash array attribute:
-///
-/// @verbinclude ensure-geo-index-array
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureGeoIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsureGeoIndexVocbaseCol(argv, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a geo constraint exists
-///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @FA{ignore-null})}
-///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true}, @FA{ignore-null})}
-///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
-///
-/// Works like @FN{ensureGeoIndex} but requires that the documents contain
-/// a valid geo definition. If @FA{ignore-null} is true, then documents with
-/// a null in @FA{location} or at least one null in @FA{latitude} or
-/// @FA{longitude} are ignored.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments const& argv) {
-  return EnsureGeoIndexVocbaseCol(argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a unique constraint exists
-///
-/// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
-/// ... as attribute paths. At least one attribute path must be given.
-///
-/// When a unique constraint is in effect for a collection, then all documents
-/// which contain the given attributes must differ in the attribute
-/// values. Creating a new document or updating a document will fail, if the
-/// uniqueness is violated. If any attribute value is null for a document, this
-/// document is ignored by the index.
-///
-/// Note that non-existing attribute paths in a document are treated as if the
-/// value were @LIT{null}.
-///
-/// In case that the index was successfully created, the index identifier is
-/// returned.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell-index-create-unique-constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("ensureUniqueConstraint", argv, true, true, TRI_IDX_TYPE_HASH_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a unique constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LookupUniqueConstraintVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("lookupUniqueConstraint", argv, true, false, TRI_IDX_TYPE_HASH_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a hash index exists
-///
-/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a non-unique hash index on all documents using @FA{field1}, @FA{field2},
-/// ... as attribute paths. At least one attribute path must be given.
-///
-/// Note that non-existing attribute paths in a document are treated as if the
-/// value were @LIT{null}.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell-index-create-hash-index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureHashIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("ensureHashIndex", argv, false, true, TRI_IDX_TYPE_HASH_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("lookupHashIndex", argv, false, false, TRI_IDX_TYPE_HASH_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a skiplist index exists
-///
-/// @FUN{ensureUniqueSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a skiplist index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude unique-skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("ensureUniqueSkiplist", argv, true, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LookupUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("lookupUniqueSkiplist", argv, true, false, TRI_IDX_TYPE_SKIPLIST_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a multi skiplist index exists
-///
-/// @FUN{ensureSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a multi skiplist index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude multi-skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("ensureSkiplist", argv, false, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a multi skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& argv) {
-  return EnsurePathIndex("lookupSkiplist", argv, false, false, TRI_IDX_TYPE_SKIPLIST_INDEX);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a fulltext index exists
-///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
-///
-/// Creates a fulltext index on all documents on attribute @FA{field}.
-/// All documents, which do not have the attribute @FA{field} or that have a
-/// non-textual value inside their @FA{field} attribute are ignored.
-///
-/// The minimum length of words that are indexed can be specified with the
-/// @FA{minWordLength} parameter. Words shorter than @FA{minWordLength}
-/// characters will not be indexed. @FA{minWordLength} has a default value of 2,
-/// but this value might be changed in future versions of ArangoDB. It is thus
-/// recommended to explicitly specify this value
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude fulltext
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_EnsureFulltextIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsureFulltextIndex(argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a fulltext index
-///
-/// @FUN{lookupFulltextIndex(@FA{field}}
-///
-/// Checks whether a fulltext index on the give attribute @FA{field} exists.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments const& argv) {
-  return EnsureFulltextIndex(argv, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8652,12 +7726,11 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   const char* key = *s;
 
   // empty or null
-  if (key == 0 || *key == '\0') {
+  if (key == 0 || *key == '\0' || *key == '_') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (*key == '_' ||
-      strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
+  if (strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
       strcmp(key, "toString") == 0 ||
       strcmp(key, "toJSON") == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -10927,25 +10000,12 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "document", JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(rt, "drop", JS_DropVocbaseCol);
   TRI_AddMethodVocbase(rt, "dropIndex", JS_DropIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureBitarray", JS_EnsureBitarrayVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureUndefBitarray", JS_EnsureUndefBitarrayVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureCapConstraint", JS_EnsureCapConstraintVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureFulltextIndex", JS_EnsureFulltextIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
+  TRI_AddMethodVocbase(rt, "ensureIndex", JS_EnsureIndexVocbaseCol);
+  TRI_AddMethodVocbase(rt, "lookupIndex", JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "exists", JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupFulltextIndex", JS_LookupFulltextIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupSkiplist", JS_LookupSkiplistVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupUniqueConstraint", JS_LookupUniqueConstraintVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupUniqueSkiplist", JS_LookupUniqueSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
 #ifdef TRI_ENABLE_CLUSTER  
   TRI_AddMethodVocbase(rt, "planId", JS_PlanIdVocbaseCol);

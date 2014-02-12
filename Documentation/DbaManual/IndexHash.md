@@ -18,10 +18,10 @@ Accessing Hash Indexes from the Shell{#IndexHashShell}
 ======================================================
 
 @anchor IndexHashShellEnsureUniqueConstraint
-@copydetails JS_EnsureUniqueConstraintVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureUniqueConstraint
 
 @CLEARPAGE
 @anchor IndexHashShellEnsureHashIndex
-@copydetails JS_EnsureHashIndexVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureHashIndex
 
 @BNAVIGATE_IndexHash

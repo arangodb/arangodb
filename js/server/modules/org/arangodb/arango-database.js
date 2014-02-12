@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, TRANSACTION */
+/*global require, exports, module, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase

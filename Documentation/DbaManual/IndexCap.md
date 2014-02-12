@@ -35,6 +35,6 @@ Accessing Cap Constraints from the Shell{#IndexCapShell}
 ========================================================
 
 @anchor IndexCapShellEnsureCapConstraint
-@copydetails JS_EnsureCapConstraintVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureCapConstraint
 
 @BNAVIGATE_IndexCap

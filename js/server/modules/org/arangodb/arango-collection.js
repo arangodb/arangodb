@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global ArangoClusterComm, ArangoClusterInfo, require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global ArangoClusterComm, ArangoClusterInfo, require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -716,6 +716,591 @@ ArangoCollection.prototype.updateByExample = function (example,
       limit: limit,
       wfs: waitForSync
     }
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, ..., @FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on documents using attributes as paths to the
+/// fields (@FA{field1},..., @FA{fieldn}). A value (@FA{value1},...,@FA{valuen})
+/// consists of an array of possible values that the field can take. At least
+/// one field and one set of possible values must be given.
+///
+/// All documents, which do not have *all* of the attribute paths are ignored
+/// (that is, are not part of the bitarray index, they are however stored within
+/// the collection). A document which contains all of the attribute paths yet
+/// has one or more values which are *not* part of the defined range of values
+/// will be rejected and the document will not inserted within the
+/// collection. Note that, if a bitarray index is created subsequent to
+/// any documents inserted in the given collection, then the creation of the
+/// index will fail if one or more documents are rejected (due to
+/// attribute values being outside the designated range).
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0` or `1`. Any document which has the
+/// attribute `x` defined and does not have a value of `0` or `1` will be
+/// rejected and therefore not inserted within the collection. Documents without
+/// the attribute `x` defined will not take part in the index.
+///
+/// @code
+/// arango> arangod> db.example.ensureBitarray("x", [0,1]);
+/// {
+///   "id" : "2755894/3607862",
+///   "unique" : false,
+///   "type" : "bitarray",
+///   "fields" : [["x", [0, 1]]],
+///   "undefined" : false,
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0`, `1` or *other* (indicated by
+/// `[]`). Any document which has the attribute `x` defined will take part in
+/// the index. Documents without the attribute `x` defined will not take part in
+/// the index.
+///
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1,[]]);
+/// {
+///   "id" : "2755894/4263222",
+///   "unique" : false,
+///   "type" : "bitarray",
+///   "fields" : [["x", [0, 1, [ ]]]],
+///   "undefined" : false,
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the values
+/// of `2` or `"a"`. A document which does not have *both* attributes `x` and `y`
+/// will not take part within the index.  A document which does have both attributes
+/// `x` and `y` defined must have the values `0` or `1` for attribute `x` and
+/// `2` or `a` for attribute `y`, otherwise the document will not be inserted
+/// within the collection.
+///
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
+/// {
+///   "id" : "2755894/5246262",
+///   "unique" : false,
+///   "type" : "bitarray",
+///   "fields" : [["x", [0, 1]], ["y", [0, 1]]],
+///   "undefined" : false,
+///   "isNewlyCreated" : false
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the
+/// values of `2`, `"a"` or *other* . A document which does not have *both*
+/// attributes `x` and `y` will not take part within the index.  A document
+/// which does have both attributes `x` and `y` defined must have the values `0`
+/// or `1` for attribute `x` and any value for attribute `y` will be acceptable,
+/// otherwise the document will not be inserted within the collection.
+///
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
+/// {
+///   "id" : "2755894/5770550",
+///   "unique" : false,
+///   "type" : "bitarray",
+///   "fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]],
+///   "undefined" : false,
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureBitarray = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+  
+  return this.ensureIndex({ 
+    type: "bitarray", 
+    fields: fields 
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureUndefBitarray(@FA{field1}, @FA{value1}, ..., @FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on all documents using attributes as paths to
+/// the fields. At least one attribute and one set of possible values must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUndefBitarray = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  return this.ensureIndex({ 
+    type: "bitarray", 
+    fields: fields,
+    "undefined": true
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a cap constraint exists
+///
+/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
+///
+/// Creates a size restriction aka cap for the collection of @FA{size}
+/// documents and/or @FA{byteSize} data size. If the restriction is in place 
+/// and the (@FA{size} plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds @FA{byteSize}, then the 
+/// least recently created or updated documents are removed until all 
+/// constraints are satisfied.
+///
+/// It is allowed to specify either @FA{size} or @FA{byteSize}, or both at
+/// the same time. If both are specified, then the automatic document removal
+/// will be triggered by the first non-met constraint.
+///
+/// Note that at most one cap constraint is allowed per collection.
+///
+/// Note that this does not imply any restriction of the number of revisions
+/// of documents.
+///
+/// @EXAMPLES
+///
+/// Restrict the number of document to at most 10 documents:
+///
+/// @verbinclude ensure-cap-constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
+  "use strict";
+
+  return this.ensureIndex({ 
+    type: "cap", 
+    size: size || undefined, 
+    byteSize: byteSize || undefined 
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+///
+/// @FUN{ensureUniqueSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a skiplist index on all documents using attributes as paths to
+/// the fields. At least one attribute must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude unique-skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+  
+  return this.ensureIndex({ 
+    type: "skiplist", 
+    fields: fields,
+    unique: true
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a multi skiplist index exists
+///
+/// @FUN{ensureSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a multi skiplist index on all documents using attributes as paths to
+/// the fields. At least one attribute must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude multi-skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+  
+  return this.ensureIndex({ 
+    type: "skiplist", 
+    fields: fields
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a fulltext index exists
+///
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
+///
+/// Creates a fulltext index on all documents on attribute @FA{field}.
+/// All documents, which do not have the attribute @FA{field} or that have a
+/// non-textual value inside their @FA{field} attribute are ignored.
+///
+/// The minimum length of words that are indexed can be specified with the
+/// @FA{minWordLength} parameter. Words shorter than @FA{minWordLength}
+/// characters will not be indexed. @FA{minWordLength} has a default value of 2,
+/// but this value might be changed in future versions of ArangoDB. It is thus
+/// recommended to explicitly specify this value
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fulltext
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureFulltextIndex = function (fields, minLength) {
+  "use strict";
+  
+  if (! Array.isArray(fields)) {
+    fields = [ fields ];
+  }
+
+  return this.ensureIndex({ 
+    type: "fulltext", 
+    minLength: minLength || undefined,
+    fields: fields
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a unique constraint exists
+///
+/// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
+/// ... as attribute paths. At least one attribute path must be given.
+///
+/// When a unique constraint is in effect for a collection, then all documents
+/// which contain the given attributes must differ in the attribute
+/// values. Creating a new document or updating a document will fail, if the
+/// uniqueness is violated. If any attribute value is null for a document, this
+/// document is ignored by the index.
+///
+/// Note that non-existing attribute paths in a document are treated as if the
+/// value were @LIT{null}.
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-index-create-unique-constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+  
+  return this.ensureIndex({ 
+    type: "hash", 
+    fields: fields,
+    unique: true
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+///
+/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+///
+/// Creates a non-unique hash index on all documents using @FA{field1}, @FA{field2},
+/// ... as attribute paths. At least one attribute path must be given.
+///
+/// Note that non-existing attribute paths in a document are treated as if the
+/// value were @LIT{null}.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-index-create-hash-index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+  
+  return this.ensureIndex({ 
+    type: "hash", 
+    fields: fields
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists
+///
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
+///
+/// Creates a geo-spatial index on all documents using @FA{location} as path to
+/// the coordinates. The value of the attribute must be a list with at least two
+/// double values. The list must contain the latitude (first value) and the
+/// longitude (second value). All documents, which do not have the attribute
+/// path or with value that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location}, @LIT{true})}
+///
+/// As above which the exception, that the order within the list is longitude
+/// followed by latitude. This corresponds to the format described in
+///
+/// http://geojson.org/geojson-spec.html#positions
+///
+/// @FUN{@FA{collection}.ensureGeoIndex(@FA{latitude}, @FA{longitude})}
+///
+/// Creates a geo-spatial index on all documents using @FA{latitude} and
+/// @FA{longitude} as paths the latitude and the longitude. The value of the
+/// attribute @FA{latitude} and of the attribute @FA{longitude} must a
+/// double. All documents, which do not have the attribute paths or which values
+/// are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @EXAMPLES
+///
+/// Create an geo index for a list attribute:
+///
+/// @verbinclude ensure-geo-index-list
+///
+/// Create an geo index for a hash array attribute:
+///
+/// @verbinclude ensure-geo-index-array
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+  "use strict";
+
+  if (typeof lat !== "string") {
+    throw "usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])";
+  }
+
+  if (typeof lon === "boolean") {
+    return this.ensureIndex({ 
+      type : "geo1", 
+      fields : [ lat ], 
+      geoJson : lon
+    });
+  }
+
+  if (lon === undefined) {
+    return this.ensureIndex({
+      type : "geo1", 
+      fields : [ lat ],
+      geoJson : false 
+    });
+  }
+
+  return this.ensureIndex({
+    type : "geo2",
+    fields : [ lat, lon ]
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo constraint exists
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @FA{ignore-null})}
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true}, @FA{ignore-null})}
+///
+/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
+///
+/// Works like @FN{ensureGeoIndex} but requires that the documents contain
+/// a valid geo definition. If @FA{ignore-null} is true, then documents with
+/// a null in @FA{location} or at least one null in @FA{latitude} or
+/// @FA{longitude} are ignored.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
+  "use strict";
+
+  // only two parameter
+  if (ignoreNull === undefined) {
+    ignoreNull = lon;
+
+    if (typeof ignoreNull !== "boolean") {
+      throw "usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>)"
+          + " or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
+    }
+
+    return this.ensureIndex({
+      type : "geo1",
+      fields : [ lat ],
+      geoJson : false, 
+      unique : true,
+      ignoreNull : ignoreNull 
+    });
+  }
+
+  // three parameter
+  if (typeof lon === "boolean") {
+    return this.ensureIndex({
+      type : "geo1",
+      fields : [ lat ],
+      geoJson : lon,
+      unique : true,
+      ignoreNull : ignoreNull
+    });
+  }
+
+  return this.ensureIndex({
+    type : "geo2",
+    fields : [ lat, lon ],
+    unique : true,
+    ignoreNull : ignoreNull
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupUniqueConstraint = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  return this.lookupIndex({
+    type: "hash",
+    fields: fields,
+    unique: true
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupHashIndex = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  return this.lookupIndex({
+    type: "hash",
+    fields: fields
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupUniqueSkiplist = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  return this.lookupIndex({
+    type: "skiplist",
+    fields: fields,
+    unique: true
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupSkiplist = function () {
+  "use strict";
+
+  var fields = [], i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  return this.lookupIndex({
+    type: "skiplist",
+    fields: fields
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a fulltext index
+///
+/// @FUN{lookupFulltextIndex(@FA{field}, @FA{minLength}}
+///
+/// Checks whether a fulltext index on the given attribute @FA{field} exists.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.lookupFulltextIndex = function (fields, minLength) {
+  "use strict";
+
+  if (! Array.isArray(fields)) {
+    fields = [ fields ];
+  }
+
+  return this.lookupIndex({
+    type: "fulltext",
+    fields: fields,
+    minLength: minLength || undefined
   });
 };
 
