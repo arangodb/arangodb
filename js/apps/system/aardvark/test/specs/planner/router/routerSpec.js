@@ -13,8 +13,9 @@
               simpleNavigationCheck;
 
           beforeEach(function() {
-              r = new window.plannerRouter();
-              simpleNavigationCheck = function(url, viewName, initObject, funcList, shouldNotRender) {
+              r = new window.PlannerRouter();
+              simpleNavigationCheck = function(url, viewName,
+                initObject, funcList, shouldNotRender) {
                   var route,
                       view = {},
                       checkFuncExec = function() {

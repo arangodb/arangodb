@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine*/
-/*global $, arangoCollection*/
+/*global $*/
 (function() {
   "use strict";
 
