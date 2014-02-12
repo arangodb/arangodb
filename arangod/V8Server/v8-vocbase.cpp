@@ -1289,17 +1289,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 static v8::Handle<v8::Value> SaveVocbaseCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
-    v8::Arguments const& argv,
-    bool replace) {
+    v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    if (replace) {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>])");
-    }
-    else {
-      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
-    }
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
   }
   
   const bool forceSync = ExtractForceSync(argv, 2);
@@ -1388,18 +1382,12 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 static v8::Handle<v8::Value> SaveEdgeCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
-    v8::Arguments const& argv,
-    bool replace) {
+    v8::Arguments const& argv) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() < 3 || argv.Length() > 4) {
-    if (replace) {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>])");
-    }
-    else {
-      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
-    }
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -7192,166 +7180,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, collection, argv, false);
+    result = SaveVocbaseCol(&trx, collection, argv);
   }
   else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, collection, argv, false);
-  }
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves or replaces a document
-///
-/// @FUN{@FA{collection}.saveOrReplace(@FA{data})}
-///
-/// Creates a new document with in the @FA{collection} from the given @FA{data}
-/// or replaces an existing document. The @FA{data} must be a hash array. It
-/// must not contain attributes starting with `_`, expect the document key
-/// stored in `_key`. If there already exists a document with the given key it
-/// is replaced.
-///
-/// The method returns a document with the attributes `_key`, `_id` and `_rev`.
-/// The attribute `_id` contains the document handle of the newly created or
-/// replaced document; the attribute `_key` contains the document key; the
-/// attribute `_rev` contains the document revision.
-///
-/// @FUN{@FA{collection}.saveOrReplace(@FA{data}, @FA{waitForSync})}
-///
-/// The optional @FA{waitForSync} parameter can be used to force synchronisation
-/// of the document creation operation to disk even in case that the
-/// `waitForSync` flag had been disabled for the entire collection.  Thus, the
-/// `waitForSync` parameter can be used to force synchronisation of just
-/// specific operations. To use this, set the `waitForSync` parameter to
-/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
-/// then the collection's default `waitForSync` behavior is applied. The
-/// `waitForSync` parameter cannot be used to disable synchronisation for
-/// collections that have a default `waitForSync` value of `true`.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{ShellSaveOrReplace1}
-/// doc = db.saveOrReplace("aardvark", { german: "Erdferkell" });
-/// doc = db.saveOrReplace("aardvark", { german: "Erdferkel" });
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == 0) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-
-  size_t pos;
-
-  if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-    if (argv.Length() < 1) {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>]");
-    }
-
-    pos = 0;
-  }
-  else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
-    if (argv.Length() < 1) {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>]");
-    }
-
-    pos = 2;
-  }
-  else {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
-  TRI_voc_key_t key;
-  int res = ExtractDocumentKey(argv[pos], key);
-
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
-
-  res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  res = trx.lockWrite();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  if (key != 0) {
-    TRI_doc_mptr_t document;
-    res = trx.read(&document, key);
-  }
-  else {
-    res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  v8::Handle<v8::Value> result;
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    TRI_primary_collection_t* primary = trx.primaryCollection();
-    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[pos], primary->_shaper);
-
-    if (shaped == 0) {
-      FREE_STRING(TRI_CORE_MEM_ZONE, key);
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
-    }
-    
-    const bool forceSync = ExtractForceSync(argv, pos + 1);
-
-    TRI_doc_mptr_t document;
-    TRI_voc_rid_t rid = 0;
-    TRI_voc_rid_t actualRevision = 0;
-    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision);
-
-    res = trx.finish(res);
-    
-    TRI_FreeShapedJson(zone, shaped);
-    
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-    v8::Handle<v8::Object> r = v8::Object::New();
-    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document._key));
-    r->Set(v8g->_RevKey, V8RevisionId(document._rid));
-    r->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
-    r->Set(v8g->_KeyKey, v8::String::New(document._key));
-
-    result = r;
-  }
-  else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-
-    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-      result = SaveVocbaseCol(&trx, collection, argv, true);
-    }
-    else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
-      result = SaveEdgeCol(&trx, collection, argv, true);
-    }
-  }
-  else {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-    TRI_V8_EXCEPTION(scope, res);
+    result = SaveEdgeCol(&trx, collection, argv);
   }
 
   return scope.Close(result);
@@ -10026,7 +9858,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
-  TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
