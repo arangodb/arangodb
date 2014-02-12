@@ -196,7 +196,6 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server)
     _server(server),
     _startupPath(),
     _modulesPath(),
-    _packagePath(),
     _actionPath(),
     _appPath(),
     _devAppPath(),
@@ -569,12 +568,12 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
-    ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
     // deprecated options
     ("javascript.action-directory", &DeprecatedPath, "path to the JavaScript action directory (deprecated)")
     ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
+    ("javascript.package-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
   ;
 }
 
@@ -583,6 +582,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
+
   // check the startup path
   if (_startupPath.empty()) {
     LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
@@ -604,7 +604,6 @@ bool ApplicationV8::prepare () {
 
     paths.push_back(string("startup '" + _startupPath + "'"));
     paths.push_back(string("modules '" + _modulesPath + "'"));
-    paths.push_back(string("packages '" + _packagePath + "'"));
 
     if (_useActions) {
       paths.push_back(string("actions '" + _actionPath + "'"));
@@ -627,7 +626,6 @@ bool ApplicationV8::prepare () {
   }
 
   _startupLoader.setDirectory(_startupPath);
-  
 
   // check for development mode
   if (! _devAppPath.empty()) {
@@ -766,7 +764,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupPath, _modulesPath, _packagePath);
+  TRI_InitV8Utils(context->_context, _startupPath, _modulesPath);
   TRI_InitV8Shell(context->_context);
 
   {
