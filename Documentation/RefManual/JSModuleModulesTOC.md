@@ -9,5 +9,4 @@ TOC {#JSModulesTOC}
     - @ref JSModulesNPM
     - @ref JSModulesRequire "require"
   - @ref JSModulesPath
-    - @ref JSModulesNormalization
     - @ref JSModulesCache

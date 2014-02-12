@@ -12,7 +12,11 @@
   "assets": {
     "index.html": {
       "files": [
-        "index.html"
+        "frontend/html/start.html.part",
+        "frontend/html/headadmin.html.part",
+        "frontend/html/body.html.part",
+        "frontend/html/scriptsadmin.html.part",
+        "frontend/html/end.html.part"
       ]
     },
 
