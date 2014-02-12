@@ -9,7 +9,6 @@
     template: plannerTemplateEngine.createTemplate("testPlan.ejs", "planner"),
 
     render: function() {
-      console.log("Rendoror");
       $(this.el).html(this.template.render({}));
     }
   });
