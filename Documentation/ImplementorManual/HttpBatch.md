@@ -40,7 +40,7 @@ its response if it is specified. Otherwise, the server will not send a
 Content-Id "header" back. The server will not validate the uniqueness
 of the Content-Id.  After the mandatory `Content-Type` and the
 optional `Content-Id` header, two Windows linebreaks
-(i.e. `\\r\\n\\r\\n`) must follow.  Any deviation of this structure
+(i.e. `\r\n\r\n`) must follow.  Any deviation of this structure
 might lead to the part being rejected or incorrectly interpreted. The
 part request payload, formatted as a regular HTTP request, must follow
 the two Windows linebreaks literal directly.
@@ -51,7 +51,7 @@ technically is the header of the MIME part, and the HTTP request
 
 An actual part request should start with the HTTP method, the called
 URL, and the HTTP protocol version as usual, followed by arbitrary
-HTTP headers. Its body should follow after the usual `\\r\\n\\r\\n`
+HTTP headers. Its body should follow after the usual `\r\n\r\n`
 literal. Part requests are therefore regular HTTP requests, only
 embedded inside a multipart message.
 
@@ -95,5 +95,11 @@ part request failed (with status code 404), the `x-arango-errors`
 header of the overall response is `1`:
 
 @verbinclude api-batch-fail-response
+
+Please note that the database used for all part operations of a batch
+request is determined by scanning the original URL (the URL that contains
+`/_api/batch`). It is not possible to override the database name in
+part operations of a batch. When doing so, any other database name used 
+in a batch part will be ignored.
 
 @BNAVIGATE_HttpBatch

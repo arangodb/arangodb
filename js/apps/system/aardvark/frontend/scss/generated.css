@@ -3,11 +3,14 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-div.navlogo, ul.navlist li, ul.link-dropdown-menu, div.footer-left {
+div.navlogo, ul.navlist li, ul.link-dropdown-menu, div.footer-left, li.tile {
   float: left; }
 
-div.navmenu, div.footer-right {
+div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
+
+li.tile div.iconSet span {
+  cursor: pointer; }
 
 nav.navbar, footer.footer {
   position: fixed;
@@ -20,14 +23,13 @@ nav.navbar, footer.footer {
 
 div.resizecontainer {
   margin: 0px auto; }
-
-div.resizecontainer:after {
-  clear: both;
-  content: ".";
-  display: block;
-  font-size: 0px;
-  height: 0px;
-  visibility: hidden; }
+  div.resizecontainer:after {
+    clear: both;
+    content: ".";
+    display: block;
+    font-size: 0px;
+    height: 0px;
+    visibility: hidden; }
 
 @media (max-width: 798px) {
   #arangoCollectionUl {
@@ -45,39 +47,42 @@ div.resizecontainer:after {
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 13px; } }
-@media (min-width: 313px) and (max-width: 555px) {
+@media (min-width: 72px) and (max-width: 314px) {
   div.resizecontainer {
-    width: 241px; } }
+    width: 0px; } }
+@media (min-width: 314px) and (max-width: 556px) {
+  div.resizecontainer {
+    width: 242px; } }
 @media (min-width: 556px) and (max-width: 798px) {
   div.resizecontainer {
     width: 484px; } }
-@media (min-width: 799px) and (max-width: 1041px) {
+@media (min-width: 798px) and (max-width: 1040px) {
   div.resizecontainer {
-    width: 727px; } }
-@media (min-width: 1042px) and (max-width: 1284px) {
+    width: 726px; } }
+@media (min-width: 1040px) and (max-width: 1282px) {
   div.resizecontainer {
-    width: 970px; } }
-@media (min-width: 1285px) and (max-width: 1527px) {
+    width: 968px; } }
+@media (min-width: 1282px) and (max-width: 1524px) {
   div.resizecontainer {
-    width: 1213px; } }
-@media (min-width: 1528px) and (max-width: 1770px) {
+    width: 1210px; } }
+@media (min-width: 1524px) and (max-width: 1766px) {
   div.resizecontainer {
-    width: 1456px; } }
-@media (min-width: 1771px) and (max-width: 2013px) {
+    width: 1452px; } }
+@media (min-width: 1766px) and (max-width: 2008px) {
   div.resizecontainer {
-    width: 1699px; } }
-@media (min-width: 2014px) and (max-width: 2256px) {
+    width: 1694px; } }
+@media (min-width: 2008px) and (max-width: 2250px) {
   div.resizecontainer {
-    width: 1942px; } }
-@media (min-width: 2257px) and (max-width: 2499px) {
+    width: 1936px; } }
+@media (min-width: 2250px) and (max-width: 2492px) {
   div.resizecontainer {
-    width: 2185px; } }
-@media (min-width: 2500px) and (max-width: 2742px) {
+    width: 2178px; } }
+@media (min-width: 2492px) and (max-width: 2734px) {
   div.resizecontainer {
-    width: 2428px; } }
-@media (min-width: 2743px) and (max-width: 2985px) {
+    width: 2420px; } }
+@media (min-width: 2734px) and (max-width: 2976px) {
   div.resizecontainer {
-    width: 2671px; } }
+    width: 2662px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -177,3 +182,54 @@ footer.footer {
     padding-top: 10px;
     padding-bottom: 10px;
     margin-bottom: 0; }
+
+div#collectionsThumbnailsIn {
+  margin-left: 0px; }
+
+li.tile {
+  position: relative;
+  text-align: center;
+  height: 100px;
+  width: 230px;
+  margin-left: 6px;
+  margin-right: 6px;
+  margin-bottom: 13px;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none; }
+  li.tile h5 {
+    font-size: 12px;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: white;
+    background: #686766;
+    padding: 4px 8px;
+    margin: 0; }
+  li.tile div.iconSet {
+    position: absolute;
+    top: 5px;
+    right: 5px; }
+    li.tile div.iconSet span {
+      opacity: 0.5;
+      font-size: 18px;
+      padding-left: 7px; }
+      li.tile div.iconSet span:hover {
+        opacity: 1.0; }
+      li.tile div.iconSet span.disabled {
+        opacity: 0.2;
+        cursor: default; }
+  li.tile .badge-success {
+    font-weight: 300; }
+  li.tile .unloaded div {
+    border-bottom: 16px solid #FF8F35; }
+  li.tile .deleted div {
+    border-bottom: 16px solid red; }
+
+.collectionName {
+  text-align: left;
+  font-weight: 300;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px; }
