@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
-/*global require, exports, module, UPGRADE_ARGS, UPGRADE_STARTED */
+/*global require, exports, module, UPGRADE_ARGS, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server, will optionally perform
