@@ -8,6 +8,10 @@
     el: "#content",
     template: plannerTemplateEngine.createTemplate("testPlan.ejs", "planner"),
 
+    events: {
+      "click #startPlan": "startPlan"
+    },
+
     render: function() {
       $(this.el).html(this.template.render({}));
     }

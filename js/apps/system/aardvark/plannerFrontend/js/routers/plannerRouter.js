@@ -4,7 +4,8 @@
 (function() {
   "use strict";
 
-  window.plannerRouter = Backbone.Router.extend({
+  window.PlannerRouter = Backbone.Router.extend({
+
     routes: {
       "planTest"                                : "planTest",
       "planScenarioSelector"                    : "planScenarioSelector"

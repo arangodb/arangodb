@@ -82,15 +82,8 @@ void TRI_InitIndex (TRI_index_t* idx,
   // init common functions
   idx->removeIndex       = NULL;
   idx->cleanup           = NULL;
-#if 0  
-  idx->reserve           = NULL;
-#endif
 
   idx->postInsert        = NULL;
-
-  idx->beginTransaction  = NULL;
-  idx->abortTransaction  = NULL;
-  idx->commitTransaction = NULL;
 
   LOG_TRACE("initialising index of type %s", idx->typeName(idx));
 }
@@ -543,22 +536,6 @@ static const char* TypeNamePrimary (TRI_index_t const* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space for a specific number of extra documents
-/// must be called under the collection's write-lock
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static bool ReservePrimary (TRI_index_t* idx,
-                            int64_t numDocuments) {
-  TRI_primary_collection_t* primary;
-
-  primary = idx->_collection;
-  
-  return TRI_ReserveAssociativePointer(&primary->_primaryIndex, (uint32_t) numDocuments);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -587,6 +564,10 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, bool withStats) {
   TRI_json_t* fields;
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  
+  if (json == NULL) {
+    return NULL;
+  }
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_id"));
@@ -632,9 +613,6 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
-#if 0  
-  idx->reserve  = ReservePrimary;
-#endif
 
   return idx;
 }
@@ -882,6 +860,10 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, bool withStats) {
   TRI_json_t* fields;
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  if (json == NULL) {
+    return NULL;
+  }
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
@@ -1418,6 +1400,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+
   if (withStats) {
     nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "numUsed", 

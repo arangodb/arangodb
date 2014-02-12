@@ -386,56 +386,8 @@ function handleDatabaseChanges (plan, current) {
 
 function createIndex (shard, index) {
   var collection = arangodb.db._collection(shard);
-                            
-  switch (index.type) { 
-    case "hash":
-      if (index.unique) {
-        collection.ensureUniqueConstraint.apply(collection, index.fields);
-      }
-      else {
-        collection.ensureHashIndex.apply(collection, index.fields);
-      }
-      break;
-    case "skiplist":
-      if (index.unique) {
-        collection.ensureUniqueSkiplist.apply(collection, index.fields);
-      }
-      else {
-        collection.ensureSkiplist.apply(collection, index.fields);
-      }
-      break;
-    case "fulltext":
-      collection.ensureFulltextIndex(index.fields[0], index.minLength);
-      break;
-    case "geo1":
-      if (index.unique) {
-        collection.ensureGeoConstraint(index.fields[0], 
-                                       index.geoJson, 
-                                       index.ignoreNull);
-      }
-      else {
-        collection.ensureGeoIndex(index.fields[0], 
-                                  index.geoJson, 
-                                  index.ignoreNull);
-      }
-      break;
-    case "geo2":
-      if (index.unique) {
-        collection.ensureGeoConstraint(index.fields[0], 
-                                       index.fields[1], 
-                                       index.ignoreNull);
-      }
-      else {
-        collection.ensureGeoIndex(index.fields[0], index.fields[1]);
-      }
-      break;
-    case "bitarray":
-      collection.ensureBitarray.apply(collection, index.fields[0]);
-      break;
-    case "cap":
-      collection.ensureCapConstraint(index.size || 0, index.byteSize || 0);
-      break;
-  }
+                           
+  return collection.ensureIndex(index); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -6210,7 +6210,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot get indexes");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
@@ -6220,7 +6220,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   trx.lockRead();
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document,withStats);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, withStats);
 
   trx.finish(res);
   // READ-LOCK end
@@ -6499,6 +6499,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
     }
     result->Set(v8::String::New("shardKeys"), shardKeys);
+    result->Set(v8::String::New("numberOfShards"), v8::Number::New((*c).numberOfShards()));
 
     if (info._keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(info._keyOptions)->ToObject());
@@ -7558,11 +7559,12 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   const char* key = *s;
 
   // empty or null
-  if (key == 0 || *key == '\0' || *key == '_') {
+  if (key == 0 || *key == '\0') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
+  if (strcmp(key, "_COMPLETIONS") == 0 ||
+      strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
       strcmp(key, "toString") == 0 ||
       strcmp(key, "toJSON") == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -7625,7 +7627,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
     if (collection != 0 && collection->_cid == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-      return scope.Close(v8::Undefined());
+      return scope.Close(v8::Handle<v8::Value>());
     }
   }
   else {
