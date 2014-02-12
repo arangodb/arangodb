@@ -12,10 +12,6 @@
     initialize: function () {
       //also server online check
       var self = this;
-      this.dbSelectionView = new window.DBSelectionView({
-        collection: window.arangoDatabase,
-        current: window.currentDB
-      });
       window.setInterval(function(){
         self.getVersion();
       }, 15000);
@@ -105,12 +101,7 @@
           version: this.system.version,
           database: this.system.database
         }));
-        this.dbSelectionView.render($("#dbSelect"));
       }
-    },
-
-    handleSelectDatabase: function() {
-      this.dbSelectionView.render($("#dbSelect"));
     },
 
     render: function () {
@@ -119,10 +110,8 @@
       }
       $(this.el).html(this.template.render({
         name: this.system.name,
-        version: this.system.version,
-        database: this.system.database
+        version: this.system.version
       }));
-      this.dbSelectionView.render($("#dbSelect"));
       return this;
     }
 
