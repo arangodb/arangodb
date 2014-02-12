@@ -12,35 +12,28 @@
 
 
         events: {
-        /*    "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
-            "click #createViewer": "createViewer",
-            "click #add_label": "insertNewLabelLine",
-            "click #add_colour": "insertNewColourLine",
-            "click #add_group_by": "insertNewGroupLine",
-            "click input[type='radio'][name='colour']": "toggleColourDisplay",
-            "click .gv_internal_remove_line": "removeAttrLine",
-            "click #manageGraphs": "showGraphManager"*/
+            "click #multiServerSymmetrical": "multiServerSymmetrical",
+            "click #multiServerAsymmetrical": "multiServerAsymmetrical",
+            "click #singleServer": "singleServer"
         },
-
-        showGraphManager: function() {
-            window.App.navigate("graphManagement", {trigger: true});
-        },
-
-/*
-        removeAttrLine: function(e) {
-            var g = $(e.currentTarget)
-                    .parent()
-                    .parent(),
-                set = g.parent();
-            set.get(0).removeChild(g.get(0));
-        },
-*/
-
-
 
         render: function() {
             $(this.el).html(this.template.render({}));
+        },
+        multiServerSymmetrical: function() {
+            window.App.navigate(
+                "planSymmetrical", {trigger: true}
+            );
+        },
+        multiServerAsymmetrical: function() {
+            window.App.navigate(
+                "planAsymmetrical", {trigger: true}
+            );
+        },
+        singleServer: function() {
+            window.App.navigate(
+                "planTest", {trigger: true}
+            );
         }
-
     });
 }());
