@@ -860,12 +860,6 @@ function post_api_index_bitarray (req, res, collection, body) {
 
   var index;
 
-  if (body.unique) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "Bitarray indexes can not be unique");
-    return;
-  }
-  
   index = collection.ensureBitarray.apply(collection, fields);
 
   if (index.isNewlyCreated) {
