@@ -7,8 +7,6 @@ directory= @LOCALSTATEDIR@/lib/arangodb
 
 [javascript]
 startup-directory = @PKGDATADIR@/js
-modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node
-package-path = @PKGDATADIR@/js/npm
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 script = @PKGDATADIR@/js/server/arango-dfdb.js
 

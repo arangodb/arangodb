@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+module.isSystem = true;
+
 var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
 var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;
 var internal = require("internal");
