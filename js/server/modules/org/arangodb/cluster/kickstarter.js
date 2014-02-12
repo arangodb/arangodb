@@ -325,8 +325,16 @@ shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
 
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
+  var url;
+  for (i = 0;i < run.endpoints.length;i++) {
+    console.info("Using API to shutdown %s", run.pids[i].toString());
+    url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
+    download(url);
+  }
+  console.info("Waiting 10 seconds for servers to shutdown gracefully...");
+  wait(10);
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Shutting down %s", run.pids[i].toString());
+    console.info("Shutting down %s the hard way...", run.pids[i].toString());
     killExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
