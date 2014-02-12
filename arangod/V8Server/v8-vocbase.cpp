@@ -7726,7 +7726,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   const char* key = *s;
 
   // empty or null
-  if (key == 0 || *key == '\0') {
+  if (key == 0 || *key == '\0' || *key == '_') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
