@@ -882,7 +882,10 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 /// the same time. If both are specified, then the automatic document removal
 /// will be triggered by the first non-met constraint.
 ///
-/// Note that at most one cap constraint is allowed per collection.
+/// Note that at most one cap constraint is allowed per collection. Trying
+/// to create additional cap constraints will result in an error. Creating
+/// cap constraints is also not supported in sharded collections with more 
+/// than one shard.
 ///
 /// Note that this does not imply any restriction of the number of revisions
 /// of documents.

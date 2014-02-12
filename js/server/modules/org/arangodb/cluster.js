@@ -535,6 +535,12 @@ function createLocalCollections (plannedCollections) {
                                          JSON.stringify(index));
 
                             arangodb.db._collection(shard).ensureIndex(index);
+                            payload.indexes.push(index);
+                            indexes[index.id] = index;
+                        
+                            writeLocked({ part: "Current" }, 
+                                        createCollectionAgency, 
+                                        [ database, shard, payload ]);
                           }
                         }
                       }
