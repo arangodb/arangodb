@@ -5935,7 +5935,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Drops the index. If the index does not exist, then @LIT{false} is
 /// returned. If the index existed and was dropped, then @LIT{true} is
-/// returned. Note that you cannot drop the primary index.
+/// returned. Note that you cannot drop some special indexes (e.g. the primary 
+/// index of a collection or the edge index of an edge collection).
 ///
 /// @FUN{@FA{collection}.dropIndex(@FA{index-handle})}
 ///
@@ -6916,10 +6917,10 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) collection->_collection;
 
   int res = TRI_RotateJournalDocumentCollection(document);
 
