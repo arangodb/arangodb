@@ -995,7 +995,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (fields, minLength) {
     fields = [ fields ];
   }
 
-  this.ensureIndex({ 
+  return this.ensureIndex({ 
     type: "fulltext", 
     minLength: minLength || undefined,
     fields: fields
