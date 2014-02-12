@@ -19,7 +19,9 @@
       sessionDummy,
       graphsDummy,
       foxxDummy,
-      logsDummy;
+      logsDummy,
+      statisticBarDummy,
+      userBarDummy;
 
     // Spy on all views that are initialized by startup
     beforeEach(function() {
@@ -66,6 +68,14 @@
       foxxDummy = {
         id: "foxxDummy"
       };
+      statisticBarDummy = {
+        id: "statisticBarDummy",
+        render : function(){}
+      };
+      userBarDummy = {
+        id: "userBarDummy",
+        render : function(){}
+      };
       spyOn(storeDummy, "fetch");
       spyOn(window, "arangoCollections").andReturn(storeDummy);
       spyOn(window, "ArangoUsers").andReturn(sessionDummy);
@@ -103,6 +113,8 @@
         expect(options.async).toBeFalsy(); 
       });
       spyOn(window, "DBSelectionView");
+      spyOn(window, "StatisticBarView").andReturn(statisticBarDummy);
+      spyOn(window, "UserBarView").andReturn(userBarDummy);
     });
 
     describe("initialisation", function() {
