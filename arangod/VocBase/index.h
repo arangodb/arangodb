@@ -115,14 +115,6 @@ typedef struct TRI_index_s {
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
   // .........................................................................................
-  // the following functions are called for transaction management
-  // .........................................................................................
-
-  int (*beginTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-  int (*abortTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-  int (*commitTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-
-  // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
 
@@ -135,11 +127,6 @@ typedef struct TRI_index_s {
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
   
-#if 0
-  // reserve hint function. must be called under the collection's write-lock
-  bool (*reserve) (struct TRI_index_s*, int64_t);
-#endif
-
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.

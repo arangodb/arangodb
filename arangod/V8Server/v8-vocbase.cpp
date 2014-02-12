@@ -6222,7 +6222,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot get indexes");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
@@ -6232,7 +6232,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   trx.lockRead();
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document,withStats);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, withStats);
 
   trx.finish(res);
   // READ-LOCK end
