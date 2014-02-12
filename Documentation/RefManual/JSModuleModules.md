@@ -93,9 +93,6 @@ The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
   you would expect in Prototype.js (or Ruby), but without extending any of the
   built-in JavaScript objects.
 
-You can use the command-line option @CO{startup.package-path} to specify the
-location of the node packages.
-
 require{#JSModulesRequire}
 --------------------------
 
