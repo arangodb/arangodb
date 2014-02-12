@@ -7,8 +7,10 @@
   window.PlannerRouter = Backbone.Router.extend({
 
     routes: {
-      "planTest"                                : "planTest",
-      "planScenarioSelector"                    : "planScenarioSelector"
+      "planTest"             : "planTest",
+      "planSymmetric"        : "planSymmetric",
+      "planAsymmetric"       : "planAsymmetric",
+      "" : "planScenarioSelector"
     },
 
     planTest: function() {
@@ -18,6 +20,20 @@
       this.planTestView.render();
     },
 
+    planSymmetric: function() {
+      if (!this.planSymmetricView) {
+        this.planSymmetricView = new window.PlanSymmetricView();
+      }
+      this.planSymmetricView.render(true);
+    },
+
+    planAsymmetric: function() {
+      if (!this.planSymmetricView) {
+        this.planSymmetricView = new window.PlanSymmetricView();
+      }
+      this.planSymmetricView.render(false);
+    },
+
     planScenarioSelector: function() {
       if (!this.PlanScenarioSelector) {
           this.PlanScenarioSelector = new window.PlanScenarioSelectorView();
@@ -25,18 +41,16 @@
       this.PlanScenarioSelector.render();
     },
 
-
-
     initialize: function () {
       /*
       this.footerView = new window.FooterView();
       this.footerView.render();
       */
-   },
+    },
 
-   handleResize: function() {
+    handleResize: function() {
      // Not needed here
-   }
+    }
   });
 
 }());

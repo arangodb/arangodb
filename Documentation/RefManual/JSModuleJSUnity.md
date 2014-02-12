@@ -8,7 +8,7 @@ jsUnity{#jsUnityIntro}
 ======================
 
 The ArangoDB contains a wrapper for <a href="http://jsunity.com/">jsUnity</a>, a
-lightyweight universal JavAScript unit testing framework.
+lightyweight universal JavaScript unit testing framework.
 
 Running jsUnity Tests{#jsUnityRunningTest}
 ==========================================
