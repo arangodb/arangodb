@@ -37,15 +37,14 @@
       $("#startPlan").click();
       expect($.ajax).toHaveBeenCalledWith("cluster/plan", {
         type: "POST",
-        data: {
+        data: JSON.stringify({
+          type: "testSetup",
           dispatcher: ip + ":" + port,
-          numberCoordinators: coords,
           numberDBServers: dbs,
-          type: "testSetup"
-        }
+          numberCoordinators: coords
+        })
       });
     });
-
     it("should not start a cluster if dispatcher port is missing", function() {
       $("#host").val("");
       $("#startPlan").click();
