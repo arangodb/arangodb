@@ -35,12 +35,12 @@
       }
       $.ajax("cluster/plan", {
         type: "POST",
-        data: {
+        data: JSON.stringify({
           type: "testSetup",
           dispatcher: h + ":" + p,
           numberDBServers: parseInt(d, 10),
           numberCoordinators: parseInt(c, 10)
-        }
+        })
       });
     },
 
