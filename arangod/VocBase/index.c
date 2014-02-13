@@ -354,7 +354,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
   bool ok;
 
   // convert into JSON
-  json = idx->json(idx,false);
+  json = idx->json(idx);
 
   if (json == NULL) {
     LOG_TRACE("cannot save index definition: index cannot be jsonified");
@@ -559,7 +559,7 @@ static int RemovePrimary (TRI_index_t* idx,
 /// @brief JSON description of a primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, bool withStats) { 
+static TRI_json_t* JsonPrimary (TRI_index_t* idx) { 
   TRI_json_t* json;
   TRI_json_t* fields;
 
@@ -855,7 +855,7 @@ static int RemoveEdge (TRI_index_t* idx,
 /// @brief JSON description of edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonEdge (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonEdge (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
 
@@ -1346,7 +1346,7 @@ static const char* TypeNameSkiplistIndex (TRI_index_t const* idx) {
 /// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -1354,7 +1354,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
   TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
   size_t j;
-  uint64_t nrUsed;
 
   // ..........................................................................
   // Recast as a skiplist index
@@ -1400,12 +1399,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
-
-  if (withStats) {
-    nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "numUsed", 
-               TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) nrUsed));
-  }
 
   TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
@@ -1730,7 +1723,7 @@ static const char* TypeNameFulltextIndex (TRI_index_t const* idx) {
 /// @brief describes a fulltext index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -2270,7 +2263,7 @@ static const char* TypeNameBitarrayIndex (TRI_index_t const* idx) {
 /// @brief describes a bitarray index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
   TRI_json_t* json;      // the json object we return describing the index
   TRI_json_t* keyValues; // a list of attributes and their associated values
   TRI_primary_collection_t* primary;

@@ -249,7 +249,7 @@ static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -271,6 +271,10 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
 
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  if (json == NULL) {
+    return NULL;
+  }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
   
@@ -301,7 +305,7 @@ static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -333,6 +337,10 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, bool withStats) {
 
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  
+  if (json == NULL) {
+    return NULL;
+  }
 
   // "constraint" and "unique" are identical for geo indexes. 
   // we return it for downwards-compatibility
