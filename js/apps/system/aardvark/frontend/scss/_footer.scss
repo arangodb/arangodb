@@ -1,0 +1,19 @@
+footer.footer {
+  @extend %fixedbar;
+  bottom: 0px;
+  height: 40px;
+
+  p {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-bottom:0;
+  }
+}
+
+div.footer-left {
+  @extend %pull-left;
+}
+
+div.footer-right {
+  @extend %pull-right;
+}

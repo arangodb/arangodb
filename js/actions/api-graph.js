@@ -255,10 +255,11 @@ function post_graph_graph (req, res) {
     var edges = json.edges;
 
     var waitForSync = false;
-    if (req.parameters.waitForSync) {
+    if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
       waitForSync = true;
     }
-
     var g = new graph.Graph(name, vertices, edges, waitForSync);
 
     if (g._properties === null) {
@@ -269,9 +270,9 @@ function post_graph_graph (req, res) {
       "Etag" : g._properties._rev
     };
 
+
     waitForSync = waitForSync || g._gdb.properties().waitForSync;
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-
     actions.resultOk(req, res, returnCode, { "graph" : g._properties }, headers );
   }
   catch (err) {
@@ -481,7 +482,9 @@ function delete_graph_graph (req, res) {
   } 
     
   var waitForSync = g._gdb.properties().waitForSync;
-  if (req.parameters.waitForSync) {
+  if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
     waitForSync = true;
   }
     
@@ -569,7 +572,9 @@ function post_graph_vertex (req, res, g) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync) {
+    if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
       waitForSync = true;
     }
     
@@ -601,6 +606,9 @@ function post_graph_vertex (req, res, g) {
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -764,7 +772,9 @@ function delete_graph_vertex (req, res, g) {
   } 
 
   var waitForSync = g._vertices.properties().waitForSync;
-  if (req.parameters.waitForSync) {
+  if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
     waitForSync = true;
   }
 
@@ -806,7 +816,9 @@ function update_graph_vertex (req, res, g, isPatch) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync) {
+    if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
       waitForSync = true;
     }
     
@@ -1397,7 +1409,7 @@ function post_graph_vertex_vertices (req, res, g) {
 ///
 /// The call expects a JSON hash array as body with the edge properties:
 ///
-/// - `_key`: The name of the edge.
+/// - `_key`: The name of the edge (optional, if edge collection allows user defined keys).
 /// - `_from`: The name of the from vertex.
 /// - `_to`: The name of the to vertex.
 /// - `$label`: A label for the edge (optional).
@@ -1449,7 +1461,9 @@ function post_graph_edge (req, res, g) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync) {
+    if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
       waitForSync = true;
     }
     
@@ -1486,6 +1500,9 @@ function post_graph_edge (req, res, g) {
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1650,7 +1667,9 @@ function delete_graph_edge (req, res, g) {
   } 
  
   var waitForSync = g._edges.properties().waitForSync;
-  if (req.parameters.waitForSync) {
+  if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
     waitForSync = true;
   }
     
@@ -1692,7 +1711,9 @@ function update_graph_edge (req, res, g, isPatch) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync) {
+    if (req.parameters.waitForSync && 
+	(req.parameters.waitForSync === "true" ||  
+	 req.parameters.waitForSync === true)) {
       waitForSync = true;
     }
     

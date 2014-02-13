@@ -3050,25 +3050,9 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& startupPath,
-                      string const& modules,
-                      string packages) {
+                      string const& modules) {
   v8::HandleScope scope;
  
-  // merge package-paths
-
-  // built-in package-path is first
-  string realPackages = startupPath + TRI_DIR_SEPARATOR_STR + "npm";
-  if (! packages.empty()) {
-    if (packages.substr(0, realPackages.size()) == realPackages) {
-      packages = packages.substr(realPackages.size());
-    }
-    
-    packages = StringUtils::lTrim(packages, ";:");
-    if (! packages.empty()) {
-      realPackages += ";" + packages;
-    }
-  }
-
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
@@ -3163,7 +3147,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
 
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
-  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(realPackages));
   TRI_AddGlobalVariableVocbase(context, "STARTUP_PATH", v8::String::New(startupPath.c_str()));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());

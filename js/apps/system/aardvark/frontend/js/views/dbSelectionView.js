@@ -7,7 +7,7 @@
     template: templateEngine.createTemplate("dbSelectionView.ejs"),
 
     events: {
-      "change #dbSelectionList": "changeDatabase"
+      "click .dbSelectionLink": "changeDatabase"
     },
 
     initialize: function(opts) {
@@ -18,7 +18,8 @@
     },
 
     changeDatabase: function(e) {
-      var changeTo = $("#dbSelectionList > option:selected").attr("id");
+//        var changeTo = $(".dbSelectionLink > option:selected").attr("id");
+        var changeTo = $(".dbSelectionLink").attr("id");
       var url = this.collection.createDatabaseURL(changeTo);
       window.location.replace(url);
     },

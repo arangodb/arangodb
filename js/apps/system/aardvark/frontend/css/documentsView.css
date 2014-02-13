@@ -26,10 +26,6 @@
   color: black;
 }
 
-#documentsToolbarF .glyphicon-backward, #logPaginationDiv .glyphicon-backward {
-  right: 2px;
-}
-
 #totalDocuments{
   float: left;
   color: black;
@@ -401,28 +397,13 @@
 
 #collectionEditIndexTable {
   margin-top: 5px;
-  min-width: 100% !important;
+  min-width: auto !important;
 }
 
 #collectionEditIndexTable th {
   padding-top: 5px;
   padding-bottom: 5px;
   padding-left: 5px;
-}
-
-#collectionEditIndexTable .glyphicon {
-  font-size: 18px !important;
-  position: relative;
-  top: 2px;
-}
-
-#collectionEditIndexTable .glyphicon-minus-sign {
-  color: #B30000;
-}
-
-#collectionEditIndexTable .glyphicon-ban-circle {
-  color: #C2C2C2;
-  cursor: default !important;
 }
 
 #newIndexView input[type='checkbox'] {
@@ -447,4 +428,18 @@
   font-size: 16px;
   font-weight: 300;
   color: black;
+}
+
+#collectionEditIndexTable .icon_arangodb_locked {
+  font-size: 20px;
+  margin-left: 10px;
+  color: rgba(0,0,0,0.5);
+  cursor: default;
+}
+
+#collectionEditIndexTable .icon_arangodb_roundminus {
+  font-size: 20px;
+  color: #BE342E;
+  margin-left: 10px;
+  cursor: pointer;
 }
