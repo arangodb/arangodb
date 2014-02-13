@@ -192,7 +192,9 @@ extern "C" {
 /// - 1234: @LIT{index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into an index is
 ///   caused by in the document not having one or more attributes which the
-///   index is built on
+///   index is built on.
+/// - 1235: @LIT{index creation failed}
+///   Will be raised when an attempt to create an index has failed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -1310,10 +1312,20 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// Will be raised when an attempt to insert a document into an index is caused
 /// by in the document not having one or more attributes which the index is
-/// built on
+/// built on.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING                 (1234)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1235: ERROR_ARANGO_INDEX_CREATION_FAILED
+///
+/// index creation failed
+///
+/// Will be raised when an attempt to create an index has failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_CREATION_FAILED                            (1235)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
