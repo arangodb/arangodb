@@ -901,11 +901,14 @@ void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* na
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_LookupArrayJson (const TRI_json_t* const object, char const* name) {
-  size_t n;
-  size_t i;
+  size_t i, n;
+
+  if (object == NULL) {
+    return NULL;
+  }
 
   assert(object->_type == TRI_JSON_ARRAY);
-  assert(name);
+  assert(name != NULL);
 
   n = object->_value._objects._length;
 

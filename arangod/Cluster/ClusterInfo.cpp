@@ -1377,6 +1377,10 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   resultJson = 0;
   TRI_json_t* newIndex = 0;
   int numberOfShards = 0;
+    
+  // create a new index id
+  uint64_t iid = uniqid();
+  string const idString = triagens::basics::StringUtils::itoa(iid);
 
   {
     TRI_json_t* collectionJson = 0;
@@ -1387,7 +1391,6 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     }
 
     {
-      // check if a collection with the same name is already planned
       loadPlannedCollections(false);
 
       READ_LOCKER(_lock);
@@ -1410,7 +1413,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
         }
 
         for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
-          TRI_json_t const* other = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+          TRI_json_t const* other = TRI_LookupListJson(indexes, i); 
   
           if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(json, "type"),
                                        TRI_LookupArrayJson(other, "type"))) {
@@ -1484,12 +1487,11 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
-    // inject a new index id
-    uint64_t id = uniqid();
+    // add index id
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
                          newIndex, 
                          "id", 
-                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, triagens::basics::StringUtils::itoa(id).c_str()));
+                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str()));
         
     TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
@@ -1502,22 +1504,20 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     if (! result.successful()) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
       // TODO
-      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
-                          errorMsg);
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, errorMsg);
     }
-        
-    // wipe cache
-    flush();
   }
+        
+  // wipe cache
+  flush();
 
   assert(numberOfShards > 0);
 
-  // Now wait for the index to appear and be complete:
+  // now wait for the index to appear
   AgencyCommResult res = ac.getValues("Current/Version", false);
   if (! res.successful()) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION, errorMsg);
   }
   uint64_t index = res._index;
 
@@ -1527,40 +1527,37 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
         map<string, AgencyCommResultEntry>::iterator it;
-        string tmpMsg = "";
-        bool tmpHaveError = false;
+
+        size_t found = 0;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
-          if (TRI_IsBooleanJson(error) && error->_value._boolean) {
-            tmpHaveError = true;
-            tmpMsg += " shardID:"+it->first+":";
-            TRI_json_t const* errorMessage 
-                  = TRI_LookupArrayJson(json, "errorMessage");
-            if (TRI_IsStringJson(errorMessage)) {
-              tmpMsg += string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length-1);
+          TRI_json_t const* indexes = TRI_LookupArrayJson(json, "indexes");
+          if (! TRI_IsListJson(indexes)) {
+            // no list, so our index is not present. we can abort searching
+            break;
+          }
+
+          for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+            TRI_json_t const* v = TRI_LookupListJson(indexes, i);
+            TRI_json_t const* k = TRI_LookupArrayJson(v, "id");
+
+            if (! TRI_IsStringJson(k) || idString != string(k->_value._string.data)) {
+              // this is not our index
+              continue;
             }
-            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
-            if (TRI_IsNumberJson(errorNum)) {
-              tmpMsg += " (errNum=";
-              tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
-                          errorNum->_value._number));
-              tmpMsg += ")";
-            }
+
+            // found our index
+            found++;
+            break;
           }
         }
-        if (tmpHaveError) {
-          errorMsg = "Error in creation of index: " + tmpMsg;
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
-          // TODO
-          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
-        }
-    
-        resultJson = newIndex;
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
-        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        if (found == (size_t) numberOfShards) {
+          resultJson = newIndex;
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+
+          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        }
       }
     }
     
@@ -1569,6 +1566,169 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   }
           
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+          
+  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop an index in coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropIndexCoordinator (string const& databaseName, 
+                                       string const& collectionID,
+                                       TRI_idx_iid_t iid,
+                                       string& errorMsg, 
+                                       double timeout) {
+  AgencyComm ac;
+  
+  const double realTimeout = getTimeout(timeout);
+  const double endTime = TRI_microtime() + realTimeout;
+  const double interval = getPollInterval();
+
+  int numberOfShards = 0;
+  string const idString = triagens::basics::StringUtils::itoa(iid);
+
+  {
+    AgencyCommLocker locker("Plan", "WRITE");
+
+    if (! locker.successful()) {
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
+    }
+
+    TRI_json_t* collectionJson = 0;
+    TRI_json_t const* indexes = 0;
+
+    {
+      loadPlannedCollections(false);
+
+      READ_LOCKER(_lock);
+
+      TRI_shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+
+      if (c->empty()) {
+        return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
+      }
+      
+      indexes = c->getIndexes();
+
+      if (! TRI_IsListJson(indexes)) {
+        // no indexes present, so we can't delete our index
+        return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
+      }
+    
+      collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
+      numberOfShards = c->numberOfShards();
+    }
+
+
+    if (collectionJson == 0) {
+      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+    }
+
+    assert(TRI_IsListJson(indexes));
+
+    // delete previous indexes entry
+    TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
+   
+    TRI_json_t* copy = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (copy == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+      return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+    }
+
+    bool found = false;
+        
+    // copy remaining indexes back into collection
+    for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+      TRI_json_t const* v = TRI_LookupListJson(indexes, i);
+      TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
+
+      if (! TRI_IsStringJson(id)) {
+        continue;
+      }
+      
+      if (idString == string(id->_value._string.data)) {
+        // found our index, ignore it when copying
+        found = true;
+        continue;
+      }
+
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, copy, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v));
+    }
+
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", copy);
+
+    if (! found) {
+      // did not find the sought index
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+      return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
+    }
+
+    AgencyCommResult result = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, 
+                                          collectionJson, 
+                                          0.0);
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+    
+    if (! result.successful()) {
+      // TODO
+      return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, errorMsg);
+    }
+  }
+
+  // wipe cache
+  flush();
+
+  assert(numberOfShards > 0);
+
+  // now wait for the index to disappear
+  AgencyCommResult res = ac.getValues("Current/Version", false);
+  if (! res.successful()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION, errorMsg);
+  }
+  uint64_t index = res._index;
+
+  string where = "Current/Collections/" + databaseName + "/" + collectionID; 
+  while (TRI_microtime() <= endTime) {
+    res = ac.getValues(where, true);
+    if (res.successful() && res.parse(where + "/", false)) {
+      if (res._values.size() == (size_t) numberOfShards) {
+        map<string, AgencyCommResultEntry>::iterator it;
+
+        bool found = false;
+        for (it = res._values.begin(); it != res._values.end(); ++it) {
+          TRI_json_t const* json = (*it).second._json;
+          TRI_json_t const* indexes = TRI_LookupArrayJson(json, "indexes");
+
+          if (TRI_IsListJson(indexes)) {
+            for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
+              TRI_json_t const* v = TRI_LookupListJson(indexes, i);
+              if (TRI_IsArrayJson(v)) {
+                TRI_json_t const* k = TRI_LookupArrayJson(v, "id");
+                if (TRI_IsStringJson(k) && idString == string(k->_value._string.data)) {
+                  // still found the index in some shard
+                  found = true;
+                  break;
+                }
+              }
+
+              if (found) {
+                break;
+              }
+            }
+          }
+        }
+
+        if (! found) {
+          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        }
+      }
+    }
+    
+    res = ac.watchValue("Current/Version", index, interval, false);
+    index = res._index;
+  }
           
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
