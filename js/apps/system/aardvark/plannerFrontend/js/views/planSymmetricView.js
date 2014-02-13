@@ -7,10 +7,14 @@
   window.PlanSymmetricView = Backbone.View.extend({
     el: "#content",
     template: plannerTemplateEngine.createTemplate("symmetricPlan.ejs"),
+    entryTemplate: plannerTemplateEngine.createTemplate("serverEntry.ejs"),
 
     events: {
-      "click #startPlan": "startPlan"
+      "click #startPlan": "startPlan",
+      "click .add": "addEntry",
+      "click .delete": "removeEntry"
     },
+
     startPlan: function() {
       var countDispatcher = 0;
       $(".dispatcher").each(function(dispatcher) {
@@ -70,9 +74,27 @@
           }
       });
     },
+
+    addEntry: function() {
+      $("#server_list").append(this.entryTemplate.render({
+        isSymmetric: this.isSymmetric,
+        isFirst: false
+      }));
+    },
+
+    removeEntry: function(e) {
+      $(e.currentTarget).closest(".control-group").remove(); 
+    },
+
     render: function(isSymmetric) {
       this.isSymmetric = isSymmetric;
-      $(this.el).html(this.template.render({isSymmetric : isSymmetric}));
+      $(this.el).html(this.template.render({
+        isSymmetric : isSymmetric
+      }));
+      $("#server_list").append(this.entryTemplate.render({
+        isSymmetric: isSymmetric,
+        isFirst: true
+      }));
     }
   });
 
