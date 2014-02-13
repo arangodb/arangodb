@@ -97,9 +97,7 @@ void ConsoleThread::run () {
     _applicationV8->exitContext(_context);
     _done = 1;
 
-    if (! _userAborted) {
-      throw;
-    }
+    throw;
   }
 }
 

@@ -1,0 +1,102 @@
+{
+  "name": "moment",
+  "version": "2.5.1",
+  "description": "Parse, manipulate, and display dates.",
+  "homepage": "http://momentjs.com",
+  "author": {
+    "name": "Iskren Ivov Chernev",
+    "email": "iskren.chernev@gmail.com",
+    "url": "https://github.com/ichernev"
+  },
+  "contributors": [
+    {
+      "name": "Tim Wood",
+      "email": "washwithcare@gmail.com",
+      "url": "http://timwoodcreates.com/"
+    },
+    {
+      "name": "Rocky Meza",
+      "url": "http://rockymeza.com"
+    },
+    {
+      "name": "Matt Johnson",
+      "email": "mj1856@hotmail.com",
+      "url": "http://codeofmatt.com"
+    },
+    {
+      "name": "Isaac Cambron",
+      "email": "isaac@isaaccambron.com",
+      "url": "http://drunkencoder.net/"
+    }
+  ],
+  "keywords": [
+    "moment",
+    "date",
+    "time",
+    "parse",
+    "format",
+    "validate",
+    "i18n",
+    "l10n",
+    "ender"
+  ],
+  "main": "./moment.js",
+  "engines": {
+    "node": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moment/moment.git"
+  },
+  "bugs": {
+    "url": "https://github.com/moment/moment/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ],
+  "devDependencies": {
+    "uglify-js": "latest",
+    "grunt": "latest",
+    "nodeunit": "latest",
+    "grunt-contrib-jshint": "latest",
+    "grunt-contrib-nodeunit": "latest",
+    "grunt-contrib-concat": "latest",
+    "grunt-contrib-uglify": "latest",
+    "grunt-contrib-watch": "latest",
+    "grunt-env": "latest",
+    "grunt-lib-legacyhelpers": "latest",
+    "grunt-karma": "~0.7.2",
+    "karma": "~0.11.0",
+    "karma-chrome-launcher": "latest",
+    "karma-firefox-launcher": "latest",
+    "karma-nodeunit": "~0.1.1",
+    "karma-sauce-launcher": "~0.1"
+  },
+  "scripts": {
+    "test": "grunt test:node"
+  },
+  "ender": "./ender.js",
+  "dojoBuild": "package.js",
+  "jspm": {
+    "files": [
+      "moment.js",
+      "lang"
+    ],
+    "map": {
+      "moment": "./moment"
+    },
+    "buildConfig": {
+      "uglify": true
+    }
+  },
+  "readme": "A lightweight javascript date library for parsing, validating, manipulating, and formatting dates.\n\n# [Documentation](http://momentjs.com/docs/)\n\nUpgrading to 2.0.0\n==================\n\nThere are a number of small backwards incompatible changes with version 2.0.0.\n\n[See them and their descriptions here](https://gist.github.com/timrwood/e72f2eef320ed9e37c51#backwards-incompatible-changes)\n\nChanged language ordinal method to return the number + ordinal instead of just the ordinal.\n\nChanged two digit year parsing cutoff to match strptime.\n\nRemoved `moment#sod` and `moment#eod` in favor of `moment#startOf` and `moment#endOf`.\n\nRemoved `moment.humanizeDuration()` in favor of `moment.duration().humanize()`.\n\nRemoved the lang data objects from the top level namespace.\n\nDuplicate `Date` passed to `moment()` instead of referencing it.\n\nTravis Build Status\n===================\n\nDevelop [![Build Status](https://travis-ci.org/moment/moment.png?branch=develop)](https://travis-ci.org/moment/moment)\n\nMaster [![Build Status](https://travis-ci.org/moment/moment.png?branch=master)](https://travis-ci.org/moment/moment)\n\nFor developers\n==============\n\nYou need [node](http://nodejs.org/), use [nvm](https://github.com/creationix/nvm) or [nenv](https://github.com/ryuone/nenv) to install it.\n\nThen, in your shell\n\n```bash\ngit clone https://github.com/moment/moment.git\ncd moment\nnpm install -g grunt-cli\nnpm install\ngit checkout develop  # all patches against develop branch, please!\ngrunt                 # this runs tests and jshint\n```\n\nChangelog\n=========\n\n### 2.5.1\n\n* languages\n  * [#1392](https://github.com/moment/moment/issues/1392) Armenian (hy-am)\n\n* bugfixes\n  * [#1429](https://github.com/moment/moment/issues/1429) fixes [#1423](https://github.com/moment/moment/issues/1423) weird chrome-32 bug with js object creation\n  * [#1421](https://github.com/moment/moment/issues/1421) remove html entities from Welsh\n  * [#1418](https://github.com/moment/moment/issues/1418) fixes [#1401](https://github.com/moment/moment/issues/1401) improved non-padded tokens in strict matching\n  * [#1417](https://github.com/moment/moment/issues/1417) fixes [#1404](https://github.com/moment/moment/issues/1404) handle buggy moment object created by property cloning\n  * [#1398](https://github.com/moment/moment/issues/1398) fixes [#1397](https://github.com/moment/moment/issues/1397) fix Arabic-like week number parsing\n  * [#1396](https://github.com/moment/moment/issues/1396) add leftZeroFill(4) to GGGG and gggg formats\n  * [#1373](https://github.com/moment/moment/issues/1373) use lowercase for months and days in Catalan\n\n* testing\n  * [#1374](https://github.com/moment/moment/issues/1374) run tests on multiple browser/os combos via SauceLabs and Travis\n\n### 2.5.0 [See changelog](https://gist.github.com/ichernev/8104451)\n\n* New languages\n  * Luxemburish (lb) [1247](https://github.com/moment/moment/issues/1247)\n  * Serbian (rs) [1319](https://github.com/moment/moment/issues/1319)\n  * Tamil (ta) [1324](https://github.com/moment/moment/issues/1324)\n  * Macedonian (mk) [1337](https://github.com/moment/moment/issues/1337)\n\n* Features\n  * [1311](https://github.com/moment/moment/issues/1311) Add quarter getter and format token `Q`\n  * [1303](https://github.com/moment/moment/issues/1303) strict parsing now respects number of digits per token (fix [1196](https://github.com/moment/moment/issues/1196))\n  * 0d30bb7 add jspm support\n  * [1347](https://github.com/moment/moment/issues/1347) improve zone parsing\n  * [1362](https://github.com/moment/moment/issues/1362) support merideam parsing in Korean\n\n* 22 bugfixes\n\n### 2.4.0\n\n* **Deprecate** globally exported moment, will be removed in next major\n* New languages\n  * Farose (fo) [#1206](https://github.com/moment/moment/issues/1206)\n  * Tagalog/Filipino (tl-ph) [#1197](https://github.com/moment/moment/issues/1197)\n  * Welsh (cy) [#1215](https://github.com/moment/moment/issues/1215)\n* Bugfixes\n  * properly handle Z at the end of iso RegExp [#1187](https://github.com/moment/moment/issues/1187)\n  * chinese meridian time improvements [#1076](https://github.com/moment/moment/issues/1076)\n  * fix language tests [#1177](https://github.com/moment/moment/issues/1177)\n  * remove some failing tests (that should have never existed :))\n    [#1185](https://github.com/moment/moment/issues/1185)\n    [#1183](https://github.com/moment/moment/issues/1183)\n  * handle russian noun cases in weird cases [#1195](https://github.com/moment/moment/issues/1195)\n\n### 2.3.1\n\nRemoved a trailing comma [1169] and fixed a bug with `months`, `weekdays` getters [#1171](https://github.com/moment/moment/issues/1171).\n\n### 2.3.0 [See changelog](https://gist.github.com/ichernev/6864354)\n\nChanged isValid, added strict parsing.\nWeek tokens parsing.\n\n### 2.2.1\n\nFixed bug in string prototype test.\nUpdated authors and contributors.\n\n### 2.2.0 [See changelog](https://gist.github.com/ichernev/00f837a9baf46a3565e4)\n\nAdded bower support.\n\nLanguage files now use UMD.\n\nCreating moment defaults to current date/month/year.\n\nAdded a bundle of moment and all language files.\n\n### 2.1.0 [See changelog](https://gist.github.com/timrwood/b8c2d90d528eddb53ab5)\n\nAdded better week support.\n\nAdded ability to set offset with `moment#zone`.\n\nAdded ability to set month or weekday from a string.\n\nAdded `moment#min` and `moment#max`\n\n### 2.0.0 [See changelog](https://gist.github.com/timrwood/e72f2eef320ed9e37c51)\n\nAdded short form localized tokens.\n\nAdded ability to define language a string should be parsed in.\n\nAdded support for reversed add/subtract arguments.\n\nAdded support for `endOf('week')` and `startOf('week')`.\n\nFixed the logic for `moment#diff(Moment, 'months')` and `moment#diff(Moment, 'years')`\n\n`moment#diff` now floors instead of rounds.\n\nNormalized `moment#toString`.\n\nAdded `isSame`, `isAfter`, and `isBefore` methods.\n\nAdded better week support.\n\nAdded `moment#toJSON`\n\nBugfix: Fixed parsing of first century dates\n\nBugfix: Parsing 10Sep2001 should work as expected\n\nBugfix: Fixed wierdness with `moment.utc()` parsing.\n\nChanged language ordinal method to return the number + ordinal instead of just the ordinal.\n\nChanged two digit year parsing cutoff to match strptime.\n\nRemoved `moment#sod` and `moment#eod` in favor of `moment#startOf` and `moment#endOf`.\n\nRemoved `moment.humanizeDuration()` in favor of `moment.duration().humanize()`.\n\nRemoved the lang data objects from the top level namespace.\n\nDuplicate `Date` passed to `moment()` instead of referencing it.\n\n### 1.7.2 [See discussion](https://github.com/timrwood/moment/issues/456)\n\nBugfixes\n\n### 1.7.1 [See discussion](https://github.com/timrwood/moment/issues/384)\n\nBugfixes\n\n### 1.7.0 [See discussion](https://github.com/timrwood/moment/issues/288)\n\nAdded `moment.fn.endOf()` and `moment.fn.startOf()`.\n\nAdded validation via `moment.fn.isValid()`.\n\nMade formatting method 3x faster. http://jsperf.com/momentjs-cached-format-functions\n\nAdd support for month/weekday callbacks in `moment.fn.format()`\n\nAdded instance specific languages.\n\nAdded two letter weekday abbreviations with the formatting token `dd`.\n\nVarious language updates.\n\nVarious bugfixes.\n\n### 1.6.0 [See discussion](https://github.com/timrwood/moment/pull/268)\n\nAdded Durations.\n\nRevamped parser to support parsing non-separated strings (YYYYMMDD vs YYYY-MM-DD).\n\nAdded support for millisecond parsing and formatting tokens (S SS SSS)\n\nAdded a getter for `moment.lang()`\n\nVarious bugfixes.\n\nThere are a few things deprecated in the 1.6.0 release.\n\n1. The format tokens `z` and `zz` (timezone abbreviations like EST CST MST etc) will no longer be supported. Due to inconsistent browser support, we are unable to consistently produce this value. See [this issue](https://github.com/timrwood/moment/issues/162) for more background.\n\n2. The method `moment.fn.native` is deprecated in favor of `moment.fn.toDate`. There continue to be issues with Google Closure Compiler throwing errors when using `native`, even in valid instances.\n\n3. The way to customize am/pm strings is being changed. This would only affect you if you created a custom language file. For more information, see [this issue](https://github.com/timrwood/moment/pull/222).\n\n### 1.5.0 [See milestone](https://github.com/timrwood/moment/issues?milestone=10&page=1&state=closed)\n\nAdded UTC mode.\n\nAdded automatic ISO8601 parsing.\n\nVarious bugfixes.\n\n### 1.4.0 [See milestone](https://github.com/timrwood/moment/issues?milestone=8&state=closed)\n\nAdded `moment.fn.toDate` as a replacement for `moment.fn.native`.\n\nAdded `moment.fn.sod` and `moment.fn.eod` to get the start and end of day.\n\nVarious bugfixes.\n\n### 1.3.0 [See milestone](https://github.com/timrwood/moment/issues?milestone=7&state=closed)\n\nAdded support for parsing month names in the current language.\n\nAdded escape blocks for parsing tokens.\n\nAdded `moment.fn.calendar` to format strings like 'Today 2:30 PM', 'Tomorrow 1:25 AM', and 'Last Sunday 4:30 AM'.\n\nAdded `moment.fn.day` as a setter.\n\nVarious bugfixes\n\n### 1.2.0 [See milestone](https://github.com/timrwood/moment/issues?milestone=4&state=closed)\n\nAdded timezones to parser and formatter.\n\nAdded `moment.fn.isDST`.\n\nAdded `moment.fn.zone` to get the timezone offset in minutes.\n\n### 1.1.2 [See milestone](https://github.com/timrwood/moment/issues?milestone=6&state=closed)\n\nVarious bugfixes\n\n### 1.1.1 [See milestone](https://github.com/timrwood/moment/issues?milestone=5&state=closed)\n\nAdded time specific diffs (months, days, hours, etc)\n\n### 1.1.0\n\nAdded `moment.fn.format` localized masks. 'L LL LLL LLLL' [issue 29](https://github.com/timrwood/moment/pull/29)\n\nFixed [issue 31](https://github.com/timrwood/moment/pull/31).\n\n### 1.0.1\n\nAdded `moment.version` to get the current version.\n\nRemoved `window !== undefined` when checking if module exists to support browserify. [issue 25](https://github.com/timrwood/moment/pull/25)\n\n### 1.0.0\n\nAdded convenience methods for getting and setting date parts.\n\nAdded better support for `moment.add()`.\n\nAdded better lang support in NodeJS.\n\nRenamed library from underscore.date to Moment.js\n\n### 0.6.1\n\nAdded Portuguese, Italian, and French language support\n\n### 0.6.0\n\nAdded _date.lang() support.\nAdded support for passing multiple formats to try to parse a date. _date(\"07-10-1986\", [\"MM-DD-YYYY\", \"YYYY-MM-DD\"]);\nMade parse from string and single format 25% faster.\n\n### 0.5.2\n\nBugfix for [issue 8](https://github.com/timrwood/underscore.date/pull/8) and [issue 9](https://github.com/timrwood/underscore.date/pull/9).\n\n### 0.5.1\n\nBugfix for [issue 5](https://github.com/timrwood/underscore.date/pull/5).\n\n### 0.5.0\n\nDropped the redundant `_date.date()` in favor of `_date()`.\nRemoved `_date.now()`, as it is a duplicate of `_date()` with no parameters.\nRemoved `_date.isLeapYear(yearNumber)`. Use `_date([yearNumber]).isLeapYear()` instead.\nExposed customization options through the `_date.relativeTime`, `_date.weekdays`, `_date.weekdaysShort`, `_date.months`, `_date.monthsShort`, and `_date.ordinal` variables instead of the `_date.customize()` function.\n\n### 0.4.1\n\nAdded date input formats for input strings.\n\n### 0.4.0\n\nAdded underscore.date to npm. Removed dependencies on underscore.\n\n### 0.3.2\n\nAdded `'z'` and `'zz'` to `_.date().format()`. Cleaned up some redundant code to trim off some bytes.\n\n### 0.3.1\n\nCleaned up the namespace. Moved all date manipulation and display functions to the _.date() object.\n\n### 0.3.0\n\nSwitched to the Underscore methodology of not mucking with the native objects' prototypes.\nMade chaining possible.\n\n### 0.2.1\n\nChanged date names to be a more pseudo standardized 'dddd, MMMM Do YYYY, h:mm:ss a'.\nAdded `Date.prototype` functions `add`, `subtract`, `isdst`, and `isleapyear`.\n\n### 0.2.0\n\nChanged function names to be more concise.\nChanged date format from php date format to custom format.\n\n### 0.1.0\n\nInitial release\n\nLicense\n=======\n\nMoment.js is freely distributable under the terms of the MIT license.\n",
+  "readmeFilename": "readme.md",
+  "_id": "moment@2.5.1",
+  "dist": {
+    "shasum": "f64e8555aca90c6c5983427f11f1e67f79490115"
+  },
+  "_from": "moment@",
+  "_resolved": "https://registry.npmjs.org/moment/-/moment-2.5.1.tgz"
+}
