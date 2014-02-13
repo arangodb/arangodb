@@ -77,6 +77,12 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string DeprecatedPath;
+   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we'll store deprecated config option values in here
+////////////////////////////////////////////////////////////////////////////////
+
+static string DeprecatedPackages;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief command prompt
@@ -434,6 +440,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
     // deprecated options
     ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
+    ("javascript.package-path", &DeprecatedPackages, "one or more directories separated by semi-colons (deprecated)")
   ;
 
 #ifdef _WIN32
