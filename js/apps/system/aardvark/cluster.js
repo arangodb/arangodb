@@ -38,6 +38,15 @@
     cluster = require("org/arangodb/cluster"),
     _ = require("underscore");
 
+  /** Plan and start a new cluster
+   *
+   * This will plan a new cluster with the information
+   * given in the body
+   */
+  controller.post("/plan", function(req, res) {
+    require("console").log(JSON.stringify(req.body()));
+  });
+  
   if (cluster.isCluster()) {
     // only make these functions available in cluster mode!
 
@@ -47,7 +56,7 @@
     servers = comm.current.DBServers(),
     dbs = comm.current.Databases(),
     coords = comm.current.Coordinators();
-    
+
     /** Get all DBServers
     *
     * Get a list of all running and expected DBServers
