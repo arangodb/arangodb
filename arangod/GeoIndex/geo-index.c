@@ -500,6 +500,7 @@ static int RemoveGeoIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
@@ -515,7 +516,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->typeName = TypeNameGeo1Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, primary, unique, true);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -553,6 +554,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
@@ -570,7 +572,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->typeName = TypeNameGeo2Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, primary, unique, true);
 
   idx->_ignoreNull = ignoreNull;
   

@@ -36,8 +36,11 @@
       expect($.ajax).toHaveBeenCalledWith("cluster/plan", {
         type: "POST",
         data: JSON.stringify({
-          dbServer: [ip_base + "0:0", ip_base + "1:1", ip_base + "2:2"],
-          coordinator: [ip_base + "0:0", ip_base + "1:1", ip_base + "2:2"],
+          dispatcher : [
+              {host : ip_base + "0:0", isDBServer : true, isCoordinator : true},
+              {host : ip_base + "1:1", isDBServer : true, isCoordinator : true},
+              {host : ip_base + "2:2", isDBServer : true, isCoordinator : true}
+          ],
           type: "symmetricalSetup"
         })
       });
@@ -65,8 +68,11 @@
       expect($.ajax).toHaveBeenCalledWith("cluster/plan", {
           type: "POST",
           data: JSON.stringify({
-              dbServer: [ip_base + "0:0",  ip_base + "2:2"],
-              coordinator: [ ip_base + "1:1", ip_base + "2:2"],
+              dispatcher : [
+                  {host : ip_base + "0:0", isDBServer : true, isCoordinator : false},
+                  {host : ip_base + "1:1", isDBServer : false, isCoordinator : true},
+                  {host : ip_base + "2:2", isDBServer : true, isCoordinator : true}
+              ],
               type: "asymmetricalSetup"
           })
       });

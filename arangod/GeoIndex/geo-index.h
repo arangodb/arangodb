@@ -53,24 +53,26 @@ extern "C" {
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* collection,
-                                  char const* locationName,
-                                  TRI_shape_pid_t location,
-                                  bool geoJson,
-                                  bool constraint,
-                                  bool ignoreNull);
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
+                                  TRI_idx_iid_t,
+                                  char const*,
+                                  TRI_shape_pid_t,
+                                  bool,
+                                  bool,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
-                                  char const* latitudeName,
-                                  TRI_shape_pid_t latitude,
-                                  char const* longitudeName,
-                                  TRI_shape_pid_t longitude,
-                                  bool constraint,
-                                  bool ignoreNull);
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s*,
+                                  TRI_idx_iid_t,
+                                  char const*,
+                                  TRI_shape_pid_t ,
+                                  char const*,
+                                  TRI_shape_pid_t,
+                                  bool,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
