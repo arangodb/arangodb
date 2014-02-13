@@ -38,7 +38,7 @@ div.resizecontainer {
 
 @for $i from 0 through 11 {
   $min: 242px * $i;
-  @media (min-width: $min + 72) and (max-width: $min + 243 + 71) {
+  @media (min-width: $min + 6) and (max-width: $min + 242 + 5) {
     div.resizecontainer {
       width: $min;
     }
