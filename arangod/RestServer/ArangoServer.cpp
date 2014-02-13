@@ -912,6 +912,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   // and cleanup
   // .............................................................................
   
+  console.userAbort();
   console.stop();
 
   int iterations = 0;
