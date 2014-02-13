@@ -26,7 +26,7 @@
       });
       fetched = false;
       spyOn(dbCollection, "fetch");
-      div = document.createElement("div");
+      div = document.createElement("li");
       div.id = "dbSelect";
       document.body.appendChild(div);
       view = new DBSelectionView(
@@ -43,19 +43,21 @@
 
     it("should display all databases ordered", function() {
       view.render($(div));
-      var select = $(div).children()[0],
+      var dbList = $("#dbs_dropdown", $(div)),
         childs;
-      expect(div.childElementCount).toEqual(1);
-      childs = $(select).children();
+
+      expect(div.childElementCount).toEqual(2);
+      childs = $(dbList).children();
       expect(childs.length).toEqual(3);
-      expect(childs[0].id).toEqual(list[0]);
-      expect(childs[1].id).toEqual(list[2]);
-      expect(childs[2].id).toEqual(list[1]);
+
+
+      expect($("a", $(childs[1])).attr("id")).toEqual(list[0]);
+      expect($("a", $(childs[2])).attr("id")).toEqual(list[1]);
     });
 
     it("should select the current db", function() {
       view.render($(div));
-      expect($(div).find(":selected").attr("id")).toEqual(current.get("name"));
+      expect($($(div).children()[0]).text()).toEqual("DB: " + current.get("name") + " ");
     });
 
     it("should trigger fetch on collection", function() {
@@ -84,7 +86,7 @@
         }
       );
       view.render($(div));
-      expect($(div).text().trim()).toEqual("first");
+      expect($(div).text().trim()).toEqual("DB: first");
     });
   });
 }());
