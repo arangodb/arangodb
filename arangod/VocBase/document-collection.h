@@ -375,7 +375,7 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t*);
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*, bool);
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
