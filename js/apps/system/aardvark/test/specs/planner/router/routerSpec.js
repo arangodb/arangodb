@@ -110,7 +110,7 @@
           it("should route to planScenarioSelector", function() {
               simpleNavigationCheck(
                   {
-                      url: "planScenarioSelector"
+                      url: ""
                   },
                   "PlanScenarioSelectorView"
               );
