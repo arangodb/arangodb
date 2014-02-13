@@ -7,10 +7,10 @@
   window.PlannerRouter = Backbone.Router.extend({
 
     routes: {
-      "planTest"             : "planTest",
-      "planSymmetric"        : "planSymmetric",
-      "planAsymmetric"       : "planAsymmetric",
-      "" : "planScenarioSelector"
+      "planTest"               : "planTest",
+      "planSymmetrical"        : "planSymmetric",
+      "planAsymmetrical"       : "planAsymmetric",
+      ""                       : "planScenarioSelector"
     },
 
     planTest: function() {

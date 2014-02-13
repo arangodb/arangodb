@@ -1,0 +1,23 @@
+<div class="control-group">
+  <label for="host_1" class="control-label">Server:</label>
+  <div class="controls">
+    <input type="text" id="host_1" placeholder="Server" class="input-xlarge"></input>
+    <span class="searchEqualsLabel">:</span>
+    <input type="text" maxlength="5" class="input-small" id="port_1" placeholder="port"></input>
+    <% if (isFirst) {%>
+      <button class="graphViewer-icon-button gv-icon-small add"></button>
+    <% } else { %>
+      <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+    <% } %>
+  </div>
+  <% if (!isSymmetric) { %>
+  <div class="controls">
+    <label class="checkbox inline">
+      <input type="checkbox" id="coordinator_1" value="isCoordinator" class="isCoordinator" checked> Coordinator
+    </label>
+    <label class="checkbox inline">
+      <input type="checkbox" id="dbserver_1" value="isDBServer" class="isCoordinator" checked> DBServer
+    </label>
+  </div>
+  <% } %>
+</div>
