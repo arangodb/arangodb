@@ -3667,13 +3667,13 @@ static bool DropIndex (TRI_document_collection_t* document,
 
     idx = document->_allIndexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // cannot remove these index types
-      break;
-    }
-
     if (idx->_iid == iid) {
+      if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+          idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+        // cannot remove these index types
+        break;
+      }
+
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
 
       if (found != NULL && found->removeIndex != NULL) {
