@@ -1,16 +1,12 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
-* issue #756: set access-control-expose-headers on CORS response
+* made module loader more node compatible
 
-  the following headers are now whitelisted by ArangoDB in CORS responses:
-  - etag
-  - content-encoding
-  - content-length
-  - location
-  - server
-  - x-arango-errors
-  - x-arango-async-id
+* the startup option `--javascript.package-path` for arangosh is now deprecated and does
+  nothing. Using it will not cause an error, but the option is ignored.
+
+* added coffee script support
 
 * Several UI improvements.
 
@@ -163,7 +159,34 @@ v1.5.0 (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.9 (XXXX-XX-XX)
+v1.4.10 (XXXX-XX-XX)
+--------------------
+
+* added node.js "events" and "stream"
+
+* updated npm packages
+
+* added loading of .json file
+
+* Fixed http return code in graph api with waitForSync parameter.
+
+* Fixed documentation in graph, simple and index api.
+
+* removed 2 tests due to change in ruby library.
+
+* issue #756: set access-control-expose-headers on CORS response
+
+  the following headers are now whitelisted by ArangoDB in CORS responses:
+  - etag
+  - content-encoding
+  - content-length
+  - location
+  - server
+  - x-arango-errors
+  - x-arango-async-id
+
+
+v1.4.9 (2014-02-07)
 -------------------
 
 * return a document's current etag in response header for HTTP HEAD requests on

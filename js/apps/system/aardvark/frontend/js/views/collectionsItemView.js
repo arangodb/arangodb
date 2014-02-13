@@ -7,7 +7,8 @@
   window.CollectionListItemView = Backbone.View.extend({
 
     tagName: "li",
-    className: "span3",
+//    className: "span3",
+    className: "tile",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
     initialize: function () {

@@ -7,7 +7,7 @@
 
   describe("The navigation bar", function() {
 
-    var div, view, currentDBFake, curName, isSystem;
+    var div, view, currentDBFake, curName, isSystem, DBSelectionViewDummy;
 
     beforeEach(function() {
       curName = "_system";
@@ -15,6 +15,13 @@
       window.currentDB = window.currentDB || {
         get: function() {}
       };
+
+      DBSelectionViewDummy = {
+        id : "DBSelectionViewDummy",
+        render : function(){}
+      };
+
+      spyOn(window, "DBSelectionView").andReturn(DBSelectionViewDummy);
       spyOn(window.currentDB, "get").andCallFake(function(key) {
         if (key === "name") {
           return curName;
@@ -38,14 +45,6 @@
       beforeEach(function() {
         view = new window.NavigationView();
         view.render();
-      });
-
-      it("should offer a dashboard tab", function() {
-        var tab = $("#dashboard", $(div));
-        expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
-        tab.click();
-        expect(window.App.navigate).toHaveBeenCalledWith("dashboard", {trigger: true});
       });
 
       it("should offer a collections tab", function() {
@@ -106,14 +105,6 @@
         view.render();
       });
 
-      it("should offer a databases tab", function() {
-        var tab = $("#databases", $(div));
-        expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
-        tab.click();
-        expect(window.App.navigate).toHaveBeenCalledWith("databases", {trigger: true});
-      });
-
       it("should offer a logs tab", function() {
         var tab = $("#logs", $(div));
         expect(tab.length).toEqual(1);
@@ -132,11 +123,6 @@
         view.render();
       });
       
-      it("should not offer a databases tab", function() {
-        var tab = $("#databases", $(div));
-        expect(tab.length).toEqual(0);
-      });
-
       it("should not offer a logs tab", function() {
         var tab = $("#logs", $(div));
         expect(tab.length).toEqual(0);
