@@ -43,6 +43,26 @@ dispose the server-side cursor afterwards.
 @copydetails JSA_put_api_simple_first_example
 
 @CLEARPAGE
+@anchor HttpSimpleByExampleHash
+@copydetails JSA_put_api_simple_by_example_hash
+
+@CLEARPAGE
+@anchor HttpSimpleByExampleSkiplist
+@copydetails JSA_put_api_simple_by_example_skiplist
+
+@CLEARPAGE
+@anchor HttpSimpleByExampleBitarray
+@copydetails JSA_put_api_simple_by_example_bitarray
+
+@CLEARPAGE
+@anchor HttpSimpleByConditionSkiplist
+@copydetails JSA_put_api_simple_by_condition_skiplist
+
+@CLEARPAGE
+@anchor HttpSimpleByConditionBitarray
+@copydetails JSA_put_api_simple_by_condition_bitarray
+
+@CLEARPAGE
 @anchor HttpSimpleAny
 @copydetails JSA_put_api_simple_any
 

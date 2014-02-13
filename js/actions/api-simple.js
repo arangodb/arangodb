@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require, CREATE_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,14 +34,337 @@ var ERRORS = require("internal").errors;
 
 var API = "_api/simple/";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_put_api_simple_by_example_hash
+/// @brief returns all documents of a collection matching a given example, 
+/// using a specific hash index
+///
+/// @RESTHEADER{PUT /_api/simple/by-example-hash,executes query by-example using a hash index}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query specification.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents matching a given example, using the specified
+/// hash index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - `collection`: The name of the collection to query.
+///
+/// - `index`: The id of the index to be used for the query. The index must exist
+///   and must be of type `hash`.
+///
+/// - `example`: an example document. The example must contain a value for each
+///   attribute in the index.
+///
+/// - `skip`: The number of documents to skip in the query. (optional)
+///
+/// - `limit`: The maximal number of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+/// The same error code is also returned if an invalid index id or type is used.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_put_api_simple_by_example_skiplist
+/// @brief returns all documents of a collection matching a given example, 
+/// using a specific skiplist index
+///
+/// @RESTHEADER{PUT /_api/simple/by-example-skiplist,executes query by-example using a skiplist index}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query specification.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents matching a given example, using the specified
+/// skiplist index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - `collection`: The name of the collection to query.
+///
+/// - `index`: The id of the index to be used for the query. The index must 
+///   exist and must be of type `skiplist`.
+///
+/// - `example`: an example document. The example must contain a value for each
+///   attribute in the index.
+///
+/// - `skip`: The number of documents to skip in the query. (optional)
+///
+/// - `limit`: The maximal number of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+/// The same error code is also returned if an invalid index id or type is used.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_put_api_simple_by_example_bitarray
+/// @brief returns all documents of a collection matching a given example, 
+/// using a specific bitarray index
+///
+/// @RESTHEADER{PUT /_api/simple/by-example-bitarray,executes query by-example using a bitarray index}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query specification.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents matching a given example, using the specified
+/// skiplist index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - `collection`: The name of the collection to query.
+///
+/// - `index`: The id of the index to be used for the query. The index must 
+///   exist and must be of type `bitarray`.
+///
+/// - `example`: an example document. The example must contain a value for each
+///   attribute in the index.
+///
+/// - `skip`: The number of documents to skip in the query. (optional)
+///
+/// - `limit`: The maximal number of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+/// The same error code is also returned if an invalid index id or type is used.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_put_api_simple_by_condition_skiplist
+/// @brief returns all documents of a collection matching a given condition, 
+/// using a specific skiplist index
+///
+/// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,executes query by-condition using a skiplist index}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query specification.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents matching a given condition, using the specified
+/// skiplist index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - `collection`: The name of the collection to query.
+///
+/// - `index`: The id of the index to be used for the query. The index must 
+///   exist and must be of type `skiplist`.
+///
+/// - `condition`: the condition which all returned documents shall satisfy. 
+///   Conditions must be specified for all indexed attributes. 
+///
+/// - `skip`: The number of documents to skip in the query. (optional)
+///
+/// - `limit`: The maximal number of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+/// The same error code is also returned if an invalid index id or type is used.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_put_api_simple_by_condition_bitarray
+/// @brief returns all documents of a collection matching a given condition, 
+/// using a specific bitarray index
+///
+/// @RESTHEADER{PUT /_api/simple/by-condition-bitarray,executes query by-condition using a bitarray index}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query specification.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents matching a given condition, using the specified
+/// skiplist index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - `collection`: The name of the collection to query.
+///
+/// - `index`: The id of the index to be used for the query. The index must 
+///   exist and must be of type `bitarray`.
+///
+/// - `condition`: the condition which all returned documents shall satisfy. 
+///   Conditions must be specified for all indexed attributes. 
+///
+/// - `skip`: The number of documents to skip in the query. (optional)
+///
+/// - `limit`: The maximal number of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+/// The same error code is also returned if an invalid index id or type is used.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup an index query
+////////////////////////////////////////////////////////////////////////////////
+
+function setupIndexQuery (name, func, isExampleQuery) {
+  actions.defineHttp({
+    url : API + name,
+    context : "api",
+
+    callback : function (req, res) {
+      try {
+        var body = actions.getJsonBody(req, res);
+
+        if (body === undefined) {
+          return;
+        }
+
+        if (req.requestType !== actions.PUT) {
+          actions.resultUnsupported(req, res);
+        }
+        else {
+          var limit = body.limit;
+          var skip = body.skip || 0;
+          var name = body.collection;
+          var index = body.index;
+          var collection = db._collection(name);
+
+          if (collection === null) {
+            actions.collectionNotFound(req, res, name);
+            return;
+          }
+
+          var result;
+
+          if (isExampleQuery) {
+            if (typeof body.example !== "object" || Array.isArray(body.example)) {
+              actions.badParameter(req, res, "example");
+              return;
+            }
+            
+            result = collection[func](index, body.example, skip, limit);
+          }
+          else {
+            if (typeof body.condition !== "object" || Array.isArray(body.condition)) {
+              actions.badParameter(req, res, "condition");
+              return;
+            }
+            
+            result = collection[func](index, body.condition, skip, limit);
+          }
+          
+          actions.resultCursor(req, res, CREATE_CURSOR(result.documents, true, body.batchSize));
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err, undefined, false);
+      } 
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register all these functions
+////////////////////////////////////////////////////////////////////////////////
+
+function setupIndexQueries () {
+  var map = {
+    "by-example-hash"       : [ "BY_EXAMPLE_HASH", true ],
+    "by-example-skiplist"   : [ "BY_EXAMPLE_SKIPLIST", true ],
+    "by-example-bitarray"   : [ "BY_EXAMPLE_BITARRAY", true ],
+    "by-condition-skiplist" : [ "BY_CONDITION_SKIPLIST", false ],
+    "by-condition-bitarray" : [ "BY_CONDITION_BITARRAY", false ]
+  };
+
+  var m;
+  for (m in map) {
+    if (map.hasOwnProperty(m)) {
+      setupIndexQuery(m, map[m][0], map[m][1]);
+    }
+  }
+}
+
+setupIndexQueries();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_put_api_simple_all

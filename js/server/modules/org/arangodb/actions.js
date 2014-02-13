@@ -1661,9 +1661,9 @@ function collectionNotFound (req, res, collection, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unknown index
+/// @brief generates an error for an unknown index
 ///
-/// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
+/// @FUN{actions.indexNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
 ///
 /// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1742,6 +1742,8 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
       case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND: 
       case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_NO_INDEX: 
+      case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND: 
       case arangodb.ERROR_CURSOR_NOT_FOUND: 
       case arangodb.ERROR_USER_NOT_FOUND: 
         code = exports.HTTP_NOT_FOUND;
