@@ -186,7 +186,7 @@ static const char* TypeNameCapConstraint (TRI_index_t const* idx) {
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonCapConstraint (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
 
@@ -195,6 +195,10 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, bool withStats) {
 
   // create json object and fill it
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  if (json == NULL) {
+    return NULL;
+  }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_count));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));

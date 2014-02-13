@@ -446,7 +446,7 @@ static const char* TypeNameHashIndex (TRI_index_t const* idx) {
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonHashIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonHashIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -477,17 +477,15 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, bool withStats) {
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
+  if (json == NULL) {
+    return NULL;
+  }
+
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   for (j = 0; j < hashIndex->_paths._length; ++j) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
-  if (withStats) {
-      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "numUsed", 
-               TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, 
-                   (double) hashIndex->_hashArray._nrUsed) );
-  }
-
   TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
   return json;

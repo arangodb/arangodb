@@ -1514,7 +1514,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   }
 
   // found some index to return
-  TRI_json_t* indexJson = idx->json(idx, false);
+  TRI_json_t* indexJson = idx->json(idx);
 
   if (indexJson == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -6263,12 +6263,9 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
-/// @FUN{getIndexes(@FA{withStats})}
+/// @FUN{getIndexes()}
 ///
 /// Returns a list of all indexes defined for the collection. 
-/// If @FA{withStats} is @LIT{true} then for each index the number of
-/// elements stored in it is returned in the @LIT{numUsed} component,
-/// if this information is exported by the particular index.
 ///
 /// @EXAMPLES
 ///
@@ -6277,11 +6274,6 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  bool withStats = false;
-  if (argv.Length() > 0) { 
-    withStats = TRI_ObjectToBoolean(argv[0]);
-  }
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -6311,7 +6303,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   const string collectionName = string(collection->_name);
 
   // get list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, withStats);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
 
   trx.finish(res);
   // READ-LOCK end

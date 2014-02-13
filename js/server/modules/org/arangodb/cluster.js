@@ -151,7 +151,7 @@ function getIndexMap (shard) {
 
   for (i = 0; i < idx.length; ++i) {
     // fetch id without collection name
-    var id = idx[i].id.replace(/^.*?\/(.+)$/, '$1');
+    var id = idx[i].id.replace(/^[a-zA-Z0-9_\-]*?\/([0-9]+)$/, '$1');
 
     idx[i].id = id;
     indexes[id] = idx[i];
@@ -400,6 +400,7 @@ function createLocalCollections (plannedCollections) {
   db._useDatabase("_system");
   var localDatabases = getLocalDatabases();
   var database;
+  var i;
 
   // iterate over all matching databases
   for (database in plannedCollections) {
@@ -491,7 +492,7 @@ function createLocalCollections (plannedCollections) {
 
                       // collection exists, now compare collection properties
                       var properties = { };
-                      var cmp = [ "journalSize", "waitForSync", "doCompact" ], i;
+                      var cmp = [ "journalSize", "waitForSync", "doCompact" ];
                       for (i = 0; i < cmp.length; ++i) {
                         var p = cmp[i];
                         if (localCollections[shard][p] !== payload[p]) {
@@ -526,10 +527,11 @@ function createLocalCollections (plannedCollections) {
 
                     var indexes = getIndexMap(shard);
                     var idx;
+                    var index;
 
                     if (payload.hasOwnProperty("indexes")) {
                       for (i = 0; i < payload.indexes.length; ++i) {
-                        var index = payload.indexes[i];
+                        index = payload.indexes[i];
 
                         if (! indexes.hasOwnProperty(index.id)) {
                           console.info("creating index '%s/%s': %s", 
@@ -551,36 +553,34 @@ function createLocalCollections (plannedCollections) {
                         if (indexes.hasOwnProperty(idx)) {
                           // found an index in the index map, check if it must be deleted
                         
-                          if (indexes[idx].type === "primary" || indexes[idx].type === "edge") {
-                            continue;
-                          }
-                          
-                          var found = false;
-                          for (i = 0; i < payload.indexes.length; ++i) {
-                            if (payload.indexes[i].id === idx) {
-                              found = true;
-                              break;
+                          if (indexes[idx].type !== "primary" && indexes[idx].type !== "edge") {
+                            var found = false;
+                            for (i = 0; i < payload.indexes.length; ++i) {
+                              if (payload.indexes[i].id === idx) {
+                                found = true;
+                                break;
+                              }
                             }
-                          }
 
-                          if (! found) {
-                            // found an index to delete locally
-                            var index = indexes[idx];
+                            if (! found) {
+                              // found an index to delete locally
+                              index = indexes[idx];
 
-                            console.info("dropping index '%s/%s': %s", 
-                                         database, 
-                                         shard,
-                                         JSON.stringify(index));
+                              console.info("dropping index '%s/%s': %s", 
+                                            database, 
+                                            shard,
+                                            JSON.stringify(index));
 
-                            arangodb.db._collection(shard).dropIndex(index);
+                              arangodb.db._collection(shard).dropIndex(index);
 
-                            delete indexes[idx];
-                            payload.indexes.splice(i, i);
-                            payload.DBServer = ourselves;
-                          
-                            writeLocked({ part: "Current" }, 
-                                        createCollectionAgency, 
-                                        [ database, shard, payload ]);
+                              delete indexes[idx];
+                              payload.indexes.splice(i, i);
+                              payload.DBServer = ourselves;
+                            
+                              writeLocked({ part: "Current" }, 
+                                          createCollectionAgency, 
+                                          [ database, shard, payload ]);
+                            }
                           }
                         }
                       }
