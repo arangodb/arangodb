@@ -265,6 +265,46 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureId1 : function () {
+      var id = "273475235";
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "a" ], id: id });
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "a" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertFalse(res.unique);
+      assertEqual([ "a" ], res.fields);
+      assertEqual(collection.name() + "/" + id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureId2 : function () {
+      var id = "2734752388";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertEqual([ "b", "d" ], res.fields);
+      assertEqual(collection.name() + "/" + id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: ensure invalid type
 ////////////////////////////////////////////////////////////////////////////////
 

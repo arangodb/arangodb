@@ -1412,8 +1412,20 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   TRI_json_t* newIndex = 0;
   int numberOfShards = 0;
     
-  // create a new index id
-  uint64_t iid = uniqid();
+  // check index id
+  uint64_t iid = 0;
+
+  TRI_json_t const* idxJson = TRI_LookupArrayJson(json, "id");
+  if (TRI_IsStringJson(idxJson)) {
+    // use predefined index id
+    iid = triagens::basics::StringUtils::uint64(idxJson->_value._string.data);
+  }
+
+  if (iid == 0) {
+    // no id set, create a new one!
+    iid = uniqid();
+  }
+
   string const idString = triagens::basics::StringUtils::itoa(iid);
 
   {
