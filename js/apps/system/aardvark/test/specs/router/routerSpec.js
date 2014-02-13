@@ -19,7 +19,9 @@
       sessionDummy,
       graphsDummy,
       foxxDummy,
-      logsDummy;
+      logsDummy,
+      statisticBarDummy,
+      userBarDummy;
 
     // Spy on all views that are initialized by startup
     beforeEach(function() {
@@ -66,9 +68,17 @@
       foxxDummy = {
         id: "foxxDummy"
       };
+      statisticBarDummy = {
+        id: "statisticBarDummy",
+        render : function(){}
+      };
+      userBarDummy = {
+        id: "userBarDummy",
+        render : function(){}
+      };
       spyOn(storeDummy, "fetch");
       spyOn(window, "arangoCollections").andReturn(storeDummy);
-      spyOn(window, "ArangoSession").andReturn(sessionDummy);
+      spyOn(window, "ArangoUsers").andReturn(sessionDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "GraphCollection").andReturn(graphsDummy);
@@ -103,6 +113,8 @@
         expect(options.async).toBeFalsy(); 
       });
       spyOn(window, "DBSelectionView");
+      spyOn(window, "StatisticBarView").andReturn(statisticBarDummy);
+      spyOn(window, "UserBarView").andReturn(userBarDummy);
     });
 
     describe("initialisation", function() {
@@ -333,7 +345,7 @@
         simpleNavigationCheck(
           "api",
           "apiView",
-          "api-menu"
+          "tools-menu"
         );
       });
 
@@ -349,7 +361,7 @@
         simpleNavigationCheck(
           "shell",
           "shellView",
-          "shell-menu"
+          "tools-menu"
         );
       });
 

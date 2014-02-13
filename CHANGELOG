@@ -3,6 +3,9 @@ v1.5.0 (XXXX-XX-XX)
 
 * made module loader more node compatible
 
+* the startup option `--javascript.package-path` for arangosh is now deprecated and does
+  nothing. Using it will not cause an error, but the option is ignored.
+
 * added coffee script support
 
 * Several UI improvements.
