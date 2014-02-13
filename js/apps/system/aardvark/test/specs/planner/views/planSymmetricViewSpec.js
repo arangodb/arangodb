@@ -37,9 +37,9 @@
         type: "POST",
         data: JSON.stringify({
           dispatcher : [
-              {host : ip_base + "0:0", isDBServer : true, isCoordinator : true},
-              {host : ip_base + "1:1", isDBServer : true, isCoordinator : true},
-              {host : ip_base + "2:2", isDBServer : true, isCoordinator : true}
+              {host : ip_base + "0:0"},
+              {host : ip_base + "1:1"},
+              {host : ip_base + "2:2"}
           ],
           type: "symmetricalSetup"
         })
@@ -53,14 +53,14 @@
           $(".host", d).val(ip_base + i);
           $(".port", d).val(i);
           if (i === 0) {
-            $(".isDBServer", d).val(true);
-            $(".isCoordinator", d).val(false)
+            $(".isDBServer", d).attr("checked",true);
+            $(".isCoordinator", d).attr("checked",false);
           } else if (i === 1) {
-              $(".isDBServer", d).val(false);
-            $(".isCoordinator", d).val(true);
+              $(".isDBServer", d).attr("checked",false);
+            $(".isCoordinator", d).attr("checked",true);
           } else {
-            $(".isDBServer", d).val(true);
-            $(".isCoordinator", d).val(true);
+            $(".isDBServer", d).attr("checked",true);
+            $(".isCoordinator", d).attr("checked",true);
           }
       });
 
@@ -91,7 +91,7 @@
       });
       $("#startPlan").click();
       expect($.ajax).not.toHaveBeenCalled();
-      expect(window.alert).toHaveBeenCalledWith("Please provide at least one dispatcher");
+      expect(window.alert).toHaveBeenCalledWith("Please provide at least one Host");
     });
 
     it("should not start an asymmetrical cluster because no dbserver and coordinator ist provided", function() {
@@ -102,14 +102,14 @@
         $(".host", d).val(ip_base + i);
         $(".port", d).val(i);
         if (i === 0) {
-            $(".isDBServer", d).val(false);
+            $(".isDBServer", d).attr("checked",false);
             $(".isCoordinator", d).val(false)
         } else if (i === 1) {
-            $(".isDBServer", d).val(false);
-            $(".isCoordinator", d).val(false);
+            $(".isDBServer", d).attr("checked",false);
+            $(".isCoordinator", d).attr("checked",false);
         } else {
-            $(".isDBServer", d).val(false);
-            $(".isCoordinator", d).val(false);
+            $(".isDBServer", d).attr("checked",false);
+            $(".isCoordinator", d).attr("checked",false);
         }
       });
       $("#startPlan").click();
@@ -124,14 +124,14 @@
           $(".host", d).val(ip_base + i);
           $(".port", d).val(i);
           if (i === 0) {
-              $(".isDBServer", d).val(true);
-              $(".isCoordinator", d).val(false)
+              $(".isDBServer", d).attr("checked",true);
+              $(".isCoordinator", d).attr("checked",false);
           } else if (i === 1) {
-              $(".isDBServer", d).val(false);
-              $(".isCoordinator", d).val(false);
+              $(".isDBServer", d).attr("checked",false);
+              $(".isCoordinator", d).attr("checked",false);
           } else {
-              $(".isDBServer", d).val(false);
-              $(".isCoordinator", d).val(false);
+              $(".isDBServer", d).attr("checked",false);
+              $(".isCoordinator", d).attr("checked",false);
           }
       });
       $("#startPlan").click();
