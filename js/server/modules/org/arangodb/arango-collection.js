@@ -179,8 +179,7 @@ ArangoCollection.prototype.index = function (id) {
       return index;
     }
   }
-
-  // index not found
+  
   var err = new ArangoError();
   err.errorNum = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code;
   err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.message;
@@ -824,8 +823,9 @@ ArangoCollection.prototype.ensureBitarray = function () {
 
   var fields = [], i;
 
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
+  for (i = 0;  i < arguments.length;  i += 2) {
+    var pair = [ arguments[i], arguments[i + 1] ];
+    fields.push(pair);
   }
   
   return this.ensureIndex({ 
@@ -855,8 +855,9 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 
   var fields = [], i;
 
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
+  for (i = 0;  i < arguments.length;  i += 2) {
+    var pair = [ arguments[i], arguments[i + 1] ];
+    fields.push(pair);
   }
 
   return this.ensureIndex({ 

@@ -1224,7 +1224,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
     }
   }
 
-  _collectionsValid = false;
+  flush();
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
@@ -1497,23 +1497,12 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     }
     
     TRI_json_t* idx = TRI_LookupArrayJson(collectionJson, "indexes");
-    if (idx == 0) {
-      idx = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-      if (idx == 0) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-        return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-      }
-
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", idx);
-      idx = TRI_LookupArrayJson(collectionJson, "indexes");
-    }
 
     if (idx == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-    
+
     newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (newIndex == 0) {

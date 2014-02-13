@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global ArangoAgency, ArangoClusterComm, ArangoClusterInfo, ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ function getIndexMap (shard) {
   for (i = 0; i < idx.length; ++i) {
     // fetch id without collection name
     var id = idx[i].id.replace(/^[a-zA-Z0-9_\-]*?\/([0-9]+)$/, '$1');
-
+ 
     idx[i].id = id;
     indexes[id] = idx[i];
   }
@@ -215,7 +215,7 @@ function getLocalCollections () {
     var name = collection.name();
 
     if (name.substr(0, 1) !== '_') {
-      result[name] = { 
+      var data = { 
         id: collection._id,
         name: name, 
         type: collection.type(), 
@@ -228,9 +228,11 @@ function getLocalCollections () {
       var p;
       for (p in properties) {
         if (properties.hasOwnProperty(p)) {
-          result[name][p] = properties[p];
+          data[p] = properties[p];
         }
       }
+
+      result[name] = p;
     }
   });
 
@@ -455,6 +457,13 @@ function createLocalCollections (plannedCollections) {
                         payload.error = true;
                         payload.errorNum = err2.errorNum;
                         payload.errorMessage = err2.errorMessage;
+
+                        console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
+                                      database, 
+                                      shard, 
+                                      database,
+                                      payload.id, 
+                                      JSON.stringify(err2));
                       }
 
                       payload.DBServer = ourselves;
@@ -548,10 +557,10 @@ function createLocalCollections (plannedCollections) {
                             indexes[index.id].errorNum = 0;
                             indexes[index.id].errorMessage = "";
                           }
-                          catch (err4) {
+                          catch (err5) {
                             indexes[index.id].error = true;
-                            indexes[index.id].errorNum = err4.errorNum;
-                            indexes[index.id].errorMessage = err4.errorMessage;
+                            indexes[index.id].errorNum = err5.errorNum;
+                            indexes[index.id].errorMessage = err5.errorMessage;
                           }
 
                           payload.DBServer = ourselves;
@@ -912,7 +921,8 @@ var handlePlanChange = function () {
     console.info("plan change handling successful");
   }
   catch (err) {
-    require("internal").print(err);
+    console.error("error details: %s", JSON.stringify(err));
+    console.error("error stack: %s", err.stack);
     console.error("plan change handling failed");
   }
 };

@@ -809,6 +809,14 @@ bool ExtractBoolFlag (v8::Handle<v8::Object> const& obj,
 int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
                                 TRI_json_t* json) {
   vector<string> fields;
+      
+  TRI_json_t* fieldJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  
+  if (fieldJson == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
 
   if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
     // "fields" is a list of fields
@@ -816,48 +824,69 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
 
     const uint32_t n = fieldList->Length();
 
-    if (n % 2 != 0) {
-      // must have an even number of fields
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+    for (uint32_t i = 0; i < n; ++i) {
+      if (! fieldList->Get(i)->IsArray()) {
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
+      }
     
-    for (uint32_t i = 0; i < n; i += 2) {
-      if (! fieldList->Get(i)->IsString()) {
-        return TRI_ERROR_BAD_PARAMETER;
+      v8::Handle<v8::Array> fieldPair = v8::Handle<v8::Array>::Cast(fieldList->Get(i));
+
+      if (fieldPair->Length() != 2) {
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
       }
 
-      const string f = TRI_ObjectToString(fieldList->Get(i));
+      const string f = TRI_ObjectToString(fieldPair->Get(0));
 
       if (f.empty() || f[0] == '_') {
         // accessing internal attributes is disallowed
-        return TRI_ERROR_BAD_PARAMETER;
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
       }
 
       if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
         // duplicate attribute name
-        return TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+        res = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+        break;
       }
 
-      if (! fieldList->Get(i + 1)->IsArray()) {
+      if (! fieldPair->Get(1)->IsArray()) {
         // parameter at uneven position must be a list
-        return TRI_ERROR_BAD_PARAMETER;
+        res = TRI_ERROR_BAD_PARAMETER;
+        break;
       }
 
       fields.push_back(f);
+
+      TRI_json_t* pair = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+
+      if (pair == 0) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
+      }
+
+      // key
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, pair, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, f.c_str(), f.size()));
+
+      // value
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, pair, TRI_ObjectToJson(fieldPair->Get(1)));
+
+      // add the pair to the fields list
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fieldJson, pair);
     }
   }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldJson);
+    return res;
+  }
+      
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
   
   if (fields.empty()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
-
-  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
-
-  if (fieldJson == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-     
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1259,18 +1288,26 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   value = TRI_LookupArrayJson(json, "fields");
   if (TRI_IsListJson(value)) {
     // note: "fields" is not mandatory for all index types
+
     if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
       // copy all field names (attributes) plus the values (json)
-      for (size_t i = 0; i < value->_value._objects._length; i += 2) {
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
         // add attribute
-        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
-        assert(TRI_IsStringJson(v));
-        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
-        
-        // add value
-        v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i + 1);
-        assert(TRI_IsListJson(v));
-        TRI_PushBackVectorPointer(&values, (void*) v);
+        TRI_json_t const* v = TRI_LookupListJson(value, i);
+
+        if (TRI_IsListJson(v) && v->_value._objects._length == 2) {
+          // key
+          TRI_json_t const* key = TRI_LookupListJson(v, 0);
+          if (TRI_IsStringJson(key)) {
+            TRI_PushBackVectorPointer(&attributes, key->_value._string.data);
+          }
+
+          // value
+          TRI_json_t const* value = TRI_LookupListJson(v, 1);
+          if (TRI_IsListJson(value)) {
+            TRI_PushBackVectorPointer(&values, (void*) value);
+          }
+        }
       }
     }
     else {
@@ -1548,8 +1585,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
                                           char const* functionName) {
   v8::HandleScope scope;
   
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
-
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
@@ -6089,9 +6124,12 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
       return scope.Close(v8::ThrowException(err));
     }
   }
+   
+  if (idx->_iid == 0) {
+    return scope.Close(v8::False());
+  }
 
-  if (idx->_iid == 0 || 
-      idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+  if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
       idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
   }
@@ -6289,20 +6327,21 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
     
   TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
   
+  if ((*c).empty()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
   v8::Handle<v8::Array> ret = v8::Array::New();
 
-  if (! (*c).empty()) {
-    TRI_json_t const* json = (*c).getIndexes();
+  TRI_json_t const* json = (*c).getIndexes();
+  if (TRI_IsListJson(json)) {
+    uint32_t j = 0;
 
-    if (TRI_IsListJson(json)) {
-      uint32_t j = 0;
+    for (size_t i = 0;  i < json->_value._objects._length; ++i) {
+      TRI_json_t const* v = TRI_LookupListJson(json, i);
 
-      for (size_t i = 0;  i < json->_value._objects._length; ++i) {
-        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-
-        if (v != 0) {
-          ret->Set(j++, IndexRep(collectionName, v));
-        }
+      if (v != 0) {
+        ret->Set(j++, IndexRep(collectionName, v));
       }
     }
   }
