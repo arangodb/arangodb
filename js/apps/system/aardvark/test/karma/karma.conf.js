@@ -191,10 +191,11 @@ module.exports = function(karma) {
 
       //Views Planner
       'plannerFrontend/js/views/planScenarioSelectorView.js',
+      'plannerFrontend/js/views/planSymmetricView.js',
       'plannerFrontend/js/views/planTestView.js',
 
 
-      // Router
+        // Router
       'frontend/js/routers/router.js',
       'plannerFrontend/js/routers/plannerRouter.js',
 
@@ -271,7 +272,11 @@ module.exports = function(karma) {
       //Planner
 
       //Router
-      'test/specs/planner/router/routerSpec.js'
+      'test/specs/planner/router/routerSpec.js',
+      //View
+      'test/specs/planner/views/planSymmetricViewSpec.js',
+      'test/specs/planner/views/planTestViewSpec.js',
+      'test/specs/planner/views/planScenarioSelectorViewSpec.js'
 
     ],
 
