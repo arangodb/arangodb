@@ -22,7 +22,6 @@
     },
 
     handleSelectDatabase: function () {
-      //TODO: still in use?
       this.dbSelectionView.render($("#dbSelect"));
     },
 
