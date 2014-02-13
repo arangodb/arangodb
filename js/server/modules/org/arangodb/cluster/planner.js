@@ -58,43 +58,6 @@ var PlannerLocalDefaults = {
                               // this means only we as a local instance
 };
   
-// The following is just a further example:
-
-var PlannerDistributedDefaults = {
-  "agencyPrefix"            : "mueller",
-  "numberOfAgents"          : 3,
-  "numberOfDBservers"       : 3,
-  "startSecondaries"        : false,
-  "numberOfCoordinators"    : 3,
-  "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                               "Pit", "Pia", "Pablo" ],
-  "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
-                               "Claas", "Clemens", "Chris" ],
-  "dataPath"                : "",
-  "logPath"                 : "",
-  "arangodPath"             : "",
-  "agentPath"               : "etcd",   // means `etcd` in same place as
-                                        // dispatcher executable
-  "agentExtPorts"           : [4001],
-  "agentIntPorts"           : [7001],
-  "DBserverPorts"           : [8629],
-  "coordinatorPorts"        : [8530],
-  "dispatchers"             : { "machine1": 
-                                  { "endpoint": "tcp://machine1:8529",
-                                    "avoidPorts": {},
-                                    "arangodExtraArgs": []},
-                                "machine2":
-                                  { "id": "machine2", 
-                                    "endpoint": "tcp://machine2:8529",
-                                    "avoidPorts": {},
-                                    "arangodExtraArgs": []},
-                                "machine3":
-                                  { "id": "machine3", 
-                                    "endpoint": "tcp://machine3:8529",
-                                    "avoidPorts": {},
-                                    "arangodExtraArgs": []} }
-};
-
 // Some helpers using underscore:
 
 var _ = require("underscore");
@@ -162,9 +125,12 @@ PortFinder.prototype.next = function () {
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
                   "/_admin/clusterCheckPort?port="+this.port;
-        var r = download(url, "", {"method": "GET"});
+        var r = download(url, "", {"method": "GET", "timeout": 5});
         if (r.code === 200) {
           available = JSON.parse(r.body);
+        }
+        else {
+          throw "Cannot check port on dispatcher "+this.dispatcher.endpoint;
         }
       }
       if (available) {
@@ -226,7 +192,9 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///       - `arangodExtraArgs`, which is a list of additional
 ///         command line arguments that will be given to DBservers and
 ///         coordinators started by this dispatcher, the default is
-///         an empty list
+///         an empty list. These arguments will be appended to those
+///         produced automatically, such that one can overwrite
+///         things with this.
 ///       - `allowCoordinators`, which is a boolean value indicating
 ///         whether or not coordinators should be started on this
 ///         dispatcher, the default is `true`
