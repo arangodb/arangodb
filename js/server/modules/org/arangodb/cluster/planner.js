@@ -32,7 +32,6 @@
 // --SECTION--                                             Planner functionality
 // -----------------------------------------------------------------------------
 
-var fs = require("fs");
 var download = require("internal").download;
 
 // Our default configurations:
@@ -425,7 +424,6 @@ Planner.prototype.makePlan = function() {
 
   // Distribute coordinators to dispatchers
   var coordinators = [];
-  var count;
   pf = [];
   d = 0;
   i = 0;

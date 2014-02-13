@@ -150,7 +150,11 @@ function getIndexMap (shard) {
   var idx = arangodb.db._collection(shard).getIndexes();
 
   for (i = 0; i < idx.length; ++i) {
-    indexes[idx.id] = idx[i];
+    // fetch id without collection name
+    var id = idx[i].id.replace(/^.*?\/(.+)$/, '$1');
+
+    idx[i].id = id;
+    indexes[id] = idx[i];
   }
 
   return indexes;
@@ -520,25 +524,68 @@ function createLocalCollections (plannedCollections) {
                       }
                     }
 
+                    var indexes = getIndexMap(shard);
+                    var idx;
+
                     if (payload.hasOwnProperty("indexes")) {
-                      var indexes = getIndexMap(shard);
-                      var idx;
+                      for (i = 0; i < payload.indexes.length; ++i) {
+                        var index = payload.indexes[i];
 
-                      for (idx in payload.indexes) {
-                        if (payload.indexes.hasOwnProperty(idx)) {
-                          var index = payload.indexes[idx];
+                        if (! indexes.hasOwnProperty(index.id)) {
+                          console.info("creating index '%s/%s': %s", 
+                                       database, 
+                                       shard,
+                                       JSON.stringify(index));
 
-                          if (! indexes.hasOwnProperty(index.id)) {
-                            console.info("creating index '%s/%s': %s", 
+                          arangodb.db._collection(shard).ensureIndex(index);
+                          payload.DBServer = ourselves;
+                          indexes[index.id] = index;
+                        
+                          writeLocked({ part: "Current" }, 
+                                      createCollectionAgency, 
+                                      [ database, shard, payload ]);
+                        }
+                      }
+
+                      for (idx in indexes) {
+                        if (indexes.hasOwnProperty(idx)) {
+                          // found an index in the index map, check if it must be deleted
+                        
+                          if (indexes[idx].type === "primary" || indexes[idx].type === "edge") {
+                            continue;
+                          }
+                          
+                          var found = false;
+                          for (i = 0; i < payload.indexes.length; ++i) {
+                            if (payload.indexes[i].id === idx) {
+                              found = true;
+                              break;
+                            }
+                          }
+
+                          if (! found) {
+                            // found an index to delete locally
+                            var index = indexes[idx];
+
+                            console.info("dropping index '%s/%s': %s", 
                                          database, 
                                          shard,
                                          JSON.stringify(index));
 
-                            arangodb.db._collection(shard).ensureIndex(index);
+                            arangodb.db._collection(shard).dropIndex(index);
+
+                            delete indexes[idx];
+                            payload.indexes.splice(i, i);
+                            payload.DBServer = ourselves;
+                          
+                            writeLocked({ part: "Current" }, 
+                                        createCollectionAgency, 
+                                        [ database, shard, payload ]);
                           }
                         }
                       }
                     }
+
                   }
                 }
               }
