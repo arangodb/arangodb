@@ -256,7 +256,13 @@ function require (path) {
       return null;
     }
 
-    return uri.substr(8);
+    var filename = uri.substr(8);
+
+    if (filename[0] === ".") {
+      return filename;
+    }
+
+    return "/" + filename;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
