@@ -104,40 +104,40 @@ div.resizecontainer {
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 13px; } }
-@media (min-width: 72px) and (max-width: 314px) {
+@media (min-width: 6px) and (max-width: 247px) {
   div.resizecontainer {
     width: 0px; } }
-@media (min-width: 314px) and (max-width: 556px) {
+@media (min-width: 248px) and (max-width: 489px) {
   div.resizecontainer {
     width: 242px; } }
-@media (min-width: 556px) and (max-width: 798px) {
+@media (min-width: 490px) and (max-width: 731px) {
   div.resizecontainer {
     width: 484px; } }
-@media (min-width: 798px) and (max-width: 1040px) {
+@media (min-width: 732px) and (max-width: 973px) {
   div.resizecontainer {
     width: 726px; } }
-@media (min-width: 1040px) and (max-width: 1282px) {
+@media (min-width: 974px) and (max-width: 1215px) {
   div.resizecontainer {
     width: 968px; } }
-@media (min-width: 1282px) and (max-width: 1524px) {
+@media (min-width: 1216px) and (max-width: 1457px) {
   div.resizecontainer {
     width: 1210px; } }
-@media (min-width: 1524px) and (max-width: 1766px) {
+@media (min-width: 1458px) and (max-width: 1699px) {
   div.resizecontainer {
     width: 1452px; } }
-@media (min-width: 1766px) and (max-width: 2008px) {
+@media (min-width: 1700px) and (max-width: 1941px) {
   div.resizecontainer {
     width: 1694px; } }
-@media (min-width: 2008px) and (max-width: 2250px) {
+@media (min-width: 1942px) and (max-width: 2183px) {
   div.resizecontainer {
     width: 1936px; } }
-@media (min-width: 2250px) and (max-width: 2492px) {
+@media (min-width: 2184px) and (max-width: 2425px) {
   div.resizecontainer {
     width: 2178px; } }
-@media (min-width: 2492px) and (max-width: 2734px) {
+@media (min-width: 2426px) and (max-width: 2667px) {
   div.resizecontainer {
     width: 2420px; } }
-@media (min-width: 2734px) and (max-width: 2976px) {
+@media (min-width: 2668px) and (max-width: 2909px) {
   div.resizecontainer {
     width: 2662px; } }
 div.centralRow {
