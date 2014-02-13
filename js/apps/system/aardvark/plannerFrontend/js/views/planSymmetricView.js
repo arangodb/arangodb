@@ -19,13 +19,16 @@
       var isDBServer;
       var isCoordinator;
       var self = this;
-      var data = {dbServer : [], coordinator: []};
+      var data = {dispatcher : []};
+      var foundCoordinator = false;
+      var foundDBServer = false;
       $(".dispatcher").each(function(i, dispatcher) {
           var host = $(".host", dispatcher).val();
           var port = $(".port", dispatcher).val();
           if (!host || 0 === host.length || !port || 0 === port.length) {
               return true;
           }
+          var hostObject = {host :  host + ":" + port, isDBServer : false, isCoordinator : false};
           if (!self.isSymmetric) {
               isDBServer = $(".isDBServer", dispatcher).val();
               isCoordinator = $(".isCoordinator", dispatcher).val();
@@ -33,10 +36,13 @@
               isDBServer = "true";
               isCoordinator = "true";
           }
-          isDBServer === "true" ? data.dbServer.push(host + ":" + port) : null;
-          isCoordinator === "true" ? data.coordinator.push(host + ":" + port) : null;
+          isDBServer === "true" ? hostObject.isDBServer = true : null;
+          isCoordinator === "true" ? hostObject.isCoordinator = true : null;
+          hostObject.isDBServer === true ? foundDBServer = true : null;
+          hostObject.isCoordinator === true ? foundCoordinator = true: null;
+          data.dispatcher.push(hostObject);
       })
-      if (data.dbServer.length === 0) {
+      if (!foundDBServer) {
         if (!self.isSymmetric) {
             alert("Please provide at least one DBServer");
             return;
@@ -45,7 +51,7 @@
             return;
         }
       }
-      if (data.coordinator.length === 0) {
+      if (!foundCoordinator) {
          alert("Please provide at least one Coordinator");
          return;
       }
