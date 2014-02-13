@@ -45,6 +45,8 @@
 // --SECTION--                                                 class DBServerJob
 // -----------------------------------------------------------------------------
 
+static triagens::basics::Mutex ExecutorLock;
+
 namespace triagens {
   namespace arango {
 
@@ -191,16 +193,17 @@ namespace triagens {
             return false;
           }
 
+          MUTEX_LOCKER(ExecutorLock);
+
           ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, false, true);
 
           if (context == 0) {
             TRI_ReleaseDatabaseServer(_server, vocbase);
             return false;
           }
-   
+    
           {
             v8::HandleScope scope;
-
             // execute script inside the context
             char const* file = "handle-plan-change";
             char const* content = "require('org/arangodb/cluster').handlePlanChange();";
@@ -213,7 +216,6 @@ namespace triagens {
           void* orig = v8g->_vocbase;
 
           _applicationV8->exitContext(context);
-          
           TRI_ReleaseDatabaseServer(_server, (TRI_vocbase_t*) orig);
 
           return true;
