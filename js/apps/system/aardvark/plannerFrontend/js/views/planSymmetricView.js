@@ -16,62 +16,50 @@
     },
 
     startPlan: function() {
-      var countDispatcher = 0;
-      $(".dispatcher").each(function(dispatcher) {
+      var isDBServer;
+      var isCoordinator;
+      var self = this;
+      var data = {dispatcher : []};
+      var foundCoordinator = false;
+      var foundDBServer = false;
+      $(".dispatcher").each(function(i, dispatcher) {
           var host = $(".host", dispatcher).val();
           var port = $(".port", dispatcher).val();
-          if (!this.isSymmetric) {
-              var isDBServer = $(".isDBServer", dispatcher).val();
-              var isCoordinator = $(".isCoordinator", dispatcher).val();
+          if (!host || 0 === host.length || !port || 0 === port.length) {
+              return true;
           }
-          if (host != null && !host.isEmpty() &&
-              port != null && !port.isEmpty() &&
-              (this.isSymmetric) || isDBServer || isCoordinator) {
-              countDispatcher++;
+          var hostObject = {host :  host + ":" + port, isDBServer : false, isCoordinator : false};
+          if (!self.isSymmetric) {
+              isDBServer = $(".isDBServer", dispatcher).val();
+              isCoordinator = $(".isCoordinator", dispatcher).val();
+          } else {
+              isDBServer = "true";
+              isCoordinator = "true";
           }
-          
+          isDBServer === "true" ? hostObject.isDBServer = true : null;
+          isCoordinator === "true" ? hostObject.isCoordinator = true : null;
+          hostObject.isDBServer === true ? foundDBServer = true : null;
+          hostObject.isCoordinator === true ? foundCoordinator = true: null;
+          data.dispatcher.push(hostObject);
       })
-      if (countDispatcher === 0) {
-        alert("Please provide at least one dispatcher");
+      if (!foundDBServer) {
+        if (!self.isSymmetric) {
+            alert("Please provide at least one DBServer");
+            return;
+        } else {
+            alert("Please provide at least one dispatcher");
+            return;
+        }
       }
-      var type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
-
-
-
-
-
-
-
-
-
-        var h = $("#host").val(),
-          p = $("#port").val(),
-          c = $("#coordinators").val(),
-          d = $("#dbs").val();
-      if (!h) {
-          alert("Please define a Host");
-          return;
+      if (!foundCoordinator) {
+         alert("Please provide at least one Coordinator");
+         return;
       }
-      if (!p) {
-          alert("Please define a Port");
-          return;
-      }
-      if (!c) {
-          alert("Please define a number of Coordinators");
-          return;
-      }
-      if (!d) {
-          alert("Please define a number of DBServers");
-          return;
-      }
+
+      data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
       $.ajax("cluster/plan", {
           type: "POST",
-          data: {
-              type: "testSetup",
-              dispatcher: h + ":" + p,
-              numberDBServers: parseInt(d, 10),
-              numberCoordinators: parseInt(c, 10)
-          }
+          data: JSON.stringify(data)
       });
     },
 
@@ -83,7 +71,7 @@
     },
 
     removeEntry: function(e) {
-      $(e.currentTarget).closest(".control-group").remove(); 
+      $(e.currentTarget).closest(".control-group").remove();
     },
 
     render: function(isSymmetric) {
@@ -99,3 +87,4 @@
   });
 
 }());
+

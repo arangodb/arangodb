@@ -131,12 +131,16 @@ void ConsoleThread::inner () {
 
   console.open(true);
 
-  while (true) {
+  while (! _userAborted) {
     v8::V8::LowMemoryNotification();
     while(! v8::V8::IdleNotification()) {
     }
 
     char* input = console.prompt("arangod> ");
+
+    if (_userAborted) {
+      throw "user aborted";
+    }
 
     if (input == 0) {
       _applicationServer->beginShutdown();
@@ -164,6 +168,7 @@ void ConsoleThread::inner () {
     }
   }
 
+  throw "user aborted";
 }
 
 // -----------------------------------------------------------------------------
