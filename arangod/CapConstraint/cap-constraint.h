@@ -79,6 +79,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s*,
+                                      TRI_idx_iid_t,
                                       size_t,
                                       int64_t);
 

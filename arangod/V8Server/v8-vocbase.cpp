@@ -1086,7 +1086,8 @@ static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceIndexJson (v8::Arguments const& argv,
-                             TRI_json_t*& json) {
+                             TRI_json_t*& json,
+                             bool create) {
   v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
 
   // extract index type  
@@ -1103,6 +1104,14 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 
   if (type == TRI_IDX_TYPE_UNKNOWN) {
     return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  if (create) {
+    if (type == TRI_IDX_TYPE_PRIMARY_INDEX ||
+        type == TRI_IDX_TYPE_EDGE_INDEX) {
+      // creating these indexes is forbidden
+      return TRI_ERROR_FORBIDDEN;
+    }
   }
 
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -1554,7 +1563,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
   }
 
   TRI_json_t* json = 0;
-  int res = EnhanceIndexJson(argv, json);
+  int res = EnhanceIndexJson(argv, json, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (json != 0) {
@@ -2738,7 +2747,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   ClusterInfo* ci = ClusterInfo::instance();
 
   // fetch a unique id for the new collection plus one for each shard to create
-  uint64_t id = ci->uniqid(1 + numberOfShards);
+  const uint64_t id = ci->uniqid(1 + numberOfShards);
 
   // collection id is the first unique id we got
   const string cid = StringUtils::itoa(id);
@@ -2788,6 +2797,46 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
+
+  TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (indexes == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // create a dummy primary index
+  TRI_index_t* idx = TRI_CreatePrimaryIndex(0);
+
+  if (idx == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_json_t* idxJson = idx->json(idx);
+  TRI_FreeIndex(idx);
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+
+  if (collectionType == TRI_COL_TYPE_EDGE) {
+    // create a dummy edge index
+    idx = TRI_CreateEdgeIndex(0, id);
+
+    if (idx == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    idxJson = idx->json(idx);
+    TRI_FreeIndex(idx);
+
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
 
   string errorMsg;
   int myerrno = ci->createCollectionCoordinator( databaseName, cid, 
@@ -6041,8 +6090,10 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     }
   }
 
-  if (idx->_iid == 0) {
-    return scope.Close(v8::False());
+  if (idx->_iid == 0 || 
+      idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+      idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
   }
 
   // .............................................................................

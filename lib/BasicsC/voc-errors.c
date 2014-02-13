@@ -91,6 +91,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator");
   REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing");
   REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
+  REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
