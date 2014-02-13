@@ -533,15 +533,28 @@ function createLocalCollections (plannedCollections) {
                       for (i = 0; i < payload.indexes.length; ++i) {
                         index = payload.indexes[i];
 
-                        if (! indexes.hasOwnProperty(index.id)) {
+                        if (index.type !== "primary" && index.type !== "edge" && 
+                            ! indexes.hasOwnProperty(index.id)) {
                           console.info("creating index '%s/%s': %s", 
                                        database, 
                                        shard,
                                        JSON.stringify(index));
 
-                          arangodb.db._collection(shard).ensureIndex(index);
-                          payload.DBServer = ourselves;
                           indexes[index.id] = index;
+
+                          try {
+                            arangodb.db._collection(shard).ensureIndex(index);
+                            indexes[index.id].error = false;
+                            indexes[index.id].errorNum = 0;
+                            indexes[index.id].errorMessage = "";
+                          }
+                          catch (err4) {
+                            indexes[index.id].error = true;
+                            indexes[index.id].errorNum = err4.errorNum;
+                            indexes[index.id].errorMessage = err4.errorMessage;
+                          }
+
+                          payload.DBServer = ourselves;
                         
                           writeLocked({ part: "Current" }, 
                                       createCollectionAgency, 
