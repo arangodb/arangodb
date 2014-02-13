@@ -54,6 +54,40 @@ static inline int setErrormsg (int ourerrno, string& errorMsg) {
   errorMsg = TRI_errno_string(ourerrno);
   return ourerrno;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the JSON returns an error
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool hasError (TRI_json_t const* json) {
+  TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+  
+  return (TRI_IsBooleanJson(error) && error->_value._boolean);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the error message from a JSON
+////////////////////////////////////////////////////////////////////////////////
+
+static string extractErrorMessage (string const& shardId,
+                                   TRI_json_t const* json) {
+  string msg = " shardID:" + shardId + ": ";
+
+  // add error message text
+  TRI_json_t const* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
+  if (TRI_IsStringJson(errorMessage)) {
+    msg += string(errorMessage->_value._string.data,
+                  errorMessage->_value._string.length - 1);
+  }
+
+  // add error number
+  TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+  if (TRI_IsNumberJson(errorNum)) {
+    msg += " (errNum=" + triagens::basics::StringUtils::itoa(static_cast<uint32_t>(errorNum->_value._number)) + ")";
+  }
+
+  return msg;
+}
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CollectionInfo class
@@ -1190,7 +1224,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
     }
   }
 
-  _collectionsValid = false;
+  flush();
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
@@ -1463,23 +1497,12 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     }
     
     TRI_json_t* idx = TRI_LookupArrayJson(collectionJson, "indexes");
-    if (idx == 0) {
-      idx = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-      if (idx == 0) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
-        return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-      }
-
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", idx);
-      idx = TRI_LookupArrayJson(collectionJson, "indexes");
-    }
 
     if (idx == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
-    
+
     newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (newIndex == 0) {
@@ -1539,6 +1562,16 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
           for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
             TRI_json_t const* v = TRI_LookupListJson(indexes, i);
+
+            // check for errors
+            if (hasError(v)) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
+              string errorMsg = extractErrorMessage((*it).first, v);
+            
+              errorMsg = "Error during index creation: " + errorMsg;
+              return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+            }
+
             TRI_json_t const* k = TRI_LookupArrayJson(v, "id");
 
             if (! TRI_IsStringJson(k) || idString != string(k->_value._string.data)) {
@@ -1643,14 +1676,24 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
       TRI_json_t const* v = TRI_LookupListJson(indexes, i);
       TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
+      TRI_json_t const* type = TRI_LookupArrayJson(v, "type");
 
-      if (! TRI_IsStringJson(id)) {
+      if (! TRI_IsStringJson(id) || ! TRI_IsStringJson(type)) {
         continue;
       }
       
       if (idString == string(id->_value._string.data)) {
         // found our index, ignore it when copying
         found = true;
+
+        string const typeString(type->_value._string.data);
+        if (typeString == "primary" || typeString == "edge") {
+          // must not delete these index types
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
+          return setErrormsg(TRI_ERROR_FORBIDDEN, errorMsg);
+        }
+
         continue;
       }
 

@@ -285,6 +285,7 @@ static int RemoveCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
+                                      TRI_idx_iid_t iid,
                                       size_t count,
                                       int64_t size) {
   TRI_cap_constraint_t* cap;
@@ -299,7 +300,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   idx = &cap->base;
 
   idx->typeName = TypeNameCapConstraint;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
 
   idx->json        = JsonCapConstraint;
   idx->removeIndex = RemoveIndexCapConstraint;

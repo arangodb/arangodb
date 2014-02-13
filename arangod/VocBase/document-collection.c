@@ -2814,7 +2814,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   if (document->base.base._info._type == TRI_COL_TYPE_EDGE) {
     TRI_index_t* edgesIndex;
 
-    edgesIndex = TRI_CreateEdgeIndex(&document->base);
+    edgesIndex = TRI_CreateEdgeIndex(&document->base, document->base.base._info._cid);
 
     if (edgesIndex == NULL) {
       TRI_FreeIndex(primaryIndex);
@@ -3667,13 +3667,13 @@ static bool DropIndex (TRI_document_collection_t* document,
 
     idx = document->_allIndexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // cannot remove these index types
-      continue;
-    }
-
     if (idx->_iid == iid) {
+      if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+          idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+        // cannot remove these index types
+        break;
+      }
+
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
 
       if (found != NULL && found->removeIndex != NULL) {
@@ -4310,16 +4310,12 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
 
   // create a new index
-  idx = TRI_CreateCapConstraint(primary, count, size);
+  idx = TRI_CreateCapConstraint(primary, iid, count, size);
 
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
-  }
-
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -4579,14 +4575,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeo1Index(primary, location, loc, geoJson, unique, ignoreNull);
+    idx = TRI_CreateGeo1Index(primary, iid, location, loc, geoJson, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_CreateGeo2Index(primary, latitude, lat, longitude, lon, unique, ignoreNull);
+    idx = TRI_CreateGeo2Index(primary, iid, latitude, lat, longitude, lon, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
@@ -4597,10 +4593,6 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
-  }
-
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -5049,6 +5041,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
   idx = TRI_CreateHashIndex(&document->base,
+                            iid,
                             &fields,
                             &paths,
                             unique,
@@ -5064,11 +5057,6 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-  // if index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
-  }
 
   // initialises the index with all existing documents
   res = FillIndex(document, idx);
@@ -5270,7 +5258,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the skiplist index
-  idx = TRI_CreateSkiplistIndex(&document->base, &fields, &paths, unique);
+  idx = TRI_CreateSkiplistIndex(&document->base, iid, &fields, &paths, unique);
   
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -5280,11 +5268,6 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-  // If index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
-  }
 
   // initialises the index with all existing documents
   res = FillIndex(document, idx);
@@ -5506,16 +5489,11 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the fulltext index
-  idx = TRI_CreateFulltextIndex(&document->base, attributeName, indexSubstrings, minWordLength);
+  idx = TRI_CreateFulltextIndex(&document->base, iid, attributeName, indexSubstrings, minWordLength);
   
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
-  }
-
-  // If index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -5722,13 +5700,13 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
-                                                      const TRI_vector_pointer_t* attributes,
-                                                      const TRI_vector_pointer_t* values,
-                                                      TRI_idx_iid_t iid,
-                                                      bool supportUndef,
-                                                      bool* created,
-                                                      int* errorNum,
-                                                      char** errorStr) {
+                                                           const TRI_vector_pointer_t* attributes,
+                                                           const TRI_vector_pointer_t* values,
+                                                           TRI_idx_iid_t iid,
+                                                           bool supportUndef,
+                                                           bool* created,
+                                                           int* errorNum,
+                                                           char** errorStr) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -5780,7 +5758,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // Create the bitarray index
   // ...........................................................................
 
-  idx = TRI_CreateBitarrayIndex(&document->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
+  idx = TRI_CreateBitarrayIndex(&document->base, iid, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
   
   if (idx == NULL) {
     TRI_DestroyVector(&paths);
@@ -5789,23 +5767,12 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     return NULL;
   }
 
-
   // ...........................................................................
   // release memory allocated to fields & paths vectors
   // ...........................................................................
 
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-
-  // ...........................................................................
-  // If an index id given, use it otherwise use the default (generate one)
-  // ...........................................................................
-
-  if (iid) {
-    idx->_iid = iid;
-  }
-
 
   // ...........................................................................
   // initialises the index with all existing documents
@@ -5826,7 +5793,6 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
 
     return NULL;
   }
-
 
   // ...........................................................................
   // store index within the collection and return

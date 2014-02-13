@@ -576,6 +576,7 @@ static int RemoveHashIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique,
@@ -592,7 +593,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   idx = &hashIndex->base;
 
   idx->typeName = TypeNameHashIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_HASH_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, primary, unique, true);
   
   idx->json     = JsonHashIndex;
   idx->insert   = InsertHashIndex;

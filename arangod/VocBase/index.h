@@ -282,8 +282,9 @@ TRI_index_search_value_t;
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitIndex (TRI_index_t*, 
-                    const TRI_idx_type_e, 
+void TRI_InitIndex (TRI_index_t*,
+                    TRI_idx_iid_t, 
+                    TRI_idx_type_e, 
                     struct TRI_primary_collection_s*,
                     bool,
                     bool);
@@ -441,7 +442,8 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s*);
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s*,
+                                  TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an edge index, but does not free the pointer
@@ -480,9 +482,10 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s*,
-                                      TRI_vector_pointer_t* fields,
-                                      TRI_vector_t* paths,
-                                      bool unique);
+                                      TRI_idx_iid_t,
+                                      TRI_vector_pointer_t*,
+                                      TRI_vector_t*,
+                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -521,6 +524,7 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
+                                      TRI_idx_iid_t,
                                       const char*,
                                       const bool,
                                       int);
@@ -568,6 +572,7 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
+                                      TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
                                       TRI_vector_pointer_t*,
