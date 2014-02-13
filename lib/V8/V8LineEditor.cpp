@@ -61,12 +61,15 @@ using namespace std;
 /// @brief word break characters
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_HAVE_LINENOISE
+
 static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
 };
 
+#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -74,6 +77,8 @@ static char WordBreakCharacters[] = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief completion generator
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_HAVE_LINENOISE
 
 static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
@@ -182,11 +187,15 @@ static char* CompletionGenerator (char const* text, int state) {
     return 0;
   }
 }
+
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief linenoise completion generator
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_LINENOISE
+
 static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions * lc) {
   vector<string> completions;
     // locate global object or sub-object
@@ -279,6 +288,7 @@ static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions
     TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
 
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,9 +296,11 @@ static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_LINENOISE
+
 static void AttemptedCompletion(char const* text, linenoiseCompletions * lc) {
 	LinenoiseCompletionGenerator(text, lc);
 }
+
 #else
 
 static char** AttemptedCompletion (char const* text, int start, int end) {
