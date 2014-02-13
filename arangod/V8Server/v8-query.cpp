@@ -134,11 +134,11 @@ static void ExtractSkipAndLimit (v8::Arguments const& argv,
   skip = TRI_QRY_NO_SKIP;
   limit = TRI_QRY_NO_LIMIT;
 
-  if (pos < (size_t) argv.Length() && ! argv[pos]->IsNull()) {
+  if (pos < (size_t) argv.Length() && ! argv[pos]->IsNull() && ! argv[pos]->IsUndefined()) {
     skip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[pos]);
   }
 
-  if (pos + 1 < (size_t) argv.Length() && ! argv[pos + 1]->IsNull()) {
+  if (pos + 1 < (size_t) argv.Length() && ! argv[pos + 1]->IsNull() && ! argv[pos + 1]->IsUndefined()) {
     limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[pos + 1]);
   }
 }
@@ -280,9 +280,10 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = 0;
-  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
   size_t lastNonEq = 0;
+
+  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (parameters == 0) {
     return 0;
@@ -1056,7 +1057,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_index_operator_t* skiplistOperator;
@@ -1070,7 +1071,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (skiplistOperator == 0) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up skiplist operator failed");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
@@ -1258,7 +1259,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
 
@@ -1272,7 +1273,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (indexOperator == 0) { // something wrong
-    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up bitarray index operator failed");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 
   // .............................................................................
@@ -2088,7 +2089,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   }
 
   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a hash index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
@@ -2204,7 +2205,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
-  std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
+  std::string const signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
 }
@@ -2214,7 +2215,7 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
-  std::string signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
+  std::string const signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
 }
@@ -2224,7 +2225,7 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
-  std::string signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
+  std::string const signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
 
   return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
 }
@@ -2234,7 +2235,7 @@ static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) {
-  std::string signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
+  std::string const signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
 }
@@ -2570,7 +2571,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   }
 
   if (idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a fulltext index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   const string queryString = TRI_ObjectToString(argv[1]);
@@ -2828,8 +2829,9 @@ static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
     return scope.Close(v8::ThrowException(*err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && 
+      idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   // extract latitude and longitude
@@ -2951,8 +2953,9 @@ static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
     return scope.Close(v8::ThrowException(*err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && 
+      idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   // extract latitude and longitude

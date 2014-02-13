@@ -139,7 +139,7 @@ extern "C" {
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
 /// - 1211: @LIT{geo index violated}
-///   Will be raised when a illegale coordinate is used.
+///   Will be raised when an illegal coordinate is used.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -1083,7 +1083,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// geo index violated
 ///
-/// Will be raised when a illegale coordinate is used.
+/// Will be raised when an illegal coordinate is used.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                               (1211)

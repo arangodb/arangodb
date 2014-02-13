@@ -322,7 +322,7 @@ unittests-single:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint "tcp://$(VOCHOST):$(VOCPORT)" --javascript.unit-tests $(TEST) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -399,6 +399,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
+               @top_srcdir@/js/server/tests/shell-index-ensure.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
                @top_srcdir@/js/server/tests/shell-skiplist-rm-performance.js \
                @top_srcdir@/js/server/tests/shell-skiplist-correctness.js
