@@ -1168,6 +1168,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
   switch (type) {
     case TRI_IDX_TYPE_UNKNOWN: 
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      res = TRI_ERROR_BAD_PARAMETER;
       break;
     }
 
