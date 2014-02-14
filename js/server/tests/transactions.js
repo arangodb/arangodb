@@ -737,7 +737,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           db._create(cn1);
-          return true;
+          fail();
         }
       };
 
@@ -762,7 +762,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.drop();
-          return true;
+          fail();
         }
       };
 
@@ -787,7 +787,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.rename(cn2);
-          return true;
+          fail();
         }
       };
 
@@ -812,7 +812,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.ensureUniqueConstraint("foo");
-          return true;
+          fail();
         }
       };
 
@@ -837,7 +837,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.ensureHashIndex("foo");
-          return true;
+          fail();
         }
       };
 
@@ -862,7 +862,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.ensureSkiplist("foo");
-          return true;
+          fail();
         }
       };
 
@@ -887,7 +887,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.ensureUniqueSkiplist("foo");
-          return true;
+          fail();
         }
       };
 
@@ -912,7 +912,7 @@ function transactionOperationsSuite () {
         },
         action : function () {
           c1.ensureFulltextIndex("foo");
-          return true;
+          fail();
         }
       };
 
@@ -936,8 +936,8 @@ function transactionOperationsSuite () {
         collections : {
         },
         action : function () {
-          c1.ensureGeoIndex("foo");
-          return true;
+          c1.ensureGeoIndex("foo", "bar");
+          fail();
         }
       };
 
@@ -961,8 +961,8 @@ function transactionOperationsSuite () {
         collections : {
         },
         action : function () {
-          c1.ensureGeoConstraint("foo");
-          return true;
+          c1.ensureGeoConstraint("foo", "bar", true);
+          fail();
         }
       };
 

@@ -44,33 +44,48 @@ function HashIndexSuite() {
   var cn = "UnitTestsCollectionHash";
   var collection = null;
 
+  var sorter = function (l, r) {
+    if (l.length != r.length) {
+      return l.length - r.length < 0 ? -1 : 1;
+    }
+
+    // length is equal
+    for (i = 0; i < l.length; ++i) {
+      if (l[i] != r[i]) {
+        return l[i] < r[i] ? -1 : 1;
+      }
+    }
+
+    return 0;
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-  setUp : function () {
-    internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
-  },
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { waitForSync : false });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  tearDown : function () {
-    // try...catch is necessary as some tests delete the collection itself!
-    try {
-      collection.unload();
-      collection.drop();
-    }
-    catch (err) {
-    }
+    tearDown : function () {
+      // try...catch is necessary as some tests delete the collection itself!
+      try {
+        collection.unload();
+        collection.drop();
+      }
+      catch (err) {
+      }
 
-    collection = null;
-    internal.wait(0.0);
-  },
+      collection = null;
+      internal.wait(0.0);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: hash index creation
@@ -152,7 +167,7 @@ function HashIndexSuite() {
 
       assertEqual("hash", idx.type);
       assertEqual(false, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
+      assertEqual(["a", "b"].sort(), idx.fields.sort());
       assertEqual(true, idx.isNewlyCreated);
 
       var d1 = collection.save({ a : 1, b : 1 })._id;
@@ -169,41 +184,58 @@ function HashIndexSuite() {
       var d11 = collection.save({ c : 1 })._id;
       var d12 = collection.save({ c : 1 })._id;
 
-      var s = collection.BY_EXAMPLE_HASH(idx.id, { a : 2, b : 1 });
+      var s = collection.byExampleHash(idx.id, { a : 2, b : 1 });
+      assertEqual(1, s.count());
+      assertEqual([d2], s.toArray().map(fun));
+      
+      s = collection.byExampleHash(idx.id, { b : 1, a : 2 });
+      assertEqual(1, s.count());
+      assertEqual([d2], s.toArray().map(fun));
 
-      assertEqual(1, s.total);
-      assertEqual(1, s.count);
-      assertEqual([d2], s.documents.map(fun));
+      s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
+      assertEqual(2, s.count());
+      assertEqual([d1, d6], s.toArray().map(fun).sort(sorter));
+      
+      s = collection.byExampleHash(idx.id, { b : 1, a : 1 });
+      assertEqual(2, s.count());
+      assertEqual([d1, d6], s.toArray().map(fun).sort(sorter));
 
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1, b : 1 });
+      s = collection.byExampleHash(idx.id, { a : 1, b : null });
+      assertEqual(2, s.count());
+      assertEqual([d7, d8], s.toArray().map(fun).sort(sorter));
+      
+      s = collection.byExampleHash(idx.id, { b : null, a : 1 });
+      assertEqual(2, s.count());
+      assertEqual([d7, d8], s.toArray().map(fun).sort(sorter));
 
-      assertEqual(2, s.total);
-      assertEqual(2, s.count);
-      assertEqual([d1,d6], s.documents.map(fun));
+      try {
+        collection.byExampleHash(idx.id, { a : 1 }).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
 
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1, b : null });
+      try {
+        collection.byExampleHash(idx.id, { a : null }).toArray();
+        fail();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
 
-      assertEqual(2, s.total);
-      assertEqual(2, s.count);
-      assertEqual([d7,d8], s.documents.map(fun));
+      try {
+        collection.byExampleHash(idx.id, { c : 1 }).toArray();
+      }
+      catch (err3) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
+      }
+      
+      idx = collection.ensureHashIndex("c");
+      s = collection.byExampleHash(idx.id, { c : 1 });
 
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1 });
-
-      assertEqual(2, s.total);
-      assertEqual(2, s.count);
-      assertEqual([d7,d8], s.documents.map(fun));
-
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : null });
-
-      assertEqual(2, s.total);
-      assertEqual(2, s.count);
-      assertEqual([d11,d12], s.documents.map(fun));
-
-      s = collection.BY_EXAMPLE_HASH(idx.id, { c : 1 });
-
-      assertEqual(2, s.total);
-      assertEqual(2, s.count);
-      assertEqual([d11,d12], s.documents.map(fun));
+      assertEqual(2, s.count());
+      assertEqual([d11, d12], s.toArray().map(fun).sort(sorter));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,14 +252,14 @@ function HashIndexSuite() {
       collection.unload();
       internal.wait(4);
 
-      var s = collection.BY_EXAMPLE_HASH(idx.id, { a : 2, b : 1 });
-      assertEqual(1, s.total);
-      assertEqual(d2, s.documents[0]._id);
-
+      var s = collection.byExampleHash(idx.id, { a : 2 });
+      assertEqual(1, s.count());
+      assertEqual(d2, s.toArray()[0]._id);
+      
       collection.drop();
 
       try {
-        s = collection.BY_EXAMPLE_HASH(idx.id, { a : 2, b : 1 });
+        s = collection.byExampleHash(idx.id, { a : 2, b : 1 }).toArray();
         fail();
       }
       catch (err) {
