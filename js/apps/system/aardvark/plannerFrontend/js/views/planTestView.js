@@ -41,6 +41,8 @@
           numberDBServers: parseInt(d, 10),
           numberCoordinators: parseInt(c, 10)
         })
+      }).done(function(info) {
+        window.App.showDownload(info);
       });
     },
 

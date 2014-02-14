@@ -58,8 +58,10 @@
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
       $.ajax("cluster/plan", {
-          type: "POST",
-          data: JSON.stringify(data)
+        type: "POST",
+        data: JSON.stringify(data)
+      }).done(function(info) {
+        window.App.showDownload(info);
       });
     },
 
