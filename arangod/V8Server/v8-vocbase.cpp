@@ -1121,6 +1121,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 
   // extract index type  
   TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
+
   if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
     TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
 
@@ -1128,7 +1129,20 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    type = TRI_TypeIndex(*typeString);
+    string t(*typeString);
+    // rewrite type "geo" into either "geo1" or "geo2", depending on the number of fields
+    if (t == "geo") {
+      t = "geo1";
+
+      if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+        v8::Handle<v8::Array> f = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+        if (f->Length() == 2) {
+          t = "geo2";
+        }
+      }
+    }
+
+    type = TRI_TypeIndex(t.c_str());
   }
 
   if (type == TRI_IDX_TYPE_UNKNOWN) {
@@ -5706,7 +5720,6 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
 ///
@@ -5715,8 +5728,8 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// Ensures that an index according to the @FA{index-description} exists. A
 /// new index will be created if none exists with the given description.
 ///
-/// The @FA{index-description} must contain at a `type` attribute. `type` can
-/// be one of the following values:
+/// The @FA{index-description} must contain at least a `type` attribute. 
+/// `type` can be one of the following values:
 /// - `hash`: hash index
 /// - `skiplist`: skiplist index
 /// - `fulltext`: fulltext index
@@ -5725,9 +5738,121 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// - `geo2`: geo index, with two attributes
 /// - `cap`: cap constraint
 ///
+/// Other attributes may be necessary, depending on the index type.
+///
 /// Calling this method returns an index object. Whether or not the index 
-/// object existed before the call or was created due to the call is indicated
-/// in the return attribute `isNewlyCreated`.
+/// object existed before the call is indicated in the return attribute 
+/// `isNewlyCreated`.
+///
+/// @EXAMPLES
+///
+/// Ensures that a unique hash index on attribute `name` exists:
+///
+/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexUniqueHash}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = {
+///       type: "hash",
+///       fields: [ "name" ],
+///       unique: true
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Re-ensures that a unique hash index on attribute `name` exists (the index
+/// already exists):
+///
+/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexUniqueHashConfirm}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///     db.products.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = {
+///       type: "hash",
+///       fields: [ "name" ],
+///       unique: true
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+///
+/// Ensures that a skiplist index on attributes `category1` and `category2` exists:
+///
+/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexSkiplist}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = {
+///       type: "skiplist",
+///       fields: [ "category1", "category2" ],
+///       unique: false
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Ensures that a cap constraint exists
+///
+/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexCap}
+///     var cn = "logs";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = {
+///       type: "cap",
+///       size: 1000,
+///       byteSize: 1048576
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Ensures that a geo index exists
+///
+/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexSkiplist}
+///     var cn = "locations";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = {
+///       type: "geo",
+///       fields: [ "lat", "lon" ],
+///       unique: false
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6832,9 +6957,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3449537", "_rev" : "3449537" }
+/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537" }
 /// arango> db.example.document(a1);
-/// { "_id" : "116308/3449537", "_rev" : "3449537", "a" : 1 }
+/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537", "a" : 1 }
 /// arango> db.example.remove(a1);
 /// true
 /// arango> db.example.document(a1);
@@ -6847,9 +6972,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3857139", "_rev" : "3857139" }
+/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3857139" }
 /// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "116308/3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
+/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
 /// arango> db.example.remove(a1);
 /// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
 /// !db.example.remove(a1);
