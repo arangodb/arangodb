@@ -1121,6 +1121,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 
   // extract index type  
   TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
+
   if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
     TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
 
@@ -1128,7 +1129,20 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    type = TRI_TypeIndex(*typeString);
+    string t(*typeString);
+    // rewrite type "geo" into either "geo1" or "geo2", depending on the number of fields
+    if (t == "geo") {
+      t = "geo1";
+
+      if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+        v8::Handle<v8::Array> f = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+        if (f->Length() == 2) {
+          t = "geo2";
+        }
+      }
+    }
+
+    type = TRI_TypeIndex(t.c_str());
   }
 
   if (type == TRI_IDX_TYPE_UNKNOWN) {
@@ -5706,7 +5720,6 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
 ///
@@ -5715,8 +5728,8 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// Ensures that an index according to the @FA{index-description} exists. A
 /// new index will be created if none exists with the given description.
 ///
-/// The @FA{index-description} must contain at a `type` attribute. `type` can
-/// be one of the following values:
+/// The @FA{index-description} must contain at least a `type` attribute. 
+/// `type` can be one of the following values:
 /// - `hash`: hash index
 /// - `skiplist`: skiplist index
 /// - `fulltext`: fulltext index
@@ -5725,10 +5738,26 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 /// - `geo2`: geo index, with two attributes
 /// - `cap`: cap constraint
 ///
-/// Calling this method returns an index object. Whether or not the index 
-/// object existed before the call or was created due to the call is indicated
-/// in the return attribute `isNewlyCreated`.
+/// Other attributes may be necessary, depending on the index type.
 ///
+/// Calling this method returns an index object. Whether or not the index 
+/// object existed before the call is indicated in the return attribute 
+/// `isNewlyCreated`.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+/// { 
+///   "id" : "example/30242599562", 
+///   "type" : "hash", 
+///   "unique" : true, 
+///   "fields" : [ 
+///     "name" 
+///    ], 
+///   "isNewlyCreated" : true 
+/// }
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv) {
@@ -5905,27 +5934,26 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 /// Returns the document for a document-handle:
 ///
 /// @code
-/// arango> db.example.document("1432124/2873916");
-/// { "_id" : "1432124/2873916", "_rev" : "2873916", "Hello" : "World" }
+/// arango> db.example.document("example/2873916");
+/// { "_id" : "example/2873916", "_key" : "2873916", "_rev" : "2873916", "Hello" : "World" }
 /// @endcode
 ///
 /// An error is raised if the document is unknown:
 ///
 /// @code
-/// arango> db.example.document("1432124/123456");
+/// arango> db.example.document("example/123456");
 /// JavaScript exception in file '(arango)' at 1,12:
 ///   [ArangoError 1202: document not found: document not found]
-/// !db.example.document("1432124/123456");
+/// !db.example.document("example/123456");
 /// !           ^
 /// @endcode
 ///
 /// An error is raised if the handle is invalid:
 ///
 /// @code
-/// arango> db.example.document("12345");
-/// JavaScript exception in file '(arango)' at 1,12:
-///   [ArangoError 10: bad parameter: <document-identifier> must be a document identifier]
-/// !db.example.document("12345");
+/// arango> db.example.document("");
+/// JavaScript exception in file '(arango)' at 1,28: [ArangoError 1205: illegal document handle]
+/// !db.example.document("");
 /// !           ^
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
@@ -6832,9 +6860,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3449537", "_rev" : "3449537" }
+/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537" }
 /// arango> db.example.document(a1);
-/// { "_id" : "116308/3449537", "_rev" : "3449537", "a" : 1 }
+/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537", "a" : 1 }
 /// arango> db.example.remove(a1);
 /// true
 /// arango> db.example.document(a1);
@@ -6847,9 +6875,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3857139", "_rev" : "3857139" }
+/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3857139" }
 /// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "116308/3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
+/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
 /// arango> db.example.remove(a1);
 /// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
 /// !db.example.remove(a1);

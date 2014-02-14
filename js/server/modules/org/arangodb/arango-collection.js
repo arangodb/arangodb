@@ -830,7 +830,7 @@ ArangoCollection.prototype.ensureBitarray = function () {
   
   return this.ensureIndex({ 
     type: "bitarray", 
-    fields: fields 
+    fields : fields
   });
 };
 
@@ -927,15 +927,9 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-  
   return this.ensureIndex({ 
     type: "skiplist", 
-    fields: fields,
+    fields: Array.prototype.slice.call(arguments), 
     unique: true
   });
 };
@@ -959,15 +953,9 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ArangoCollection.prototype.ensureSkiplist = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-  
   return this.ensureIndex({ 
     type: "skiplist", 
-    fields: fields
+    fields: Array.prototype.slice.call(arguments)
   });
 };
 
@@ -992,17 +980,17 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 /// @verbinclude fulltext
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureFulltextIndex = function (fields, minLength) {
+ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
   "use strict";
   
-  if (! Array.isArray(fields)) {
-    fields = [ fields ];
+  if (! Array.isArray(field)) {
+    field = [ field ];
   }
 
   return this.ensureIndex({ 
     type: "fulltext", 
     minLength: minLength || undefined,
-    fields: fields
+    fields: field
   });
 };
 
@@ -1034,15 +1022,9 @@ ArangoCollection.prototype.ensureFulltextIndex = function (fields, minLength) {
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-  
   return this.ensureIndex({ 
     type: "hash", 
-    fields: fields,
+    fields: Array.prototype.slice.call(arguments),
     unique: true
   });
 };
@@ -1069,15 +1051,9 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ArangoCollection.prototype.ensureHashIndex = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-  
   return this.ensureIndex({ 
     type: "hash", 
-    fields: fields
+    fields: Array.prototype.slice.call(arguments)
   });
 };
 
@@ -1215,15 +1191,9 @@ ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull)
 ArangoCollection.prototype.lookupUniqueConstraint = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
   return this.lookupIndex({
     type: "hash",
-    fields: fields,
+    fields: Array.prototype.slice.call(arguments),
     unique: true
   });
 };
@@ -1235,15 +1205,9 @@ ArangoCollection.prototype.lookupUniqueConstraint = function () {
 ArangoCollection.prototype.lookupHashIndex = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
   return this.lookupIndex({
     type: "hash",
-    fields: fields
+    fields: Array.prototype.slice.call(arguments)
   });
 };
 
@@ -1254,15 +1218,9 @@ ArangoCollection.prototype.lookupHashIndex = function () {
 ArangoCollection.prototype.lookupUniqueSkiplist = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
   return this.lookupIndex({
     type: "skiplist",
-    fields: fields,
+    fields: Array.prototype.slice.call(arguments),
     unique: true
   });
 };
@@ -1274,15 +1232,9 @@ ArangoCollection.prototype.lookupUniqueSkiplist = function () {
 ArangoCollection.prototype.lookupSkiplist = function () {
   "use strict";
 
-  var fields = [], i;
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
   return this.lookupIndex({
     type: "skiplist",
-    fields: fields
+    fields: Array.prototype.slice.call(arguments)
   });
 };
 
@@ -1294,16 +1246,16 @@ ArangoCollection.prototype.lookupSkiplist = function () {
 /// Checks whether a fulltext index on the given attribute @FA{field} exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.lookupFulltextIndex = function (fields, minLength) {
+ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
   "use strict";
 
-  if (! Array.isArray(fields)) {
-    fields = [ fields ];
+  if (! Array.isArray(field)) {
+    field = [ field ];
   }
 
   return this.lookupIndex({
     type: "fulltext",
-    fields: fields,
+    fields: field,
     minLength: minLength || undefined
   });
 };
