@@ -188,10 +188,9 @@
 
     "css/cluster.css": {
         "files": [
-            "frontend/scss/cluster.css"
+
         ]
     },
-
 
     "planner.js": {
       "files": [
@@ -207,9 +206,13 @@
     "cluster.js": {
        "files": [
         "frontend/js/arango/templateEngine.js",
+        "frontend/js/models/arangoStatistics.js",
+        "frontend/js/models/arangoStatisticsDescription.js",
         "clusterFrontend/js/models/**",
         "clusterFrontend/js/collections/**",
         "frontend/js/views/footerView.js",
+        "frontend/js/collections/arangoStatisticsCollection.js",
+        "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
         "clusterFrontend/js/views/**",
         "clusterFrontend/js/routers/**"
       ]
