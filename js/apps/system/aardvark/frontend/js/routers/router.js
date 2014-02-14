@@ -79,12 +79,12 @@
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView();
-      this.statView = new window.StatisticBarView();
-      this.userBarView = new window.UserBarView();
+//      this.statView = new window.StatisticBarView();
+//      this.userBarView = new window.UserBarView();
       this.footerView.render();
       this.naviView.render();
-      this.statView.render();
-      this.userBarView.render();
+//      this.statView.render();
+//      this.userBarView.render();
       this.graphView = new window.GraphView({
         graphs: this.graphs,
         collection: window.arangoCollectionsStore
@@ -295,7 +295,7 @@
         this.shellView = new window.shellView();
       }
       this.shellView.render();
-      this.naviView.selectMenuItem('shell-menu');
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     query: function() {
@@ -311,7 +311,7 @@
         this.apiView = new window.apiView();
       }
       this.apiView.render();
-      this.naviView.selectMenuItem('api-menu');
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     databases: function() {
@@ -347,7 +347,7 @@
           $('#all-switch').click();
         }
       });
-      this.naviView.selectMenuItem('logs-menu');
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     dashboard: function() {

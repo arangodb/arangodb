@@ -345,7 +345,7 @@
         simpleNavigationCheck(
           "api",
           "apiView",
-          "api-menu"
+          "tools-menu"
         );
       });
 
@@ -361,7 +361,7 @@
         simpleNavigationCheck(
           "shell",
           "shellView",
-          "shell-menu"
+          "tools-menu"
         );
       });
 

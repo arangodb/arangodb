@@ -28,32 +28,31 @@
           if (!host || 0 === host.length || !port || 0 === port.length) {
               return true;
           }
-          var hostObject = {host :  host + ":" + port, isDBServer : false, isCoordinator : false};
+          var hostObject = {host :  host + ":" + port};
           if (!self.isSymmetric) {
-              isDBServer = $(".isDBServer", dispatcher).val();
-              isCoordinator = $(".isCoordinator", dispatcher).val();
-          } else {
-              isDBServer = "true";
-              isCoordinator = "true";
+              hostObject.isDBServer = !!$(".isDBServer", dispatcher).attr('checked');
+              hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).attr('checked');
           }
-          isDBServer === "true" ? hostObject.isDBServer = true : null;
-          isCoordinator === "true" ? hostObject.isCoordinator = true : null;
-          hostObject.isDBServer === true ? foundDBServer = true : null;
-          hostObject.isCoordinator === true ? foundCoordinator = true: null;
+          foundCoordinator = foundCoordinator || hostObject.isCoordinator;
+          foundDBServer = foundDBServer || hostObject.isDBServer;
+
           data.dispatcher.push(hostObject);
       })
-      if (!foundDBServer) {
-        if (!self.isSymmetric) {
+      if (!self.isSymmetric) {
+        if (!foundDBServer) {
             alert("Please provide at least one DBServer");
             return;
-        } else {
-            alert("Please provide at least one dispatcher");
+        }
+        if (!foundCoordinator) {
+            alert("Please provide at least one Coordinator");
             return;
         }
-      }
-      if (!foundCoordinator) {
-         alert("Please provide at least one Coordinator");
-         return;
+      } else {
+        if ( data.dispatcher.length === 0) {
+            alert("Please provide at least one Host");
+            return;
+        }
+
       }
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
