@@ -1,0 +1,31 @@
+<ul class="thumbnails2">
+  <div class="headerBar">
+    <a class="arangoHeader">Cluster Started - Download Configuration</a>
+  </div>
+</ul>
+
+<div class="thumbnails">
+  <legend class="gv_inner">Your cluster has been started.</legend>
+
+  <div class="important">
+    <p>
+    In order to manage your cluster later you have to save this configuration.
+    Without this configuration you cannot shutdown or restart your cluster using this interface.
+    </p>
+    <button class="btn btn-success" id="startDownload">Save Configuration</button>
+  </div>
+
+  <legend class="gv_inner">The following ArangoDBs have been started</legend>
+  <% for(var i = 0; i < endpoints.length; ++i) { %>
+    <div class="control-group">
+      <label for="host" class="control-label"><%= roles[i] %>:</label>
+      <div class="controls">
+        <% if(roles[i] === "DBserver") { %>
+          <span><%= endpoints[i] %></span>
+        <% } else { %>
+          <a href="<%='http://' + endpoints[i].substr(6)%>"><%= endpoints[i] %></a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>

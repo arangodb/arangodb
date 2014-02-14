@@ -35,10 +35,17 @@
     },
 
     planScenarioSelector: function() {
-      if (!this.PlanScenarioSelector) {
-          this.PlanScenarioSelector = new window.PlanScenarioSelectorView();
+      if (!this.planScenarioSelector) {
+          this.planScenarioSelector = new window.PlanScenarioSelectorView();
       }
-      this.PlanScenarioSelector.render();
+      this.planScenarioSelector.render();
+    },
+
+    showDownload: function(content) {
+      if (!this.downloadView) {
+        this.downloadView = new window.DownloadView();
+      }
+      this.downloadView.render(content);
     },
 
     initialize: function () {
