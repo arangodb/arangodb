@@ -5746,114 +5746,18 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ///
 /// @EXAMPLES
 ///
-/// Ensures that a unique hash index on attribute `name` exists:
-///
-/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexUniqueHash}
-///     var cn = "products";
-///     db._drop(cn);
-///     db._create(cn);
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = {
-///       type: "hash",
-///       fields: [ "name" ],
-///       unique: true
-///     };
-///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Re-ensures that a unique hash index on attribute `name` exists (the index
-/// already exists):
-///
-/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexUniqueHashConfirm}
-///     var cn = "products";
-///     db._drop(cn);
-///     db._create(cn);
-///     db.products.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = {
-///       type: "hash",
-///       fields: [ "name" ],
-///       unique: true
-///     };
-///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-///
-/// Ensures that a skiplist index on attributes `category1` and `category2` exists:
-///
-/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexSkiplist}
-///     var cn = "products";
-///     db._drop(cn);
-///     db._create(cn);
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = {
-///       type: "skiplist",
-///       fields: [ "category1", "category2" ],
-///       unique: false
-///     };
-///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Ensures that a cap constraint exists
-///
-/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexCap}
-///     var cn = "logs";
-///     db._drop(cn);
-///     db._create(cn);
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = {
-///       type: "cap",
-///       size: 1000,
-///       byteSize: 1048576
-///     };
-///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Ensures that a geo index exists
-///
-/// @EXAMPLE_ARANGOSH_RUN{EnsureIndexSkiplist}
-///     var cn = "locations";
-///     db._drop(cn);
-///     db._create(cn);
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = {
-///       type: "geo",
-///       fields: [ "lat", "lon" ],
-///       unique: false
-///     };
-///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
+/// @code
+/// arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+/// { 
+///   "id" : "example/30242599562", 
+///   "type" : "hash", 
+///   "unique" : true, 
+///   "fields" : [ 
+///     "name" 
+///    ], 
+///   "isNewlyCreated" : true 
+/// }
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv) {
@@ -6030,27 +5934,26 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 /// Returns the document for a document-handle:
 ///
 /// @code
-/// arango> db.example.document("1432124/2873916");
-/// { "_id" : "1432124/2873916", "_rev" : "2873916", "Hello" : "World" }
+/// arango> db.example.document("example/2873916");
+/// { "_id" : "example/2873916", "_key" : "2873916", "_rev" : "2873916", "Hello" : "World" }
 /// @endcode
 ///
 /// An error is raised if the document is unknown:
 ///
 /// @code
-/// arango> db.example.document("1432124/123456");
+/// arango> db.example.document("example/123456");
 /// JavaScript exception in file '(arango)' at 1,12:
 ///   [ArangoError 1202: document not found: document not found]
-/// !db.example.document("1432124/123456");
+/// !db.example.document("example/123456");
 /// !           ^
 /// @endcode
 ///
 /// An error is raised if the handle is invalid:
 ///
 /// @code
-/// arango> db.example.document("12345");
-/// JavaScript exception in file '(arango)' at 1,12:
-///   [ArangoError 10: bad parameter: <document-identifier> must be a document identifier]
-/// !db.example.document("12345");
+/// arango> db.example.document("");
+/// JavaScript exception in file '(arango)' at 1,28: [ArangoError 1205: illegal document handle]
+/// !db.example.document("");
 /// !           ^
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
