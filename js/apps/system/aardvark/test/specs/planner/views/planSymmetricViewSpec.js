@@ -6,17 +6,20 @@
   "use strict";
 
   describe("Plan Symmetric/Asymmetric View", function() {
-    var myView, ip_base;
+    var myView, ip_base, ajaxFake;
 
     beforeEach(function() {
       $('body').append('<div id="content" class="removeMe"></div>');
 
+      ajaxFake = {
+        done: function(){}
+      };
       myView = new window.PlanSymmetricView();
       myView.render(true);
 
       ip_base = "123.456.78";
 
-      spyOn($, "ajax");
+      spyOn($, "ajax").andReturn(ajaxFake);
       spyOn(window, "alert");
     });
 

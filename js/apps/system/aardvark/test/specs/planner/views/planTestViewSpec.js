@@ -7,7 +7,7 @@
 
   describe("Plan Test View", function() {
 
-    var myView, ip, port, coords, dbs;
+    var myView, ip, port, coords, dbs, ajaxFake;
 
     beforeEach(function() {
       $('body').append('<div id="content" class="removeMe"></div>');
@@ -16,6 +16,9 @@
       port = 8529;
       coords = 4;
       dbs = 5;
+      ajaxFake = {
+        done: function() {}
+      };
 
 
       myView = new window.PlanTestView();
@@ -25,7 +28,7 @@
       $("#port").val(port);
       $("#coordinators").val(coords);
       $("#dbs").val(dbs);
-      spyOn($, "ajax");
+      spyOn($, "ajax").andReturn(ajaxFake);
       spyOn(window, "alert");
     });
 

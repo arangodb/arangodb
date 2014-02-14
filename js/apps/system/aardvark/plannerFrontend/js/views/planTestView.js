@@ -5,7 +5,9 @@
   "use strict";
   
   window.PlanTestView = Backbone.View.extend({
+
     el: "#content",
+
     template: plannerTemplateEngine.createTemplate("testPlan.ejs"),
 
     events: {
