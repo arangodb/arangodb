@@ -193,6 +193,7 @@ function get_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_cap
 /// @brief creates a cap constraint
 ///
 /// @RESTHEADER{POST /_api/index,creates a cap constraint}
@@ -260,41 +261,8 @@ function get_api_index (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_cap (req, res, collection, body) {
-  if (body.hasOwnProperty("size") && 
-      (typeof body.size !== "number" || body.size < 0)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expecting a valid size");
-    return;
-  }
-  
-  if (body.hasOwnProperty("byteSize") && 
-      (typeof body.byteSize !== "number" || body.byteSize < 0)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expecting a valid byteSize");
-    return;
-  }
-  
-  var size = body.size || 0;
-  var byteSize = body.byteSize || 0;
-
-  if (size <= 0 && byteSize <= 0) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expecting a valid size and/or byteSize");
-    return;
-  } 
-
-  var index = collection.ensureCapConstraint(size, byteSize);
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_geo
 /// @brief creates a geo index
 ///
 /// @RESTHEADER{POST /_api/index,creates a geo-spatial index}
@@ -393,94 +361,8 @@ function post_api_index_cap (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_geo (req, res, collection, body) {
-  var fields = body.fields;
-
-  if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute paths: " + fields);
-    return;
-  }
-
-  var index;
-  var constraint;
-
-  if (body.hasOwnProperty("unique")) {
-    // try "unique" first
-    constraint = body.unique;
-  }
-  else if (body.hasOwnProperty("constraint")) {
-    // "constraint" next
-    constraint = body.constraint;
-  }
-  else {
-    constraint = false;
-  }
-
-  if (fields.length === 1) {
-
-    // attribute list and geoJson
-    if (body.hasOwnProperty("geoJson")) {
-      if (constraint) {
-        if (body.hasOwnProperty("ignoreNull")) {
-          index = collection.ensureGeoConstraint(fields[0], body.geoJson, body.ignoreNull);
-        }
-        else {
-          index = collection.ensureGeoConstraint(fields[0], body.geoJson, false);
-        }
-      }
-      else {
-        index = collection.ensureGeoIndex(fields[0], body.geoJson);
-      }
-    }
-
-    // attribute list
-    else {
-      if (constraint) {
-        if (body.hasOwnProperty("ignoreNull")) {
-          index = collection.ensureGeoConstraint(fields[0], body.ignoreNull);
-        }
-        else {
-          index = collection.ensureGeoConstraint(fields[0], false);
-        }
-      }
-      else {
-        index = collection.ensureGeoIndex(fields[0]);
-      }
-    }
-  }
-
-  // attributes
-  else if (fields.length === 2) {
-    if (constraint) {
-      if (body.hasOwnProperty("ignoreNull")) {
-        index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
-      }
-      else {
-        index = collection.ensureGeoConstraint(fields[0], fields[1], false);
-      }
-    }
-    else {
-      index = collection.ensureGeoIndex(fields[0], fields[1]);
-    }
-  }
-
-  // something is wrong
-  else {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-        "fields must be a list of attribute paths of length 1 or 2: " + fields);
-    return;
-  }
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_hash
 /// @brief creates a hash index
 ///
 /// @RESTHEADER{POST /_api/index,creates a hash index}
@@ -559,33 +441,8 @@ function post_api_index_geo (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_hash (req, res, collection, body) {
-  var fields = body.fields;
-
-  if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute names: " + fields);
-    return;
-  }
-
-  var index;
-
-  if (body.unique) {
-    index = collection.ensureUniqueConstraint.apply(collection, fields);
-  }
-  else {
-    index = collection.ensureHashIndex.apply(collection, fields);
-  }
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_skiplist
 /// @brief creates a skip-list
 ///
 /// @RESTHEADER{POST /_api/index,creates a skip list}
@@ -647,33 +504,8 @@ function post_api_index_hash (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_skiplist (req, res, collection, body) {
-  var fields = body.fields;
-
-  if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute names: " + fields);
-    return;
-  }
-
-  var index;
-
-  if (body.unique) {
-    index = collection.ensureUniqueSkiplist.apply(collection, fields);
-  }
-  else {
-    index = collection.ensureSkiplist.apply(collection, fields);
-  }
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_fulltext
 /// @brief creates a fulltext index
 ///
 /// @RESTHEADER{POST /_api/index,creates a fulltext index}
@@ -734,38 +566,8 @@ function post_api_index_skiplist (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_fulltext (req, res, collection, body) {
-  var fields = body.fields;
-
-  if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute names: " + fields);
-    return;
-  }
-
-  if (fields.length !== 1 || typeof fields[0] !== 'string') {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must contain exactly one attribute name");
-    return;
-  }
-
-  if (body.hasOwnProperty("unique") && body.unique) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "unique fulltext indexes are not supported");
-    return;
-  }
-
-  var index = collection.ensureFulltextIndex.call(collection, fields, body.minLength || undefined);
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_api_index_bitarray
 /// @brief creates a bitarray
 ///
 /// @RESTHEADER{POST /_api/index,creates a bitarray index}
@@ -826,32 +628,6 @@ function post_api_index_fulltext (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_index_bitarray (req, res, collection, body) {
-  var fields = body.fields;
-
-  if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute paths: " + fields);
-    return;
-  }
-
-  var index;
-
-  if (body["undefined"]) {
-    index = collection.ensureUndefBitarray.apply(collection, fields);
-  }
-  else {
-    index = collection.ensureBitarray.apply(collection, fields);
-  }
-
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
@@ -859,14 +635,14 @@ function post_api_index_bitarray (req, res, collection, body) {
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{collection-name,string,required}
+/// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
 /// @RESTBODYPARAM{index-details,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a new index in the collection `collection-name`. Expects
+/// Creates a new index in the collection `collection`. Expects
 /// an object containing the index details.
 ///
 /// The type of the index to be created must specified in the `type`
@@ -896,19 +672,23 @@ function post_api_index_bitarray (req, res, collection, body) {
 /// the `unique` attribute with these types may lead to an error:
 /// - cap constraints
 /// - fulltext indexes
+/// - bitarray indexes
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
-/// returned.
+/// If the index already exists, then an `HTTP 200` is returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then an `HTTP 201`
 /// is returned.
 ///
+/// @RESTRETURNCODE{400}
+/// If an invalid index description is posted or attributes are used that the
+/// target index will not support, then an `HTTP 400` is returned.
+///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If `collection` is unknown, then an `HTTP 404` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_index (req, res) {
@@ -931,28 +711,40 @@ function post_api_index (req, res) {
   if (body === undefined) {
     return;
   }
-  
-  if (body.type === "cap") {
-    post_api_index_cap(req, res, collection, body);
+
+  // inject collection name into body
+  if (body.collection === undefined) {
+    body.collection = name;
   }
-  else if (body.type === "geo") {
-    post_api_index_geo(req, res, collection, body);
+
+  // fill "unique" attribute from "constraint" attribute to be downward-compatible 
+  // with old geo index API
+  if (body.hasOwnProperty("constraint") && ! body.hasOwnProperty("unique")) {
+    body.unique = body.constraint;
   }
-  else if (body.type === "hash") {
-    post_api_index_hash(req, res, collection, body);
+
+  // rewrite bitarray fields
+  if (body.type === "bitarray") {
+    if (typeof body.fields === "object" && 
+        Array.isArray(body.fields) &&
+        body.fields.length > 0) {
+      if (! Array.isArray(body.fields[0])) {
+        var f = [ ], i;
+        for (i = 0; i < body.fields.length; i += 2) {
+          f.push([ body.fields[i], body.fields[i + 1] ]);
+        }
+        body.fields = f;
+      }
+    }
   }
-  else if (body.type === "skiplist") {
-    post_api_index_skiplist(req, res, collection, body);
-  }
-  else if (body.type === "fulltext") {
-    post_api_index_fulltext(req, res, collection, body);
-  }
-  else if (body.type === "bitarray") {
-    post_api_index_bitarray(req, res, collection, body);
+
+  // create the index 
+  var index = collection.ensureIndex(body);
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
   }
   else {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "unknown index type '" + body.type + "'");
+    actions.resultOk(req, res, actions.HTTP_OK, index);
   }
 }
 
