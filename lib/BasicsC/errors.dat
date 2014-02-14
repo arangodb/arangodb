@@ -90,7 +90,7 @@ ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name du
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
-ERROR_ARANGO_GEO_INDEX_VIOLATED,1211,"geo index violated","Will be raised when a illegale coordinate is used."
+ERROR_ARANGO_GEO_INDEX_VIOLATED,1211,"geo index violated","Will be raised when an illegal coordinate is used."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."

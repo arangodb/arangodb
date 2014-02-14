@@ -595,7 +595,7 @@ ArangoCollection.prototype.index = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes one index
+/// @brief deletes an index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.dropIndex = function (id) {
@@ -618,7 +618,7 @@ ArangoCollection.prototype.dropIndex = function (id) {
 };
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a bitarray index
+/// @brief ensures a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureBitarray = function () {
@@ -631,6 +631,28 @@ ArangoCollection.prototype.ensureBitarray = function () {
   }
 
   body = { type : "bitarray", unique : false, fields : fields };
+
+  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUndefBitarray = function () {
+  var i;
+  var body;
+  var fields = [];
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    fields.push(arguments[i]);
+  }
+
+  body = { type : "bitarray", unique : false, fields : fields, "undefined" : true };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 

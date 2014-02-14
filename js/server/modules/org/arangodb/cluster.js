@@ -32,6 +32,7 @@ var console = require("console");
 var arangodb = require("org/arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
+var PortFinder = require("org/arangodb/cluster/planner").PortFinder;
 var Planner = require("org/arangodb/cluster/planner").Planner;
 var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
 
@@ -936,6 +937,7 @@ exports.status               = status;
 exports.isCoordinatorRequest = isCoordinatorRequest;
 exports.handlePlanChange     = handlePlanChange;
 
+exports.PortFinder = PortFinder;
 exports.Planner = Planner;
 exports.Kickstarter = Kickstarter;
 

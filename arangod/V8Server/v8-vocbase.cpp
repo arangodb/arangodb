@@ -1046,7 +1046,7 @@ static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
                                      TRI_json_t* json) {
   int res = ProcessBitarrayIndexFields(obj, json);
   ProcessIndexUndefinedFlag(obj, json);
-
+ 
   if (TRI_LookupArrayJson(json, "unique") != NULL) {
     // unique bitarrays are not supported
     return TRI_ERROR_BAD_PARAMETER;
@@ -1168,6 +1168,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
   switch (type) {
     case TRI_IDX_TYPE_UNKNOWN: 
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      res = TRI_ERROR_BAD_PARAMETER;
       break;
     }
 

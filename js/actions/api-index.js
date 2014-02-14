@@ -837,7 +837,12 @@ function post_api_index_bitarray (req, res, collection, body) {
 
   var index;
 
-  index = collection.ensureBitarray.apply(collection, fields);
+  if (body["undefined"]) {
+    index = collection.ensureUndefBitarray.apply(collection, fields);
+  }
+  else {
+    index = collection.ensureBitarray.apply(collection, fields);
+  }
 
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);
