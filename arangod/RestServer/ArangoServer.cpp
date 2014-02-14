@@ -100,6 +100,8 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
+bool allowUseDatabaseInRESTActions;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -566,6 +568,7 @@ void ArangoServer::buildApplicationServer () {
 #endif
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
+    ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
   ;
  
   
