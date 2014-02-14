@@ -392,12 +392,11 @@ setupIndexQueries();
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -499,33 +498,32 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_put_api_simple_any
-/// @brief returns a random document of a collection
+/// @brief returns a random document from a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/any,executes simple query ANY}
+/// @RESTHEADER{PUT /_api/simple/any,returns a random document from a collection}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns a random document of a collection. The call expects a JSON object
+/// Returns a random document from a collection. The call expects a JSON object
 /// as body with the following attributes:
 ///
 /// - `collection`: The identifier or name of the collection to query.
 ///
 /// Returns a JSON object with the document stored in the attribute
 /// `document` if the collection contains at least one document. If
-/// the collection is empty, the attrbute contains null.
+/// the collection is empty, the `document` attrbute contains null.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -595,17 +593,17 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near,executes simple query NEAR}
+/// @RESTHEADER{PUT /_api/simple/near,executes a near query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION
 ///
-/// The default will find at most 100 documents near a given coordinate.  The
+/// The default will find at most 100 documents near the given coordinate.  The
 /// returned list is sorted according to the distance, with the nearest document
-/// coming first. If there are near documents of equal distance, documents are
-/// chosen randomly from this set until the limit is reached.
+/// being first in the list. If there are near documents of equal distance, documents 
+/// are chosen randomly from this set until the limit is reached.
 ///
 /// In order to use the `near` operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
@@ -620,8 +618,8 @@ actions.defineHttp({
 ///
 /// - `longitude`: The longitude of the coordinate.
 ///
-/// - `distance`: If given, the attribute key used to store the
-///   distance. (optional)
+/// - `distance`: If given, the attribute key used to return the distance to
+///   the given coordinate. (optional). If specified, distances are returned in meters.
 ///
 /// - `skip`: The number of documents to skip in the query. (optional)
 ///
@@ -635,12 +633,11 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -777,14 +774,14 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
-/// @RESTHEADER{PUT /_api/simple/within,executes simple query WITHIN}
+/// @RESTHEADER{PUT /_api/simple/within,executes a within query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will find all documents with in a given radius around the coordinate
+/// This will find all documents within a given radius around the coordinate
 /// (`latitude`, `longitude`). The returned list is sorted by distance.
 ///
 /// In order to use the `within` operator, a geo index must be defined for
@@ -802,12 +799,13 @@ actions.defineHttp({
 ///
 /// - `radius`: The maximal radius (in meters).
 ///
-/// - `distance`: If given, the result attribute key used to store the
-///   distance values (optional). If specified, distances are returned in meters.
+/// - `distance`: If given, the attribute key used to return the distance to
+///   the given coordinate. (optional). If specified, distances are returned in meters.
 ///
-/// - `skip`: The documents to skip in the query. (optional)
+/// - `skip`: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip` is
+///   applied before the `limit` restriction. The default is 100. (optional)
 ///
 /// - `geo`: If given, the identifier of the geo-index to use. (optional)
 ///
@@ -816,12 +814,11 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -953,7 +950,7 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
-/// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query FULLTEXT}
+/// @RESTHEADER{PUT /_api/simple/fulltext,executes a fulltext index query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -974,9 +971,10 @@ actions.defineHttp({
 ///
 /// - `query`: The fulltext query.
 ///
-/// - `skip`: The documents to skip in the query. (optional)
+/// - `skip`: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip`
+///   is applied before the `limit` restriction. (optional)
 ///
 /// - `index`: The identifier of the fulltext-index to use.
 ///
@@ -985,12 +983,11 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1089,23 +1086,23 @@ actions.defineHttp({
 ///
 /// - `collection`: The name of the collection to query.
 ///
-/// - `example`: The example.
+/// - `example`: The example document.
 ///
-/// - `skip`: The documents to skip in the query. (optional)
+/// - `skip`: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip`
+///   is applied before the `limit` restriction. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the return set contains at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1230,7 +1227,7 @@ actions.defineHttp({
 /// @fn JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
+/// @RESTHEADER{PUT /_api/simple/first-example,returns a document matching an example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1243,10 +1240,14 @@ actions.defineHttp({
 ///
 /// - `collection`: The name of the collection to query.
 ///
-/// - `example`: The example.
+/// - `example`: The example document.
 ///
 /// Returns a result containing the document or `HTTP 404` if no
-/// document matched the example.
+/// document matched the example. 
+///
+/// If more than one document in the collection matches the specified example, only
+/// one of these documents will be returned, and it is undefined which of the matching
+/// documents is returned.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1255,7 +1256,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1361,7 +1362,7 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will return the first documents from the collection, in the order of
+/// This will return the first document(s) from the collection, in the order of
 /// insertion/update time. When the `count` argument is supplied, the result
 /// will be a list of documents, with the "oldest" document being first in the
 /// result list.
@@ -1384,7 +1385,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1503,7 +1504,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1644,8 +1645,8 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will find all documents within a given range. You must declare a
-/// skip-list index on the attribute in order to be able to use a range query.
+/// This will find all documents within a given range. In order to execute a
+/// range query, a skip-list index on the queried attribute must be present.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
@@ -1657,24 +1658,24 @@ actions.defineHttp({
 ///
 /// - `right`: The upper bound.
 ///
-/// - `closed`: If true, use interval including `left` and `right`,
+/// - `closed`: If `true`, use interval including `left` and `right`,
 ///   otherwise exclude `right`, but include `left`.
 ///
-/// - `skip`: The documents to skip in the query. (optional)
+/// - `skip`: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip`
+///   is applied before the `limit` restriction. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if there are at least one document in the return range and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1777,7 +1778,7 @@ actions.defineHttp({
 ///
 /// - `collection`: The name of the collection to remove from.
 ///
-/// - `example`: An example object that all collection objects are compared
+/// - `example`: An example document that all collection documents are compared
 ///   against.
 ///
 /// - `waitForSync`: if set to true, then all removal operations will 
@@ -1797,12 +1798,11 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if there where removed at least one document and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -1890,7 +1890,7 @@ actions.defineHttp({
 ///
 /// - `collection`: The name of the collection to replace within.
 ///
-/// - `example`: An example object that all collection objects are compared
+/// - `example`: An example document that all collection documents are compared
 ///   against.
 ///
 /// - `newValue`: The replacement document that will get inserted in place
@@ -1913,12 +1913,11 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the documents in the collection where replaced successfully and `waitForSync` was
-/// `true`.
+/// is returned if the query was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
@@ -2015,11 +2014,11 @@ actions.defineHttp({
 ///
 /// - `collection`: The name of the collection to update within.
 ///
-/// - `example`: An example object that all collection objects are compared
+/// - `example`: An example document that all collection documents are compared
 ///   against.
 ///
-/// - `newValue`: The update value that will get inserted in place
-///   of the "old" version of the found documents.
+/// - `newValue`: A document containing all the attributes to update in the
+///   found documents.
 ///
 /// - `keepNull`: This parameter can be used to modify the behavior when
 ///   handling `null` values. Normally, `null` values are stored in the
@@ -2050,7 +2049,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
-/// document. The response body contains an error document in this case.
+/// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
