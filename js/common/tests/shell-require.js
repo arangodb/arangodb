@@ -102,9 +102,11 @@ function CommonJSTestSuite () {
   var console = require("console");
 
   function createTestPackage (testPath) {
-    var lib = fs.join(
+    var lib = "./" + fs.join(
       "./js/common/test-data/modules/commonjs/tests/modules/1.0/",
       testPath);
+
+    console.log(lib);
 
     var test = module.createTestEnvironment(lib);
 

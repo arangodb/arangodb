@@ -1,30 +1,30 @@
 <ul class="navlist" id="arangoCollectionUl">
 <!--    <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard">Dashboard</a></li>-->
 
-    <li id="dbSelect" class="dropdown"></li>
+    <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu"><a id="applications" class="tab" href="#applications">Applications</a></li>
     <li class="query-menu"><a id="query" class="tab" href="#query">AQL Editor</a></li>
 <!--    <li class="api-menu"><a id="api" class="tab" href="#api">API</a></li> -->
-    <li class="dropdown">
+    <li class="dropdown tools-menu" id="toolsDropdown">
         <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
         <ul class="link-dropdown-menu" id="tools_dropdown">
-            <li class="dropdown-header">BLUBBER</li>
+            <li class="dropdown-header">Tools</li>
             <li class="dropdown-item">
-                <a id="shell" class="tab" href="#shell">JS Shell</a>
+                <a id="shell" class="internalLink" href="#shell">JS Shell</a>
             </li>
             <% if (isSystem) { %>
             <li class="dropdown-item">
-                <a id="logs" class="tab" href="#logs">Logs</a>
+                <a id="logs" class="internalLink" href="#logs">Logs</a>
             </li>
             <% } %>
             <li class="dropdown-item">
-                <a id="api" class="tab" href="#api">API</a>
+                <a id="api" class="internalLink" href="#api">API</a>
             </li>
         </ul>
     </li>
-    <li class="dropdown">
+    <li class="dropdown" id="linkDropdown">
         <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
         <ul class="link-dropdown-menu" id="link_dropdown">
             <li class="dropdown-header">Documentation</li>
