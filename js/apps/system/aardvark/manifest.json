@@ -170,11 +170,28 @@
       ]
     },
 
+    "cluster.html": {
+      "files": [
+        "frontend/html/start.html.part",
+        "clusterFrontend/html/head.html.part",
+        "frontend/html/body.html.part",
+        "clusterFrontend/html/scripts.html.part",
+        "frontend/html/end.html.part"
+       ]
+    },
+
     "css/planner.css": {
       "files": [
         "frontend/scss/planner.css"
       ]
     },
+
+    "css/cluster.css": {
+        "files": [
+            "frontend/scss/cluster.css"
+        ]
+    },
+
 
     "planner.js": {
       "files": [
@@ -184,6 +201,17 @@
         "frontend/js/views/footerView.js",
         "plannerFrontend/js/views/**",
         "plannerFrontend/js/routers/**"
+      ]
+    },
+
+    "cluster.js": {
+       "files": [
+        "frontend/js/arango/templateEngine.js",
+        "clusterFrontend/js/models/**",
+        "clusterFrontend/js/collections/**",
+        "frontend/js/views/footerView.js",
+        "clusterFrontend/js/views/**",
+        "clusterFrontend/js/routers/**"
       ]
     }
   },
@@ -196,6 +224,7 @@
     "/img" : "frontend/img",
     "/js/templates" : "frontend/js/templates",
     "/js/plannerTemplates" : "plannerFrontend/js/templates",
+    "/js/clusterTemplates" : "clusterFrontend/js/templates",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/" : "frontend/src"
   },

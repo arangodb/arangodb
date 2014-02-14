@@ -44,7 +44,55 @@
    * given in the body
    */
   controller.post("/plan", function(req, res) {
-    require("console").log(JSON.stringify(req.body()));
+    var config = {},
+        input = req.body(),
+        result = {},
+        starter,
+        i,
+        planner;
+
+    if (input.type === "testSetup") {
+      config.dispatchers = {
+        "d1": {
+          "endpoint": "tcp://" + input.dispatcher
+        }
+      };
+      config.numberOfDBservers = input.numberDBServers;
+      config.numberOfCoordinators = input.numberCoordinators;
+      result.config = config;
+      planner = new cluster.Planner(config);
+      result.plan = planner.getPlan();
+      starter = new cluster.Kickstarter(planner.getPlan());
+      result.runInfo = starter.launch();
+      res.json(result);
+    } else {
+      i = 0;
+      config.dispatchers = {};
+      config.numberOfDBservers = 0;
+      config.numberOfCoordinators = 0;
+      _.each(input.dispatcher, function(d) {
+        i++;
+        var inf = {};
+        inf.endpoint = "tcp://" + d.host;
+        if (d.isCoordinator) {
+          config.numberOfCoordinators++;
+        } else {
+          inf.allowCoordinators = false;
+        }
+        if (d.isDBServer) {
+          config.numberOfDBservers++;
+        } else {
+          inf.allowDBservers = false;
+        }
+        config.dispatchers["d" + i] = inf;
+      });
+      result.config = config;
+      planner = new cluster.Planner(config);
+      result.plan = planner.getPlan();
+      starter = new cluster.Kickstarter(planner.getPlan());
+      result.runInfo = starter.launch();
+      res.json(result);
+    }
   });
   
   if (cluster.isCluster()) {

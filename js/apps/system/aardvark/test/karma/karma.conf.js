@@ -199,10 +199,19 @@ module.exports = function(karma) {
 
       // Router
       'frontend/js/routers/router.js',
-      'plannerFrontend/js/routers/plannerRouter.js',
+      'plannerFrontend/js/routers/clusterRouter.js',
+
+      //Views cluster
+      'clusterFrontend/js/views/showClusterView.js',
+
+      // Router
+      'frontend/js/routers/router.js',
+      'clusterFrontend/js/routers/clusterRouter.js',
+
 
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
+      {pattern: 'clusterFrontend/js/templates/*.ejs', served:true, included:false, watched: true},
       {pattern: 'plannerFrontend/js/templates/*.ejs', served:true, included:false, watched: true},
       // Specs
       // GraphViewer
@@ -278,7 +287,16 @@ module.exports = function(karma) {
       //View
       'test/specs/planner/views/planSymmetricViewSpec.js',
       'test/specs/planner/views/planTestViewSpec.js',
-      'test/specs/planner/views/planScenarioSelectorViewSpec.js'
+      'test/specs/planner/views/planScenarioSelectorViewSpec.js',
+
+
+      //Cluster
+
+      //Router
+      'test/specs/cluster/router/routerSpec.js'
+      //View
+
+
 
     ],
 
