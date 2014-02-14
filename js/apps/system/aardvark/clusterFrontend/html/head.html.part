@@ -1,7 +1,7 @@
 <head>
     <meta charset="utf-8">
-    <title>ArangoDB Cluster Planner Interface</title>
-    <meta name="description" content="ArangoDB Cluster Planner Interface">
+    <title>ArangoDB Cluster Interface</title>
+    <meta name="description" content="ArangoDB Cluster Interface">
     <meta name="author" content="Florian Bartels, Michael Hackstein">
     <link href="css/style.css" rel="stylesheet">
     <link href="css/planner.css" rel="stylesheet">
