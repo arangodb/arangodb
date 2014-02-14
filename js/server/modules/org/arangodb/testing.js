@@ -333,7 +333,7 @@ var tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
 
 function performTests(options, testList) {
   var instanceInfo = startInstance("tcp",options);
-  var results = [];
+  var results = {};
   var i;
   var te;
   for (i = 0; i < testList.length; i++) {
@@ -354,7 +354,7 @@ function performTests(options, testList) {
     catch (err) {
       r = err;
     }
-    results.push(r);
+    results[te] = r;
     if (r !== true && !options.force) {
       break;
     }
@@ -388,13 +388,11 @@ testFuncs.shell_client = function(options) {
   var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                     "..",".."));
   var instanceInfo = startInstance("tcp",options);
-  print("Waiting...");
-  wait(30);
   var args = makeTestingArgsClient(options);
   args.push("--server.endpoint");
   args.push(instanceInfo.endpoint);
   args.push("--javascript.unit-tests");
-  var results = [];
+  var results = {};
   var i;
   var te;
   for (i = 0; i < tests_shell_client.length; i++) {
@@ -404,18 +402,15 @@ testFuncs.shell_client = function(options) {
     args.push(fs.join(topDir,te));
     var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                         "..","arangosh"));
-    print(arangosh);
-    print(args);
     var pid = executeExternal(arangosh, args);
     var stat;
     while (true) {
       wait(0.1);
       stat = statusExternal(pid);
-      print(stat);
       if (stat.status !== "RUNNING") { break; }
     }
     r = stat.exit;
-    results.push(r);
+    results[te] = r;
     args.pop();
     if (r !== 0 && !options.force) {
       break;
