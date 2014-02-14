@@ -93,12 +93,11 @@ EndpointUnixDomain::~EndpointUnixDomain () {
 
 TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
-  listenSocket.fileDescriptor = 0;
-  listenSocket.fileHandle = 0;
+  TRI_invalidatesocket(&listenSocket);
 
   LOG_DEBUG("connecting to unix endpoint '%s'", _specification.c_str());
 
-  assert(_socket.fileHandle == 0);
+  assert(!TRI_isvalidsocket(_socket));
   assert(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
@@ -117,23 +116,20 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     }
   }
 
-  listenSocket.fileHandle = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (listenSocket.fileHandle == -1) {
+  listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
+  if (!TRI_isvalidsocket(listenSocket)) {
     LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
     return listenSocket;
   }
 
   // reuse address
   int opt = 1;
 
-  if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
+  if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
     TRI_CLOSE_SOCKET(listenSocket);
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
+    TRI_invalidatesocket(&listenSocket);
     return listenSocket;
   }
   LOG_TRACE("reuse address flag set");
@@ -145,25 +141,23 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
   if (_type == ENDPOINT_SERVER) {
-    int result = bind(listenSocket.fileHandle, (struct sockaddr*) &address, SUN_LEN(&address));
+    int result = TRI_bind(listenSocket, (struct sockaddr*) &address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
       LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
       TRI_CLOSE_SOCKET(listenSocket);
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
 
     // listen for new connection, executed for server endpoints only
     LOG_TRACE("using backlog size %d", (int) _listenBacklog);
-    result = listen(listenSocket.fileHandle, _listenBacklog);
+    result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
       LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
       TRI_CLOSE_SOCKET(listenSocket);
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
   }
@@ -174,18 +168,16 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (::connect(listenSocket.fileHandle, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
+    if (TRI_connect(listenSocket, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
   }
 
   if (!setSocketFlags(listenSocket)) {
     TRI_CLOSE_SOCKET(listenSocket);
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
+    TRI_invalidatesocket(&listenSocket);
     return listenSocket;
   }
 
@@ -205,13 +197,12 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 
 void EndpointUnixDomain::disconnect () {
   if (_connected) {
-    assert(_socket.fileHandle);
+    assert(TRI_isvalidsocket(_socket));
 
     _connected = false;
     TRI_CLOSE_SOCKET(_socket);
 
-    _socket.fileHandle = 0;
-    _socket.fileDescriptor = 0;
+    TRI_invalidatesocket(&_socket);
 
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
