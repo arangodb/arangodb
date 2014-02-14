@@ -5,7 +5,9 @@
   "use strict";
   
   window.ShowClusterView = Backbone.View.extend({
+
     el: "#content",
+
     template: clusterTemplateEngine.createTemplate("showCluster.ejs"),
 
     events: {
