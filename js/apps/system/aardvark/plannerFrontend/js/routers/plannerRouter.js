@@ -10,7 +10,7 @@
       "planTest"               : "planTest",
       "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
-      ""                       : "planScenarioSelector"
+      ""                       : "planScenario"
     },
 
     planTest: function() {
@@ -34,9 +34,9 @@
       this.planSymmetricView.render(false);
     },
 
-    planScenarioSelector: function() {
+    planScenario: function() {
       if (!this.planScenarioSelector) {
-          this.planScenarioSelector = new window.PlanScenarioSelectorView();
+        this.planScenarioSelector = new window.PlanScenarioSelectorView();
       }
       this.planScenarioSelector.render();
     },
