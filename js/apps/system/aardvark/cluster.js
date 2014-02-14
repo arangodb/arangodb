@@ -94,7 +94,12 @@
       res.json(result);
     }
   });
-  
+
+  // FAKE TO BE REMOVED TODO 
+  controller.get("/ClusterType", function(req, res) {
+    res.body = "testSetup";
+  });
+
   if (cluster.isCluster()) {
     // only make these functions available in cluster mode!
 
@@ -104,6 +109,20 @@
     servers = comm.current.DBServers(),
     dbs = comm.current.Databases(),
     coords = comm.current.Coordinators();
+
+
+    /** Get the type of the cluster
+     *
+     * Returns a string containing the cluster type
+     * Possible anwers:
+     * - testSetup 
+     * - symmetricalSetup
+     * - asymmetricalSetup
+     *
+     */
+    controller.get("/ClusterType", function(req, res) {
+      res.body = "testSetup";
+    });
 
     /** Get all DBServers
     *
