@@ -91,7 +91,7 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, 
   #ifdef _WIN32
     res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
   #else
-    res = (int)(write(s.fileHandle, buffer, numBytesToWrite));
+    res = (int)(write(s.fileDescriptor, buffer, numBytesToWrite));
   #endif
   return res;
 }

@@ -66,8 +66,7 @@ ListenTask::ListenTask (Endpoint* endpoint)
     readWatcher(0),
     _endpoint(endpoint),
     acceptFailures(0) {
-  _listenSocket.fileHandle = 0;
-  _listenSocket.fileDescriptor = 0;
+  TRI_invalidatesocket(&_listenSocket);
   bindSocket();
 }
 
@@ -109,15 +108,13 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   // ..........................................................................
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
-  if (_listenSocket.fileHandle < 1) {
+  if (!TRI_isvalidsocket(_listenSocket)) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
-    _listenSocket.fileHandle = -1;
-    _listenSocket.fileDescriptor = -1;
     return false;
   }
 
   _listenSocket.fileDescriptor = _open_osfhandle (_listenSocket.fileHandle, 0);
-  if (_listenSocket.fileDescriptor == -1) {
+  if (_listenSocket.fileDescriptor == INVALID_SOCKET) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
 
     int res = closesocket(_listenSocket.fileHandle);
@@ -126,8 +123,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
       res = WSAGetLastError();
       LOG_ERROR("In ListenTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
-    _listenSocket.fileHandle = -1;
-    _listenSocket.fileDescriptor = -1;
+    TRI_invalidatesocket(&_listenSocket);
     return false;
   }
 
@@ -170,10 +166,9 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
     // accept connection
     TRI_socket_t connectionSocket;
-    connectionSocket.fileDescriptor = 0;
-    connectionSocket.fileHandle = accept(_listenSocket.fileHandle, (sockaddr*) &addr, &len);
+    connectionSocket = TRI_accept(_listenSocket, (sockaddr*) &addr, &len);
 
-    if (connectionSocket.fileHandle == INVALID_SOCKET) {
+    if (!TRI_isvalidsocket(connectionSocket)) {
       ++acceptFailures;
 
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
@@ -193,7 +188,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     struct sockaddr_in addr_out;
     socklen_t len_out = sizeof(addr_out);
 
-    int res = getsockname(connectionSocket.fileHandle, (sockaddr*) &addr_out, &len_out);
+    int res = TRI_getsockname(connectionSocket, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
       TRI_CLOSE_SOCKET(connectionSocket);
@@ -249,7 +244,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 bool ListenTask::bindSocket () {
   _listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
 
-  if (_listenSocket.fileHandle == 0) {
+  if (!TRI_isvalidsocket(_listenSocket)) {
     return false;
   }
 

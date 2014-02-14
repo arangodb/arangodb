@@ -139,6 +139,7 @@ class v8_action_t : public TRI_action_t {
 
       // determine whether we should force a re-initialistion of the engine in development mode
       bool allowEngineReset;
+      extern bool allowUseDatabaseInRESTActions;
 
       allowEngineReset = false;
 
@@ -148,7 +149,7 @@ class v8_action_t : public TRI_action_t {
         allowEngineReset = true;
       }
       
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, request, ! allowEngineReset, false);
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, request, ! allowEngineReset, allowUseDatabaseInRESTActions);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
