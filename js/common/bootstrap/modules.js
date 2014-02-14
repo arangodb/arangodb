@@ -60,6 +60,12 @@ function require (path) {
 (function () {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief running under windows
+////////////////////////////////////////////////////////////////////////////////
+
+  var isWindows = SYS_PLATFORM.substr(0, 3) === 'win';
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief appPath
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -230,6 +236,10 @@ function require (path) {
   function path2FileUri (path) {
     'use strict';
 
+    if (isWindows) {
+      path = path.replace(/\\/g, '/');
+    }
+
     if (path === "") {
       return "file:///";
     }
@@ -240,6 +250,22 @@ function require (path) {
 
     if (path[0] === '/') {
       return "file://" + path;
+    }
+
+    if (isWindows) {
+      if (path[1] === ':') {
+        if (path[2] !== '/') {
+          var e = new Error("drive local path '" + path
+                          + "'is not supported");
+
+          e.moduleNotFound = false;
+          e._path = path;
+
+          throw e;
+        }
+
+        return "file:///" + path;
+      }
     }
 
     return "file:///./" + path;
@@ -260,6 +286,22 @@ function require (path) {
 
     if (filename[0] === ".") {
       return filename;
+    }
+
+    if (isWindows) {
+      if (filename[1] === ':') {
+        if (filename[2] !== '/') {
+          var e = new Error("drive local path '" + filename
+                          + "'is not supported");
+
+          e.moduleNotFound = false;
+          e._path = filename;
+
+          throw e;
+        }
+
+        return filename;
+      }
     }
 
     return "/" + filename;
@@ -565,7 +607,16 @@ function require (path) {
         throw new Error("module origin '" + description.origin + "' not supported");
       }
 
-      description.content = fs.read(filename);
+      try {
+        description.content = fs.read(filename);
+      }
+      catch (err) {
+        if (! fs.exists(filename)) {
+          return null;
+        }
+
+        throw err;
+      }
     }
     else if (current._origin.substr(0, 5) !== "db://") {
       throw new Error("package origin '" + current._origin + "' not supported");

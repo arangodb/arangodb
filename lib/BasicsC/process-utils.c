@@ -189,6 +189,7 @@ static TRI_mutex_t ExternalProcessesLock;
 /// @brief creates pipe pair
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef _WIN32
 static bool CreatePipes (int* pipe_server_to_child,
                          int* pipe_child_to_server) {
 
@@ -301,7 +302,107 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
   external->_pid = processPid;
   external->_status = TRI_EXT_RUNNING;
 }
+#else
+bool createPipes (HANDLE * hChildStdinRd, HANDLE * hChildStdinWr,
+                  HANDLE * hChildStdoutRd, HANDLE * hChildStdoutWr) {
 
+  // set the bInheritHandle flag so pipe handles are inherited
+  SECURITY_ATTRIBUTES saAttr; 
+
+  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+  saAttr.bInheritHandle = TRUE; 
+  saAttr.lpSecurityDescriptor = NULL; 
+ 
+  // create a pipe for the child process's STDOUT
+  if (! CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
+    LOG_ERROR("%s", "stdout pipe creation failed");
+    return false;
+  }
+ 
+  // create a pipe for the child process's STDIN
+  if (! CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
+    LOG_ERROR("stdin pipe creation failed");
+    return false;
+  }
+    
+  return true;
+}
+
+bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
+  PROCESS_INFORMATION piProcInfo; 
+  STARTUPINFO siStartInfo;
+  BOOL bFuncRetn = FALSE; 
+ 
+  // set up members of the PROCESS_INFORMATION structure
+  ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+ 
+  // set up members of the STARTUPINFO structure
+  ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+  siStartInfo.cb = sizeof(STARTUPINFO); 
+
+  siStartInfo.dwFlags = STARTF_USESTDHANDLES;
+  siStartInfo.hStdInput = rd ? rd : GetStdHandle(STD_INPUT_HANDLE);
+  siStartInfo.hStdOutput = wr ? wr : GetStdHandle(STD_OUTPUT_HANDLE);
+  siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+  // create the child process
+  bFuncRetn = CreateProcess(NULL, 
+                            external->_executable,       // command line 
+                            NULL,                        // process security attributes 
+                            NULL,                        // primary thread security attributes 
+                            TRUE,                        // handles are inherited 
+                            CREATE_NEW_PROCESS_GROUP,    // creation flags 
+                            NULL,                        // use parent's environment 
+                            NULL,                        // use parent's current directory 
+                            &siStartInfo,                // STARTUPINFO pointer 
+                            &piProcInfo);                // receives PROCESS_INFORMATION 
+   
+  if (bFuncRetn == FALSE) {
+    LOG_ERROR("execute of '%s' failed", external->_executable);
+    return false;
+  }
+  else {
+    external->_pid = piProcInfo.hProcess;
+    CloseHandle(piProcInfo.hThread);
+    return true;
+  }
+}
+static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
+    HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
+    HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
+    bool fSuccess; 
+    if(usePipes) {
+      fSuccess = createPipes(& hChildStdinRd, & hChildStdinWr, & hChildStdoutRd, & hChildStdoutWr);
+
+      if (! fSuccess) {
+        external->_status = TRI_EXT_PIPE_FAILED;
+        return;
+      }
+    } 
+
+    // now create the child process.
+    fSuccess = startProcess(external, hChildStdinRd, hChildStdoutWr);
+    if (! fSuccess) {
+      external->_status = TRI_EXT_PIPE_FAILED;
+
+      CloseHandle(hChildStdoutRd);
+      CloseHandle(hChildStdoutWr);
+      CloseHandle(hChildStdinRd);
+      CloseHandle(hChildStdinWr);
+      CloseHandle(external->_pid);
+
+      return;
+    }
+ 
+    CloseHandle(hChildStdinRd);
+    CloseHandle(hChildStdoutWr);
+
+    external->_readPipe  = hChildStdoutRd;
+    external->_writePipe = hChildStdinWr;
+    external->_status = TRI_EXT_RUNNING;
+
+}
+#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -591,11 +692,12 @@ void TRI_SetProcessTitle (char const* title) {
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_id_t TRI_CreateExternalProcess (const char* executable,
+void TRI_CreateExternalProcess (const char* executable,
                                              const char** arguments,
-                                             size_t n) {
+                                             size_t n,
+                                             TRI_external_id_t * pid) {
   TRI_external_t* external;
-  TRI_external_id_t pid;
+  
   size_t i;
 
   // create the external structure
@@ -611,24 +713,36 @@ TRI_external_id_t TRI_CreateExternalProcess (const char* executable,
     external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
   }
 
-  external->_arguments[n + 1] = NULL;
+  if(arguments) {
+    external->_arguments[n + 1] = NULL;
+  }
   external->_status = TRI_EXT_NOT_STARTED;
 
   StartExternalProcess(external, false);
 
   TRI_LockMutex(&ExternalProcessesLock);
   TRI_PushBackVectorPointer(&ExternalProcesses, external);
-  pid = external->_pid;
+#ifndef _WIN32
+  *pid = external->_pid;
+#else
+   pid->_hProcess =  external->_pid;
+   pid->_hChildStdoutRd =  external->_readPipe;
+   pid->_hChildStdinWr  = external->_writePipe;
+
+#endif
   TRI_UnlockMutex(&ExternalProcessesLock);
 
-  return pid;
+//  TRI_Free(TRI_CORE_MEM_ZONE, external);
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (pid_t pid) {
+#ifndef _WIN32
+TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid) {
   TRI_external_status_t status;
   TRI_external_t* external;
   int loc;
@@ -681,11 +795,61 @@ TRI_external_status_t TRI_CheckExternalProcess (pid_t pid) {
   TRI_UnlockMutex(&ExternalProcessesLock);
   return status;
 }
+#else
+TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess) {
+  TRI_external_status_t status;
+  TRI_external_t* external;
+  int loc;
+  int opts;
+  size_t i;
+
+  TRI_LockMutex(&ExternalProcessesLock);
+
+  status._status = TRI_EXT_NOT_FOUND;
+  status._exitStatus = 0;
+  for (i = 0;  i < ExternalProcesses._length;  ++i) {
+    external = TRI_AtVectorPointer(&ExternalProcesses, i);
+
+    if (external->_pid == hProcess) {
+      break;
+    }
+  }
+
+  if (i == ExternalProcesses._length) {
+    TRI_UnlockMutex(&ExternalProcessesLock);
+    return status;
+  }
+
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
+    DWORD exitCode;
+    if (!GetExitCodeProcess(hProcess , &exitCode)) {
+      LOG_WARNING("exit status could not be called for handle '%p'", hProcess);
+      TRI_UnlockMutex(&ExternalProcessesLock);
+      return status;
+    }
+
+    if (exitCode == STILL_ACTIVE) {
+      external->_exitStatus = 0;
+    }
+    else {
+      external->_status = TRI_EXT_TERMINATED;
+      external->_exitStatus = exitCode;
+    }
+  }
+
+  status._status = external->_status;
+  status._exitStatus = external->_exitStatus;
+
+  TRI_UnlockMutex(&ExternalProcessesLock);
+  return status;
+}
+#endif
+
+#ifndef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
-
 void TRI_KillExternalProcess (pid_t pid) {
   TRI_external_t* external;
   size_t i;
@@ -722,6 +886,38 @@ void TRI_KillExternalProcess (pid_t pid) {
   TRI_UnlockMutex(&ExternalProcessesLock);
 }
 
+#else
+
+void TRI_KillExternalProcess (TRI_external_id_t *pid) {
+      UINT uExitCode = 0;
+      DWORD exitCode;
+
+      // kill worker process
+      if (TerminateProcess(pid->_hProcess, uExitCode)) {
+        LOG_TRACE("kill of worker process succeeded");
+        CloseHandle(pid->_hProcess);
+      }
+      else {
+        DWORD e1 = GetLastError();
+        BOOL ok = GetExitCodeProcess(pid->_hProcess, &exitCode);
+
+        if (ok) {
+          LOG_DEBUG("worker process already dead: %d", exitCode);
+        }
+        else {
+          LOG_WARNING("kill of worker process failed: %d", exitCode);
+        }
+      }
+
+      if(pid->_hChildStdoutRd) { 
+        CloseHandle(pid->_hChildStdoutRd);
+      }
+      if(pid->_hChildStdinWr) {
+        CloseHandle(pid->_hChildStdinWr);
+      }
+
+}
+#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
