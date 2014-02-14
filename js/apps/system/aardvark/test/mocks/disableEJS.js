@@ -15,4 +15,5 @@
   };
   window.templateEngine = new FakeTE("base/frontend/js/templates/");
   window.plannerTemplateEngine = new FakeTE("base/plannerFrontend/js/templates/");
+  window.clusterTemplateEngine = new FakeTE("base/clusterFrontend/js/templates/");
 }());
