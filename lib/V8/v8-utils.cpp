@@ -2698,15 +2698,16 @@ static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
                       "address description invalid, cannot create endpoint");
   }
   TRI_socket_t s = endpoint->connect(1, 1);
-  
-  if (s.fileDescriptor == 0) {
+  bool available = TRI_isvalidsocket(s);
+
+  if (available) {
     endpoint->disconnect();
   }
 
   delete endpoint;
 
   // return the result
-  return scope.Close(v8::Boolean::New(s.fileDescriptor != 0));
+  return scope.Close(v8::Boolean::New(available));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

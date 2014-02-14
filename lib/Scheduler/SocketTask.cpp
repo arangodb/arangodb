@@ -81,10 +81,9 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
 ////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::~SocketTask () {
-  if (_commSocket.fileHandle != -1) {
+  if (TRI_isvalidsocket(_commSocket)) {
     TRI_CLOSE_SOCKET(_commSocket);
-    _commSocket.fileDescriptor = -1;
-    _commSocket.fileHandle = -1;
+    TRI_invalidatesocket(&_commSocket);
   }
 
   if (_writeBuffer != 0) {
@@ -425,10 +424,8 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // ..........................................................................
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
-  if (_commSocket.fileHandle < 1) {
+  if (!TRI_isvalidsocket(_commSocket)) {
     LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
-    _commSocket.fileHandle = -1;
-    _commSocket.fileDescriptor = -1;
     return false;
   }
 
@@ -441,8 +438,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
       res = WSAGetLastError();
       LOG_ERROR("In SocketTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
-    _commSocket.fileHandle = -1;
-    _commSocket.fileDescriptor = -1;
+    TRI_invalidatesocket(&_commSocket);
     return false;
   }
 
