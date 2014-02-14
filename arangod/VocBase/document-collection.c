@@ -3773,8 +3773,8 @@ static int FillIndex (TRI_document_collection_t* document,
 static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
                                                        TRI_vector_t const* paths,
                                                        TRI_idx_type_e type,
-                                                       bool unique) {
-  TRI_index_t* matchedIndex = NULL;
+                                                       bool unique,
+                                                       bool allowAnyAttributeOrder) {
   TRI_vector_t* indexPaths = NULL;
   size_t j;
 
@@ -3784,7 +3784,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
   for (j = 0;  j < collection->_allIndexes._length;  ++j) {
     TRI_index_t* idx = collection->_allIndexes._buffer[j];
-    bool found       = true;
+    bool found;
     size_t k;
 
     // .........................................................................
@@ -3851,24 +3851,50 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
     // go through all the attributes and see if they match
     // .........................................................................
 
-    for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
-      TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
+    found = true;
 
-      if (indexShape != givenShape) {
+    if (allowAnyAttributeOrder) {
+      // any permutation of attributes is allowed
+      for (k = 0;  k < paths->_length;  ++k) {
+        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
+        size_t l;
+
         found = false;
-        break;
+
+        for (l = 0;  l < paths->_length;  ++l) {
+          TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, l));
+     
+          if (indexShape == givenShape) {
+            found = true;
+            break;
+          }
+        } 
+        
+        if (! found) {
+          break;
+        }      
+      }
+    }
+    else {
+      // attributes need to present in a given order
+      for (k = 0;  k < paths->_length;  ++k) {
+        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
+        TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
+        
+        if (indexShape != givenShape) {
+          found = false;
+          break;
+        }
       }
     }
 
     // stop if we found a match
     if (found) {
-      matchedIndex = idx;
-      break;
+      return idx;
     }
   }
 
-  return matchedIndex;
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5024,7 +5050,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
 
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -5134,7 +5160,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
     return NULL;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5243,7 +5269,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
 
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -5346,7 +5372,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
     return NULL;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5733,7 +5759,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, false);
 
   if (idx != NULL) {
 
@@ -5857,34 +5883,13 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // determine the unsorted shape ids for the attributes
   // ...........................................................................
 
-  result = TRI_PidNamesByAttributeNames(attributes, primary->_shaper, &paths,
-                                     &fields, false);
+  result = TRI_PidNamesByAttributeNames(attributes, primary->_shaper, &paths, &fields, false);
 
   if (result != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-
-  // .............................................................................
-  // attempt to go through the indexes within the collection and see if we can
-  // locate the index
-  // .............................................................................
-
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, false);
-
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, true);
 
   // .............................................................................
   // release memory allocated to vector

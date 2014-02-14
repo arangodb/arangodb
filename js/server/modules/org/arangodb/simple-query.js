@@ -185,7 +185,7 @@ function normalizeAttributes (obj, prefix) {
 
   for (o in obj) {
     if (obj.hasOwnProperty(o)) {
-      if (typeof obj[o] === 'object' && ! Array.isArray(obj[o])) {
+      if (typeof obj[o] === 'object' && ! Array.isArray(obj[o]) && obj[o] !== null) {
         var sub = normalizeAttributes(obj[o], prep + o), i;
         for (i in sub) {
           if (sub.hasOwnProperty(i)) {
@@ -206,11 +206,16 @@ function normalizeAttributes (obj, prefix) {
 /// @brief query-by scan or hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-function byExample (collection, example, skip, limit) {
+function byExample (data) {
   var unique = true;
   var documentId = null;
   var k;
-      
+ 
+  var collection = data._collection;
+  var example    = data._example;
+  var skip       = data._skip;
+  var limit      = data._limit;
+     
   if (typeof example !== "object" || Array.isArray(example)) {
     // invalid datatype for example
     var err1 = new ArangoError();
@@ -263,47 +268,85 @@ function byExample (collection, example, skip, limit) {
   var idx = null;
   var normalized = normalizeAttributes(example, "");
   var keys = Object.keys(normalized);
-
-  try {
-    idx = collection.lookupHashIndex.apply(collection, keys);
-    if (idx === null && unique) {
-      idx = collection.lookupUniqueConstraint.apply(collection, keys);
-
-      if (idx !== null) {
-        console.debug("found unique constraint %s", idx.id);
-      }
-    }
-    else if (idx !== null) {
-      console.debug("found hash index %s", idx.id);
-    }
-  }
-  catch (err2) {
-  }
-
-  if (idx !== null) {
-    // use hash index
-    return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
-  }
- 
-  try {
-    idx = collection.lookupSkiplist.apply(collection, keys);
-    if (idx === null && unique) {
-      idx = collection.lookupUniqueSkiplist.apply(collection, keys);
-    
-      if (idx !== null) {
-        console.debug("found unique skiplist %s", idx.id);
-      }
-    }
-    else if (idx !== null) {
-      console.debug("found skiplist index %s", idx.id);
-    }
-  }
-  catch (err3) {
-  }
   
+  // try these index types
+  var checks = [
+    { type: "hash", fields: keys, unique: false },
+    { type: "skiplist", fields: keys, unique: false }
+  ];
+
+  if (unique) {
+    checks.push({ type: "hash", fields: keys, unique: true });
+    checks.push({ type: "skiplist", fields: keys, unique: true });
+  }
+    
+  var fields = [ ];
+  for (k in normalized) {
+    if (normalized.hasOwnProperty(k)) {
+      fields.push([ k, [ normalized[k] ] ]);
+    } 
+  }
+  checks.push({ type: "bitarray", fields: fields });
+
+  for (k = 0; k < checks.length; ++k) {
+    if (data._type !== undefined && data._type !== checks[k].type) {
+      continue;
+    }
+
+    try {
+      idx = collection.lookupIndex(checks[k]);
+    }
+    catch (e) {
+      // ignore any errors we counter during index lookup
+      throw e;
+    }
+
+    if (idx !== null) {
+      // found an index
+      break;
+    }
+  }
+
+  if (data._index !== undefined) {
+    var invalid = false;
+
+    // an index was specified
+    if (idx === null || 
+        idx.type !== data._type) {
+      invalid = true;
+    }
+    else if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
+      if (idx.id.replace(/^[a-zA-Z0-9_\-]+\//, '') !== 
+          data._index.id.replace(/^[a-zA-Z0-9_\-]+\//, '')) {
+        invalid = true;
+      }
+    }
+    else if (typeof data._index === 'string') {
+      if (idx.id.replace(/^[a-zA-Z0-9_\-]+\//, '') !== 
+          data._index.replace(/^[a-zA-Z0-9_\-]+\//, '')) {
+        invalid = true;
+      }
+    }
+
+    if (invalid) {
+      // but none was found or the found one has a different type
+      var err2 = new ArangoError();
+      err2.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+      err2.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+      throw err2;
+    }
+  }
+
   if (idx !== null) {
-    // use hash index
-    return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
+    // use an index
+    switch (idx.type) {
+      case "hash":
+        return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
+      case "skiplist":
+        return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
+      case "bitarray":
+        return collection.BY_EXAMPLE_BITARRAY(idx.id, normalized, skip, limit);
+    }
   }
 
   // use full collection scan
@@ -316,7 +359,7 @@ function byExample (collection, example, skip, limit) {
 
 SimpleQueryByExample.prototype.execute = function () {
   var documents;
-
+  
   if (this._execution === null) {
     if (this._skip === null || this._skip <= 0) {
       this._skip = 0;
@@ -335,19 +378,34 @@ SimpleQueryByExample.prototype.execute = function () {
           limit = this._skip + this._limit;
         }
       }
-      var example = this._example;
+
+      var method = "by-example";
+      if (this._type !== undefined) {
+        switch (this._type) {
+          case "hash":
+            method = "by-example-hash";
+            break;
+          case "skiplist": 
+            method = "by-example-skiplist";
+            break;
+          case "bitarray":
+            method = "by-example-bitarray";
+            break;
+        }
+      }
       
       shards.forEach(function (shard) {
         ArangoClusterComm.asyncRequest("put", 
                                        "shard:" + shard, 
                                        dbName, 
-                                       "/_api/simple/by-example", 
+                                       "/_api/simple/" + method,
                                        JSON.stringify({ 
-                                         example: example,
+                                         example: this._example,
                                          collection: shard, 
                                          skip: 0, 
                                          limit: limit || undefined, 
-                                         batchSize: 100000000
+                                         batchSize: 100000000,
+                                         index: this._index
                                        }), 
                                        { }, 
                                        options);
@@ -399,7 +457,7 @@ SimpleQueryByExample.prototype.execute = function () {
       };
     }
     else {
-      documents = byExample(this._collection, this._example, this._skip, this._limit);
+      documents = byExample(this);
     }
 
     this._execution = new GeneralArrayCursor(documents.documents);

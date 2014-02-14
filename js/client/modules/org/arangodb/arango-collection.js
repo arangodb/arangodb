@@ -207,44 +207,6 @@ ArangoCollection.prototype.toArray = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief queries by example
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
-  var key;
-  var body;
-
-  limit = limit || null;
-  skip = skip || null;
-
-  if (index.hasOwnProperty("id")) {
-    index = index.id;
-  }
-
-  body = {
-    collection : this.name(),
-    index : index,
-    skip : skip,
-    limit : limit,
-    example : {} 
-  };
-
-  for (key in example) {
-    if (example.hasOwnProperty(key)) {
-      body.example[key] = example[key];
-    }
-  }
-
-  var requestResult = this._database._connection.PUT(
-    this._prefixurl("/_api/simple/BY-EXAMPLE-HASH"),
-    JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
