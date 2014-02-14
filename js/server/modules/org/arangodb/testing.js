@@ -100,7 +100,8 @@ function makeTestingArgs () {
              fs.join(topDir,"mr","server","modules")+":"+
              fs.join(topDir,"mr","common","modules"),
            "--server.threads",                 "4",
-           "--server.disable-authentication",  "true" ];
+           "--server.disable-authentication",  "true",
+           "--server.allow-use-database",      "true" ];
 }
 
 function makeTestingArgsClient (options) {
