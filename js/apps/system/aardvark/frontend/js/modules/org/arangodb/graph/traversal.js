@@ -1232,7 +1232,7 @@ ArangoTraverser = function (config) {
       global: ArangoTraverser.UNIQUE_GLOBAL
     }, "uniqueness.edges")
   };
-  
+ 
   config.strategy = validate(config.strategy, {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
     breadthfirst: ArangoTraverser.BREADTH_FIRST,

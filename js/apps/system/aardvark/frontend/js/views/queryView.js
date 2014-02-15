@@ -169,7 +169,7 @@
               }
           });
 
-          arangoHelper.fixTooltips(".queryTooltips, .glyphicon", "top");
+          arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
 
           $('#aqlEditor .ace_text-input').focus();
           $.gritter.removeAll();

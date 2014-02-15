@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -27,6 +27,8 @@
 /// @author Dr. Frank Celler
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+module.isSystem = true;
 
 var internal = require("internal");
 

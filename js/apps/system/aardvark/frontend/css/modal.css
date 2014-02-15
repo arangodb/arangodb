@@ -188,7 +188,7 @@
   opacity: 1;
 }
 
-.modal-body .glyphicon-info-sign {
+.modal-body .icon_arangodb_info {
   color: #736B68;
   font-size: 18px;
   right: 12px;
@@ -196,7 +196,7 @@
   margin-top: -10px;
 }
 
-.modal-body .glyphicon-info-sign:hover {
+.modal-body .icon_arangodb_info:hover {
   color: black;
 }
 
@@ -238,7 +238,7 @@
   margin-bottom: 10px;
 }
 
-#add-collection .glyphicon-info-sign {
+#add-collection .icon_arangodb_info {
   top: 2px !important;
   position: relative;
   margin-left: 20px !important;
@@ -274,7 +274,7 @@
   width: 398px !important;
 }
 
-#figures .glyphicon-info-sign{
+#figures .icon_arangodb_info {
   position: relative !important;
   right: -4px !important;
 }

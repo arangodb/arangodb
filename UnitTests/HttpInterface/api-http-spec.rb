@@ -8,28 +8,6 @@ describe ArangoDB do
 
   context "dealing with HTTP methods:" do
 
-################################################################################
-## checking invalid body sizes
-################################################################################
-
-    context "invalid sizes of body:" do
-      it "checks negative content-length" do
-        cmd = "/_api/version"
-        doc = ArangoDB.log_post("#{prefix}-content-length", cmd, { :headers => { "Content-Length" => "-1" } })
-
-        doc.code.should eq(411)
-        doc.response.body.should eq("")
-      end
-      
-      it "checks too big content-length" do
-        cmd = "/_api/version"
-        doc = ArangoDB.log_post("#{prefix}-content-length", cmd, { :headers => { "Content-Length" => "9999999999" } })
-
-        doc.code.should eq(413)
-        doc.response.body.should eq("")
-      end
-
-    end
 
 ################################################################################
 ## checking HTTP HEAD responses

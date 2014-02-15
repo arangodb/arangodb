@@ -29,13 +29,6 @@
   margin:0;
 }
 
-.collectionName {
-  text-align:left;
-  font-weight: 300 !important;
-  position:absolute;
-  bottom:0px;
-}
-
 .thumbnail {
   padding:0;
   box-shadow: 0 0 0  !important;
@@ -53,11 +46,6 @@
 
 .span3 .ICON:hover {
   opacity: 1.0;
-}
-
-.span3 .glyphicon-edit {
-  margin-top: 4px !important;
-  font-size: 19.5px;
 }
 
 .span3 .spanInfo {

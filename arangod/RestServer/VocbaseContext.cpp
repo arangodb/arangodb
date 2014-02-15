@@ -30,6 +30,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "Rest/ConnectionInfo.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -100,6 +101,18 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     // no authentication required at all
     return HttpResponse::OK;
   }
+
+#ifdef TRI_HAVE_LINUX_SOCKETS
+  // check if we need to run authentication for this type of
+  // endpoint
+  ConnectionInfo const& ci = _request->connectionInfo();
+
+  if (ci.endpointType == Endpoint::DOMAIN_UNIX && 
+      ! _vocbase->_settings.requireAuthenticationUnixSockets) {
+    // no authentication required for unix socket domain connections
+    return HttpResponse::OK;
+  }
+#endif
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.

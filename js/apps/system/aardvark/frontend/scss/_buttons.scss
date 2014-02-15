@@ -1,0 +1,150 @@
+.btn {
+  @include border-radius(4px);
+  @include box-shadow(0);
+}
+
+.addButton {
+  @extend %clickable;
+  @extend %icon-positive;
+  position: relative;
+  margin-right: 7px;
+  font-size: 22px;
+  margin-top: 2px;
+}
+
+.deleteButton {
+  @extend %clickable;
+  @extend %icon-negative;
+  font-size: 22px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative;
+  cursor: pointer;
+}
+
+ul.headerButtonList {
+  display: inline-block;
+  *display: inline;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0!important;
+
+  li {
+    display: inline;
+    margin-right: 2px;
+  }
+}
+
+a.headerButton {
+ float: left;
+ cursor: pointer;
+ margin-top: 2px; 
+ margin-left: 5px;
+ margin-right: 3px;
+ min-height: 15px;
+ border-radius: 3px;
+ position: relative;
+ @include box-shadow(none);
+ background-color: $c_header_btn_bg;
+ color: $c_header_btn_fg;
+ height: 17px;
+ width: 9px;
+ padding: 4px 9px 2px 9px;
+ border: 1px solid $c_header_btn_border;
+}
+
+a.headerButton:hover {
+  background-color: $c_white;
+  color: $c_black;
+}
+
+a.paginationButton, ul.arangoPagination a {
+  @include border-radius(2px);
+}
+
+/* better look of some icons */
+a.headerButton {
+
+  .icon_arangodb_filter {
+    top: 3px !important;
+  }
+
+  .icon_arangodb_import {
+    top: 1px !important;
+  }
+
+  .icon_arangodb_checklist {
+    top: 3px !important;
+    right: 5px;
+  }
+
+  .icon_arangodb_arrowleft,
+  .icon_arangodb_arrowright {
+    font-weight:bold;
+  }
+}
+/* Graph Viewer */
+
+div.toolbox > {
+  div.gv_action_button:first-child {
+    margin-top: 0px;
+  }
+
+  div.gv_action_button:last-child {
+    margin-bottom: 0px;
+  }
+}
+
+div.gv_action_button {
+ text-align: center;
+ position: relative;
+ width: 50px;
+ height: 50px;
+ background-color: $c_nav_bg;
+ color: $c_white;
+ cursor: pointer;
+ margin-top: 2px;
+ margin-bottom: 2px;
+}
+
+div.gv_action_button:hover {
+
+}
+
+div.gv_action_button.active {
+  background-color: $c_positive;
+}
+
+h6.gv_icon_icon,
+h6.gv_button_title {
+ position: absolute;
+ margin: 0px;
+ left: 0px;
+ right: 0px;
+}
+
+h6.gv_icon_icon {
+  font-size: 22px;
+  top: 6px;
+}
+
+h6.gv_button_title {
+ bottom: 1px;
+}
+
+/*
+#documentsToolbar span {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 25px;
+  margin-right: 3px;
+  margin-left: 0px;
+}
+
+#documentsToolbar li a {
+  margin-top: 0px !important;
+  padding: 5px 11px 2px 9px;
+}
+
+*/
