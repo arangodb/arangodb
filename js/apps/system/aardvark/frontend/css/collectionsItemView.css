@@ -61,12 +61,12 @@
 }
 
 .span3 .spanInfo {
-  right: 25px;
+  right: 20px;
 }
 
 .spanDisabled {
-  right: 25px !important;
-  opacity: 0.2 !important;
+  right: 20px !important;
+  opacity: 0.1 !important;
 }
 
 .spanDisabled:hover {
