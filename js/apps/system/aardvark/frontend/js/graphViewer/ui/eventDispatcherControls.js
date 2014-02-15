@@ -47,6 +47,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   }
   
   var self = this,
+    /*
     icons = {
       expand: "expand",
       add: "add",
@@ -55,6 +56,37 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       edge: "connect",
       edit: "edit",
       view: "view"
+    },
+    */
+    icons = {
+      expand: {
+        icon: "expand",
+        title: "SPOT"
+      },
+      add: {
+        icon: "plus-square-o",
+        title: "NODE"
+      },
+      trash: {
+        icon: "trash-o",
+        title: "TRASH"
+      },
+      drag: {
+        icon: "arrows",
+        title: "DRAG"
+      },
+      edge: {
+        icon: "link",
+        title: "EDGE"
+      },
+      edit: {
+        icon: "pencil",
+        title: "EDIT"
+      },
+      view: {
+        icon: "search",
+        title: "VIEW"
+      }
     },
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     

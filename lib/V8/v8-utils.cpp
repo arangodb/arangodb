@@ -2418,8 +2418,8 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
     }
   }
 
-  TRI_external_id_t external = TRI_CreateExternalProcess(*name, (const char**) arguments, n);
-
+  TRI_external_id_t external;
+  TRI_CreateExternalProcess(*name, (const char**) arguments, n, &external);
   if (arguments != 0) {
     for (size_t i = 0;  i < n;  ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
@@ -2427,10 +2427,45 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
 
     TRI_Free(TRI_CORE_MEM_ZONE, arguments);
   }
-
-  // return the result
+#ifndef _WIN32
   return scope.Close(v8::Number::New(external));
+#else
+  size_t pid_len, readPipe_len, writePipe_len; 
+  char * hProcess  = NULL;
+  char * readPipe  = NULL; 
+  char * writePipe = NULL; 
+
+  if (external._hProcess) {
+    hProcess = TRI_EncodeHexString((const char *)&external._hProcess, sizeof(HANDLE), &pid_len);
+  } else {
+    TRI_V8_TYPE_ERROR(scope, "Internal Error, Process could not be started");
+  }
+
+
+  if (external._hChildStdoutRd) {
+    readPipe = TRI_EncodeHexString((const char *)external._hChildStdoutRd, sizeof(HANDLE), &readPipe_len);
+  }
+  if (external._hChildStdinWr) {
+    writePipe = TRI_EncodeHexString((const char *)external._hChildStdinWr, sizeof(HANDLE), &writePipe_len);
+  }
+  // return the result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("pid"), v8::String::New(hProcess, pid_len));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, hProcess);
+
+  if (readPipe) {
+    result->Set(v8::String::New("readPipe"), v8::String::New(readPipe, readPipe_len));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+  }
+
+  if (writePipe) {
+    result->Set(v8::String::New("writePipe"), v8::String::New(writePipe, writePipe_len));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+  }
+  return scope.Close(result);
+#endif
 }
+#ifndef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
@@ -2491,7 +2526,90 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
   // return the result
   return scope.Close(v8::Undefined());
 }
+#else
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
 
+static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
+  }
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  string pid, hChildStdoutRd, hChildStdinWr;
+  if(obj->Has(v8::String::New("pid"))) {
+    pid = TRI_ObjectToString(obj->Get(v8::String::New("pid")));
+  }
+  if (pid.empty()) {
+     TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
+  }
+  size_t pid_len /*, readPipe_len, writePipe_len*/; 
+  char * thePid    = TRI_DecodeHexString(pid.c_str(), pid.size(), &pid_len);
+/*
+  char * readPipe  = TRI_DecodeHexString(hChildStdoutRd.c_str(), hChildStdoutRd.c_str.size(), &readPipe_len);
+  char * writePipe = TRI_DecodeHexString(hChildStdinWr.c_str(), hChildStdinWr.c_str.size(), &writePipe_len);
+*/
+  TRI_external_id_t external;
+  external._hProcess = (HANDLE)(*((intptr_t* )thePid)); 
+  external._hChildStdoutRd = NULL;
+  external._hChildStdinWr = NULL;
+/*
+  external._hChildStdoutRd = (HANDLE)(*readPipe); 
+  external._hChildStdinWr = (HANDLE)(*writePipe); 
+*/
+  TRI_KillExternalProcess(&external);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, thePid);
+/*
+  TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+*/
+  // return the result
+  return scope.Close(v8::Undefined());
+}
+
+static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1 || !argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  }
+
+  string hProcessStr =  TRI_ObjectToString(argv[0]);
+  size_t pid_len;
+  char * hProcessCharPtr    = TRI_DecodeHexString(hProcessStr.c_str(), hProcessStr.size(), &pid_len);
+  HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr)); 
+  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  const char* status = "UNKNOWN";
+
+  switch (external._status) {
+    case TRI_EXT_NOT_STARTED: status = "NOT-STARTED"; break;
+    case TRI_EXT_PIPE_FAILED: status = "FAILED"; break;
+    case TRI_EXT_FORK_FAILED: status = "FAILED"; break;
+    case TRI_EXT_RUNNING: status = "RUNNING"; break;
+    case TRI_EXT_NOT_FOUND: status = "NOT-FOUND"; break;
+    case TRI_EXT_TERMINATED: status = "TERMINATED"; break;
+    case TRI_EXT_ABORTED: status = "ABORTED"; break;
+    case TRI_EXT_STOPPED: status = "STOPPED"; break;
+    case TRI_EXT_KILL_FAILED: status = "ZOMBIE"; break;
+  }
+
+  result->Set(v8::String::New("status"), v8::String::New(status));
+
+  if (external._status == TRI_EXT_TERMINATED) {
+    result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
+  }
+
+  // return the result
+  return scope.Close(result);
+}
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a port is available
 ////////////////////////////////////////////////////////////////////////////////
@@ -2932,25 +3050,9 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& startupPath,
-                      string const& modules,
-                      string packages) {
+                      string const& modules) {
   v8::HandleScope scope;
  
-  // merge package-paths
-
-  // built-in package-path is first
-  string realPackages = startupPath + TRI_DIR_SEPARATOR_STR + "npm";
-  if (! packages.empty()) {
-    if (packages.substr(0, realPackages.size()) == realPackages) {
-      packages = packages.substr(realPackages.size());
-    }
-    
-    packages = StringUtils::lTrim(packages, ";:");
-    if (! packages.empty()) {
-      realPackages += ";" + packages;
-    }
-  }
-
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
@@ -3045,7 +3147,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
 
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
-  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(realPackages));
   TRI_AddGlobalVariableVocbase(context, "STARTUP_PATH", v8::String::New(startupPath.c_str()));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());

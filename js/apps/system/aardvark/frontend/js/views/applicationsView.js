@@ -210,7 +210,7 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("inactive", self._showInactive);
     });
   
-    arangoHelper.fixTooltips(".glyphicon", "left");
+    arangoHelper.fixTooltips("icon_arangodb", "left");
     return this;
   }
 });

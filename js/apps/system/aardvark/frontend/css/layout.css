@@ -235,10 +235,6 @@ button {
   font-family: 'Open Sans', sans-serif !important;
 }
 
-.glyphicon:hover {
-  cursor: pointer !important;
-}
-
 .arangoicon:hover {
   cursor: pointer !important;
 }

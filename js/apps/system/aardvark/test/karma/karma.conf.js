@@ -126,6 +126,7 @@ module.exports = function(karma) {
       'frontend/js/models/arangoStatistics.js',
       'frontend/js/models/arangoStatisticsDescription.js',
       'frontend/js/models/foxx.js',
+      'frontend/js/models/notification.js',
       'frontend/js/models/graph.js',
 
       // Collections
@@ -134,11 +135,12 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoDocument.js',
       'frontend/js/collections/arangoDatabase.js',
       'frontend/js/collections/arangoLogs.js',
-      'frontend/js/collections/arangoSession.js',
+      'frontend/js/collections/arangoUsers.js',
       'frontend/js/collections/arangoStatisticsCollection.js',
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
       'frontend/js/collections/graphCollection.js',
+      'frontend/js/collections/notificationCollection.js',
 
       // Views
       'frontend/js/views/navigationView.js',
@@ -171,6 +173,8 @@ module.exports = function(karma) {
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
       'frontend/js/views/loginView.js',
+      'frontend/js/views/statisticBarView.js',
+      'frontend/js/views/userBarView.js',
 
       // Router
       'frontend/js/routers/router.js',

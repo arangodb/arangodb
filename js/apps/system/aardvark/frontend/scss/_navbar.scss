@@ -1,0 +1,55 @@
+nav.navbar {
+  @extend %fixedbar;
+  top: 0px;
+  height: 34px;
+  margin-bottom: 3px;
+}
+
+div.navlogo {
+  @extend %pull-left;
+}
+
+div.navmenu {
+  @extend %pull-right;
+}
+
+ul.navlist {
+  list-style: none;
+  li {
+    @extend %pull-left;
+    margin-left: 1px;
+  }
+  > li.active,
+  li.dropdown-item:hover,
+  > li:hover {
+    background-color: $c_positive;
+  }
+}
+
+a.tab {
+  padding: {
+    top: 7px;
+    left: 10px;
+    bottom: 10px;
+    right: 10px;
+  }
+  color: $c_white;
+  display: block;
+}
+
+ul.link-dropdown-menu {
+  @extend %dropdown-menu;
+}
+
+ul.user-dropdown-menu {
+  @extend %dropdown-menu;
+}
+
+#arangoCollectionSelect {
+  display: none;
+  float: right;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-right: 15px;
+}
+

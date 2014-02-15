@@ -16,6 +16,14 @@ AC_ARG_ENABLE(readline,
   tr_READLINE="maybe"
 )
 
+if test "x$tr_DARWIN" = xyes; then
+  if test "x$tr_READLINE" = xyes; then
+    tr_READLINE="linenoise"
+  elif test "x$tr_READLINE" = xreadline; then
+    tr_READLINE="yes"
+  fi
+fi
+
 AC_ARG_WITH(readline,
   AS_HELP_STRING([--with-readline=DIR], [where the readline library and includes are located]),
   [READLINE_CPPFLAGS="-I$withval/include"

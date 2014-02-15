@@ -214,7 +214,7 @@
       $(this.el).html(this.template.text);
       this.getReplicationStatus();
       
-      arangoHelper.fixTooltips(".glyphicon", "top");
+      arangoHelper.fixTooltips(".icon_arangodb", "top");
 
       var counter = 1;
 

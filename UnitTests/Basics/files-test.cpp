@@ -30,6 +30,7 @@
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
 #include "BasicsC/json.h"
+#include "BasicsC/random.h"
 
 using namespace triagens::basics;
 
@@ -44,6 +45,7 @@ struct CFilesSetup {
 
     _directory.appendText("/tmp/arangotest-");
     _directory.appendInteger((uint64_t) TRI_microtime());
+    _directory.appendInteger((uint32_t) TRI_UInt32Random());
 
     TRI_CreateDirectory(_directory.c_str());
   }
@@ -190,17 +192,10 @@ BOOST_AUTO_TEST_CASE (tst_absolute_paths) {
 
 BOOST_AUTO_TEST_CASE (tst_slurp) {
   size_t length;
-  char* path;
   char* filename;
   char* result;
 
-  path = TRI_GetTempPath();
-
-  if (! TRI_IsDirectory(path)) {
-    TRI_CreateDirectory(path);
-  }
-
-  filename = TRI_Concatenate2File(path, "files-unittest.tmp");
+  filename = TRI_Concatenate2File(_directory.c_str(), "files-unittest.tmp");
 
   // remove file if it exists
   TRI_UnlinkFile(filename);
@@ -230,7 +225,6 @@ BOOST_AUTO_TEST_CASE (tst_slurp) {
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   TRI_Free(TRI_CORE_MEM_ZONE, filename);
-  TRI_Free(TRI_CORE_MEM_ZONE, path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

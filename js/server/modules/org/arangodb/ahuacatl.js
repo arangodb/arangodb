@@ -3285,6 +3285,51 @@ function PARSE_IDENTIFIER (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief query a skiplist index
+///
+/// returns a documents from a skiplist index on the specified collection. Only
+/// documents that match the specified condition will be returned.
+////////////////////////////////////////////////////////////////////////////////
+
+function SKIPLIST_QUERY (collection, condition, skip, limit) {
+  "use strict";
+
+  var keys = [ ], key, idx;
+
+  for (key in condition) {
+    if (condition.hasOwnProperty(key)) {
+      keys.push(key);
+    }
+  }
+    
+  var c = COLLECTION(collection);
+  if (c === null) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, collection);
+  }
+
+  idx = c.lookupSkiplist.apply(c, keys);
+
+  if (idx === null) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
+  }
+
+  if (skip === undefined || skip === null) {
+    skip = 0;
+  }
+
+  if (limit === undefined || limit === null) {
+    limit = null;
+  }
+ 
+  try {
+    return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents; 
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3906,6 +3951,7 @@ function TRAVERSAL_FUNC (func,
   }
 
   var result = [ ];
+
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v, e);
@@ -4210,6 +4256,7 @@ exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
 exports.PARSE_IDENTIFIER = PARSE_IDENTIFIER;
+exports.SKIPLIST_QUERY = SKIPLIST_QUERY;
 exports.HAS = HAS;
 exports.ATTRIBUTES = ATTRIBUTES;
 exports.UNSET = UNSET;

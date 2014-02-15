@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+module.isSystem = true;
+
 var internal = require("internal");
 
 var fs = require("fs");
@@ -35,8 +37,6 @@ var console = require("console");
 
 var arangodb = require("org/arangodb");
 var foxxManager = require("org/arangodb/foxx/manager");
-
-var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -329,7 +329,7 @@ function lookupCallbackActionDo (route, action) {
     }
   }
   catch (err) {
-    if (! moduleExists(joined)) {
+    if (err.hasOwnProperty("moduleNotFound") && err.moduleNotFound) {
       func = notImplementedFunction(
         route, 
         "an error occurred while loading action named '" + name 
@@ -416,7 +416,7 @@ function lookupCallbackActionController (route, action) {
     };
   }
   catch (err) {
-    if (! moduleExists(action.controller)) {
+    if (err.hasOwnProperty("moduleNotFound") && err.moduleNotFound) {
       return notImplementedFunction(
         route, 
         "cannot load/execute action controller module '" 
@@ -470,7 +470,7 @@ function lookupCallbackActionPrefixController (route, action) {
       catch (err1) {
         efunc = errorFunction;
 
-        if (! moduleExists(path)) {
+        if (err1.hasOwnProperty("moduleNotFound") && err1.moduleNotFound) {
           efunc = notImplementedFunction;
         }
 

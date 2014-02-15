@@ -31,23 +31,45 @@
 var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             require package suite
+// --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief test suite for "require"
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequirePackageSuite () {
+function RequireTestSuite () {
+
+  function createTestPackage () {
+    var test = module.createTestEnvironment("./js/common/test-data/modules");
+
+    test.exports.print = require("internal").print;
+
+    test.exports.assert = function (guard, message) {
+      console.log("running test %s", message);
+      assertEqual(guard !== false, true);
+    };
+
+    return test;
+  }
 
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      module.root.unloadAll();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test package loading
 ////////////////////////////////////////////////////////////////////////////////
 
     testPackage : function () {
-      var m = require("TestA");
+      var test = createTestPackage();
+      var m = test.require("TestA");
 
       assertEqual(m.version, "A 1.0.0");
       assertEqual(m.x.version, "x 1.0.0");
@@ -58,7 +80,7 @@ function RequirePackageSuite () {
 
       assertEqual(m.B, m.C.B);
 
-      var n = require("TestB");
+      var n = test.require("TestB");
 
       assertEqual(n.version, "B 1.0.0");
       assertNotEqual(n, m.B);
@@ -68,36 +90,25 @@ function RequirePackageSuite () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              require module suite
+// --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief test suite for "commonjs"
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequireModuleSuite () {
+function CommonJSTestSuite () {
   var fs = require("fs");
   var console = require("console");
 
   function createTestPackage (testPath) {
-    var lib = fs.join(
+    var lib = "./" + fs.join(
       "./js/common/test-data/modules/commonjs/tests/modules/1.0/",
       testPath);
 
-    var desc = {
-      name: "/test-" + testPath,
-      rootPath: lib,
-      content: ""
-    };
+    console.log(lib);
 
-    var pkg = module.createPackageModule(module._package, desc);
-
-    desc = {
-      name: "/test",
-      content: ""
-    };
-
-    var test = pkg.createModule(desc, "module", pkg._package);
+    var test = module.createTestEnvironment(lib);
 
     test.exports.print = require("internal").print;
 
@@ -133,6 +144,7 @@ function RequireModuleSuite () {
         var name = tests[i];
 
         console.log("running CommonJS test '%s'", name);
+
         var test = createTestPackage(name);
         test.require("program");
       }
@@ -149,8 +161,8 @@ function RequireModuleSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(RequirePackageSuite);
-jsunity.run(RequireModuleSuite);
+jsunity.run(RequireTestSuite);
+jsunity.run(CommonJSTestSuite);
 
 return jsunity.done();
 

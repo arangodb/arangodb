@@ -114,6 +114,7 @@
 #define snprintf _snprintf
 #endif
 #else
+#include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
@@ -131,6 +132,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <limits.h>
+#include <math.h>
 
 #include "linenoise.h"
 #include "utf8.h"
@@ -167,6 +170,7 @@ struct current {
     int chars;  /* Number of chars in 'buf' (utf-8 chars) */
     int pos;    /* Cursor position, measured in chars */
     int cols;   /* Size of the window, in chars */
+    int rows;   /* Screen rows */
     const char *prompt;
     char *capture; /* Allocated capture buffer, or NULL for none. Always null terminated */
 #if defined(USE_TERMIOS)
@@ -174,7 +178,6 @@ struct current {
 #elif defined(USE_WINCONSOLE)
     HANDLE outh; /* Console output handle */
     HANDLE inh; /* Console input handle */
-    int rows;   /* Screen rows */
     int x;      /* Current column during output */
     int y;      /* Current row */
 #endif
@@ -182,6 +185,10 @@ struct current {
 
 static int fd_read(struct current *current);
 static int getWindowSize(struct current *current);
+static void set_current(struct current *current, const char *str);
+static void refreshLine(const char *prompt, struct current *current);
+static void refreshPage(const struct linenoiseCompletions * lc, struct current *current);
+
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -308,6 +315,11 @@ static int outputChars(struct current *current, const char *buf, int len)
     return write(current->fd, buf, len);
 }
 
+static int newLine(struct current *current)
+{
+    return outputChars(current, "\n", 1);
+}
+
 static void outputControlChar(struct current *current, char ch)
 {
     fd_printf(current->fd, "\x1b[7m^%c\x1b[0m", ch);
@@ -393,7 +405,7 @@ static int countColorControlChars(const char* prompt)
         expect_bracket,
         expect_trail
     } state = search_esc;
-    int len = 0, found = 0;
+    int len = 0, found = 0, flags_counter = 0;
     char ch;
 
     /* XXX: Strictly we should be checking utf8 chars rather than
@@ -405,6 +417,10 @@ static int countColorControlChars(const char* prompt)
         case search_esc:
             if (ch == '\x1b') {
                 state = expect_bracket;
+            } else {
+                if(2>=(int)ch) {
+                 flags_counter += 1;
+                }
             }
             break;
         case expect_bracket:
@@ -430,7 +446,7 @@ static int countColorControlChars(const char* prompt)
         }
     }
 
-    return found;
+    return found + flags_counter;
 }
 
 /**
@@ -482,6 +498,7 @@ static int getWindowSize(struct current *current)
 
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col != 0) {
         current->cols = ws.ws_col;
+        current->rows = ws.ws_row;
         return 0;
     }
 
@@ -630,6 +647,7 @@ static void disableRawMode(struct current *current)
 static void clearScreen(struct current *current)
 {
     COORD topleft = { 0, 0 };
+    current->x = current->y = 0;
     DWORD n;
 
     FillConsoleOutputCharacter(current->outh, ' ',
@@ -650,13 +668,22 @@ static void cursorToLeft(struct current *current)
     current->x = 0;
 }
 
+static int newLine(struct current *current)
+{
+    current->y += 1;
+    COORD pos = { (SHORT)0, (SHORT)current->y };
+    DWORD n;
+    SetConsoleCursorPosition(current->outh, pos);
+    return 0;
+}
+
 static int outputChars(struct current *current, const char *buf, int len)
 {
     COORD pos = { (SHORT)current->x, (SHORT)current->y };
     DWORD n;
-
     WriteConsoleOutputCharacter(current->outh, buf, len, pos, &n);
     current->x += len;
+    
     return 0;
 }
 
@@ -786,7 +813,78 @@ static int get_char(struct current *current, int pos)
     }
     return -1;
 }
+static void displayItems(const struct linenoiseCompletions * lc, struct current *current, int max_len)
+{ 
+  int wcols;
+  int cols;
+  int rows;
+  int i, j;
 
+  getWindowSize(current);
+  wcols = current->cols; 
+  cols = max_len > wcols ? 1 : wcols/(max_len+2);
+  rows = (int)ceil((float)lc->len/cols);
+
+  for(i=0;i<rows; i++) {
+    newLine(current);
+    for(j=0; j<cols; j++){
+      int idx;
+      const char * row_content;
+      setCursorPos(current, j * (max_len + 2));
+      idx = j*rows +i;
+      if(idx>=lc->len) {
+         break;
+      }
+      row_content = lc->cvec[j * rows + i];
+      outputChars(current, row_content, strlen(row_content)); 
+    }
+  }
+  newLine(current);
+}
+
+static void refreshPage(const struct linenoiseCompletions * lc, struct current *current)
+{
+    int j;
+    size_t common_min_len = INT_MAX; 
+    size_t max_len = 0;
+    char * min_chars = NULL;
+    for(j=0; j<lc->len; j++) {
+      size_t j_len = strlen(lc->cvec[j]);
+      if(min_chars == NULL) {
+        min_chars = lc->cvec[j];
+        common_min_len = j_len;
+        max_len = strlen(lc->cvec[j]);
+      } else {
+        /*
+         * compute maximal length of common string 
+         */ 
+        size_t tmp_len = 0;
+        char * c_min_char = min_chars;
+        char * j_chars = lc->cvec[j];
+        int k=0;
+        while(c_min_char[k] == j_chars[k]) {
+          tmp_len++;
+          k += 1; 
+        }
+        if(common_min_len > tmp_len && tmp_len>0) {
+                common_min_len  = tmp_len;
+        }
+        max_len = max_len < strlen(lc->cvec[j]) ? strlen(lc->cvec[j]) : max_len;
+      } 
+    }
+    displayItems(lc, current, max_len);
+    newLine(current);
+    if(min_chars!=NULL) {
+      // char * new_buf = strndup(min_chars, common_min_len);
+      char * new_buf = malloc(common_min_len + 1);
+      memcpy(new_buf, min_chars, common_min_len);
+      new_buf[common_min_len] = '\0';
+      set_current(current, new_buf); 
+      // this is posible because set_current copies the given pointer
+      free(new_buf);
+    }
+    refreshLine(current->prompt, current);
+}
 static void refreshLine(const char *prompt, struct current *current)
 {
     int plen;
@@ -805,7 +903,6 @@ static void refreshLine(const char *prompt, struct current *current)
 
     plen = strlen(prompt);
     pchars = utf8_strlen(prompt, plen);
-
     /* Scan the prompt for embedded ansi color control sequences and
      * discount them as characters/columns.
      */
@@ -881,10 +978,9 @@ static void refreshLine(const char *prompt, struct current *current)
         }
     }
     outputChars(current, buf, b);
-
     /* Erase to right, move cursor to original position */
     eraseEol(current);
-    setCursorPos(current, pos + pchars + backup);
+    setCursorPos(current, pos + pchars + backup );
 }
 
 static void set_current(struct current *current, const char *str)
@@ -1055,7 +1151,7 @@ static void freeCompletions(linenoiseCompletions *lc) {
 }
 
 static int completeLine(struct current *current) {
-    linenoiseCompletions lc = { 0, NULL };
+    linenoiseCompletions lc = { 0, NULL, 0 };
     int c = 0;
 
     completionCallback(current->buf,&lc);
@@ -1063,6 +1159,12 @@ static int completeLine(struct current *current) {
         beep();
     } else {
         size_t stop = 0, i = 0;
+
+        if(lc.len>1 && lc.multiLine) {
+           refreshPage(&lc, current);
+           freeCompletions(&lc);
+            return c;
+        }
 
         while(!stop) {
             /* Show completion or original buffer */
@@ -1162,6 +1264,14 @@ process_char:
         case ctrl('C'):     /* ctrl-c */
             errno = EAGAIN;
             return -1;
+#ifndef _WIN32
+        case ctrl('Z'):
+            disableRawMode(current);
+	    kill(0, SIGTSTP);
+            enableRawMode(current); 
+            refreshLine(current->prompt, current);
+            break;
+#endif
         case 127:   /* backspace */
         case ctrl('H'):
             if (remove_char(current, current->pos - 1) == 1) {

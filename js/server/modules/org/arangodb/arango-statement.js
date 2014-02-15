@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -27,6 +27,8 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+module.isSystem = true;
 
 var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
 var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;

@@ -204,13 +204,6 @@ sbin_PROGRAMS = \
 bin_SCRIPTS =
 
 ################################################################################
-### @brief uninstalled programs
-################################################################################
-
-noinst_PROGRAMS = \
-	bin/check-server
-
-################################################################################
 ### @brief /etc data
 ################################################################################
 
@@ -227,8 +220,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/common -name "*.js" -print) \
 	$(shell find @srcdir@/js/server -name "*.js" -print) \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
-	$(shell find @srcdir@/js/node -type f -print) \
-	$(shell find @srcdir@/js/npm -type f "(" -name .travis.yml -o -name .npmignore -o -print ")") \
+	$(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")") \
 	$(shell find @srcdir@/js/apps/system -type f -print)
 
 if ENABLE_MRUBY
