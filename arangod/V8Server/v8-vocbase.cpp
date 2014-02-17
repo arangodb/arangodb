@@ -8910,7 +8910,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
     
-    return scope.Close(JS_CreateDatabase_Coordinator(argv));
+    v8::Handle<v8::Value> ret = JS_CreateDatabase_Coordinator(argv);
+    return scope.Close(ret);
   }
 #endif
   

@@ -494,36 +494,129 @@ SimpleQueryByExample.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function rangedQuery (collection, attribute, left, right, type, skip, limit) {
-  var idx = collection.lookupSkiplist(attribute);
-
-  if (idx === null) {
-    idx = collection.lookupUniqueSkiplist(attribute);
-
-    if (idx !== null) {
-      console.debug("found unique skip-list index %s", idx.id);
+  var documents;
+  var cluster = require("org/arangodb/cluster");
+    
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (limit > 0) {
+      if (skip >= 0) {
+        _limit = skip + limit;
+      }
     }
+                                     
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/range", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       attribute: attribute,
+                                       left: left,
+                                       right: right,
+                                       closed: type,
+                                       skip: 0, 
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var _documents = [ ], total = 0;
+    var result = cluster.wait(coord, shards);
+    var toSkip = skip, toLimit = limit;
+
+    if (toSkip < 0) {
+      // negative skip is special
+      toLimit = null;
+    }
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      total += body.total;
+
+      if (toSkip > 0) {
+        if (toSkip >= body.result.length) {
+          toSkip -= body.result.length;
+          return;
+        }
+         
+        body.result = body.result.slice(toSkip);
+        toSkip = 0;
+      }
+
+      if (toLimit !== null && toLimit !== undefined) {
+        if (body.result.length >= toLimit) {
+          body.result = body.result.slice(0, toLimit);
+          toLimit = 0;
+        }
+        else {
+          toLimit -= body.result.length;
+        }
+      }
+
+      _documents = _documents.concat(body.result);
+    });
+
+    if (shards.length > 1) {
+      var cmp = require("org/arangodb/ahuacatl").RELATIONAL_CMP;
+      _documents.sort(function (l, r) {
+        return cmp(l[attribute], r[attribute]); 
+      });
+    }
+     
+    if (skip < 0) {
+      // apply negative skip
+      _documents = _documents.slice(_documents.length + skip, limit || 100000000);
+    }
+
+    documents = { 
+      documents: _documents, 
+      count: _documents.length, 
+      total: total
+    };
   }
   else {
-    console.debug("found skip-list index %s", idx.id);
-  }
+    var idx = collection.lookupSkiplist(attribute);
 
-  if (idx !== null) {
-    var cond = {};
+    if (idx === null) {
+      idx = collection.lookupUniqueSkiplist(attribute);
 
-    if (type === 0) {
-      cond[attribute] = [ [ ">=", left ], [ "<", right ] ];
-    }
-    else if (type === 1) {
-      cond[attribute] = [ [ ">=", left ], [ "<=", right ] ];
+      if (idx !== null) {
+        console.debug("found unique skip-list index %s", idx.id);
+      }
     }
     else {
-      throw "unknown type";
+      console.debug("found skip-list index %s", idx.id);
     }
 
-    return collection.BY_CONDITION_SKIPLIST(idx.id, cond, skip, limit);
+    if (idx !== null) {
+      var cond = {};
+
+      if (type === 0) {
+        cond[attribute] = [ [ ">=", left ], [ "<", right ] ];
+      }
+      else if (type === 1) {
+        cond[attribute] = [ [ ">=", left ], [ "<=", right ] ];
+      }
+      else {
+        throw "unknown type";
+      }
+
+      documents = collection.BY_CONDITION_SKIPLIST(idx.id, cond, skip, limit);
+    }
+    else {
+      throw "not implemented";
+    }
   }
 
-  throw "not implemented";
+  return documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
