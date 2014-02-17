@@ -37,7 +37,6 @@
 /// values are allowed:
 ///
 ///   - "all": do all tests
-///   - "make"
 ///   - "config"
 ///   - "boost"
 ///   - "shell_server"
@@ -53,6 +52,7 @@
 ///   - "foxx-manager"
 ///   - "authentication"
 ///   - "authentication-parameters
+///   - "single": convenience to execute a single test file
 ///
 /// The following properties of `options` are defined:
 ///
@@ -65,6 +65,9 @@
 ///     memory checker
 ///   - `cluster`: if set to true the tests are run with the coordinator
 ///     of a small local cluster
+///   - `test`: path to single test to execute for "single" test target
+///   - `skipServer`: flag for "single" test target to skip the server test
+///   - `skipClient`: flag for "single" test target to skip the client test
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
@@ -82,6 +85,19 @@ var base64Encode = require("internal").base64Encode;
 var PortFinder = require("org/arangodb/cluster").PortFinder;
 var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+
+var optionsDefaults = { "cluster": false,
+                        "valgrind": false,
+                        "force": true,
+                        "skipBoost": false,
+                        "skipGeo": false,
+                        "skipAhuacatl": false,
+                        "skipRanges": false,
+                        "username": "root",
+                        "password": "",
+                        "test": undefined,
+                        "skipServer": false,
+                        "skipClient": false };
 
 function findTopDir () {
   return fs.normalize(fs.join(ArangoServerState.executablePath(), "..",".."));
@@ -427,6 +443,7 @@ testFuncs.config = function (options) {
   var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
             "arangosh"];
   var t;
+  var i;
   for (i = 0; i < ts.length; i++) {
     t = ts[i];
     results[t] = executeAndWait(fs.join(topDir,"bin",t),
@@ -461,30 +478,65 @@ testFuncs.boost = function (options) {
   return results;
 };
 
-testFuncs.dummy = function (options) {
+testFuncs.single = function (options) {
   var instanceInfo = startInstance("tcp",options);
-  print("Startup done.");
-  wait(3600);
+  var result = { };
+  var r;
+  if (options.test !== undefined) {
+    var te = options.test;
+    result.test = te;
+    if (!options.skipServer) {
+      print("\nTrying",te,"on server...");
+      try {
+        var t = 'var runTest = require("jsunity").runTest; '+
+                'return runTest("'+te+'");';
+        var o = makeAuthorisationHeaders(options);
+        o.method = "POST";
+        o.timeout = 24*3600;
+        r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
+        if (!r.error && r.code === 200) {
+          r = JSON.parse(r.body);
+        }
+      }
+      catch (err) {
+        r = err;
+      }
+      result.server = r;
+    }
+    if (!options.skipClient) {
+      var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                        "..",".."));
+      var args = makeTestingArgsClient(options);
+      args.push("--server.endpoint");
+      args.push(instanceInfo.endpoint);
+      args.push("--javascript.unit-tests");
+      args.push(fs.join(topDir,te));
+      print("\nTrying",te,"on client...");
+      var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                          "..","arangosh"));
+      result.client = executeAndWait(arangosh, args);
+    }
+  }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  return undefined;
+  return result;
+
 };
 
-var optionsDefaults = { "cluster": false,
-                        "valgrind": false,
-                        "force": true,
-                        "skipBoost": false,
-                        "skipGeo": false,
-                        "skipAhuacatl": false,
-                        "skipRanges": false,
-                        "username": "root",
-                        "password": "" };
+testFuncs.dummy = function (options) {
+  var instanceInfo = startInstance("tcp",options);
+  print("Startup done.");
+  //wait(3600);
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return true;
+};
 
 var allTests = 
   [
     "make",
-    "codebase_static",
     "config",
     "boost",
     "shell_server",
