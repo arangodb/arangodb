@@ -118,6 +118,9 @@
     // helper function to define a task that is run on upgrades only, but not on initialisation
     // of a new empty database
     function addUpgradeTask (name, description, fn) {
+      if (cluster.isCoordinator()) {
+        return;
+      }
       if (isInitialisation) {
         // if we are initialising a new database, set the task to completed
         // without executing it. this saves unnecessary migrations for empty
@@ -130,7 +133,7 @@
       }
     }
 
-    if (fs.exists(versionFile)) {
+    if (!cluster.isCoordinator() && fs.exists(versionFile)) {
       // VERSION file exists, read its contents
       var versionInfo = fs.read(versionFile);
 
@@ -262,263 +265,237 @@
       });
     }
 
-    if (! cluster.isCoordinator()) {
-      // set up the collection _users 
-      addTask("setupUsers", "setup _users collection", function () {
-        return createSystemCollection("_users", { waitForSync : true });
-      });
-    }
+    // set up the collection _users 
+    addTask("setupUsers", "setup _users collection", function () {
+      return createSystemCollection("_users", { waitForSync : true });
+    });
 
-    if (! cluster.isCoordinator()) {
-      // create a unique index on "user" attribute in _users
-      addTask("createUsersIndex", 
-              "create index on 'user' attribute in _users collection",
-        function () {
-          var users = getCollection("_users");
-          if (! users) {
-            return false;
-          }
-
-          users.ensureUniqueConstraint("user");
-
-          return true;
-        }
-      );
-    }
-  
-    if (! cluster.isCoordinator()) {
-      // add a default root user with no passwd
-      addTask("addDefaultUser", "add default root user", function () {
+    // create a unique index on "user" attribute in _users
+    addTask("createUsersIndex", 
+            "create index on 'user' attribute in _users collection",
+      function () {
         var users = getCollection("_users");
         if (! users) {
           return false;
         }
 
-        if (args && args.users) {
-          args.users.forEach(function(user) {
-            userManager.save(user.username, user.passwd, user.active, user.extra || { });
-          });
-        }
-
-        if (users.count() === 0) {
-          // only add account if user has not created his/her own accounts already
-          userManager.save("root", "", true);
-        }
+        users.ensureUniqueConstraint("user");
 
         return true;
-      });
-    }
+      }
+    );
   
-    if (! cluster.isCoordinator()) {
-      // set up the collection _graphs
-      addTask("setupGraphs", "setup _graphs collection", function () {
-        return createSystemCollection("_graphs", { waitForSync : true });
-      });
-    }
+    // add a default root user with no passwd
+    addTask("addDefaultUser", "add default root user", function () {
+      var users = getCollection("_users");
+      if (! users) {
+        return false;
+      }
+
+      if (args && args.users) {
+        args.users.forEach(function(user) {
+          userManager.save(user.username, user.passwd, user.active, user.extra || { });
+        });
+      }
+
+      if (users.count() === 0) {
+        // only add account if user has not created his/her own accounts already
+        userManager.save("root", "", true);
+      }
+
+      return true;
+    });
   
-    if (! cluster.isCoordinator()) {
-      // create a unique index on name attribute in _graphs
-      addTask("createGraphsIndex",
-              "create index on name attribute in _graphs collection",
-        function () {
-          var graphs = getCollection("_graphs");
+    // set up the collection _graphs
+    addTask("setupGraphs", "setup _graphs collection", function () {
+      return createSystemCollection("_graphs", { waitForSync : true });
+    });
+  
+    // create a unique index on name attribute in _graphs
+    addTask("createGraphsIndex",
+            "create index on name attribute in _graphs collection",
+      function () {
+        var graphs = getCollection("_graphs");
 
-          if (! graphs) {
-            return false;
-          }
-
-          graphs.ensureUniqueConstraint("name");
-
-          return true;
-        }
-      );
-    }
-
-    if (! cluster.isCoordinator()) {
-      // make distinction between document and edge collections
-      addUpgradeTask("addCollectionVersion",
-                    "set new collection type for edge collections and update collection version",
-        function () {
-          var collections = db._collections();
-          var i;
-
-          for (i in collections) {
-            if (collections.hasOwnProperty(i)) {
-              var collection = collections[i];
-
-              try {
-                if (collection.version() > 1) {
-                  // already upgraded
-                  continue;
-                }
-
-                if (collection.type() === 3) {
-                  // already an edge collection
-                  collection.setAttribute("version", 2);
-                  continue;
-                }
-
-                if (collection.count() > 0) {
-                  var isEdge = true;
-                  // check the 1st 50 documents from a collection
-                  var documents = collection.ALL(0, 50);
-                  var j;
-
-                  for (j in documents) {
-                    if (documents.hasOwnProperty(j)) {
-                      var doc = documents[j];
-
-                      // check if documents contain both _from and _to attributes
-                      if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
-                        isEdge = false;
-                        break;
-                      }
-                    }
-                  }
-
-                  if (isEdge) {
-                    collection.setAttribute("type", 3);
-                    logger.log("made collection '" + collection.name() + " an edge collection");
-                  }
-                }
-                collection.setAttribute("version", 2);
-              }
-              catch (e) {
-                logger.error("could not upgrade collection '" + collection.name() + "'");
-                return false;
-              }
-            }
-          }
-
-          return true;
-        }
-      );
-    }
-    
-    if (! cluster.isCoordinator()) {
-      // create the _modules collection
-      addTask("createModules", "setup _modules collection", function () {
-        return createSystemCollection("_modules");
-      });
-    }
-    
-    if (! cluster.isCoordinator()) {
-      // create the _routing collection
-      addTask("createRouting", "setup _routing collection", function () {
-        // needs to be big enough for assets
-        return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
-      });
-    }
-    
-    if (! cluster.isCoordinator()) {
-      // create the default route in the _routing collection
-      addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
-        var routing = getCollection("_routing");
-
-        if (! routing) {
+        if (! graphs) {
           return false;
         }
 
-        // first, check for "old" redirects
-        routing.toArray().forEach(function (doc) {
-          // check for specific redirects
-          if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
-            if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
-                doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
-              // remove old, non-working redirect
-              routing.remove(doc);
-            }
-          }
-        });
-
-        // add redirections to new location
-        [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
-          routing.save({
-            url: src,
-            action: {
-              "do": "org/arangodb/actions/redirectRequest",
-              options: {
-                permanently: true,
-                destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
-              }
-            },
-            priority: -1000000
-          });
-        });
+        graphs.ensureUniqueConstraint("name");
 
         return true;
-      });
-    }
-    
-    if (! cluster.isCoordinator()) {
-      // update markers in all collection datafiles to key markers
-      addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
+      }
+    );
+
+    // make distinction between document and edge collections
+    addUpgradeTask("addCollectionVersion",
+                  "set new collection type for edge collections and update collection version",
+      function () {
         var collections = db._collections();
         var i;
-        
+
         for (i in collections) {
           if (collections.hasOwnProperty(i)) {
             var collection = collections[i];
 
             try {
-              if (collection.version() >= 3) {
+              if (collection.version() > 1) {
                 // already upgraded
                 continue;
               }
 
-              if (collection.upgrade()) {
-                // success
-                collection.setAttribute("version", 3);
+              if (collection.type() === 3) {
+                // already an edge collection
+                collection.setAttribute("version", 2);
+                continue;
               }
-              else {
-                // fail
-                logger.error("could not upgrade collection datafiles for '"
-                              + collection.name() + "'");
-                return false;
+
+              if (collection.count() > 0) {
+                var isEdge = true;
+                // check the 1st 50 documents from a collection
+                var documents = collection.ALL(0, 50);
+                var j;
+
+                for (j in documents) {
+                  if (documents.hasOwnProperty(j)) {
+                    var doc = documents[j];
+
+                    // check if documents contain both _from and _to attributes
+                    if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
+                      isEdge = false;
+                      break;
+                    }
+                  }
+                }
+
+                if (isEdge) {
+                  collection.setAttribute("type", 3);
+                  logger.log("made collection '" + collection.name() + " an edge collection");
+                }
               }
+              collection.setAttribute("version", 2);
             }
             catch (e) {
-              logger.error("could not upgrade collection datafiles for '" 
-                            + collection.name() + "'");
+              logger.error("could not upgrade collection '" + collection.name() + "'");
               return false;
             }
           }
         }
 
         return true;
-      });
-    }
-  
-    if (! cluster.isCoordinator()) {
-      // set up the collection _aal
-      addTask("setupAal", "setup _aal collection", function () {
-        return createSystemCollection("_aal", { waitForSync : true });
-      });
-    }
+      }
+    );
     
-    if (! cluster.isCoordinator()) {
-      // create a unique index on collection attribute in _aal
-      addTask("createAalIndex",
-              "create index on collection attribute in _aal collection",
-        function () {
-          var aal = getCollection("_aal");
+    // create the _modules collection
+    addTask("createModules", "setup _modules collection", function () {
+      return createSystemCollection("_modules");
+    });
+    
+    // create the _routing collection
+    addTask("createRouting", "setup _routing collection", function () {
+      // needs to be big enough for assets
+      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
+    });
+    
+    // create the default route in the _routing collection
+    addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
+      var routing = getCollection("_routing");
 
-          if (! aal) {
+      if (! routing) {
+        return false;
+      }
+
+      // first, check for "old" redirects
+      routing.toArray().forEach(function (doc) {
+        // check for specific redirects
+        if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
+          if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
+              doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
+            // remove old, non-working redirect
+            routing.remove(doc);
+          }
+        }
+      });
+
+      // add redirections to new location
+      [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
+        routing.save({
+          url: src,
+          action: {
+            "do": "org/arangodb/actions/redirectRequest",
+            options: {
+              permanently: true,
+              destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
+            }
+          },
+          priority: -1000000
+        });
+      });
+
+      return true;
+    });
+    
+    // update markers in all collection datafiles to key markers
+    addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
+      var collections = db._collections();
+      var i;
+      
+      for (i in collections) {
+        if (collections.hasOwnProperty(i)) {
+          var collection = collections[i];
+
+          try {
+            if (collection.version() >= 3) {
+              // already upgraded
+              continue;
+            }
+
+            if (collection.upgrade()) {
+              // success
+              collection.setAttribute("version", 3);
+            }
+            else {
+              // fail
+              logger.error("could not upgrade collection datafiles for '"
+                            + collection.name() + "'");
+              return false;
+            }
+          }
+          catch (e) {
+            logger.error("could not upgrade collection datafiles for '" 
+                          + collection.name() + "'");
             return false;
           }
+        }
+      }
 
-          aal.ensureUniqueConstraint("name", "version");
-
-          return true;
-      });
-    }
+      return true;
+    });
+  
+    // set up the collection _aal
+    addTask("setupAal", "setup _aal collection", function () {
+      return createSystemCollection("_aal", { waitForSync : true });
+    });
     
-    if (! cluster.isCoordinator()) {
-      // set up the collection _aqlfunctions
-      addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-        return createSystemCollection("_aqlfunctions");
-      });
-    }
+    // create a unique index on collection attribute in _aal
+    addTask("createAalIndex",
+            "create index on collection attribute in _aal collection",
+      function () {
+        var aal = getCollection("_aal");
+
+        if (! aal) {
+          return false;
+        }
+
+        aal.ensureUniqueConstraint("name", "version");
+
+        return true;
+    });
+    
+    // set up the collection _aqlfunctions
+    addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
+      return createSystemCollection("_aqlfunctions");
+    });
 
     if (! cluster.isCoordinator()) {
       // set up the collection _trx
@@ -534,56 +511,52 @@
       });
     }
 
-    if (! cluster.isCoordinator()) {
-      // migration aql function names
-      addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
-        var funcs = getCollection('_aqlfunctions');
+    // migration aql function names
+    addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
+      var funcs = getCollection('_aqlfunctions');
 
-        if (! funcs) {
-          return false;
+      if (! funcs) {
+        return false;
+      }
+
+      var result = true;
+      funcs.toArray().forEach(function(f) {
+        var oldKey = f._key;
+        var newKey = oldKey.replace(/:{1,}/g, '::');
+
+        if (oldKey !== newKey) {
+          try {
+            var doc = { 
+              _key: newKey.toUpperCase(), 
+              name: newKey, 
+              code: f.code, 
+              isDeterministic: f.isDeterministic 
+            };
+             
+            funcs.save(doc);
+            funcs.remove(oldKey);
+          }
+          catch (err) {
+            result = false;
+          }
         }
-
-        var result = true;
-        funcs.toArray().forEach(function(f) {
-          var oldKey = f._key;
-          var newKey = oldKey.replace(/:{1,}/g, '::');
-
-          if (oldKey !== newKey) {
-            try {
-              var doc = { 
-                _key: newKey.toUpperCase(), 
-                name: newKey, 
-                code: f.code, 
-                isDeterministic: f.isDeterministic 
-              };
-               
-              funcs.save(doc);
-              funcs.remove(oldKey);
-            }
-            catch (err) {
-              result = false;
-            }
-          }
-        });
-
-        return result;
       });
-    }
 
-    if (! cluster.isCoordinator()) {
-      addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
-        var potentialFoxxes = getCollection('_routing');
+      return result;
+    });
 
-        potentialFoxxes.iterate(function (maybeFoxx) {
-          if (maybeFoxx.foxxMount) {
-            // This is a Foxx! Let's delete it
-            potentialFoxxes.remove(maybeFoxx._id);
-          }
-        });
+    addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
+      var potentialFoxxes = getCollection('_routing');
 
-        return true;
+      potentialFoxxes.iterate(function (maybeFoxx) {
+        if (maybeFoxx.foxxMount) {
+          // This is a Foxx! Let's delete it
+          potentialFoxxes.remove(maybeFoxx._id);
+        }
       });
-    }
+
+      return true;
+    });
 
     
     // loop through all tasks and execute them
@@ -615,10 +588,12 @@
           // success
           lastTasks[task.name] = true;
 
-          // save/update version info
-          fs.write(
-            versionFile,
-            JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          if (!cluster.isCoordinator()) {
+            // save/update version info
+            fs.write(
+              versionFile,
+              JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          }
 
           logger.log("Task successful");
         }
@@ -630,10 +605,12 @@
       }
     }
 
-    // save file so version gets saved even if there are no tasks
-    fs.write(
-      versionFile,
-      JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    if (!cluster.isCoordinator()) {
+      // save file so version gets saved even if there are no tasks
+      fs.write(
+        versionFile,
+        JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    }
 
     logger.log(procedure + " successfully finished");
 
@@ -653,6 +630,10 @@
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
+  if (cluster.isCoordinator()) {
+    return runUpgrade(currentVersion);
+  }
+
   if (! fs.exists(versionFile)) {
     logger.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);

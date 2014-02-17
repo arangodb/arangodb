@@ -579,7 +579,10 @@ EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, T
   }
 
   ev_io* w = (ev_io*) watcher;
-  ev_io_init(w, socketCallback, TRI_get_fd_of_socket(socket), flags);
+  // Note that we do not use TRI_get_fd_or_handle_of_socket here because even
+  // under Windows we want get the entry fileDescriptor here because
+  // of the reason that is mentioned above!
+  ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
   ev_io_start(watcher->loop, w);
 
   return watcher->token;

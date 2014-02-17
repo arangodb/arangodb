@@ -385,6 +385,16 @@ testFuncs.shell_server_ahuacatl = function(options) {
   return "skipped";
 };
 
+function waitForCompletion (pid) {
+  var stat;
+  while (true) {
+    wait(0.1);
+    stat = statusExternal(pid);
+    if (stat.status !== "RUNNING") { break; }
+  }
+  return stat.exit;
+}
+
 testFuncs.shell_client = function(options) {
   var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                     "..",".."));
@@ -404,14 +414,7 @@ testFuncs.shell_client = function(options) {
     var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                         "..","arangosh"));
     var pid = executeExternal(arangosh, args);
-    var stat;
-    while (true) {
-      wait(0.1);
-      stat = statusExternal(pid);
-      if (stat.status !== "RUNNING") { break; }
-    }
-    r = stat.exit;
-    results[te] = r;
+    results[te] = waitForCompletion(pid);
     args.pop();
     if (r !== 0 && !options.force) {
       break;
@@ -420,6 +423,22 @@ testFuncs.shell_client = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  return results;
+};
+
+testFuncs.config = function (options) {
+  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                    "..",".."));
+  var results = {};
+  var pid, r;
+  pid = executeExternal(fs.join(topDir,"bin","arangod"),
+                        ["--configuration",
+                         fs.join(topDir,"etc","arangodb","arangod.conf"),
+                         "--help"]);
+  r = waitForCompletion(pid);
+  results.arangod = r;
+  print("Config test arangod...",r);
+
   return results;
 };
 
@@ -435,7 +454,7 @@ testFuncs.dummy = function (options) {
 
 var optionsDefaults = { "cluster": false,
                         "valgrind": false,
-                        "force": false,
+                        "force": true,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipAhuacatl": false,
