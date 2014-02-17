@@ -159,7 +159,7 @@
       _.each(list, function(url, k) {
         var v = {};
         v.name = k;
-        v.url = url;
+        v.address = url;
         resList.push(v);
         if (_.contains(noBeat, k)) {
           v.status = "critical";

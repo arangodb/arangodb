@@ -188,7 +188,7 @@
 
     "css/cluster.css": {
         "files": [
-
+         "frontend/scss/cluster.css"
         ]
     },
 
