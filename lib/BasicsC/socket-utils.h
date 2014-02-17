@@ -259,7 +259,7 @@ static inline void TRI_invalidatesocket (TRI_socket_t* socket) {
 
 static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t socket) {
 #ifdef _WIN32
-  return static_cast<int>(socket.fileHandle);
+  return (int)(socket.fileHandle);
 #else
   return socket.fileDescriptor;
 #endif
