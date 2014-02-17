@@ -34,7 +34,9 @@ rspec --color --format d \
         api-simple-example-spec.rb \
         api-simple-fulltext-spec.rb \
         api-simple-geo-spec.rb \
+        api-simple-hash-spec.rb \
         api-simple-range-spec.rb \
+        api-simple-skiplist-spec.rb \
         api-simple-spec.rb \
         api-structures.rb \
 	api-transactions-spec.rb \
