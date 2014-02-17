@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
 /*global require, exports, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,14 +293,7 @@ function byExample (data) {
       continue;
     }
 
-    try {
-      idx = collection.lookupIndex(checks[k]);
-    }
-    catch (e) {
-      // ignore any errors we counter during index lookup
-      throw e;
-    }
-
+    idx = collection.lookupIndex(checks[k]);
     if (idx !== null) {
       // found an index
       break;
