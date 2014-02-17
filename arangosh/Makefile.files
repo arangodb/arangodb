@@ -103,25 +103,6 @@ bin_arangosh_SOURCES = \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangosh.cpp
 
-################################################################################
-### @brief program "check-server"
-################################################################################
-
-bin_check_server_CPPFLAGS = \
-	-I@top_srcdir@/arangosh \
-	$(AM_CPPFLAGS) 
-
-bin_check_server_LDADD = \
-	lib/libarango_v8.a \
-	lib/libarango_client.a \
-	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@
-
-bin_check_server_SOURCES = \
-	arangosh/V8Client/V8ClientConnection.cpp \
-	arangosh/V8Client/check-server.cpp
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------

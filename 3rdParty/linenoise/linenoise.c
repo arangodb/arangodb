@@ -114,6 +114,7 @@
 #define snprintf _snprintf
 #endif
 #else
+#include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
@@ -1263,6 +1264,14 @@ process_char:
         case ctrl('C'):     /* ctrl-c */
             errno = EAGAIN;
             return -1;
+#ifndef _WIN32
+        case ctrl('Z'):
+            disableRawMode(current);
+	    kill(0, SIGTSTP);
+            enableRawMode(current); 
+            refreshLine(current->prompt, current);
+            break;
+#endif
         case 127:   /* backspace */
         case ctrl('H'):
             if (remove_char(current, current->pos - 1) == 1) {

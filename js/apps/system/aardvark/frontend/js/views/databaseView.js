@@ -105,7 +105,6 @@
           self.handleError(err.status, err.statusText, name);
         },
         success: function(data) {
-          arangoHelper.arangoNotification("Database " + name + " created.");
           self.hideModal();
           self.updateDatabases();
         }
