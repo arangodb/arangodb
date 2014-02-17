@@ -34,7 +34,13 @@
             statCollect.fetch();
         });
 
+        var byAddress = this.dbservers.byAddress();
+        byAddress = this.coordinators.byAddress(byAddress);
+        console.log(byAddress);
+
     },
+
+
 
     render: function() {
       console.log(this.data);
