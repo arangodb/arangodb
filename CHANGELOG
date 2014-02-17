@@ -1,7 +1,9 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
-* removed chack-server
+* added AQL SLICE function to extract slices from lists
+
+* removed check-server binary
 
 * made module loader more node compatible
 
