@@ -2544,12 +2544,16 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract the arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>, <wait>)");
   }
 
   TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
-  TRI_external_status_t external = TRI_CheckExternalProcess(pid);
+  bool wait = false;
+  if (argv.Length() == 2) {
+    wait = TRI_ObjectToBoolean(argv[1]);
+  }
+  TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   const char* status = "UNKNOWN";
