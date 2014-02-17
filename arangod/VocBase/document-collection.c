@@ -5920,27 +5920,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
     return NULL;
   }
 
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-
-  // .............................................................................
-  // attempt to go through the indexes within the collection and see if we can
-  // locate the index
-  // .............................................................................
-
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, false);
-
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
 
   // .............................................................................
   // release memory allocated to vector

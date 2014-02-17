@@ -1,6 +1,8 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* removed chack-server
+
 * made module loader more node compatible
 
 * the startup option `--javascript.package-path` for arangosh is now deprecated and does

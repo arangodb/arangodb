@@ -37,7 +37,6 @@ set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
-set(BIN_CHECK_SERVER  check-server)
 
 set(SCRIPT_ARANGO_DFDB  arango-dfdb)
 set(SCRIPT_FOXX_MANAGER foxx-manager)
@@ -200,6 +199,12 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
 ################################################################################
 
 set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+
+################################################################################
+### @brief TRI_RESOURCEDIR
+################################################################################
+
+set(TRI_RESOURCEDIR "resources")
 
 ################################################################################
 ### @brief TRI_BINDIR
@@ -729,8 +734,13 @@ if (MSVC)
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
 
+
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
+
+  install(
+    DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/"
+    DESTINATION ${TRI_RESOURCEDIR})
 
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
 
@@ -739,10 +749,17 @@ if (MSVC)
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
   
-  # set(CPACK_PACKAGE_EXECUTABLES "arangosh;Arango Shell;arangod;Arango Server")
-  set(CPACK_NSIS_CREATE_ICONS_EXTRA "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '${ARANGO_ICON}'
-                                     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '${ARANGO_ICON}'
-                                     ")
+#  set(CPACK_PACKAGE_EXECUTABLES "arangosh;Arango Shell;arangod;Arango Server")
+  set(CPACK_NSIS_CREATE_ICONS_EXTRA 
+    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\Uninstall.exe'
+     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
+    ")
+# Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+# they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  set(CPACK_NSIS_DELETE_ICONS_EXTRA 
+    "Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Server.lnk'
+     Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Shell.lnk'
+    ")
   set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
 
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
