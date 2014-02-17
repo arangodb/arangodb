@@ -233,7 +233,7 @@ function getLocalCollections () {
         }
       }
 
-      result[name] = p;
+      result[name] = data;
     }
   });
 

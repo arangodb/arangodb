@@ -93,6 +93,10 @@ void ConsoleThread::run () {
     _applicationV8->exitContext(_context);
     _done = 1;
   }
+  catch (const char*) {
+    _applicationV8->exitContext(_context);
+    _done = 1;
+  }
   catch (...) {
     _applicationV8->exitContext(_context);
     _done = 1;
@@ -141,8 +145,8 @@ void ConsoleThread::inner () {
     }
 
     if (input == 0) {
-      _applicationServer->beginShutdown();
       _userAborted = true;
+      _applicationServer->beginShutdown();
 
       // this will be caught by "run" 
       throw "user aborted";
