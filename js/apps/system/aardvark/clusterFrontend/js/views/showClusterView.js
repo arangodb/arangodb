@@ -78,7 +78,7 @@
         var svg = d3.select("#clusterGraphs").append("svg")
             .attr("width", w)
             .attr("height", h)
-            .attr("class", "chart")
+            .attr("class", "clusterChart")
             .append("g") //someone to transform. Groups data.
             .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
 
