@@ -76,6 +76,7 @@
       });
 
       this.foxxList = new window.FoxxCollection();
+      this.notificationList = new window.NotificationCollection();
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView();

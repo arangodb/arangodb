@@ -3068,21 +3068,21 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   rt = v8g->VocbaseColTempl;
 
-  TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
-  TRI_AddMethodVocbase(rt, "ANY", JS_AnyQuery);
-  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
-  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
+  TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery, true);
+  TRI_AddMethodVocbase(rt, "ANY", JS_AnyQuery, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist, true);
   TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
-  TRI_AddMethodVocbase(rt, "FIRST", JS_FirstQuery);
-  TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
+  TRI_AddMethodVocbase(rt, "FIRST", JS_FirstQuery, true);
+  TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery, true);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
-  TRI_AddMethodVocbase(rt, "LAST", JS_LastQuery);
-  TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
+  TRI_AddMethodVocbase(rt, "LAST", JS_LastQuery, true);
+  TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true); 

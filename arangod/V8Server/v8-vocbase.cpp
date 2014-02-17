@@ -807,7 +807,8 @@ bool ExtractBoolFlag (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
-                                TRI_json_t* json) {
+                                TRI_json_t* json, 
+                                bool create) {
   vector<string> fields;
       
   TRI_json_t* fieldJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
@@ -839,7 +840,7 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
 
       const string f = TRI_ObjectToString(fieldPair->Get(0));
 
-      if (f.empty() || f[0] == '_') {
+      if (f.empty() || (create && f[0] == '_')) {
         // accessing internal attributes is disallowed
         res = TRI_ERROR_BAD_PARAMETER;
         break;
@@ -897,7 +898,8 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const& obj,
 
 int ProcessIndexFields (v8::Handle<v8::Object> const& obj,
                         TRI_json_t* json,
-                        int numFields = 0) {
+                        int numFields,
+                        bool create) {
   vector<string> fields;
 
   if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
@@ -913,7 +915,7 @@ int ProcessIndexFields (v8::Handle<v8::Object> const& obj,
 
       const string f = TRI_ObjectToString(fieldList->Get(i));
 
-      if (f.empty() || f[0] == '_') {
+      if (f.empty() || (create && f[0] == '_')) {
         // accessing internal attributes is disallowed
         return TRI_ERROR_BAD_PARAMETER;
       }
@@ -996,8 +998,9 @@ int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 1);
+                                 TRI_json_t* json,
+                                 bool create) {
+  int res = ProcessIndexFields(obj, json, 1, create);
   ProcessIndexUniqueFlag(obj, json);
   ProcessIndexIgnoreNullFlag(obj, json);
   ProcessIndexGeoJsonFlag(obj, json);
@@ -1009,8 +1012,9 @@ static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 2);
+                                 TRI_json_t* json,
+                                 bool create) {
+  int res = ProcessIndexFields(obj, json, 2, create);
   ProcessIndexUniqueFlag(obj, json);
   ProcessIndexIgnoreNullFlag(obj, json);
   return res;
@@ -1021,8 +1025,9 @@ static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const& obj,
-                                 TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json);
+                                 TRI_json_t* json,
+                                 bool create) {
+  int res = ProcessIndexFields(obj, json, 0, create);
   ProcessIndexUniqueFlag(obj, json);
   return res;
 }
@@ -1032,8 +1037,9 @@ static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json);
+                                     TRI_json_t* json,
+                                     bool create) {
+  int res = ProcessIndexFields(obj, json, 0, create);
   ProcessIndexUniqueFlag(obj, json);
   return res;
 }
@@ -1043,8 +1049,9 @@ static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessBitarrayIndexFields(obj, json);
+                                     TRI_json_t* json,
+                                     bool create) {
+  int res = ProcessBitarrayIndexFields(obj, json, create);
   ProcessIndexUndefinedFlag(obj, json);
  
   if (TRI_LookupArrayJson(json, "unique") != NULL) {
@@ -1060,8 +1067,9 @@ static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const& obj,
-                                     TRI_json_t* json) {
-  int res = ProcessIndexFields(obj, json, 1);
+                                     TRI_json_t* json,
+                                     bool create) {
+  int res = ProcessIndexFields(obj, json, 1, create);
 
   // handle "minLength" attribute
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
@@ -1192,22 +1200,22 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
     }
 
     case TRI_IDX_TYPE_GEO1_INDEX:
-      res = EnhanceJsonIndexGeo1(obj, json);
+      res = EnhanceJsonIndexGeo1(obj, json, create);
       break;
     case TRI_IDX_TYPE_GEO2_INDEX:
-      res = EnhanceJsonIndexGeo2(obj, json);
+      res = EnhanceJsonIndexGeo2(obj, json, create);
       break;
     case TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(obj, json);
+      res = EnhanceJsonIndexHash(obj, json, create);
       break;
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(obj, json);
+      res = EnhanceJsonIndexSkiplist(obj, json, create);
       break;
     case TRI_IDX_TYPE_BITARRAY_INDEX:
-      res = EnhanceJsonIndexBitarray(obj, json);
+      res = EnhanceJsonIndexBitarray(obj, json, create);
       break;
     case TRI_IDX_TYPE_FULLTEXT_INDEX: 
-      res = EnhanceJsonIndexFulltext(obj, json);
+      res = EnhanceJsonIndexFulltext(obj, json, create);
       break;
     case TRI_IDX_TYPE_CAP_CONSTRAINT: 
       res = EnhanceJsonIndexCap(obj, json);
@@ -1340,6 +1348,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorPointer(&values);
     TRI_DestroyVectorPointer(&attributes);
