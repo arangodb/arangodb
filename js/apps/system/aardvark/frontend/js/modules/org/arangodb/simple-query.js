@@ -140,9 +140,26 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
+    var method = "by-example";
+    if (this.hasOwnProperty("_type")) {
+      data.index = this._index;
+
+      switch (this._type) {
+        case "hash":
+          method = "by-example-hash";
+          break;
+        case "skiplist":
+          method = "by-example-skiplist";
+          break;
+        case "bitarray":
+          method = "by-example-bitarray";
+          break;
+      }
+    }
+
     var requestResult = this._collection._database._connection.PUT(
-      "/_api/simple/by-example", JSON.stringify(data));
+      "/_api/simple/" + method, JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -150,6 +167,7 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
 
     if (requestResult.hasOwnProperty("count")) {
       this._countQuery = requestResult.count;
+      this._countTotal = requestResult.count;
     }
   }
 };

@@ -198,14 +198,10 @@ install(
   REGEX "^.*/server/tests$" EXCLUDE)
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/npm
-  DESTINATION share/arangodb/js
-  REGEX ".travis.yml" EXCLUDE
-  REGEX ".npmignore" EXCLUDE)
-
-install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
   DESTINATION share/arangodb/js
+  REGEX ".travis.yml" EXCLUDE
+  REGEX ".npmignore" EXCLUDE
   PATTERN "databases" EXCLUDE)
 
 ################################################################################

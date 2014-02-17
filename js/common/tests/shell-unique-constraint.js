@@ -174,35 +174,38 @@ function UniqueConstraintSuite() {
       collection.save({ c : 1 });
       collection.save({ c : 1 });
 
-      var s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1, b : 1 });
+      var s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
+      assertEqual(1, s.count());
+      assertEqual([d1], s.toArray().map(fun));
 
-      assertEqual(1, s.total);
-      assertEqual(1, s.count);
-      assertEqual([d1], s.documents.map(fun));
+      s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
+      assertEqual(1, s.count());
+      assertEqual([d1], s.toArray().map(fun));
+      
+      s = collection.byExampleHash(idx.id, { a : 1, b : "foo" });
+      assertEqual(0, s.count());
+      assertEqual([ ], s.toArray().map(fun));
 
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1, b : null });
+      try {
+        collection.byExampleHash(idx.id, { a : 1 }).toArray();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
 
-      assertEqual(0, s.total);
-      assertEqual(0, s.count);
-      assertEqual([], s.documents.map(fun));
+      try {
+        collection.byExampleHash(idx.id, { a : null }).toArray();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
 
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : 1 });
-
-      assertEqual(0, s.total);
-      assertEqual(0, s.count);
-      assertEqual([], s.documents.map(fun));
-
-      s = collection.BY_EXAMPLE_HASH(idx.id, { a : null });
-
-      assertEqual(0, s.total);
-      assertEqual(0, s.count);
-      assertEqual([], s.documents.map(fun));
-
-      s = collection.BY_EXAMPLE_HASH(idx.id, { c : 1 });
-
-      assertEqual(0, s.total);
-      assertEqual(0, s.count);
-      assertEqual([], s.documents.map(fun));
+      try {
+        collection.byExampleHash(idx.id, { c : 1 }).toArray();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
+      }
     }
   };
 }

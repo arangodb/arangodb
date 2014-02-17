@@ -279,6 +279,14 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a cursor response
+////////////////////////////////////////////////////////////////////////////////
+          
+function createCursorResponse (req, res, cursor) {
+  actions.resultCursor(req, res, cursor, undefined, { countRequested: true });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief setup an index query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -318,7 +326,7 @@ function setupIndexQuery (name, func, isExampleQuery) {
               return;
             }
             
-            result = collection[func](index, body.example, skip, limit);
+            result = collection[func](index, body.example);
           }
           else {
             if (typeof body.condition !== "object" || Array.isArray(body.condition)) {
@@ -328,8 +336,15 @@ function setupIndexQuery (name, func, isExampleQuery) {
             
             result = collection[func](index, body.condition, skip, limit);
           }
+            
+          if (skip > 0) {
+            result.skip(skip);
+          }
+          if (limit !== undefined && limit !== null) {
+            result.limit(limit);
+          }
           
-          actions.resultCursor(req, res, CREATE_CURSOR(result.documents, true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
       catch (err) {
@@ -345,9 +360,9 @@ function setupIndexQuery (name, func, isExampleQuery) {
 
 function setupIndexQueries () {
   var map = {
-    "by-example-hash"       : [ "BY_EXAMPLE_HASH", true ],
-    "by-example-skiplist"   : [ "BY_EXAMPLE_SKIPLIST", true ],
-    "by-example-bitarray"   : [ "BY_EXAMPLE_BITARRAY", true ],
+    "by-example-hash"       : [ "byExampleHash", true ],
+    "by-example-skiplist"   : [ "byExampleSkiplist", true ],
+    "by-example-bitarray"   : [ "byExampleBitarray", true ],
     "by-condition-skiplist" : [ "BY_CONDITION_SKIPLIST", false ],
     "by-condition-bitarray" : [ "BY_CONDITION_BITARRAY", false ]
   };
@@ -486,7 +501,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
@@ -760,7 +775,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
@@ -936,7 +951,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
           
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
@@ -1059,7 +1074,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
           
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
@@ -1213,7 +1228,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
@@ -1589,52 +1604,6 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all documents of a collection matching a given example
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : API + "BY-EXAMPLE-HASH",
-  context : "api",
-
-  callback : function (req, res) {
-    try {
-      var body = actions.getJsonBody(req, res);
-
-      if (body === undefined) {
-        return;
-      }
-
-      if (req.requestType !== actions.PUT) {
-        actions.resultUnsupported(req, res);
-      }
-      else {
-        var limit = body.limit;
-        var skip = body.skip;
-        var name = body.collection;
-        var example = body.example;
-        var index = body.index;
-        var collection = db._collection(name);
-
-        if (collection === null) {
-          actions.collectionNotFound(req, res, name);
-        }
-        else if (typeof example !== "object") {
-          actions.badParameter(req, res, "example");
-        }
-        else {
-          var result = collection.BY_EXAMPLE_HASH(index, example, skip, limit);
-
-          actions.resultOk(req, res, actions.HTTP_OK, result);
-        }
-      }
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_put_api_simple_range
 /// @brief returns all documents of a collection within a range
 ///
@@ -1750,7 +1719,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
       }
     }
