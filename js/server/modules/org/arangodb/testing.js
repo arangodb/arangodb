@@ -436,11 +436,11 @@ testFuncs.config = function (options) {
                          fs.join(topDir,"etc","arangodb","arangod.conf"),
                          "--help"]);
   r = waitForCompletion(pid);
-  results["arangod"] = r;
+  results.arangod = r;
   print("Config test arangod...",r);
 
   return results;
-}
+};
 
 testFuncs.dummy = function (options) {
   var instanceInfo = startInstance("tcp",options);
