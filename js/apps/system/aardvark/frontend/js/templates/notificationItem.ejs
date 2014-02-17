@@ -1,0 +1,10 @@
+
+          <% var i; for (i=0; i < notifications.length; i++) { %>
+            <li class="dropdown-item">
+              <div class="notificationItem">
+                <a class="notificationItemTitle"><%=notifications[i].attributes.title%></a>
+                <div class="notificationItemContent"><%=notifications[i].attributes.content%></div>
+                <i class="fa fa-times-circle-o"></i>
+              </div>
+            </li>
+          <% console.log(i); } %>
