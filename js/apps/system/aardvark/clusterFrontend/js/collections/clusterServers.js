@@ -16,6 +16,21 @@
       this.interval = 1000;
     },
 
+    byAddress: function (res) {
+      this.fetch({
+        async: false
+      });
+      res = res || {};
+      this.forEach(function(m) {
+        var addr = m.get("address");
+        addr = addr.substr(6);
+        addr = addr.split(":")[0];
+        res[addr] = res[addr] || [];
+        res[addr].push(m);
+      });
+      return res;
+    },
+
     getList: function() {
       this.fetch({
         async: false
