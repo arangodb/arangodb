@@ -147,15 +147,19 @@ ArangoCollection.prototype.truncate = function () {
 ///
 /// @code
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });
-/// ["93013/0"]
+/// ["example/0"]
 /// arango> db.example.index("93013/0");
-/// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
+/// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.index = function (id) {
   var indexes = this.getIndexes();
   var i;
+  
+  if (typeof id === "object" && id.hasOwnProperty("id")) {
+    id = id.id;
+  }
 
   if (typeof id === "string") {
     var pa = ArangoDatabase.indexRegex.exec(id);
@@ -163,9 +167,6 @@ ArangoCollection.prototype.index = function (id) {
     if (pa === null) {
       id = this.name() + "/" + id;
     }
-  }
-  else if (id && id.hasOwnProperty("id")) {
-    id = id.id;
   }
   else if (typeof id === "number") {
     // stringify the id
