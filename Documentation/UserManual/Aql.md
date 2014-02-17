@@ -1113,6 +1113,35 @@ AQL supports the following functions to operate on list values:
   position only `true` or `false` are returned, depending on whether the sought element
   is contained in the list.
 
+- @FN{SLICE(@FA{list}, @FA{start}, @FA{length})}: extracts a slice of the list specified
+  by @FA{list}. The extraction will start at list element with position @FA{start}. 
+  Positions start at 0. Up to @FA{length} elements will be extracted. If @FA{length} is
+  not specified, all list elements starting at @FA{start} will be returned.
+  If @FA{start} is negative, it can be used to indicate positions from the end of the
+  list.
+
+  Examples:
+
+      SLICE([ 1, 2, 3, 4, 5 ], 0, 1)
+      
+  will return `[ 1 ]`
+  
+      SLICE([ 1, 2, 3, 4, 5 ], 1, 2)
+      
+  will return `[ 2, 3 ]`
+  
+      SLICE([ 1, 2, 3, 4, 5 ], 3) 
+  
+  will return `[ 4, 5 ]`
+  
+      SLICE([ 1, 2, 3, 4, 5 ], 1, -1) 
+      
+  will return `[ 2, 3, 4 ]`
+  
+      SLICE([ 1, 2, 3, 4, 5 ], 0, -2)
+      
+  will return `[ 1, 2, 3 ]`
+
 - @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.
@@ -1125,25 +1154,28 @@ AQL supports the following functions to operate on list values:
   @LIT{UNION_DISTINCT} function or apply the @LIT{UNIQUE} on the result of @LIT{union}.
 
   Example:
-    RETURN UNION(
-      [ 1, 2, 3 ],
-      [ 1, 2 ]
-    )
-
-  will produce:
-    [ [ 1, 2, 3, 1, 2 ] ]
-
-  with duplicate removal:
-
-    RETURN UNIQUE(
-      UNION(
+  
+      RETURN UNION(
         [ 1, 2, 3 ],
         [ 1, 2 ]
       )
-    )
+
+  will produce:
+  
+      [ [ 1, 2, 3, 1, 2 ] ]
+
+  with duplicate removal:
+
+      RETURN UNIQUE(
+        UNION(
+          [ 1, 2, 3 ],
+          [ 1, 2 ]
+        )
+      )
   
   will produce:
-    [ [ 1, 2, 3 ] ]
+  
+      [ [ 1, 2, 3 ] ]
 
 - @FN{UNION_DISTINCT(@FA{list1, list2, ...})}: returns the union of distinct values of
   all lists specified. The function expects at least two list values as its arguments. 

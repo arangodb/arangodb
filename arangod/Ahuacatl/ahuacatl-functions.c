@@ -675,6 +675,8 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("STDDEV_SAMPLE", "STDDEV_SAMPLE", true, true, "l", NULL);
   REGISTER_FUNCTION("STDDEV_POPULATION", "STDDEV_POPULATION", true, true, "l", NULL);
   REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l", NULL);
+  REGISTER_FUNCTION("SLICE", "SLICE", true, false, "l,n|n", NULL);
+
   // note: REVERSE() can be applied on strings, too
   REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "ls", NULL);
   REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l", NULL);
