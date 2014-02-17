@@ -395,6 +395,11 @@ function waitForCompletion (pid) {
   return stat.exit;
 }
 
+function executeAndWait (cmd, args) {
+  var pid = executeExternal(cmd, args);
+  return statusExternal(pid, true).exit;
+}
+
 testFuncs.shell_client = function(options) {
   var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                     "..",".."));
@@ -413,8 +418,7 @@ testFuncs.shell_client = function(options) {
     args.push(fs.join(topDir,te));
     var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                         "..","arangosh"));
-    var pid = executeExternal(arangosh, args);
-    results[te] = waitForCompletion(pid);
+    results[te] = executeAndWait(arangosh, args);
     args.pop();
     if (r !== 0 && !options.force) {
       break;
@@ -430,14 +434,23 @@ testFuncs.config = function (options) {
   var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                     "..",".."));
   var results = {};
-  var pid, r;
-  pid = executeExternal(fs.join(topDir,"bin","arangod"),
-                        ["--configuration",
-                         fs.join(topDir,"etc","arangodb","arangod.conf"),
-                         "--help"]);
-  r = waitForCompletion(pid);
-  results.arangod = r;
-  print("Config test arangod...",r);
+  var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
+            "arangosh"];
+  var t;
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+    results[t] = executeAndWait(fs.join(topDir,"bin",t),
+        ["--configuration", fs.join(topDir,"etc","arangodb",t+".conf"),
+         "--help"]);
+    print("Config test "+t+"...",results[t]);
+  }
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+    results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
+        ["--configuration", fs.join(topDir,"etc","relative",
+                                    t+".conf"), "--help"]);
+    print("Config test "+t+" (relative)...",results[t+"_rel"]);
+  }
 
   return results;
 };
