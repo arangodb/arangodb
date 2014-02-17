@@ -739,7 +739,8 @@ void TRI_CreateExternalProcess (const char* executable,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid) {
+TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
+                                                bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
   int loc;
@@ -766,7 +767,12 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid) {
   }
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
-    opts = WNOHANG | WUNTRACED;
+    if (!wait) {
+      opts = WNOHANG | WUNTRACED;
+    }
+    else {
+      opts = WUNTRACED;
+    }
     res = waitpid(external->_pid, &loc, opts);
 
     if (res == 0) {
@@ -793,7 +799,8 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid) {
   return status;
 }
 #else
-TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess) {
+TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess,
+                                                bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
   int loc;
@@ -818,6 +825,10 @@ TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess) {
   }
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
+    if (wait) {
+      DWORD result;
+      result = WaitForSingleObject(hProcess, INFINITE);
+    }
     DWORD exitCode;
     if (!GetExitCodeProcess(hProcess , &exitCode)) {
       LOG_WARNING("exit status could not be called for handle '%p'", hProcess);
