@@ -251,11 +251,18 @@ static inline void TRI_invalidatesocket (TRI_socket_t* socket) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get file descriptor
+/// @brief get file descriptor or handle, depending on OS
+///
+/// Note that this returns the fileHandle under Windows which is exactly
+/// the right thing we need in all but one places.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_get_fd_of_socket (TRI_socket_t socket) {
+static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t socket) {
+#ifdef _WIN32
+  return socket.fileHandle;
+#else
   return socket.fileDescriptor;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
