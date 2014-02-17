@@ -45,6 +45,24 @@ var SimpleQueryNear = sq.SimpleQueryNear;
 var SimpleQueryRange = sq.SimpleQueryRange;
 var SimpleQueryWithin = sq.SimpleQueryWithin;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rewrites an index id by stripping the collection name from it
+////////////////////////////////////////////////////////////////////////////////
+
+var rewriteIndex = function (id) {
+  if (id === null || id === undefined) {
+    return;
+  }
+
+  if (typeof id === "string") {
+    return id.replace(/^[a-zA-Z0-9_\-]+\//, '');
+  }
+  if (typeof id === "object" && id.hasOwnProperty("id")) {
+    return id.id.replace(/^[a-zA-Z0-9_\-]+\//, '');
+  }
+  return id;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
 // -----------------------------------------------------------------------------
@@ -309,14 +327,12 @@ function byExample (data) {
       invalid = true;
     }
     else if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
-      if (idx.id.replace(/^[a-zA-Z0-9_\-]+\//, '') !== 
-          data._index.id.replace(/^[a-zA-Z0-9_\-]+\//, '')) {
+      if (rewriteIndex(idx.id) !== rewriteIndex(data._index.id)) {
         invalid = true;
       }
     }
     else if (typeof data._index === 'string') {
-      if (idx.id.replace(/^[a-zA-Z0-9_\-]+\//, '') !== 
-          data._index.replace(/^[a-zA-Z0-9_\-]+\//, '')) {
+      if (rewriteIndex(idx.id) !== rewriteIndex(data._index)) {
         invalid = true;
       }
     }
@@ -398,7 +414,7 @@ SimpleQueryByExample.prototype.execute = function () {
                                          skip: 0, 
                                          limit: limit || undefined, 
                                          batchSize: 100000000,
-                                         index: this._index
+                                         index: rewriteIndex(this._index)
                                        }), 
                                        { }, 
                                        options);
@@ -620,7 +636,7 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query-by-example
+/// @brief executes a range query
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryRange.prototype.execute = function () {
@@ -667,46 +683,148 @@ SimpleQueryRange.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryNear.prototype.execute = function () {
-  var result;
   var documents;
-  var distances;
+  var result;
   var limit;
-  var i;
+  var i, n;
+  
+  if (this._execution !== null) {
+    return;
+  }
+    
+  if (this._skip === null) {
+    this._skip = 0;
+  }
 
-  if (this._execution === null) {
-    if (this._skip === null) {
-      this._skip = 0;
-    }
-
-    if (this._skip < 0) {
-      var err = new ArangoError();
-      err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
-      err.errorMessage = "skip must be non-negative";
-      throw err;
-    }
-
-    if (this._limit === null) {
-      limit = this._skip + 100;
-    }
-    else {
-      limit = this._skip + this._limit;
-    }
-
-    result = this._collection.NEAR(this._index, this._latitude, this._longitude, limit);
-    documents = result.documents;
-    distances = result.distances;
-
-    if (this._distance !== null) {
-      var n = documents.length;
-      for (i = this._skip;  i < n;  ++i) {
-        documents[i][this._distance] = distances[i];
+  if (this._skip < 0) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorMessage = "skip must be non-negative";
+    throw err;
+  }
+    
+  if (this._limit === null) {
+    limit = this._skip + 100;
+  }
+  else {
+    limit = this._skip + this._limit;
+  }
+  
+  var cluster = require("org/arangodb/cluster");
+    
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
       }
     }
 
-    this._execution = new GeneralArrayCursor(result.documents, this._skip, null);
-    this._countQuery = result.documents.length - this._skip;
-    this._countTotal = result.documents.length;
+    var attribute;
+    if (this._distance === null) {
+      attribute = this._distance;
+    }
+    else {
+      // use a pseudo-attribute for distance (we need this for sorting)
+      attribute = "$distance";
+    }
+                                     
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/near", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       latitude: self._latitude,
+                                       longitude: self._longitude,
+                                       distance: attribute,
+                                       geo: rewriteIndex(self._index),
+                                       skip: 0, 
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var _documents = [ ], total = 0;
+    result = cluster.wait(coord, shards);
+    var toSkip = this._skip, toLimit = this._limit;
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      total += body.total;
+
+      if (toSkip > 0) {
+        if (toSkip >= body.result.length) {
+          toSkip -= body.result.length;
+          return;
+        }
+         
+        body.result = body.result.slice(toSkip);
+        toSkip = 0;
+      }
+
+      if (toLimit !== null && toLimit !== undefined) {
+        if (body.result.length >= toLimit) {
+          body.result = body.result.slice(0, toLimit);
+          toLimit = 0;
+        }
+        else {
+          toLimit -= body.result.length;
+        }
+      }
+
+      _documents = _documents.concat(body.result);
+    });
+
+    if (shards.length > 1) {
+      var cmp = require("org/arangodb/ahuacatl").RELATIONAL_CMP;
+      _documents.sort(function (l, r) {
+        return cmp(l[attribute], r[attribute]); 
+      });
+    }
+
+    if (this._distance === null) {
+      n = _documents.length;
+      for (i = 0; i < n; ++i) {
+        delete _documents[i][attribute];
+      }
+    }
+     
+    documents = { 
+      documents: _documents, 
+      count: _documents.length, 
+      total: total
+    };
   }
+  else {
+    result = this._collection.NEAR(this._index, this._latitude, this._longitude, limit);
+
+    documents = {
+      documents: result.documents,
+      count: result.documents.length,
+      total: result.documents.length
+    };
+
+    if (this._distance !== null) {
+      var distances = result.distances;
+      n = documents.length;
+      for (i = this._skip;  i < n;  ++i) {
+        documents.documents[i][this._distance] = distances[i];
+      }
+    }
+  }
+
+  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
+  this._countQuery = documents.total - this._skip;
+  this._countTotal = documents.total;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
