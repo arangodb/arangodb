@@ -31,7 +31,12 @@
             self.data.push(statCollect);
             statCollect.fetch();
         });
-
+        this.dbservers.forEach(function (server) {
+            var statCollect  = new window.StatisticsCollection();
+            statCollect.url = server.get("address").replace("tcp", "http") + "/_admin/statistics";
+            self.data.push(statCollect);
+            statCollect.fetch();
+        });
     },
 
     render: function() {
