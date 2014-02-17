@@ -54,9 +54,8 @@
       }
     },
 
-
-
     render: function (el) {
+      console.log(el);
       this.$el = el;
       this.$el.html(this.template.render({
         img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
