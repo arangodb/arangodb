@@ -144,7 +144,7 @@ function startInstance (protocol, options) {
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
-    var runInfo = options.kickstarter.runInfo;
+    var runInfo = instanceInfo.kickstarter.runInfo;
     var roles = runInfo[runInfo.length-1].roles;
     var endpoints = runInfo[runInfo.length-1].endpoints;
     pos = roles.indexOf("Coordinator");
@@ -385,16 +385,6 @@ testFuncs.shell_server_ahuacatl = function(options) {
   return "skipped";
 };
 
-function waitForCompletion (pid) {
-  var stat;
-  while (true) {
-    wait(0.1);
-    stat = statusExternal(pid);
-    if (stat.status !== "RUNNING") { break; }
-  }
-  return stat.exit;
-}
-
 function executeAndWait (cmd, args) {
   var pid = executeExternal(cmd, args);
   return statusExternal(pid, true).exit;
@@ -452,6 +442,22 @@ testFuncs.config = function (options) {
     print("Config test "+t+" (relative)...",results[t+"_rel"]);
   }
 
+  return results;
+};
+
+testFuncs.boost = function (options) {
+  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                    "..",".."));
+  var results = {};
+  if (!options.skipBoost) {
+    results.basics = executeAndWait(fs.join(topDir,"UnitTests","basics_suite"),
+                                    ["--show_progress"]);
+  }
+  if (!options.skipGeo) {
+    results.geo_suite = executeAndWait(
+                          fs.join(topDir,"UnitTests","geo_suite"),
+                          ["--show_progress"]);
+  }
   return results;
 };
 
