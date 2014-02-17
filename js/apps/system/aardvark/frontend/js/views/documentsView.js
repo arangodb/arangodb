@@ -350,7 +350,6 @@
       //Success
       if (result !== false) {
         window.location.hash = "collection/" + result;
-        arangoHelper.arangoNotification('Document created');
         return;
       }
       //Error
@@ -424,18 +423,15 @@
         result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
         if (result === true) {
           //on success
-          arangoHelper.arangoNotification('Document deleted');
           deleted = true;
         }
         else if (result === false) {
-          arangoHelper.arangoError('Could not delete document');
         }
       }
       else if (this.type === 'edge') {
         result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
         if (result === true) {
           //on success
-          arangoHelper.arangoNotification('Edge deleted');
           deleted = true;
         }
         else if (result === false) {
