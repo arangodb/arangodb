@@ -34,7 +34,6 @@
         success: function(data) {
           if (self.isOffline === true) {
             self.isOffline = false;
-            arangoHelper.removeNotifications();
             if (!self.firstLogin) {
               window.setTimeout(function(){
                 arangoHelper.arangoNotification("Server connected");
