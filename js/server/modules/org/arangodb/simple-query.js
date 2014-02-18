@@ -403,18 +403,19 @@ SimpleQueryByExample.prototype.execute = function () {
         }
       }
       
+      var self = this;
       shards.forEach(function (shard) {
         ArangoClusterComm.asyncRequest("put", 
                                        "shard:" + shard, 
                                        dbName, 
                                        "/_api/simple/" + method,
                                        JSON.stringify({ 
-                                         example: this._example,
+                                         example: self._example,
                                          collection: shard, 
                                          skip: 0, 
                                          limit: limit || undefined, 
                                          batchSize: 100000000,
-                                         index: rewriteIndex(this._index)
+                                         index: rewriteIndex(self._index)
                                        }), 
                                        { }, 
                                        options);
