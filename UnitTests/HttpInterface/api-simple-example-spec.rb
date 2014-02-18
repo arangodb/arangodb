@@ -118,6 +118,18 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(404)
       end
+
+      it "finds the first example, invalid collection" do
+        cmd = api + "/first-example"
+        body = "{ \"collection\" : \"NonExistingCollection\", \"example\" : { \"a\" : 1} }"
+        doc = ArangoDB.log_put("#{prefix}-first-first-example-not-found", cmd, :body => body)
+
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorNum'].should eq(1203)
+      end
     end
 
 ################################################################################

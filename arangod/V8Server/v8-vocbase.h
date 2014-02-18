@@ -54,14 +54,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse document or document handle
+/// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const triagens::arango::CollectionNameResolver&,
-                                                         TRI_vocbase_col_t const*&,
-                                                         TRI_voc_key_t&,
-                                                         TRI_voc_rid_t&,
-                                                         v8::Handle<v8::Value>);
+int TRI_ParseVertex (triagens::arango::CollectionNameResolver const&,
+                     TRI_voc_cid_t&,
+                     TRI_voc_key_t&,
+                     v8::Handle<v8::Value> const&,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier

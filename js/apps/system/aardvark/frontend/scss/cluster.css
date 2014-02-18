@@ -1,15 +1,10 @@
-body, input, textarea, .page-title span, .pingback a.url {
-  /*font-family: "Helvetica",sans-serif;*/
-  font-family: 'Open Sans', sans-serif !important;
-  font-weight: 400; }
-
 ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-li.tile div.iconSet span {
+li.tile div.iconSet span, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -78,6 +73,94 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
     display: inline-block;
     content: ''; }
 
+nav.navbar {
+  top: 0px;
+  height: 34px;
+  margin-bottom: 3px; }
+
+ul.navlist {
+  list-style: none; }
+  ul.navlist li {
+    margin-left: 1px; }
+  ul.navlist > li.active,
+  ul.navlist li.dropdown-item:hover,
+  ul.navlist > li:hover {
+    background-color: #8aa051; }
+
+a.tab {
+  padding-top: 7px;
+  padding-left: 10px;
+  padding-bottom: 10px;
+  padding-right: 10px;
+  color: white;
+  display: block; }
+
+#arangoCollectionSelect {
+  display: none;
+  float: right;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-right: 15px; }
+
+footer.footer {
+  bottom: 0px;
+  height: 40px; }
+  footer.footer p {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 0; }
+
+div#collectionsThumbnailsIn {
+  margin-left: 0px; }
+
+li.tile {
+  position: relative;
+  text-align: center;
+  height: 100px;
+  width: 230px;
+  margin-left: 6px;
+  margin-right: 6px;
+  margin-bottom: 13px;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none; }
+  li.tile h5 {
+    font-size: 12px;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: white;
+    background: #686766;
+    padding: 4px 8px;
+    margin: 0; }
+  li.tile div.iconSet {
+    position: absolute;
+    top: 5px;
+    right: 5px; }
+    li.tile div.iconSet span {
+      opacity: 0.5;
+      font-size: 18px;
+      padding-left: 7px; }
+      li.tile div.iconSet span:hover {
+        opacity: 1.0; }
+      li.tile div.iconSet span.disabled {
+        opacity: 0.2;
+        cursor: default; }
+  li.tile .badge-success {
+    font-weight: 300; }
+  li.tile .unloaded div {
+    border-bottom: 16px solid #FF8F35; }
+  li.tile .deleted div {
+    border-bottom: 16px solid red; }
+
+.collectionName {
+  text-align: left;
+  font-weight: 300;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px; }
+
 div.resizecontainer {
   margin: 0px auto; }
   div.resizecontainer:after {
@@ -144,141 +227,17 @@ div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
 
-nav.navbar {
-  top: 0px;
-  height: 34px;
-  margin-bottom: 3px; }
+.scenarioImage {
+  height: 70%;
+  width: auto; }
 
-ul.navlist {
-  list-style: none; }
-  ul.navlist li {
-    margin-left: 1px; }
-  ul.navlist > li.active,
-  ul.navlist li.dropdown-item:hover,
-  ul.navlist > li:hover {
-    background-color: #8aa051; }
+svg.clusterChart {
+  width: auto;
+  height: auto; }
 
-a.tab {
-  padding-top: 7px;
-  padding-left: 10px;
-  padding-bottom: 10px;
-  padding-right: 10px;
-  color: white;
-  display: block; }
-
-#arangoCollectionSelect {
-  display: none;
-  float: right;
-  padding-bottom: 0;
-  margin-bottom: 0;
-  margin-right: 15px; }
-
-footer.footer {
-  bottom: 0px;
-  height: 40px; }
-  footer.footer p {
-    padding-top: 10px;
-    padding-bottom: 10px;
-    margin-bottom: 0; }
-
-div#collectionsThumbnailsIn {
-  margin-left: 0px; }
-
-li.tile {
-  position: relative;
-  text-align: center;
-  height: 100px;
-  width: 230px;
-  list-style: none;
-  background-color: rgba(0, 0, 0, 0.05);
-  margin-left: 6px;
-  margin-right: 6px;
-  margin-bottom: 13px;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  box-shadow: none; }
-  li.tile h5 {
-    font-size: 12px;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    color: white;
-    background: #686766;
-    padding: 4px 8px;
-    margin: 0; }
-  li.tile div.iconSet {
-    position: absolute;
-    top: 5px;
-    right: 5px; }
-    li.tile div.iconSet span {
-      opacity: 0.5;
-      font-size: 18px;
-      padding-left: 7px; }
-      li.tile div.iconSet span:hover {
-        opacity: 1.0; }
-      li.tile div.iconSet span.disabled {
-        opacity: 0.2;
-        cursor: default; }
-  li.tile .badge-success {
-    font-weight: 300; }
-  li.tile .unloaded div {
-    border-bottom: 16px solid #FF8F35; }
-  li.tile .deleted div {
-    border-bottom: 16px solid red; }
-
-.collectionName {
-  text-align: left;
-  font-weight: 300;
-  position: absolute;
-  bottom: 0px;
-  left: 0px;
-  right: 0px; }
-
-.fixedDropdown {
-  margin: 34px 0 0 0 !important;
-  border-radius: 0 !important;
-  width: 210px; }
-
-.fixedDropdown:after {
-  visibility: hidden; }
-
-.fixedDropdown .dropdown-item {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
-
-.fixedDropdown .dropdown-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-  padding: 0 !important; }
-
-.fixedDropdown a {
-  padding-left: 5px !important; }
-
-.fixedDropdown .notificationItemContent {
-  width: 170px;
-  float: left;
-  margin-left: 5px; }
-
-.fixedDropdown button {
-  float: right;
-  margin-right: 5px; }
-
-.innerDropdownInnerUL {
-  min-height: 220px;
-  height: 220px !important;
-  width: 100%;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  float: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
-
-.innerDropdownInnerUL li {
-  width: auto !important; }
-
-.innerDropdownInnerUL li:last-child {
-  color: red;
-  border-bottom: 0; }
-
-.fixedDropdown .notificationItem {
-  color: black; }
-
-.notificationItem i {
-  float: left; }
+.lineGraph .few .dygraph-legend > span.highlight {
+  border: 1px solid grey; }
+.lineGraph .many .dygraph-legend > span {
+  display: none; }
+.lineGraph .many .dygraph-legend > span.highlight {
+  display: inline; }

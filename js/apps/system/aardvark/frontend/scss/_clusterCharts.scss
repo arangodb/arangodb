@@ -1,0 +1,21 @@
+.scenarioImage{
+  @extend %clickable;
+  height : 70%;
+  width  : auto;
+
+}
+
+svg.clusterChart{
+   width: auto;
+   height: auto
+
+}
+
+.lineGraph{
+  .few .dygraph-legend > span.highlight { border: 1px solid grey; }
+
+  .many .dygraph-legend > span { display: none; }
+
+  .many .dygraph-legend > span.highlight { display: inline; }
+
+}
