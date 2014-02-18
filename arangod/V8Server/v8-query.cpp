@@ -1559,28 +1559,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
       TRI_voc_cid_t cid;
-      TRI_voc_rid_t rid;
       TRI_voc_key_t key = 0;
 
-      TRI_vocbase_col_t const* vertexCollection = 0;
-      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(resolver, vertexCollection, key, rid, vertices->Get(i));
+      res = TRI_ParseVertex(resolver, cid, key, vertices->Get(i), true);
 
-      if (! errMsg.IsEmpty()) {
-        if (key) {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-          key = 0;
-        }
-
+      if (res != TRI_ERROR_NO_ERROR) {
+        // error is just ignored
         continue;
       }
 
-      assert(vertexCollection != 0);
-
-      cid = vertexCollection->_cid;
-
       edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
 
-      if (key) {
+      if (key != 0) {
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       }
 
@@ -1618,27 +1608,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // argument is a single vertex
   else {
     TRI_vector_pointer_t edges;
-    TRI_voc_cid_t cid;
-    TRI_voc_rid_t rid;
+
     TRI_voc_key_t key = 0;
+    TRI_voc_cid_t cid;
+    res = TRI_ParseVertex(resolver, cid, key, argv[0], true);
 
-    TRI_vocbase_col_t const* vertexCollection = 0;
-    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(resolver, vertexCollection, key, rid, argv[0]);
-
-    if (! errMsg.IsEmpty()) {
-      if (key) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-      }
-      return scope.Close(v8::ThrowException(errMsg));
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
     }
-
-    assert(vertexCollection != 0);
-
-    cid = vertexCollection->_cid;
 
     edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
 
-    if (key) {
+    if (key != 0) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
@@ -1669,7 +1650,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   trx.finish(res);
 
   // .............................................................................
-  // outside a write transaction
+  // outside a read transaction
   // .............................................................................
 
   if (error) {
@@ -3077,17 +3058,17 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex, true);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist, true);
   TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
-  TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
+  TRI_AddMethodVocbase(rt, "EDGES", JS_EdgesQuery, true);
   TRI_AddMethodVocbase(rt, "FIRST", JS_FirstQuery, true);
   TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery, true);
-  TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
+  TRI_AddMethodVocbase(rt, "INEDGES", JS_InEdgesQuery, true);
   TRI_AddMethodVocbase(rt, "LAST", JS_LastQuery, true);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true); 
 
-  TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
+  TRI_AddMethodVocbase(rt, "OUTEDGES", JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
 

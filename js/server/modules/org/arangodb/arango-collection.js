@@ -189,6 +189,95 @@ ArangoCollection.prototype.index = function (id) {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    edge functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns connected edges
+////////////////////////////////////////////////////////////////////////////////
+
+function getEdges (collection, vertex, direction) {
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      
+    shards.forEach(function (shard) {
+      var url = "/_api/edges/" + encodeURIComponent(shard) +
+                "?direction=" + encodeURIComponent(direction) + 
+                "&vertex=" + encodeURIComponent(vertex);
+
+      ArangoClusterComm.asyncRequest("get", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     url,
+                                     "",
+                                     { }, 
+                                     options);
+    });
+
+    var results = cluster.wait(coord, shards), i;
+    var edges = [ ];
+
+    for (i = 0; i < results.length; ++i) {
+      var body = JSON.parse(results[i].body);
+      
+      edges = edges.concat(body.edges);
+    }
+
+    return edges;
+  }
+
+  if (direction === "in") {
+    return collection.INEDGES(vertex);
+  }
+  if (direction === "out") {
+    return collection.OUTEDGES(vertex);
+  }
+  
+  return collection.EDGES(vertex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all edges connected to a vertex
+///
+/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
+///
+/// Returns all edges connected to the vertex specified by @FA{vertex-id}.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.edges = function (vertex) {
+  return getEdges(this, vertex, "any");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns inbound edges connected to a vertex
+///
+/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
+///
+/// Returns inbound edges connected to the vertex specified by @FA{vertex-id}.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.inEdges = function (vertex) {
+  return getEdges(this, vertex, "in");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns outbound edges connected to a vertex
+///
+/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
+///
+/// Returns outbound edges connected to the vertex specified by @FA{vertex-id}.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.outEdges = function (vertex) {
+  return getEdges(this, vertex, "out");
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                document functions
 // -----------------------------------------------------------------------------
 

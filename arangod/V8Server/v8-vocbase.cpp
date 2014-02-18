@@ -225,7 +225,7 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static int parseKeyAndRef (v8::Handle<v8::Value> arg, 
+static int ParseKeyAndRef (v8::Handle<v8::Value> const& arg, 
                            string& key,
                            TRI_voc_rid_t& rev) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -234,7 +234,8 @@ static int parseKeyAndRef (v8::Handle<v8::Value> arg,
     key = TRI_ObjectToString(arg);
   }
   else if (arg->IsObject()) {
-    v8::Handle<v8::Object> obj = arg.As<v8::Object>();
+    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(arg);
+
     if (obj->Has(v8g->_KeyKey) && obj->Get(v8g->_KeyKey)->IsString()) {
       key = TRI_ObjectToString(obj->Get(v8g->_KeyKey));
     }
@@ -468,7 +469,8 @@ static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
-static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> classTempl, int32_t type, T* y) {
+static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> classTempl, 
+                                         int32_t type, T* y) {
 
   // handle scope for temporary handles
   v8::HandleScope scope;
@@ -505,7 +507,7 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
+static bool ParseDocumentHandle (v8::Handle<v8::Value> const& arg,
                                  string& collectionName,
                                  TRI_voc_key_t& key) {
   assert(collectionName == "");
@@ -542,7 +544,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
 /// @brief extracts a document key from a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
+static int ExtractDocumentKey (v8::Handle<v8::Value> const& arg,
                                TRI_voc_key_t& key) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   key = 0;
@@ -581,10 +583,122 @@ static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle from a v8 value (string | object)
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ExtractDocumentHandle (v8::Handle<v8::Value> const& val,
+                                   string& collectionName,
+                                   TRI_voc_key_t& key,
+                                   TRI_voc_rid_t& rid) {
+  // reset the collection identifier and the revision
+  collectionName = "";
+  rid = 0;
+
+  // extract the document identifier and revision from a string
+  if (val->IsString()) {
+    return ParseDocumentHandle(val, collectionName, key);
+  }
+
+  // extract the document identifier and revision from a document object
+  if (val->IsObject()) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
+
+    if (! ParseDocumentHandle(didVal, collectionName, key)) {
+      return false;
+    }
+
+    if (! obj->Has(v8g->_RevKey)) {
+      return true;
+    }
+
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
+
+    if (rid == 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // unknown value type. give up
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle from a v8 value (string | object)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (CollectionNameResolver const& resolver,
+                                                            TRI_vocbase_col_t const*& collection,
+                                                            TRI_voc_key_t& key,
+                                                            TRI_voc_rid_t& rid,
+                                                            v8::Handle<v8::Value> const& val) {
+  v8::HandleScope scope;
+
+  assert(key == 0);
+
+  // reset the collection identifier and the revision
+  string collectionName = "";
+  rid = 0;
+
+  // try to extract the collection name, key, and revision from the object passed
+  if (! ExtractDocumentHandle(val, collectionName, key, rid)) {
+    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
+  }
+
+  // we have at least a key, we also might have a collection name
+  assert(key != 0);
+
+
+  if (collectionName == "") {
+    // only a document key without collection name was passed
+    if (collection == 0) {
+      // we do not know the collection
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
+    }
+    // we use the current collection's name
+    collectionName = resolver.getCollectionName(collection->_cid);
+  }
+  else {
+    // we read a collection name from the document id
+    // check cross-collection requests
+    if (collection != 0) {
+      if (collectionName != resolver.getCollectionName(collection->_cid) &&
+          collectionName != StringUtils::itoa(collection->_cid)) {
+        return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
+      }
+    }
+  }
+
+  assert(collectionName != "");
+
+  if (collection == 0) {
+    // no collection object was passed, now check the user-supplied collection name
+    
+    const TRI_vocbase_col_t* col = resolver.getCollectionStruct(collectionName);
+
+    if (col == 0) {
+      // collection not found
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+    }
+
+    collection = col;
+  }
+
+  assert(collection != 0);
+
+  v8::Handle<v8::Value> empty;
+  return scope.Close(empty);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsIndexHandle (v8::Handle<v8::Value> arg,
+static bool IsIndexHandle (v8::Handle<v8::Value> const& arg,
                            string& collectionName,
                            TRI_idx_iid_t& iid) {
 
@@ -1673,7 +1787,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
 
   string key;
   TRI_voc_rid_t rev = 0;
-  int error = parseKeyAndRef(argv[0], key, rev);
+  int error = ParseKeyAndRef(argv[0], key, rev);
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
   }
@@ -1795,7 +1909,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 #endif
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1911,7 +2025,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 #endif
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1996,7 +2110,7 @@ static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
 
   string key;
   TRI_voc_rid_t rev = 0;
-  int error = parseKeyAndRef(argv[0], key, rev);
+  int error = ParseKeyAndRef(argv[0], key, rev);
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
   }
@@ -2111,7 +2225,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 #endif
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2342,43 +2456,27 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   TRI_document_edge_t edge;
   // the following values are defaults that will be overridden below
-  edge._fromCid = trx->cid();
-  edge._toCid   = trx->cid();
+  edge._fromCid = 0;
+  edge._toCid   = 0;
   edge._fromKey = 0;
   edge._toKey   = 0;
 
-  v8::Handle<v8::Value> err;
-
   // extract from
-  TRI_vocbase_col_t const* fromCollection = 0;
-  TRI_voc_rid_t fromRid;
+  res = TRI_ParseVertex(resolver, edge._fromCid, edge._fromKey, argv[0], false);
 
-  err = TRI_ParseDocumentOrDocumentHandle(resolver, fromCollection, edge._fromKey, fromRid, argv[0]);
-
-  if (! err.IsEmpty()) {
-    if (edge._fromKey != 0) {
-      TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
-    }
+  if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
-    return scope.Close(v8::ThrowException(err));
+    TRI_V8_EXCEPTION(scope, res);
   }
-
-  edge._fromCid = fromCollection->_cid;
 
   // extract to
-  TRI_vocbase_col_t const* toCollection = 0;
-  TRI_voc_rid_t toRid;
-
-  err = TRI_ParseDocumentOrDocumentHandle(resolver, toCollection, edge._toKey, toRid, argv[1]);
-
-  if (! err.IsEmpty()) {
+  res = TRI_ParseVertex(resolver, edge._toCid, edge._toKey, argv[1], false);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
-    return scope.Close(v8::ThrowException(err));
+    TRI_V8_EXCEPTION(scope, res);
   }
-
-  edge._toCid = toCollection->_cid;
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
@@ -2472,7 +2570,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 #endif
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -2600,7 +2698,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
 
   string key;
   TRI_voc_rid_t rev = 0;
-  int error = parseKeyAndRef(argv[0], key, rev);
+  int error = ParseKeyAndRef(argv[0], key, rev);
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
   }
@@ -2698,7 +2796,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 #endif
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -5998,7 +6096,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
-  
+ 
   int myerrno = ci->dropCollectionCoordinator( databaseName, cid, 
                                                errorMsg, 120.0);
   if (myerrno != TRI_ERROR_NO_ERROR) {
@@ -9543,113 +9641,57 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse document or document handle from a v8 value (string | object)
+/// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
-                            string& collectionName,
-                            TRI_voc_key_t& key,
-                            TRI_voc_rid_t& rid) {
-  // reset the collection identifier and the revision
-  collectionName = "";
-  rid = 0;
+int TRI_ParseVertex (CollectionNameResolver const& resolver,
+                     TRI_voc_cid_t& cid,
+                     TRI_voc_key_t& key,
+                     v8::Handle<v8::Value> const& val,
+                     bool translateName) {
 
-  // extract the document identifier and revision from a string
-  if (val->IsString()) {
-    return ParseDocumentHandle(val, collectionName, key);
-  }
-
-  // extract the document identifier and revision from a document object
-  if (val->IsObject()) {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-    v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
-
-    if (! ParseDocumentHandle(didVal, collectionName, key)) {
-      return false;
-    }
-
-    if (! obj->Has(v8g->_RevKey)) {
-      return true;
-    }
-
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
-
-    if (rid == 0) {
-      return false;
-    }
-
-    return true;
-  }
-
-  // unknown value type. give up
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse document or document handle from a v8 value (string | object)
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameResolver& resolver,
-                                                         TRI_vocbase_col_t const*& collection,
-                                                         TRI_voc_key_t& key,
-                                                         TRI_voc_rid_t& rid,
-                                                         v8::Handle<v8::Value> val) {
   v8::HandleScope scope;
 
   assert(key == 0);
 
-  // reset the collection identifier and the revision
+  // reset everything
   string collectionName = "";
-  rid = 0;
+  TRI_voc_rid_t rid = 0;
 
   // try to extract the collection name, key, and revision from the object passed
   if (! ExtractDocumentHandle(val, collectionName, key, rid)) {
-    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
   // we have at least a key, we also might have a collection name
   assert(key != 0);
 
-
   if (collectionName == "") {
-    // only a document key without collection name was passed
-    if (collection == 0) {
-      // we do not know the collection
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
-    }
-    // we use the current collection's name
-    collectionName = resolver.getCollectionName(collection->_cid);
+    // we do not know the collection
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    key = 0;
+
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+   
+#ifdef TRI_ENABLE_CLUSTER
+  if (translateName && ServerState::instance()->isDBserver()) { 
+    cid = resolver.getCollectionIdCluster(collectionName);
   }
   else {
-    // we read a collection name from the document id
-    // check cross-collection requests
-    if (collection != 0) {
-      if (collectionName != resolver.getCollectionName(collection->_cid) &&
-          collectionName != StringUtils::itoa(collection->_cid)) {
-        return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
-      }
-    }
+    cid = resolver.getCollectionId(collectionName);
+  }
+#else
+  cid = resolver.getCollectionId(collectionName);
+#endif
+
+  if (cid == 0) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    key = 0;
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  assert(collectionName != "");
-
-  if (collection == 0) {
-    // no collection object was passed, now check the user-supplied collection name
-    const TRI_vocbase_col_t* col = resolver.getCollectionStruct(collectionName);
-    if (col == 0) {
-      // collection not found
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
-    }
-
-    collection = col;
-  }
-
-  assert(collection != 0);
-
-  v8::Handle<v8::Value> empty;
-  return scope.Close(empty);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
