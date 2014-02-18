@@ -787,7 +787,8 @@ SimpleQueryNear.prototype.execute = function () {
     if (shards.length > 1) {
       var cmp = require("org/arangodb/ahuacatl").RELATIONAL_CMP;
       _documents.sort(function (l, r) {
-        return cmp(l[attribute], r[attribute]); 
+require("internal").print("SORTING:", attribute);
+        return -1 * cmp(l[attribute], r[attribute]); 
       });
     }
 
@@ -815,7 +816,7 @@ SimpleQueryNear.prototype.execute = function () {
 
     if (this._distance !== null) {
       var distances = result.distances;
-      n = documents.length;
+      n = documents.documents.length;
       for (i = this._skip;  i < n;  ++i) {
         documents.documents[i][this._distance] = distances[i];
       }
