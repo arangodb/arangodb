@@ -10,11 +10,15 @@
       "click .tab": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown",
-      "click .navlogo #stat_hd" : "toggleNotification"
+      "click .navlogo #stat_hd" : "toggleNotification",
+      "click .notificationItem .fa" : "removeNotification",
+      "click #removeAllNotifications" : "removeAllNotifications"
     },
 
     initialize: function () {
-      this.notificationList = new window.NotificationCollection();
+      this.collection.bind("add", this.renderNotifications.bind(this));
+      this.collection.bind("remove", this.renderNotifications.bind(this));
+      this.collection.bind("reset", this.renderNotifications.bind(this));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -65,13 +69,27 @@
       }
     },
 
-    updateNotifications: function() {
-      this.renderNotifications();
+    removeAllNotifications: function () {
+      this.collection.reset();
+    },
+
+    removeNotification: function(e) {
+      var cid = e.target.id;
+      this.collection.get(cid).destroy();
     },
 
     renderNotifications: function() {
+
+      $('#stat_hd_counter').text(this.collection.length);
+      if (this.collection.length === 0) {
+        $('#stat_hd').removeClass('fullNotification');
+      }
+      else {
+        $('#stat_hd').addClass('fullNotification');
+      }
+
       $('.innerDropdownInnerUL').html(this.notificationItem.render({
-        notifications : this.notificationList.models
+        notifications : this.collection
       }));
     },
 
@@ -81,13 +99,13 @@
         img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
         prename : "Floyd",
         lastname : "Pepper",
-        notifications : this.notificationList.models
+        notifications : this.collection
       }));
 
       this.renderNotifications();
 
       this.delegateEvents();
-      this.updateNotifications();
+      this.renderNotifications();
       return this.$el;
     }
   });

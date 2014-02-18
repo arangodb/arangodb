@@ -77,7 +77,7 @@ var users = require("org/arangodb/users");
 
 function get_api_user (req, res) {
   if (req.suffix.length === 0) {
-    actions.resultOk(req, res, actions.HTTP_OK, users.all());
+    actions.resultOk(req, res, actions.HTTP_OK, { result: users.all() });
     return;
   }
 
