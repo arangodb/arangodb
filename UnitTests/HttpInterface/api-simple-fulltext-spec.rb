@@ -17,7 +17,10 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionFulltext"
         ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
+        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
+        doc = ArangoDB.post("/_api/collection", :body => body)
+        doc.code.should eq(200)
+        @cid = doc.parsed_response['id']
 
         texts = [
           "Nuevo. Ella ni caso a esa señora pagó leer Invitación amistad viajando comer todo lo que el a dos. Shy ustedes que apenas gastos debatiendo apresuró resuelto. Siempre educado momento en que es espíritu calor a los corazones. Downs esos ingeniosos aún un jefe bolas tan así. Momento un poco hasta quedarse sin ninguna animado. Camino de mayo trajo a nuestro país periódicas para adaptarse vitorearon.",
