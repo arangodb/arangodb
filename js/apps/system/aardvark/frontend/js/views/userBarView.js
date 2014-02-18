@@ -9,8 +9,15 @@
       "change #userBarSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
-      "mouseleave .dropdown": "hideDropdown"
+      "mouseleave .dropdown": "hideDropdown",
+      "click .navlogo #stat_hd" : "toggleNotification"
     },
+
+    initialize: function () {
+      this.notificationList = new window.NotificationCollection();
+    },
+
+    notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
 
     template: templateEngine.createTemplate("userBarView.ejs"),
 
@@ -30,6 +37,10 @@
       }
       window.App.navigate(navigateTo, {trigger: true});
       e.preventDefault();
+    },
+
+    toggleNotification: function (e) {
+      $('#notification_menu').toggle();
     },
 
     showDropdown: function (e) {
@@ -54,15 +65,29 @@
       }
     },
 
+    updateNotifications: function() {
+      this.renderNotifications();
+    },
+
+    renderNotifications: function() {
+      $('.innerDropdownInnerUL').html(this.notificationItem.render({
+        notifications : this.notificationList.models
+      }));
+    },
+
     render: function (el) {
-      console.log(el);
       this.$el = el;
       this.$el.html(this.template.render({
         img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
         prename : "Floyd",
-        lastname : "Pepper"
+        lastname : "Pepper",
+        notifications : this.notificationList.models
       }));
+
+      this.renderNotifications();
+
       this.delegateEvents();
+      this.updateNotifications();
       return this.$el;
     }
   });

@@ -426,6 +426,7 @@
           deleted = true;
         }
         else if (result === false) {
+          arangoHelper.arangoError('Doc error');
         }
       }
       else if (this.type === 'edge') {
