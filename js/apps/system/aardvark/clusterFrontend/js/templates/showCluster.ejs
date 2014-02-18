@@ -1,9 +1,48 @@
+<% var statusClass = function(s) {
+    switch (s) {
+      case "ok":
+        return "success";
+      case "warning": 
+        return "warning";
+      case "critical":
+        return "danger";
+    }
+  };
+%>
 <ul class="thumbnails2">
   <div class="headerBar">
     <a class="arangoHeader">Cluster Dashboard</a>
   </div>
 </ul>
-<svg id="clusterLayout" height="400px"></svg>
+<div id="clusterLayout">
+  <% if(type === "testPlan") { %>
+      <li class="tile">
+        <h5 class="collectionName"><%=a%></h5>
+      </li>
+      <%
+        } else { 
+          _.each(byAddress, function(s, a) { 
+      %>
+      <li class="tile">
+        <% _.each(s.coords, function(c) { %>
+          <div class="coordinator <%=statusClass(c.get('status'))%>">
+            <span class="clusterInfoIcon icon_arangodb_compass"></span>
+            <h6 class="serverName"><%=c.get("name")%></h6>
+          </div>
+        <% }); %>
+        <% _.each(s.dbs, function(c) { %>
+          <div class="dbserver <%=statusClass(c.get('status'))%>">
+            <span class="clusterInfoIcon icon_arangodb_database1"></span>
+            <h6 class="serverName"><%=c.get("name")%></h6>
+          </div>
+        <% }); %>
+        <h5 class="collectionName"><%=a%></h5>
+      </li>
+    <%
+    });
+  }
+  %>
+</div>
 <div id="clusterGraphs">
 
 </div>
