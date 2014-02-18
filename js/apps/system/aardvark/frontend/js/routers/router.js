@@ -30,7 +30,8 @@
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
-      "graphManagement/delete/:name"        : "graphDelete"
+      "graphManagement/delete/:name"        : "graphDelete",
+      "userManagement"                      : "userManagement"
     },
 
     initialize: function () {
@@ -465,7 +466,18 @@
       if (newWidth !== oldWidth) {
         this.graphView.handleResize(newWidth);
       }
+    },
+
+    userManagement: function() {
+      if (!this.userManagementView) {
+        this.userManagementView = new window.userManagementView({
+          collection: window.activeUser
+        });
+      }
+      this.userManagementView.render();
+      this.naviView.selectMenuItem('user-menu');
     }
+
   });
 
 }());
