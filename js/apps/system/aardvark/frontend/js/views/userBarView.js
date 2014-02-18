@@ -70,7 +70,6 @@
     },
 
     removeAllNotifications: function () {
-      console.log("reset");
       this.collection.reset();
     },
 
