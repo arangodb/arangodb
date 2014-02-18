@@ -36,7 +36,7 @@
             self.isOffline = false;
             if (!self.firstLogin) {
               window.setTimeout(function(){
-                arangoHelper.arangoNotification("Server connected");
+                //Heiko: notification for connected server
               }, 1000);
             } else {
               self.firstLogin = false;
@@ -48,7 +48,7 @@
         },
         error: function (data) {
           self.isOffline = true;
-          arangoHelper.arangoError("Server is offline");
+          arangoHelper.arangoError("Server", "Server is offline");
         }
       });
 

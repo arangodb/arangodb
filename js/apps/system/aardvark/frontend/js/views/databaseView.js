@@ -126,7 +126,6 @@
     submitRemoveDatabase: function(e) {
       var toDelete = this.collection.where({name: this.dbToDelete});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+this.dbToDelete});
-      arangoHelper.arangoNotification("Database " + this.dbToDelete + " deleted.");
       this.dbToDelete = '';
       $('#deleteDatabaseModal').modal('hide');
       this.updateDatabases();

@@ -31,6 +31,7 @@
 var internal = require("internal"); // OK: time
 var arangodb = require("org/arangodb");
 var crypto = require("org/arangodb/crypto");
+var _ = require("underscore");
 
 var db = arangodb.db;
 var ArangoError = arangodb.ArangoError;
@@ -437,6 +438,32 @@ exports.document = function (username) {
     active: user.active,
     extra: user.extra || { }
   };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_allUser
+/// @brief gets all existing users
+///
+/// @FUN{users.all()}
+///
+/// Fetches all existing ArangoDB users from the database.
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.all = function () {
+  var cursor = getStorage().all();
+  var result = [ ];
+  
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+    var user = { 
+      user: doc.user,
+      active: doc.active,
+      extra: doc.extra || { }
+    };
+    result.push(user);
+  }
+
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
