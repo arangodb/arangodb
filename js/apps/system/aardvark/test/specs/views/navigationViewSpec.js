@@ -7,11 +7,13 @@
 
   describe("The navigation bar", function() {
 
-    var div, view, currentDBFake, curName, isSystem, DBSelectionViewDummy;
+    var div, view, currentDBFake, curName, isSystem,
+      DBSelectionViewDummy, StatisticBarViewDummy, UserBarViewDummy;
 
     beforeEach(function() {
       curName = "_system";
       isSystem = true;
+
       window.currentDB = window.currentDB || {
         get: function() {}
       };
@@ -21,6 +23,18 @@
         render : function(){}
       };
 
+      UserBarViewDummy = {
+        id : "UserBarViewDummy",
+        render : function(){}
+      };
+
+      StatisticBarViewDummy = {
+        id : "StatisticBarViewDummy",
+        render : function(){}
+      };
+
+      spyOn(window, "UserBarView").andReturn(UserBarViewDummy);
+      spyOn(window, "StatisticBarView").andReturn(StatisticBarViewDummy);
       spyOn(window, "DBSelectionView").andReturn(DBSelectionViewDummy);
       spyOn(window.currentDB, "get").andCallFake(function(key) {
         if (key === "name") {
