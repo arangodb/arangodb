@@ -50,30 +50,9 @@ var shutdownActions = {};
 var cleanupActions = {};
 var isHealthyActions = {};
 
-function getAddrPort (endpoint) {
-  var pos = endpoint.indexOf("://");
-  if (pos !== -1) {
-    return endpoint.substr(pos+3);
-  }
-  return endpoint;
-}
-
-function getAddr (endpoint) {
-  var addrPort = getAddrPort(endpoint);
-  var pos = addrPort.indexOf(":");
-  if (pos !== -1) {
-    return addrPort.substr(0,pos);
-  }
-  return addrPort;
-}
-
-function getPort (endpoint) {
-  var pos = endpoint.lastIndexOf(":");
-  if (pos !== -1) {
-    return parseInt(endpoint.substr(pos+1),10);
-  }
-  return 8529;
-}
+var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
+var getAddr = require("org/arangodb/cluster/planner").getAddr;
+var getPort = require("org/arangodb/cluster/planner").getPort;
 
 function encode (st) {
   var st2 = "";
@@ -206,8 +185,8 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
-    console.info("Waiting 10 seconds for agency to come alive...");
-    wait(10);
+    console.info("Waiting 5 seconds for agency to come alive...");
+    wait(5);
     return {"error":false, "isSendConfiguration": true};
   }
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
@@ -312,15 +291,26 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
-launchActions.createSysColls = function (dispatchers, cmd) {
-  var url = cmd.url + "/_api/collection";
+launchActions.createSystemColls = function (dispatchers, cmd) {
+  console.info("Waiting for coordinator to come up...");
+  var url = cmd.url + "/_api/version";
+  var r;
+  while (true) {
+    r = download(url);
+    if (r.code === 200) {
+      break;
+    }
+    wait(0.5);
+  }
+  wait(5);
+  console.info("Creating system collections...");
+  url = cmd.url + "/_admin/execute?returnAsJSON=true";
+  var body = 'load=require("internal").load;\n'+
+             'UPGRADE_ARGS=undefined;\n'+
+             'return load("js/server/version-check.js");\n';
   var o = { "method": "POST" };
-  var collinfo = { "name": "_aal", "isSystem": true, "numberOfShards": 1 };
-  download(url+"/_api/collection", JSON.stringify(collinfo), o);
-  collinfo.name = "...";
-  download(url+"/_api/collection", JSON.stringify(collinfo), o);
-  collinfo.name = "...";
-  download(url+"/_api/collection", JSON.stringify(collinfo), o);
+  r = download(url,body,o);
+  return r;
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
@@ -330,8 +320,8 @@ shutdownActions.startAgent = function (dispatchers, cmd, run) {
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  console.info("Waiting for 10 seconds for servers before shutting down agency.");
-  wait(10);
+  console.info("Waiting for 5 seconds for servers before shutting down agency.");
+  wait(5);
   return {"error": false, "isSendConfiguration": true};
 };
 
@@ -343,13 +333,17 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     download(url);
   }
-  console.info("Waiting 10 seconds for servers to shutdown gracefully...");
-  wait(10);
+  console.info("Waiting 5 seconds for servers to shutdown gracefully...");
+  wait(5);
   for (i = 0;i < run.pids.length;i++) {
     console.info("Shutting down %s the hard way...", run.pids[i].toString());
     killExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
+};
+
+shutdownActions.createSystemColls = function (options, cmd, run) {
+  return {"error": false, "isCreateSystemColls": true};
 };
 
 cleanupActions.startAgent = function (dispatchers, cmd) {
@@ -406,6 +400,10 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   return {"error": false, "isStartServers": true};
 };
 
+cleanupActions.createSystemColls = function (options, cmd) {
+  return {"error": false, "isCreateSystemColls": true};
+};
+
 isHealthyActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Checking health of agent %s", run.pid);
   var r = statusExternal(run.pid);
@@ -426,6 +424,10 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
     r.push(statusExternal(run.pids[i]));
   }
   return {"error": false, "isStartServers": true, "status": r};
+};
+
+isHealthyActions.createSystemColls = function (options, cmd) {
+  return {"error": false, "isCreateSystemColls": true};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
