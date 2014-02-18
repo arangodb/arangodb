@@ -17,8 +17,11 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionSimple"
         ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
-
+        
+        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
+        doc = ArangoDB.post("/_api/collection", :body => body)
+        doc.code.should eq(200)
+        @cid = doc.parsed_response['id']
 
         ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db, c = db.#{@cn}; for (var i = 0; i < 1500; ++i) { c.save({ n: i }); }")
       end
