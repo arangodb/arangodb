@@ -61,3 +61,6 @@ body, input, textarea, .page-title span, .pingback a.url {
   margin-right: 15px;
 }
 
+.fixedDropdown {
+  margin: 34px 0 0 !important;
+}

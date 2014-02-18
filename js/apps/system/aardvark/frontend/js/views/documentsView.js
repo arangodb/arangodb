@@ -145,14 +145,14 @@
                   return;
                 }
 
-                if (data.errors === 0) {
-                  arangoHelper.arangoNotification("Upload successful. " + 
-                                                  data.created + " document(s) imported.");
+                /*if (data.errors === 0) {
+                  //Heiko: Display information
+                  //"Upload successful. " + data.created + " document(s) imported.");
                 }
                 else if (data.errors !== 0) {
-                  arangoHelper.arangoError("Upload failed." + 
-                                           data.errors + "error(s).");
-                }
+                  //Heiko: Display information
+                  //arangoHelper.arangoError("Upload failed." + data.errors + "error(s).");
+                }*/
                 self.hideSpinner();
                 self.hideImportModal();
                 self.resetView();
@@ -361,11 +361,11 @@
       var from = $('#new-document-from').val();
       var to = $('#new-document-to').val();
       if (from === '') {
-        arangoHelper.arangoNotification('From paramater is missing');
+        //Heiko: Form-Validator - from is missing
         return;
       }
       if (to === '') {
-        arangoHelper.arangoNotification('To parameter is missing');
+        //Heiko: Form-Validator - to is missing
         return;
       }
       var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
@@ -426,6 +426,7 @@
           deleted = true;
         }
         else if (result === false) {
+          arangoHelper.arangoError('Doc error');
         }
       }
       else if (this.type === 'edge') {
@@ -756,10 +757,10 @@
       else {
         if (result.responseText) {
           var message = JSON.parse(result.responseText);
-          arangoHelper.arangoNotification(message.errorMessage);
+          arangoHelper.arangoNotification("Document error", message.errorMessage);
         }
         else {
-          arangoHelper.arangoNotification("Could not create index.");
+          arangoHelper.arangoNotification("Document error", "Could not create index.");
         }
       }
     },

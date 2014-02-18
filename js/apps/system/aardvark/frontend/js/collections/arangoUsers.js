@@ -11,7 +11,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     "testing": true
   },
 
-  url: "../api/user",
+  url: "/_api/user",
 
   initialize: function() {
     //check cookies / local storage

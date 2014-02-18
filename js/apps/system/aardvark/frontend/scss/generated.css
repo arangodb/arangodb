@@ -189,6 +189,8 @@ li.tile {
   text-align: center;
   height: 100px;
   width: 230px;
+  list-style: none;
+  background-color: rgba(0, 0, 0, 0.05);
   margin-left: 6px;
   margin-right: 6px;
   margin-bottom: 13px;
@@ -231,3 +233,82 @@ li.tile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+.fixedDropdown {
+  margin: 34px 0 0 0 !important;
+  border-radius: 0 !important;
+  width: 210px; }
+
+.fixedDropdown:after {
+  visibility: hidden; }
+
+.fixedDropdown .dropdown-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
+
+.fixedDropdown .dropdown-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0 !important; }
+
+.fixedDropdown a {
+  padding-left: 5px !important; }
+
+.fixedDropdown .notificationItemContent {
+  width: 160px;
+  float: left;
+  margin-left: 15px; }
+
+.fixedDropdown button {
+  float: right;
+  margin-right: 5px; }
+
+.innerDropdownInnerUL {
+  min-height: 220px;
+  height: 220px !important;
+  width: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  float: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
+
+.innerDropdownInnerUL .dropdown-item:hover {
+  background-color: #E1E1E1 !important; }
+
+.innerDropdownInnerUL li {
+  width: auto !important; }
+
+.fixedDropdown .notificationItem {
+  color: black; }
+
+.notificationItem i {
+  color: rgba(0, 0, 0, 0.2);
+  float: left;
+  font-size: 20px;
+  position: relative;
+  right: 8px;
+  top: -9px; }
+
+.notificationItem i:hover {
+  color: black;
+  cursor: pointer; }
+
+#stat_hd {
+  width: 19px;
+  height: 19px;
+  margin-top: 5px;
+  background-color: #333232;
+  border-radius: 3px;
+  border: 2px solid #8AA051; }
+
+.notificationItemContent {
+  font-weight: 300; }
+
+#stat_hd:hover {
+  cursor: pointer; }
+
+.fullNotification {
+  border: 2px solid red !important;
+  background-color: red !important; }
+
+#stat_hd #stat_hd_counter {
+  color: white;
+  margin-left: 5px; }
