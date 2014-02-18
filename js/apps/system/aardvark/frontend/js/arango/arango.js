@@ -101,49 +101,14 @@
       return returnVal;
     },
 
-    removeNotifications: function () {
-      $.gritter.removeAll();
-      this.lastNotificationMessage = null;
+    arangoNotification: function (content, title) {
+      window.App.notificationList.add({title:title, content: content});
     },
-    arangoNotification: function (message, time) {
-      var returnVal = false;
-      $.gritter.add({
-        title: "Notice:",
-        text: message,
-        time: time || 3000,
-        before_open: function(){
-          returnVal = true;
-        }
-      });
-      this.lastNotificationMessage = null;
 
-      return returnVal;
+    arangoError: function (content, title) {
+      window.App.notificationList.add({title:title, content: content});
     },
-    arangoError: function (message) {
-      var returnVal = false;
-      $.gritter.add({
-        title: "Error:",
-        text: message,
-        sticky: true,
-        before_open: function(){
-          if (this.lastNotificationMessage === message) {
-            // prevent display the same message over & over
-            return false;
-          }
-          if($('.gritter-item-wrapper').length === 3) {
-            // not more than 3 messages at once
-            return false;
-          }
-          this.lastNotificationMessage = message;
-          returnVal = true;
-        },
-        before_close: function(){
-          // reset last text when closing a specific message
-          this.lastNotificationMessage = null;
-        }
-      });
-      return returnVal;
-    },
+
     getRandomToken: function () {
       return Math.round(new Date().getTime());
     },

@@ -131,10 +131,6 @@
         }
         var changeResult = window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
 
-        if (result === true) {
-          arangoHelper.arangoNotification("Collection renamed");
-        }
-
         if (result !== true) {
           if (result !== undefined) {
             arangoHelper.arangoError("Collection error: " + result);
@@ -168,14 +164,12 @@
               }
             });
             this.hideModal();
-            arangoHelper.arangoNotification("Collection renamed");
           }
           else {
             arangoHelper.arangoError("Collection error: " + result2);
           }
         }
         else {
-          //arangoHelper.arangoNotification("No changes.");
           this.hideModal();
         }
       }
@@ -209,10 +203,7 @@
       var self = this;
       var collName = self.myCollection.name;
       var returnval = window.arangoCollectionsStore.deleteCollection(collName);
-      if (returnval === true) {
-        arangoHelper.arangoNotification('Collection deleted successfully.');
-      }
-      else {
+      if (returnval === false) {
         arangoHelper.arangoError('Could not delete collection.');
       }
       self.hideModal();

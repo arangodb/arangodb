@@ -39,6 +39,12 @@ var FoxxController = require("org/arangodb/foxx").Controller,
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var docus = new (require("lib/swagger").Swagger)();
   
+controller.get("/whoAmI", function(req, res) {
+  require("console").log(req.user);
+  res.json({
+    name: req.user
+  });
+});
 
 /** Fetch a foxx from temp folder
  *

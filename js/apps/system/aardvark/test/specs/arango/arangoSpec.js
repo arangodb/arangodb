@@ -69,16 +69,4 @@ describe("Arango Helper", function() {
 
   });
 
-  describe("arango gritter ", function() {
-    it("warn. notification", function() {
-      var dummy = arangoHelper.arangoNotification("test");
-      expect(dummy).toBe(true);
-    });
-    it("crit. notification", function() {
-      var dummy = arangoHelper.arangoError("test");
-      expect(dummy).toBe(true);
-      $.gritter.removeAll();
-    });
-  });
-
 });
