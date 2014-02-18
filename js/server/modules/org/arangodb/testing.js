@@ -37,7 +37,6 @@
 /// values are allowed:
 ///
 ///   - "all": do all tests
-///   - "make"
 ///   - "config"
 ///   - "boost"
 ///   - "shell_server"
@@ -53,6 +52,7 @@
 ///   - "foxx-manager"
 ///   - "authentication"
 ///   - "authentication-parameters
+///   - "single": convenience to execute a single test file
 ///
 /// The following properties of `options` are defined:
 ///
@@ -65,6 +65,9 @@
 ///     memory checker
 ///   - `cluster`: if set to true the tests are run with the coordinator
 ///     of a small local cluster
+///   - `test`: path to single test to execute for "single" test target
+///   - `skipServer`: flag for "single" test target to skip the server test
+///   - `skipClient`: flag for "single" test target to skip the client test
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
@@ -82,6 +85,19 @@ var base64Encode = require("internal").base64Encode;
 var PortFinder = require("org/arangodb/cluster").PortFinder;
 var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+
+var optionsDefaults = { "cluster": false,
+                        "valgrind": false,
+                        "force": true,
+                        "skipBoost": false,
+                        "skipGeo": false,
+                        "skipAhuacatl": false,
+                        "skipRanges": false,
+                        "username": "root",
+                        "password": "",
+                        "test": undefined,
+                        "skipServer": false,
+                        "skipClient": false };
 
 function findTopDir () {
   return fs.normalize(fs.join(ArangoServerState.executablePath(), "..",".."));
@@ -144,7 +160,7 @@ function startInstance (protocol, options) {
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
-    var runInfo = options.kickstarter.runInfo;
+    var runInfo = instanceInfo.kickstarter.runInfo;
     var roles = runInfo[runInfo.length-1].roles;
     var endpoints = runInfo[runInfo.length-1].endpoints;
     pos = roles.indexOf("Coordinator");
@@ -385,6 +401,11 @@ testFuncs.shell_server_ahuacatl = function(options) {
   return "skipped";
 };
 
+function executeAndWait (cmd, args) {
+  var pid = executeExternal(cmd, args);
+  return statusExternal(pid, true).exit;
+}
+
 testFuncs.shell_client = function(options) {
   var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                     "..",".."));
@@ -403,15 +424,7 @@ testFuncs.shell_client = function(options) {
     args.push(fs.join(topDir,te));
     var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                         "..","arangosh"));
-    var pid = executeExternal(arangosh, args);
-    var stat;
-    while (true) {
-      wait(0.1);
-      stat = statusExternal(pid);
-      if (stat.status !== "RUNNING") { break; }
-    }
-    r = stat.exit;
-    results[te] = r;
+    results[te] = executeAndWait(arangosh, args);
     args.pop();
     if (r !== 0 && !options.force) {
       break;
@@ -423,30 +436,107 @@ testFuncs.shell_client = function(options) {
   return results;
 };
 
-testFuncs.dummy = function (options) {
+testFuncs.config = function (options) {
+  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                    "..",".."));
+  var results = {};
+  var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
+            "arangosh"];
+  var t;
+  var i;
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+    results[t] = executeAndWait(fs.join(topDir,"bin",t),
+        ["--configuration", fs.join(topDir,"etc","arangodb",t+".conf"),
+         "--help"]);
+    print("Config test "+t+"...",results[t]);
+  }
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+    results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
+        ["--configuration", fs.join(topDir,"etc","relative",
+                                    t+".conf"), "--help"]);
+    print("Config test "+t+" (relative)...",results[t+"_rel"]);
+  }
+
+  return results;
+};
+
+testFuncs.boost = function (options) {
+  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                    "..",".."));
+  var results = {};
+  if (!options.skipBoost) {
+    results.basics = executeAndWait(fs.join(topDir,"UnitTests","basics_suite"),
+                                    ["--show_progress"]);
+  }
+  if (!options.skipGeo) {
+    results.geo_suite = executeAndWait(
+                          fs.join(topDir,"UnitTests","geo_suite"),
+                          ["--show_progress"]);
+  }
+  return results;
+};
+
+testFuncs.single = function (options) {
   var instanceInfo = startInstance("tcp",options);
-  print("Startup done.");
-  wait(3600);
+  var result = { };
+  var r;
+  if (options.test !== undefined) {
+    var te = options.test;
+    result.test = te;
+    if (!options.skipServer) {
+      print("\nTrying",te,"on server...");
+      try {
+        var t = 'var runTest = require("jsunity").runTest; '+
+                'return runTest("'+te+'");';
+        var o = makeAuthorisationHeaders(options);
+        o.method = "POST";
+        o.timeout = 24*3600;
+        r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
+        if (!r.error && r.code === 200) {
+          r = JSON.parse(r.body);
+        }
+      }
+      catch (err) {
+        r = err;
+      }
+      result.server = r;
+    }
+    if (!options.skipClient) {
+      var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                        "..",".."));
+      var args = makeTestingArgsClient(options);
+      args.push("--server.endpoint");
+      args.push(instanceInfo.endpoint);
+      args.push("--javascript.unit-tests");
+      args.push(fs.join(topDir,te));
+      print("\nTrying",te,"on client...");
+      var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                          "..","arangosh"));
+      result.client = executeAndWait(arangosh, args);
+    }
+  }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  return undefined;
+  return result;
+
 };
 
-var optionsDefaults = { "cluster": false,
-                        "valgrind": false,
-                        "force": false,
-                        "skipBoost": false,
-                        "skipGeo": false,
-                        "skipAhuacatl": false,
-                        "skipRanges": false,
-                        "username": "root",
-                        "password": "" };
+testFuncs.dummy = function (options) {
+  var instanceInfo = startInstance("tcp",options);
+  print("Startup done.");
+  //wait(3600);
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return true;
+};
 
 var allTests = 
   [
     "make",
-    "codebase_static",
     "config",
     "boost",
     "shell_server",

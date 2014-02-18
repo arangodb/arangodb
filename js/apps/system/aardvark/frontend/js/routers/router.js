@@ -76,16 +76,11 @@
       });
 
       this.foxxList = new window.FoxxCollection();
-      this.notificationList = new window.NotificationCollection();
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView();
-//      this.statView = new window.StatisticBarView();
-//      this.userBarView = new window.UserBarView();
       this.footerView.render();
       this.naviView.render();
-//      this.statView.render();
-//      this.userBarView.render();
       this.graphView = new window.GraphView({
         graphs: this.graphs,
         collection: window.arangoCollectionsStore

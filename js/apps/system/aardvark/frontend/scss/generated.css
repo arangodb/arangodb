@@ -189,6 +189,8 @@ li.tile {
   text-align: center;
   height: 100px;
   width: 230px;
+  list-style: none;
+  background-color: rgba(0, 0, 0, 0.05);
   margin-left: 6px;
   margin-right: 6px;
   margin-bottom: 13px;

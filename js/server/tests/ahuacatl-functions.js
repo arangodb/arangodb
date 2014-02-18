@@ -558,6 +558,74 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test slice function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSlice : function () {
+      var expected, actual;
+      
+      actual = getQueryResults("RETURN SLICE([ ], 0, 1)");
+      assertEqual([ [ ] ], actual);
+
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 1)");
+      assertEqual([ [ 1 ] ], actual);
+
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, 2)");
+      assertEqual([ [ 1, 2 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, 2)");
+      assertEqual([ [ 2, 3 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0)");
+      assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 3)");
+      assertEqual([ [ 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -1)");
+      assertEqual([ [ 1, 2, 3, 4 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 0, -2)");
+      assertEqual([ [ 1, 2, 3 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 2, -1)");
+      assertEqual([ [ 3, 4 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 10)");
+      assertEqual([ [ ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1000)");
+      assertEqual([ [ ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], -1000)");
+      assertEqual([ [ 1, 2, 3, 4, 5 ] ], actual);
+      
+      actual = getQueryResults("RETURN SLICE([ 1, 2, 3, 4, 5 ], 1, -10)");
+      assertEqual([ [ ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test slice function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSliceInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE(1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SLICE([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], 1, false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], 1, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SLICE([ ], 1, [ ])"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test left function
 ////////////////////////////////////////////////////////////////////////////////
 

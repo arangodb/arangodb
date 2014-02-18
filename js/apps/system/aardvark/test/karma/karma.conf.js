@@ -126,6 +126,7 @@ module.exports = function(karma) {
       'frontend/js/models/arangoStatistics.js',
       'frontend/js/models/arangoStatisticsDescription.js',
       'frontend/js/models/foxx.js',
+      'frontend/js/models/notification.js',
       'frontend/js/models/graph.js',
       'frontend/js/models/clusterServer.js',
       'frontend/js/models/clusterCoordinator.js',
@@ -149,6 +150,7 @@ module.exports = function(karma) {
       'frontend/js/collections/clusterDatabases.js',
       'frontend/js/collections/clusterCollections.js',
       'frontend/js/collections/clusterShards.js',
+      'frontend/js/collections/notificationCollection.js',
 
       // Views
       'frontend/js/views/navigationView.js',

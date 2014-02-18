@@ -4,8 +4,12 @@
       <div class="navlogo">
         <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
       </div>
-      <div class="navmenu" id="navigationBar">
-      </div>
+        <div class="statmenu" id="statisticBar">
+        </div>
+        <div class="usermenu" id="userBar" style="float:right;">
+        </div>
+        <div class="navmenu" id="navigationBar">
+        </div>
     </div>
   </nav>
 

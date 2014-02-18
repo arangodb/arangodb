@@ -13,7 +13,9 @@
         template: templateEngine.createTemplate("statisticBarView.ejs"),
 
         render: function () {
-            $(this.el).html(this.template.render({isSystem: window.currentDB.get("isSystem")}));
+            $(this.el).html(this.template.render({
+              isSystem: window.currentDB.get("isSystem")
+            }));
             return this;
         },
 

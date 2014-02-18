@@ -149,6 +149,31 @@ function exchangePort (endpoint, newport) {
   return endpoint.substr(0,pos+1)+newport;
 }
 
+function getAddrPort (endpoint) {
+  var pos = endpoint.indexOf("://");
+  if (pos !== -1) {
+    return endpoint.substr(pos+3);
+  }
+  return endpoint;
+}
+
+function getAddr (endpoint) {
+  var addrPort = getAddrPort(endpoint);
+  var pos = addrPort.indexOf(":");
+  if (pos !== -1) {
+    return addrPort.substr(0,pos);
+  }
+  return addrPort;
+}
+
+function getPort (endpoint) {
+  var pos = endpoint.lastIndexOf(":");
+  if (pos !== -1) {
+    return parseInt(endpoint.substr(pos+1),10);
+  }
+  return 8529;
+}
+
 // The following function merges default configurations and user configuration.
 
 function fillConfigWithDefaults (config, defaultConfig) {
@@ -550,6 +575,10 @@ Planner.prototype.makePlan = function() {
                 "onlyLocalhost": config.onlyLocalhost,
                 "agency": copy(agencyPos) } );
   }
+  var c = coordinators[0];
+  var e = exchangePort(dispatchers[c.dispatcher].endpoint,c.port);
+  tmp.push( { "action": "createSystemColls",
+              "url": "http://"+getAddrPort(e) } );
   this.myname = "me";
 };
 
@@ -573,6 +602,9 @@ Planner.prototype.getPlan = function() {
 exports.PortFinder = PortFinder;
 exports.Planner = Planner;
 exports.exchangePort = exchangePort;
+exports.getAddrPort = getAddrPort;
+exports.getPort = getPort;
+exports.getAddr = getAddr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
