@@ -1,0 +1,11 @@
+#!/bin/sh
+export PID=$$
+mkdir data-$PID
+export SCRIPT=$1
+shift
+export ARGS=""
+for i in $*; do
+    ARGS="$ARGS --javascript.script-parameter $i"
+done
+bin/arangod --configuration none --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:6789 --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT $ARGS
+rm -rf data-$PID log-$PID

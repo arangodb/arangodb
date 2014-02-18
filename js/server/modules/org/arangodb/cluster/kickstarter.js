@@ -196,7 +196,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
       return {"error":false, "isStartAgent": true, "pid": pid, 
-              "endpoint": extEndpoint};
+              "endpoint": "tcp://"+extEndpoint};
     }
   }
   return {"error":true, "isStartAgent": true, 
@@ -316,12 +316,12 @@ launchActions.createSysColls = function (dispatchers, cmd) {
   var url = cmd.url + "/_api/collection";
   var o = { "method": "POST" };
   var collinfo = { "name": "_aal", "isSystem": true, "numberOfShards": 1 };
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
+  download(url+"/_api/collection", JSON.stringify(collinfo), o);
   collinfo.name = "...";
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
+  download(url+"/_api/collection", JSON.stringify(collinfo), o);
   collinfo.name = "...";
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
-}
+  download(url+"/_api/collection", JSON.stringify(collinfo), o);
+};
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Shutting down agent %s", run.pid);
