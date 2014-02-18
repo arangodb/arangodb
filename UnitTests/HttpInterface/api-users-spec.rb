@@ -34,7 +34,6 @@ describe ArangoDB do
       doc.parsed_response['code'].should eq(200)
     end
 
-
 ################################################################################
 ## adding users 
 ################################################################################
@@ -389,17 +388,51 @@ describe ArangoDB do
 ################################################################################
 
     context "fetching users" do
-      
-      it "no user specified" do
+      it "fetches all users" do
         doc = ArangoDB.log_get("#{prefix}-fetch", api)
 
-        doc.code.should eq(400)
+        doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(400)
+        users = doc.parsed_response['result']
+        users.should be_kind_of(Array)
+
+        users.each do |user| 
+          user.should have_key("user"); 
+          user["user"].should be_kind_of(String) 
+
+          user.should have_key("active")
+
+          user.should have_key("extra")
+
+          user["extra"].should be_kind_of(Hash) 
+        end
       end
       
+      it "fetches users, requires some created users" do
+        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"meow\" : false } }"
+        ArangoDB.log_post("#{prefix}-fetch-existing", api, :body => body)
+      
+        doc = ArangoDB.log_get("#{prefix}-fetch-existing", api)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        users = doc.parsed_response['result']
+        users.should be_kind_of(Array)
+
+        found = false
+        users.each do |user| 
+          if user["user"] == "users-1"
+            user["user"].should eq("users-1") 
+            user["active"].should eq(false)
+            user["extra"].should eq({ "meow" => false })
+            found = true
+          end
+        end
+
+        # assert we have this one user
+        found.should eq(true)
+      end
+        
       it "fetch non-existing user" do
         doc = ArangoDB.log_get("#{prefix}-fetch", api + "/users-16")
 
