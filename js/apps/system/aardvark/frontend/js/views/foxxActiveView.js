@@ -6,7 +6,7 @@
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'li',
-    className: "span3",
+    className: "tile",
     template: templateEngine.createTemplate("foxxActiveView.ejs"),
 
     events: {

@@ -260,19 +260,9 @@ void ArangoClient::parse (ProgramOptions& options,
                           int argc,
                           char* argv[],
                           string const& initFilename) {
+  // if options are invalid, exit directly
   if (! options.parse(description, argc, argv)) {
     LOG_FATAL_AND_EXIT("%s", options.lastError().c_str());
-  }
-
-  // check for help
-  set<string> help = options.needHelp("help");
-
-  if (! help.empty()) {
-    if (! example.empty()) {
-      cout << "USAGE: " << argv[0] << " " << example << endl << endl;
-    }
-    cout << description.usage(help) << endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // setup the logging
@@ -293,7 +283,6 @@ void ArangoClient::parse (ProgramOptions& options,
       configFile = _configFile;
     }
   }
-
 
   else {
     char* d = TRI_LocateConfigDirectory();
@@ -331,6 +320,22 @@ void ArangoClient::parse (ProgramOptions& options,
       LOG_FATAL_AND_EXIT("cannot parse config file '%s': %s", configFile.c_str(), options.lastError().c_str());
     }
   }
+
+  // configuration is parsed and valid if we got to this point
+  
+  // check for --help
+  set<string> help = options.needHelp("help");
+
+  if (! help.empty()) {
+    if (! example.empty()) {
+      cout << "USAGE: " << argv[0] << " " << example << endl << endl;
+    }
+    cout << description.usage(help) << endl;
+
+    // --help always returns success
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+
 
   // set temp path
   if (options.has("temp-path")) {
@@ -414,7 +419,7 @@ void ArangoClient::parse (ProgramOptions& options,
 #else
       getline(cin, _password);
 #endif
-	  printLine("");
+      printLine("");
     }
   }
 }
