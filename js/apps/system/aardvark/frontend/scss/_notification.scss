@@ -22,9 +22,9 @@
 }
 
 .fixedDropdown .notificationItemContent {
-  width: 170px;
+  width: 160px;
   float: left;
-  margin-left: 5px;
+  margin-left: 15px;
 }
 
 .fixedDropdown button {
@@ -42,13 +42,15 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
 
+.innerDropdownInnerUL .dropdown-item:hover {
+  background-color: #E1E1E1 !important;
+}
+
 .innerDropdownInnerUL li {
   width: auto !important;
 }
 
 .innerDropdownInnerUL li:last-child {
-  color: red;
-  border-bottom: 0;
 }
 
 .fixedDropdown .notificationItem {
@@ -56,5 +58,42 @@
 }
 
 .notificationItem i {
-  float:left;
+  color: rgba(0, 0, 0, 0.2);
+  float: left;
+  font-size: 20px;
+  position: relative;
+  right: 8px;
+  top: -9px;
+}
+
+.notificationItem i:hover {
+  color: rgba(0, 0, 0, 1);
+  cursor: pointer;
+}
+
+#stat_hd {
+  width: 19px;
+  height: 19px;
+  margin-top: 7px;
+  background-color: #333232;
+  border-radius: 3px;
+  border: 2px solid #8AA051;
+}
+
+.notificationItemContent {
+  font-weight: 300;
+}
+
+#stat_hd:hover {
+  cursor:pointer;
+}
+
+.fullNotification {
+  border: 2px solid red !important;
+  background-color: red !important;
+}
+
+#stat_hd #stat_hd_counter {
+  color: white;
+  margin-left: 5px;
 }
