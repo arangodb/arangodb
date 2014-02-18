@@ -728,6 +728,23 @@ endif ()
 ################################################################################
 
 if (MSVC)
+  ##############################################################################
+  # Initializing variables
+  ##############################################################################
+  set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
+  IF(CMAKE_CL_64)
+    SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
+    SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView 64")
+    # this variable was defined by eld and included in NSIS.template.in
+    SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  "SetRegView 64")
+  ELSE()
+    SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
+    SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
+    SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView 32")
+    SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  "SetRegView 32")
+  ENDIF()
+
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.bmp" ARANGO_IMG)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.ico" ARANGO_ICON)
 
