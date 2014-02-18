@@ -328,8 +328,7 @@ launchActions.initializeFoxx = function (dispatchers, cmd) {
   url = cmd.url + "/_admin/execute";
   var body = 'return require("internal").executeGlobalContextFunction("require(\'internal\').initializeFoxx();");';
   var o = { "method": "POST" };
-  var r = download(url, body, o);
-  require("internal").print(r);
+  r = download(url, body, o);
   return r;
 };
 
