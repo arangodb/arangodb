@@ -18,7 +18,9 @@
         collection: window.arangoDatabase,
         current: window.currentDB
       });
-      this.userBarView = new window.UserBarView({});
+      this.userBarView = new window.UserBarView({
+        collection: this.options.notificationCollection
+      });
       this.statisticBarView = new window.StatisticBarView({});
     },
 

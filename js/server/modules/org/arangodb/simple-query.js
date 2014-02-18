@@ -403,18 +403,19 @@ SimpleQueryByExample.prototype.execute = function () {
         }
       }
       
+      var self = this;
       shards.forEach(function (shard) {
         ArangoClusterComm.asyncRequest("put", 
                                        "shard:" + shard, 
                                        dbName, 
                                        "/_api/simple/" + method,
                                        JSON.stringify({ 
-                                         example: this._example,
+                                         example: self._example,
                                          collection: shard, 
                                          skip: 0, 
                                          limit: limit || undefined, 
                                          batchSize: 100000000,
-                                         index: rewriteIndex(this._index)
+                                         index: rewriteIndex(self._index)
                                        }), 
                                        { }, 
                                        options);
@@ -546,36 +547,10 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
 
     var _documents = [ ], total = 0;
     var result = cluster.wait(coord, shards);
-    var toSkip = skip, toLimit = limit;
-
-    if (toSkip < 0) {
-      // negative skip is special
-      toLimit = null;
-    }
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
       total += body.total;
-
-      if (toSkip > 0) {
-        if (toSkip >= body.result.length) {
-          toSkip -= body.result.length;
-          return;
-        }
-         
-        body.result = body.result.slice(toSkip);
-        toSkip = 0;
-      }
-
-      if (toLimit !== null && toLimit !== undefined) {
-        if (body.result.length >= toLimit) {
-          body.result = body.result.slice(0, toLimit);
-          toLimit = 0;
-        }
-        else {
-          toLimit -= body.result.length;
-        }
-      }
 
       _documents = _documents.concat(body.result);
     });
@@ -586,8 +561,14 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
         return cmp(l[attribute], r[attribute]); 
       });
     }
-     
-    if (skip < 0) {
+    
+    if (limit > 0 && skip >= 0) {
+      _documents = _documents.slice(skip, skip + limit);
+    }
+    else if (skip > 0) {
+      _documents = _documents.slice(skip, _documents.length);
+    }
+    else if (skip < 0) {
       // apply negative skip
       _documents = _documents.slice(_documents.length + skip, limit || 100000000);
     }
@@ -725,7 +706,7 @@ SimpleQueryNear.prototype.execute = function () {
     }
 
     var attribute;
-    if (this._distance === null) {
+    if (this._distance !== null) {
       attribute = this._distance;
     }
     else {
@@ -755,41 +736,25 @@ SimpleQueryNear.prototype.execute = function () {
 
     var _documents = [ ], total = 0;
     result = cluster.wait(coord, shards);
-    var toSkip = this._skip, toLimit = this._limit;
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
       total += body.total;
 
-      if (toSkip > 0) {
-        if (toSkip >= body.result.length) {
-          toSkip -= body.result.length;
-          return;
-        }
-         
-        body.result = body.result.slice(toSkip);
-        toSkip = 0;
-      }
-
-      if (toLimit !== null && toLimit !== undefined) {
-        if (body.result.length >= toLimit) {
-          body.result = body.result.slice(0, toLimit);
-          toLimit = 0;
-        }
-        else {
-          toLimit -= body.result.length;
-        }
-      }
-
       _documents = _documents.concat(body.result);
     });
 
     if (shards.length > 1) {
-      var cmp = require("org/arangodb/ahuacatl").RELATIONAL_CMP;
       _documents.sort(function (l, r) {
-require("internal").print("SORTING:", attribute);
-        return -1 * cmp(l[attribute], r[attribute]); 
+        if (l[attribute] === r[attribute]) {
+          return 0;
+        }
+        return (l[attribute] < r[attribute] ? -1 : 1);
       });
+    }
+    
+    if (this._limit > 0) {
+      _documents = _documents.slice(0, this._skip + this._limit);
     }
 
     if (this._distance === null) {
@@ -852,25 +817,128 @@ require("internal").print("SORTING:", attribute);
 SimpleQueryWithin.prototype.execute = function () {
   var result;
   var documents;
-  var distances;
-  var i;
+  var i, n;
 
-  if (this._execution === null) {
-    result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
-    documents = result.documents;
-    distances = result.distances;
+  if (this._execution !== null) {
+    return;
+  }
+  
+  if (this._skip === null) {
+    this._skip = 0;
+  }
 
-    if (this._distance !== null) {
-      var n = documents.length;
-      for (i = this._skip;  i < n;  ++i) {
-        documents[i][this._distance] = distances[i];
+  if (this._skip < 0) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorMessage = "skip must be non-negative";
+    throw err;
+  }
+  
+  var cluster = require("org/arangodb/cluster");
+    
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
       }
     }
 
-    this._execution = new GeneralArrayCursor(result.documents, this._skip, this._limit);
-    this._countQuery = result.documents.length - this._skip;
-    this._countTotal = result.documents.length;
+    var attribute;
+    if (this._distance !== null) {
+      attribute = this._distance;
+    }
+    else {
+      // use a pseudo-attribute for distance (we need this for sorting)
+      attribute = "$distance";
+    }
+                                     
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/within", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       latitude: self._latitude,
+                                       longitude: self._longitude,
+                                       distance: attribute,
+                                       radius: self._radius,
+                                       geo: rewriteIndex(self._index),
+                                       skip: 0, 
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var _documents = [ ], total = 0;
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      total += body.total;
+
+      _documents = _documents.concat(body.result);
+    });
+
+    if (shards.length > 1) {
+      _documents.sort(function (l, r) {
+        if (l[attribute] === r[attribute]) {
+          return 0;
+        }
+        return (l[attribute] < r[attribute] ? -1 : 1);
+      });
+    }
+
+    if (this._limit > 0) {
+      _documents = _documents.slice(0, this._skip + this._limit);
+    }
+      
+    if (this._distance === null) {
+      n = _documents.length;
+      for (i = 0; i < n; ++i) {
+        delete _documents[i][attribute];
+      }
+    }
+     
+    documents = { 
+      documents: _documents, 
+      count: _documents.length, 
+      total: total
+    };
   }
+  else {
+    result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
+
+    documents = {
+      documents: result.documents,
+      count: result.documents.length,
+      total: result.documents.length
+    };
+
+    if (this._limit > 0) {
+      documents.documents = documents.documents.slice(0, this._skip + this._limit);
+    }
+      
+    if (this._distance !== null) {
+      var distances = result.distances;
+      n = documents.documents.length;
+      for (i = this._skip;  i < n;  ++i) {
+        documents.documents[i][this._distance] = distances[i];
+      }
+    }
+  }
+
+  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
+  this._countQuery = documents.total - this._skip;
+  this._countTotal = documents.total;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -898,14 +966,80 @@ SimpleQueryFulltext.prototype.execute = function () {
   var result;
   var documents;
 
-  if (this._execution === null) {
-    result = this._collection.FULLTEXT(this._index, this._query);
-    documents = result.documents;
-
-    this._execution = new GeneralArrayCursor(result.documents, this._skip, this._limit);
-    this._countQuery = result.documents.length - this._skip;
-    this._countTotal = result.documents.length;
+  if (this._execution !== null) {
+    return;
   }
+
+  var cluster = require("org/arangodb/cluster");
+    
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
+      }
+    }
+
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put", 
+                                     "shard:" + shard, 
+                                     dbName, 
+                                     "/_api/simple/fulltext", 
+                                     JSON.stringify({ 
+                                       collection: shard,
+                                       attribute: self._attribute,
+                                       query: self._query,
+                                       index: rewriteIndex(self._index),
+                                       skip: 0, 
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }), 
+                                     { }, 
+                                     options);
+    });
+
+    var _documents = [ ], total = 0;
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      total += body.total;
+
+      _documents = _documents.concat(body.result);
+    });
+
+    if (this._limit > 0) {
+      _documents = _documents.slice(0, this._skip + this._limit);
+    }
+      
+    documents = { 
+      documents: _documents, 
+      count: _documents.length, 
+      total: total
+    };
+  }
+  else {
+    result = this._collection.FULLTEXT(this._index, this._query);
+
+    documents = {
+      documents: result.documents,
+      count: result.documents.length - this._skip,
+      total: result.documents.length
+    };
+    
+    if (this._limit > 0) {
+      documents.documents = documents.documents.slice(0, this._skip + this._limit);
+    }
+  }
+
+  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
+  this._countQuery = documents.total - this._skip;
+  this._countTotal = documents.total;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

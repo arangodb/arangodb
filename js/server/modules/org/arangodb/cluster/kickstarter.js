@@ -50,30 +50,9 @@ var shutdownActions = {};
 var cleanupActions = {};
 var isHealthyActions = {};
 
-function getAddrPort (endpoint) {
-  var pos = endpoint.indexOf("://");
-  if (pos !== -1) {
-    return endpoint.substr(pos+3);
-  }
-  return endpoint;
-}
-
-function getAddr (endpoint) {
-  var addrPort = getAddrPort(endpoint);
-  var pos = addrPort.indexOf(":");
-  if (pos !== -1) {
-    return addrPort.substr(0,pos);
-  }
-  return addrPort;
-}
-
-function getPort (endpoint) {
-  var pos = endpoint.lastIndexOf(":");
-  if (pos !== -1) {
-    return parseInt(endpoint.substr(pos+1),10);
-  }
-  return 8529;
-}
+var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
+var getAddr = require("org/arangodb/cluster/planner").getAddr;
+var getPort = require("org/arangodb/cluster/planner").getPort;
 
 function encode (st) {
   var st2 = "";
@@ -139,7 +118,6 @@ function sendToAgency (agencyURL, path, obj) {
 }
 
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
-
   console.info("Starting agent...");
 
   // First find out our own data directory:
@@ -196,7 +174,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
       return {"error":false, "isStartAgent": true, "pid": pid, 
-              "endpoint": extEndpoint};
+              "endpoint": "tcp://"+extEndpoint};
     }
   }
   return {"error":true, "isStartAgent": true, 
@@ -206,8 +184,8 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
-    console.info("Waiting 10 seconds for agency to come alive...");
-    wait(10);
+    console.info("Waiting 5 seconds for agency to come alive...");
+    wait(5);
     return {"error":false, "isSendConfiguration": true};
   }
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
@@ -219,7 +197,6 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
-
   // First find out our own data directory to setup base for relative paths:
   var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
@@ -312,16 +289,49 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
-launchActions.createSysColls = function (dispatchers, cmd) {
-  var url = cmd.url + "/_api/collection";
+launchActions.createSystemColls = function (dispatchers, cmd) {
+  console.info("Waiting for coordinator to come up...");
+  var url = cmd.url + "/_api/version";
+  var r;
+  while (true) {
+    r = download(url);
+    if (r.code === 200) {
+      break;
+    }
+    wait(0.5);
+  }
+  wait(5);
+  console.info("Creating system collections...");
+  url = cmd.url + "/_admin/execute?returnAsJSON=true";
+  var body = 'load=require("internal").load;\n'+
+             'UPGRADE_ARGS=undefined;\n'+
+             'return load("js/server/version-check.js");\n';
   var o = { "method": "POST" };
-  var collinfo = { "name": "_aal", "isSystem": true, "numberOfShards": 1 };
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
-  collinfo.name = "...";
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
-  collinfo.name = "...";
-  download(url+/_api/collection, JSON.stringify(collinfo), o);
-}
+  r = download(url,body,o);
+  return r;
+};
+
+launchActions.initializeFoxx = function (dispatchers, cmd) {
+  console.info("Initializing Foxx on coordinator...");
+  
+  var url = cmd.url + "/_api/version";
+  var r;
+  while (true) {
+    r = download(url);
+    if (r.code === 200) {
+      break;
+    }
+    wait(0.5);
+  }
+  wait(1);
+
+  url = cmd.url + "/_admin/execute";
+  var body = 'return require("internal").executeGlobalContextFunction("require(\'internal\').initializeFoxx();");';
+  var o = { "method": "POST" };
+  var r = download(url, body, o);
+  require("internal").print(r);
+  return r;
+};
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Shutting down agent %s", run.pid);
@@ -330,8 +340,8 @@ shutdownActions.startAgent = function (dispatchers, cmd, run) {
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  console.info("Waiting for 10 seconds for servers before shutting down agency.");
-  wait(10);
+  console.info("Waiting for 5 seconds for servers before shutting down agency.");
+  wait(5);
   return {"error": false, "isSendConfiguration": true};
 };
 
@@ -343,8 +353,8 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     download(url);
   }
-  console.info("Waiting 10 seconds for servers to shutdown gracefully...");
-  wait(10);
+  console.info("Waiting 5 seconds for servers to shutdown gracefully...");
+  wait(5);
   for (i = 0;i < run.pids.length;i++) {
     console.info("Shutting down %s the hard way...", run.pids[i].toString());
     killExternal(run.pids[i]);
@@ -353,7 +363,6 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 };
 
 cleanupActions.startAgent = function (dispatchers, cmd) {
-
   console.info("Cleaning up agent...");
 
   // First find out our own data directory:
@@ -370,13 +379,7 @@ cleanupActions.startAgent = function (dispatchers, cmd) {
   return {"error":false, "isStartAgent": true};
 };
 
-cleanupActions.sendConfiguration = function (dispatchers, cmd) {
-  // nothing to do here
-  return {"error":false, "isSendConfiguration": true};
-};
-
 cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
-
   console.info("Cleaning up DBservers...");
 
   // First find out our own data directory to setup base for relative paths:
@@ -412,10 +415,6 @@ isHealthyActions.startAgent = function (dispatchers, cmd, run) {
   r.isStartAgent = true;
   r.error = false;
   return r;
-};
-
-isHealthyActions.sendConfiguration = function (dispatchers, cmd, run) {
-  return {"error": false, "isSendConfiguration": true};
 };
 
 isHealthyActions.startServers = function (dispatchers, cmd, run) {
@@ -498,11 +497,16 @@ Kickstarter.prototype.launch = function () {
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      res = launchActions[cmd.action](dispatchers, cmd, false);
-      results.push(res);
-      if (res.error === true) {
-        error = true;
-        break;
+      if (launchActions.hasOwnProperty(cmd.action)) {
+        res = launchActions[cmd.action](dispatchers, cmd, false);
+        results.push(res);
+        if (res.error === true) {
+          error = true;
+          break;
+        }
+      }
+      else {
+        results.push({ error: false });
       }
     }
     else {
@@ -589,11 +593,16 @@ Kickstarter.prototype.relaunch = function () {
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      res = launchActions[cmd.action](dispatchers, cmd, true);
-      results.push(res);
-      if (res.error === true) {
-        error = true;
-        break;
+      if (launchActions.hasOwnProperty(cmd.action)) {
+        res = launchActions[cmd.action](dispatchers, cmd, true);
+        results.push(res);
+        if (res.error === true) {
+          error = true;
+          break;
+        }
+      }
+      else {
+        results.push({ error: false });
       }
     }
     else {
@@ -665,11 +674,16 @@ Kickstarter.prototype.shutdown = function() {
     cmd = cmds[i];
     var run = runInfo[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      res = shutdownActions[cmd.action](dispatchers, cmd, run);
-      if (res.error === true) {
-        error = true;
+      if (shutdownActions.hasOwnProperty(cmd.action)) {
+        res = shutdownActions[cmd.action](dispatchers, cmd, run);
+        if (res.error === true) {
+          error = true;
+        }
+        results.push(res);
       }
-      results.push(res);
+      else {
+        results.push({ error: false });
+      }
     }
     else {
       var ep = dispatchers[cmd.dispatcher].endpoint;
@@ -741,10 +755,15 @@ Kickstarter.prototype.cleanup = function() {
   for (i = 0; i < cmds.length; i++) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      res = cleanupActions[cmd.action](dispatchers, cmd);
-      results.push(res);
-      if (res.error === true) {
-        error = true;
+      if (cleanupActions.hasOwnProperty(cmd.action)) {
+        res = cleanupActions[cmd.action](dispatchers, cmd);
+        results.push(res);
+        if (res.error === true) {
+          error = true;
+        }
+      }
+      else {
+        results.push({ error: false });
       }
     }
     else {
@@ -816,11 +835,16 @@ Kickstarter.prototype.isHealthy = function() {
     cmd = cmds[i];
     var run = runInfo[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
-      res = isHealthyActions[cmd.action](dispatchers, cmd, run);
-      if (res.error === true) {
-        error = true;
+      if (isHealthyActions.hasOwnProperty(cmd.action)) {
+        res = isHealthyActions[cmd.action](dispatchers, cmd, run);
+        if (res.error === true) {
+          error = true;
+        }
+        results.push(res);
       }
-      results.push(res);
+      else {
+        results.push({ error: false });
+      }
     }
     else {
       var ep = dispatchers[cmd.dispatcher].endpoint;
