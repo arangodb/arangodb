@@ -101,10 +101,12 @@
       return returnVal;
     },
 
-    arangoNotification: function (message) {
+    arangoNotification: function (content, title) {
+      window.App.notificationList.add({title:title, content: content});
     },
 
-    arangoError: function (message) {
+    arangoError: function (content, title) {
+      window.App.notificationList.add({title:title, content: content});
     },
 
     getRandomToken: function () {
