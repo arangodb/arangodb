@@ -1,37 +1,40 @@
+<% var appInfos = attributes.app.split(":"); %>
+<div class="iconSet">
+  <span class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
+  <span class="icon_arangodb_info" title="Show API documentation"></span>
+</div>
+
+<div class="plain">                                                                                                                                    
+  <img src="foxxes/thumbnail/<%=attributes.app %>" height="50" width="50" alt="" class="icon">
+  <%if (attributes.development) {%>
+    <span class="badge badge-success loaded">
+      <div class="cornered">
+        development
+      </div>
+    </span>
+  <%} else if (attributes.active) {%>
+    <span class="badge badge-success loaded">
+      <div class="cornered">
+        active
+      </div>
+    </span>
+  <%} else {%>
+    <span class="badge badge-success unloaded">
+      <div class="cornered">
+        inactive
+      </div>
+    </span>
+  <%}%>
+  <h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
+</div>
+
+<!--
 <small>
-  <div class="plain foxxElement">
-    <% var appInfos = attributes.app.split(":"); %>
-    <h5 class="applicationName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
-    <div class="pull-right">
-        <span class="icon_arangodb_info ICON" title="Show API documentation"></span>
-    </div>
-    <img src="foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
-    <p class="foxxDescription">
-      <!--Description: <%=attributes.description %><br /> -->
+      Description: <%=attributes.description %><br />
       <strong>Mount:</strong>&nbsp;<%=attributes.mount %><br />
       <strong>Version:</strong>&nbsp;<%=appInfos[2] %><br />
       <strong>Prefix:</strong>&nbsp;<%=attributes.options && attributes.options.collectionPrefix%><br />
       
-      <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
-    </p>
-    <%if (attributes.development) {%>
-      <span class="badge badge-success loaded badge-foxx">
-        <div class="cornered">
-          development
-        </div>
-      </span>
-    <%} else if (attributes.active) {%>
-      <span class="badge badge-success loaded badge-foxx">
-        <div class="cornered">
-          active
-        </div>
-      </span>
-    <%} else {%>
-      <span class="badge badge-success unloaded badge-foxx">
-        <div class="cornered">
-          inactive
-        </div>
-      </span>
-    <%}%>
-  </div>
+      Git: <a href=<%=attributes.git %>>Repository</a>
 </small>
+-->

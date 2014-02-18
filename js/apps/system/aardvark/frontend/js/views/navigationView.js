@@ -18,8 +18,10 @@
         collection: window.arangoDatabase,
         current: window.currentDB
       });
-//      this.userBarView = new window.UserBarView({});
-//      this.statisticBarView = new window.StatisticBarView({});
+      this.userBarView = new window.UserBarView({
+        collection: this.options.notificationCollection
+      });
+      this.statisticBarView = new window.StatisticBarView({});
     },
 
     handleSelectDatabase: function () {
@@ -34,8 +36,8 @@
         isSystem: window.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
-//      this.userBarView.render($("#userBar"));
-//      this.statisticBarView.render($("#statisticBar"));
+      this.userBarView.render($("#userBar"));
+      this.statisticBarView.render($("#statisticBar"));
       return this;
     },
 

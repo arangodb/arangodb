@@ -76,6 +76,11 @@ var users = require("org/arangodb/users");
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_user (req, res) {
+  if (req.suffix.length === 0) {
+    actions.resultOk(req, res, actions.HTTP_OK, { result: users.all() });
+    return;
+  }
+
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;

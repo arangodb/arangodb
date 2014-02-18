@@ -93,10 +93,7 @@
         }
 
         result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
-        if (result === true) {
-          arangoHelper.arangoNotification('Document saved');
-        }
-        else if (result === false) {
+        if (result === false) {
           arangoHelper.arangoError('Document error');
         }
       }
@@ -104,10 +101,7 @@
         editor = ace.edit("sourceEditor");
         model = editor.getValue();
         result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
-        if (result === true) {
-          arangoHelper.arangoNotification('Edge saved');
-        }
-        else if (result === false) {
+        if (result === false) {
           arangoHelper.arangoError('Edge error');
         }
       }
