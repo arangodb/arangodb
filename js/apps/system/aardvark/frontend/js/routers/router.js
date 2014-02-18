@@ -36,6 +36,7 @@
 
     initialize: function () {
       this.graphs = new window.GraphCollection();
+      this.notificationList = new window.NotificationCollection();
 
       window.currentDB = new window.CurrentDatabase();
       window.currentDB.fetch({
@@ -69,7 +70,9 @@
       this.foxxList = new window.FoxxCollection();
 
       this.footerView = new window.FooterView();
-      this.naviView = new window.NavigationView();
+      this.naviView = new window.NavigationView({
+        notificationCollection: this.notificationList
+      });
       this.footerView.render();
       this.naviView.render();
       this.graphView = new window.GraphView({
