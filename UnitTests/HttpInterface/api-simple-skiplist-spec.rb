@@ -17,7 +17,11 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionSkiplist"
         ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
+        
+        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
+        doc = ArangoDB.post("/_api/collection", :body => body)
+        doc.code.should eq(200)
+        @cid = doc.parsed_response['id']
       end
 
       after do

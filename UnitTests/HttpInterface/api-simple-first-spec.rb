@@ -10,38 +10,6 @@ describe ArangoDB do
   context "simple queries:" do
 
 ################################################################################
-## any query
-################################################################################
-
-    context "any query:" do
-      before do
-        @cn = "UnitTestsCollectionSimple"
-        ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
-
-        (0...10).each{|i|
-          ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
-        }
-      end
-
-      after do
-        ArangoDB.drop_collection(@cn)
-      end
-
-      it "get any documents" do
-        cmd = api + "/any"
-        body = "{ \"collection\" : \"#{@cid}\" }"
-        doc = ArangoDB.log_put("#{prefix}-any", cmd, :body => body)
-
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['document']['n'].should be_kind_of(Integer)
-      end
-    end
-
-################################################################################
 ## first / last
 ################################################################################
 
@@ -55,8 +23,52 @@ describe ArangoDB do
       after do
         ArangoDB.drop_collection(@cn)
       end
+      
+      it "finds the examples, empty collection" do
+        cmd = api + "/first"
+        body = "{ \"collection\" : \"#{@cn}\" }"
+        doc = ArangoDB.log_put("#{prefix}-first1", cmd, :body => body)
 
-      it "finds the examples" do
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should be_nil
+        
+        cmd = api + "/first"
+        body = "{ \"collection\" : \"#{@cn}\", \"count\" : 2 }"
+        doc = ArangoDB.log_put("#{prefix}-first2", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should be_kind_of(Array)
+        doc.parsed_response['result'].length.should eq(0)
+
+        cmd = api + "/last"
+        body = "{ \"collection\" : \"#{@cn}\" }"
+        doc = ArangoDB.log_put("#{prefix}-last1", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should be_nil
+        
+        cmd = api + "/last"
+        body = "{ \"collection\" : \"#{@cn}\", \"count\" : 2 }"
+        doc = ArangoDB.log_put("#{prefix}-last2", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should be_kind_of(Array)
+        doc.parsed_response['result'].length.should eq(0)
+      end
+
+      it "finds the examples, non-empty collection" do
         body = "{ \"i\" : 1 }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
         doc.code.should eq(202)

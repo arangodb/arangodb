@@ -17,6 +17,7 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionFulltext"
         ArangoDB.drop_collection(@cn)
+
         body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
         doc = ArangoDB.post("/_api/collection", :body => body)
         doc.code.should eq(200)
