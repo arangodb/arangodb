@@ -93,6 +93,7 @@
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
         "frontend/js/lib/d3.v3.min.js",
+        "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/nv.d3.js",
         "frontend/js/lib/d3.fisheye.js",
         "frontend/js/lib/ColVis.js",
