@@ -24,29 +24,28 @@ describe ArangoDB do
       end
       
       it "does not create the index in case of violation" do
-  
-      # create a document
-      cmd1 = "/_api/document?collection=#{@cn}"
-      body = "{ \"a\" : 1, \"b\" : 1 }"
-      doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+        # create a document
+        cmd1 = "/_api/document?collection=#{@cn}"
+        body = "{ \"a\" : 1, \"b\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
-      doc.code.should eq(201)
+        doc.code.should eq(201)
 
-      # create another document
-      body = "{ \"a\" : 1, \"b\" : 1 }"
-      doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+        # create another document
+        body = "{ \"a\" : 1, \"b\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
-      doc.code.should eq(201)
+        doc.code.should eq(201)
 
-      # try to create the index
-      cmd = "/_api/index?collection=#{@cn}"
-      body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
-      doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
+        # try to create the index
+        cmd = "/_api/index?collection=#{@cn}"
+        body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
+        doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
 
-      doc.code.should eq(400)
-      doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['code'].should eq(400)
-      doc.parsed_response['errorNum'].should eq(1210)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1210)
       end
     end
   end
