@@ -10,11 +10,13 @@
       "click .tab": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown",
-      "click .navlogo #stat_hd" : "toggleNotification"
+      "click .navlogo #stat_hd" : "toggleNotification",
+      "click .notificationItem .fa" : "removeNotification"
     },
 
     initialize: function () {
-      this.notificationList = new window.NotificationCollection();
+      this.collection.bind("add", this.renderNotifications.bind(this));
+      this.collection.bind("remove", this.renderNotifications.bind(this));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -69,19 +71,29 @@
       this.renderNotifications();
     },
 
+    removeNotification: function(e) {
+      var cid = e.target.id;
+      this.collection.get(cid).destroy();
+    },
+
     renderNotifications: function() {
       $('.innerDropdownInnerUL').html(this.notificationItem.render({
-        notifications : this.notificationList.models
+        notifications : this.collection
       }));
     },
 
     render: function (el) {
+      this.collection.add({content:"title", title:"test"});
+      this.collection.add({content:"title", title:"test"});
+      this.collection.add({content:"title", title:"test"});
+      this.collection.add({content:"title", title:"test"});
+
       this.$el = el;
       this.$el.html(this.template.render({
         img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
         prename : "Floyd",
         lastname : "Pepper",
-        notifications : this.notificationList.models
+        notifications : this.collection
       }));
 
       this.renderNotifications();

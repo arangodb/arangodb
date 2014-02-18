@@ -262,7 +262,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     signal(SIGUSR1, SIG_IGN);
       
     // execute worker
-    execv(external->_executable, external->_arguments);
+    execvp(external->_executable, external->_arguments);
 
     _exit(1);
   }
@@ -325,11 +325,95 @@ bool createPipes (HANDLE * hChildStdinRd, HANDLE * hChildStdinWr,
   return true;
 }
 
-bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
+#define appendChar(buf,x) \
+  do { \
+    err = TRI_AppendCharStringBuffer((buf), (x)); \
+    if (err != TRI_ERROR_NO_ERROR) { \
+      return err; \
+    } \
+  } while (false);
+
+static int appendQuotedArg(TRI_string_buffer_t* buf, const char* p) {
+  int err;
+  appendChar(buf,'"');
+  while (p != 0) {
+    switch (*p) {
+      case '%':
+        appendChar('%');
+        appendChar('%');
+        break;
+      case '^':
+      case '&':
+      case '<':
+      case '>':
+      case '|':
+      case '\'':
+      case '`':
+      case ',':
+      case ';':
+      case '=':
+      case '(':
+      case ')':
+        appendChar('^');
+        appendChar(*p);
+        break;
+      case '\\':
+      case '[':
+      case ']':
+      case '"':
+        appendChar('\\');
+        appendChar(*p);
+        break;
+      default:
+        appendChar(*p);
+        break;
+    }
+  }
+  appendChar('"');
+  return TRI_ERROR_NO_ERROR;
+}
+
+static char* makeWindowsArgs(TRI_external_t* external) {
+  TRI_string_buffer_t* buf;
+  size_t i;
+  int err = TRI_ERROR_NO_ERROR;
+  char* res;
+
+  buf = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  if (buf == NULL) {
+    return NULL;
+  }
+  TRI_ReserveStringBuffer(buf, 1024);
+  err = appendQuotedArg(buf, external->_executable);
+  if (err != TRI_ERROR_NO_ERROR) {
+    TRI_FreeStringBuffer(buf);
+    return NULL;
+  }
+  for (i = 0;i < external->_numberArguments;i++) {
+    err = TRI_AppendCharStringBuffer(buf, ' ');
+    if (err != TRI_ERROR_NO_ERROR) {
+      TRI_FreeStringBuffer(buf);
+      return NULL;
+    }
+    err = appendQuotedArg(buf, external->_arguments[i]);
+  }
+  res = TRI_StealStringBuffer(buf);
+  TRI_FreeStringBuffer(buf);
+  return res;
+}
+
+static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
+  char* args;
   PROCESS_INFORMATION piProcInfo; 
   STARTUPINFO siStartInfo;
   BOOL bFuncRetn = FALSE; 
  
+  args = makeWindowsArgs(external);
+  if (args == NULL) {
+    LOG_ERROR("execute of '%s' failed making args", external->_executable);
+    return false;
+  }
+
   // set up members of the PROCESS_INFORMATION structure
   ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
  
@@ -344,7 +428,7 @@ bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
 
   // create the child process
   bFuncRetn = CreateProcess(NULL, 
-                            external->_executable,       // command line 
+                            args,                        // command line 
                             NULL,                        // process security attributes 
                             NULL,                        // primary thread security attributes 
                             TRUE,                        // handles are inherited 
@@ -354,6 +438,8 @@ bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
                             &siStartInfo,                // STARTUPINFO pointer 
                             &piProcInfo);                // receives PROCESS_INFORMATION 
    
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
+
   if (bFuncRetn == FALSE) {
     LOG_ERROR("execute of '%s' failed", external->_executable);
     return false;
@@ -364,6 +450,7 @@ bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
     return true;
   }
 }
+
 static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
     HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
@@ -701,7 +788,7 @@ void TRI_CreateExternalProcess (const char* executable,
   external = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true);
 
   external->_executable = TRI_DuplicateString(executable);
-  external->_numberArguments = n;
+  external->_numberArguments = n+1;
 
   external->_arguments = TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true);
   external->_arguments[0] = TRI_DuplicateString(executable);
@@ -710,9 +797,7 @@ void TRI_CreateExternalProcess (const char* executable,
     external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
   }
 
-  if(arguments) {
-    external->_arguments[n + 1] = NULL;
-  }
+  external->_arguments[n + 1] = NULL;
   external->_status = TRI_EXT_NOT_STARTED;
 
   StartExternalProcess(external, false);

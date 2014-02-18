@@ -147,8 +147,7 @@ function get_edges (req, res) {
   }
 
   var name = decodeURIComponent(req.suffix[0]);
-  var id = parseInt(name, 10) || name;
-  var collection = arangodb.db._collection(id);
+  var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -162,10 +161,10 @@ function get_edges (req, res) {
   if (direction === null || direction === undefined || direction === "" || direction === "any") {
     e = collection.edges(vertex);
   }
-  else if (direction === "in") {
+  else if (direction === "in" || direction === "inbound") {
     e = collection.inEdges(vertex);
   }
-  else if (direction === "out") {
+  else if (direction === "out" || direction === "outbound") {
     e = collection.outEdges(vertex);
   }
   else {
@@ -173,14 +172,12 @@ function get_edges (req, res) {
                       "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
     return;
   }
-
-  var result = { edges : e };
-
-  actions.resultOk(req, res, actions.HTTP_OK, result);
+  
+  actions.resultOk(req, res, actions.HTTP_OK, { edges: e });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads or creates a collection
+/// @brief gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
