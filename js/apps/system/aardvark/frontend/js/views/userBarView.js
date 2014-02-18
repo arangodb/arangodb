@@ -11,12 +11,14 @@
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown",
       "click .navlogo #stat_hd" : "toggleNotification",
-      "click .notificationItem .fa" : "removeNotification"
+      "click .notificationItem .fa" : "removeNotification",
+      "click #removeAllNotifications" : "removeAllNotifications"
     },
 
     initialize: function () {
       this.collection.bind("add", this.renderNotifications.bind(this));
       this.collection.bind("remove", this.renderNotifications.bind(this));
+      this.collection.bind("reset", this.renderNotifications.bind(this));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -67,8 +69,9 @@
       }
     },
 
-    updateNotifications: function() {
-      this.renderNotifications();
+    removeAllNotifications: function () {
+      console.log("reset");
+      this.collection.reset();
     },
 
     removeNotification: function(e) {
@@ -77,6 +80,15 @@
     },
 
     renderNotifications: function() {
+
+      $('#stat_hd_counter').text(this.collection.length);
+      if (this.collection.length === 0) {
+        $('#stat_hd').removeClass('fullNotification');
+      }
+      else {
+        $('#stat_hd').addClass('fullNotification');
+      }
+
       $('.innerDropdownInnerUL').html(this.notificationItem.render({
         notifications : this.collection
       }));
@@ -99,7 +111,7 @@
       this.renderNotifications();
 
       this.delegateEvents();
-      this.updateNotifications();
+      this.renderNotifications();
       return this.$el;
     }
   });
