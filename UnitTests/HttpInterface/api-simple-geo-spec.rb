@@ -17,7 +17,11 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionGeo"
         ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
+        
+        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
+        doc = ArangoDB.post("/_api/collection", :body => body)
+        doc.code.should eq(200)
+        @cid = doc.parsed_response['id']
 
         (0..10).each{|i|
           lat = 10 * (i - 5)
@@ -93,7 +97,11 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionGeo"
         ArangoDB.drop_collection(@cn)
-        @cid = ArangoDB.create_collection(@cn, false)
+
+        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
+        doc = ArangoDB.post("/_api/collection", :body => body)
+        doc.code.should eq(200)
+        @cid = doc.parsed_response['id']
 
         (0..10).each{|i|
           lat = 10 * (i - 5)
