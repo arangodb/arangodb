@@ -1581,6 +1581,14 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
               string errorMsg = extractErrorMessage((*it).first, v);
             
               errorMsg = "Error during index creation: " + errorMsg;
+              
+              v = TRI_LookupArrayJson(v, "errorNum");
+              if (TRI_IsNumberJson(v)) {
+                // found a specific error number
+                return (int) v->_value._number;
+              }
+
+              // return generic error number
               return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
             }
 
