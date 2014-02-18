@@ -5,10 +5,12 @@
 
   window.Notification = Backbone.Model.extend({
     defaults: {
-      "title": "",
-      "content": "",
-      "priority": "",
-      "seen": false
+      "title"    : "",
+      "date"     : 0,
+      "content"  : "",
+      "priority" : "",
+      "tags"     : "",
+      "seen"     : false
     }
     
   });

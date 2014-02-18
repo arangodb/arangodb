@@ -85,7 +85,6 @@
       if (returnobj.status === true) {
         self.hidden();
         $("#add-collection").modal('hide');
-        arangoHelper.arangoNotification("Collection created");
 
         window.App.navigate("collection/" + collName + "/documents/1", {trigger: true});
       }

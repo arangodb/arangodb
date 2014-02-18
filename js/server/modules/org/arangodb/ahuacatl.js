@@ -2752,6 +2752,36 @@ function UNION_DISTINCT () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a slice from a list
+////////////////////////////////////////////////////////////////////////////////
+
+function SLICE (value, from, to) {
+  "use strict";
+      
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
+  }
+
+  if (TYPEWEIGHT(from) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
+  }
+
+  if (TYPEWEIGHT(to) === TYPEWEIGHT_NULL) {
+    to = undefined;
+  }
+  else if (TYPEWEIGHT(to) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
+  }
+  else {
+    if (to >= 0) {
+      to += from;
+    }
+  }
+
+  return value.slice(from, to);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief subtract lists from other lists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4238,6 +4268,7 @@ exports.RANGE = RANGE;
 exports.UNIQUE = UNIQUE;
 exports.UNION = UNION;
 exports.UNION_DISTINCT = UNION_DISTINCT;
+exports.SLICE = SLICE;
 exports.MINUS = MINUS;
 exports.INTERSECTION = INTERSECTION;
 exports.MAX = MAX;
