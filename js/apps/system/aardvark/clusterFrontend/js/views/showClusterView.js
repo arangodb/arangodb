@@ -10,12 +10,19 @@
 
     template: clusterTemplateEngine.createTemplate("showCluster.ejs"),
 
-    initialize: function() {
-        this.interval = 3000;
+      updateServerTime: function() {
+          this.serverTime = new Date().getTime();
+      },
+
+
+      initialize: function() {
+        this.interval = 1000;
         this.isUpdating = false;
         this.timer = null;
         this.totalTimeChart = {};
         this.knownServers = [];
+        this.graph = undefined;
+        this.updateServerTime();
 
         this.dbservers = new window.ClusterServers();
         this.dbservers.startUpdating();
@@ -43,63 +50,79 @@
     },
 
     rerender : function() {
-      this.render(this.server);
+        this.getServerStatistics();
+        this.updateServerTime();
+        var data = this.generatePieData();
+        this.renderPieChart(data);
+        this.transformForLineChart(data);
+        this.renderLineChart();
     },
 
-    render: function(server) {
-      this.server = server;
-      var self = this;
-      var statCollect = new window.ClusterStatisticsCollection();
-      this.dbservers.forEach(function (dbserver) {
-        if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
-        var stat = new window.Statistics({name: dbserver.id});
-        stat.url = dbserver.get("address").replace("tcp", "http") + "/_admin/statistics";
-        statCollect.add(stat);
-      });
-      this.coordinators.forEach(function (coordinator) {
-        if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
-        var stat = new window.Statistics({name: coordinator.id});
-        stat.url = coordinator.get("address").replace("tcp", "http") + "/_admin/statistics";
-        statCollect.add(stat);
-      });
-      statCollect.fetch();
-      this.data = statCollect;
+    render: function() {
       $(this.el).html(this.template.render({}));
-      var serverTime = new Date().getTime();
-      var pieData = [];
-      this.data.forEach(function(m) {
-          pieData.push({key: m.get("name"), value :m.get("client").totalTime.sum / m.get("http").requestsTotal,
-              time: serverTime});
-      });
-      self.renderPieChart(pieData);
-      var transformForLineChart = function(data) {
-          var c = 0;
-          data.forEach(function(entry) {
-              c++;
-              if (!self.totalTimeChart[entry.time]) {
-                  self.totalTimeChart[entry.time] = {};
-              }
-              if (!self.totalTimeChart[entry.time]["ClusterAverage"]) {
-                  self.totalTimeChart[entry.time]["ClusterAverage"] = 0;
-              }
-              self.totalTimeChart[entry.time][entry.key] = entry.value;
-              self.totalTimeChart[entry.time]["ClusterAverage"] =
-                  (self.totalTimeChart[entry.time]["ClusterAverage"] + entry.value) / c;
-          })
-          self.knownServers.forEach(function (server) {
-              Object.keys(self.totalTimeChart).sort().forEach(function(entry) {
-                if (!self.totalTimeChart[entry][server]) {
-                    self.totalTimeChart[entry][server] = 0;
-                }
-              })
-          })
-
-      }
-      transformForLineChart(pieData);
-      self.renderLineChart();
+      this.getServerStatistics();
+      var data = this.generatePieData();
+      this.renderPieChart(data);
+      this.transformForLineChart(data);
+      this.renderLineChart();
     },
 
+    generatePieData: function() {
+        var pieData = [];
+        var self = this;
+        this.data.forEach(function(m) {
+            pieData.push({key: m.get("name"), value :m.get("client").totalTime.sum / m.get("http").requestsTotal,
+                time: self.serverTime});
+        });
+        return pieData;
+    },
 
+    transformForLineChart: function(data) {
+        var c = 0;
+        var self = this;
+        data.forEach(function(entry) {
+            c++;
+            if (!self.totalTimeChart[entry.time]) {
+                self.totalTimeChart[entry.time] = {};
+            }
+            if (!self.totalTimeChart[entry.time]["ClusterAverage"]) {
+                self.totalTimeChart[entry.time]["ClusterAverage"] = 0;
+            }
+            self.totalTimeChart[entry.time][entry.key] = entry.value;
+            self.totalTimeChart[entry.time]["ClusterAverage"] =
+                self.totalTimeChart[entry.time]["ClusterAverage"] + entry.value;
+        })
+        self.totalTimeChart[self.serverTime]["ClusterAverage"] =
+            self.totalTimeChart[self.serverTime]["ClusterAverage"] /c;
+        self.knownServers.forEach(function (server) {
+            Object.keys(self.totalTimeChart).sort().forEach(function(entry) {
+                if (!self.totalTimeChart[entry][server]) {
+                    self.totalTimeChart[entry][server] = null;
+                }
+            })
+        })
+    },
+
+    getServerStatistics: function() {
+        var self = this;
+        var statCollect = new window.ClusterStatisticsCollection();
+        this.dbservers.forEach(function (dbserver) {
+            if (dbserver.get("status") !== "ok") {return;}
+            if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
+            var stat = new window.Statistics({name: dbserver.id});
+            stat.url = dbserver.get("address").replace("tcp", "http") + "/_admin/statistics";
+            statCollect.add(stat);
+        });
+        this.coordinators.forEach(function (coordinator) {
+            if (coordinator.get("status") !== "ok") {return;}
+            if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
+            var stat = new window.Statistics({name: coordinator.id});
+            stat.url = coordinator.get("address").replace("tcp", "http") + "/_admin/statistics";
+            statCollect.add(stat);
+        });
+        statCollect.fetch();
+        this.data = statCollect;
+    },
 
     renderPieChart: function(dataset) {
         var w = 620;
@@ -118,8 +141,8 @@
             .value(function (d) {
                 return d.value;
             });
-
-        var svg = d3.select("#clusterGraphs").append("svg")
+        d3.select("#clusterGraphs").select("svg").remove();
+        var pieChartSvg = d3.select("#clusterGraphs").append("svg")
             .attr("width", w)
             .attr("height", h)
             .attr("class", "clusterChart")
@@ -130,7 +153,7 @@
             .outerRadius(radius-4)
             .innerRadius(radius-4);
 
-        var slices = svg.selectAll(".arc")
+        var slices = pieChartSvg.selectAll(".arc")
             .data(pie(dataset))
             .enter().append("g")
             .attr("class", "slice");
@@ -157,6 +180,7 @@
           var self = this;
           var getData = function() {
               var data = [];
+              var c = 0
               Object.keys(self.totalTimeChart).sort().forEach(function(time) {
                   var entry = [time];
                   Object.keys(self.totalTimeChart[time]).sort().forEach(function(server) {
@@ -164,39 +188,65 @@
                   })
                   data.push(entry);
               })
-
-              console.log(data);
               return data;
           };
-          var makeGraph = function(className) {
-              var lineGraph = document.getElementById('lineGraph');
-              var div = document.createElement('div');
-              div.className = className;
-              div.style.display = 'inline-block';
-              div.style.margin = '4px';
-              lineGraph.appendChild(div);
-
-              var labels = ['x'];
+          var createLabels = function() {
+              var labels = ['date'];
               Object.keys(self.totalTimeChart[Object.keys(self.totalTimeChart)[0]]).sort().forEach(function(server) {
-                 labels.push(server);
+                  labels.push(server);
               })
-              var g = new Dygraph(
-                  div,
+              return labels.slice();
+          }
+          if (this.graph !== undefined) {
+              this.graph.updateOptions( {
+                  'file': getData(),
+                  'labels': createLabels()
+              } );
+              return;
+          }
+
+
+
+          var makeGraph = function(className) {
+
+            self.graph = new Dygraph(
+                  document.getElementById('lineGraph'),
                   getData(),
-                  {
+                  {   title: 'Average request time in the Cluster',
+                      ylabel: 'time in milliseconds',
+                      labelsDivStyles: { 'textAlign': 'right' },
+                      hideOverlayOnMouseOut: true,
+                      labelsSeparateLines: true,
+                      labelsDivWidth: 150,
+                      labelsShowZeroValues: false,
+                      highlightSeriesBackgroundAlpha: 0.5,
+                      labelsDiv: "lineGraphAgenda",
+                      drawPoints: true,
                       axes: {
                           x: {
+                              valueFormatter: function(ms) {
+                                  if (ms == -1) {
+                                    return "";
+                                  }
+                                  return strftime("%H:%M:%S", new Date(parseInt(ms)));
+                              },
                               axisLabelFormatter: function(d, gran) {
                                   var date = new Date(d);
                                   return Dygraph.zeropad(date.getHours()) + ":"
                                       + Dygraph.zeropad(date.getMinutes()) + ":"
                                       + Dygraph.zeropad(date.getSeconds());
+                              },
+                              axisLabelFontSize : 10
+                          },
+                          y: {
+                              axisLabelFormatter: function(y) {
+                                  return y.toPrecision(2);
                               }
                           }
                       },
                       width: 480,
                       height: 320,
-                      labels: labels.slice(),
+                      labels: createLabels(),
                       stackedGraph: false,
 
                       highlightCircleSize: 2,
@@ -210,14 +260,14 @@
                       }
                   });
               var onclick = function(ev) {
-                  if (g.isSeriesLocked()) {
-                      g.clearSelection();
+                  if (self.graph.isSeriesLocked()) {
+                      self.graph.clearSelection();
                   } else {
-                      g.setSelection(g.getSelection(), g.getHighlightSeries(), true);
+                      self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
                   }
               };
-              g.updateOptions({clickCallback: onclick}, true);
-              g.setSelection(false, 's005');
+              self.graph.updateOptions({clickCallback: onclick}, true);
+              self.graph.setSelection(false, 'ClusterAverage', true);
               //console.log(g);
           };
           makeGraph("lineGraph");
