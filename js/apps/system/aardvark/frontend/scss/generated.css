@@ -233,3 +233,52 @@ li.tile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+.fixedDropdown {
+  margin: 34px 0 0 0 !important;
+  border-radius: 0 !important;
+  width: 210px; }
+
+.fixedDropdown:after {
+  visibility: hidden; }
+
+.fixedDropdown .dropdown-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
+
+.fixedDropdown .dropdown-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0 !important; }
+
+.fixedDropdown a {
+  padding-left: 5px !important; }
+
+.fixedDropdown .notificationItemContent {
+  width: 170px;
+  float: left;
+  margin-left: 5px; }
+
+.fixedDropdown button {
+  float: right;
+  margin-right: 5px; }
+
+.innerDropdownInnerUL {
+  min-height: 220px;
+  height: 220px !important;
+  width: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  float: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
+
+.innerDropdownInnerUL li {
+  width: auto !important; }
+
+.innerDropdownInnerUL li:last-child {
+  color: red;
+  border-bottom: 0; }
+
+.fixedDropdown .notificationItem {
+  color: black; }
+
+.notificationItem i {
+  float: left; }
