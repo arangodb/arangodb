@@ -97,7 +97,9 @@
 
   // FAKE TO BE REMOVED TODO 
   controller.get("/ClusterType", function(req, res) {
-    res.body = "testSetup";
+    res.json({
+      type: "symmetricSetup"
+    });
   });
 
   if (cluster.isCluster()) {
@@ -121,7 +123,9 @@
      *
      */
     controller.get("/ClusterType", function(req, res) {
-      res.body = "testSetup";
+      res.json({
+        type: "symmetricSetup"
+      });
     });
 
     /** Get all DBServers

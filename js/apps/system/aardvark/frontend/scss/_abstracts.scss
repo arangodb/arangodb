@@ -48,6 +48,20 @@
   }
 }
 
+%warning {
+  background-color: $c_warning;
+  &:hover {
+    background-color: $c_warning_hover;
+  }
+}
+
+%icon-warning {
+  color: $c_warning;
+  &:hover {
+    color: $c_warning_hover;
+  }
+}
+
 %neutral {
   background-color: $c_neutral;
   &:hover {
