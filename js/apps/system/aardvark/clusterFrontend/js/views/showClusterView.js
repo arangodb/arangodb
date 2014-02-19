@@ -10,19 +10,36 @@
 
     template: clusterTemplateEngine.createTemplate("showCluster.ejs"),
 
+      events: {
+          "mouseover #lineGraph"      : "setShowAll",
+          "mouseout #lineGraph"      : "resetShowAll"
+      },
+
       updateServerTime: function() {
           this.serverTime = new Date().getTime();
       },
 
+      setShowAll: function() {
+          this.graphShowAll = true;
+          this.renderLineChart();
+      },
+
+      resetShowAll: function() {
+          this.graphShowAll = false;
+          this.renderLineChart();
+      },
+
 
       initialize: function() {
-        this.interval = 1000;
+        this.interval = 10000;
         this.isUpdating = false;
         this.timer = null;
         this.totalTimeChart = {};
         this.knownServers = [];
         this.graph = undefined;
+        this.graphShowAll = false;
         this.updateServerTime();
+
 
         this.dbservers = new window.ClusterServers();
         this.dbservers.startUpdating();
@@ -178,45 +195,89 @@
 
       renderLineChart: function() {
           var self = this;
+
           var getData = function() {
               var data = [];
-              var c = 0
+              self.max = 0;
+              self.min = 0;
               Object.keys(self.totalTimeChart).sort().forEach(function(time) {
                   var entry = [new Date(parseInt(time))];
                   Object.keys(self.totalTimeChart[time]).sort().forEach(function(server) {
+                      if (self.min > self.totalTimeChart[time][server]) {
+                          self.min = self.totalTimeChart[time][server];
+                      }
+                      if (self.max < self.totalTimeChart[time][server]) {
+                          self.max = self.totalTimeChart[time][server];
+                      }
                       entry.push(self.totalTimeChart[time][server]);
                   })
                   data.push(entry);
               })
               return data;
           };
+          var getVisibility = function() {
+              var setFalse = function(list, index, skip) {
+                  for (var i = 0; i < index; i ++ ) {
+                      if (i !== skip) {
+                        list[i] = self.graphShowAll;
+                      }
+                  }
+              }
+              var latestTime = Object.keys(self.totalTimeChart).sort().reverse()[0];
+              var visibility = [], max= 0, i = 0, skip = -1;
+              Object.keys(self.totalTimeChart[latestTime]).sort().forEach(function(server) {
+                  i ++;
+                  if (server == "ClusterAverage") {
+                      skip = i-1;
+                      visibility.push(true);
+                  } else if (max < self.totalTimeChart[latestTime][server]) {
+                      max = self.totalTimeChart[latestTime][server];
+                      setFalse(visibility, i-1, skip);
+                      visibility.push(true);
+                  } else {
+                      visibility.push(false);
+                  }
+              })
+              return visibility;
+          };
           var createLabels = function() {
               var labels = ['datetime'];
               Object.keys(self.totalTimeChart[Object.keys(self.totalTimeChart)[0]]).sort().forEach(function(server) {
-                  labels.push(server);
+                  if (!self.graphShowAll) {
+                    if (server === "ClusterAverage") {
+                        labels.push(server + "(avg)");
+                    }  else {
+                        labels.push(server + "(max)");
+                    }
+                  } else {
+                    labels.push(server);
+                  }
               })
               return labels.slice();
           }
+
+
+
           if (this.graph !== undefined) {
               this.graph.updateOptions( {
                   'file': getData(),
-                  'labels': createLabels()
+                  'labels': createLabels(),
+                  'visibility' : getVisibility()
               } );
               return;
           }
-
-
 
           var makeGraph = function(className) {
 
             self.graph = new Dygraph(
                   document.getElementById('lineGraph'),
                   getData(),
-                  {   title: 'Average request time in the Cluster',
-                      ylabel: 'time in milliseconds',
-                      labelsDivStyles: { 'textAlign': 'right' },
+                  {   title: 'Average request time in milliseconds',
+                      yLabelWidth: "15",
+                      labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
                       hideOverlayOnMouseOut: true,
                       labelsSeparateLines: true,
+                      legend: "always",
                       labelsDivWidth: 150,
                       labelsShowZeroValues: false,
                       highlightSeriesBackgroundAlpha: 0.5,
@@ -224,12 +285,34 @@
                       width: 480,
                       height: 320,
                       labels: createLabels(),
+                      visibility:getVisibility() ,
+                      valueRange: [self.min -0.1 * self.min, self.max + 0.1 * self.max],
                       stackedGraph: false,
+                      axes: {
+                          y: {
+                              valueFormatter: function(y) {
+                                  return y.toPrecision(2);
 
+                              },
+                              axisLabelFormatter: function(y) {
+                                  return y.toPrecision(2);
+                              }
+                          },
+                          x: {
+                              valueFormatter: function(d) {
+                                  if (d === -1) {return "";}
+                                  var date = new Date(d);
+                                  return Dygraph.zeropad(date.getHours()) + ":"
+                                      + Dygraph.zeropad(date.getMinutes()) + ":"
+                                      + Dygraph.zeropad(date.getSeconds());
+
+                              },
+                          }
+
+                      },
                       highlightCircleSize: 2,
                       strokeWidth: 1,
                       strokeBorderWidth: null,
-
                       highlightSeriesOpts: {
                           strokeWidth: 3,
                           strokeBorderWidth: 1,
