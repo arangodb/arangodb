@@ -27,10 +27,12 @@
 
 #include "ApplicationV8.h"
 
+#include "Actions/actions.h"
+#include "ApplicationServer/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -46,7 +48,6 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
-#include "Actions/actions.h"
   
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
@@ -56,6 +57,7 @@
 using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
+using namespace triagens::rest;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +210,7 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server)
     _devAppPath(),
     _useActions(true),
     _developmentMode(false),
+    _frontendDevelopmentMode(false),
     _performUpgrade(false),
     _skipUpgrade(false),
     _gcInterval(1000),
@@ -594,10 +597,15 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
+
     // deprecated options
     ("javascript.action-directory", &DeprecatedPath, "path to the JavaScript action directory (deprecated)")
     ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
     ("javascript.package-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
+  ;
+
+  options[ApplicationServer::OPTIONS_HIDDEN]
+    ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
   ;
 }
 
@@ -803,6 +811,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str(), _appPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), _devAppPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
+    TRI_AddGlobalVariableVocbase(context->_context, "FE_DEVELOPMENT_MODE", v8::Boolean::New(_frontendDevelopmentMode));
   }
 
   // set global flag before loading system files
