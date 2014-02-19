@@ -25,7 +25,6 @@ module.exports = function(karma) {
       'frontend/js/lib/jquery.jeditable.js',
       'frontend/js/lib/jquery.jeditable.autogrow.js',
       'frontend/js/lib/jquery.snippet.js',
-      'frontend/js/lib/jquery.gritter.js',
       'frontend/js/lib/jquery.slideto.min.js',
       'frontend/js/lib/jquery.wiggle.min.js',
       'frontend/js/lib/jquery.ba-bbq.min.js',
