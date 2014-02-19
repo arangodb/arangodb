@@ -12,12 +12,12 @@
     currentDB: "",
 
     events: {
-      "click #createDatabase"       : "createDatabase",
-      "click #submitCreateDatabase" : "submitCreateDatabase",
-      "click #selectDatabase"       : "updateDatabase",
-      "click #databaseTable .icon_arangodb_roundminus" : "removeDatabase",
-      "click #submitDeleteDatabase" : "submitRemoveDatabase",
-      "click .databaseInactive a" : "changeDatabase"
+      "click #createDatabase"                           : "createDatabase",
+      "click #submitCreateDatabase"                     : "submitCreateDatabase",
+      "click #selectDatabase"                           : "updateDatabase",
+      "click #databaseTable .icon_arangodb_roundminus"  : "removeDatabase",
+      "click #submitDeleteDatabase"                     : "submitRemoveDatabase",
+      "click .contentRowInactive a"                     : "changeDatabase"
     },
 
     initialize: function() {
@@ -33,9 +33,9 @@
     },
 
     renderTable: function () {
-      this.collection.map(function(dbs) {
+      this.collection.forEach(function(dbs) {
         $("#databaseTable tbody").append(
-          '<tr><td><a>' + dbs.get("name") + '</a></td>' +
+          '<tr><td><a id="' + dbs.get("name") + '">' + dbs.get("name") + '</a></td>' +
           '<td><span class="arangoicon icon_arangodb_roundminus"' + 
           'data-original-title="Delete database"></span></td></tr>'
         );
@@ -126,7 +126,6 @@
     submitRemoveDatabase: function(e) {
       var toDelete = this.collection.where({name: this.dbToDelete});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+this.dbToDelete});
-      arangoHelper.arangoNotification("Database " + this.dbToDelete + " deleted.");
       this.dbToDelete = '';
       $('#deleteDatabaseModal').modal('hide');
       this.updateDatabases();
@@ -142,13 +141,13 @@
     },
 
     selectCurrentDatabase: function() {
-      $('#databaseTableBody tr').addClass('databaseInactive');
+      $('#databaseTableBody tr').addClass('contentRowInactive');
       var tr = $('#databaseTableBody td:contains('+this.currentDB+')').parent();
-      $(tr).removeClass('databaseInactive').addClass('databaseActive');
+      $(tr).removeClass('contentRowInactive').addClass('contentRowActive');
     },
 
     changeDatabase: function(e) {
-      var changeTo = $("#dbSelectionList > option:selected").attr("id");
+      var changeTo = $(e.currentTarget).attr("id");
       var url = this.collection.createDatabaseURL(changeTo);
       window.location.replace(url);
     },
