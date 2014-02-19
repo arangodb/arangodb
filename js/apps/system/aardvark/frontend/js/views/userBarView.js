@@ -6,13 +6,14 @@
   window.UserBarView = Backbone.View.extend({
 
     events: {
-      "change #userBarSelect": "navigateBySelect",
-      "click .tab": "navigateByTab",
-      "mouseenter .dropdown": "showDropdown",
-      "mouseleave .dropdown": "hideDropdown",
-      "click .navlogo #stat_hd" : "toggleNotification",
-      "click .notificationItem .fa" : "removeNotification",
-      "click #removeAllNotifications" : "removeAllNotifications"
+      "change #userBarSelect"         : "navigateBySelect",
+      "click .tab"                    : "navigateByTab",
+      "mouseenter .dropdown"          : "showDropdown",
+      "mouseleave .dropdown"          : "hideDropdown",
+      "click .navlogo #stat_hd"       : "toggleNotification",
+      "click .notificationItem .fa"   : "removeNotification",
+      "click #removeAllNotifications" : "removeAllNotifications",
+      "click #userLogout"             : "userLogout"
     },
 
     initialize: function () {
@@ -104,12 +105,14 @@
         this.userCollection.fetch({async:false});
         currentUser = this.userCollection.findWhere({user: username});
         currentUser.set({loggedIn : true});
-        name = currentUser.get("name");
-        img = currentUser.get("img");
+        name = currentUser.get("extra").name;
+        img = currentUser.get("extra").img;
         active = currentUser.get("active");
       }
       if (!img) {
         img = "img/arangodblogoAvatar.png";
+      } else {
+        img = "https://s.gravatar.com/avatar/" + img + "?s=23";
       }
       if (!name) {
         name = "";
@@ -129,6 +132,11 @@
       this.delegateEvents();
       this.renderNotifications();
       return this.$el;
+    },
+
+    userLogout : function() {
+      this.userCollection.whoAmI(),
+      this.userCollection.logout();
     }
   });
 }());
