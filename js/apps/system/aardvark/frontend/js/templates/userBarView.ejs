@@ -9,10 +9,24 @@
       <img src="<%=img%>" id="userimage" height="23" width="23" /> <b class="caret"></b>
     </a>
     <ul class="user-dropdown-menu" id="user_dropdown">
-      <li class="dropdown-header"><%=prename%> <%=lastname%></li>
+      <li class="dropdown-header" style="text-transform: none">
+        <%
+        if(username === null) {
+          %>-<%
+        } else {
+          if (name) {%>
+        <%=name%> (<%=username%>)
+        <% } else {%>
+        <%=username%>
+        <%}
+
+        }
+       %>
+      <% if(username !== null) { %>
       <li class="dropdown-item">
         <a id="user" class="tab" href="#user">User profile</a>
       </li>
+      <% } %>
       <li class="dropdown-item">
         <a id="userManagement" class="internalLink" href="#userManagement">User management</a>
       </li>

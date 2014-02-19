@@ -199,7 +199,7 @@
               var data = [];
               var c = 0
               Object.keys(self.totalTimeChart).sort().forEach(function(time) {
-                  var entry = [time];
+                  var entry = [new Date(parseInt(time))];
                   Object.keys(self.totalTimeChart[time]).sort().forEach(function(server) {
                       entry.push(self.totalTimeChart[time][server]);
                   })
@@ -208,7 +208,7 @@
               return data;
           };
           var createLabels = function() {
-              var labels = ['date'];
+              var labels = ['datetime'];
               Object.keys(self.totalTimeChart[Object.keys(self.totalTimeChart)[0]]).sort().forEach(function(server) {
                   labels.push(server);
               })
@@ -237,30 +237,7 @@
                       labelsDivWidth: 150,
                       labelsShowZeroValues: false,
                       highlightSeriesBackgroundAlpha: 0.5,
-                      labelsDiv: "lineGraphAgenda",
                       drawPoints: true,
-                      axes: {
-                          x: {
-                              valueFormatter: function(ms) {
-                                  if (ms == -1) {
-                                    return "";
-                                  }
-                                  return strftime("%H:%M:%S", new Date(parseInt(ms)));
-                              },
-                              axisLabelFormatter: function(d, gran) {
-                                  var date = new Date(d);
-                                  return Dygraph.zeropad(date.getHours()) + ":"
-                                      + Dygraph.zeropad(date.getMinutes()) + ":"
-                                      + Dygraph.zeropad(date.getSeconds());
-                              },
-                              axisLabelFontSize : 10
-                          },
-                          y: {
-                              axisLabelFormatter: function(y) {
-                                  return y.toPrecision(2);
-                              }
-                          }
-                      },
                       width: 480,
                       height: 320,
                       labels: createLabels(),
