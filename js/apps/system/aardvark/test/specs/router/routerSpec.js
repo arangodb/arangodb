@@ -6,8 +6,8 @@
   "use strict";
 
   describe("The router", function() {
-  
-    var 
+
+    var
       jQueryDummy,
       fakeDB,
       graphDummy,
@@ -110,7 +110,7 @@
       });
       spyOn(window, "CurrentDatabase").andReturn(fakeDB);
       spyOn(fakeDB, "fetch").andCallFake(function(options) {
-        expect(options.async).toBeFalsy(); 
+        expect(options.async).toBeFalsy();
       });
       spyOn(window, "DBSelectionView");
       spyOn(window, "StatisticBarView").andReturn(statisticBarDummy);

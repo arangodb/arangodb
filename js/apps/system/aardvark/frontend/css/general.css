@@ -1,6 +1,7 @@
 /* Sets the default values shared for content views*/
 #content {
-  background-color: rgba(0, 0, 0, 0.0675);
+  /*background-color: rgba(0, 0, 0, 0.0675);*/
+  background-color: #D6D6D6;
   min-height: 80px;
   height: 100%;
   width: 100%;

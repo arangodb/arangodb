@@ -18,10 +18,7 @@ describe ArangoDB do
         @cn = "UnitTestsCollectionHash"
         ArangoDB.drop_collection(@cn)
 
-        body = "{ \"name\" : \"#{@cn}\", \"numberOfShards\" : 8 }"
-        doc = ArangoDB.post("/_api/collection", :body => body)
-        doc.code.should eq(200)
-        @cid = doc.parsed_response['id']
+        @cid = ArangoDB.create_collection(@cn, false)
       end
 
       after do

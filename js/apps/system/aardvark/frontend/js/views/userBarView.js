@@ -11,12 +11,14 @@
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown",
       "click .navlogo #stat_hd" : "toggleNotification",
-      "click .notificationItem .fa" : "removeNotification"
+      "click .notificationItem .fa" : "removeNotification",
+      "click #removeAllNotifications" : "removeAllNotifications"
     },
 
     initialize: function () {
       this.collection.bind("add", this.renderNotifications.bind(this));
       this.collection.bind("remove", this.renderNotifications.bind(this));
+      this.collection.bind("reset", this.renderNotifications.bind(this));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -67,8 +69,8 @@
       }
     },
 
-    updateNotifications: function() {
-      this.renderNotifications();
+    removeAllNotifications: function () {
+      this.collection.reset();
     },
 
     removeNotification: function(e) {
@@ -77,17 +79,21 @@
     },
 
     renderNotifications: function() {
+
+      $('#stat_hd_counter').text(this.collection.length);
+      if (this.collection.length === 0) {
+        $('#stat_hd').removeClass('fullNotification');
+      }
+      else {
+        $('#stat_hd').addClass('fullNotification');
+      }
+
       $('.innerDropdownInnerUL').html(this.notificationItem.render({
         notifications : this.collection
       }));
     },
 
     render: function (el) {
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
-
       this.$el = el;
       this.$el.html(this.template.render({
         img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
@@ -99,7 +105,7 @@
       this.renderNotifications();
 
       this.delegateEvents();
-      this.updateNotifications();
+      this.renderNotifications();
       return this.$el;
     }
   });
