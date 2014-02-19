@@ -5,7 +5,6 @@
   "use strict";
   window.CollectionsView = Backbone.View.extend({
     el: '#content',
-    /*el2: '.thumbnails',*/
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,

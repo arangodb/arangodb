@@ -172,7 +172,6 @@
           arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
 
           $('#aqlEditor .ace_text-input').focus();
-          $.gritter.removeAll();
 
           if (typeof Storage) {
               var queryContent = localStorage.getItem("queryContent");

@@ -6,13 +6,7 @@
 }
 
 #shell_workspace {
-  width: auto;
   margin-top: 13px;
-  margin-left: 5px;
-  margin-right: 5px !important;
-  margin-bottom: -25px;
-  height: 400px;
-  background-color: black;
 }
 
 .vsplitbar {
