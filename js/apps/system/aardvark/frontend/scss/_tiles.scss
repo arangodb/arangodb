@@ -1,7 +1,8 @@
-div#collectionsThumbnailsIn {
-  margin-left: 0px;
+ul.tileList {
+  @extend %clear-float;
+  margin-left: -6px;
+  margin-right: -6px;
 }
-
 
 li.tile {
   @extend %pull-left;
