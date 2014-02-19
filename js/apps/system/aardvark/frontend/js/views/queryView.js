@@ -227,7 +227,7 @@
       },
       editAQL: function () {
           if (this.customQueries.length === 0) {
-              arangoHelper.arangoNotification("No custom queries available");
+              //Heiko: display information that no custom queries are available
               return;
           }
 
@@ -264,7 +264,6 @@
           this.customQueries = tempArray;
           localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
           $('#edit-aql-queries').modal('hide');
-          arangoHelper.arangoNotification("Query deleted");
           this.renderSelectboxes();
       },
       saveAQL: function (e) {
@@ -280,7 +279,7 @@
           }
 
           if (queryName.trim() === '') {
-              arangoHelper.arangoNotification("Illegal query name");
+              //Heiko: Form-Validator - illegal query name
               return;
           }
 
@@ -303,7 +302,7 @@
           });
 
           if (quit === true) {
-              arangoHelper.arangoNotification("Name already taken!");
+              //Heiko: Form-Validator - name already taken
               return;
           }
 
@@ -318,7 +317,6 @@
           $('#edit-aql-queries').modal('hide');
 
           localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
-          arangoHelper.arangoNotification("Query saved");
           this.renderSelectboxes();
       },
       updateEditSelect: function () {
@@ -339,7 +337,7 @@
                   self.queries = data;
               },
               error: function (data) {
-                  arangoHelper.arangoNotification("Error while loading system templates");
+                  arangoHelper.arangoNotification("Query", "Error while loading system templates");
               }
           });
       },
