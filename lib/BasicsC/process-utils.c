@@ -333,43 +333,48 @@ bool createPipes (HANDLE * hChildStdinRd, HANDLE * hChildStdinWr,
     } \
   } while (false);
 
-static int appendQuotedArg(TRI_string_buffer_t* buf, const char* p) {
-  int err;
-  appendChar(buf,'"');
-  while (p != 0) {
-    switch (*p) {
-      case '%':
-        appendChar('%');
-        appendChar('%');
-        break;
-      case '^':
-      case '&':
-      case '<':
-      case '>':
-      case '|':
-      case '\'':
-      case '`':
-      case ',':
-      case ';':
-      case '=':
-      case '(':
-      case ')':
-        appendChar('^');
-        appendChar(*p);
-        break;
-      case '\\':
-      case '[':
-      case ']':
-      case '"':
-        appendChar('\\');
-        appendChar(*p);
-        break;
-      default:
-        appendChar(*p);
-        break;
+static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+  char const* q;
+  appendChar(buf, '"');
+  unsigned int NumberBackslashes;
+  unsigned int i;
+
+  while (*p != 0) {
+    NumberBackslashes = 0;
+    q = p;
+    while (*q == '\\') {
+      ++q;
+      ++NumberBackslashes;
+    }
+    if (*q == 0) {
+      // Escape all backslashes, but let the terminating
+      // double quotation mark we add below be interpreted
+      // as a metacharacter.
+      for (i = 0; i < NumberBackslashes; i++) {
+        appendChar(buf, '\\');
+        appendChar(buf, '\\');
+      }
+      break;
+    }
+    else if (*q == '"') {
+      // Escape all backslashes and the following
+      // double quotation mark.
+      for (i = 0; i < NumberBackslashes; i++) {
+        appendChar(buf, '\\');
+        appendChar(buf, '\\');
+      }
+      appendChar(buf, '\\');
+      appendChar(*q);
+    }
+    else {
+      // Backslashes aren't special here.
+      for (i = 0; i < NumberBackslashes; i++) {
+        appendChar(buf, '\\');
+      }
+      appendChar(*q);
     }
   }
-  appendChar('"');
+  appendChar(buf, '"');
   return TRI_ERROR_NO_ERROR;
 }
 
