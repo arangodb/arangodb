@@ -1,0 +1,91 @@
+//#databaseDiv => .contentDiv
+.contentDiv {
+  padding: 13px 5px 0px 5px;
+}
+
+//.databaseButtons => .contentButtons
+.contentButtons {
+  clear:both;
+  width: 100%;
+  margin-bottom: 10px;
+  #createDatabase, #createUser {
+    margin-left: 0;
+  }
+}
+
+// #databaseTable => .contentTables
+.contentTables {
+  width: 100%;
+  margin-bottom: 10px;
+  thead {
+    text-align: left;
+    tr {
+      border-bottom: 1px solid $c_c2grey;
+      background-color: $c_white;
+    }
+  }
+  tbody {
+    tr {
+      &:nth-child(odd){
+        background-color: $c_odd;
+      };
+      &:nth-child(even){
+          background-color: $c_even;
+      };
+    }
+  }
+  tr {
+    &.contentRowActive {
+      background-color: $c_contentRowActive !important;
+      font-weight: 400;
+      a {
+        color: $c_black !important;
+      }
+      span {
+        display:none;
+      }
+    }
+    //.databaseInactive => .contentRowInactive
+    &.contentRowInactive {
+      a {
+        @extend %clickable;
+        color: $c_black !important;
+      }
+    }
+
+  }
+  .dbThFirst {
+    width: 90%;
+  }
+  .dbThSecond {
+    width: 10%;
+  }
+  td {
+    padding:12px 18px;
+    span {
+      float: right;
+      @extend %icon-negative;
+      font-size: 22px;
+    }
+    &.dbThSecond {
+      span {
+        @extend %icon-positive;
+      }
+    }
+  }
+  .collectionThSec {
+    width: 80%;
+    margin-right: 0;
+  }
+  .collectionTh {
+    width: 5%;
+    margin-right: 0;
+  }
+}
+
+
+//#createDatabaseModal => .createModalDialog
+.createModalDialog table {
+  width: 100%;
+}
+
