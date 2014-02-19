@@ -36,6 +36,7 @@ var fs = require("fs");
 var _ = require("underscore");
 
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
+var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
 var checkParameter = arangodb.checkParameter;
 var transformScript = require("org/arangodb/foxx/preprocessor").preprocess;
 
@@ -327,6 +328,80 @@ function buildAssetContent (app, assets, basePath) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief installs an asset for an app
+////////////////////////////////////////////////////////////////////////////////
+
+function buildFileAsset (app, path, basePath, asset) {
+  var content = buildAssetContent(app, asset.files, basePath);
+  var type;
+  var route;
+
+  // -----------------------------------------------------------------------------
+  // content-type detection
+  // -----------------------------------------------------------------------------
+
+  // contentType explicitly specified for asset
+  if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+    type = asset.contentType;
+  }
+
+  // path contains a dot, derive content type from path 
+  else if (path.match(/\.[a-zA-Z0-9]+$/)) {
+    type = arangodb.guessContentType(path);
+  }
+
+  // path does not contain a dot,
+  // derive content type from included asset names
+  else if (asset.files.length > 0) {
+    type = arangodb.guessContentType(asset.files[0]);
+  }
+
+  // use built-in defaulti content-type
+  else {
+    type = arangodb.guessContentType("");
+  }
+
+  // -----------------------------------------------------------------------------
+  // return content
+  // -----------------------------------------------------------------------------
+
+  return { contentType: type, body: content };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates development asset action
+////////////////////////////////////////////////////////////////////////////////
+
+function buildDevelopmentAssetRoute (app, path, basePath, asset) {
+  var internal = require("internal");
+
+  return {
+    url: { match: path },
+    action: { 
+      callback: function (req, res) {
+        var c = buildFileAsset(app, path, basePath, asset);
+
+        res.contentType = c.contentType;
+        res.body = c.body;
+      }
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates asset action
+////////////////////////////////////////////////////////////////////////////////
+
+function buildAssetRoute (app, path, basePath, asset) {
+  var c = buildFileAsset(app, path, basePath, asset);
+
+  return {
+    url: { match: path },
+    content: { contentType: c.contentType, body: c.body }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief installs the assets of an app
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -352,38 +427,15 @@ function installAssets (app, routes) {
           basePath = asset.basePath;
         }
 
+        normalized = arangodb.normalizeURL("/" + path);
+
         if (asset.hasOwnProperty('files')) {
-          var content = buildAssetContent(app, asset.files, basePath);
-          var type;
-
-          normalized = arangodb.normalizeURL("/" + path);
-
-          // content-type detection
-          // ----------------------
-
-          if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
-            // contentType explicitly specified for asset
-            type = asset.contentType;
-          }
-          else if (normalized.match(/\.[a-zA-Z0-9]+$/)) {
-            // path contains a dot
-            // derive content type from path 
-            type = arangodb.guessContentType(normalized);
-          }
-          else if (asset.files.length > 0) {
-            // path does not contain a dot
-            // derive content type from included asset names
-            type = arangodb.guessContentType(asset.files[0]);
+          if (frontendDevelopmentMode) {
+            route = buildDevelopmentAssetRoute(app, normalized, basePath, asset);
           }
           else {
-            // use built-in defaulti content-type
-            type = arangodb.guessContentType("");
+            route = buildAssetRoute(app, normalized, basePath, asset);
           }
-
-          route = {
-            url: { match: normalized },
-            content: { contentType: type, body: content }
-          };
 
           routes.routes.push(route);
         }
