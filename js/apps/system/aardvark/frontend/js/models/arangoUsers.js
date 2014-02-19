@@ -3,6 +3,11 @@
 
 window.Users = Backbone.Model.extend({
   defaults: {
+    user: "",
+    active: false,
+    extra: {},
+    error: false,
+    code: 200
   },
 
   idAttribute : "user",
