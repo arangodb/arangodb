@@ -63,8 +63,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       error: function(data) {
       }
     });
+  },
+
+  parse: function(response)  {
+    var result = [];
+    _.each(response.result, function(object) {
+      result.push(object);
+    });
+    return result;
   }
-
-
 
 });
