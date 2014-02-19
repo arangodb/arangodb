@@ -204,7 +204,8 @@ void TRI_KillExternalProcess (TRI_external_id_t pid);
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess);
+TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess,
+	                                            bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process

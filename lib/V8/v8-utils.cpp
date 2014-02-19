@@ -2560,7 +2560,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   // extract the arguments
   if (argv.Length() < 1 || argv.Length() > 2 ||
       !argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>, <wait>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>[, <wait>])");
   }
 
   v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
@@ -2676,17 +2676,26 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
 
   // extract the arguments
-  if (argv.Length() != 1 || !argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  if (argv.Length() < 1 || argv.Length() > 2 || !argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>[, <wait>])");
   }
-
-  string hProcessStr =  TRI_ObjectToString(argv[0]);
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (!obj->Has(pidname)) {
+	  TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+		  "statusExternal: pid must be given");
+  }
+  bool wait = false;
+  if (argv.Length() == 2) {
+	wait = TRI_ObjectToBoolean(argv[1]);
+  }
+  string hProcessStr =  TRI_ObjectToString(obj->Get(pidname));
   size_t pid_len;
   char * hProcessCharPtr    = TRI_DecodeHexString(hProcessStr.c_str(), hProcessStr.size(), &pid_len);
   HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr)); 
-  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess);
+  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   const char* status = "UNKNOWN";
