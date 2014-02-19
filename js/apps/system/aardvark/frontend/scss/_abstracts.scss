@@ -6,6 +6,17 @@
   float: right;
 }
 
+%clear-float {
+  &:after {
+    clear: both;
+    content: ".";
+    display: block;
+    font-size: 0px;
+    height: 0px;
+    visibility: hidden;
+  }
+}
+
 %clickable {
   cursor: pointer;
 }
@@ -45,6 +56,20 @@
   color: $c_positive;
   &:hover {
     color: $c_positive_hover;
+  }
+}
+
+%warning {
+  background-color: $c_warning;
+  &:hover {
+    background-color: $c_warning_hover;
+  }
+}
+
+%icon-warning {
+  color: $c_warning;
+  &:hover {
+    color: $c_warning_hover;
   }
 }
 

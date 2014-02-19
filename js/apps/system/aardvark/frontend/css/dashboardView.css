@@ -63,7 +63,8 @@
   width: 300px;
 }
 
-.statSingleClient {
+li.statSingleClient {
+  float: none !important;
   height: 400px;
   padding-bottom: 8px;
   width: auto !important;
@@ -231,7 +232,6 @@ li:hover h6, li.hover h6 {
 
 /*Dashboard Checkbox*/
 .dropdownOut input[type=checkbox].css-checkbox,
-.headerDropdown input[type=checkbox].css-checkbox,
 #dashboardDropdownOut input[type=checkbox].css-checkbox,
 #transparentHeader input[type=checkbox].css-checkbox,
 #collectionsDropdown input[type=checkbox].css-checkbox {
@@ -239,7 +239,6 @@ li:hover h6, li.hover h6 {
 }
 
 .dropdownOut input[type=checkbox].css-checkbox + label.css-label,
-.headerDropdown input[type=checkbox].css-checkbox + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox + label.css-label, 
 #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
@@ -255,7 +254,6 @@ li:hover h6, li.hover h6 {
 }
 
 .dropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
-.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label,
 #dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
 #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label,
 #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {

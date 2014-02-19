@@ -3,7 +3,7 @@
 
 (function() {
   "use strict";
-  
+
   window.ShowClusterView = Backbone.View.extend({
 
     el: "#content",
@@ -64,7 +64,22 @@
         this.coordinators.bind("change", this.rerender.bind(this));
         this.coordinators.bind("remove", this.rerender.bind(this));
         this.startUpdating();
+
+        var typeModel = new window.ClusterType();
+        typeModel.fetch({
+          async: false
+        });
+        this.type = typeModel.get("type");
+
+      this.startUpdating();
     },
+
+    listByAddress: function() {
+      var byAddress = this.dbservers.byAddress();
+      byAddress = this.coordinators.byAddress(byAddress);
+      return byAddress;
+    },
+
 
     rerender : function() {
         this.getServerStatistics();
@@ -76,7 +91,11 @@
     },
 
     render: function() {
-      $(this.el).html(this.template.render({}));
+      $(this.el).html(this.template.render({
+        byAddress: this.listByAddress(),
+//        type: this.type
+        type: "testPlankhasdh"
+      }));
       this.getServerStatistics();
       var data = this.generatePieData();
       this.renderPieChart(data);
@@ -306,7 +325,7 @@
                                       + Dygraph.zeropad(date.getMinutes()) + ":"
                                       + Dygraph.zeropad(date.getSeconds());
 
-                              },
+                              }
                           }
 
                       },
@@ -350,9 +369,6 @@
               self.rerender();
           }, this.interval);
       }
-
   });
-
-
 
 }());

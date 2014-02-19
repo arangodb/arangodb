@@ -50,12 +50,6 @@
 
 #tableDiv, #logContent, #documentsDiv, #sourceDiv, #graphManagementDiv {
   padding-top: 13px;
-  padding-right: 5px;
-  padding-left: 5px;
-}
-
-#tableDiv, #logContent {
-  padding-bottom: 10px;
 }
 
 #logContent .tab-content {
