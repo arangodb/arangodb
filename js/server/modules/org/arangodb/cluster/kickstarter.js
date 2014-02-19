@@ -306,8 +306,8 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
              'return load("js/server/version-check.js");\n';
-  var o = { "method": "POST" };
-  r = download(url,body,o);
+  var o = { method: "POST", timeout: 90 };
+  r = download(url, body, o);
   return r;
 };
 
@@ -327,7 +327,7 @@ launchActions.initializeFoxx = function (dispatchers, cmd) {
 
   url = cmd.url + "/_admin/execute";
   var body = 'return require("internal").executeGlobalContextFunction("require(\'internal\').initializeFoxx();");';
-  var o = { "method": "POST" };
+  var o = { method: "POST", timeout: 90 };
   r = download(url, body, o);
   return r;
 };
@@ -523,7 +523,7 @@ Kickstarter.prototype.launch = function () {
                         base64Encode(dispatchers[cmd.dispatcher].username+":"+
                                      dispatchers[cmd.dispatcher].passwd);
       }
-      var response = download(url, body, {"method": "POST", "headers": hdrs});
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -535,8 +535,8 @@ Kickstarter.prototype.launch = function () {
           results.push(res.runInfo[0]);
         }
         catch (err) {
-          error = true;
           results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+          error = true;
         }
       }
       if (error) {
@@ -619,26 +619,30 @@ Kickstarter.prototype.relaunch = function () {
                         base64Encode(dispatchers[cmd.dispatcher].username+":"+
                                      dispatchers[cmd.dispatcher].passwd);
       }
-      var response = download(url, body, {"method": "POST", "headers": hdrs});
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
                       "response": response});
       }
-      try {
-        res = JSON.parse(response.body);
-        results.push(res.runInfo[0]);
+      else {
+        try {
+          res = JSON.parse(response.body);
+          results.push(res.runInfo[0]);
+        }
+        catch (err) {
+          results.push({"error":true, "errorMessage": "exception in JSON.parse"});
+          error = true;
+        }
       }
-      catch (err) {
-        results.push({"error":true, "errorMessage": "exception in JSON.parse"});
-        error = true;
+      if (error) {
         break;
       }
     }
   }
   this.runInfo = results;
   if (error) {
-    return {"error": true, "errorMessage": "some error during launch",
+    return {"error": true, "errorMessage": "some error during relaunch",
             "runInfo": results};
   }
   return {"error": false, "errorMessage": "none",
@@ -700,7 +704,7 @@ Kickstarter.prototype.shutdown = function() {
                         base64Encode(dispatchers[cmd.dispatcher].username+":"+
                                      dispatchers[cmd.dispatcher].passwd);
       }
-      var response = download(url, body, {"method": "POST", "headers": hdrs});
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -780,7 +784,7 @@ Kickstarter.prototype.cleanup = function() {
                         base64Encode(dispatchers[cmd.dispatcher].username+":"+
                                      dispatchers[cmd.dispatcher].passwd);
       }
-      var response = download(url, body, {"method": "POST", "headers": hdrs});
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",
@@ -861,7 +865,7 @@ Kickstarter.prototype.isHealthy = function() {
                         base64Encode(dispatchers[cmd.dispatcher].username+":"+
                                      dispatchers[cmd.dispatcher].passwd);
       }
-      var response = download(url, body, {"method": "POST", "headers": hdrs});
+      var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
         error = true;
         results.push({"error":true, "errorMessage": "bad HTTP response code",

@@ -458,7 +458,10 @@
   
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : true, shardKeys: [ "name", "version" ] });
+      return createSystemCollection("_aal", { 
+        waitForSync : true, 
+        shardKeys: [ "name", "version" ] 
+      });
     });
     
     // create a unique index on collection attribute in _aal
