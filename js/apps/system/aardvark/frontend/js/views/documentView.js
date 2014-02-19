@@ -64,13 +64,13 @@
       var focused = $('textarea').val();
 
       if (!focused.trim()) {
-        arangoHelper.arangoNotification("Empty field");
+        //Heiko Form-Validator empty field
         returnval = false;
       }
 
       var checkWhiteSpaces = focused.replace(/ /g,'');
       if (checkWhiteSpaces !== focused) {
-        arangoHelper.arangoNotification("No whitespaces allowed");
+        //Heiko Form-Validator whitespaces
         returnval = false;
       }
 
@@ -80,7 +80,7 @@
             returnval = true;
           }
           else {
-            arangoHelper.arangoNotification("Key already exists!");
+            //Heiko Form-Validator duplicate key exists
             returnval = false;
           }
         }
@@ -198,7 +198,6 @@
       if (this.type === 'document') {
         result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
         if (result === true) {
-          arangoHelper.arangoNotification('Document saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
           self.scrollToFocused();
@@ -210,7 +209,6 @@
       else if (this.type === 'edge') {
         result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
         if (result === true) {
-          arangoHelper.arangoNotification('Edge saved');
           $('.addAttribute').removeClass('disabledBtn');
           $('td').removeClass('validateError');
           self.scrollToFocused();
@@ -531,26 +529,6 @@
     //broken
     validate: function (settings, td) {
       var returnval = true;
-      /*
-      if ($(td).hasClass('keyRow') === true) {
-        var toCheck = $('textarea').val();
-        var data = $('#documentTableID').dataTable().fnGetData();
-
-        if (toCheck === '') {
-          $(td).addClass('validateError');
-          arangoHelper.arangoNotification("Key is empty!");
-          returnval = false;
-          return returnval;
-        }
-
-        $.each(data, function(key, val) {
-          if (val[0] === toCheck) {
-            $(td).addClass('validateError');
-            arangoHelper.arangoNotification("Key already exists!");
-            returnval = false;
-          }
-        });
-      }*/
       return returnval;
     },
     getTypedValue: function (value) {
@@ -588,9 +566,7 @@
       value = String(value);
 
       if (value !== '' && (value.substr(0, 1) !== '"' || value.substr(-1) !== '"')) {
-        arangoHelper.arangoNotification(
-          'You have entered an invalid string value. Please review and adjust it.'
-        );
+        //Heiko: Form-Validator - invalid string value
         throw "error";
       }
 
@@ -598,9 +574,7 @@
         value = JSON.parse(value);
       }
       catch (e) {
-        arangoHelper.arangoNotification(
-          'You have entered an invalid string value. Please review and adjust it.'
-        );
+        //Heiko: Form-Validator - invalid string value
         throw e;
       }
       return value;

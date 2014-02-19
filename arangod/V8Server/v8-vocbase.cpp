@@ -1274,7 +1274,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
   if (create) {
     if (type == TRI_IDX_TYPE_PRIMARY_INDEX ||
         type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // creating these indexes is forbidden
+      // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -1335,7 +1335,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
       res = EnhanceJsonIndexCap(obj, json);
       break;
   }
-
+  
   return res;
 }
 
@@ -1737,6 +1737,53 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 
   TRI_json_t* json = 0;
   int res = EnhanceIndexJson(argv, json, create);
+
+  
+#ifdef TRI_ENABLE_CLUSTER 
+  // check if there is an attempt to create a unique index on non-shard keys
+  if (create &&
+      res == TRI_ERROR_NO_ERROR &&
+      ServerState::instance()->isCoordinator()) {
+    TRI_json_t const* v = TRI_LookupArrayJson(json, "unique");
+
+    if (TRI_IsBooleanJson(v) && v->_value._boolean) {
+      // unique index, now check if fields and shard keys match
+      TRI_json_t const* flds = TRI_LookupArrayJson(json, "fields");
+
+      if (TRI_IsListJson(flds)) {
+        string const dbname(collection->_dbName);
+        // TODO: someone might rename the collection while we're reading its name...
+        string const collname(collection->_name);
+        TRI_shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
+
+        if (c->numberOfShards() > 1) {
+          vector<string> const& shardKeys = c->shardKeys();
+          size_t const n = flds->_value._objects._length;
+
+          if (shardKeys.size() != n) {
+            res = TRI_ERROR_CLUSTER_UNSUPPORTED;
+          }
+          else {
+            for (size_t i = 0; i < n; ++i) {
+              TRI_json_t const* f = TRI_LookupListJson(flds, i);
+
+              if (! TRI_IsStringJson(f)) {
+                res = TRI_ERROR_INTERNAL;
+                continue;
+              }
+              else {
+                if (! TRI_EqualString(f->_value._string.data, shardKeys[i].c_str())) {
+                  res = TRI_ERROR_CLUSTER_UNSUPPORTED;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
+
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (json != 0) {

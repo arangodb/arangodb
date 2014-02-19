@@ -9,7 +9,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.fo
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-li.tile div.iconSet span {
+li.tile div.iconSet span, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -20,6 +20,16 @@ nav.navbar, footer.footer {
   background-color: #333232;
   color: white;
   z-index: 1000; }
+
+.contentTables td span {
+  color: #da4f49; }
+  .contentTables td span:hover {
+    color: #be342e; }
+
+.contentTables td.dbThSecond span {
+  color: #8aa051; }
+  .contentTables td.dbThSecond span:hover {
+    color: #788f3d; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu {
   position: absolute;
@@ -253,9 +263,9 @@ li.tile {
   padding-left: 5px !important; }
 
 .fixedDropdown .notificationItemContent {
-  width: 170px;
+  width: 160px;
   float: left;
-  margin-left: 5px; }
+  margin-left: 15px; }
 
 .fixedDropdown button {
   float: right;
@@ -270,15 +280,95 @@ li.tile {
   float: left;
   border-bottom: 1px solid rgba(0, 0, 0, 0.2); }
 
+.innerDropdownInnerUL .dropdown-item:hover {
+  background-color: #E1E1E1 !important; }
+
 .innerDropdownInnerUL li {
   width: auto !important; }
-
-.innerDropdownInnerUL li:last-child {
-  color: red;
-  border-bottom: 0; }
 
 .fixedDropdown .notificationItem {
   color: black; }
 
 .notificationItem i {
-  float: left; }
+  color: rgba(0, 0, 0, 0.2);
+  float: left;
+  font-size: 20px;
+  position: relative;
+  right: 8px;
+  top: -9px; }
+
+.notificationItem i:hover {
+  color: black;
+  cursor: pointer; }
+
+#stat_hd {
+  width: 19px;
+  height: 19px;
+  margin-top: 5px;
+  background-color: #333232;
+  border-radius: 3px;
+  border: 2px solid #8AA051; }
+
+.notificationItemContent {
+  font-weight: 300; }
+
+#stat_hd:hover {
+  cursor: pointer; }
+
+.fullNotification {
+  border: 2px solid red !important;
+  background-color: red !important; }
+
+#stat_hd #stat_hd_counter {
+  color: white;
+  margin-left: 5px; }
+
+.contentDiv {
+  padding: 13px 5px 0px 5px; }
+
+.contentButtons {
+  clear: both;
+  width: 100%;
+  margin-bottom: 10px; }
+  .contentButtons #createDatabase, .contentButtons #createUser {
+    margin-left: 0; }
+
+.contentTables {
+  width: 100%;
+  margin-bottom: 10px; }
+  .contentTables thead {
+    text-align: left; }
+    .contentTables thead tr {
+      border-bottom: 1px solid #c2c2c2;
+      background-color: white; }
+  .contentTables tbody tr:nth-child(odd) {
+    background-color: #d9d9d9; }
+  .contentTables tbody tr:nth-child(even) {
+    background-color: white; }
+  .contentTables tr.contentRowActive {
+    background-color: #bdcc92 !important;
+    font-weight: 400; }
+    .contentTables tr.contentRowActive a {
+      color: black !important; }
+    .contentTables tr.contentRowActive span {
+      display: none; }
+  .contentTables tr.contentRowInactive a {
+    color: black !important; }
+  .contentTables .dbThFirst {
+    width: 90%; }
+  .contentTables .dbThSecond {
+    width: 10%; }
+  .contentTables td {
+    padding: 12px 18px; }
+    .contentTables td span {
+      float: right;
+      font-size: 22px; }
+  .contentTables .collectionThSec {
+    width: 80%;
+    margin-right: 0; }
+  .contentTables .collectionTh {
+    width: 5%;
+    margin-right: 0; }
+
+.createModalDialog table {
+  width: 100%; }
