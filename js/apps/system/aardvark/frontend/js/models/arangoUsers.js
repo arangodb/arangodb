@@ -3,11 +3,15 @@
 
 window.Users = Backbone.Model.extend({
   defaults: {
-    sessionId: "",
-    userName: "",
-    password: "",
-    userId: "",
-    data: {}
+  },
+
+  idAttribute : "user",
+
+  url: function () {
+    if (this.get("user") !== "") {
+      return "/_api/user/" + this.get("user");
+    }
+    return "/_api/user";
   },
 
   initialize: function () {
