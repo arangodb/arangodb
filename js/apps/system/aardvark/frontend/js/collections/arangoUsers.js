@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, Backbone, $, window */
+/*global window, Backbone, $,_, window */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -71,6 +71,20 @@ window.ArangoUsers = Backbone.Collection.extend({
       result.push(object);
     });
     return result;
+  },
+
+  whoAmI: function() {
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+    var result;
+    $.ajax("whoAmI", {async:false}).done(
+      function(data) {
+        result = data.name;
+      }
+    );
+    this.currentUser = result;
+    return this.currentUser;
   }
 
 });
