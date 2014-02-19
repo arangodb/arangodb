@@ -445,7 +445,7 @@ ClusterCommResult* ClusterComm::wait (
   double timeleft;
 
   if (0.0 == timeout) {
-    endtime = 1.0e50;   // this is the Sankt Nimmerleinstag
+    endtime = TRI_microtime() + 24.0 * 60.0 * 60.0; // this is the Sankt Nimmerleinstag
   }
   else {
     endtime = TRI_microtime() + timeout;
@@ -895,6 +895,7 @@ void ClusterCommThread::run () {
       if (0 != _stop) {
         break;
       }
+
       {
         basics::ConditionLocker locker(&cc->somethingToSend);
         if (cc->toSend.empty()) {
