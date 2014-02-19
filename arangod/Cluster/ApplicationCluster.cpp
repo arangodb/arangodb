@@ -156,7 +156,7 @@ bool ApplicationCluster::prepare () {
   }
   
   // initialise ClusterComm library
-  ClusterComm::instance()->initialise();
+  ClusterComm::initialise();
 
   // initialise cluster info library
   ClusterInfo::instance();
