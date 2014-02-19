@@ -140,15 +140,10 @@ void HeartbeatThread::run () {
     if (_stop) {
       break;
     }
-      
-    if (isCoordinator) {
-      // coordinator just sleeps
-      const double remain = interval - (TRI_microtime() - start);
-      if (remain > 0.0) {
-        usleep((unsigned long) (remain * 1000.0 * 1000.0));
-      }
-    }
-    else {
+
+    bool shouldSleep = true;
+    
+    if (! isCoordinator) {
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
@@ -196,18 +191,21 @@ void HeartbeatThread::run () {
 
                 if (planVersion > lastPlanVersion) {
                   handlePlanChange(planVersion, lastPlanVersion);
+                  shouldSleep = false;
                 }
               }
             }
           }
         }
       }
-      else {
-        const double remain = interval - (TRI_microtime() - start);
+    }
 
-        if (remain > 0.0) {
-          usleep((unsigned long) (remain * 1000.0 * 1000.0));
-        }
+    if (shouldSleep) {
+      double const remain = interval - (TRI_microtime() - start);
+
+      // sleep for a while if apropriate
+      if (remain > 0.0) {
+        usleep((unsigned long) (remain * 1000.0 * 1000.0));
       }
     }
   }

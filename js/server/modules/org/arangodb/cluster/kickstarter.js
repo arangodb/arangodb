@@ -287,7 +287,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
 
   console.info("Waiting for servers to come to live...");
-  wait(15);
+  wait(20);
 
   return {"error": false, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
