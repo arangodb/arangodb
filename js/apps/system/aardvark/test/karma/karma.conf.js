@@ -36,7 +36,7 @@ module.exports = function(karma) {
       'frontend/js/lib/d3.v3.min.js',
       'frontend/js/lib/nv.d3.js',
       'frontend/js/lib/d3.fisheye.js',
-      'frontend/js/lib/ejs_0.9_alpha_1_production.js',
+      'frontend/js/lib/ejs_production.js',
       'frontend/js/lib/ColVis.js',
       'frontend/js/lib/bootstrap.js',
       'frontend/js/lib/bootstrap-pagination.js',
