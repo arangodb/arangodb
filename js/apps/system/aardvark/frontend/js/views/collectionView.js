@@ -139,12 +139,11 @@
         }
 
         if (changeResult !== true) {
-          arangoHelper.arangoNotification("Collection error: " + changeResult);
+          arangoHelper.arangoNotification("Collection error", changeResult);
           return 0;
         }
 
         if (changeResult === true) {
-          arangoHelper.arangoNotification("Saved collection properties");
             window.arangoCollectionsStore.fetch({
               success: function () {
                 window.collectionsView.render();
