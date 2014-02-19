@@ -319,6 +319,8 @@ bool createPipes (HANDLE * hChildStdinRd, HANDLE * hChildStdinWr,
  
   // create a pipe for the child process's STDIN
   if (! CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
+    CloseHandle(hChildStdoutRd);
+    CloseHandle(hChildStdoutWr);
     LOG_ERROR("stdin pipe creation failed");
     return false;
   }
@@ -476,7 +478,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     // now create the child process.
     fSuccess = startProcess(external, hChildStdinRd, hChildStdoutWr);
     if (! fSuccess) {
-      external->_status = TRI_EXT_PIPE_FAILED;
+      external->_status = TRI_EXT_FORK_FAILED;
 
       CloseHandle(hChildStdoutRd);
       CloseHandle(hChildStdoutWr);
@@ -788,7 +790,7 @@ void TRI_SetProcessTitle (char const* title) {
 void TRI_CreateExternalProcess (const char* executable,
                                              const char** arguments,
                                              size_t n,
-                                             TRI_external_id_t * pid) {
+                                             TRI_external_id_t* pid) {
   TRI_external_t* external;
   
   size_t i;
@@ -810,20 +812,28 @@ void TRI_CreateExternalProcess (const char* executable,
   external->_status = TRI_EXT_NOT_STARTED;
 
   StartExternalProcess(external, false);
+  if (external->_status != TRI_EXT_RUNNING) {
+#ifndef _WIN32
+    pid->pid = -1;
+#else
+    pid->_hProcess = 0;
+#endif
+    return;
+  }
 
   TRI_LockMutex(&ExternalProcessesLock);
   TRI_PushBackVectorPointer(&ExternalProcesses, external);
 #ifndef _WIN32
-  *pid = external->_pid;
+  pid->pid = external->_pid;
+  pid->readPipe = external->_readPipe;
+  pid->writePipe = external->_writePipe;
 #else
-   pid->_hProcess =  external->_pid;
-   pid->_hChildStdoutRd =  external->_readPipe;
-   pid->_hChildStdinWr  = external->_writePipe;
+  pid->_hProcess =  external->_pid;
+  pid->_hChildStdoutRd =  external->_readPipe;
+  pid->_hChildStdinWr  = external->_writePipe;
 
 #endif
   TRI_UnlockMutex(&ExternalProcessesLock);
-
-//  TRI_Free(TRI_CORE_MEM_ZONE, external);
 }
 
 
@@ -850,7 +860,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   for (i = 0;  i < ExternalProcesses._length;  ++i) {
     external = TRI_AtVectorPointer(&ExternalProcesses, i);
 
-    if (external->_pid == pid) {
+    if (external->_pid == pid.pid) {
       break;
     }
   }
@@ -952,7 +962,7 @@ TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
-void TRI_KillExternalProcess (pid_t pid) {
+void TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
 
@@ -961,7 +971,7 @@ void TRI_KillExternalProcess (pid_t pid) {
   for (i = 0;  i < ExternalProcesses._length;  ++i) {
     external = TRI_AtVectorPointer(&ExternalProcesses, i);
 
-    if (external->_pid == pid) {
+    if (external->_pid == pid.pid) {
       break;
     }
   }

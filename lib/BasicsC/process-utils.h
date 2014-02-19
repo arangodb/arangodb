@@ -88,7 +88,11 @@ TRI_external_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-typedef TRI_pid_t TRI_external_id_t;
+typedef struct TRI_external_id_s {
+  TRI_pid_t pid;
+  int readPipe;
+  int writePipe;
+} TRI_external_id_t;
 #else
 typedef struct TRI_external_id_s {
  HANDLE _hProcess;
@@ -107,7 +111,7 @@ typedef struct TRI_external_s {
   char** _arguments;
 
 #ifndef _WIN32
-  TRI_external_id_t _pid;
+  TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
 #else
@@ -186,13 +190,14 @@ void TRI_CreateExternalProcess (const char* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (pid_t pid, bool wait);
+TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid, 
+                                                bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_KillExternalProcess (pid_t pid);
+void TRI_KillExternalProcess (TRI_external_id_t pid);
 
 #else
 ////////////////////////////////////////////////////////////////////////////////
