@@ -290,7 +290,7 @@
       $('#filterHeader').append(' <div class="queryline querylineAdd">'+
                                 '<input id="attribute_name' + num + 
                                 '" type="text" placeholder="Attribute name">'+
-                                '<select name="operator" id="operator' + num + '">'+
+                                '<select name="operator" id="operator' + num + '" class="filterSelect">'+
                                 '    <option value="==">==</option>'+
                                 '    <option value="!=">!=</option>'+
                                 '    <option value="&lt;">&lt;</option>'+

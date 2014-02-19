@@ -6,6 +6,17 @@
   float: right;
 }
 
+%clear-float {
+  &:after {
+    clear: both;
+    content: ".";
+    display: block;
+    font-size: 0px;
+    height: 0px;
+    visibility: hidden;
+  }
+}
+
 %clickable {
   cursor: pointer;
 }
