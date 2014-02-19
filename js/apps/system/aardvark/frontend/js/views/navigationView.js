@@ -20,7 +20,7 @@
       });
       this.userBarView = new window.UserBarView({
         collection: this.options.notificationCollection,
-        userCollection: window.activeUser
+        userCollection: window.userCollection
       });
       this.statisticBarView = new window.StatisticBarView({});
     },

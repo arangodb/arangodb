@@ -1,0 +1,40 @@
+%clusterStateIcon {
+  width: 90px;
+  height: 50px;
+  position: absolute;
+  top: 10px;
+  color: $c_black;
+  
+  h6.serverName {
+    margin: 0px;
+    font-size: 11px;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+  }
+
+  &.success {
+    @extend %positive
+  }
+
+  &.danger {
+    @extend %negative
+  }
+
+  &.warning {
+    @extend %warning
+  }
+}
+
+div.coordinator {
+  @extend %clusterStateIcon;
+  left: 15px;
+
+  
+}
+
+div.dbserver {
+  @extend %clusterStateIcon;
+  right: 15px;
+}

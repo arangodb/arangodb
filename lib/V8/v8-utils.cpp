@@ -2497,7 +2497,20 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
     TRI_Free(TRI_CORE_MEM_ZONE, arguments);
   }
 #ifndef _WIN32
-  return scope.Close(v8::Number::New(external));
+  if (external.pid < 0) {
+    TRI_V8_ERROR(scope, "Process could not be started");
+  }
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("pid"), v8::Number::New(external.pid));
+  if (external.readPipe >= 0) {
+    result->Set(v8::String::New("readPipe"), 
+                v8::Number::New(external.readPipe));
+  }
+  if (external.writePipe >= 0) {
+    result->Set(v8::String::New("writePipe"), 
+                v8::Number::New(external.writePipe));
+  }
+  return scope.Close(result);
 #else
   size_t pid_len, readPipe_len, writePipe_len; 
   char * hProcess  = NULL;
@@ -2507,7 +2520,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   if (external._hProcess) {
     hProcess = TRI_EncodeHexString((const char *)&external._hProcess, sizeof(HANDLE), &pid_len);
   } else {
-    TRI_V8_TYPE_ERROR(scope, "Internal Error, Process could not be started");
+    TRI_V8_ERROR(scope, "Internal Error, Process could not be started");
   }
 
 
@@ -2542,13 +2555,21 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
 
   // extract the arguments
-  if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>, <wait>)");
+  if (argv.Length() < 1 || argv.Length() > 2 ||
+      !argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>[, <wait>])");
   }
 
-  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (!obj->Has(pidname)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                             "statusExternal: pid must be given");
+  }
+  TRI_external_id_t pid;
+  pid.pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
   bool wait = false;
   if (argv.Length() == 2) {
     wait = TRI_ObjectToBoolean(argv[1]);
@@ -2586,20 +2607,29 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
 
   // extract the arguments
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
   }
 
-  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (!obj->Has(pidname)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                             "statusExternal: pid must be given");
+  }
+  TRI_external_id_t pid;
+  pid.pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
 
   TRI_KillExternalProcess(pid);
 
   // return the result
   return scope.Close(v8::Undefined());
 }
+
 #else
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
@@ -2646,17 +2676,26 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
 
   // extract the arguments
-  if (argv.Length() != 1 || !argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  if (argv.Length() < 1 || argv.Length() > 2 || !argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>[, <wait>])");
   }
-
-  string hProcessStr =  TRI_ObjectToString(argv[0]);
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (!obj->Has(pidname)) {
+	  TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+		  "statusExternal: pid must be given");
+  }
+  bool wait = false;
+  if (argv.Length() == 2) {
+	wait = TRI_ObjectToBoolean(argv[1]);
+  }
+  string hProcessStr =  TRI_ObjectToString(obj->Get(pidname));
   size_t pid_len;
   char * hProcessCharPtr    = TRI_DecodeHexString(hProcessStr.c_str(), hProcessStr.size(), &pid_len);
   HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr)); 
-  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess);
+  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   const char* status = "UNKNOWN";

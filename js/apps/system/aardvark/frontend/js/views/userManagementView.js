@@ -40,19 +40,23 @@
           deleteButton = '';
         }
         var username = user.get("user"),
-          name = user.get("name"),
-          img = user.get("img"),
+          extra = user.get("extra"),
+          name = extra.name,
+          img = extra.img,
           active = user.get("active");
+
         if (!img) {
           img = " ";
+        } else {
+          img = "https://s.gravatar.com/avatar/" + img + "?s=23";
         }
         if (!name) {
           name = " ";
         }
         $("#userManagementTable tbody").append(
           '<tr class="editUser" id="' + username + '">' +
+            '<td><a><img src="' + img + '"></a></td>' +//avatar
             '<td><a>' + username + '</a></td>' +//username
-            '<td><a>' + img + '</a></td>' +//avatar
             '<td><a>' + name + '</a></td>' +//name
             '<td><a>' + active + '</a></td>' +//active
             '<td>' + deleteButton + '</td>' +
@@ -149,24 +153,25 @@
     },
 
     editUser : function(e) {
+      this.collection.fetch();
       this.userToEdit = $(e.currentTarget).attr("id");
-//      console.log(this.userToEdit);
       $('#editUserModal').modal('show');
       var user = this.collection.findWhere({user: this.userToEdit});
       $('#editUsername').html(user.get("user"));
-//      $('#editName').val(user.get("user"));
+      $('#editName').val(user.get("extra").name);
       $('#editStatus').attr("checked", user.get("active"));
+      if (user.get("loggedIn")) {
+        $('#editStatus').attr("disabled", true);
+      } else {
+        $('#editStatus').attr("disabled", false);
+      }
     },
 
     submitEditUser : function() {
-//      console.log("submitEditUser");
       var self = this;
       var userName      = this.userToEdit;
       var name          = $('#editName').val();
       var status        = $('#editStatus').is(':checked');
-//      console.log(userName);
-//      console.log(name);
-//      console.log(status);
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
         return;
@@ -175,22 +180,14 @@
         $('#editName').closest("th").css("backgroundColor", "red");
         return;
       }
-      var options = {
-        username: userName,
-        //name: name,
-        active: status
-      };
-      //TODO
-      this.collection.set(options, {
-        wait:true,
-        error: function(data, err) {
-          self.handleError(err.status, err.statusText, name);
-        },
-        success: function(data) {
-          self.hideModal();
-          self.updateUserManagement();
-        }
-      });
+      var user = this.collection.findWhere({"user":this.userToEdit});
+      //img may not be set, so keep the value
+      var img = user.get("extra").img;
+      user.set({"extra": {"name":name, "img":img}, "active":status});
+      user.save();
+      this.userToEdit = '';
+      $('#editUserModal').modal('hide');
+      this.updateUserManagement();
     },
 
     validateUsername: function (username) {
@@ -214,7 +211,7 @@
       if (name === "") {
         return true;
       }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
+      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
         arangoHelper.arangoError("Username may only contain numbers, letters, _ and -");
         return false;
       }

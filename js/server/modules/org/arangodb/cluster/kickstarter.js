@@ -285,6 +285,10 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     pids.push(executeExternal(arangodPath, args));
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
+
+  console.info("Waiting for servers to come to live...");
+  wait(5);
+
   return {"error": false, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };

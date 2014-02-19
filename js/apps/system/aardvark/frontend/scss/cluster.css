@@ -4,7 +4,11 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.fo
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
+<<<<<<< HEAD
+li.tile div.iconSet span {
+=======
 li.tile div.iconSet span, .scenarioImage {
+>>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -16,6 +20,24 @@ nav.navbar, footer.footer {
   color: white;
   z-index: 1000; }
 
+<<<<<<< HEAD
+div.danger.coordinator, div.danger.dbserver {
+  background-color: #da4f49; }
+  div.danger.coordinator:hover, div.danger.dbserver:hover {
+    background-color: #be342e; }
+
+div.success.coordinator, div.success.dbserver {
+  background-color: #8aa051; }
+  div.success.coordinator:hover, div.success.dbserver:hover {
+    background-color: #788f3d; }
+
+div.warning.coordinator, div.warning.dbserver {
+  background-color: #faa732; }
+  div.warning.coordinator:hover, div.warning.dbserver:hover {
+    background-color: #f89406; }
+
+=======
+>>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
 ul.link-dropdown-menu, ul.user-dropdown-menu {
   position: absolute;
   top: 80%;
@@ -118,6 +140,11 @@ li.tile {
   text-align: center;
   height: 100px;
   width: 230px;
+<<<<<<< HEAD
+  list-style: none;
+  background-color: rgba(0, 0, 0, 0.05);
+=======
+>>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
   margin-left: 6px;
   margin-right: 6px;
   margin-bottom: 13px;
@@ -227,6 +254,30 @@ div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
 
+<<<<<<< HEAD
+.clusterInfoIcon {
+  font-size: 30px; }
+
+div.coordinator, div.dbserver {
+  width: 90px;
+  height: 50px;
+  position: absolute;
+  top: 10px;
+  color: black; }
+  div.coordinator h6.serverName, div.dbserver h6.serverName {
+    margin: 0px;
+    font-size: 11px;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px; }
+
+div.coordinator {
+  left: 15px; }
+
+div.dbserver {
+  right: 15px; }
+=======
 .scenarioImage {
   height: 70%;
   width: auto; }
@@ -241,3 +292,4 @@ svg.clusterChart {
   display: none; }
 .lineGraph .many .dygraph-legend > span.highlight {
   display: inline; }
+>>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e

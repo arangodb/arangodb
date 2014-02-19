@@ -23,8 +23,15 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
+    console.log("huhu");
     this.activeUser = undefined;
     this.reset();
+    $.ajax("unauthorized", {async:false}).error(
+      function () {
+        window.App.navigate("");
+        window.location.reload();
+      }
+    );
   },
 
   setUserSettings: function (identifier, content) {
@@ -86,5 +93,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     this.currentUser = result;
     return this.currentUser;
   }
+
 
 });

@@ -22,9 +22,11 @@
         var addr = m.get("address");
         addr = addr.substr(6);
         addr = addr.split(":")[0];
-        res[addr] = res[addr] || [];
-        res[addr].push(m);
+        res[addr] = res[addr] || {};
+        res[addr].coords = res[addr].coords || [];
+        res[addr].coords.push(m);
       });
+      return res;
     },
 
     getList: function() {

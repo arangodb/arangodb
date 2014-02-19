@@ -25,8 +25,9 @@
         var addr = m.get("address");
         addr = addr.substr(6);
         addr = addr.split(":")[0];
-        res[addr] = res[addr] || [];
-        res[addr].push(m);
+        res[addr] = res[addr] || {};
+        res[addr].dbs = res[addr].dbs || [];
+        res[addr].dbs.push(m);
       });
       return res;
     },
