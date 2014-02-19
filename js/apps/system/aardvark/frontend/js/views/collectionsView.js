@@ -63,6 +63,7 @@
 
       return this;
     },
+
     events: {
       "keydown #searchInput" : "restrictToSearchPhraseKey",
       "change #searchInput"   : "restrictToSearchPhrase",

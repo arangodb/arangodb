@@ -101,11 +101,11 @@
       return returnVal;
     },
 
-    arangoNotification: function (content, title) {
+    arangoNotification: function (title, content) {
       window.App.notificationList.add({title:title, content: content});
     },
 
-    arangoError: function (content, title) {
+    arangoError: function (title, content) {
       window.App.notificationList.add({title:title, content: content});
     },
 

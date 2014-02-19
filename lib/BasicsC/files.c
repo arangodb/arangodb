@@ -1998,22 +1998,12 @@ char* TRI_LocateInstallDirectory () {
   memset(szPath, 0, dwDataSize);
 
   // open the key for reading
-  // TODO: the installer always uses the 32bit path (Wow6432)
   long lResult = RegOpenKeyEx(
-     HKEY_LOCAL_MACHINE,
-     "SOFTWARE\\Wow6432Node\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
-     0,
-     KEY_READ,
-     &key);
-
-  if (lResult != ERROR_SUCCESS) {
-    lResult = RegOpenKeyEx(
         HKEY_LOCAL_MACHINE,
         "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
         0,
         KEY_READ,
         &key);
-  }
 
   if (lResult == ERROR_SUCCESS) {
 
