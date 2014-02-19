@@ -133,7 +133,6 @@
     },
     render: function() {
       $(this.el).html(this.template.text);
-      $.gritter.removeAll();
       return this;
     },
     renderPagination: function (totalPages, currentPage) {

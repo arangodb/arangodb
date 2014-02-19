@@ -9,7 +9,15 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.fo
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-li.tile div.iconSet span, .contentTables tr.contentRowInactive a {
+div.resizecontainer:after, ul.tileList:after {
+  clear: both;
+  content: ".";
+  display: block;
+  font-size: 0px;
+  height: 0px;
+  visibility: hidden; }
+
+.contentDiv .icon, li.tile div.iconSet span, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -90,13 +98,6 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
 
 div.resizecontainer {
   margin: 0px auto; }
-  div.resizecontainer:after {
-    clear: both;
-    content: ".";
-    display: block;
-    font-size: 0px;
-    height: 0px;
-    visibility: hidden; }
 
 @media (max-width: 798px) {
   #arangoCollectionUl {
@@ -154,6 +155,37 @@ div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
 
+div.centralContent {
+  padding: 5px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.0675);
+  min-height: 80px;
+  float: left; }
+
+.contentDiv {
+  padding: 13px 0px 0px 0px;
+  list-style: none;
+  *zoom: 1; }
+  .contentDiv li {
+    background-color: rgba(0, 0, 0, 0.05);
+    float: left; }
+  .contentDiv a.add {
+    padding: 40px 0;
+    display: block;
+    font-weight: 400;
+    text-align: left; }
+  .contentDiv .icon {
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-top: 10px; }
+  .contentDiv:after {
+    clear: both; }
+  .contentDiv:after, .contentDiv:before {
+    display: table;
+    line-height: 0;
+    content: ""; }
+
 nav.navbar {
   top: 0px;
   height: 34px;
@@ -191,8 +223,9 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-div#collectionsThumbnailsIn {
-  margin-left: 0px; }
+ul.tileList {
+  margin-left: -6px;
+  margin-right: -6px; }
 
 li.tile {
   position: relative;
@@ -323,9 +356,6 @@ li.tile {
   color: white;
   margin-left: 5px; }
 
-.contentDiv {
-  padding: 13px 5px 0px 5px; }
-
 .contentButtons {
   clear: both;
   width: 100%;
@@ -372,3 +402,51 @@ li.tile {
 
 .createModalDialog table {
   width: 100%; }
+
+div.headerDropdown {
+  background-color: white;
+  position: relative;
+  display: none;
+  padding: 10px;
+  width: auto; }
+  div.headerDropdown > div.dropdownInner {
+    position: relative;
+    min-height: 125px;
+    width: auto;
+    box-shadow: 0; }
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+      background-position: 0 -15px; }
+
+div.dropdownImport {
+  display: none;
+  background-color: white;
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  position: relative; }
+  div.dropdownImport input {
+    line-height: 0px;
+    margin-top: 5px;
+    margin-bottom: -15px; }
+
+select.filterSelect {
+  width: 100px;
+  margin-left: 10px;
+  margin-right: 10px; }
+
+#filterHeader button {
+  float: right;
+  margin-top: 1px;
+  margin-left: 10px !important; }
