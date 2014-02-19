@@ -702,31 +702,6 @@ void ArangoServer::buildApplicationServer () {
 
   LOG_INFO("using default language '%s'", languageName.c_str());
 
-/*
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
-
-  if (mode == OperationMode::MODE_CONSOLE ||
-      mode == OperationMode::MODE_UNITTESTS ||
-      mode == OperationMode::MODE_SCRIPT) {
-
-#ifdef TRI_ENABLE_CLUSTER
-     // we need to prepare the cluster even in console mode
-    _applicationCluster->disableHeartbeat();
-    _applicationCluster->prepare();
-    _applicationCluster->start();
-    _applicationCluster->open();
-#endif
-
-    int res = executeConsole(mode);
-    
-#ifdef TRI_ENABLE_CLUSTER
-    _applicationCluster->close();
-    _applicationCluster->stop();
-#endif
-
-    TRI_EXIT_FUNCTION(res, NULL);
-  }
-*/
   // if we got here, then we are in server mode
 
   // .............................................................................
