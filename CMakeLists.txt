@@ -728,10 +728,13 @@ endif ()
 ################################################################################
 
 if (MSVC)
+
   ##############################################################################
   # Initializing variables
   ##############################################################################
+
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
+
   IF(CMAKE_CL_64)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
@@ -751,7 +754,6 @@ if (MSVC)
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
 
-
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
 
@@ -766,19 +768,19 @@ if (MSVC)
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
   
-#  set(CPACK_PACKAGE_EXECUTABLES "arangosh;Arango Shell;arangod;Arango Server")
   set(CPACK_NSIS_CREATE_ICONS_EXTRA 
     "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\Uninstall.exe'
      CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
     ")
-# Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-# they are deleted from '$SMPROGRAMS\$MUI_TEMP
+
+  # Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+  # they are deleted from '$SMPROGRAMS\$MUI_TEMP
   set(CPACK_NSIS_DELETE_ICONS_EXTRA 
     "Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Server.lnk'
      Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Shell.lnk'
     ")
-  set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
 
+  set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")
   set(CPACK_NSIS_CONTACT "hackers@arangodb.org")
