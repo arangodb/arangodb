@@ -580,7 +580,6 @@
       if (this.collectionContext.next === null) {
         $('#collectionNext').parent().addClass('disabledPag');
       }
-      $.gritter.removeAll();
 
       this.uploadSetup();
 
