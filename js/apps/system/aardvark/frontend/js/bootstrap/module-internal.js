@@ -128,6 +128,23 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frontendDevelopmentMode
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.frontendDevelopmentMode = false;
+
+  if (typeof FE_DEVELOPMENT_MODE !== "undefined") {
+    exports.frontendDevelopmentMode = FE_DEVELOPMENT_MODE;
+    delete FE_DEVELOPMENT_MODE;
+  }
+
+  if (exports.frontendDevelopmentMode && exports.threadNumber === 0) {
+    SYS_LOG("warning", "################################################################################");
+    SYS_LOG("warning", "frontend development mode is active, never use this in production");
+    SYS_LOG("warning", "################################################################################");
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logfilePath
 ////////////////////////////////////////////////////////////////////////////////
 
