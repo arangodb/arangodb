@@ -43,7 +43,7 @@
         async: false
       });
 
-      window.activeUser = new window.ArangoUsers();
+      window.userCollection = new window.ArangoUsers();
 
       window.arangoDatabase = new window.ArangoDatabase();
 
@@ -185,7 +185,7 @@
     },
 
     checkUser: function () {
-      if (window.activeUser.models.length === 0) {
+      if (window.userCollection.models.length === 0) {
         this.navigate("login", {trigger: true});
         return false;
       }
@@ -195,7 +195,7 @@
     login: function () {
       if (!this.loginView) {
         this.loginView = new window.loginView({
-          collection: window.activeUser
+          collection: window.userCollection
         });
       }
       this.loginView.render();
@@ -473,7 +473,7 @@
     userManagement: function() {
       if (!this.userManagementView) {
         this.userManagementView = new window.userManagementView({
-          collection: window.activeUser
+          collection: window.userCollection
         });
       }
       this.userManagementView.render();
