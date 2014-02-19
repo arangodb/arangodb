@@ -524,6 +524,18 @@ testFuncs.single = function (options) {
 
 };
 
+testFuncs.http_server = function (options) {
+  var instanceInfo = startInstance("tcp",options);
+  var result = {};
+
+  
+  
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return result;
+};
+
 testFuncs.dummy = function (options) {
   var instanceInfo = startInstance("tcp",options);
   print("Startup done.");
