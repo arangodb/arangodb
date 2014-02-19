@@ -154,9 +154,14 @@ bool ApplicationCluster::prepare () {
       LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
     }
   }
+  
+  // initialise ClusterComm library
+  ClusterComm::instance()->initialise();
 
   // initialise cluster info library
   ClusterInfo::instance();
+
+  usleep(1000);
 
   return true;
 }
@@ -258,9 +263,6 @@ bool ApplicationCluster::start () {
            _myAddress.c_str(),
            ServerState::roleToString(role).c_str());
   
-  // initialise ClusterComm library
-  ClusterComm::instance()->initialise();
-
   if (! _disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
 
