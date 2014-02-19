@@ -14,15 +14,33 @@
     <a class="arangoHeader">Cluster Dashboard</a>
   </div>
 </ul>
-<div id="clusterLayout">
-  <% if(type === "testPlan") { %>
+<ul id="clusterLayout" class="tileList">
+  <% if(type === "testPlan") { 
+    _.each(byAddress, function(s, a) { 
+      _.each(s.coords, function(c) {
+    %>
       <li class="tile">
-        <h5 class="collectionName"><%=a%></h5>
+        <div class="coordinator <%=statusClass(c.get('status'))%>">
+          <span class="clusterInfoIcon icon_arangodb_compass"></span>
+        </div>
+        <h5 class="collectionName"><%=c.get("name")%></h5>
       </li>
-      <%
-        } else { 
-          _.each(byAddress, function(s, a) { 
-      %>
+    <%
+      });
+      _.each(s.dbs, function(c) {
+    %>
+      <li class="tile">
+        <div class="dbserver <%=statusClass(c.get('status'))%>">
+          <span class="clusterInfoIcon icon_arangodb_database1"></span>
+        </div>
+        <h5 class="collectionName"><%=c.get("name")%></h5>
+      </li>
+    <%
+        });
+      });
+    } else { 
+      _.each(byAddress, function(s, a) { 
+  %>
       <li class="tile">
         <% _.each(s.coords, function(c) { %>
           <div class="coordinator <%=statusClass(c.get('status'))%>">
@@ -42,6 +60,7 @@
     });
   }
   %>
+</ul>
 <div class="headerBar">
   <a class="arangoHeader">Cluster Statistics</a>
 </div>

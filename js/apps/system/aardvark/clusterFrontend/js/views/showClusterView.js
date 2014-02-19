@@ -75,7 +75,8 @@
     render: function() {
       $(this.el).html(this.template.render({
         byAddress: this.listByAddress(),
-        type: this.type
+//        type: this.type
+        type: "testPlankhasdh"
       }));
       this.getServerStatistics();
       var data = this.generatePieData();
