@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module */
+/*global require, exports, module, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -139,6 +139,20 @@ actions.defineHttp({
   context : "admin",
 
   callback : routing
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current server role
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/server/role",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { role: ArangoServerState.role() });
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////

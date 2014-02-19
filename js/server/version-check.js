@@ -267,7 +267,7 @@
 
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {
-      return createSystemCollection("_users", { waitForSync : true });
+      return createSystemCollection("_users", { waitForSync : true, shardKeys: [ "user" ] });
     });
 
     // create a unique index on "user" attribute in _users
@@ -311,25 +311,9 @@
       return createSystemCollection("_graphs", { waitForSync : true });
     });
   
-    // create a unique index on name attribute in _graphs
-    addTask("createGraphsIndex",
-            "create index on name attribute in _graphs collection",
-      function () {
-        var graphs = getCollection("_graphs");
-
-        if (! graphs) {
-          return false;
-        }
-
-        graphs.ensureUniqueConstraint("name");
-
-        return true;
-      }
-    );
-
     // make distinction between document and edge collections
     addUpgradeTask("addCollectionVersion",
-                  "set new collection type for edge collections and update collection version",
+                   "set new collection type for edge collections and update collection version",
       function () {
         var collections = db._collections();
         var i;
@@ -474,7 +458,10 @@
   
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : true });
+      return createSystemCollection("_aal", { 
+        waitForSync : true, 
+        shardKeys: [ "name", "version" ] 
+      });
     });
     
     // create a unique index on collection attribute in _aal
