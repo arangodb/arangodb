@@ -14,7 +14,7 @@
       "click #submitCreateUser"                               : "submitCreateUser",
       "click #userManagementTable .icon_arangodb_roundminus"  : "removeUser",
       "click #submitDeleteUser"                               : "submitDeleteUser",
-//      "click .editUser"                                       : "editUser",
+      "click .editUser"                                       : "editUser",
       "click #submitEditUser"                                 : "submitEditUser"
     },
 
@@ -34,14 +34,28 @@
 
     renderTable: function () {
       this.collection.forEach(function(user) {
+        var deleteButton =
+          '<span class="arangoicon icon_arangodb_roundminus" data-original-title="Delete user"></span>';
+        if(user.get("loggedIn")) {
+          deleteButton = '';
+        }
+        var username = user.get("user"),
+          name = user.get("name"),
+          img = user.get("img"),
+          active = user.get("active");
+        if (!img) {
+          img = " ";
+        }
+        if (!name) {
+          name = " ";
+        }
         $("#userManagementTable tbody").append(
-          '<tr class="editUser" id="' + user.get("user") + '">' +
-            '<td><a>' + user.get("user") + '</a></td>' +//username
-            '<td><a>' + "" + '</a></td>' +//avatar
-            '<td><a>' + "" + '</a></td>' +//name
-            '<td><a>' + user.get("active") + '</a></td>' +//active
-            '<td><span class="arangoicon icon_arangodb_roundminus"' +
-            'data-original-title="Delete user"></span></td>' +
+          '<tr class="editUser" id="' + username + '">' +
+            '<td><a>' + username + '</a></td>' +//username
+            '<td><a>' + img + '</a></td>' +//avatar
+            '<td><a>' + name + '</a></td>' +//name
+            '<td><a>' + active + '</a></td>' +//active
+            '<td>' + deleteButton + '</td>' +
           '</tr>'
         );
       });
@@ -136,7 +150,7 @@
 
     editUser : function(e) {
       this.userToEdit = $(e.currentTarget).attr("id");
-      console.log(this.userToEdit);
+//      console.log(this.userToEdit);
       $('#editUserModal').modal('show');
       var user = this.collection.findWhere({user: this.userToEdit});
       $('#editUsername').html(user.get("user"));
@@ -145,14 +159,14 @@
     },
 
     submitEditUser : function() {
-      console.log("submitEditUser");
+//      console.log("submitEditUser");
       var self = this;
       var userName      = this.userToEdit;
       var name          = $('#editName').val();
       var status        = $('#editStatus').is(':checked');
-      console.log(userName);
-      console.log(name);
-      console.log(status);
+//      console.log(userName);
+//      console.log(name);
+//      console.log(status);
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
         return;
