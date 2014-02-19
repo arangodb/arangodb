@@ -18,7 +18,7 @@ function main (argv) {
   var fs = require("fs");
   fs.write(runInfoName,JSON.stringify({"plan": p.getPlan(),
                                        "runInfo": r.runInfo}));
-  print("Coordinator endpoints:");
+  print("Endpoints:");
   var i,j;
   j = r.runInfo.length-1;
   while (j > 0 && r.runInfo[j].isStartServers === undefined) {
@@ -26,8 +26,6 @@ function main (argv) {
   }
   var l = r.runInfo[j];
   for (i = 0;i < l.endpoints.length;i++) {
-    if (l.roles[i] === "Coordinator") {
-      print("  ",l.endpoints[i]);
-    }
+    print(l.roles[i] + ":" + l.endpoints[i]);
   }
 }
