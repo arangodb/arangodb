@@ -47,6 +47,7 @@
 #endif
 
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/string-buffer.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 
@@ -335,6 +336,8 @@ bool createPipes (HANDLE * hChildStdinRd, HANDLE * hChildStdinWr,
 
 static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   char const* q;
+  int err;
+  
   appendChar(buf, '"');
   unsigned int NumberBackslashes;
   unsigned int i;
@@ -364,15 +367,16 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
         appendChar(buf, '\\');
       }
       appendChar(buf, '\\');
-      appendChar(*q);
+      appendChar(buf, *q);
     }
     else {
       // Backslashes aren't special here.
       for (i = 0; i < NumberBackslashes; i++) {
         appendChar(buf, '\\');
       }
-      appendChar(*q);
+      appendChar(buf, *q);
     }
+	p = ++q;
   }
   appendChar(buf, '"');
   return TRI_ERROR_NO_ERROR;
@@ -391,19 +395,19 @@ static char* makeWindowsArgs(TRI_external_t* external) {
   TRI_ReserveStringBuffer(buf, 1024);
   err = appendQuotedArg(buf, external->_executable);
   if (err != TRI_ERROR_NO_ERROR) {
-    TRI_FreeStringBuffer(buf);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
     return NULL;
   }
-  for (i = 0;i < external->_numberArguments;i++) {
+  for (i = 1;i < external->_numberArguments;i++) {
     err = TRI_AppendCharStringBuffer(buf, ' ');
     if (err != TRI_ERROR_NO_ERROR) {
-      TRI_FreeStringBuffer(buf);
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
       return NULL;
     }
     err = appendQuotedArg(buf, external->_arguments[i]);
   }
   res = TRI_StealStringBuffer(buf);
-  TRI_FreeStringBuffer(buf);
+  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
   return res;
 }
 
@@ -446,7 +450,7 @@ static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
 
   if (bFuncRetn == FALSE) {
-    LOG_ERROR("execute of '%s' failed", external->_executable);
+    LOG_ERROR("execute of '%s' failed, error: %d", external->_executable, GetLastError());
     return false;
   }
   else {
