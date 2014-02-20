@@ -123,7 +123,6 @@
         "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
-        "frontend/css/documentSourceView.css",
         "frontend/css/swaggerView.css",
         "frontend/css/foxxView.css",
         "frontend/css/graphView.css",
