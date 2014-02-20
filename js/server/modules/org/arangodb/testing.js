@@ -391,6 +391,17 @@ function runInArangosh (options, instanceInfo, file) {
   return executeAndWait(arangosh, args);
 }
 
+function runArangoshCmd (options, instanceInfo, cmds) {
+  var args = makeTestingArgsClient(options);
+  var topDir = findTopDir();
+  args.push("--server.endpoint");
+  args.push(instanceInfo.endpoint);
+  args = args.concat(cmds);
+  var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                      "..","arangosh"));
+  return executeAndWait(arangosh, args);
+}
+
 function performTests(options, testList) {
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -693,6 +704,27 @@ testFuncs.upgrade = function (options) {
   return result;
 };
 
+testFuncs.foxx_manager = function (options) {
+  print("foxx_manager tests...");
+  var instanceInfo = startInstance("tcp",options);
+  var results = {};
+  
+  results.update = runArangoshCmd(options, instanceInfo, 
+                                  ["--configuration",
+                                   "etc/relative/foxx-manager.conf",
+                                   "update"]);
+  if (results.update === 0 || options.force) {
+    results.search = runArangoshCmd(options, instanceInfo, 
+                                    ["--configuration",
+                                     "etc/relative/foxx-manager.conf",
+                                     "search","itzpapalotl"]);
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
 var allTests = 
   [
     "make",
@@ -707,7 +739,7 @@ var allTests =
     "arangob",
     "importing",
     "upgrade",
-    "dfdb",
+    // "dfdb",    needs input redirection, but is not a good test anyway
     "foxx_manager",
     "authentication",
     "authentication_parameters"
@@ -761,14 +793,6 @@ function UnitTest (which, options) {
 
 exports.UnitTest = UnitTest;
 
-// PROBLEME:
-//     context-Problem wg. HTTP REST execute statt command line
-//        ==> testMode
-//   shell_server:
-//        "js/server/tests/transactions.js",
-//   shell_server_ahuacatl:
-//        "js/server/tests/ahuacatl-functions.js",
-//        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
