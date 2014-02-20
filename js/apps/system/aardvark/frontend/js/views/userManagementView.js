@@ -138,7 +138,8 @@
     },
 
     removeUser : function(e) {
-      this.userToDelete = $(e.currentTarget).parent().parent().children().first().text();
+      this.userToDelete = $(e.currentTarget).parent().parent().attr("id");
+      console.log($(e.currentTarget));
       $('#deleteUserModal').modal('show');
       e.stopPropagation();
     },
