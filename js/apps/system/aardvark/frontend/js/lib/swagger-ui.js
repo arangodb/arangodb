@@ -77,7 +77,7 @@ if (Function.prototype.bind && console && typeof console.log == "object") {
 var Docs = {
 
 	shebang: function() {
-
+    return true;
 		// If shebang has an operation nickname in it..
 		// e.g. /docs/#!/words/get_search
 		var fragments = $.param.fragment().split('/');

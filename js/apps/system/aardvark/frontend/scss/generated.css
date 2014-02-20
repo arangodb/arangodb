@@ -268,6 +268,27 @@ li.tile {
     border-bottom: 16px solid #FF8F35; }
   li.tile .deleted div {
     border-bottom: 16px solid red; }
+  li.tile div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: white; }
+    li.tile div.tileBadge span {
+      display: inline-block;
+      line-height: 13px; }
+      li.tile div.tileBadge span div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border-left: 17px solid transparent;
+        border-bottom-width: 17px;
+        border-bottom-style: solid; }
+        li.tile div.tileBadge span div.corneredBadge.loaded {
+          border-bottom-color: #8aa051; }
+        li.tile div.tileBadge span div.corneredBadge.unloaded {
+          border-bottom-color: #ff8f35; }
 
 .collectionName {
   text-align: left;
