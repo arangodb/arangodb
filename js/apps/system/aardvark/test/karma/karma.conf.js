@@ -13,10 +13,15 @@ module.exports = function(karma) {
     //frameworks: ['jasmine', 'junit-reporter'],
     frameworks: ['jasmine'],
 
+
     // list of files / patterns to load in the browser
     files: [
+      /*
       'test/lib/jasmine-1.3.1/jasmine-html.js',
       'test/lib/jslint.js',
+
+      //Templates
+      {pattern: 'frontend/js/templates/*.ejs', served: true, included: true, watched: true},
 
       'frontend/js/lib/jquery-2.1.0.min.js',
       'frontend/js/lib/jquery-ui-1.9.2.custom.js',
@@ -34,7 +39,6 @@ module.exports = function(karma) {
       'frontend/js/lib/d3.v3.min.js',
       'frontend/js/lib/nv.d3.js',
       'frontend/js/lib/d3.fisheye.js',
-      'frontend/js/lib/ejs_production.js',
       'frontend/js/lib/ColVis.js',
       'frontend/js/lib/bootstrap.js',
       'frontend/js/lib/bootstrap-pagination.js',
@@ -72,14 +76,11 @@ module.exports = function(karma) {
       'frontend/js/client/client.js',
 
       // Mocks
-      'test/mocks/disableEJS.js',
       'test/specs/graphViewer/helper/eventHelper.js',
       'test/specs/graphViewer/helper/objectsHelper.js',
       'test/specs/graphViewer/helper/mocks.js',
       'test/specs/graphViewer/helper/commMock.js',
       'test/specs/graphViewer/helper/uiMatchers.js',
-
-
 
       // GraphViewer
       // Core Modules
@@ -177,10 +178,9 @@ module.exports = function(karma) {
       // Router
       'frontend/js/routers/router.js',
 
-      //Templates
-      {pattern: 'frontend/js/templates/*.ejs', served:true, included:false, watched: true},
       // Specs
       // GraphViewer
+      
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
@@ -227,7 +227,9 @@ module.exports = function(karma) {
       // Router
       'test/specs/router/routerSpec.js',
       // JSLint
+      
       'test/specJSLint/jsLintSpec.js'
+      */
     ],
 
 

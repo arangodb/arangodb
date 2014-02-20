@@ -1,3 +1,4 @@
+<script id="foxxActiveView.ejs" type="text/template">
 <% var appInfos = attributes.app.split(":"); %>
 <div class="iconSet">
   <span class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
@@ -31,3 +32,4 @@
   </div>
 <%}%>
 <h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
+</script>
