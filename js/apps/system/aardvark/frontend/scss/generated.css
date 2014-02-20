@@ -204,6 +204,8 @@ ul.navlist {
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
     background-color: #8aa051; }
+  ul.navlist li.dropdown-item {
+    margin-left: 0px; }
 
 a.tab {
   padding-top: 8px;
@@ -492,4 +494,6 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
+  height: "28";
+  width: "28";
   margin-top: -3px; }
