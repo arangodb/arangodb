@@ -622,29 +622,24 @@ var impTodo = [
    coll: "UnitTestsImportEdge", type: "json", create: "false"}
 ];
 
-testFuncs.import = function (options) {
+testFuncs.importing = function (options) {
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
-  while (true) {
+  try {
     var r = runInArangosh(options, instanceInfo, 
                           makePath("js/server/tests/import-setup.js"));
     result.setup = r;
     if (r !== 0) {
-      break;
+      throw "banana";
     }
     var i;
-    var err = false;
     for (i = 0; i < impTodo.length; i++) {
       r = runArangoImp(options, instanceInfo, impTodo[i]);
       result[impTodo[i].id] = r;
       if (r !== 0 && !options.force) {
-        err = true;
-        break;
+        throw "banana";
       }
-    }
-    if (err) {
-      break;
     }
     r = runInArangosh(options, instanceInfo,
                       makePath("js/server/tests/import.js"));
@@ -652,7 +647,8 @@ testFuncs.import = function (options) {
     r = runInArangosh(options, instanceInfo,
                       makePath("js/server/tests/import-teardown.js"));
     result.teardown = r;
-    break;
+  }
+  catch (banana) {
   }
 
   print("Shutting down...");
@@ -673,7 +669,7 @@ var allTests =
     "shell_client",
     "dump",
     "arangob",
-    "import",
+    "importing",
     "upgrade",
     "dfdb",
     "foxx_manager",
