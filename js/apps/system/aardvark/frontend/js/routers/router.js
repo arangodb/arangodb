@@ -447,7 +447,7 @@
     },
 
     handleSelectDatabase: function () {
-      this.footerView.handleSelectDatabase();
+      this.naviView.handleSelectDatabase();
     },
 
     handleResize: function () {
