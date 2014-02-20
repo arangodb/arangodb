@@ -48,11 +48,6 @@ var arangodb = require("org/arangodb"),
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,18 +87,13 @@ var findOrCreateEdgeCollectionByName = function (name) {
   return col;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              Edge
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
@@ -134,39 +124,13 @@ Edge.prototype.setProperty = function (name, value) {
   return value;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Vertex
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new vertex object
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inbound and outbound edges
@@ -325,18 +289,13 @@ Vertex.prototype.setProperty = function (name, value) {
   return value;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             Graph
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new graph object
@@ -374,13 +333,13 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   if (typeof vertices === 'object' && typeof vertices.name === 'function') {
     vertices = vertices.name();
   }
+
   if (typeof edges === 'object' && typeof edges.name === 'function') {
     edges = edges.name();
   }
   
+  // find an existing graph by name
   if (vertices === undefined && edges === undefined) {
-
-    // Find an existing graph
     try {
       graphProperties = gdb.document(name);
     }
@@ -404,17 +363,19 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
   }
+  
+  // sanity check for vertices
   else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
   }
+
+  // sanity check for edges
   else if (typeof edges !== "string" || edges === "") {
     throw "<edges> must be a string or null";
   }
+  
+  // create a new graph or get an existing graph
   else {
-    // Create a new graph or get an existing graph
-    vertices = findOrCreateCollectionByName(vertices);
-    edges = findOrCreateEdgeCollectionByName(edges);
-
     try {
       graphProperties = gdb.document(name);
     }
@@ -422,24 +383,27 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       graphProperties = null;
     }
 
-    // Graph doesn't exist yet
+    // graph doesn't exist yet, create it
     if (graphProperties === null) {
 
       // check if know that graph
       graphProperties = gdb.firstExample(
-        'vertices', vertices.name(),
-        'edges', edges.name()
+        'vertices', vertices,
+        'edges', edges
       );
 
       if (graphProperties === null) {
         
          // check if edge is used in a graph
-        graphProperties = gdb.firstExample('edges', edges.name());
+        graphProperties = gdb.firstExample('edges', edges);
 
         if (graphProperties === null) {      
+          findOrCreateCollectionByName(vertices);
+          findOrCreateEdgeCollectionByName(edges);
+
           graphPropertiesId = gdb.save({
-            'vertices' : vertices.name(),
-            'edges' : edges.name(),
+            'vertices' : vertices,
+            'edges' : edges,
             '_key' : name
           }, waitForSync);
 
@@ -454,14 +418,9 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       }
     }
     else {
-      throw "graph with that name already exists";
-      //if (graphProperties.vertices !== vertices.name()) {
-      //  throw "found graph but has different <vertices>";
-      //}
-
-      //if (graphProperties.edges !== edges.name()) {
-      //  throw "found graph but has different <edges>";
-      //}
+      if (graphProperties.vertices !== vertices || graphProperties.edges !== edges) {
+        throw "graph with that name already exists";
+      }
     }
   }
 
@@ -481,18 +440,9 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   this.distances = {};
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_graph_getAll
@@ -789,18 +739,9 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 exports.Edge = Edge;
 exports.Graph = Graph;
@@ -808,10 +749,6 @@ exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
 require("org/arangodb/graph/algorithms-common");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
