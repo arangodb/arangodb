@@ -44,11 +44,11 @@ var users = require("org/arangodb/users");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a user
 ///
-/// @RESTHEADER{GET /_api/user/{username},fetches a user}
+/// @RESTHEADER{GET /_api/user/{user},fetches a user}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{username,string,required}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user.
 ///
 /// @RESTDESCRIPTION
@@ -58,7 +58,7 @@ var users = require("org/arangodb/users");
 /// The call will return a JSON document with at least the following attributes
 /// on success:
 ///
-/// - `username`: The name of the user as a string.
+/// - `user`: The name of the user as a string.
 ///
 /// - `active`: an optional flag that specifies whether the user is active.
 ///
@@ -71,7 +71,7 @@ var users = require("org/arangodb/users");
 /// The user was found.
 ///
 /// @RESTRETURNCODE{404}
-/// The user with `username` does not exist.
+/// The user with `user` does not exist.
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -86,9 +86,10 @@ function get_api_user (req, res) {
     return;
   }
 
-  var username = decodeURIComponent(req.suffix[0]);
+  var user = decodeURIComponent(req.suffix[0]);
+
   try {
-    var result = users.document(username);
+    var result = users.document(user);
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
@@ -113,7 +114,7 @@ function get_api_user (req, res) {
 /// The following data need to be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - `username`: The name of the user as a string. This is mandatory.
+/// - `user`: The name of the user as a string. This is mandatory.
 ///
 /// - `passwd`: The user password as a string. If no password is specified,
 ///   the empty string will be used.
@@ -166,7 +167,13 @@ function post_api_user (req, res) {
     return;
   }
 
-  users.save(json.username, json.passwd, json.active, json.extra);
+  var user = json.user;
+  if (user === undefined && json.hasOwnProperty("username")) {
+    // deprecated usage
+    user = json.username;
+  }
+
+  users.save(user, json.passwd, json.active, json.extra);
   users.reload();
 
   actions.resultOk(req, res, actions.HTTP_CREATED, { });
@@ -175,11 +182,11 @@ function post_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace an existing user
 ///
-/// @RESTHEADER{PUT /_api/user/{username},replaces user}
+/// @RESTHEADER{PUT /_api/user/{user},replaces user}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{username,string,required}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user.
 ///
 /// @RESTBODYPARAM{body,json,required}
@@ -187,7 +194,7 @@ function post_api_user (req, res) {
 /// @RESTDESCRIPTION
 ///
 /// Replaces the data of an existing user. The name of an existing user must
-/// be specified in `username`.
+/// be specified in `user`.
 ///
 /// The following data can to be passed in a JSON representation in the body of
 /// the POST request:
@@ -245,7 +252,7 @@ function put_api_user (req, res) {
     return;
   }
 
-  var username = decodeURIComponent(req.suffix[0]);
+  var user = decodeURIComponent(req.suffix[0]);
 
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
   
@@ -254,7 +261,7 @@ function put_api_user (req, res) {
   }
   
   try {
-    users.replace(username, json.passwd, json.active, json.extra);
+    users.replace(user, json.passwd, json.active, json.extra);
     users.reload();
   
     actions.resultOk(req, res, actions.HTTP_OK, { });
@@ -272,11 +279,11 @@ function put_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially update an existing user
 ///
-/// @RESTHEADER{PATCH /_api/user/{username},updates user}
+/// @RESTHEADER{PATCH /_api/user/{user},updates user}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{username,string,required}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user.
 ///
 /// @RESTBODYPARAM{body,json,required}
@@ -284,7 +291,7 @@ function put_api_user (req, res) {
 /// @RESTDESCRIPTION
 ///
 /// Partially updates the data of an existing user. The name of an existing user 
-/// must be specified in `username`.
+/// must be specified in `user`.
 ///
 /// The following data can be passed in a JSON representation in the body of
 /// the POST request:
@@ -344,8 +351,7 @@ function patch_api_user (req, res) {
     return;
   }
 
-  var username = decodeURIComponent(req.suffix[0]);
-
+  var user = decodeURIComponent(req.suffix[0]);
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
   
   if (json === undefined) {
@@ -353,7 +359,7 @@ function patch_api_user (req, res) {
   }
   
   try {
-    users.update(username, json.passwd, json.active, json.extra);
+    users.update(user, json.passwd, json.active, json.extra);
     users.reload();
     actions.resultOk(req, res, actions.HTTP_OK, { });
   }
@@ -370,16 +376,16 @@ function patch_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove an existing user
 ///
-/// @RESTHEADER{DELETE /_api/user/{username},removes a user}
+/// @RESTHEADER{DELETE /_api/user/{user},removes a user}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{username,string,required}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user.
 ///
 /// @RESTDESCRIPTION
 ///
-/// Removes an existing user, identified by `username`.
+/// Removes an existing user, identified by `user`.
 ///
 /// If the user can be removed, the server will respond with `HTTP 202`. 
 ///
@@ -420,9 +426,9 @@ function delete_api_user (req, res) {
     return;
   }
 
-  var username = decodeURIComponent(req.suffix[0]);
+  var user = decodeURIComponent(req.suffix[0]);
   try {
-    users.remove(username);
+    users.remove(user);
     users.reload();
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { });
   }
