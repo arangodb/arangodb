@@ -31,7 +31,8 @@
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
       "graphManagement/delete/:name"        : "graphDelete",
-      "userManagement"                      : "userManagement"
+      "userManagement"                      : "userManagement",
+      "userProfile"                         : "userProfile"
     },
 
     initialize: function () {
@@ -446,7 +447,7 @@
     },
 
     handleSelectDatabase: function () {
-      this.footerView.handleSelectDatabase();
+      this.naviView.handleSelectDatabase();
     },
 
     handleResize: function () {
@@ -477,6 +478,16 @@
         });
       }
       this.userManagementView.render();
+      this.naviView.selectMenuItem('user-menu');
+    },
+
+    userProfile: function() {
+      if (!this.userProfileView) {
+        this.userProfileView = new window.userProfileView({
+          collection: window.userCollection
+        });
+      }
+      this.userProfileView.render();
       this.naviView.selectMenuItem('user-menu');
     }
 

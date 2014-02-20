@@ -188,8 +188,13 @@ div.centralContent {
 
 nav.navbar {
   top: 0px;
-  height: 34px;
+  height: 37px;
   margin-bottom: 3px; }
+
+div.navlogo {
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-right: 1px; }
 
 ul.navlist {
   list-style: none; }
@@ -199,9 +204,11 @@ ul.navlist {
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
     background-color: #8aa051; }
+  ul.navlist li.dropdown-item {
+    margin-left: 0px; }
 
 a.tab {
-  padding-top: 7px;
+  padding-top: 8px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
@@ -213,6 +220,19 @@ a.tab {
   float: right;
   padding-bottom: 0;
   margin-bottom: 0;
+  margin-right: 15px; }
+
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 5px solid white;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: ""; }
+
+.navbar-spacer {
   margin-right: 15px; }
 
 footer.footer {
@@ -268,6 +288,27 @@ li.tile {
     border-bottom: 16px solid #FF8F35; }
   li.tile .deleted div {
     border-bottom: 16px solid red; }
+  li.tile div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: white; }
+    li.tile div.tileBadge span {
+      display: inline-block;
+      line-height: 13px; }
+      li.tile div.tileBadge span div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border-left: 17px solid transparent;
+        border-bottom-width: 17px;
+        border-bottom-style: solid; }
+        li.tile div.tileBadge span div.corneredBadge.loaded {
+          border-bottom-color: #8aa051; }
+        li.tile div.tileBadge span div.corneredBadge.unloaded {
+          border-bottom-color: #ff8f35; }
 
 .collectionName {
   text-align: left;
@@ -335,8 +376,8 @@ li.tile {
   cursor: pointer; }
 
 #stat_hd {
-  width: 19px;
-  height: 19px;
+  width: 22px;
+  height: 22px;
   margin-top: 5px;
   background-color: #333232;
   border-radius: 3px;
@@ -354,7 +395,8 @@ li.tile {
 
 #stat_hd #stat_hd_counter {
   color: white;
-  margin-left: 5px; }
+  margin-left: 7px;
+  line-height: 23px; }
 
 .contentButtons {
   clear: both;
@@ -450,3 +492,8 @@ select.filterSelect {
   float: right;
   margin-top: 1px;
   margin-left: 10px !important; }
+
+.userMenuImg {
+  height: "28";
+  width: "28";
+  margin-top: -3px; }

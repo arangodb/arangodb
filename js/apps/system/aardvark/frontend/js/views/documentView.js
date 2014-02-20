@@ -166,7 +166,7 @@
       }
     },
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.breadcrumb();
       return this;
     },

@@ -1,12 +1,15 @@
 nav.navbar {
   @extend %fixedbar;
   top: 0px;
-  height: 34px;
+  height: 37px;
   margin-bottom: 3px;
 }
 
 div.navlogo {
   @extend %pull-left;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-right: 1px;
 }
 
 div.navmenu {
@@ -24,11 +27,14 @@ ul.navlist {
   > li:hover {
     background-color: $c_positive;
   }
+  li.dropdown-item {
+    margin-left: 0px;
+  }
 }
 
 a.tab {
   padding: {
-    top: 7px;
+    top: 8px;
     left: 10px;
     bottom: 10px;
     right: 10px;
@@ -53,3 +59,17 @@ ul.user-dropdown-menu {
   margin-right: 15px;
 }
 
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 5px solid $c_white;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: "";
+}
+
+.navbar-spacer {
+  margin-right: 15px;
+}

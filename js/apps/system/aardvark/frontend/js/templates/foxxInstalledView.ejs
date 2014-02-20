@@ -1,29 +1,15 @@
+<script id="foxxInstalledView.ejs" type="text/template">
 <div class="iconSet">
-  <span id="editCollection" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
-  <% if(attributes.status === "loaded") { %>
-    <span class="icon_arangodb_info" title="Show collection properties"></span>
-  <%} else {%>
-    <span class="icon_arangodb_info disabled" alt="disabled"></span>
-  <%}%>
 </div>
-
-<div class="plain">                                                                                                                                    
-  <img src="<%= attributes.picture %>" height="50" width="50" alt="" class="icon">
-  <span class="badge badge-success <%= attributes.status %>"><div class="cornered"><%= attributes.status %></div></span>
-  <h5 class="collectionName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %></h5>
-</div>
-
-
-<small>
-  <div class="plain">
-    <h5 class="applicationName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %></h5>
-    <img src="foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
-    <p class="foxxDescription">
-      <!--Description: <%=attributes.description %><br />-->
-      <strong>Path:</strong>&nbsp;<%=attributes.path %><br />
-      <strong>Version:</strong>&nbsp;<%=attributes.version %><br />
-      <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
-    </p>
-    <button class="btn btn-success pull-right install">Install</button>
-  </div>
-</small>
+  <img src="foxxes/thumbnail/<%= attributes.app %>" height="50" width="50" alt="" class="icon">
+<!--  <p class="foxxDescription">
+    Description: <%=attributes.description %><br />
+    <strong>Path:</strong>&nbsp;<%=attributes.path %><br />
+    <strong>Version:</strong>&nbsp;<%=attributes.version %><br />
+    Git: <a href=<%=attributes.git %>>Repository</a>
+    </p> -->
+    <div class="tileBadge">
+      <button class="btn btn-success install">Install</button>
+    </div>
+  <h5 class="collectionName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %> - v: <%= attributes.version %></h5>
+</script>

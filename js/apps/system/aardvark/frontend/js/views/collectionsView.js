@@ -20,7 +20,7 @@
         dropdownVisible = true;
       }
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.setFilterValues();
 
       if (dropdownVisible === true) {

@@ -1,29 +1,31 @@
-<div id="add-graph" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Add new Graph</a>
+<script id="addGraphView.ejs" type="text/template">
+  <div id="add-graph" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Add new Graph</a>
+    </div>
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th class="collectionTh">Name:</th>
+          <th class="collectionTh"><input type="text" id="newGraphName" placeholder="graphName"></input></th>
+          <th><a class="modalTooltips" title="The name to identify the graph. Has to be unique."><i class="icon-info-sign"></i></a></th>
+        </tr>
+        <tr>
+          <th class="collectionTh">Vertices:</th>
+          <th class="collectionTh"><input type="text" id="newGraphVertices" placeholder="Vertex Collection"></input></th>
+          <th><a class="modalTooltips" title="The path name of the document collection that should be used as vertices. If this does not exist it will be created."><i class="icon-info-sign"></i></a></th>
+        </tr>
+        <tr>
+          <th class="collectionTh">Edges:</th>
+          <th class="collectionTh"><input type="text" id="newGraphEdges" placeholder="Edge Collection"></input></th>
+          <th><a class="modalTooltips" title="The path name of the edge collection that should be used as edges. If this does not exist it will be created."><i class="icon-info-sign"></i></a></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button id="cancel" class="btn btn-warning">Cancel</button>
+      <button id="createGraph" class="btn btn-success pull-right">Create</button>
+    </div>
   </div>
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th class="collectionTh">Name:</th>
-        <th class="collectionTh"><input type="text" id="newGraphName" placeholder="graphName"></input></th>
-        <th><a class="modalTooltips" title="The name to identify the graph. Has to be unique."><i class="icon-info-sign"></i></a></th>
-      </tr>
-      <tr>
-        <th class="collectionTh">Vertices:</th>
-        <th class="collectionTh"><input type="text" id="newGraphVertices" placeholder="Vertex Collection"></input></th>
-        <th><a class="modalTooltips" title="The path name of the document collection that should be used as vertices. If this does not exist it will be created."><i class="icon-info-sign"></i></a></th>
-      </tr>
-      <tr>
-        <th class="collectionTh">Edges:</th>
-        <th class="collectionTh"><input type="text" id="newGraphEdges" placeholder="Edge Collection"></input></th>
-        <th><a class="modalTooltips" title="The path name of the edge collection that should be used as edges. If this does not exist it will be created."><i class="icon-info-sign"></i></a></th>
-      </tr>
-    </table>
-  </div>
-  <div class="modal-footer">
-    <button id="cancel" class="btn btn-warning">Cancel</button>
-    <button id="createGraph" class="btn btn-success pull-right">Create</button>
-  </div>
-</div>
+</script>

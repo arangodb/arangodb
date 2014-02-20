@@ -132,7 +132,7 @@
 
     },
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       return this;
     },
     renderPagination: function (totalPages, currentPage) {

@@ -1,6 +1,21 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* slightly improved users management API in `/_api/user`:
+
+  Previously, when creating a new user via HTTP POST, the username needed to be 
+  passed in an attribute `username`. When users were returned via this API,
+  the usernames were returned in an attribute named `user`. This was slightly
+  confusing and was changed in 1.5 as follows:
+
+  - when adding a user via HTTP POST, the username can be specified in an attribute 
+  `user`. If this attribute is not used, the API will look into the attribute `username`
+  as before and use that value.
+  - when users are returned via HTTP GET, the usernames are still returned in an
+    attribute `user`.
+
+  This change should be fully downwards-compatible with the previous version of the API.
+
 * added AQL SLICE function to extract slices from lists
 
 * removed check-server binary

@@ -192,7 +192,7 @@ window.ApplicationsView = Backbone.View.extend({
   },
   
   render: function() {
-    $(this.el).html(this.template.text);
+    $(this.el).html(this.template.render({}));
     var self = this;
     _.each(this._installedSubViews, function (v) {
       $("#installedList").append(v.render());
