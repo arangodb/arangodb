@@ -552,8 +552,9 @@ function rubyTests (options, ssl) {
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
   var result = {};
   var args;
+  var i;
   for (i = 0; i < files.length; i++) {
-    n = files[i];
+    var n = files[i];
     if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
       print("Considering",n,"...");
       if ((n.indexOf("-cluster-") === -1 || options.cluster) &&
@@ -562,8 +563,8 @@ function rubyTests (options, ssl) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface",n)];
-        pid = executeExternal("rspec", args);
-        r = statusExternal(pid, true);
+        var pid = executeExternal("rspec", args);
+        var r = statusExternal(pid, true);
         result[n] = r.exit;
         if (r.exit !== 0 && !options.force) {
           break;
