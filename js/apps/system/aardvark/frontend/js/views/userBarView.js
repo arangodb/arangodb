@@ -60,16 +60,7 @@
     },
 
     hideDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === "") {
-        tab = $(tab).closest(".user-dropdown-menu");
-        navigateTo = tab.attr("id");
-      }
-      if (navigateTo === "user" || navigateTo === "user_dropdown" || navigateTo === "userimage" ) {
-        $("#user_dropdown").hide();
-        return;
-      }
+      $("#user_dropdown").hide();
     },
 
     removeAllNotifications: function () {
@@ -113,7 +104,7 @@
       if (!img) {
         img = "img/arangodblogoAvatar.png";
       } else {
-        img = "https://s.gravatar.com/avatar/" + img + "?s=23";
+        img = "https://s.gravatar.com/avatar/" + img + "?s=28";
       }
       if (!name) {
         name = "";
