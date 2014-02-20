@@ -315,27 +315,6 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
   return r;
 };
 
-launchActions.initializeFoxx = function (dispatchers, cmd) {
-  console.info("Initializing Foxx on coordinator...");
-  
-  var url = cmd.url + "/_api/version";
-  var r;
-  while (true) {
-    r = download(url);
-    if (r.code === 200) {
-      break;
-    }
-    wait(0.5);
-  }
-  wait(1);
-
-  url = cmd.url + "/_admin/execute";
-  var body = 'return require("internal").executeGlobalContextFunction("require(\'internal\').initializeFoxx();");';
-  var o = { method: "POST", timeout: 90 };
-  r = download(url, body, o);
-  return r;
-};
-
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Shutting down agent %s", run.pid);
   killExternal(run.pid);

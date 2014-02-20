@@ -142,14 +142,18 @@
             //sorted
             sortString = " SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)";
           }
+
           var myQueryVal = "FOR u in @@collection" + filterString + sortString + 
-            " LIMIT 0, @count RETURN u";
+            " LIMIT @offset, @count RETURN u";
+
+          this.offset = (this.currentPage - 1) * this.documentsPerPage;
 
           var myQuery = {
             query: myQueryVal,
             bindVars: {
               "@collection": this.collectionID,
-              "count": this.documentsPerPage
+              "count": this.documentsPerPage,
+              "offset": this.offset
             },
             options: {
               fullCount: true
