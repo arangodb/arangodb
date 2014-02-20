@@ -2,14 +2,16 @@
 /*global require, exports, module, UPGRADE_ARGS, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version check at the start of the server, will optionally perform
-/// necessary upgrades
+/// @brief version check at the start of the server
 ///
 /// @file
+/// 
+/// Version check at the start of the server, will optionally perform necessary
+/// upgrades.
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,17 +28,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     version check
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the database
@@ -169,6 +166,10 @@
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moveProductionApps
+////////////////////////////////////////////////////////////////////////////////
+
     addUpgradeTask("moveProductionApps", "move Foxx apps into per-database directory", function () {
       var dir = module.appPath();
 
@@ -201,6 +202,7 @@
         }
 
         var src = fs.join(module.basePaths().appPath, found);
+
         if (! fs.isDirectory(src)) {
           continue;
         }
@@ -216,6 +218,10 @@
       return true;
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief moveDevApps
+////////////////////////////////////////////////////////////////////////////////
+
     if (internal.developmentMode) {
       addUpgradeTask("moveDevApps", 
                      "move Foxx development apps into per-database directory", function () {
@@ -265,10 +271,18 @@
       });
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupUsers
+////////////////////////////////////////////////////////////////////////////////
+
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {
       return createSystemCollection("_users", { waitForSync : true, shardKeys: [ "user" ] });
     });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createUsersIndex
+////////////////////////////////////////////////////////////////////////////////
 
     // create a unique index on "user" attribute in _users
     addTask("createUsersIndex", 
@@ -285,6 +299,10 @@
       }
     );
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief addDefaultUser
+////////////////////////////////////////////////////////////////////////////////
+
     // add a default root user with no passwd
     addTask("addDefaultUser", "add default root user", function () {
       var users = getCollection("_users");
@@ -306,11 +324,19 @@
       return true;
     });
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupGraphs
+////////////////////////////////////////////////////////////////////////////////
+
     // set up the collection _graphs
     addTask("setupGraphs", "setup _graphs collection", function () {
       return createSystemCollection("_graphs", { waitForSync : true });
     });
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief addCollectionVersion
+////////////////////////////////////////////////////////////////////////////////
+
     // make distinction between document and edge collections
     addUpgradeTask("addCollectionVersion",
                    "set new collection type for edge collections and update collection version",
@@ -370,17 +396,29 @@
       }
     );
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createModules
+////////////////////////////////////////////////////////////////////////////////
+
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
       return createSystemCollection("_modules");
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _routing
+////////////////////////////////////////////////////////////////////////////////
+
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
       // needs to be big enough for assets
       return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insertRedirectionsAll
+////////////////////////////////////////////////////////////////////////////////
+
     // create the default route in the _routing collection
     addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
       var routing = getCollection("_routing");
@@ -419,6 +457,10 @@
       return true;
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgradeMarkers12
+////////////////////////////////////////////////////////////////////////////////
+
     // update markers in all collection datafiles to key markers
     addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
       var collections = db._collections();
@@ -456,6 +498,10 @@
       return true;
     });
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupAal
+////////////////////////////////////////////////////////////////////////////////
+
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
       return createSystemCollection("_aal", { 
@@ -464,6 +510,10 @@
       });
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createAalIndex
+////////////////////////////////////////////////////////////////////////////////
+
     // create a unique index on collection attribute in _aal
     addTask("createAalIndex",
             "create index on collection attribute in _aal collection",
@@ -479,10 +529,18 @@
         return true;
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupAqlFunctions
+////////////////////////////////////////////////////////////////////////////////
+
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
       return createSystemCollection("_aqlfunctions");
     });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupTrx
+////////////////////////////////////////////////////////////////////////////////
 
     if (! cluster.isCoordinator()) {
       // set up the collection _trx
@@ -491,12 +549,20 @@
       });
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupReplication
+////////////////////////////////////////////////////////////////////////////////
+
     if (! cluster.isCoordinator()) {
       // set up the collection _replication
       addTask("setupReplication", "setup _replication collection", function () {
         return createSystemCollection("_replication", { waitForSync : false });
       });
     }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief migrateAqlFunctions
+////////////////////////////////////////////////////////////////////////////////
 
     // migration aql function names
     addUpgradeTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
@@ -532,6 +598,10 @@
       return result;
     });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeOldFoxxRoutes
+////////////////////////////////////////////////////////////////////////////////
+
     addUpgradeTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
       var potentialFoxxes = getCollection('_routing');
 
@@ -545,6 +615,28 @@
       return true;
     });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _statistics collection
+    addTask("createStatistics", "setup _statistics collection", function () {
+      var name = "_statistics";
+      var result = createSystemCollection(name, { waitForSync : false });
+
+      if (result) {
+        var collection = getCollection(name);
+
+        collection.ensureSkiplist("time");
+        collection.ensureCapConstraint(6 * 60 * 24 * 365); // 1 year (every 10 secs);
+      }
+
+      return result;
+    });
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the upgrade tasks
+////////////////////////////////////////////////////////////////////////////////
     
     // loop through all tasks and execute them
     logger.log("Found " + allTasks.length + " defined task(s), "
@@ -686,9 +778,7 @@
   return true;
 }(UPGRADE_ARGS));
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+delete UPGRADE_ARGS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
