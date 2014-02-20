@@ -978,6 +978,7 @@ void TRI_KillExternalProcess (TRI_external_id_t pid) {
 
   if (i == ExternalProcesses._length) {
     TRI_UnlockMutex(&ExternalProcessesLock);
+    kill(pid.pid, SIGTERM);
     return;
   }
 
