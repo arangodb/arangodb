@@ -619,7 +619,7 @@
   
   if (cluster.isCoordinator()) {
     var result = runUpgrade(currentVersion);
-    internal.executeGlobalContextFunction("require(\'internal\').initializeFoxx();");
+    internal.initializeFoxx();
 
     return result;
   }
