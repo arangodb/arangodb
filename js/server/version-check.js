@@ -618,7 +618,10 @@
   var currentVersion = parseFloat(currentServerVersion[1]);
   
   if (cluster.isCoordinator()) {
-    return runUpgrade(currentVersion);
+    var result = runUpgrade(currentVersion);
+    internal.executeGlobalContextFunction("require(\'internal\').initializeFoxx();");
+
+    return result;
   }
 
   if (! fs.exists(versionFile)) {
