@@ -21,6 +21,7 @@
       this.collection.bind("remove", this.renderNotifications.bind(this));
       this.collection.bind("reset", this.renderNotifications.bind(this));
       this.userCollection = this.options.userCollection;
+      this.userCollection.bind("change", this.render(this.$el));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),

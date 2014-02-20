@@ -96,7 +96,8 @@
       var options = {
         user: userName,
         passwd: userPassword,
-        active: status
+        active: status,
+        extra:{name: name}
       };
       this.collection.create(options, {
         wait:true,
@@ -139,7 +140,6 @@
 
     removeUser : function(e) {
       this.userToDelete = $(e.currentTarget).parent().parent().attr("id");
-      console.log($(e.currentTarget));
       $('#deleteUserModal').modal('show');
       e.stopPropagation();
     },
