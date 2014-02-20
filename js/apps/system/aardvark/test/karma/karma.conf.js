@@ -23,7 +23,7 @@ module.exports = function(karma) {
       //Templates
       {pattern: 'frontend/js/templates/*.ejs', served: true, included: true, watched: true},
 
-      'frontend/js/lib/jquery-1.8.3.js',
+      'frontend/js/lib/jquery-2.1.0.min.js',
       'frontend/js/lib/jquery-ui-1.9.2.custom.js',
       'frontend/js/lib/jquery.dataTables.js',
       'frontend/js/lib/jquery.autogrow.js',
@@ -32,7 +32,6 @@ module.exports = function(karma) {
       'frontend/js/lib/jquery.snippet.js',
       'frontend/js/lib/jquery.slideto.min.js',
       'frontend/js/lib/jquery.wiggle.min.js',
-      'frontend/js/lib/jquery.ba-bbq.min.js',
       'frontend/js/lib/jquery.contextmenu.js',
       'frontend/js/lib/handlebars-1.0.rc.1.js',
       'frontend/js/lib/underscore.js',
