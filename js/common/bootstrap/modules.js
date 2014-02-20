@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
 /*global require, module: true, STARTUP_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
-  EXPORTS_SLOW_BUFFER */
+  EXPORTS_SLOW_BUFFER, SYS_PLATFORM */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
