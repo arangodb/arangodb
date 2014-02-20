@@ -2,7 +2,7 @@
 
 require 'rspec'
 require 'json'
-require './arangodb.rb'
+require 'arangodb.rb'
 
 describe ArangoDB do
   api = "/_api/replication"

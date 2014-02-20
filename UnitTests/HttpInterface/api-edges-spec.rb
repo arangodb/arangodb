@@ -2,7 +2,7 @@
 
 require 'rspec'
 require 'uri'
-require './arangodb.rb'
+require 'arangodb.rb'
 
 describe ArangoDB do
   prefix = "rest-edge"
