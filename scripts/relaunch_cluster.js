@@ -2,8 +2,8 @@ function main (argv) {
   var runInfoName = "runInfo.json";
   var fs = require("fs");
   var print = require("internal").print;
-  if (argv.length > 0) {
-    runInfoName = argv[0];
+  if (argv.length > 1) {
+    runInfoName = argv[1];
     print("Using runInfo from:",runInfoName);
   }
   var Kickstarter = require("org/arangodb/cluster").Kickstarter;
