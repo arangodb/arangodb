@@ -262,3 +262,33 @@ table.dataTable thead th {
 #documentTableID.dataTable thead tr th {
   border-bottom: 1px solid #C2C2C2;
 }
+
+#documentEditor {
+  width:100%;
+  height: 500px;
+}
+
+.jsoneditor {
+  background-color: white !important;
+  border: 1px solid rgba(0,0,0,0.2) !important;
+}
+
+.jsoneditor .menu {
+  background-color: #686766 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.2) !important;
+}
+
+.jsoneditor .search .frame {
+  border: 0 !important;
+  margin: 3px !important;
+}
+
+.jsoneditor .search .results {
+  color: white !important;
+  margin-top: 3px !important;
+} 
+
+.jsoneditor .menu button {
+  background-color: white !important;
+  border: 1px solid black !important;
+}
