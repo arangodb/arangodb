@@ -6376,6 +6376,7 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 /// @brief fetch the figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_CLUSTER
 static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* collection) {
   assert(collection != 0);
   
@@ -6392,7 +6393,8 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
   }
 
   return result;
-} 
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the figures for a local collection
@@ -7224,6 +7226,52 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the revision for a local collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int GetRevision (TRI_vocbase_col_t* collection,
+                        TRI_voc_rid_t& rid) {
+  assert(collection != 0);
+
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // READ-LOCK start
+  trx.lockRead();
+  TRI_primary_collection_t* primary = collection->_collection;
+  rid = primary->base._info._revision;
+
+  trx.finish(res);
+  // READ-LOCK end
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the revision for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
+                                   TRI_voc_rid_t& rid) {
+  assert(collection != 0);
+  
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+   
+  int res = revisionOnCoordinator(databaseName, cid, rid);
+
+  return res;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
 ///
 /// @FUN{@FA{collection}.revision()}
@@ -7249,25 +7297,24 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-
-  CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
-
-  int res = trx.begin();
+ 
+  TRI_voc_rid_t rid;
+  int res;
+   
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    res = GetRevisionCoordinator(collection, rid);
+  }
+  else {
+    res = GetRevision(collection, rid);
+  }
+#else
+  res = GetRevision(collection, rid);
+#endif
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch revision");
+    TRI_V8_EXCEPTION(scope, res);
   }
-
-  // READ-LOCK start
-  trx.lockRead();
-  TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_rid_t rid = primary->base._info._revision;
-
-  trx.finish(res);
-  // READ-LOCK end
 
   return scope.Close(V8RevisionId(rid));
 }

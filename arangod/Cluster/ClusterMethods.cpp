@@ -56,17 +56,14 @@ static T ExtractFigure (TRI_json_t const* json,
   TRI_json_t const* g = TRI_LookupArrayJson(json, group);
 
   if (! TRI_IsArrayJson(g)) {
-    std::cout << "COULD NOT FIND GROUP IN JSON: " << group << "-------------------\n";
     return static_cast<T>(0);
   }
 
   TRI_json_t const* value = TRI_LookupArrayJson(g, name);
 
   if (! TRI_IsNumberJson(value)) {
-    std::cout << "COULD NOT FIND ATT IN JSON: " << name << "-------------------\n";
     return static_cast<T>(0);
   }
-
 
   return static_cast<T>(value->_value._number);
 }
@@ -174,6 +171,83 @@ bool shardKeysChanged (std::string const& dbname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns revision for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+int revisionOnCoordinator (std::string const& dbname,
+                           std::string const& collname,
+                           TRI_voc_rid_t& rid) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  
+  // First determine the collection ID from the name:
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  rid = 0;
+  
+  // If we get here, the sharding attributes are not only _key, therefore
+  // we have to contact everybody:
+  ClusterCommResult* res;
+  map<ShardID, ServerID> shards = collinfo->shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
+                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                          "/_db/" + dbname + "/_api/collection/" + 
+                          StringUtils::urlEncode(it->first)+ "/revision",
+                          0, false, headers, NULL, 300.0);
+    delete res;
+  }
+
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  for (count = shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_RECEIVED) {
+      if (res->answer_code == triagens::rest::HttpResponse::OK) {
+        TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
+
+        if (JsonHelper::isArray(json)) {
+          TRI_json_t const* r = TRI_LookupArrayJson(json, "revision");
+
+          if (TRI_IsStringJson(r)) {
+            TRI_voc_rid_t cmp = StringUtils::uint64(r->_value._string.data);
+
+            if (cmp > rid) {
+              // get the maximum value
+              rid = cmp;
+            }
+          }
+          nrok++;
+        }
+
+        if (json != 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+      }
+    }
+    delete res;
+  }
+
+  if (nrok != (int) shards.size()) {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
+                               // the DBserver could have reported an error.
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +283,7 @@ int figuresOnCoordinator (string const& dbname,
     map<string, string>* headers = new map<string, string>;
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/"+dbname+"/_api/collection/" + 
+                          "/_db/" + dbname + "/_api/collection/" + 
                           StringUtils::urlEncode(it->first)+ "/figures",
                           0, false, headers, NULL, 300.0);
     delete res;
@@ -301,7 +375,7 @@ int countOnCoordinator (
     map<string, string>* headers = new map<string, string>;
     res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/"+dbname+"/_api/collection/"+
+                          "/_db/" + dbname + "/_api/collection/"+
                           StringUtils::urlEncode(it->first)+"/count",
                           0, false, headers, NULL, 300.0);
     delete res;
