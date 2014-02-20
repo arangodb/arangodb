@@ -6122,7 +6122,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
 
-static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* collection) {
+static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* collection) {
   v8::HandleScope scope;
 
   string const databaseName(collection->_dbName);
@@ -6144,10 +6144,10 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
  
-  int myerrno = ci->dropCollectionCoordinator( databaseName, cid, 
-                                               errorMsg, 120.0);
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+  int res = ci->dropCollectionCoordinator( databaseName, cid, errorMsg, 120.0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
 
   return scope.Close(v8::True());
@@ -6171,7 +6171,6 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol_Coordinator (TRI_vocbase_col_t* c
 
 static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  int res;
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -6184,11 +6183,11 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(JS_DropVocbaseCol_Coordinator(collection));
+    return scope.Close(DropVocbaseColCoordinator(collection));
   }
 #endif
 
-  res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
+  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -7329,9 +7328,8 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
-                                  TRI_vocbase_col_t* collection,
-                                  v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* collection,
+                                                        v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -7403,9 +7401,8 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol_Coordinator (
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> JS_SaveEdgeCol_Coordinator (
-                                  TRI_vocbase_col_t* collection,
-                                  v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collection,
+                                                     v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -7517,10 +7514,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-      return scope.Close(JS_SaveVocbaseCol_Coordinator(collection, argv));
+      return scope.Close(SaveVocbaseColCoordinator(collection, argv));
     }
     else {
-      return scope.Close(JS_SaveEdgeCol_Coordinator(collection, argv));
+      return scope.Close(SaveEdgeColCoordinator(collection, argv));
     }
   }
 #endif
@@ -8795,8 +8792,7 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> JS_ListDatabases_Coordinator 
-                                       (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // Arguments are already checked, there are 0 or 3.
@@ -8899,7 +8895,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
       }
     }
   
-    return scope.Close(JS_ListDatabases_Coordinator(argv));
+    return scope.Close(ListDatabasesCoordinator(argv));
   }
 #endif
   
@@ -8949,7 +8945,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 /// name.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateDatabase_Coordinator (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   // First work with the arguments to create a JSON entry:
@@ -9055,7 +9051,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
     
-    v8::Handle<v8::Value> ret = JS_CreateDatabase_Coordinator(argv);
+    v8::Handle<v8::Value> ret = CreateDatabaseCoordinator(argv);
     return scope.Close(ret);
   }
 #endif
@@ -9159,7 +9155,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
 #ifdef TRI_ENABLE_CLUSTER
 
-static v8::Handle<v8::Value> JS_DropDatabase_Coordinator (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // Arguments are already checked, there is exactly one argument
@@ -9219,7 +9215,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
 
-    return scope.Close(JS_DropDatabase_Coordinator(argv));
+    return scope.Close(DropDatabaseCoordinator(argv));
   }
 #endif
 
