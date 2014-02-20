@@ -500,7 +500,7 @@ testFuncs.single = function (options) {
     result.test = te;
     if (!options.skipServer) {
       print("\nTrying",te,"on server...");
-      result.server = runThere(options, instanceInfo, te);
+      result.server = runThere(options, instanceInfo, makePath(te));
     }
     if (!options.skipClient) {
       var topDir = findTopDir();
@@ -654,6 +654,42 @@ testFuncs.importing = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  return result;
+};
+
+testFuncs.upgrade = function (options) {
+  if (options.cluster) {
+    return true;
+  }
+
+  var result = {};
+
+  var topDir = findTopDir();
+  var tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+
+  // We use the PortFinder to find a free port for our subinstance,
+  // to this end, we have to fake a dummy dispatcher:
+  var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+  var pf = new PortFinder([8529],dispatcher);
+  var port = pf.next();
+  var args = makeTestingArgs();
+  args.push("--server.endpoint");
+  var endpoint = "tcp://127.0.0.1:"+port;
+  args.push(endpoint);
+  args.push("--database.directory");
+  args.push(fs.join(tmpDataDir,"data"));
+  fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
+  args.push("--upgrade");
+  result.first = executeAndWait(ArangoServerState.executablePath(), args);
+
+  if (result.first !== 0 && !options.force) {
+    return result;
+  }
+  result.second = executeAndWait(ArangoServerState.executablePath(), args);
+
+  fs.removeDirectoryRecursive(tmpDataDir);
+
   return result;
 };
 
