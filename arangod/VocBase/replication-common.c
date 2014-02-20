@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-common.h"
@@ -41,11 +41,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// {
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +48,7 @@ void TRI_GetTimeStampReplication (char* dst,
                                   size_t maxLength) {
   time_t tt;
   struct tm tb;
-  
+
   tt = time(0);
   TRI_gmtime(tt, &tb);
 
@@ -78,6 +73,7 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
   if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
       TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
       TRI_EqualString(name, TRI_COL_NAME_USERS) ||
+      TRI_EqualString(name, TRI_COL_NAME_STATISTICS) ||
       TRI_EqualString(name, "_aal") ||
       TRI_EqualString(name, "_fishbowl") ||
       TRI_EqualString(name, "_modules") ||
@@ -88,10 +84,6 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
 
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
