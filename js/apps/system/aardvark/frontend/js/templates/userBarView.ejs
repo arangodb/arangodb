@@ -7,13 +7,13 @@
 
   <li class="dropdown user-menu">
     <a href="#" class="tab" id="user" >
-      <img src="<%=img%>" id="userimage" height="23" width="23" /> <b class="caret"></b>
+      <img class="userMenuImg" src="<%=img%>" id="userimage" /> <b class="caret"></b>
     </a>
     <ul class="user-dropdown-menu" id="user_dropdown">
       <li class="dropdown-header" style="text-transform: none">
         <%
         if(username === null) {
-          %>-<%
+          %>User Management<%
         } else {
           if (name) {%>
         <%=name%> (<%=username%>)
@@ -22,7 +22,7 @@
         <%}
 
         }
-       %>
+       %>F
       <% if(username !== null) { %>
       <li class="dropdown-item">
         <a id="userProfile" class="tab" href="#user">User profile</a>
@@ -31,9 +31,11 @@
       <li class="dropdown-item">
         <a id="userManagement" class="internalLink" href="#userManagement">User management</a>
       </li>
+      <% if(username !== null) { %>
       <li class="dropdown-item">
         <a id="userLogout" class="tab" href="#user">Logout</a>
       </li>
+      <% } %>
     </ul>
   </li>
 
