@@ -4,37 +4,30 @@
   <span class="icon_arangodb_info" title="Show API documentation"></span>
 </div>
 
-<div class="plain">                                                                                                                                    
-  <img src="foxxes/thumbnail/<%=attributes.app %>" height="50" width="50" alt="" class="icon">
-  <%if (attributes.development) {%>
-    <span class="badge badge-success loaded">
-      <div class="cornered">
-        development
-      </div>
-    </span>
-  <%} else if (attributes.active) {%>
-    <span class="badge badge-success loaded">
-      <div class="cornered">
-        active
-      </div>
-    </span>
-  <%} else {%>
-    <span class="badge badge-success unloaded">
-      <div class="cornered">
+<img src="foxxes/thumbnail/<%=attributes.app %>" height="50" width="50" alt="" class="icon">
+<%if (attributes.development) {%>
+  <div class="tileBadge">
+  <span>
+    <div class="corneredBadge loaded">
+      development
+    </div>
+  </span>
+    </div>
+<%} else if (attributes.active) {%>
+  <div class="tileBadge">
+  <span>
+    <div class="corneredBadge loaded">
+      active
+    </div>
+  </span>
+    </div>
+<%} else {%>
+  <div class="tileBadge">
+    <span>
+      <div class="corneredBadge unloaded">
         inactive
       </div>
     </span>
-  <%}%>
-  <h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
-</div>
-
-<!--
-<small>
-      Description: <%=attributes.description %><br />
-      <strong>Mount:</strong>&nbsp;<%=attributes.mount %><br />
-      <strong>Version:</strong>&nbsp;<%=appInfos[2] %><br />
-      <strong>Prefix:</strong>&nbsp;<%=attributes.options && attributes.options.collectionPrefix%><br />
-      
-      Git: <a href=<%=attributes.git %>>Repository</a>
-</small>
--->
+  </div>
+<%}%>
+<h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
