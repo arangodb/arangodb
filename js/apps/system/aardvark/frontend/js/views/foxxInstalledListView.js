@@ -40,7 +40,7 @@
     
     
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       _.each(this._subViews, function (v) {
         $("#foxxList").append(v.render());
       });

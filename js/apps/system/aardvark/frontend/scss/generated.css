@@ -9,7 +9,15 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.fo
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-li.tile div.iconSet span {
+div.resizecontainer:after, ul.tileList:after {
+  clear: both;
+  content: ".";
+  display: block;
+  font-size: 0px;
+  height: 0px;
+  visibility: hidden; }
+
+.contentDiv .icon, li.tile div.iconSet span, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -20,6 +28,16 @@ nav.navbar, footer.footer {
   background-color: #333232;
   color: white;
   z-index: 1000; }
+
+.contentTables td span {
+  color: #da4f49; }
+  .contentTables td span:hover {
+    color: #be342e; }
+
+.contentTables td.dbThSecond span {
+  color: #8aa051; }
+  .contentTables td.dbThSecond span:hover {
+    color: #788f3d; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu {
   position: absolute;
@@ -80,13 +98,6 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
 
 div.resizecontainer {
   margin: 0px auto; }
-  div.resizecontainer:after {
-    clear: both;
-    content: ".";
-    display: block;
-    font-size: 0px;
-    height: 0px;
-    visibility: hidden; }
 
 @media (max-width: 798px) {
   #arangoCollectionUl {
@@ -144,6 +155,37 @@ div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
 
+div.centralContent {
+  padding: 5px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.0675);
+  min-height: 80px;
+  float: left; }
+
+.contentDiv {
+  padding: 13px 0px 0px 0px;
+  list-style: none;
+  *zoom: 1; }
+  .contentDiv li {
+    background-color: rgba(0, 0, 0, 0.05);
+    float: left; }
+  .contentDiv a.add {
+    padding: 40px 0;
+    display: block;
+    font-weight: 400;
+    text-align: left; }
+  .contentDiv .icon {
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-top: 10px; }
+  .contentDiv:after {
+    clear: both; }
+  .contentDiv:after, .contentDiv:before {
+    display: table;
+    line-height: 0;
+    content: ""; }
+
 nav.navbar {
   top: 0px;
   height: 34px;
@@ -181,8 +223,9 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-div#collectionsThumbnailsIn {
-  margin-left: 0px; }
+ul.tileList {
+  margin-left: -6px;
+  margin-right: -6px; }
 
 li.tile {
   position: relative;
@@ -225,6 +268,27 @@ li.tile {
     border-bottom: 16px solid #FF8F35; }
   li.tile .deleted div {
     border-bottom: 16px solid red; }
+  li.tile div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: white; }
+    li.tile div.tileBadge span {
+      display: inline-block;
+      line-height: 13px; }
+      li.tile div.tileBadge span div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border-left: 17px solid transparent;
+        border-bottom-width: 17px;
+        border-bottom-style: solid; }
+        li.tile div.tileBadge span div.corneredBadge.loaded {
+          border-bottom-color: #8aa051; }
+        li.tile div.tileBadge span div.corneredBadge.unloaded {
+          border-bottom-color: #ff8f35; }
 
 .collectionName {
   text-align: left;
@@ -312,3 +376,98 @@ li.tile {
 #stat_hd #stat_hd_counter {
   color: white;
   margin-left: 5px; }
+
+.contentButtons {
+  clear: both;
+  width: 100%;
+  margin-bottom: 10px; }
+  .contentButtons #createDatabase, .contentButtons #createUser {
+    margin-left: 0; }
+
+.contentTables {
+  width: 100%;
+  margin-bottom: 10px; }
+  .contentTables thead {
+    text-align: left; }
+    .contentTables thead tr {
+      border-bottom: 1px solid #c2c2c2;
+      background-color: white; }
+  .contentTables tbody tr:nth-child(odd) {
+    background-color: #d9d9d9; }
+  .contentTables tbody tr:nth-child(even) {
+    background-color: white; }
+  .contentTables tr.contentRowActive {
+    background-color: #bdcc92 !important;
+    font-weight: 400; }
+    .contentTables tr.contentRowActive a {
+      color: black !important; }
+    .contentTables tr.contentRowActive span {
+      display: none; }
+  .contentTables tr.contentRowInactive a {
+    color: black !important; }
+  .contentTables .dbThFirst {
+    width: 90%; }
+  .contentTables .dbThSecond {
+    width: 10%; }
+  .contentTables td {
+    padding: 12px 18px; }
+    .contentTables td span {
+      float: right;
+      font-size: 22px; }
+  .contentTables .collectionThSec {
+    width: 80%;
+    margin-right: 0; }
+  .contentTables .collectionTh {
+    width: 5%;
+    margin-right: 0; }
+
+.createModalDialog table {
+  width: 100%; }
+
+div.headerDropdown {
+  background-color: white;
+  position: relative;
+  display: none;
+  padding: 10px;
+  width: auto; }
+  div.headerDropdown > div.dropdownInner {
+    position: relative;
+    min-height: 125px;
+    width: auto;
+    box-shadow: 0; }
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+      background-position: 0 -15px; }
+
+div.dropdownImport {
+  display: none;
+  background-color: white;
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  position: relative; }
+  div.dropdownImport input {
+    line-height: 0px;
+    margin-top: 5px;
+    margin-bottom: -15px; }
+
+select.filterSelect {
+  width: 100px;
+  margin-left: 10px;
+  margin-right: 10px; }
+
+#filterHeader button {
+  float: right;
+  margin-top: 1px;
+  margin-left: 10px !important; }

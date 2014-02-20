@@ -290,7 +290,8 @@
       $('#filterHeader').append(' <div class="queryline querylineAdd">'+
                                 '<input id="attribute_name' + num + 
                                 '" type="text" placeholder="Attribute name">'+
-                                '<select name="operator" id="operator' + num + '">'+
+                                '<select name="operator" id="operator' +
+                                num + '" class="filterSelect">'+
                                 '    <option value="==">==</option>'+
                                 '    <option value="!=">!=</option>'+
                                 '    <option value="&lt;">&lt;</option>'+
@@ -569,7 +570,7 @@
     render: function() {
       this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.getIndex();
       this.initTable();
       this.breadcrumb();
@@ -579,7 +580,6 @@
       if (this.collectionContext.next === null) {
         $('#collectionNext').parent().addClass('disabledPag');
       }
-      $.gritter.removeAll();
 
       this.uploadSetup();
 
@@ -615,7 +615,6 @@
         click: function(i) {
           options.page = i;
           if (checkFilter === true) {
-
             var filterArray = self.getFilterContent();
             var filters = filterArray[0];
             var bindValues = filterArray[1];

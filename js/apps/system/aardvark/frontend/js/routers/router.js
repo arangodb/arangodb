@@ -30,7 +30,9 @@
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
-      "graphManagement/delete/:name"        : "graphDelete"
+      "graphManagement/delete/:name"        : "graphDelete",
+      "userManagement"                      : "userManagement",
+      "userProfile"                         : "userProfile"
     },
 
     initialize: function () {
@@ -42,7 +44,7 @@
         async: false
       });
 
-      window.activeUser = new window.ArangoUsers();
+      window.userCollection = new window.ArangoUsers();
 
       window.arangoDatabase = new window.ArangoDatabase();
 
@@ -184,7 +186,7 @@
     },
 
     checkUser: function () {
-      if (window.activeUser.models.length === 0) {
+      if (window.userCollection.models.length === 0) {
         this.navigate("login", {trigger: true});
         return false;
       }
@@ -194,7 +196,7 @@
     login: function () {
       if (!this.loginView) {
         this.loginView = new window.loginView({
-          collection: window.activeUser
+          collection: window.userCollection
         });
       }
       this.loginView.render();
@@ -467,7 +469,28 @@
       if (newWidth !== oldWidth) {
         this.graphView.handleResize(newWidth);
       }
+    },
+
+    userManagement: function() {
+      if (!this.userManagementView) {
+        this.userManagementView = new window.userManagementView({
+          collection: window.userCollection
+        });
+      }
+      this.userManagementView.render();
+      this.naviView.selectMenuItem('user-menu');
+    },
+
+    userProfile: function() {
+      if (!this.userProfileView) {
+        this.userProfileView = new window.userProfileView({
+          collection: window.userCollection
+        });
+      }
+      this.userProfileView.render();
+      this.naviView.selectMenuItem('user-menu');
     }
+
   });
 
 }());

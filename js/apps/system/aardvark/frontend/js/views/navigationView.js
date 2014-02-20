@@ -19,7 +19,8 @@
         current: window.currentDB
       });
       this.userBarView = new window.UserBarView({
-        collection: this.options.notificationCollection
+        collection: this.options.notificationCollection,
+        userCollection: window.userCollection
       });
       this.statisticBarView = new window.StatisticBarView({});
     },

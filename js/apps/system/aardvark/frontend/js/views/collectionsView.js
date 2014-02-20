@@ -5,7 +5,6 @@
   "use strict";
   window.CollectionsView = Backbone.View.extend({
     el: '#content',
-    /*el2: '.thumbnails',*/
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
@@ -21,7 +20,7 @@
         dropdownVisible = true;
       }
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.setFilterValues();
 
       if (dropdownVisible === true) {
@@ -63,6 +62,7 @@
 
       return this;
     },
+
     events: {
       "keydown #searchInput" : "restrictToSearchPhraseKey",
       "change #searchInput"   : "restrictToSearchPhrase",

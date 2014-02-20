@@ -1,0 +1,64 @@
+div.headerDropdown {
+  background-color: $c_white;
+  position:relative;
+  display:none;
+  padding: 10px;
+  width: auto;
+
+  & > div.dropdownInner {
+    position: relative;
+    min-height: 125px;
+    width: auto;
+    box-shadow: 0;
+  }
+
+  &.headerDropdown input[type=checkbox].css-checkbox {
+    display:none;
+
+    & + label.css-label {
+      @extend %clickable;
+      padding-left:20px;
+      margin-top: 0px;
+      height:15px;
+      display:inline-block;
+      background-repeat:no-repeat;
+      background-position: 0 0;
+      font-size:15px;
+      vertical-align:middle;
+    }
+
+    &:checked + label.css-label {
+      background-position: 0 -15px;
+    }
+  }
+}
+
+div.dropdownImport {
+  display:none;
+  background-color: $c_white;
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  position:relative;
+  
+  input {
+    line-height: 0px;
+    margin-top: 5px;
+    margin-bottom: -15px;
+  }
+}
+
+select.filterSelect {
+  width: 100px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+//TODO Le fix
+#filterHeader button {
+  float: right;
+  margin-top: 1px;
+  margin-left: 10px !important;
+}
+

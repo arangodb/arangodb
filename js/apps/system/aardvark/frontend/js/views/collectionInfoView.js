@@ -13,7 +13,7 @@
     template: templateEngine.createTemplate("collectionInfoView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       $('#show-collection').modal('show');
       this.fillModal();
 

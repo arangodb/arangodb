@@ -6,19 +6,22 @@
   window.UserBarView = Backbone.View.extend({
 
     events: {
-      "change #userBarSelect": "navigateBySelect",
-      "click .tab": "navigateByTab",
-      "mouseenter .dropdown": "showDropdown",
-      "mouseleave .dropdown": "hideDropdown",
-      "click .navlogo #stat_hd" : "toggleNotification",
-      "click .notificationItem .fa" : "removeNotification",
-      "click #removeAllNotifications" : "removeAllNotifications"
+      "change #userBarSelect"         : "navigateBySelect",
+      "click .tab"                    : "navigateByTab",
+      "mouseenter .dropdown"          : "showDropdown",
+      "mouseleave .dropdown"          : "hideDropdown",
+      "click .navlogo #stat_hd"       : "toggleNotification",
+      "click .notificationItem .fa"   : "removeNotification",
+      "click #removeAllNotifications" : "removeAllNotifications",
+      "click #userLogout"             : "userLogout"
     },
 
     initialize: function () {
       this.collection.bind("add", this.renderNotifications.bind(this));
       this.collection.bind("remove", this.renderNotifications.bind(this));
       this.collection.bind("reset", this.renderNotifications.bind(this));
+      this.userCollection = this.options.userCollection;
+      this.userCollection.bind("change", this.render(this.$el));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -94,11 +97,34 @@
     },
 
     render: function (el) {
+      var username = this.userCollection.whoAmI(),
+        img = null,
+        name = null,
+        active = false,
+        currentUser = null;
+      if (username !== null) {
+        this.userCollection.fetch({async:false});
+        currentUser = this.userCollection.findWhere({user: username});
+        currentUser.set({loggedIn : true});
+        name = currentUser.get("extra").name;
+        img = currentUser.get("extra").img;
+        active = currentUser.get("active");
+      }
+      if (!img) {
+        img = "img/arangodblogoAvatar.png";
+      } else {
+        img = "https://s.gravatar.com/avatar/" + img + "?s=23";
+      }
+      if (!name) {
+        name = "";
+      }
+
       this.$el = el;
       this.$el.html(this.template.render({
-        img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
-        prename : "Floyd",
-        lastname : "Pepper",
+        img : img,
+        name : name,
+        username : username,
+        active : active,
         notifications : this.collection
       }));
 
@@ -107,6 +133,11 @@
       this.delegateEvents();
       this.renderNotifications();
       return this.$el;
+    },
+
+    userLogout : function() {
+      this.userCollection.whoAmI();
+      this.userCollection.logout();
     }
   });
 }());

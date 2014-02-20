@@ -132,8 +132,7 @@
 
     },
     render: function() {
-      $(this.el).html(this.template.text);
-      $.gritter.removeAll();
+      $(this.el).html(this.template.render({}));
       return this;
     },
     renderPagination: function (totalPages, currentPage) {

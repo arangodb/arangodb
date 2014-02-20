@@ -51,15 +51,6 @@
   margin-bottom: 5px;
 }
 
-#queryDiv {
-  margin-top: 0px !important;
-  padding-top: 6px !important;
-  padding-left: 5px;
-  padding-right: 5px;
-  padding-bottom: 20px !important;
-  background-color: transparent;
-}
-
 #outputToolbar span, #editorToolbar span {
   position: relative;
   margin-right: 5px;
