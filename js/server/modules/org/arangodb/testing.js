@@ -379,13 +379,16 @@ function executeAndWait (cmd, args) {
   return statusExternal(pid, true).exit;
 }
 
-function runInArangosh (options, instanceInfo, file) {
+function runInArangosh (options, instanceInfo, file, addArgs) {
   var args = makeTestingArgsClient(options);
   var topDir = findTopDir();
   args.push("--server.endpoint");
   args.push(instanceInfo.endpoint);
   args.push("--javascript.unit-tests");
   args.push(fs.join(topDir,file));
+  if (addArgs !== undefined) {
+    args = args.concat(addArgs);
+  }
   var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
                                       "..","arangosh"));
   return executeAndWait(arangosh, args);
@@ -612,6 +615,42 @@ function runArangoImp (options, instanceInfo, what) {
   return executeAndWait(arangoimp, args);
 }
 
+function runArangoDumpRestore (options, instanceInfo, which, database) {
+  var topDir = findTopDir();
+  var args = ["--configuration",               "none",
+              "--server.username",             options.username,
+              "--server.password",             options.password,
+              "--server.endpoint",             instanceInfo.endpoint,
+              "--server.database",             database];
+  var exe;
+  if (which === "dump") {
+    args.push("--output-directory");
+    args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
+    exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                               "..","arangodump"));
+  }
+  else {
+    args.push("--input-directory");
+    args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
+    exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                               "..","arangorestore"));
+  }
+  return executeAndWait(exe, args);
+}
+
+function runArangoBenchmark (options, instanceInfo, cmds) {
+  var topDir = findTopDir();
+  var args = ["--configuration",               "none",
+              "--quiet",
+              "--server.username",             options.username,
+              "--server.password",             options.password,
+              "--server.endpoint",             instanceInfo.endpoint];
+  args = args.concat(cmds);
+  var exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                 "..","arangob"));
+  return executeAndWait(exe, args);
+}
+
 var impTodo = [ 
   {id: "json1", data: makePath("UnitTests/import-1.json"),
    coll: "UnitTestsImportJson1", type: "json", create: undefined},
@@ -719,6 +758,61 @@ testFuncs.foxx_manager = function (options) {
                                      "etc/relative/foxx-manager.conf",
                                      "search","itzpapalotl"]);
   }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
+testFuncs.dump = function (options) {
+  print("dump tests...");
+  var instanceInfo = startInstance("tcp",options);
+  var results = {};
+  results.setup = runInArangosh(options, instanceInfo, 
+                                makePath("js/server/tests/dump-setup.js"));
+  if (results.setup === 0) {
+    results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
+                                        "UnitTestsDumpSrc");
+    results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
+                                           "UnitTestsDumpDst");
+    results.test = runInArangosh(options, instanceInfo,
+                                 makePath("js/server/tests/dump.js"),
+                                 [ "--server.database", "UnitTestsDumpDst" ]);
+    results.tearDown = runInArangosh(options, instanceInfo,
+                               makePath("js/server/tests/dump-teardown.js"));
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
+var benchTodo = [
+  ["--requests","10000","--concurrency","2","--test","version", 
+   "--async","true"],
+  ["--requests","20000","--concurrency","1","--test","version", 
+   "--async","true"],
+  ["--requests","100000","--concurrency","2","--test","shapes", 
+   "--batch-size","16"],
+  ["--requests","1000","--concurrency","2","--test","version", 
+   "--batch-size", "16"],
+  ["--requests","100","--concurrency","1","--test","version", 
+   "--batch-size", "0"]
+];
+  
+testFuncs.arangob = function (options) {
+  print("arangob tests...");
+  var instanceInfo = startInstance("tcp",options);
+  var results = {};
+  var i,r;
+  for (i = 0; i < benchTodo.length; i++) {
+    r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
+    results[i] = r;
+    if (r !== 0 && !options.force) {
+      break;
+    }
+  }
+
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
