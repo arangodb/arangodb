@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -58,11 +58,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Command Line Options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,18 +87,9 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 
 string const ApplicationServer::OPTIONS_SSL = "SSL Options";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -201,18 +187,9 @@ ApplicationServer::~ApplicationServer () {
   for_each(_features.begin(), _features.end(), DeleteObjectAny());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new feature
@@ -261,7 +238,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   if (_options.has("log.line-number")) {
     _logLineNumber = true;
   }
-  
+
   if (! _logRequestsFile.empty()) {
     // add this so the user does not need to think about it
     _logSeverity += ",usage";
@@ -296,7 +273,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
     struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
                                                                     0,
                                                                     TRI_LOG_SEVERITY_USAGE,
-                                                                    true); 
+                                                                    true);
 
     // the user specified a requests log file to use but it could not be created. bail out
     if (appender == 0) {
@@ -322,10 +299,10 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }
-  
+
 #ifdef TRI_ENABLE_SYSLOG
   if (_logSyslog != "") {
-    TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(), 
+    TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
                                 _logFacility.c_str(),
                                 contentFilter,
                                 TRI_LOG_SEVERITY_UNKNOWN,
@@ -442,9 +419,9 @@ bool ApplicationServer::parse (int argc,
   if (! ok) {
     return false;
   }
-  
+
   // exit here if --help was specified.
-  // this allows us to use --help to run a configuration file check, too, and 
+  // this allows us to use --help to run a configuration file check, too, and
   // report errors to the user
 
   if (! help.empty()) {
@@ -616,7 +593,7 @@ void ApplicationServer::wait () {
       running = false;
       break;
     }
-  
+
     CONDITION_LOCKER(locker, _finishedCondition);
     locker.wait((uint64_t) (1000 * 1000));
   }
@@ -779,18 +756,9 @@ void ApplicationServer::storeRealPrivileges () {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
 
@@ -828,7 +796,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   options[OPTIONS_LOGGER + ":help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
     ("log.facility", &_logFacility, "facility name for syslog")
-    ("log.source-filter", &_logSourceFilter, "only debug and trace messages originated by specific C source file")
+    ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
     ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
     ("log.hostname", &_logHostName, "host name for syslog")
     ("log.line-number", "always log file and line number")
@@ -864,18 +832,9 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the parent is still alive
@@ -1133,10 +1092,6 @@ void ApplicationServer::extractPrivileges() {
 
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

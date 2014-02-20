@@ -42,6 +42,23 @@ require("org/arangodb");
 var Buffer = require("buffer").Buffer;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                        statistics
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a period statistics handler
+////////////////////////////////////////////////////////////////////////////////
+
+(function () {
+  var internal = require("internal");
+
+  if (internal.threadNumber === 0 && typeof internal.definePeriodic === "function") {
+    internal.definePeriodic(1, 10, "org/arangodb/statistics", "historian", "_statistics");
+  }
+}());
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
