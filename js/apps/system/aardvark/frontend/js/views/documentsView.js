@@ -615,7 +615,6 @@
         click: function(i) {
           options.page = i;
           if (checkFilter === true) {
-
             var filterArray = self.getFilterContent();
             var filters = filterArray[0];
             var bindValues = filterArray[1];
