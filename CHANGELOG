@@ -1,6 +1,8 @@
 v1.5.0 (XXXX-XX-XX)
 -------------------
 
+* removed undocumented REST API method GET `/_admin/database-name`
+
 * slightly improved users management API in `/_api/user`:
 
   Previously, when creating a new user via HTTP POST, the username needed to be 

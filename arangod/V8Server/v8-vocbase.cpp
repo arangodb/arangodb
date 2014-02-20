@@ -7909,7 +7909,7 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 /// @verbinclude shell_read-collection-short-cut
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
+static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
@@ -7921,15 +7921,21 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
   // convert the JavaScript string to a string
   v8::String::Utf8Value s(name);
-  const char* key = *s;
+  char* key = *s;
+
+  size_t keyLength = s.length();
+  if (keyLength > 2 && key[keyLength - 2] == '(') {
+    keyLength -= 2;
+    key[keyLength] = '\0';
+  }
+
 
   // empty or null
   if (key == 0 || *key == '\0') {
     return scope.Close(v8::Handle<v8::Value>());
   }
-
-  if (strcmp(key, "_COMPLETIONS") == 0 ||
-      strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
+  
+  if (strcmp(key, "hasOwnProperty") == 0 ||  // this prevents calling the property getter again (i.e. recursion!)
       strcmp(key, "toString") == 0 ||
       strcmp(key, "toJSON") == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -7938,15 +7944,35 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   TRI_vocbase_col_t* collection = 0;
 
   // generate a name under which the cached property is stored
-  string cacheKey(key, s.length());
+  string cacheKey(key, keyLength);
   cacheKey.push_back('*');
 
   v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
   v8::Handle<v8::Object> holder = info.Holder()->ToObject();
   
+  if (*key == '_') {
+    // special treatment for all properties starting with _
+    v8::Local<v8::String> const l = v8::String::New(key);
+
+    if (holder->HasRealNamedProperty(l)) {
+      // some internal function inside db
+      return scope.Close(v8::Handle<v8::Value>());
+    }
+
+    // something in the prototype chain?
+    v8::Local<v8::Value> v = holder->GetRealNamedPropertyInPrototypeChain(l);
+
+    if (! v.IsEmpty()) {
+      if (! v->IsExternal()) {
+        // something but an external... this means we can directly return this
+        return scope.Close(v8::Handle<v8::Value>());
+      }
+    }
+  }
+  
   if (holder->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value = holder->GetRealNamedProperty(cacheName)->ToObject();
-
+  
     collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
@@ -7976,7 +8002,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     // cache miss
     holder->Delete(cacheName);
   }
-
+  
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     char const* originalDatabase = GetCurrentDatabaseName();
@@ -8005,12 +8031,9 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
   if (collection == 0) {
     if (*key == '_') {
-      // we need to do this here...
-      // otherwise we'd hide all non-collection attributes such as
-      // db._drop
       return scope.Close(v8::Handle<v8::Value>());
     }
-
+      
     return scope.Close(v8::Undefined());
   }
 
