@@ -94,7 +94,7 @@
         return;
       }
       var options = {
-        username: userName,
+        user: userName,
         passwd: userPassword,
         active: status
       };
@@ -138,7 +138,8 @@
     },
 
     removeUser : function(e) {
-      this.userToDelete = $(e.currentTarget).parent().parent().children().first().text();
+      this.userToDelete = $(e.currentTarget).parent().parent().attr("id");
+      console.log($(e.currentTarget));
       $('#deleteUserModal').modal('show');
       e.stopPropagation();
     },
@@ -197,7 +198,7 @@
         return false;
       }
       if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError("Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
         return false;
       }
       return true;
@@ -212,7 +213,7 @@
         return true;
       }
       if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
-        arangoHelper.arangoError("Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
         return false;
       }
       return true;
