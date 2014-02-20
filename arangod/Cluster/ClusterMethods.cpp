@@ -45,6 +45,33 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a numeric value from an hierchical JSON
+////////////////////////////////////////////////////////////////////////////////
+          
+template<typename T>
+static T ExtractFigure (TRI_json_t const* json,
+                        char const* group,
+                        char const* name) {
+  
+  TRI_json_t const* g = TRI_LookupArrayJson(json, group);
+
+  if (! TRI_IsArrayJson(g)) {
+    std::cout << "COULD NOT FIND GROUP IN JSON: " << group << "-------------------\n";
+    return static_cast<T>(0);
+  }
+
+  TRI_json_t const* value = TRI_LookupArrayJson(g, name);
+
+  if (! TRI_IsNumberJson(value)) {
+    std::cout << "COULD NOT FIND ATT IN JSON: " << name << "-------------------\n";
+    return static_cast<T>(0);
+  }
+
+
+  return static_cast<T>(value->_value._number);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -147,6 +174,104 @@ bool shardKeysChanged (std::string const& dbname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns figures for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+int figuresOnCoordinator (string const& dbname,
+                          string const& collname,
+                          TRI_doc_collection_info_t*& result) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  
+  // First determine the collection ID from the name:
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
+
+  if (result == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  // If we get here, the sharding attributes are not only _key, therefore
+  // we have to contact everybody:
+  ClusterCommResult* res;
+  map<ShardID, ServerID> shards = collinfo->shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
+                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                          "/_db/"+dbname+"/_api/collection/" + 
+                          StringUtils::urlEncode(it->first)+ "/figures",
+                          0, false, headers, NULL, 300.0);
+    delete res;
+  }
+
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  for (count = shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_RECEIVED) {
+      if (res->answer_code == triagens::rest::HttpResponse::OK) {
+        TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
+
+        if (JsonHelper::isArray(json)) {
+          TRI_json_t const* figures = TRI_LookupArrayJson(json, "figures");
+
+          if (TRI_IsArrayJson(figures)) {
+            // add to the total
+            result->_numberAlive          += ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
+            result->_numberDead           += ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
+            result->_numberDeletion       += ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
+            result->_numberShapes         += ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");
+            result->_numberAttributes     += ExtractFigure<TRI_voc_ssize_t>(figures, "attributes", "count");
+
+            result->_sizeAlive            += ExtractFigure<int64_t>(figures, "alive", "size");
+            result->_sizeDead             += ExtractFigure<int64_t>(figures, "dead", "size");
+            result->_sizeShapes           += ExtractFigure<int64_t>(figures, "shapes", "size");
+            result->_sizeAttributes       += ExtractFigure<int64_t>(figures, "attributes", "size");
+
+            result->_numberDatafiles      += ExtractFigure<TRI_voc_ssize_t>(figures, "datafiles", "count");
+            result->_numberJournalfiles   += ExtractFigure<TRI_voc_ssize_t>(figures, "journals", "count");
+            result->_numberCompactorfiles += ExtractFigure<TRI_voc_ssize_t>(figures, "compactors", "count");
+            result->_numberShapefiles     += ExtractFigure<TRI_voc_ssize_t>(figures, "shapefiles", "count");
+
+            result->_datafileSize         += ExtractFigure<int64_t>(figures, "datafiles", "fileSize");
+            result->_journalfileSize      += ExtractFigure<int64_t>(figures, "journals", "fileSize");
+            result->_compactorfileSize    += ExtractFigure<int64_t>(figures, "compactors", "fileSize");
+            result->_shapefileSize        += ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
+          }
+          nrok++;
+        }
+
+        if (json != 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+      }
+    }
+    delete res;
+  }
+
+  if (nrok != (int) shards.size()) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+    result = 0;
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
+                               // the DBserver could have reported an error.
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,12 +288,11 @@ int countOnCoordinator (
   
   // First determine the collection ID from the name:
   TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   
-  // If we get here, the sharding attributes are not only _key, therefore
-  // we have to contact everybody:
   ClusterCommResult* res;
   map<ShardID, ServerID> shards = collinfo->shardIds();
   map<ShardID, ServerID>::iterator it;
