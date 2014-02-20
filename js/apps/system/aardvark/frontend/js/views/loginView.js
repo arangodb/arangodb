@@ -22,10 +22,9 @@
     render: function() {
       this.addDummyUser();
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       $(this.el2).hide();
       $(this.el3).hide();
-      $.gritter.removeAll();
 
       $('#loginUsername').focus();
 

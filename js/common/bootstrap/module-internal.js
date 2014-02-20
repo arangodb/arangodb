@@ -18,7 +18,7 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
+  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +124,23 @@
   if (exports.developmentMode && exports.threadNumber === 0) {
     SYS_LOG("warning", "################################################################################");
     SYS_LOG("warning", "development mode is active, never use this in production");
+    SYS_LOG("warning", "################################################################################");
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frontendDevelopmentMode
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.frontendDevelopmentMode = false;
+
+  if (typeof FE_DEVELOPMENT_MODE !== "undefined") {
+    exports.frontendDevelopmentMode = FE_DEVELOPMENT_MODE;
+    delete FE_DEVELOPMENT_MODE;
+  }
+
+  if (exports.frontendDevelopmentMode && exports.threadNumber === 0) {
+    SYS_LOG("warning", "################################################################################");
+    SYS_LOG("warning", "frontend development mode is active, never use this in production");
     SYS_LOG("warning", "################################################################################");
   }
 

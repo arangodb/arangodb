@@ -1,7 +1,8 @@
-div#collectionsThumbnailsIn {
-  margin-left: 0px;
+ul.tileList {
+  @extend %clear-float;
+  margin-left: -6px;
+  margin-right: -6px;
 }
-
 
 li.tile {
   @extend %pull-left;
@@ -61,6 +62,39 @@ li.tile {
 
   .deleted div {
     border-bottom: 16px solid red;
+  }
+
+  div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: $c_white;
+
+    span {
+      display: inline-block;
+      line-height: 13px;
+
+      div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border: {
+          left: 17px solid transparent;
+          bottom: {
+            width: 17px;
+            style: solid;
+          }
+        }
+        &.loaded {
+          border-bottom-color: $c_positive;
+        }
+        &.unloaded {
+          border-bottom-color: $c_unloaded;
+        }
+      }
+    }
   }
 }
 

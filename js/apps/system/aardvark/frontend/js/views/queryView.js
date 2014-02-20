@@ -90,7 +90,7 @@
       template: templateEngine.createTemplate("queryView.ejs"),
 
       render: function () {
-          $(this.el).html(this.template.text);
+        $(this.el).html(this.template.render({}));
 
           // fill select box with # of results    
           var querySize = 1000;
@@ -172,7 +172,6 @@
           arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
 
           $('#aqlEditor .ace_text-input').focus();
-          $.gritter.removeAll();
 
           if (typeof Storage) {
               var queryContent = localStorage.getItem("queryContent");

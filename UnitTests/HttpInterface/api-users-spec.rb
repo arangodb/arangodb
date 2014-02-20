@@ -51,7 +51,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1700)
       end
     
-      it "add user, empty username" do
+      it "add user, empty username, old API" do
         body = "{ \"username\" : \"\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
 
@@ -61,8 +61,19 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(400)
         doc.parsed_response['errorNum'].should eq(1700)
       end
+      
+      it "add user, empty username" do
+        body = "{ \"user\" : \"\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1700)
+      end
     
-      it "add user, no passwd" do
+      it "add user, no passwd, old API" do
         body = "{ \"username\" : \"users-1\" }"
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
 
@@ -78,8 +89,25 @@ describe ArangoDB do
         doc.parsed_response['user'].should eq("users-1")
         doc.parsed_response['active'].should eq(true)
       end
+      
+      it "add user, no passwd" do
+        body = "{ \"user\" : \"users-1\" }"
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+
+        doc = ArangoDB.get(api + "/users-1")
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['user'].should eq("users-1")
+        doc.parsed_response['active'].should eq(true)
+      end
     
-      it "add user, username and passwd" do
+      it "add user, username and passwd, old API" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
 
@@ -95,8 +123,25 @@ describe ArangoDB do
         doc.parsed_response['user'].should eq("users-1")
         doc.parsed_response['active'].should eq(true)
       end
-    
-      it "add user, username passwd, active, extra" do
+      
+      it "add user, username and passwd" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        
+        doc = ArangoDB.get(api + "/users-1")
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['user'].should eq("users-1")
+        doc.parsed_response['active'].should eq(true)
+      end
+      
+      it "add user, username passwd, active, extra, old API" do
         body = "{ \"username\" : \"users-2\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
 
@@ -114,8 +159,44 @@ describe ArangoDB do
         doc.parsed_response['extra'].should eq({ "foo" => true })
       end
     
-      it "add user, duplicate username" do
+      it "add user, username passwd, active, extra" do
+        body = "{ \"user\" : \"users-2\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"foo\" : true } }"
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        
+        doc = ArangoDB.get(api + "/users-2")
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['user'].should eq("users-2")
+        doc.parsed_response['active'].should eq(false)
+        doc.parsed_response['extra'].should eq({ "foo" => true })
+      end
+      
+      it "add user, duplicate username, old API" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+      
+        doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
+  
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1702)
+      end
+    
+      it "add user, duplicate username" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-add", api, :body => body)
 
         doc.code.should eq(201)
@@ -153,7 +234,7 @@ describe ArangoDB do
       end
 
       it "replace already removed user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-replace-removed", api, :body => body)
 
         doc.code.should eq(201)
@@ -172,7 +253,7 @@ describe ArangoDB do
       end
       
       it "replace, empty body" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-replace-empty", api, :body => body)
         
         # replace 
@@ -191,7 +272,7 @@ describe ArangoDB do
       end
       
       it "replace existing user, no passwd" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-replace-nopass", api, :body => body)
         
         # replace 
@@ -211,7 +292,7 @@ describe ArangoDB do
       end
       
       it "replace existing user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-replace-exists", api, :body => body)
         
         # replace 
@@ -252,7 +333,7 @@ describe ArangoDB do
       end
 
       it "update already removed user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-update", api, :body => body)
 
         doc.code.should eq(201)
@@ -271,7 +352,7 @@ describe ArangoDB do
       end
       
       it "update, empty body" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-update", api, :body => body)
         
         # update
@@ -291,7 +372,7 @@ describe ArangoDB do
       end
       
       it "update existing user, no passwd" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-update", api, :body => body)
         
         # update
@@ -311,7 +392,7 @@ describe ArangoDB do
       end
       
       it "update existing user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-update", api, :body => body)
         
         # update 
@@ -352,7 +433,7 @@ describe ArangoDB do
       end
 
       it "remove already removed user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-delete", api, :body => body)
 
         doc.code.should eq(201)
@@ -371,7 +452,7 @@ describe ArangoDB do
       end
       
       it "remove existing user" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-delete", api, :body => body)
         
         # remove 
@@ -409,7 +490,7 @@ describe ArangoDB do
       end
       
       it "fetches users, requires some created users" do
-        body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"meow\" : false } }"
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"meow\" : false } }"
         ArangoDB.log_post("#{prefix}-fetch-existing", api, :body => body)
       
         doc = ArangoDB.log_get("#{prefix}-fetch-existing", api)
@@ -444,7 +525,7 @@ describe ArangoDB do
       end
       
       it "fetch user" do
-        body = "{ \"username\" : \"users-2\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"foo\" : true } }"
+        body = "{ \"user\" : \"users-2\", \"passwd\" : \"fox\", \"active\" : false, \"extra\" : { \"foo\" : true } }"
         doc = ArangoDB.log_post("#{prefix}-fetch", api, :body => body)
 
         doc.code.should eq(201)

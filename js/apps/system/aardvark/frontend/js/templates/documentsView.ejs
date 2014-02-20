@@ -1,3 +1,4 @@
+<script id="documentsView.ejs" type="text/template">
 <ul class="thumbnails2">
   <div id="transparentHeader" class="headerBar">
     <div id="documentsToolbar" class="headerButtonBar pull-right">
@@ -37,9 +38,9 @@
 </ul>
 
 <div class="arangoDropdown">
-  <div id="filterHeader" style="display:none">
+  <div id="filterHeader" class="headerDropdown">
     <div class="queryline">
-       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
            <option value="==">==</option>
            <option value="!=">!=</option>
            <option value="&lt;">&lt;</option>
@@ -53,7 +54,7 @@
     </div>
   </div>
 
-  <div id="importHeader" class="dropdownImport" style="display:none">
+  <div id="importHeader" class="dropdownImport">
     <div class="queryline">
       <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
       <button id="confirmDocImport" class="btn btn-success btn-old-padding" style="float:right">
@@ -62,7 +63,7 @@
     </div>
   </div>
 
-  <div id="indexHeader"class="dropdownIn" style="display:none">
+  <div id="indexHeader" class="headerDropdown">
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
           <a>Indexes:</a>
@@ -278,3 +279,4 @@
     <button id="confirmCreateEdge" class="btn btn-success" style="float:right">Create</button>
   </div>
 </div>
+</script>

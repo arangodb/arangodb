@@ -12,7 +12,7 @@
 
     render: function() {
       var self = this;
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       $('#add-collection').modal('show');
       $('#add-collection').on('hidden', function () {
         self.hidden();
