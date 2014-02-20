@@ -5,12 +5,19 @@ window.Users = Backbone.Model.extend({
   defaults: {
     user: "",
     active: false,
-    extra: {},
-    error: false,
-    code: 200
+    extra: {}
   },
 
   idAttribute : "user",
+
+  parse : function (d) {
+    this.isNotNew = true;
+    return d;
+  },
+
+  isNew: function () {
+    return !this.isNotNew;
+  },
 
   url: function () {
     if (this.get("user") !== "") {
