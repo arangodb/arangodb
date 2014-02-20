@@ -7,8 +7,12 @@
   <%}%>
 </div>
 
-<div class="plain">                                                                                                                                    
-  <img src="<%= attributes.picture %>" height="50" width="50" alt="" class="icon">
-  <span class="badge badge-success <%= attributes.status %>"><div class="cornered"><%= attributes.status %></div></span>
-  <h5 class="collectionName"><%= attributes.name %></h5>
+<img src="<%= attributes.picture %>" height="50" width="50" alt="" class="icon">
+<div class="tileBadge">
+  <span>
+    <div class="corneredBadge <%= attributes.status %>">
+      <%= attributes.status %>
+    </div>
+  </span>
 </div>
+<h5 class="collectionName"><%= attributes.name %></h5>
