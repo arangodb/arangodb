@@ -36,8 +36,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/primary-collection.h"
 #include "VocBase/update-policy.h"
+#include "VocBase/voc-types.h"
 
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -76,12 +77,20 @@ namespace triagens {
                            bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns figures for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    int figuresOnCoordinator (std::string const& dbname,
+                              std::string const& collname,
+                              TRI_doc_collection_info_t*&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int countOnCoordinator ( 
-                 string const& dbname,
-                 string const& collname,
+                 std::string const& dbname,
+                 std::string const& collname,
                  uint64_t& result);
 
 ////////////////////////////////////////////////////////////////////////////////

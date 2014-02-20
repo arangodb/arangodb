@@ -6373,6 +6373,57 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the figures for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* collection) {
+  assert(collection != 0);
+  
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
+   
+  TRI_doc_collection_info_t* result = 0;
+
+  int res = figuresOnCoordinator(databaseName, cid, result);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    return 0;
+  }
+
+  return result;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the figures for a local collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
+  assert(collection != 0);
+  
+  CollectionNameResolver resolver(collection->_vocbase);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    return 0;
+  }
+
+  // READ-LOCK start
+  trx.lockRead();
+
+  TRI_primary_collection_t* primary = collection->_collection;
+  TRI_doc_collection_info_t* info = primary->figures(primary);
+
+  res = trx.finish(res);
+  // READ-LOCK end
+ 
+  return info;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
 ///
 /// @FUN{@FA{collection}.figures()}
@@ -6414,33 +6465,23 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+#ifdef TRI_ENABLE_CLUSTER
+  TRI_doc_collection_info_t* info;
 
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch figures");
+  if (ServerState::instance()->isCoordinator()) {
+    info = GetFiguresCoordinator(collection);
   }
+  else {
+    info = GetFigures(collection);
+  }
+#else
+  TRI_doc_collection_info_t* info = GetFigures(collection);
+#endif
 
-  // READ-LOCK start
-  trx.lockRead();
-
-  TRI_primary_collection_t* primary = collection->_collection;
-  TRI_doc_collection_info_t* info = primary->figures(primary);
-
-  res = trx.finish(res);
-  // READ-LOCK end
-
-  if (res != TRI_ERROR_NO_ERROR || info == 0) {
-    if (info != 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
-    }
-    TRI_V8_EXCEPTION(scope, res);
+  if (info == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_errno());
   }
 
   assert(info != 0);
