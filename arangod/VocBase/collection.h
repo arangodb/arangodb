@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_VOC_BASE_COLLECTION_H
@@ -75,26 +75,12 @@ extern "C" {
 // --SECTION--                                                          forwards
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_json_s;
 struct TRI_vocbase_col_s;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection name regex
@@ -139,17 +125,14 @@ struct TRI_vocbase_col_s;
 #define TRI_COL_NAME_USERS       "_users"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief predefined collection name for statistics
 ////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COL_NAME_STATISTICS  "_statistics"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection file structure
@@ -228,7 +211,7 @@ typedef struct TRI_col_info_s {
 
   // flags
   bool               _deleted;         // if true, collection has been deleted
-  bool               _doCompact;       // if true, collection will be compacted 
+  bool               _doCompact;       // if true, collection will be compacted
   bool               _isSystem;        // if true, this is a system collection
   bool               _isVolatile;      // if true, collection is memory-only
   bool               _waitForSync;     // if true, wait for msync
@@ -256,18 +239,9 @@ typedef struct TRI_collection_s {
 }
 TRI_collection_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection info block
@@ -328,37 +302,28 @@ void TRI_DestroyCollection (TRI_collection_t*);
 
 void TRI_FreeCollection (TRI_collection_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
 /// "parameter.json" file. This function does not require the collection to be
 /// loaded.
-/// The caller must make sure that the files is not modified while this 
+/// The caller must make sure that the files is not modified while this
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 struct TRI_json_s* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the index (JSON) files of a collection, using a callback
 /// function for each.
 /// This function does not require the collection to be loaded.
-/// The caller must make sure that the files is not modified while this 
+/// The caller must make sure that the files is not modified while this
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
                                           int (*)(struct TRI_vocbase_col_s*, char const*, void*),
                                           void*);
@@ -369,7 +334,7 @@ int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SyncCollection (TRI_collection_t*);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,18 +371,9 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
 
 int TRI_RenameCollection (TRI_collection_t*, char const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
@@ -480,7 +436,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t*,
                              TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the markers in the collection's journals 
+/// @brief iterate over the markers in the collection's journals
 ///
 /// this function is called on server startup for all collections. we do this
 /// to get the last tick used in a collection
@@ -500,7 +456,7 @@ bool TRI_IsSystemNameCollection (char const*);
 /// @brief checks if a collection name is allowed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedNameCollection (bool, 
+bool TRI_IsAllowedNameCollection (bool,
                                   char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,10 +464,6 @@ bool TRI_IsAllowedNameCollection (bool,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_TypeNameCollection (const TRI_col_type_e);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
 }

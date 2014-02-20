@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -46,19 +46,13 @@ using namespace triagens::rest;
 // --SECTION--                                                   private classes
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 namespace {
-
-
-#ifdef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward declared handler for crtl c for windows
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
 
 #include <windows.h>
 #include <stdio.h>
@@ -68,13 +62,13 @@ static SignalTask* localSignalTask;
 
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles control-c
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef _WIN32
-  class ControlCTask : public SignalTask {
 
+#ifdef _WIN32
+
+  class ControlCTask : public SignalTask {
     public:
 
       ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
@@ -92,7 +86,9 @@ static SignalTask* localSignalTask;
       ApplicationServer* _server;
       uint32_t _seen;
   };
+
 #else
+
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
@@ -127,6 +123,7 @@ static SignalTask* localSignalTask;
       ApplicationServer* _server;
       uint32_t _seen;
   };
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +131,7 @@ static SignalTask* localSignalTask;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
@@ -148,7 +146,9 @@ static SignalTask* localSignalTask;
         return true;
       }
   };
+
 #else
+
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
@@ -164,8 +164,9 @@ static SignalTask* localSignalTask;
         return true;
       }
   };
+
 #endif
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles sigusr1 signals
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,13 +220,13 @@ static SignalTask* localSignalTask;
   };
 
 
-#ifdef _WIN32
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handler for crtl c for windows
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool CtrlHandler(DWORD eventType) {
+#ifdef _WIN32
+
+  bool CtrlHandler (DWORD eventType) {
     ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
     string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
@@ -308,13 +309,8 @@ static SignalTask* localSignalTask;
   }
 
 #endif
+}
 
-}  // end of anonymous (unamed) namespace
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class ApplicationScheduler
@@ -323,11 +319,6 @@ static SignalTask* localSignalTask;
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -356,18 +347,9 @@ ApplicationScheduler::~ApplicationScheduler () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows a multi scheduler to be build
@@ -405,18 +387,9 @@ bool ApplicationScheduler::addressReuseAllowed () {
   return _reuseAddress;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -585,18 +558,9 @@ void ApplicationScheduler::stop () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the scheduler
@@ -647,7 +611,7 @@ void ApplicationScheduler::buildControlCHandler () {
 
   _scheduler->registerTask(hangup);
   _tasks.push_back(hangup);
-  
+
   // sigusr handler
   Task* sigusr = new Sigusr1Task(this);
 
@@ -716,7 +680,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
     if (_backend == 1) {
       if (FD_SETSIZE < _descriptorMinimum) {
         LOG_FATAL_AND_EXIT("i/o backend 'select' has been selected, which supports only %d descriptors, but %d are required",
-                           (int) FD_SETSIZE, 
+                           (int) FD_SETSIZE,
                            (int) _descriptorMinimum);
       }
     }
@@ -724,12 +688,6 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
 #endif
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

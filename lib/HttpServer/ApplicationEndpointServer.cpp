@@ -657,16 +657,21 @@ bool ApplicationEndpointServer::createSslContext () {
   LOG_DEBUG("using SSL protocol version '%s'", 
             HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol).c_str());
 
+  if (! FileUtils::exists(_httpsKeyfile)) {
+    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'", _httpsKeyfile.c_str());
+  }
+
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == 0) {
-    LOG_ERROR("failed to create SSL context, cannot create a HTTPS server");
+    LOG_ERROR("failed to create SSL context, cannot create HTTPS server");
     return false;
   }
 
   // set cache mode
   SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+
   if (_sslCache) {
     LOG_TRACE("using SSL session caching");
   }
