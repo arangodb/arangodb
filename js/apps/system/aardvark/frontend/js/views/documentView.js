@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, forin: true */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, value2html, templateEngine */
+/*global require, exports, Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
 /*global document */
 
 (function() {
@@ -46,7 +46,7 @@
         search: true,
         mode: 'tree',
         modes: ['tree', 'code']
-      }
+      };
       this.editor = new jsoneditor.JSONEditor(container, options);
 
       return this;
@@ -79,9 +79,6 @@
           arangoHelper.arangoError('Edge error:', 'Could not save');
           return;
         }
-      }
-      if (result === true) {
-        console.log(123);
       }
     },
 

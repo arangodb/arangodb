@@ -34,8 +34,8 @@
 
     renderTable: function () {
       this.collection.forEach(function(user) {
-        var deleteButton =
-          '<span class="arangoicon icon_arangodb_roundminus" data-original-title="Delete user"></span>';
+        var deleteButton = '<span class="arangoicon icon_arangodb_roundminus"' +
+          'data-original-title="Delete user"></span>';
         if(user.get("loggedIn")) {
           deleteButton = '';
         }
@@ -198,7 +198,9 @@
         return false;
       }
       if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError(
+          "Wrong Username", "Username may only contain numbers, letters, _ and -"
+        );
         return false;
       }
       return true;
@@ -213,7 +215,9 @@
         return true;
       }
       if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
-        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError(
+          "Wrong Username", "Username may only contain numbers, letters, _ and -"
+        );
         return false;
       }
       return true;
