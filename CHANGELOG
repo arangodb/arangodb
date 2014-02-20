@@ -1,6 +1,8 @@
 v1.4.10 (XXXX-XX-XX)
 --------------------
 
+* fixed graph constructor to allow graph with some parameter to be used
+
 * added node.js "events" and "stream"
 
 * updated npm packages
@@ -22,6 +24,7 @@ v1.4.10 (XXXX-XX-XX)
   - location
   - x-arango-errors
   - x-arango-async-id
+
 
 v1.4.9 (2014-02-07)
 -------------------
