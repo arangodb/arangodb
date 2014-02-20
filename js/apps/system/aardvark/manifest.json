@@ -79,6 +79,7 @@
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
+        "frontend/js/lib/jsoneditor-min.js",
         "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/nv.d3.js",
         "frontend/js/lib/d3.fisheye.js",
@@ -139,6 +140,7 @@
         "frontend/css/buttons.css",
         "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
+        "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]
     }
