@@ -171,8 +171,14 @@
   color:#FFFFFF;
 }
 
-.pagination-mini ul > li.disabled:last-child > a, .pagination-small ul > li.disabled:last-child > a, .pagination-mini ul > li.disabled:last-child > span, .pagination-small ul > li.disabled:last-child > span,
-.pagination-mini ul > li.disabled:first-child > a, .pagination-small ul > li.disabled:first-child > a, .pagination-mini ul > li.disabled:first-child > span, .pagination-small ul > li.disabled:first-child > span {
+.pagination-mini ul > li.disabled:last-child > a,
+.pagination-small ul > li.disabled:last-child > a,
+.pagination-mini ul > li.disabled:last-child > span,
+.pagination-small ul > li.disabled:last-child > span,
+.pagination-mini ul > li.disabled:first-child > a,
+.pagination-small ul > li.disabled:first-child > a,
+.pagination-mini ul > li.disabled:first-child > span,
+.pagination-small ul > li.disabled:first-child > span {
    pointer-events: none;
    cursor: default;
    background-color: ##777;
@@ -193,7 +199,7 @@
   border-radius:0;
 }
 
-.badge-success, .badge-success, .badge-important, .badge-inverse {
+.badge-success, .badge-important, .badge-inverse {
   background: none;
   padding-left: 0px;
   padding-right: 0px;

@@ -90,7 +90,7 @@
       template: templateEngine.createTemplate("queryView.ejs"),
 
       render: function () {
-          $(this.el).html(this.template.text);
+        $(this.el).html(this.template.render({}));
 
           // fill select box with # of results    
           var querySize = 1000;
