@@ -94,7 +94,7 @@
         return;
       }
       var options = {
-        username: userName,
+        user: userName,
         passwd: userPassword,
         active: status
       };
@@ -197,7 +197,7 @@
         return false;
       }
       if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError("Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
         return false;
       }
       return true;
@@ -212,7 +212,7 @@
         return true;
       }
       if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
-        arangoHelper.arangoError("Username may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError("Wrong Username", "Username may only contain numbers, letters, _ and -");
         return false;
       }
       return true;
