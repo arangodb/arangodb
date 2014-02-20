@@ -4,11 +4,15 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.fo
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-<<<<<<< HEAD
-li.tile div.iconSet span {
-=======
-li.tile div.iconSet span, .scenarioImage {
->>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
+ul.tileList:after, div.resizecontainer:after {
+  clear: both;
+  content: ".";
+  display: block;
+  font-size: 0px;
+  height: 0px;
+  visibility: hidden; }
+
+li.tile div.iconSet span, .contentDiv .icon, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -20,7 +24,6 @@ nav.navbar, footer.footer {
   color: white;
   z-index: 1000; }
 
-<<<<<<< HEAD
 div.danger.coordinator, div.danger.dbserver {
   background-color: #da4f49; }
   div.danger.coordinator:hover, div.danger.dbserver:hover {
@@ -36,8 +39,6 @@ div.warning.coordinator, div.warning.dbserver {
   div.warning.coordinator:hover, div.warning.dbserver:hover {
     background-color: #f89406; }
 
-=======
->>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
 ul.link-dropdown-menu, ul.user-dropdown-menu {
   position: absolute;
   top: 80%;
@@ -132,19 +133,17 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-div#collectionsThumbnailsIn {
-  margin-left: 0px; }
+ul.tileList {
+  margin-left: -6px;
+  margin-right: -6px; }
 
 li.tile {
   position: relative;
   text-align: center;
   height: 100px;
   width: 230px;
-<<<<<<< HEAD
   list-style: none;
   background-color: rgba(0, 0, 0, 0.05);
-=======
->>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e
   margin-left: 6px;
   margin-right: 6px;
   margin-bottom: 13px;
@@ -179,6 +178,27 @@ li.tile {
     border-bottom: 16px solid #FF8F35; }
   li.tile .deleted div {
     border-bottom: 16px solid red; }
+  li.tile div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: white; }
+    li.tile div.tileBadge span {
+      display: inline-block;
+      line-height: 13px; }
+      li.tile div.tileBadge span div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border-left: 17px solid transparent;
+        border-bottom-width: 17px;
+        border-bottom-style: solid; }
+        li.tile div.tileBadge span div.corneredBadge.loaded {
+          border-bottom-color: #8aa051; }
+        li.tile div.tileBadge span div.corneredBadge.unloaded {
+          border-bottom-color: #ff8f35; }
 
 .collectionName {
   text-align: left;
@@ -190,13 +210,6 @@ li.tile {
 
 div.resizecontainer {
   margin: 0px auto; }
-  div.resizecontainer:after {
-    clear: both;
-    content: ".";
-    display: block;
-    font-size: 0px;
-    height: 0px;
-    visibility: hidden; }
 
 @media (max-width: 798px) {
   #arangoCollectionUl {
@@ -254,9 +267,54 @@ div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
 
-<<<<<<< HEAD
+div.centralContent {
+  padding: 5px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.0675);
+  min-height: 80px;
+  float: left; }
+
+.contentDiv {
+  padding: 13px 0px 0px 0px;
+  list-style: none;
+  *zoom: 1; }
+  .contentDiv li {
+    background-color: rgba(0, 0, 0, 0.05);
+    float: left; }
+  .contentDiv a.add {
+    padding: 40px 0;
+    display: block;
+    font-weight: 400;
+    text-align: left; }
+  .contentDiv .icon {
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-top: 10px; }
+  .contentDiv:after {
+    clear: both; }
+  .contentDiv:after, .contentDiv:before {
+    display: table;
+    line-height: 0;
+    content: ""; }
+
 .clusterInfoIcon {
   font-size: 30px; }
+
+.scenarioImage {
+  height: 70%;
+  width: auto; }
+
+svg.clusterChart {
+  width: auto;
+  height: auto; }
+
+.lineGraph .few .dygraph-legend > span.highlight {
+  border: 1px solid grey; }
+.lineGraph .many .dygraph-legend > span {
+  display: none; }
+.lineGraph .many .dygraph-legend > span.highlight {
+  display: inline; }
 
 div.coordinator, div.dbserver {
   width: 90px;
@@ -277,19 +335,3 @@ div.coordinator {
 
 div.dbserver {
   right: 15px; }
-=======
-.scenarioImage {
-  height: 70%;
-  width: auto; }
-
-svg.clusterChart {
-  width: auto;
-  height: auto; }
-
-.lineGraph .few .dygraph-legend > span.highlight {
-  border: 1px solid grey; }
-.lineGraph .many .dygraph-legend > span {
-  display: none; }
-.lineGraph .many .dygraph-legend > span.highlight {
-  display: inline; }
->>>>>>> 9646da9c1b9457fdcb0eed14da4704798cb8236e

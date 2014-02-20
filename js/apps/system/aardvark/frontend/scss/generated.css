@@ -1,15 +1,10 @@
-body, input, textarea, .page-title span, .pingback a.url {
-  /*font-family: "Helvetica",sans-serif;*/
-  font-family: 'Open Sans', sans-serif !important;
-  font-weight: 400; }
-
 ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span {
   float: right; }
 
-div.resizecontainer:after, ul.tileList:after {
+ul.tileList:after, div.resizecontainer:after {
   clear: both;
   content: ".";
   display: block;
@@ -17,7 +12,7 @@ div.resizecontainer:after, ul.tileList:after {
   height: 0px;
   visibility: hidden; }
 
-.contentDiv .icon, li.tile div.iconSet span, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+li.tile div.iconSet span, .contentDiv .icon, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -95,6 +90,118 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
     border-bottom-color: white;
     display: inline-block;
     content: ''; }
+
+nav.navbar {
+  top: 0px;
+  height: 34px;
+  margin-bottom: 3px; }
+
+ul.navlist {
+  list-style: none; }
+  ul.navlist li {
+    margin-left: 1px; }
+  ul.navlist > li.active,
+  ul.navlist li.dropdown-item:hover,
+  ul.navlist > li:hover {
+    background-color: #8aa051; }
+
+a.tab {
+  padding-top: 7px;
+  padding-left: 10px;
+  padding-bottom: 10px;
+  padding-right: 10px;
+  color: white;
+  display: block; }
+
+#arangoCollectionSelect {
+  display: none;
+  float: right;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-right: 15px; }
+
+footer.footer {
+  bottom: 0px;
+  height: 40px; }
+  footer.footer p {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 0; }
+
+ul.tileList {
+  margin-left: -6px;
+  margin-right: -6px; }
+
+li.tile {
+  position: relative;
+  text-align: center;
+  height: 100px;
+  width: 230px;
+  list-style: none;
+  background-color: rgba(0, 0, 0, 0.05);
+  margin-left: 6px;
+  margin-right: 6px;
+  margin-bottom: 13px;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none; }
+  li.tile h5 {
+    font-size: 12px;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: white;
+    background: #686766;
+    padding: 4px 8px;
+    margin: 0; }
+  li.tile div.iconSet {
+    position: absolute;
+    top: 5px;
+    right: 5px; }
+    li.tile div.iconSet span {
+      opacity: 0.5;
+      font-size: 18px;
+      padding-left: 7px; }
+      li.tile div.iconSet span:hover {
+        opacity: 1.0; }
+      li.tile div.iconSet span.disabled {
+        opacity: 0.2;
+        cursor: default; }
+  li.tile .badge-success {
+    font-weight: 300; }
+  li.tile .unloaded div {
+    border-bottom: 16px solid #FF8F35; }
+  li.tile .deleted div {
+    border-bottom: 16px solid red; }
+  li.tile div.tileBadge {
+    position: absolute;
+    right: 0px;
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    color: white; }
+    li.tile div.tileBadge span {
+      display: inline-block;
+      line-height: 13px; }
+      li.tile div.tileBadge span div.corneredBadge {
+        padding-left: 4px;
+        padding-right: 9px;
+        height: 0px;
+        border-left: 17px solid transparent;
+        border-bottom-width: 17px;
+        border-bottom-style: solid; }
+        li.tile div.tileBadge span div.corneredBadge.loaded {
+          border-bottom-color: #8aa051; }
+        li.tile div.tileBadge span div.corneredBadge.unloaded {
+          border-bottom-color: #ff8f35; }
+
+.collectionName {
+  text-align: left;
+  font-weight: 300;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px; }
 
 div.resizecontainer {
   margin: 0px auto; }
@@ -186,34 +293,13 @@ div.centralContent {
     line-height: 0;
     content: ""; }
 
-nav.navbar {
-  top: 0px;
-  height: 34px;
-  margin-bottom: 3px; }
+.clusterInfoIcon {
+  font-size: 30px; }
 
-ul.navlist {
-  list-style: none; }
-  ul.navlist li {
-    margin-left: 1px; }
-  ul.navlist > li.active,
-  ul.navlist li.dropdown-item:hover,
-  ul.navlist > li:hover {
-    background-color: #8aa051; }
-
-a.tab {
-  padding-top: 7px;
-  padding-left: 10px;
-  padding-bottom: 10px;
-  padding-right: 10px;
-  color: white;
-  display: block; }
-
-#arangoCollectionSelect {
-  display: none;
-  float: right;
-  padding-bottom: 0;
-  margin-bottom: 0;
-  margin-right: 15px; }
+body, input, textarea, .page-title span, .pingback a.url {
+  /*font-family: "Helvetica",sans-serif;*/
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400; }
 
 footer.footer {
   bottom: 0px;

@@ -15,6 +15,7 @@
       "files": [
         "frontend/html/start.html.part",
         "frontend/html/head.html.part",
+        "frontend/js/templates/**",
         "frontend/html/body.html.part",
         "frontend/html/scripts.html.part",
         "frontend/html/end.html.part"
@@ -66,18 +67,15 @@
 
     "sharedLibs.js": {
       "files": [
-        "frontend/js/lib/jquery-1.8.3.js",
+        "frontend/js/lib/jquery-2.1.0.min.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
-        "frontend/js/lib/ejs_fulljslint.js",
-        "frontend/js/lib/ejs_0.9_alpha_1_production.js",
         "frontend/js/lib/bootstrap.js"
       ]
     },
 
     "libs.js": {
       "files": [
-        "frontend/js/lib/jquery-2.1.0.min.js",
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
         "frontend/js/lib/jquery.dataTables.js",
         "frontend/js/lib/jquery.autogrow.js",
@@ -88,16 +86,12 @@
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
-        "frontend/js/lib/underscore.js",
-        "frontend/js/lib/backbone.js",
         "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/strftime-min.js",
         "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/nv.d3.js",
         "frontend/js/lib/d3.fisheye.js",
         "frontend/js/lib/ColVis.js",
-        "frontend/js/lib/ejs_production.js",
-        "frontend/js/lib/bootstrap.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
         "frontend/js/lib/splitter.js",
@@ -161,6 +155,8 @@
       "files": [
         "frontend/html/start.html.part",
         "plannerFrontend/html/head.html.part",
+        "frontend/js/templates/**",
+        "plannerFrontend/js/templates/**",
         "frontend/html/body.html.part",
         "plannerFrontend/html/scripts.html.part",
         "frontend/html/end.html.part"
@@ -171,6 +167,8 @@
       "files": [
         "frontend/html/start.html.part",
         "clusterFrontend/html/head.html.part",
+        "frontend/js/templates/**",
+        "clusterFrontend/js/templates/**",
         "frontend/html/body.html.part",
         "clusterFrontend/html/scripts.html.part",
         "frontend/html/end.html.part"
@@ -222,9 +220,6 @@
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
-    "/js/templates" : "frontend/js/templates",
-    "/js/plannerTemplates" : "plannerFrontend/js/templates",
-    "/js/clusterTemplates" : "clusterFrontend/js/templates",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/" : "frontend/src"
   },

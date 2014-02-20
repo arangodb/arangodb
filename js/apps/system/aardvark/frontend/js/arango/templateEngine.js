@@ -2,18 +2,17 @@
 /*global EJS, window*/
 (function() {
   "use strict";
-  var TemplateEngine = function(prefix) {
-    prefix = prefix || "";
+  var TemplateEngine = function() {
     var exports = {};
-    exports.createTemplate = function(path) {
-      var param = {
-        url: prefix + path
+    exports.createTemplate = function(id) {
+      var template = $("#" + id.replace(".", "\\.")).html();
+      return {
+        render: function(params) {
+          return _.template(template, params);
+        }
       };
-      return new EJS(param);
     };
     return exports;
   };
-  window.templateEngine = new TemplateEngine("js/templates/"); 
-  window.plannerTemplateEngine = new TemplateEngine("js/plannerTemplates/");
-  window.clusterTemplateEngine = new TemplateEngine("js/clusterTemplates/");
+  window.templateEngine = new TemplateEngine(); 
 }());

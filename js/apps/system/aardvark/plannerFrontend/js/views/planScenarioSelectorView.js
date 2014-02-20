@@ -7,7 +7,7 @@
     window.PlanScenarioSelectorView = Backbone.View.extend({
         el: '#content',
 
-        template: plannerTemplateEngine.createTemplate("planScenarioSelector.ejs", "planner"),
+        template: templateEngine.createTemplate("planScenarioSelector.ejs", "planner"),
 
 
         events: {

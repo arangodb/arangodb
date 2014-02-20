@@ -6,7 +6,7 @@
   
   window.DownloadView = Backbone.View.extend({
     el: "#content",
-    template: plannerTemplateEngine.createTemplate("download.ejs"),
+    template: templateEngine.createTemplate("download.ejs"),
 
     events: {
       "click #startDownload": "download"

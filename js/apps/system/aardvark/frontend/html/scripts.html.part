@@ -1,3 +1,4 @@
+<script src="sharedLibs.js"></script>
 <script src="libs.js"></script>
 <script src="ace.js"></script>
 <script src="app.js"></script>

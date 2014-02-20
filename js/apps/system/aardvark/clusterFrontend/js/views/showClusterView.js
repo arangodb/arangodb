@@ -8,7 +8,7 @@
 
     el: "#content",
 
-    template: clusterTemplateEngine.createTemplate("showCluster.ejs"),
+    template: templateEngine.createTemplate("showCluster.ejs"),
 
       events: {
           "mouseover #lineGraph"      : "setShowAll",
