@@ -492,4 +492,6 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
+  height: "28";
+  width: "28";
   margin-top: -3px; }
