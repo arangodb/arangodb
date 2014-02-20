@@ -1,11 +1,14 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, eqeq: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
+/// @brief statistics handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,51 +24,39 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler, Lucas Dohmen
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8SERVER_V8_ACTIONS_H
-#define TRIAGENS_V8SERVER_V8_ACTIONS_H 1
-
-#include "V8/v8-globals.h"
-
-#include "VocBase/vocbase.h"
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                  module "org/arangodb/statistics"
 // -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace rest {
-    class ApplicationDispatcher;
-    class ApplicationScheduler;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the user authentication data
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.historian = function (param) {
+  try {
+    var result = {};
+
+    result.time = internal.time();
+    result.system = internal.processStatistics();
+    result.client = internal.clientStatistics();
+    result.http = internal.httpStatistics();
+    result.server = internal.serverStatistics();
+
+    internal.db._statistics.save(result);
   }
-
-  namespace arango {
-    class ApplicationV8;
+  catch (err) {
   }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           ACTIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::rest::ApplicationScheduler* scheduler,
-                        triagens::rest::ApplicationDispatcher* dispatcher,
-                        triagens::arango::ApplicationV8*);
-
-#endif
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -73,5 +64,5 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
