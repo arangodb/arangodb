@@ -10,7 +10,7 @@
     template: templateEngine.createTemplate("collectionView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       $('#change-collection').modal('show');
       $('#change-collection').on('hidden', function () {
       });
