@@ -100,7 +100,9 @@ this.dummy.css({
 var html = this.textarea.val().replace(/(<|>)/g, '');
 
 // IE is different, as per usual
-if ($.browser.msie)
+//if ($.browser.msie)
+// jQuery > 1.8 fix
+if (navigator.appName == 'Microsoft Internet Explorer')
 {
 html = html.replace(/\n/g, '<BR>new');
 }
