@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
+/// @brief periodic V8 task
 ///
 /// @file
 ///
@@ -22,50 +22,66 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8SERVER_V8_ACTIONS_H
-#define TRIAGENS_V8SERVER_V8_ACTIONS_H 1
+#include "V8PeriodicTask.h"
 
-#include "V8/v8-globals.h"
+#include "Dispatcher/Dispatcher.h"
+#include "Scheduler/Scheduler.h"
+#include "V8Server/V8PeriodicJob.h"
 
-#include "VocBase/vocbase.h"
+using namespace std;
+using namespace triagens::rest;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace rest {
-    class ApplicationDispatcher;
-    class ApplicationScheduler;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
-  namespace arango {
-    class ApplicationV8;
-  }
+V8PeriodicTask::V8PeriodicTask (TRI_vocbase_t* vocbase,
+                                ApplicationV8* v8Dealer,
+                                Scheduler* scheduler,
+                                Dispatcher* dispatcher,
+                                double _offset,
+                                double _period,
+                                const string& module,
+                                const string& func,
+                                const string& parameter)
+  : Task("V8 Periodic Task"),
+    PeriodicTask(_offset, _period),
+    _vocbase(vocbase),
+    _v8Dealer(v8Dealer),
+    _dispatcher(dispatcher),
+    _module(module),
+    _func(func),
+    _parameter(parameter) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           ACTIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
+// --SECTION--                                              PeriodicTask methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
+/// @brief handles the next tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::rest::ApplicationScheduler* scheduler,
-                        triagens::rest::ApplicationDispatcher* dispatcher,
-                        triagens::arango::ApplicationV8*);
+bool V8PeriodicTask::handlePeriod () {
+  V8PeriodicJob* job = new V8PeriodicJob(
+    _vocbase,
+    _v8Dealer,
+    _module,
+    _func,
+    _parameter);
 
-#endif
+  _dispatcher->addJob(job);
+
+  return true;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

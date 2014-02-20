@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract base class for jobs
+/// @brief periodic V8 job
 ///
 /// @file
 ///
@@ -22,66 +22,27 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DISPATCHER_JOB_H
-#define TRIAGENS_DISPATCHER_JOB_H 1
+#ifndef TRIAGENS_V8SERVER_V8PERIODIC_JOB_H
+#define TRIAGENS_V8SERVER_V8PERIODIC_JOB_H 1
 
-#include "Statistics/StatisticsAgent.h"
+#include "Dispatcher/Job.h"
+#include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                               class V8PeriodicJob
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
-    class TriagensError;
-  }
+  namespace arango {
+    class ApplicationV8;
 
-  namespace rest {
-    class DispatcherThread;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         class Job
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract base class for jobs
-////////////////////////////////////////////////////////////////////////////////
-
-    class Job : public RequestStatisticsAgent {
+    class V8PeriodicJob : public rest::Job {
       private:
-        Job (Job const&);
-        Job& operator= (Job const&);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief job types
-////////////////////////////////////////////////////////////////////////////////
-
-        enum JobType {
-          READ_JOB,
-          WRITE_JOB,
-          SPECIAL_JOB
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief status of execution
-////////////////////////////////////////////////////////////////////////////////
-
-        enum status_e {
-          JOB_DONE,
-          JOB_DETACH,
-          JOB_REQUEUE,
-          JOB_FAILED
-        };
+        V8PeriodicJob (V8PeriodicJob const&);
+        V8PeriodicJob& operator= (V8PeriodicJob const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -90,79 +51,56 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a job
+/// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        Job (string const& name);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ~Job ();
+        V8PeriodicJob (TRI_vocbase_t*,
+                       ApplicationV8*,
+                       const string& module,
+                       const string& func,
+                       const string& parameter);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                       Job methods
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for the name
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& getName () const;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
-
-      public:
+        JobType type ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the type of the job
-///
-/// Note that initialise can change the job type.
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual JobType type () = 0;
+        const string& queue ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name to use
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual string const& queue ();
+        status_e work ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the thread which currently dealing with the job
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void setDispatcherThread (DispatcherThread*);
+        void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts working
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual status_e work () = 0;
+        bool beginShutdown ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cleans up after work and delete
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void cleanup () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down the execution and deletes everything
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool beginShutdown () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle error and delete
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void handleError (basics::TriagensError const&) = 0;
+        void handleError (basics::TriagensError const& ex);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -171,10 +109,34 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the job
+/// @brief system vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& _name;
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 dealer
+////////////////////////////////////////////////////////////////////////////////
+
+        ApplicationV8* _v8Dealer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module name
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string _module;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function name
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string _func;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief paramater string
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string _parameter;
     };
   }
 }

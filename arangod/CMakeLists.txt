@@ -111,6 +111,8 @@ add_executable(
     SkipLists/skiplistIndex.c
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp
+    V8Server/V8PeriodicTask.cpp
+    V8Server/V8PeriodicJob.cpp
     V8Server/v8-actions.cpp
     V8Server/v8-query.cpp
     V8Server/v8-vocbase.cpp
