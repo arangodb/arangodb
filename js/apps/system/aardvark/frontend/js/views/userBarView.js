@@ -60,6 +60,7 @@
     },
 
     hideDropdown: function (e) {
+      console.log(e.type);
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
       if (navigateTo === "") {
@@ -113,7 +114,7 @@
       if (!img) {
         img = "img/arangodblogoAvatar.png";
       } else {
-        img = "https://s.gravatar.com/avatar/" + img + "?s=23";
+        img = "https://s.gravatar.com/avatar/" + img + "?s=28";
       }
       if (!name) {
         name = "";
