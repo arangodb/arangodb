@@ -19,7 +19,8 @@
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
-  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL */
+  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
+  FE_DEVELOPMENT_MODE, SYS_DEFINE_PERIODIC */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -703,6 +704,15 @@
   if (typeof SYS_STATUS_EXTERNAL !== "undefined") {
     exports.statusExternal = SYS_STATUS_EXTERNAL;
     delete SYS_STATUS_EXTERNAL;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a period timer
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEFINE_PERIODIC !== "undefined") {
+    exports.definePeriodic = SYS_DEFINE_PERIODIC;
+    delete SYS_DEFINE_PERIODIC;
   }
 
 // -----------------------------------------------------------------------------
