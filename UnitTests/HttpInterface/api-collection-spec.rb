@@ -39,29 +39,32 @@ describe ArangoDB do
         collections = doc.parsed_response['collections']
         names = doc.parsed_response['names']
 
-        # filter out system collections
-        realCollections = [ ]
+        collections.length.should eq(names.length)
 
+        total = 0
+        realCollections = [ ]
         collections.each { |collection|
-          if collection['name'].slice(0, 1) != "_"
+          if [ "units", "employees", "locations" ].include? collection["name"]
             realCollections.push(collection)
           end
+          total = total + 1
         }
 
         realNames = { }
-
         names.each do |name, collection| 
-          if name.slice(0, 1) != '_'
+          if [ "units", "employees", "locations" ].include? name
             realNames[name] = collection
           end
         end
 
-        realCollections.length.should eq(3)
-        realNames.length.should eq(3)
-
         for collection in realCollections do
           realNames[collection['name']].should eq(collection)
         end
+        
+        realCollections.length.should eq(3)
+        realNames.length.should eq(3)
+        total.should be > 3
+
       end
 
       it "returns all collections, exclude system collections" do
@@ -72,12 +75,32 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-
+        
         collections = doc.parsed_response['collections']
         names = doc.parsed_response['names']
+        collections.length.should eq(names.length)
 
-        collections.length.should eq(3)
-        names.length.should eq(3)
+        realCollections = [ ]
+
+        total = 0
+        collections.each { |collection|
+          if [ "units", "employees", "locations" ].include? collection["name"]
+            realCollections.push(collection)
+          end
+          total = total + 1
+        }
+
+        realNames = { }
+        names.each do |name, collection| 
+          if [ "units", "employees", "locations" ].include? name
+            realNames[name] = collection
+          end
+        end
+
+        realCollections.length.should eq(3)
+        realNames.length.should eq(3)
+        
+        total.should >= 3
       end
 
     end
