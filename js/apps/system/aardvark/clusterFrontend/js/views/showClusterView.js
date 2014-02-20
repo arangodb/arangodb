@@ -91,10 +91,15 @@
     },
 
     render: function() {
+      var byAddress = this.listByAddress();
+      if (Object.keys(byAddress).length === 1) {
+        this.type = "testPlan";
+      } else {
+        this.type = "other";
+      }
       $(this.el).html(this.template.render({
-        byAddress: this.listByAddress(),
-//        type: this.type
-        type: "testPlankhasdh"
+        byAddress: byAddress,
+        type: this.type
       }));
       this.getServerStatistics();
       var data = this.generatePieData();
@@ -231,7 +236,7 @@
                       entry.push(self.totalTimeChart[time][server]);
                   })
                   data.push(entry);
-              })
+              });
               return data;
           };
           var getVisibility = function() {
@@ -245,8 +250,8 @@
               var latestTime = Object.keys(self.totalTimeChart).sort().reverse()[0];
               var visibility = [], max= 0, i = 0, skip = -1;
               Object.keys(self.totalTimeChart[latestTime]).sort().forEach(function(server) {
-                  i ++;
-                  if (server == "ClusterAverage") {
+                  i++;
+                  if (server === "ClusterAverage") {
                       skip = i-1;
                       visibility.push(true);
                   } else if (max < self.totalTimeChart[latestTime][server]) {
@@ -254,9 +259,9 @@
                       setFalse(visibility, i-1, skip);
                       visibility.push(true);
                   } else {
-                      visibility.push(false);
+                      visibility.push(self.graphShowAll);
                   }
-              })
+                });
               return visibility;
           };
           var createLabels = function() {
@@ -271,7 +276,7 @@
                   } else {
                     labels.push(server);
                   }
-              })
+              });
               return labels.slice();
           }
 
