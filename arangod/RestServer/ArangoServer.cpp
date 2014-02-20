@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoServer.h"
@@ -71,7 +71,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Statistics/statistics.h"
-
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -176,6 +175,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
   else {
+
     // only some databases are allowed for this endpoint
     if (dbName.empty()) {
       // no specific database requested, so use first mapped database
@@ -192,22 +192,15 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
         }
       }
 
+      // requested database not found
       if (! found) {
-        // requested database not found
         return 0;
       }
     }
   }
 
 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(server, dbName.c_str());
-
-  if (vocbase == 0) {
-    // database not found
-    return 0;
-  }
-
-  return vocbase;
+  return TRI_UseDatabaseServer(server, dbName.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,8 +213,8 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   TRI_server_t* server   = (TRI_server_t*) data;
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
+  // invalid database name specified, database not found etc.
   if (vocbase == 0) {
-    // invalid database name specified, database not found etc.
     return false;
   }
 
@@ -333,6 +326,7 @@ void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
+
   if (_applicationServer == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
@@ -352,6 +346,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
+
   if (_applicationScheduler == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
@@ -364,6 +359,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
+
   if (_applicationDispatcher == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
@@ -373,7 +369,9 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_server);
+  _applicationV8 = new ApplicationV8(_server,
+                                     _applicationScheduler,
+                                     _applicationDispatcher);
 
   if (_applicationV8 == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
@@ -493,7 +491,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
-  
+
   // deprecated options
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
@@ -563,6 +561,7 @@ void ArangoServer::buildApplicationServer () {
 
   // set the temp-path
   _tempPath = StringUtils::rTrim(_tempPath, TRI_DIR_SEPARATOR_STR);
+
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
@@ -571,7 +570,7 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
   }
-  
+
   // .............................................................................
   // set language of default collator
   // .............................................................................
@@ -579,6 +578,7 @@ void ArangoServer::buildApplicationServer () {
   string languageName;
 
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
+
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   }
@@ -591,6 +591,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   uint32_t optionNonceHashSize = 0; // TODO: add a server option
+
   if (optionNonceHashSize > 0) {
     LOG_DEBUG("setting nonce hash size to %d", (int) optionNonceHashSize);
     Nonce::create(optionNonceHashSize);
@@ -712,7 +713,6 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
-
   // open all databases
   openDatabases();
 
@@ -740,7 +740,6 @@ int ArangoServer::startupServer () {
 
   _applicationServer->prepare();
 
-
   // .............................................................................
   // create the dispatcher
   // .............................................................................
@@ -748,7 +747,6 @@ int ArangoServer::startupServer () {
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
   _applicationServer->prepare2();
-
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -759,7 +757,6 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("user");
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
-
 
   // create the server
   _applicationEndpointServer->buildServers();
@@ -845,7 +842,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     _applicationV8->skipUpgrade();
   }
 
-  bool ok = _applicationV8->prepare();
+  bool ok = _applicationV8->prepare2();
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("cannot initialize V8 enigne");
@@ -1003,7 +1000,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        
+
         const string pretty = "start_pretty_print();";
         TRI_ExecuteJavaScriptString(context->_context, v8::String::New(pretty.c_str(), pretty.size()), v8::String::New("(internal)"), false);
 
