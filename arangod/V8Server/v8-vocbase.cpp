@@ -2914,9 +2914,21 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
+    
+    if (p->Has(TRI_V8_SYMBOL("keyOptions")) && p->Get(TRI_V8_SYMBOL("keyOptions"))->IsObject()) {
+      v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(p->Get(TRI_V8_SYMBOL("keyOptions")));
 
-    if (p->Has(v8::String::New("numberOfShards"))) {
-      numberOfShards = TRI_ObjectToUInt64(p->Get(v8::String::New("numberOfShards")), false);
+      string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
+      if (type != "" && type != "traditional") {
+        // invalid key generator
+        TRI_V8_EXCEPTION_MESSAGE(scope, 
+                                 TRI_ERROR_CLUSTER_UNSUPPORTED, 
+                                 "non-traditional key generators are not supported for sharded collections");
+      }
+    }
+
+    if (p->Has(TRI_V8_SYMBOL("numberOfShards"))) {
+      numberOfShards = TRI_ObjectToUInt64(p->Get(TRI_V8_SYMBOL("numberOfShards")), false);
     }
     
     if (p->Has(TRI_V8_SYMBOL("shardKeys"))) {
