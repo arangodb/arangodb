@@ -100,7 +100,12 @@ var optionsDefaults = { "cluster": false,
                         "skipClient": false };
 
 function findTopDir () {
-  return fs.normalize(fs.join(ArangoServerState.executablePath(), "..",".."));
+  var topDir = fs.normalize(fs.makeAbsolute("."));
+  if (!fs.exists("3rdParty") && !fs.exists("arangod") && 
+      !fs.exists("arangosh") && !fs.exists("UnitTests")) {
+    throw "Must be in ArangoDB topdir to execute unit tests.";
+  }
+  return topDir;
 }
   
 function makeTestingArgs () {
@@ -138,8 +143,7 @@ function makeAuthorisationHeaders (options) {
 
 function startInstance (protocol, options) {
   // protocol must be one of ["tcp", "ssl", "unix"]
-  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                    "..",".."));
+  var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
   var tmpDataDir = fs.getTempFile();
@@ -201,7 +205,6 @@ function startInstance (protocol, options) {
   }
   pos = endpoint.indexOf("://");
   url += endpoint.substr(pos);
-  print(url);
   while (true) {
     wait(0.5);
     var r = download(url+"/_api/version","",makeAuthorisationHeaders(options));
@@ -352,6 +355,53 @@ var tests_shell_client_only =
 
 var tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
 
+function runThere (options, instanceInfo, file) {
+  var r;
+  try {
+    var t = 'var runTest = require("jsunity").runTest; '+
+            'return runTest("'+file+'");';
+    var o = makeAuthorisationHeaders(options);
+    o.method = "POST";
+    o.timeout = 24*3600;
+    r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
+    if (!r.error && r.code === 200) {
+      r = JSON.parse(r.body);
+    }
+  }
+  catch (err) {
+    r = err;
+  }
+  return r;
+}
+
+function executeAndWait (cmd, args) {
+  var pid = executeExternal(cmd, args);
+  return statusExternal(pid, true).exit;
+}
+
+function runInArangosh (options, instanceInfo, file) {
+  var args = makeTestingArgsClient(options);
+  var topDir = findTopDir();
+  args.push("--server.endpoint");
+  args.push(instanceInfo.endpoint);
+  args.push("--javascript.unit-tests");
+  args.push(fs.join(topDir,file));
+  var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                      "..","arangosh"));
+  return executeAndWait(arangosh, args);
+}
+
+function runArangoshCmd (options, instanceInfo, cmds) {
+  var args = makeTestingArgsClient(options);
+  var topDir = findTopDir();
+  args.push("--server.endpoint");
+  args.push(instanceInfo.endpoint);
+  args = args.concat(cmds);
+  var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                      "..","arangosh"));
+  return executeAndWait(arangosh, args);
+}
+
 function performTests(options, testList) {
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -360,21 +410,7 @@ function performTests(options, testList) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     print("\nTrying",te,"...");
-    var r;
-    try {
-      var t = 'var runTest = require("jsunity").runTest; '+
-              'return runTest("'+te+'");';
-      var o = makeAuthorisationHeaders(options);
-      o.method = "POST";
-      o.timeout = 24*3600;
-      r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
-      if (!r.error && r.code === 200) {
-        r = JSON.parse(r.body);
-      }
-    }
-    catch (err) {
-      r = err;
-    }
+    var r = runThere(options, instanceInfo, te);
     results[te] = r;
     if (r !== true && !options.force) {
       break;
@@ -405,31 +441,17 @@ testFuncs.shell_server_ahuacatl = function(options) {
   return "skipped";
 };
 
-function executeAndWait (cmd, args) {
-  var pid = executeExternal(cmd, args);
-  return statusExternal(pid, true).exit;
-}
-
 testFuncs.shell_client = function(options) {
-  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                    "..",".."));
+  var topDir = findTopDir();
   var instanceInfo = startInstance("tcp",options);
-  var args = makeTestingArgsClient(options);
-  args.push("--server.endpoint");
-  args.push(instanceInfo.endpoint);
-  args.push("--javascript.unit-tests");
   var results = {};
   var i;
   var te;
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
-    var r;
-    args.push(fs.join(topDir,te));
-    var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                        "..","arangosh"));
-    results[te] = executeAndWait(arangosh, args);
-    args.pop();
+    var r = runInArangosh(options, instanceInfo, te);
+    results[te] = r;
     if (r !== 0 && !options.force) {
       break;
     }
@@ -441,8 +463,7 @@ testFuncs.shell_client = function(options) {
 };
 
 testFuncs.config = function (options) {
-  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                    "..",".."));
+  var topDir = findTopDir();
   var results = {};
   var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
             "arangosh"];
@@ -467,8 +488,7 @@ testFuncs.config = function (options) {
 };
 
 testFuncs.boost = function (options) {
-  var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                    "..",".."));
+  var topDir = findTopDir();
   var results = {};
   if (!options.skipBoost) {
     results.basics = executeAndWait(fs.join(topDir,"UnitTests","basics_suite"),
@@ -491,25 +511,10 @@ testFuncs.single = function (options) {
     result.test = te;
     if (!options.skipServer) {
       print("\nTrying",te,"on server...");
-      try {
-        var t = 'var runTest = require("jsunity").runTest; '+
-                'return runTest("'+te+'");';
-        var o = makeAuthorisationHeaders(options);
-        o.method = "POST";
-        o.timeout = 24*3600;
-        r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
-        if (!r.error && r.code === 200) {
-          r = JSON.parse(r.body);
-        }
-      }
-      catch (err) {
-        r = err;
-      }
-      result.server = r;
+      result.server = runThere(options, instanceInfo, makePath(te));
     }
     if (!options.skipClient) {
-      var topDir = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                        "..",".."));
+      var topDir = findTopDir();
       var args = makeTestingArgsClient(options);
       args.push("--server.endpoint");
       args.push(instanceInfo.endpoint);
@@ -525,7 +530,6 @@ testFuncs.single = function (options) {
   shutdownInstance(instanceInfo,options);
   print("done.");
   return result;
-
 };
 
 function rubyTests (options, ssl) {
@@ -591,6 +595,136 @@ testFuncs.ssl_server = function (options) {
   return rubyTests(options, true);
 };
 
+function runArangoImp (options, instanceInfo, what) {
+  var topDir = findTopDir();
+  var args = ["--server.username",             options.username,
+              "--server.password",             options.password,
+              "--server.endpoint",             instanceInfo.endpoint,
+              "--file",                        fs.join(topDir,what.data),
+              "--collection",                  what.coll,
+              "--type",                        what.type];
+  if (what.create !== undefined) {
+    args.push("--create-collection");
+    args.push(what.create);
+  }
+  var arangoimp = fs.normalize(fs.join(ArangoServerState.executablePath(),
+                                       "..","arangoimp"));
+  return executeAndWait(arangoimp, args);
+}
+
+var impTodo = [ 
+  {id: "json1", data: makePath("UnitTests/import-1.json"),
+   coll: "UnitTestsImportJson1", type: "json", create: undefined},
+  {id: "json2", data: makePath("UnitTests/import-2.json"),
+   coll: "UnitTestsImportJson2", type: "json", create: undefined},
+  {id: "json3", data: makePath("UnitTests/import-3.json"),
+   coll: "UnitTestsImportJson3", type: "json", create: undefined},
+  {id: "json4", data: makePath("UnitTests/import-4.json"),
+   coll: "UnitTestsImportJson4", type: "json", create: undefined},
+  {id: "csv1", data: makePath("UnitTests/import-1.csv"),
+   coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
+  {id: "csv2", data: makePath("UnitTests/import-2.csv"),
+   coll: "UnitTestsImportCsv2", type: "csv", create: "true"},
+  {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
+   coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
+  {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
+   coll: "UnitTestsImportTsv2", type: "tsv", create: "true"},
+  {id: "edge", data: makePath("UnitTests/import-edges.json"),
+   coll: "UnitTestsImportEdge", type: "json", create: "false"}
+];
+
+testFuncs.importing = function (options) {
+  var instanceInfo = startInstance("tcp",options);
+
+  var result = {};
+  try {
+    var r = runInArangosh(options, instanceInfo, 
+                          makePath("js/server/tests/import-setup.js"));
+    result.setup = r;
+    if (r !== 0) {
+      throw "banana";
+    }
+    var i;
+    for (i = 0; i < impTodo.length; i++) {
+      r = runArangoImp(options, instanceInfo, impTodo[i]);
+      result[impTodo[i].id] = r;
+      if (r !== 0 && !options.force) {
+        throw "banana";
+      }
+    }
+    r = runInArangosh(options, instanceInfo,
+                      makePath("js/server/tests/import.js"));
+    result.check = r;
+    r = runInArangosh(options, instanceInfo,
+                      makePath("js/server/tests/import-teardown.js"));
+    result.teardown = r;
+  }
+  catch (banana) {
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return result;
+};
+
+testFuncs.upgrade = function (options) {
+  if (options.cluster) {
+    return true;
+  }
+
+  var result = {};
+
+  var topDir = findTopDir();
+  var tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+
+  // We use the PortFinder to find a free port for our subinstance,
+  // to this end, we have to fake a dummy dispatcher:
+  var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+  var pf = new PortFinder([8529],dispatcher);
+  var port = pf.next();
+  var args = makeTestingArgs();
+  args.push("--server.endpoint");
+  var endpoint = "tcp://127.0.0.1:"+port;
+  args.push(endpoint);
+  args.push("--database.directory");
+  args.push(fs.join(tmpDataDir,"data"));
+  fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
+  args.push("--upgrade");
+  result.first = executeAndWait(ArangoServerState.executablePath(), args);
+
+  if (result.first !== 0 && !options.force) {
+    return result;
+  }
+  result.second = executeAndWait(ArangoServerState.executablePath(), args);
+
+  fs.removeDirectoryRecursive(tmpDataDir);
+
+  return result;
+};
+
+testFuncs.foxx_manager = function (options) {
+  print("foxx_manager tests...");
+  var instanceInfo = startInstance("tcp",options);
+  var results = {};
+  
+  results.update = runArangoshCmd(options, instanceInfo, 
+                                  ["--configuration",
+                                   "etc/relative/foxx-manager.conf",
+                                   "update"]);
+  if (results.update === 0 || options.force) {
+    results.search = runArangoshCmd(options, instanceInfo, 
+                                    ["--configuration",
+                                     "etc/relative/foxx-manager.conf",
+                                     "search","itzpapalotl"]);
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
 var allTests = 
   [
     "make",
@@ -603,9 +737,9 @@ var allTests =
     "shell_client",
     "dump",
     "arangob",
-    "import",
+    "importing",
     "upgrade",
-    "dfdb",
+    // "dfdb",    needs input redirection, but is not a good test anyway
     "foxx_manager",
     "authentication",
     "authentication_parameters"
@@ -659,14 +793,6 @@ function UnitTest (which, options) {
 
 exports.UnitTest = UnitTest;
 
-// PROBLEME:
-//     context-Problem wg. HTTP REST execute statt command line
-//        ==> testMode
-//   shell_server:
-//        "js/server/tests/transactions.js",
-//   shell_server_ahuacatl:
-//        "js/server/tests/ahuacatl-functions.js",
-//        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
