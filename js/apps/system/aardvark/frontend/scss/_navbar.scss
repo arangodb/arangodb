@@ -27,6 +27,9 @@ ul.navlist {
   > li:hover {
     background-color: $c_positive;
   }
+  li.dropdown-item {
+    margin-left: 0px;
+  }
 }
 
 a.tab {

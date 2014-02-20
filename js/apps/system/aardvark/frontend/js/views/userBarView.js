@@ -60,17 +60,7 @@
     },
 
     hideDropdown: function (e) {
-      console.log(e.type);
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === "") {
-        tab = $(tab).closest(".user-dropdown-menu");
-        navigateTo = tab.attr("id");
-      }
-      if (navigateTo === "user" || navigateTo === "user_dropdown" || navigateTo === "userimage" ) {
-        $("#user_dropdown").hide();
-        return;
-      }
+      $("#user_dropdown").hide();
     },
 
     removeAllNotifications: function () {
