@@ -1,7 +1,7 @@
 # coding: utf-8
 
 require 'rspec'
-require './arangodb.rb'
+require 'arangodb.rb'
 
 describe ArangoDB do
   api = "/_api/transaction"
