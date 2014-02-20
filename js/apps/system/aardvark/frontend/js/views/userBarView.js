@@ -135,7 +135,7 @@
     },
 
     userLogout : function() {
-      this.userCollection.whoAmI(),
+      this.userCollection.whoAmI();
       this.userCollection.logout();
     }
   });
