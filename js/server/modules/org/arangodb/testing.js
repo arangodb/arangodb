@@ -182,6 +182,10 @@ function startInstance (protocol, options) {
     fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
     args.push("--log.file");
     args.push(fs.join(tmpDataDir,"log"));
+    if (protocol === "ssl") {
+      args.push("--server.keyfile");
+      args.push(fs.join("UnitTests","server.pem"));
+    }
     instanceInfo.pid = executeExternal(ArangoServerState.executablePath(), 
                                        args);
   }
@@ -524,26 +528,66 @@ testFuncs.single = function (options) {
 
 };
 
-testFuncs.http_server = function (options) {
-  var instanceInfo = startInstance("tcp",options);
-  var result = {};
+function rubyTests (options, ssl) {
+  var instanceInfo;
+  if (ssl) {
+    instanceInfo = startInstance("ssl",options);
+  }
+  else {
+    instanceInfo = startInstance("tcp",options);
+  }
 
-  
+  var tmpname = fs.getTempFile()+".rb";
+  fs.write(tmpname,'RSpec.configure do |c|\n'+
+                   '  c.add_setting :ARANGO_SERVER\n'+
+                   '  c.ARANGO_SERVER = "' + 
+                          instanceInfo.endpoint.substr(6) + '"\n'+
+                   '  c.add_setting :ARANGO_SSL\n'+
+                   '  c.ARANGO_SSL = "' + (ssl ? '1' : '0') + '"\n'+
+                   '  c.add_setting :ARANGO_USER\n'+
+                   '  c.ARANGO_USER = "' + options.username + '"\n'+
+                   '  c.add_setting :ARANGO_PASSWORD\n'+
+                   '  c.ARANGO_PASSWORD = "' + options.password + '"\n'+
+                   'end\n');
+  var files = fs.list(fs.join("UnitTests","HttpInterface"));
+  var result = {};
+  var args;
+  for (i = 0; i < files.length; i++) {
+    n = files[i];
+    if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
+      print("Considering",n,"...");
+      if ((n.indexOf("-cluster-") === -1 || options.cluster) &&
+          (n.indexOf("-noncluster-") === -1 || options.cluster === false) &&
+          n.indexOf("replication") === -1) {
+        args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
+                "--format", "d", "--require", tmpname,
+                fs.join("UnitTests","HttpInterface",n)];
+        pid = executeExternal("rspec", args);
+        r = statusExternal(pid, true);
+        result[n] = r.exit;
+        if (r.exit !== 0 && !options.force) {
+          break;
+        }
+      }
+      else {
+        print("Skipped because of cluster/non-cluster or replication.");
+      }
+    }
+  }
   
   print("Shutting down...");
+  fs.remove(tmpname);
   shutdownInstance(instanceInfo,options);
   print("done.");
   return result;
+}
+
+testFuncs.http_server = function (options) {
+  return rubyTests(options, false);
 };
 
-testFuncs.dummy = function (options) {
-  var instanceInfo = startInstance("tcp",options);
-  print("Startup done.");
-  //wait(3600);
-  print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
-  print("done.");
-  return true;
+testFuncs.ssl_server = function (options) {
+  return rubyTests(options, true);
 };
 
 var allTests = 
