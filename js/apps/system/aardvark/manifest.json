@@ -14,6 +14,7 @@
       "files": [
         "frontend/html/start.html.part",
         "frontend/html/headadmin.html.part",
+        "frontend/js/templates/**",
         "frontend/html/body.html.part",
         "frontend/html/scriptsadmin.html.part",
         "frontend/html/end.html.part"
@@ -149,7 +150,6 @@
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
-    "/js/templates" : "frontend/js/templates",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/" : "frontend/src"
   },

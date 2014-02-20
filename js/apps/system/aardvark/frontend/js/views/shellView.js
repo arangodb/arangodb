@@ -15,7 +15,7 @@
     template: templateEngine.createTemplate("shellView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
 
       this.replShell();
 
