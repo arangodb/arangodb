@@ -570,7 +570,7 @@
     render: function() {
       this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.getIndex();
       this.initTable();
       this.breadcrumb();

@@ -6,8 +6,8 @@
   
   window.PlanSymmetricView = Backbone.View.extend({
     el: "#content",
-    template: plannerTemplateEngine.createTemplate("symmetricPlan.ejs"),
-    entryTemplate: plannerTemplateEngine.createTemplate("serverEntry.ejs"),
+    template: templateEngine.createTemplate("symmetricPlan.ejs"),
+    entryTemplate: templateEngine.createTemplate("serverEntry.ejs"),
 
     events: {
       "click #startPlan": "startPlan",

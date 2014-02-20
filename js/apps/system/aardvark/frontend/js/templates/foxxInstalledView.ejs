@@ -1,3 +1,4 @@
+<script id="foxxInstalledView.ejs" type="text/template">
 <div class="iconSet">
 </div>
   <img src="foxxes/thumbnail/<%= attributes.app %>" height="50" width="50" alt="" class="icon">
@@ -11,3 +12,4 @@
       <button class="btn btn-success install">Install</button>
     </div>
   <h5 class="collectionName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %> - v: <%= attributes.version %></h5>
+</script>

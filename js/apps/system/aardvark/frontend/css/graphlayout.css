@@ -237,9 +237,3 @@ div.queryline div.searchByAttribute > ul.dropdown-menu {
   display: none;
   /* background-color: #8F8D8C; */
 }
-
-/* Temporary */
-#transparentPlaceholder {
-  margin-right: -100%;
-}
-

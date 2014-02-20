@@ -8,7 +8,7 @@
 
     el: "#content",
 
-    template: plannerTemplateEngine.createTemplate("testPlan.ejs"),
+    template: templateEngine.createTemplate("testPlan.ejs"),
 
     events: {
       "click #startPlan": "startPlan"
