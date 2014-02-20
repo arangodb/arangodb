@@ -23,7 +23,6 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
-    console.log("huhu");
     this.activeUser = undefined;
     this.reset();
     $.ajax("unauthorized", {async:false}).error(
