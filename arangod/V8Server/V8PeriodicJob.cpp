@@ -86,7 +86,7 @@ const string& V8PeriodicJob::queue () {
 
 Job::status_e V8PeriodicJob::work () {
   ApplicationV8::V8Context* context
-    = _v8Dealer->enterContext(_vocbase, true, false);
+    = _v8Dealer->enterContext(_vocbase, 0, true, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == 0) {
