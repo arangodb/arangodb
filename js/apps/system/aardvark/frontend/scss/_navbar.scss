@@ -8,8 +8,8 @@ nav.navbar {
 div.navlogo {
   @extend %pull-left;
   margin-left: 5px;
-  margin-right: 5px;
   margin-right: 1px;
+  padding-top: 3px;
 }
 
 div.navmenu {
@@ -38,6 +38,9 @@ a.tab {
     left: 10px;
     bottom: 10px;
     right: 10px;
+  }
+  &.userImg {
+    padding-bottom: 4px;
   }
   color: $c_white;
   display: block;

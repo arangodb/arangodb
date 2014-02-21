@@ -21,7 +21,8 @@
       this.collection.bind("remove", this.renderNotifications.bind(this));
       this.collection.bind("reset", this.renderNotifications.bind(this));
       this.userCollection = this.options.userCollection;
-      this.userCollection.bind("change", this.render(this.$el));
+      this.userCollection.fetch({async:false});
+      this.userCollection.bind("change:extra", this.render.bind(this));
     },
 
     notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
@@ -87,14 +88,13 @@
       }));
     },
 
-    render: function (el) {
+    render: function () {
       var username = this.userCollection.whoAmI(),
         img = null,
         name = null,
         active = false,
         currentUser = null;
       if (username !== null) {
-        this.userCollection.fetch({async:false});
         currentUser = this.userCollection.findWhere({user: username});
         currentUser.set({loggedIn : true});
         name = currentUser.get("extra").name;
@@ -104,13 +104,13 @@
       if (!img) {
         img = "img/arangodblogoAvatar.png";
       } else {
-        img = "https://s.gravatar.com/avatar/" + img + "?s=28";
+        img = "https://s.gravatar.com/avatar/" + img + "?s=24";
       }
       if (!name) {
         name = "";
       }
 
-      this.$el = el;
+      this.$el = $("#userBar");
       this.$el.html(this.template.render({
         img : img,
         name : name,
@@ -118,11 +118,9 @@
         active : active,
         notifications : this.collection
       }));
-
       this.renderNotifications();
 
       this.delegateEvents();
-      this.renderNotifications();
       return this.$el;
     },
 

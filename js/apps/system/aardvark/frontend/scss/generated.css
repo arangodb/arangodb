@@ -110,11 +110,11 @@ div.resizecontainer {
     display: inline-block; } }
 @media (min-width: 799px) and (max-width: 1041px) {
   #arangoCollectionUl a {
-    font-size: 11px;
-    padding: 7px 5px 10px; } }
+    font-size: 12px;
+    padding: 10px 5px 10px; } }
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
-    font-size: 13px; } }
+    font-size: 14px; } }
 @media (min-width: 6px) and (max-width: 247px) {
   div.resizecontainer {
     width: 0px; } }
@@ -193,8 +193,8 @@ nav.navbar {
 
 div.navlogo {
   margin-left: 5px;
-  margin-right: 5px;
-  margin-right: 1px; }
+  margin-right: 1px;
+  padding-top: 3px; }
 
 ul.navlist {
   list-style: none; }
@@ -214,6 +214,8 @@ a.tab {
   padding-right: 10px;
   color: white;
   display: block; }
+  a.tab.userImg {
+    padding-bottom: 4px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -376,9 +378,9 @@ li.tile {
   cursor: pointer; }
 
 #stat_hd {
-  width: 22px;
-  height: 22px;
-  margin-top: 5px;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051; }
@@ -395,8 +397,8 @@ li.tile {
 
 #stat_hd #stat_hd_counter {
   color: white;
-  margin-left: 7px;
-  line-height: 23px; }
+  margin-left: 8px;
+  line-height: 24px; }
 
 .contentButtons {
   clear: both;
@@ -494,6 +496,9 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
-  height: "28";
-  width: "28";
+  height: "26";
+  width: "26";
+  background-color: #333232;
+  border-radius: 3px;
+  border: 2px solid #8AA051;
   margin-top: -3px; }
