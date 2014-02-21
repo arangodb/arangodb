@@ -929,21 +929,48 @@ function UnitTest (which, options) {
     printUsage();
     return;
   }
+  var i;
+  var ok;
+  var r;
   if (which === "all") {
     var n;
     var results = {};
+    var allok = true;
     for (n = 0;n < allTests.length;n++) {
-      results[allTests[n]] = testFuncs[allTests[n]](options);
+      results[allTests[n]] = r = testFuncs[allTests[n]](options);
+      ok = true;
+      for (i in r) {
+        if (r.hasOwnProperty(i)) {
+          if (r[i] !== 0 && r[i] !== true) {
+            ok = false;
+          }
+        }
+      }
+      r.ok = ok;
+      if (!ok) {
+        allok = false;
+      }
     }
+    results.all_ok = allok;
     return results;
   }
   if (!testFuncs.hasOwnProperty(which)) {
     printUsage();
     throw 'Unknown test "'+which+'"';
   }
-  var r = {};
-  r[which] = testFuncs[which](options);
-  return r;
+  var rr = {};
+  rr[which] = r = testFuncs[which](options);
+  ok = true;
+  for (i in r) {
+    if (r.hasOwnProperty(i)) {
+      if (r[i] !== 0 && r[i] !== true) {
+        ok = false;
+      }
+    }
+  }
+  r.ok = ok;
+  rr.all_ok = ok;
+  return rr;
 }
 
 exports.UnitTest = UnitTest;
