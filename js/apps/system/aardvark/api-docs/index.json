@@ -47,7 +47,7 @@
                             "description": "The index-handle. "
                         }
                     ],
-                    "notes": "<br><br>The result is an objects describing the index. It has at least the following attributes: <br><br>- <em>id</em>: The identifier of the index.<br><br>- <em>type</em>: The type of the collection.<br><br>All other attributes are type-dependent. <br><br>",
+                    "notes": "<br><br>The result is an objects describing the index. It has at least the following attributes: <br><br>- <em>id</em>: The identifier of the index.<br><br>All other attributes are type-dependent. <br><br>",
                     "summary": "reads an index",
                     "httpMethod": "GET",
                     "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/index/products/0\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/0\", \n  \"type\" : \"primary\", \n  \"unique\" : true, \n  \"fields\" : [ \n    \"_id\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
