@@ -132,7 +132,6 @@
         "frontend/css/api.css",
         "frontend/css/general.css",
         "frontend/css/headerBar.css",
-        "frontend/css/buttons.css",
         "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
         "frontend/css/jsoneditor.css",
