@@ -1,4 +1,10 @@
 ; CPack install script designed for a nmake build
+!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
+
+;--------------------------------
+; Include LogicLib for more readable code
+  !include "LogicLib.nsh"
+
 
 ;--------------------------------
 ; You must define these values
@@ -19,6 +25,9 @@
   Var ADD_TO_PATH_CURRENT_USER
   Var INSTALL_DESKTOP
   Var IS_DEFAULT_INSTALLDIR
+; Variables for definition of instdir
+  VAR TRI_INSTALL_AS_SERVICE
+  VAR TRI_INSTALL_SINGLE_USER
 ;--------------------------------
 ;Include Modern UI
 
@@ -551,6 +560,7 @@ FunctionEnd
 
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
   Page custom InstallOptionsPage
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
 
   ;Start Menu Folder Page Configuration
@@ -721,7 +731,14 @@ Section "-Core installation"
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
+  
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
+   StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 nothing
+     SimpleSC::StopService  'ArangoDB' 0 30
+     SimpleSC::RemoveService  'ArangoDB' 
+     SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' '' 
+     SimpleSC::StartService 'ArangoDB' '' 30
+   nothing:
 
 SectionEnd
 
@@ -740,6 +757,33 @@ Function InstallOptionsPage
   !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
 
 FunctionEnd
+;------------------------
+; Create 
+Function ArangoPreInstallationOptionsPage
+  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as Service?"
+  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
+FunctionEnd
+
+;--------------------------------
+Function default_installation_directory
+; Read variables which defines if arango should be installed as Service 
+  !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_AS_SERVICE "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $0 "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_SINGLE_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+
+  StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 checkSingleUser
+    SetShellVarContext all
+    Abort
+  checkSingleUser:
+    SetShellVarContext current
+    StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
+  all_users:
+    SetShellVarContext all
+    StrCpy $TRI_INSTALL_AS_SERVICE '1'
+FunctionEnd
+
 
 ;--------------------------------
 ; determine admin versus local install
@@ -823,6 +867,17 @@ Section "Uninstall"
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
 @CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS@
+       StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 nothing
+         SimpleSC::StopService  'ArangoDB' 0 30
+         SimpleSC::RemoveService  'ArangoDB' 
+         Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+         IntCmp $0 0 Done +1 +1 
+         Push $0
+         SimpleSC::GetErrorMessage
+         Pop $0
+         MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
+       Done:
+       nothing:
 
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
