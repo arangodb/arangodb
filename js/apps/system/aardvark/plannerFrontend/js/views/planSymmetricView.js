@@ -10,7 +10,7 @@
     entryTemplate: templateEngine.createTemplate("serverEntry.ejs"),
 
     events: {
-      "click #startPlan": "startPlan",
+      "click #startSymmetricPlan": "startPlan",
       "click .add": "addEntry",
       "click .delete": "removeEntry"
     },

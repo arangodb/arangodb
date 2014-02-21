@@ -72,6 +72,13 @@ li.tile {
     font-weight: 300;
     color: $c_white;
 
+    button.btn {
+      margin: {
+        left: 0px;
+        right: 5px;
+      }
+    }
+
     span {
       display: inline-block;
       line-height: 13px;
@@ -107,3 +114,16 @@ li.tile {
   right: 0px;
 }
 
+li.bigtile {
+  @extend li.tile;
+  height:250px;
+  width: 345px;
+
+  div.shardContainer {
+    font-size: 30px;
+
+    span {
+      padding: 2px;
+    }
+  }
+}

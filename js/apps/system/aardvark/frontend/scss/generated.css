@@ -1,7 +1,7 @@
-ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
+ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile {
   float: left; }
 
-div.navmenu, div.footer-right, li.tile div.iconSet span {
+div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
 ul.tileList:after, div.resizecontainer:after {
@@ -12,7 +12,7 @@ ul.tileList:after, div.resizecontainer:after {
   height: 0px;
   visibility: hidden; }
 
-li.tile div.iconSet span, .contentDiv .icon, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .addButton, .deleteButton, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -24,14 +24,14 @@ nav.navbar, footer.footer {
   color: white;
   z-index: 1000; }
 
-.contentTables td span {
+.deleteButton, .contentTables td span {
   color: #da4f49; }
-  .contentTables td span:hover {
+  .deleteButton:hover, .contentTables td span:hover {
     color: #be342e; }
 
-.contentTables td.dbThSecond span {
+.addButton, .contentTables td.dbThSecond span {
   color: #8aa051; }
-  .contentTables td.dbThSecond span:hover {
+  .addButton:hover, .contentTables td.dbThSecond span:hover {
     color: #788f3d; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu {
@@ -93,8 +93,13 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
 
 nav.navbar {
   top: 0px;
-  height: 34px;
+  height: 38px;
   margin-bottom: 3px; }
+
+div.navlogo {
+  margin-left: 5px;
+  margin-right: 1px;
+  padding-top: 3px; }
 
 ul.navlist {
   list-style: none; }
@@ -104,14 +109,18 @@ ul.navlist {
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
     background-color: #8aa051; }
+  ul.navlist li.dropdown-item {
+    margin-left: 0px; }
 
 a.tab {
-  padding-top: 7px;
+  padding-top: 9px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
   color: white;
   display: block; }
+  a.tab.userImg {
+    padding-bottom: 5px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -119,6 +128,22 @@ a.tab {
   padding-bottom: 0;
   margin-bottom: 0;
   margin-right: 15px; }
+
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 5px solid white;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: ""; }
+
+.navbar-spacer-big {
+  margin-right: 18px; }
+
+.navbar-spacer-med {
+  margin-right: 10px; }
 
 footer.footer {
   bottom: 0px;
@@ -132,7 +157,7 @@ ul.tileList {
   margin-left: -6px;
   margin-right: -6px; }
 
-li.tile {
+li.tile, li.bigtile {
   position: relative;
   text-align: center;
   height: 100px;
@@ -145,7 +170,7 @@ li.tile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none; }
-  li.tile h5 {
+  li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -154,45 +179,48 @@ li.tile {
     background: #686766;
     padding: 4px 8px;
     margin: 0; }
-  li.tile div.iconSet {
+  li.tile div.iconSet, li.bigtile div.iconSet {
     position: absolute;
     top: 5px;
     right: 5px; }
-    li.tile div.iconSet span {
+    li.tile div.iconSet span, li.bigtile div.iconSet span {
       opacity: 0.5;
       font-size: 18px;
       padding-left: 7px; }
-      li.tile div.iconSet span:hover {
+      li.tile div.iconSet span:hover, li.bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      li.tile div.iconSet span.disabled {
+      li.tile div.iconSet span.disabled, li.bigtile div.iconSet span.disabled {
         opacity: 0.2;
         cursor: default; }
-  li.tile .badge-success {
+  li.tile .badge-success, li.bigtile .badge-success {
     font-weight: 300; }
-  li.tile .unloaded div {
+  li.tile .unloaded div, li.bigtile .unloaded div {
     border-bottom: 16px solid #FF8F35; }
-  li.tile .deleted div {
+  li.tile .deleted div, li.bigtile .deleted div {
     border-bottom: 16px solid red; }
-  li.tile div.tileBadge {
+  li.tile div.tileBadge, li.bigtile div.tileBadge {
     position: absolute;
     right: 0px;
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     color: white; }
-    li.tile div.tileBadge span {
+    li.tile div.tileBadge button.btn, li.bigtile div.tileBadge button.btn {
+      margin-left: 0px;
+      margin-right: 5px; }
+    li.tile div.tileBadge span, li.bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      li.tile div.tileBadge span div.corneredBadge {
+      li.tile div.tileBadge span div.corneredBadge, li.bigtile div.tileBadge span div.corneredBadge {
         padding-left: 4px;
         padding-right: 9px;
         height: 0px;
         border-left: 17px solid transparent;
         border-bottom-width: 17px;
         border-bottom-style: solid; }
-        li.tile div.tileBadge span div.corneredBadge.loaded {
+        li.tile div.tileBadge span div.corneredBadge.loaded, li.bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        li.tile div.tileBadge span div.corneredBadge.unloaded {
+        li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
 .collectionName {
@@ -202,6 +230,14 @@ li.tile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+li.bigtile {
+  height: 250px;
+  width: 345px; }
+  li.bigtile div.shardContainer {
+    font-size: 30px; }
+    li.bigtile div.shardContainer span {
+      padding: 2px; }
 
 div.resizecontainer {
   margin: 0px auto; }
@@ -296,64 +332,131 @@ div.centralContent {
 .clusterInfoIcon {
   font-size: 30px; }
 
+.btn {
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: 0;
+  -moz-box-shadow: 0;
+  box-shadow: 0; }
+
+.addButton {
+  position: relative;
+  margin-right: 7px;
+  font-size: 22px;
+  margin-top: 2px; }
+
+.deleteButton {
+  font-size: 22px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative;
+  cursor: pointer; }
+
+ul.headerButtonList {
+  display: inline-block;
+  *display: inline;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0 !important; }
+  ul.headerButtonList li {
+    display: inline;
+    margin-right: 2px; }
+
+a.headerButton {
+  float: left;
+  cursor: pointer;
+  margin-top: 2px;
+  margin-left: 5px;
+  margin-right: 3px;
+  min-height: 15px;
+  border-radius: 3px;
+  position: relative;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+  background-color: #dddddd;
+  color: #555555;
+  height: 17px;
+  width: 9px;
+  padding: 4px 9px 2px 9px;
+  border: 1px solid #222222; }
+
+a.headerButton:hover {
+  background-color: white;
+  color: black; }
+
+a.paginationButton, ul.arangoPagination a {
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px; }
+
+/* better look of some icons */
+a.headerButton .icon_arangodb_filter {
+  top: 3px !important; }
+a.headerButton .icon_arangodb_import {
+  top: 1px !important; }
+a.headerButton .icon_arangodb_checklist {
+  top: 3px !important;
+  right: 5px; }
+a.headerButton .icon_arangodb_arrowleft,
+a.headerButton .icon_arangodb_arrowright {
+  font-weight: bold; }
+
+/* Graph Viewer */
+div.toolbox > div.gv_action_button:first-child {
+  margin-top: 0px; }
+div.toolbox > div.gv_action_button:last-child {
+  margin-bottom: 0px; }
+
+div.gv_action_button {
+  text-align: center;
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background-color: #333232;
+  color: white;
+  cursor: pointer;
+  margin-top: 2px;
+  margin-bottom: 2px; }
+
+div.gv_action_button.active {
+  background-color: #8aa051; }
+
+h6.gv_icon_icon,
+h6.gv_button_title {
+  position: absolute;
+  margin: 0px;
+  left: 0px;
+  right: 0px; }
+
+h6.gv_icon_icon {
+  font-size: 22px;
+  top: 6px; }
+
+h6.gv_button_title {
+  bottom: 1px; }
+
+/*
+#documentsToolbar span {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 25px;
+  margin-right: 3px;
+  margin-left: 0px;
+}
+
+#documentsToolbar li a {
+  margin-top: 0px !important;
+  padding: 5px 11px 2px 9px;
+}
+
+*/
 body, input, textarea, .page-title span, .pingback a.url {
   /*font-family: "Helvetica",sans-serif;*/
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
-
-nav.navbar {
-  top: 0px;
-  height: 38px;
-  margin-bottom: 3px; }
-
-div.navlogo {
-  margin-left: 5px;
-  margin-right: 1px;
-  padding-top: 3px; }
-
-ul.navlist {
-  list-style: none; }
-  ul.navlist li {
-    margin-left: 1px; }
-  ul.navlist > li.active,
-  ul.navlist li.dropdown-item:hover,
-  ul.navlist > li:hover {
-    background-color: #8aa051; }
-  ul.navlist li.dropdown-item {
-    margin-left: 0px; }
-
-a.tab {
-  padding-top: 9px;
-  padding-left: 10px;
-  padding-bottom: 10px;
-  padding-right: 10px;
-  color: white;
-  display: block; }
-  a.tab.userImg {
-    padding-bottom: 5px; }
-
-#arangoCollectionSelect {
-  display: none;
-  float: right;
-  padding-bottom: 0;
-  margin-bottom: 0;
-  margin-right: 15px; }
-
-.caret {
-  display: inline-block;
-  width: 0;
-  height: 0;
-  vertical-align: top;
-  border-top: 5px solid white;
-  border-right: 5px solid transparent;
-  border-left: 5px solid transparent;
-  content: ""; }
-
-.navbar-spacer-big {
-  margin-right: 18px; }
-
-.navbar-spacer-med {
-  margin-right: 10px; }
 
 footer.footer {
   bottom: 0px;
@@ -367,7 +470,7 @@ ul.tileList {
   margin-left: -6px;
   margin-right: -6px; }
 
-li.tile {
+li.tile, li.bigtile {
   position: relative;
   text-align: center;
   height: 100px;
@@ -380,7 +483,7 @@ li.tile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none; }
-  li.tile h5 {
+  li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -389,45 +492,48 @@ li.tile {
     background: #686766;
     padding: 4px 8px;
     margin: 0; }
-  li.tile div.iconSet {
+  li.tile div.iconSet, li.bigtile div.iconSet {
     position: absolute;
     top: 5px;
     right: 5px; }
-    li.tile div.iconSet span {
+    li.tile div.iconSet span, li.bigtile div.iconSet span {
       opacity: 0.5;
       font-size: 18px;
       padding-left: 7px; }
-      li.tile div.iconSet span:hover {
+      li.tile div.iconSet span:hover, li.bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      li.tile div.iconSet span.disabled {
+      li.tile div.iconSet span.disabled, li.bigtile div.iconSet span.disabled {
         opacity: 0.2;
         cursor: default; }
-  li.tile .badge-success {
+  li.tile .badge-success, li.bigtile .badge-success {
     font-weight: 300; }
-  li.tile .unloaded div {
+  li.tile .unloaded div, li.bigtile .unloaded div {
     border-bottom: 16px solid #FF8F35; }
-  li.tile .deleted div {
+  li.tile .deleted div, li.bigtile .deleted div {
     border-bottom: 16px solid red; }
-  li.tile div.tileBadge {
+  li.tile div.tileBadge, li.bigtile div.tileBadge {
     position: absolute;
     right: 0px;
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     color: white; }
-    li.tile div.tileBadge span {
+    li.tile div.tileBadge button.btn, li.bigtile div.tileBadge button.btn {
+      margin-left: 0px;
+      margin-right: 5px; }
+    li.tile div.tileBadge span, li.bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      li.tile div.tileBadge span div.corneredBadge {
+      li.tile div.tileBadge span div.corneredBadge, li.bigtile div.tileBadge span div.corneredBadge {
         padding-left: 4px;
         padding-right: 9px;
         height: 0px;
         border-left: 17px solid transparent;
         border-bottom-width: 17px;
         border-bottom-style: solid; }
-        li.tile div.tileBadge span div.corneredBadge.loaded {
+        li.tile div.tileBadge span div.corneredBadge.loaded, li.bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        li.tile div.tileBadge span div.corneredBadge.unloaded {
+        li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
 .collectionName {
@@ -437,6 +543,14 @@ li.tile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+li.bigtile {
+  height: 250px;
+  width: 345px; }
+  li.bigtile div.shardContainer {
+    font-size: 30px; }
+    li.bigtile div.shardContainer span {
+      padding: 2px; }
 
 .fixedDropdown {
   margin: 37px 0 0 0 !important;
