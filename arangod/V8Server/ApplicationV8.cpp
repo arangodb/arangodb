@@ -294,24 +294,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   v8g->_vocbase = vocbase;
-
-#ifdef TRI_ENABLE_CLUSTER
-  if (v8g->_originalDatabase != 0) {
-    TRI_Free(TRI_CORE_MEM_ZONE, v8g->_originalDatabase);
-  }
-
-  if (request != 0 && ServerState::instance()->isCoordinator()) {
-    // copy the name of the originally selected database into our reach
-    const string& dbName = request->originalDatabaseName();
-    v8g->_originalDatabase = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, dbName.c_str(), dbName.size());
-  }
-  else {
-    v8g->_originalDatabase = 0;
-  }
-#endif
-
   v8g->_allowUseDatabase = allowUseDatabase;
-
 
   LOG_TRACE("entering V8 context %d", (int) context->_id);
   context->handleGlobalContextMethods();

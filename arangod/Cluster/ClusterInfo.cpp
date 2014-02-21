@@ -38,6 +38,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/StringUtils.h"
+#include "VocBase/server.h"
 
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
@@ -487,7 +488,7 @@ void ClusterInfo::loadPlannedDatabases () {
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string& name = (*it).first;
+      string const& name = (*it).first;
       TRI_json_t* options = (*it).second._json;
 
       // steal the json

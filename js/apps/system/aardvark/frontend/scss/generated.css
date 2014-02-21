@@ -120,7 +120,7 @@ a.tab {
   color: white;
   display: block; }
   a.tab.userImg {
-    padding-bottom: 4px; }
+    padding-bottom: 5px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -742,3 +742,11 @@ select.filterSelect {
   max-width: 300px !important;
   word-wrap: break-word !important;
   white-space: normal !important; }
+
+.dbselection {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 160px;
+  float: left;
+  margin-right: 3px; }

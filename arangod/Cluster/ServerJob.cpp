@@ -25,7 +25,7 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DBServerJob.h"
+#include "ServerJob.h"
 #include "Basics/MutexLocker.h"
 #include "BasicsC/logging.h"
 #include "Cluster/HeartbeatThread.h"
@@ -35,7 +35,7 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class DBServerJob
+// --SECTION--                                                 class ServerJob
 // -----------------------------------------------------------------------------
 
 static triagens::basics::Mutex ExecutorLock;
@@ -55,9 +55,9 @@ using namespace triagens::rest;
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-DBServerJob::DBServerJob (HeartbeatThread* heartbeat,
-                          TRI_server_t* server,
-                          ApplicationV8* applicationV8) 
+ServerJob::ServerJob (HeartbeatThread* heartbeat,
+                      TRI_server_t* server,
+                      ApplicationV8* applicationV8) 
   : Job("HttpServerJob"),
     _heartbeat(heartbeat),
     _server(server),
@@ -70,7 +70,7 @@ DBServerJob::DBServerJob (HeartbeatThread* heartbeat,
 /// @brief destructs a db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-DBServerJob::~DBServerJob () {
+ServerJob::~ServerJob () {
 }
 
 // -----------------------------------------------------------------------------
@@ -81,7 +81,7 @@ DBServerJob::~DBServerJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_e DBServerJob::work () {
+Job::status_e ServerJob::work () {
   LOG_TRACE("starting plan update handler");
 
   if (_shutdown != 0) {
@@ -105,11 +105,12 @@ Job::status_e DBServerJob::work () {
 /// @brief execute job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DBServerJob::execute () {
+bool ServerJob::execute () {
   // default to system database
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, "_system");
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == 0) {
+    // database is gone
     return false;
   }
 
@@ -131,7 +132,7 @@ bool DBServerJob::execute () {
     TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), v8::String::New(file), false);
   }
 
-  // get the pointer to the least used vocbase
+  // get the pointer to the last used vocbase
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
   void* orig = v8g->_vocbase;
 
