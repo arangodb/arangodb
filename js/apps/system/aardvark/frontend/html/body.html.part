@@ -9,6 +9,8 @@
         </div>
         <div class="usermenu" id="userBar" style="float:right;">
         </div>
+        <div class="notificationmenu" id="notificationBar" style="float:right;">
+        </div>
         <div class="navmenu" id="navigationBar">
         </div>
     </div>
