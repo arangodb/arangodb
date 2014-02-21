@@ -59,14 +59,8 @@ void triagens::arango::ClusterCommRestCallback(string& coordinator,
 /// @brief ClusterComm constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::ClusterComm () {
-  _backgroundThread = new ClusterCommThread();
-  if (0 == _backgroundThread) {
-    LOG_FATAL_AND_EXIT("unable to start ClusterComm background thread");
-  }
-  if (! _backgroundThread->init() || ! _backgroundThread->start()) {
-    LOG_FATAL_AND_EXIT("ClusterComm background thread does not work");
-  }
+ClusterComm::ClusterComm () :
+  _backgroundThread(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,10 +68,13 @@ ClusterComm::ClusterComm () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm () {
-  _backgroundThread->stop();
-  _backgroundThread->shutdown();
-  delete _backgroundThread;
-  _backgroundThread = 0;
+  if (_backgroundThread != 0) {
+    _backgroundThread->stop();
+    _backgroundThread->shutdown();
+    delete _backgroundThread;
+    _backgroundThread = 0;
+  }
+
   cleanupAllQueues();
 }
 
@@ -100,12 +97,30 @@ ClusterComm* ClusterComm::instance () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief only used to trigger creation
+/// @brief initialise the cluster comm singleton object
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialise () {
   assert(_theinstance == 0);
-  _theinstance = new ClusterComm( );  // this now happens exactly once
+  _theinstance = new ClusterComm();  // this now happens exactly once
+ 
+  _theinstance->startBackgroundThread(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the communication background thread
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterComm::startBackgroundThread () {
+  _backgroundThread = new ClusterCommThread();
+
+  if (0 == _backgroundThread) {
+    LOG_FATAL_AND_EXIT("unable to start ClusterComm background thread");
+  }
+
+  if (! _backgroundThread->init() || ! _backgroundThread->start()) {
+    LOG_FATAL_AND_EXIT("ClusterComm background thread does not work");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

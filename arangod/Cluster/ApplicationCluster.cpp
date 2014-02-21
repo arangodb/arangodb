@@ -155,13 +155,11 @@ bool ApplicationCluster::prepare () {
     }
   }
   
+  // initialise ClusterInfo library
+  ClusterInfo::initialise(); 
+
   // initialise ClusterComm library
   ClusterComm::initialise();
-
-  // initialise cluster info library
-  ClusterInfo::instance();
-
-  usleep(1000);
 
   return true;
 }
