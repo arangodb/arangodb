@@ -513,3 +513,9 @@ select.filterSelect {
   max-width: 300px !important;
   word-wrap: break-word !important;
   white-space: normal !important; }
+
+.dbselection {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 180px; }
