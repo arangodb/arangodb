@@ -17,7 +17,7 @@ div.resizecontainer:after, ul.tileList:after {
   height: 0px;
   visibility: hidden; }
 
-.contentDiv .icon, li.tile div.iconSet span, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+.contentDiv .icon, .addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, .contentTables tr.contentRowInactive a, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -29,14 +29,14 @@ nav.navbar, footer.footer {
   color: white;
   z-index: 1000; }
 
-.contentTables td span {
+.deleteButton, .contentTables td span {
   color: #da4f49; }
-  .contentTables td span:hover {
+  .deleteButton:hover, .contentTables td span:hover {
     color: #be342e; }
 
-.contentTables td.dbThSecond span {
+.addButton, .contentTables td.dbThSecond span {
   color: #8aa051; }
-  .contentTables td.dbThSecond span:hover {
+  .addButton:hover, .contentTables td.dbThSecond span:hover {
     color: #788f3d; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu {
@@ -186,9 +186,106 @@ div.centralContent {
     line-height: 0;
     content: ""; }
 
+.btn {
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: 0;
+  -moz-box-shadow: 0;
+  box-shadow: 0; }
+
+.addButton {
+  position: relative;
+  margin-right: 7px;
+  font-size: 22px;
+  margin-top: 2px; }
+
+.deleteButton {
+  font-size: 22px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative;
+  cursor: pointer; }
+
+ul.headerButtonList {
+  display: inline-block;
+  *display: inline;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0 !important; }
+  ul.headerButtonList li {
+    display: inline;
+    margin-right: 2px; }
+
+a.headerButton {
+  float: left;
+  margin-top: 2px;
+  margin-left: 5px;
+  margin-right: 3px;
+  position: relative;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+  background-color: #dddddd;
+  color: #555555;
+  height: 17px;
+  width: 9px;
+  padding: 4px 9px 2px 9px;
+  border: 1px solid #222222; }
+  a.headerButton:hover {
+    background-color: white;
+    color: black; }
+  a.headerButton .icon_arangodb_filter {
+    top: 3px !important; }
+  a.headerButton .icon_arangodb_import {
+    top: 1px !important; }
+  a.headerButton .icon_arangodb_checklist {
+    top: 3px !important;
+    right: 5px; }
+  a.headerButton .icon_arangodb_arrowleft,
+  a.headerButton .icon_arangodb_arrowright {
+    font-weight: bold; }
+
+/* Graph Viewer */
+div.toolbox > div.gv_action_button {
+  text-align: center;
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background-color: #333232;
+  color: white;
+  margin-top: 2px;
+  margin-bottom: 2px; }
+  div.toolbox > div.gv_action_button.active {
+    background-color: #8aa051; }
+  div.toolbox > div.gv_action_button:first-child {
+    margin-top: 0px; }
+  div.toolbox > div.gv_action_button:last-child {
+    margin-bottom: 0px; }
+
+h6 h6.gv_icon_icon, h6 h6.gv_button_title {
+  position: absolute;
+  margin: 0px;
+  left: 0px;
+  right: 0px; }
+h6.gv_icon_icon {
+  font-size: 22px;
+  top: 6px; }
+h6.gv_button_title {
+  bottom: 1px; }
+
+a.paginationButton,
+ul.arangoPagination a {
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px; }
+
 nav.navbar {
   top: 0px;
-  height: 37px;
+  height: 38px;
   margin-bottom: 3px; }
 
 div.navlogo {
@@ -200,6 +297,19 @@ ul.navlist {
   list-style: none; }
   ul.navlist li {
     margin-left: 1px; }
+    ul.navlist li.navbar-spacer {
+      width: 1px;
+      height: 28px;
+      margin-top: 5px;
+      background-color: white; }
+      ul.navlist li.navbar-spacer.big {
+        margin-left: 10px;
+        margin-right: 10px; }
+      ul.navlist li.navbar-spacer.med {
+        margin-left: 5px;
+        margin-right: 5px; }
+      ul.navlist li.navbar-spacer:hover {
+        background-color: white; }
   ul.navlist > li.active,
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
@@ -208,14 +318,14 @@ ul.navlist {
     margin-left: 0px; }
 
 a.tab {
-  padding-top: 8px;
+  padding-top: 9px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
   color: white;
   display: block; }
   a.tab.userImg {
-    padding-bottom: 4px; }
+    padding-bottom: 5px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -233,9 +343,6 @@ a.tab {
   border-right: 5px solid transparent;
   border-left: 5px solid transparent;
   content: ""; }
-
-.navbar-spacer {
-  margin-right: 15px; }
 
 footer.footer {
   bottom: 0px;
@@ -499,14 +606,20 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
-  height: "26";
-  width: "26";
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051;
-  margin-top: -3px; }
+  margin-top: -4px; }
 
 .tooltip-inner {
   max-width: 300px !important;
   word-wrap: break-word !important;
   white-space: normal !important; }
+
+.dbselection {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 160px;
+  float: left;
+  margin-right: 3px; }
