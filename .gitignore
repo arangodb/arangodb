@@ -102,4 +102,4 @@ js/apps/*
 !js/apps/system
 !js/apps/system/*
 
-.sass-cache
+.sass-cache/
