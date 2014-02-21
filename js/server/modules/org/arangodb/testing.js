@@ -243,123 +243,68 @@ function makePath (path) {
   return fs.join.apply(null,path.split("/"));
 }
 
-var tests_shell_common =
-  [ makePath("js/common/tests/shell-require.js"),
-    makePath("js/common/tests/shell-aqlfunctions.js"),
-    makePath("js/common/tests/shell-attributes.js"),
-    makePath("js/common/tests/shell-base64.js"),
-    makePath("js/common/tests/shell-collection.js"),
-    makePath("js/common/tests/shell-collection-volatile.js"),
-    makePath("js/common/tests/shell-crypto.js"),
-    makePath("js/common/tests/shell-database.js"),
-    makePath("js/common/tests/shell-document.js"),
-    makePath("js/common/tests/shell-download.js"),
-    makePath("js/common/tests/shell-edge.js"),
-    makePath("js/common/tests/shell-fs.js"),
-    makePath("js/common/tests/shell-graph-traversal.js"),
-    makePath("js/common/tests/shell-graph-algorithms.js"),
-    makePath("js/common/tests/shell-graph-measurement.js"),
-    makePath("js/common/tests/shell-keygen.js"),
-    makePath("js/common/tests/shell-simple-query.js"),
-    makePath("js/common/tests/shell-statement.js"),
-    makePath("js/common/tests/shell-transactions.js"),
-    makePath("js/common/tests/shell-unload.js"),
-    makePath("js/common/tests/shell-users.js"),
-    makePath("js/common/tests/shell-index.js"),
-    makePath("js/common/tests/shell-index-geo.js"),
-    makePath("js/common/tests/shell-cap-constraint.js"),
-    makePath("js/common/tests/shell-unique-constraint.js"),
-    makePath("js/common/tests/shell-hash-index.js"),
-    makePath("js/common/tests/shell-fulltext.js"),
-    makePath("js/common/tests/shell-graph.js")
-  ];
+var foundTests = false;
 
-var tests_shell_server_only =
-  [
-    makePath("js/server/tests/cluster.js"),
-    makePath("js/server/tests/compaction.js"),
-    makePath("js/server/tests/transactions.js"),
-    makePath("js/server/tests/routing.js"),
-    makePath("js/server/tests/shell-any.js"),
-    makePath("js/server/tests/shell-bitarray-index.js"),
-    makePath("js/server/tests/shell-database.js"),
-    makePath("js/server/tests/shell-foxx.js"),
-    makePath("js/server/tests/shell-foxx-repository.js"),
-    makePath("js/server/tests/shell-foxx-model.js"),
-    makePath("js/server/tests/shell-foxx-base-middleware.js"),
-    makePath("js/server/tests/shell-foxx-template-middleware.js"),
-    makePath("js/server/tests/shell-foxx-format-middleware.js"),
-    makePath("js/server/tests/shell-foxx-preprocessor.js"),
-    makePath("js/server/tests/shell-skiplist-index.js"),
-    makePath("js/server/tests/shell-skiplist-rm-performance.js"),
-    makePath("js/server/tests/shell-skiplist-correctness.js")
-  ];
+var tests_shell_common;
+var tests_shell_server_only;
+var tests_shell_client_only;
+var tests_shell_server;
+var tests_shell_client;
+var tests_shell_server_ahuacatl;
+var tests_shell_server_ahuacatl_extended;
 
-var tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
+function findTests () {
+  if (foundTests) {
+    return;
+  }
+  tests_shell_common = _.filter(fs.list(makePath("js/common/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/common/tests"),x);
+            }).sort();
+  tests_shell_server_only = _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_client_only = _.filter(fs.list(makePath("js/client/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/client/tests"),x);
+            }).sort();
+  tests_shell_server_ahuacatl = _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,9) === "ahuacatl-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") === -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_server_ahuacatl_extended = 
+            _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,9) === "ahuacatl-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") !== -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
 
-var tests_shell_server_ahuacatl =
-  [
-    makePath("js/server/tests/ahuacatl-ranges.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-in.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-limit.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-sort.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-ref.js"),
-    makePath("js/server/tests/ahuacatl-escaping.js"),
-    makePath("js/server/tests/ahuacatl-functions.js"),
-    makePath("js/server/tests/ahuacatl-variables.js"),
-    makePath("js/server/tests/ahuacatl-bind.js"),
-    makePath("js/server/tests/ahuacatl-complex.js"),
-    makePath("js/server/tests/ahuacatl-logical.js"),
-    makePath("js/server/tests/ahuacatl-arithmetic.js"),
-    makePath("js/server/tests/ahuacatl-relational.js"),
-    makePath("js/server/tests/ahuacatl-ternary.js"),
-    makePath("js/server/tests/ahuacatl-parse.js"),
-    makePath("js/server/tests/ahuacatl-hash.js"),
-    makePath("js/server/tests/ahuacatl-skiplist.js"),
-    makePath("js/server/tests/ahuacatl-cross.js"),
-    makePath("js/server/tests/ahuacatl-graph.js"),
-    makePath("js/server/tests/ahuacatl-edges.js"),
-    makePath("js/server/tests/ahuacatl-refaccess-variable.js"),
-    makePath("js/server/tests/ahuacatl-refaccess-attribute.js"),
-    makePath("js/server/tests/ahuacatl-queries-simple.js"),
-    makePath("js/server/tests/ahuacatl-queries-variables.js"),
-    makePath("js/server/tests/ahuacatl-queries-geo.js"),
-    makePath("js/server/tests/ahuacatl-queries-fulltext.js"),
-    makePath("js/server/tests/ahuacatl-queries-collection.js"),
-    makePath("js/server/tests/ahuacatl-queries-noncollection.js"),
-    makePath("js/server/tests/ahuacatl-subquery.js"),
-    makePath("js/server/tests/ahuacatl-operators.js")
-  ];
-
-var tests_shell_server_ahuacatl_extended =
-  [
-    makePath("js/server/tests/ahuacatl-ranges-combined-1.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-2.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-3.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-4.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-5.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-6.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-7.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-8.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-9.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-10.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-11.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-12.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-13.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-14.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-15.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-16.js")
-  ];
-
-var tests_shell_client_only = 
-  [
-    makePath("js/client/tests/shell-endpoints.js"),
-    makePath("js/client/tests/shell-fm.js"),
-    makePath("js/client/tests/client.js")
-  ];
-
-var tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
+  tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
+  tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
+  foundTests = true;
+}
 
 function runThere (options, instanceInfo, file) {
   var r;
@@ -419,10 +364,16 @@ function performTests(options, testList) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     print("\nTrying",te,"...");
-    var r = runThere(options, instanceInfo, te);
-    results[te] = r;
-    if (r !== true && !options.force) {
-      break;
+    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+      var r = runThere(options, instanceInfo, te);
+      results[te] = r;
+      if (r !== true && !options.force) {
+        break;
+      }
+    }
+    else {
+      print("Skipped because of cluster/non-cluster.");
     }
   }
   print("Shutting down...");
@@ -432,14 +383,17 @@ function performTests(options, testList) {
 }
 
 testFuncs.shell_server = function (options) {
+  findTests();
   return performTests(options, tests_shell_server);
 };
 
 testFuncs.shell_server_only = function (options) {
+  findTests();
   return performTests(options, tests_shell_server_only);
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
+  findTests();
   if (!options.skipAhuacatl) {
     if (options.skipRanges) {
       return performTests(options, tests_shell_server_ahuacatl);
@@ -451,6 +405,7 @@ testFuncs.shell_server_ahuacatl = function(options) {
 };
 
 testFuncs.shell_client = function(options) {
+  findTests();
   var topDir = findTopDir();
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -459,10 +414,16 @@ testFuncs.shell_client = function(options) {
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
-    var r = runInArangosh(options, instanceInfo, te);
-    results[te] = r;
-    if (r !== 0 && !options.force) {
-      break;
+    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+      var r = runInArangosh(options, instanceInfo, te);
+      results[te] = r;
+      if (r !== 0 && !options.force) {
+        break;
+      }
+    }
+    else {
+      print("Skipped because of cluster/non-cluster.");
     }
   }
   print("Shutting down...");
@@ -835,7 +796,7 @@ testFuncs.authentication = function (options) {
                        ["--server.disable-authentication", "false"]);
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
-                               fs.join("js","client","tests","shell-auth.js"));
+                               fs.join("js","client","tests","auth.js"));
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
@@ -920,7 +881,6 @@ testFuncs.authentication_parameters = function (options) {
 
 var allTests = 
   [
-    "make",
     "config",
     "boost",
     "shell_server",
@@ -932,7 +892,6 @@ var allTests =
     "arangob",
     "importing",
     "upgrade",
-    // "dfdb",    needs input redirection, but is not a good test anyway
     "foxx_manager",
     "authentication",
     "authentication_parameters"
