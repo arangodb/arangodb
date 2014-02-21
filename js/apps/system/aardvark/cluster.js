@@ -108,6 +108,7 @@
     var Communication = require("org/arangodb/cluster/agency-communication"),
     comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),
+    diff = comm.diff.current,
     servers = comm.current.DBServers(),
     dbs = comm.current.Databases(),
     coords = comm.current.Coordinators();
@@ -123,6 +124,7 @@
      *
      */
     controller.get("/ClusterType", function(req, res) {
+      // Not yet implemented
       res.json({
         type: "symmetricSetup"
       });
@@ -136,8 +138,11 @@
     controller.get("/DBServers", function(req, res) {
       var resList = [],
         list = servers.getList(),
+        diffList = diff.DBServers(),
         noBeat = beats.noBeat(),
         serving = beats.getServing();
+
+      require("console").log(JSON.stringify(diffList));
 
       _.each(list, function(v, k) {
         v.name = k;
@@ -184,11 +189,22 @@
     controller.get("/:dbname/Collections", function(req, res) {
       var dbname = req.params("dbname"),
         selected = dbs.select(dbname);
-      res.json(_.map(selected.getCollections(),
-        function(c) {
-          return {name: c};
-        })
-      );
+      try {
+        res.json(_.map(selected.getCollections(),
+          function(c) {
+            return {name: c};
+          })
+        );
+      } catch(e) {
+        res.json([]);
+      }
+    });
+
+    controller.get("/:dbname/:colname/Shards", function(req, res) {
+      var dbname = req.params("dbname"),
+        colname = req.params("colname"),
+        selected = dbs.select(dbname).collection(colname);
+      res.json(selected.getShardsByServers());
     });
 
     controller.get("/:dbname/:colname/Shards/:servername", function(req, res) {

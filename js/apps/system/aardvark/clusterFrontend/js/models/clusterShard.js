@@ -5,16 +5,15 @@
 
   window.ClusterShard = Backbone.Model.extend({
     defaults: {
-      "id": "",
-      "status": "ok"
     },
 
-    idAttribute: "id",
+    idAttribute: "name",
 
     forList: function() {
+      console.log(this);
       return {
-        id: this.get("id"),
-        status: this.get("status")
+        server: this.get("name"),
+        shards: this.get("shards")
       };
     },
 

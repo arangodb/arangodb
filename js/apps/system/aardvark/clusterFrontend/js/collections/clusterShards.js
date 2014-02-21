@@ -12,8 +12,7 @@
       return "/_admin/aardvark/cluster/"
         + this.dbname + "/"
         + this.colname + "/"
-        + "Shards/"
-        + this.server;
+        + "Shards";
     },
 
     initialize: function() {
@@ -22,13 +21,13 @@
       this.interval = 1000;
     },
 
-    getList: function(dbname, colname, server) {
+    getList: function(dbname, colname) {
       this.dbname = dbname;
       this.colname = colname;
-      this.server = server;
       this.fetch({
         async: false
       });
+      console.log(this);
       return this.map(function(m) {
         return m.forList();
       });

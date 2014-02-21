@@ -121,34 +121,17 @@ exports.Communication = function() {
       base[name] = newLevel;
       return newLevel;
     };
-    var addLevelsForDBs = function(base, writeAccess) {
-      var list = base.list();
-      _.each(list, function(d) {
-        addLevel(base, d, d, ["get", "checkVersion"]);
-        var colList = mapCollectionIDsToNames(base[d].get(true));
-        var acts = ["get"];
-        if (writeAccess) {
-          acts.push("set");
-        }
-        _.each(colList, function(id, name) {
-          addLevel(base[d], name, id, acts);
-        });
-      });
-    };
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
-    addLevel(target, "db", "Collections", ["list"]);
-    //addLevelsForDBs(target.db, true);
+    addLevel(target, "db", "Databases", ["list"]);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
-    addLevel(plan, "db", "Collections", ["list"]);
-    //addLevelsForDBs(plan.db);
+    addLevel(plan, "db", "Databases", ["list"]);
     addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
-    addLevel(current, "db", "Collections", ["list"]);
-    //addLevelsForDBs(current.db);
+    addLevel(current, "db", "Databases", ["list"]);
     addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
@@ -173,9 +156,12 @@ exports.Communication = function() {
         delete base[k];
       }
     });
+    var oldRoute = base.route;
+    base.route = base.route.replace("Databases", "Collections")
     _.each(list, function(d) {
       agency.addLevel(base, d, d, ["get", "checkVersion"]);
     });
+    base.route = oldRoute;
   };
 
   updateCollectionRouteForName = function(route, db, name, writeAccess) {
@@ -321,6 +307,21 @@ exports.Communication = function() {
         return;
       }
       return info.shards;
+    };
+    this.getShardsByServers = function() {
+      var list = this.getShards();
+      var res = {};
+      _.each(list, function(v, k) {
+        require("internal").print(v);
+        res[v] = res[v] || {
+          shards: [],
+          name: v
+        };
+        res[v].shards.push(k);
+      });
+      var resList = [];
+      _.each(res, function(v) { resList.push(v);});
+      return resList;
     };
     this.getShardsForServer = function(name) {
       var list = this.getShards();
