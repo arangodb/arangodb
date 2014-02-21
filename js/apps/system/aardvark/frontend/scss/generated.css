@@ -285,7 +285,7 @@ ul.arangoPagination a {
 
 nav.navbar {
   top: 0px;
-  height: 37px;
+  height: 38px;
   margin-bottom: 3px; }
 
 div.navlogo {
@@ -297,6 +297,19 @@ ul.navlist {
   list-style: none; }
   ul.navlist li {
     margin-left: 1px; }
+    ul.navlist li.navbar-spacer {
+      width: 1px;
+      height: 28px;
+      margin-top: 5px;
+      background-color: white; }
+      ul.navlist li.navbar-spacer.big {
+        margin-left: 10px;
+        margin-right: 10px; }
+      ul.navlist li.navbar-spacer.med {
+        margin-left: 5px;
+        margin-right: 5px; }
+      ul.navlist li.navbar-spacer:hover {
+        background-color: white; }
   ul.navlist > li.active,
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
@@ -305,14 +318,14 @@ ul.navlist {
     margin-left: 0px; }
 
 a.tab {
-  padding-top: 8px;
+  padding-top: 9px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
   color: white;
   display: block; }
   a.tab.userImg {
-    padding-bottom: 4px; }
+    padding-bottom: 5px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -330,9 +343,6 @@ a.tab {
   border-right: 5px solid transparent;
   border-left: 5px solid transparent;
   content: ""; }
-
-.navbar-spacer {
-  margin-right: 15px; }
 
 footer.footer {
   bottom: 0px;
@@ -418,7 +428,7 @@ li.tile {
   right: 0px; }
 
 .fixedDropdown {
-  margin: 34px 0 0 0 !important;
+  margin: 37px 0 0 0 !important;
   border-radius: 0 !important;
   width: 210px; }
 
@@ -436,9 +446,12 @@ li.tile {
   padding-left: 5px !important; }
 
 .fixedDropdown .notificationItemContent {
-  width: 160px;
+  width: 155px;
   float: left;
-  margin-left: 15px; }
+  margin-left: 15px;
+  max-width: 155px;
+  white-space: normal;
+  word-wrap: break-word; }
 
 .fixedDropdown button {
   float: right;
@@ -467,7 +480,7 @@ li.tile {
   float: left;
   font-size: 20px;
   position: relative;
-  right: 8px;
+  right: 4px;
   top: -9px; }
 
 .notificationItem i:hover {
@@ -485,7 +498,7 @@ li.tile {
 .notificationItemContent {
   font-weight: 300; }
 
-#stat_hd:hover {
+.fullNotification:hover {
   cursor: pointer; }
 
 .fullNotification {
@@ -593,9 +606,20 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
-  height: "26";
-  width: "26";
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051;
-  margin-top: -3px; }
+  margin-top: -4px; }
+
+.tooltip-inner {
+  max-width: 300px !important;
+  word-wrap: break-word !important;
+  white-space: normal !important; }
+
+.dbselection {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 160px;
+  float: left;
+  margin-right: 3px; }

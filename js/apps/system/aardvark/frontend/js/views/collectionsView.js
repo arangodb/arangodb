@@ -75,11 +75,18 @@
       "click #sortName"       : "sortName",
       "click #sortType"       : "sortType",
       "click #sortOrder"      : "sortOrder",
-      "click #collectionsToggle"     : "toggleView"
+      "click #collectionsToggle"     : "toggleView",
+      "click .css-label" : "checkBoxes"
     },
 
     toggleView: function() {
       $('#collectionsDropdown2').slideToggle(200);
+    },
+
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
     },
 
     checkSystem: function () {
@@ -188,7 +195,6 @@
     },
 
     resetSearch: function () {
-      console.log("resetSearch");
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = null;
@@ -199,8 +205,6 @@
     },
 
     restrictToSearchPhraseKey: function (e) {
-      this.currentSearchString =
-      console.log("restrictToSearchPhraseKey");
       // key pressed in search box
       var self = this;
       

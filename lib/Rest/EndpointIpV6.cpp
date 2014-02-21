@@ -53,9 +53,10 @@ EndpointIpV6::EndpointIpV6 (const Endpoint::EndpointType type,
                             const Endpoint::EncryptionType encryption,
                             const std::string& specification,
                             int listenBacklog,
+                            bool reuseAddress,
                             const std::string& host,
-                            const uint16_t port) :
-    EndpointIp(type, DOMAIN_IPV6, encryption, specification, listenBacklog, host, port) {
+                            const uint16_t port) 
+  : EndpointIp(type, DOMAIN_IPV6, encryption, specification, listenBacklog, reuseAddress, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

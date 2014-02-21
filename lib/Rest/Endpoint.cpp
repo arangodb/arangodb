@@ -182,15 +182,17 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::clientFactory (const std::string& specification) {
-  return Endpoint::factory(ENDPOINT_CLIENT, specification, 0);
+  return Endpoint::factory(ENDPOINT_CLIENT, specification, 0, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const std::string& specification, int listenBacklog) {
-  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog);
+Endpoint* Endpoint::serverFactory (const std::string& specification, 
+                                   int listenBacklog,
+                                   bool reuseAddress) {
+  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog, reuseAddress);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +201,8 @@ Endpoint* Endpoint::serverFactory (const std::string& specification, int listenB
 
 Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
                              const std::string& specification,
-                             int listenBacklog) {
+                             int listenBacklog,
+                             bool reuseAddress) {
   if (specification.size() < 7) {
     return 0;
   }
@@ -207,6 +210,11 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
     // backlog is only allowed for server endpoints
     assert(false);
+  }
+
+  if (listenBacklog == 0 && type == ENDPOINT_SERVER) {
+    // use some default value
+    listenBacklog = 10;
   }
 
   string copy = specification;
@@ -265,14 +273,26 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, encryption, specification, listenBacklog, copy.substr(1, found - 1), port);
+      return new EndpointIpV6(type, 
+                              encryption, 
+                              specification, 
+                              listenBacklog, 
+                              reuseAddress, 
+                              copy.substr(1, found - 1), 
+                              port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, encryption, specification, listenBacklog, copy.substr(1, found - 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, 
+                              encryption, 
+                              specification, 
+                              listenBacklog, 
+                              reuseAddress, 
+                              copy.substr(1, found - 1), 
+                              EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -286,11 +306,23 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, encryption, specification, listenBacklog, copy.substr(0, found), port);
+    return new EndpointIpV4(type, 
+                            encryption, 
+                            specification, 
+                            listenBacklog, 
+                            reuseAddress,
+                            copy.substr(0, found), 
+                            port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, encryption, specification, listenBacklog, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, 
+                          encryption, 
+                          specification, 
+                          listenBacklog, 
+                          reuseAddress, 
+                          copy, 
+                          EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

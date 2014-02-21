@@ -70,9 +70,13 @@ EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         const Endpoint::EncryptionType encryption,
                         const std::string& specification,
                         int listenBacklog,
+                        bool reuseAddress,
                         const std::string& host,
-                        const uint16_t port) :
-    Endpoint(type, domainType, encryption, specification, listenBacklog), _host(host), _port(port) {
+                        const uint16_t port) 
+  : Endpoint(type, domainType, encryption, specification, listenBacklog), 
+    _reuseAddress(reuseAddress),
+    _host(host), 
+    _port(port) {
 
   assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
@@ -122,15 +126,18 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 
   if (_type == ENDPOINT_SERVER) {
     // try to reuse address
-    int opt = 1;
-    if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
-      TRI_CLOSE_SOCKET(listenSocket);
+    if (_reuseAddress) {
+      int opt = 1;
+      if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
+        LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
-      return listenSocket;
+        TRI_CLOSE_SOCKET(listenSocket);
+
+        listenSocket.fileDescriptor = 0;
+        listenSocket.fileHandle = 0;
+        return listenSocket;
+      }
     }
 
     // server needs to bind to socket
