@@ -72,7 +72,8 @@
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView({
-        notificationCollection: this.notificationList
+        notificationCollection: this.notificationList,
+        userCollection: window.userCollection
       });
       this.footerView.render();
       this.naviView.render();

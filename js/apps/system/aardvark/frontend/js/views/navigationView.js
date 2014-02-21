@@ -14,6 +14,7 @@
     },
 
     initialize: function () {
+      this.userCollection = this.options.userCollection,
       this.dbSelectionView = new window.DBSelectionView({
         collection: window.arangoDatabase,
         current: window.currentDB
@@ -38,8 +39,10 @@
         isSystem: window.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
-      this.userBarView.render($("#userBar"));
       this.notificationView.render($("#notificationBar"));
+      if (this.userCollection.whoAmI() !== null) {
+        this.userBarView.render();
+      }
       this.statisticBarView.render($("#statisticBar"));
       return this;
     },
