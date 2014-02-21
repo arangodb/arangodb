@@ -182,8 +182,8 @@ function get_api_database (req, res) {
     else if (req.suffix[0] === 'current') {
       if (cluster.isCoordinator()) {
         // fetch database information from Agency
-        var values = ArangoAgency.get("Plan/Databases/" + req.originalDatabase, false);
-        var dbEntry = values["Plan/Databases/" + req.originalDatabase];
+        var values = ArangoAgency.get("Plan/Databases/" + encodeURIComponent(req.database), false);
+        var dbEntry = values["Plan/Databases/" + encodeURIComponent(req.database)];
         result = {
           name: dbEntry.name,
           id: dbEntry.id,

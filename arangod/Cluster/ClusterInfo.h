@@ -40,6 +40,7 @@
 extern "C" {
   struct TRI_json_s;
   struct TRI_memory_zone_s;
+  struct TRI_server_s;
 }
 
 namespace triagens {

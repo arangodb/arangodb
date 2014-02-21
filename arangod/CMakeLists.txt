@@ -77,9 +77,9 @@ add_executable(
     Cluster/ClusterComm.cpp
     Cluster/ClusterInfo.cpp
     Cluster/ClusterMethods.cpp
-    Cluster/DBServerJob.cpp
     Cluster/HeartbeatThread.cpp
     Cluster/RestShardHandler.cpp
+    Cluster/ServerJob.cpp
     Cluster/ServerState.cpp
     Cluster/v8-cluster.cpp
     FulltextIndex/fulltext-handles.c

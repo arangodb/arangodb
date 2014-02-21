@@ -316,6 +316,16 @@ struct TRI_vocbase_defaults_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief database type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_VOCBASE_TYPE_NORMAL      = 0,
+  TRI_VOCBASE_TYPE_COORDINATOR = 1
+}
+TRI_vocbase_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief database
 ///
 /// For the lock handling, see the document "LOCKS.md".
@@ -325,6 +335,7 @@ typedef struct TRI_vocbase_s {
   TRI_voc_tick_t             _id;                 // internal database id
   char*                      _path;               // path to the data directory
   char*                      _name;               // database name
+  TRI_vocbase_type_e         _type;               // type (normal or coordinator)
 
   struct {
     TRI_spin_t               _lock;               // a lock protecting the usage information
@@ -450,6 +461,22 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a vocbase object, without threads and some other attributes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e,
+                                         char const*,
+                                         TRI_voc_tick_t,
+                                         char const*,
+                                         struct TRI_vocbase_defaults_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an initial, not fully constructed vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyInitialVocBase (TRI_vocbase_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
