@@ -42,6 +42,7 @@
       this.getStatisticHistory();
       this.description = this.options.description.models[0];
       this.startUpdating();
+      this.graphs = {};
 
 
 
@@ -142,8 +143,86 @@
                     });
                 });
         });
-        console.log(self.series);
         delete self.LastValues;
+    },
+
+    renderCharts : function() {
+        var self = this;
+        Object.keys(self.series).forEach(function(group) {
+            Object.keys(self.series[group]).forEach(function(figure) {
+                Object.keys(self.series[group][figure]).forEach(function(valueList) {
+                    if (valueList === "current") {
+                        self.renderLineChart();
+                        delete self.series[group][figure][valueList];
+                    } else if (valueList === "distribution") {
+                        delete self.series[group][figure][valueList];
+                    } else if (valueList === "current") {
+
+                    }
+                });
+            });
+        });
+    },
+
+    createLineChart: function(figure) {
+        if (!this.graphs[figure]) {
+            var g = new Dygraph(
+                document.getElementById(id),
+                data,
+                {   title: 'Average request time in milliseconds'
+                    //yLabelWidth: "15",
+                    //labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
+                    //hideOverlayOnMouseOut: true,
+                    //labelsSeparateLines: true,
+                    //legend: "always",
+                    //labelsDivWidth: 150,
+                    //labelsShowZeroValues: false,
+                    //highlightSeriesBackgroundAlpha: 0.5,
+                    //drawPoints: true,
+                    //width: 480,
+                    //height: 320,
+                    //labels: createLabels(),
+                    //visibility:getVisibility() ,
+                    //valueRange: [self.min -0.1 * self.min, self.max + 0.1 * self.max],
+                    //stackedGraph: false,
+                    //axes: {
+                    //  y: {
+                    //        valueFormatter: function(y) {
+                    //          return y.toPrecision(2);
+                    //                          },
+                    //      axisLabelFormatter: function(y) {
+                    //          return y.toPrecision(2);
+                    //      }
+                    //  },
+                    //      x: {
+                    //      valueFormatter: function(d) {
+                    //              if (d === -1) {return "";}
+                    //              var date = new Date(d);
+                    //              return Dygraph.zeropad(date.getHours()) + ":"
+                    //                  + Dygraph.zeropad(date.getMinutes()) + ":"
+                    //                  + Dygraph.zeropad(date.getSeconds());
+                    //                          }
+                    //  }
+                    //                  },
+                    //highlightCircleSize: 2,
+                    //strokeWidth: 1,
+                    //strokeBorderWidth: null,
+                    //highlightSeriesOpts: {
+//                        strokeWidth: 3,
+//                        strokeBorderWidth: 1,
+//                        highlightCircleSize: 5
+                        //}
+                    });
+                var onclick = function(ev) {
+                    if (self.graph.isSeriesLocked()) {
+                        self.graph.clearSelection();
+                    } else {
+                        self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
+                    }
+                };
+                self.graph.updateOptions({clickCallback: onclick}, true);
+                self.graph.setSelection(false, 'ClusterAverage', true);
+            };
     },
 
     renderFigures: function () {
@@ -154,8 +233,9 @@
 
     },
 
-    renderLineCharts: function () {
+    renderLineChart: function () {
 
+        makeGraph(data , id);
     },
 
     getStatisticHistory : function () {
