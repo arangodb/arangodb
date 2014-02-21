@@ -176,19 +176,26 @@ advantage that you can use auto-completion.
 
     ------------------------------------- Help -------------------------------------
     Predefined objects:                                                 
-      arango:                                ArangoConnection           
-      db:                                    ArangoDatabase             
+      arango:                               ArangoConnection           
+      db:                                   ArangoDatabase             
+      fm:                                   FoxxManager  
     Example:                                                            
-     > db._collections();                    list all collections       
-     > db._create(<coll_name>);              create a new collection
-     > db._drop(<coll_name>);                drop a collection
-     > db.<coll_name>.all();                 list all documents         
-     > id = db.<coll_name>.save({ ... });    save a document            
-     > db.<coll_name>.remove(<_id>);         delete a document          
-     > db.<coll_name>.document(<_id>);       get a document             
-     > help                                  show help pages            
-     > helpQueries                           query help                 
-     > exit                                                             
+     > db._collections();                   list all collections       
+     > db._create(<name>)                   create a new collection    
+     > db._drop(<name>)                     drop a collection         
+     > db.<name>.toArray()                  list all documents         
+     > id = db.<name>.save({ ... })         save a document            
+     > db.<name>.remove(<_id>)              delete a document          
+     > db.<name>.document(<_id>)            retrieve a document        
+     > db.<name>.replace(<_id>, {...})      overwrite a document       
+     > db.<name>.update(<_id>, {...})       partially update a document
+     > db.<name>.exists(<_id>)              check if document exists   
+     > db._query(<query>).toArray()         execute an AQL query       
+     > db._useDatabase(<name>)              switch database            
+     > db._createDatabase(<name>)           create a new database      
+     > db._listDatabases()                  list existing databases    
+     > help                                 show help pages            
+     > exit                                         
     arangosh>
 
 This gives you a prompt, where you can issue JavaScript commands.
@@ -273,10 +280,7 @@ Querying For Documents {#FirstStepsArangoDBQuerying}
 ----------------------------------------------------
 
 All documents are stored in collections. All collections are stored in a
-database. The database object is accessible there the variable `db` from
-the module 
-
-    arangosh> var db = require("org/arangodb").db;
+database. The database object is accessible via the variable `db`.
 
 Creating a collection is simple. You can use the `_create` method
 of the `db` variable.
