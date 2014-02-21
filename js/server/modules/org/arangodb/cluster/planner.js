@@ -492,18 +492,20 @@ Planner.prototype.makePlan = function() {
   tmp.Lock = '"UNLOCKED"';
   tmp.Version = '"1"';
   var dbs = tmp.DBServers = {};
+  tmp.MapLocalToEndpoint = {};  // will stay empty for now
   var map = tmp.MapIDToEndpoint = {};
   var s;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
-    dbs[s.id] = map[s.id] 
-           = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
+    dbs[s.id] = '"none"';
+    map[s.id] = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     launchers[s.dispatcher].DBservers.push(s.id);
   }
   var coo = tmp.Coordinators = {};
   for (i = 0; i < coordinators.length; i++) {
     s = coordinators[i];
-    coo[s.id] = map[s.id] 
+    coo[s.id] = '"none"';
+    map[s.id] 
            = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     launchers[s.dispatcher].Coordinators.push(s.id);
   }

@@ -326,12 +326,18 @@ bool ApplicationCluster::open () {
     AgencyCommLocker locker("Current", "WRITE"); 
     
     if (locker.successful()) {
-      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
-      
-      if (json == 0) {
+      TRI_json_t* ep = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
+      if (ep == 0) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
+      TRI_json_t* json = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+      if (json == 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
+        locker.unlock();
+        LOG_FATAL_AND_EXIT("out of memory");
+      }
+      TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
 
       result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
