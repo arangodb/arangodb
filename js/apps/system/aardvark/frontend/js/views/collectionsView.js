@@ -188,7 +188,6 @@
     },
 
     resetSearch: function () {
-      console.log("resetSearch");
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = null;
@@ -200,7 +199,6 @@
 
     restrictToSearchPhraseKey: function (e) {
       this.currentSearchString =
-      console.log("restrictToSearchPhraseKey");
       // key pressed in search box
       var self = this;
       
