@@ -151,3 +151,11 @@ table.dataTable thead th {
 #saveDocumentButton {
   margin-top: 5px;
 }
+
+#showSaveState {
+  display:none;
+  color: green;
+  float:right;
+  margin-top: 10px;
+  font-weight: 300;
+}

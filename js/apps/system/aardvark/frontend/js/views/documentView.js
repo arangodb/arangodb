@@ -80,6 +80,10 @@
           return;
         }
       }
+
+      if (result === true) {
+        $('#showSaveState').fadeIn(1000).fadeOut(1000);
+      }
     },
 
     breadcrumb: function () {
