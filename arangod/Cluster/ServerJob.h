@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief DB server job
+/// @brief Cluster server job
 ///
 /// @file
 ///
@@ -25,39 +25,36 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_DBSERVER_JOB_H
-#define TRIAGENS_CLUSTER_DBSERVER_JOB_H 1
+#ifndef TRIAGENS_CLUSTER_SERVER_JOB_H
+#define TRIAGENS_CLUSTER_SERVER_JOB_H 1
 
 #include "Dispatcher/Job.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "BasicsC/logging.h"
-#include "Cluster/HeartbeatThread.h"
 #include "Rest/Handler.h"
-#include "V8Server/ApplicationV8.h"
-#include "V8/v8-utils.h"
-#include "VocBase/server.h"
-#include "VocBase/vocbase.h"
+
+extern "C" {
+  struct TRI_server_s;
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class DBServerJob
+// --SECTION--                                                 class ServerJob
 // -----------------------------------------------------------------------------
-
-static triagens::basics::Mutex ExecutorLock;
 
 namespace triagens {
   namespace arango {
+    class HeartbeatThread;
+    class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-    class DBServerJob : public triagens::rest::Job {
+    class ServerJob : public triagens::rest::Job {
       private:
-        DBServerJob (DBServerJob const&);
-        DBServerJob& operator= (DBServerJob const&);
+        ServerJob (ServerJob const&);
+        ServerJob& operator= (ServerJob const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -69,23 +66,15 @@ namespace triagens {
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        DBServerJob (HeartbeatThread* heartbeat,
-                     TRI_server_t* server,
-                     ApplicationV8* applicationV8) 
-          : Job("HttpServerJob"),
-            _heartbeat(heartbeat),
-            _server(server),
-            _applicationV8(applicationV8),
-            _shutdown(0),
-            _abandon(false) {
-        }
+        ServerJob (HeartbeatThread* heartbeat,
+                   struct TRI_server_s* server,
+                   ApplicationV8* applicationV8); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~DBServerJob () {
-        }
+        ~ServerJob ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -97,10 +86,7 @@ namespace triagens {
 /// @brief abandon job
 ////////////////////////////////////////////////////////////////////////////////
 
-        void abandon () {
-          MUTEX_LOCKER(_abandonLock);
-          _abandon = true;
-        }
+        void abandon ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods
@@ -137,21 +123,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_e work () {
-          LOG_TRACE("starting plan update handler");
-
-          if (_shutdown != 0) {
-            return Job::JOB_DONE;
-          }
-
-          bool result = execute();
-          _heartbeat->ready(true);
-
-          if (result) {
-            return triagens::rest::Job::JOB_DONE;
-          }
-          return triagens::rest::Job::JOB_FAILED;
-        }
+        Job::status_e work ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -166,8 +138,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool beginShutdown () {
-          LOG_TRACE("shutdown job %p", (void*) this);
-
           _shutdown = 1;
           return true;
         }
@@ -183,43 +153,11 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      private:
-        
-        bool execute () {
-          // default to system database
-          TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, "_system");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute job
+////////////////////////////////////////////////////////////////////////////////
 
-          if (vocbase == 0) {
-            return false;
-          }
-
-          MUTEX_LOCKER(ExecutorLock);
-
-          ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, false, true);
-
-          if (context == 0) {
-            TRI_ReleaseDatabaseServer(_server, vocbase);
-            return false;
-          }
-    
-          {
-            v8::HandleScope scope;
-            // execute script inside the context
-            char const* file = "handle-plan-change";
-            char const* content = "require('org/arangodb/cluster').handlePlanChange();";
-
-            TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), v8::String::New(file), false);
-          }
-          
-          // get the pointer to the least used vocbase
-          TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
-          void* orig = v8g->_vocbase;
-
-          _applicationV8->exitContext(context);
-          TRI_ReleaseDatabaseServer(_server, (TRI_vocbase_t*) orig);
-
-          return true;
-        }
+        bool execute ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -237,7 +175,7 @@ namespace triagens {
 /// @brief server
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_server_t* _server;
+        struct TRI_server_s* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief v8 dispatcher
