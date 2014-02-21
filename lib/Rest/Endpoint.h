@@ -163,7 +163,9 @@ namespace triagens {
 /// @brief creates a server endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* serverFactory (const std::string&, int = 10);
+        static Endpoint* serverFactory (const std::string&, 
+                                        int,
+                                        bool reuseAddress);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a client endpoint from a string value
@@ -177,7 +179,8 @@ namespace triagens {
 
         static Endpoint* factory (const EndpointType type,
                                   const std::string&,
-                                  int);
+                                  int,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
