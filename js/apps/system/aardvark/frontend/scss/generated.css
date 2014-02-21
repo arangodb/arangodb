@@ -505,3 +505,8 @@ select.filterSelect {
   border-radius: 3px;
   border: 2px solid #8AA051;
   margin-top: -3px; }
+
+.tooltip-inner {
+  max-width: 300px !important;
+  word-wrap: break-word !important;
+  white-space: normal !important; }
