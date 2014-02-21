@@ -1479,6 +1479,10 @@ function handleRedirect (req, res, options, headers) {
 
     if (req.headers.hasOwnProperty('host')) {
       url += req.headers.host;
+      if (req.headers.host.indexOf(':') === -1) {
+        // append port number if not present in "host" header
+        url += ":" + req.server.port;
+      }
     }
     else {
       url += req.server.address + ":" + req.server.port;
