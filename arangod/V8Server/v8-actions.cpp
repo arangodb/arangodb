@@ -893,13 +893,7 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
-  v8::Isolate* isolate;
-
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  isolate = v8::Isolate::GetCurrent();
-  v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 5) {
     TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<offset>, <period>, <module>, <funcname>, <string-parameter>)");

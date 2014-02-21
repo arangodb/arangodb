@@ -55,6 +55,11 @@ using namespace std;
   BOOST_CHECK_EQUAL(expected, e->FEATURE_NAME(feature)()); \
   DELETE_ENDPOINT(e);
 
+#define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
+  e = Endpoint::serverFactory(specification, 1, true); \
+  BOOST_CHECK_EQUAL(expected, e->FEATURE_NAME(feature)()); \
+  DELETE_ENDPOINT(e);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -121,8 +126,9 @@ BOOST_AUTO_TEST_CASE (EndpointSpecification) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Specification, "tcp://localhost");
   CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", Specification, "SSL://127.0.0.5");
   CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", Specification, "httP@ssl://localhost:4635");
-  CHECK_ENDPOINT_FEATURE(server, "unix:///path/to/socket", Specification, "unix:///path/to/socket");
-  CHECK_ENDPOINT_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", Specification, "htTp@UNIx:///a/b/c/d/e/f.s");
+
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", Specification, "unix:///path/to/socket");
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", Specification, "htTp@UNIx:///a/b/c/d/e/f.s");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,11 +144,11 @@ BOOST_AUTO_TEST_CASE (EndpointTypes) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Type, Endpoint::ENDPOINT_CLIENT);
   CHECK_ENDPOINT_FEATURE(client, "unix:///path/to/socket", Type, Endpoint::ENDPOINT_CLIENT);
 
-  CHECK_ENDPOINT_FEATURE(server, "tcp://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_FEATURE(server, "tcp://localhost", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_FEATURE(server, "ssl://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_FEATURE(server, "ssl://localhost", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_FEATURE(server, "unix:///path/to/socket", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://localhost", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", Type, Endpoint::ENDPOINT_SERVER);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +466,7 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("tcp://127.0.0.1");
+  e = Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -472,7 +478,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("ssl://127.0.0.1");
+  e = Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -484,7 +490,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("unix:///tmp/socket");
+  e = Endpoint::serverFactory("unix:///tmp/socket", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -532,7 +538,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
 BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("tcp://127.0.0.1:667");
+  e = Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
   BOOST_CHECK_EQUAL("tcp://127.0.0.1:667", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV4, e->getDomainType());
@@ -552,7 +558,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
 BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("unix:///path/to/arango.sock");
+  e = Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
   BOOST_CHECK_EQUAL("unix:///path/to/arango.sock", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
   BOOST_CHECK_EQUAL(Endpoint::DOMAIN_UNIX, e->getDomainType());

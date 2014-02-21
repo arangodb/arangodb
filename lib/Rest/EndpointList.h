@@ -96,6 +96,7 @@ namespace triagens {
         bool add (const std::string&,
                   const std::vector<std::string>&,
                   int,
+                  bool,
                   Endpoint** = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
