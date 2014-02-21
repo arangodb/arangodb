@@ -117,6 +117,7 @@ bin_arangod_SOURCES += \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
 	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/DBServerJob.cpp \
 	arangod/Cluster/HeartbeatThread.cpp \
 	arangod/Cluster/RestShardHandler.cpp \
 	arangod/Cluster/ServerState.cpp \
