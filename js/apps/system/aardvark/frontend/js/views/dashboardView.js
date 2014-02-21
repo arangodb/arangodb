@@ -27,11 +27,11 @@
         },
 
         distribution : {
-            totalTime : "http_requestsTotal",
-            requestTime: "http_requestsTotal",
-            queueTime: "http_requestsTotal",
-            bytesSent: "http_requestsTotal",
-            bytesReceived: "http_requestsTotal"
+            totalTime : "currentDistribution",
+            requestTime: "currentDistribution",
+            queueTime: "currentDistribution",
+            bytesSent: "currentDistribution",
+            bytesReceived: "currentDistribution"
         }
     },
 
@@ -65,8 +65,9 @@
                 self.series[figure.group][figure.identifier][
                     self.chartTypeExceptions[figure.type][figure.identifier]
                     ] = [];
+
                 if (figure.type === "distribution") {
-                    self.series[figure.group][figure.identifier]["distribution"];
+                    self.series[figure.group][figure.identifier]["distribution"] = undefined;
                 }
             } else {
                  self.series[figure.group][figure.identifier][figure.type] = [];
@@ -82,6 +83,9 @@
     calculateSeries: function () {
         var self = this;
         self.LastValues = {};
+        self.series["system"]["systemUserTime"] = {
+            current:  []
+        };
         self.history.forEach(function(entry) {
                 var time = entry.time * 1000;
                 //iteration über Gruppen
@@ -101,26 +105,45 @@
                             } else if (valueList === "distribution") {
                                 valueLists[valueList] = val;
                             } else if (valueList === "accumulated") {
-                                //delete valueLists[valueList];
+
                             } else if (valueList === "current") {
                                 valueLists[valueList].push([new Date(time), val]);
-                            } else  {
-                                var calcGroup = valueList.split("_")[0];
-                                var calcFigure = valueList.split("_")[1];
-                                //valueLists["current"] = valueLists[valueList];
-                                //delete valueLists[valueList];
-                                valueLists[valueList].push([new Date(time), val / entry[calcGroup][calcFigure]]);
+                            } else if (valueList === "currentDistribution")  {
+                                valueLists[valueList].push([
+                                    new Date(time),
+                                    val.count === 0 ? 0 : val.sum / val.count
+                                ]);
                             }
                         });
 
                     });
                 });
-                self.series["system"]["systemUserTime"] =
-                    [new Date(time), entry["system"]["systemTime"], entry["system"]["userTime"]];
+                self.series["system"]["systemUserTime"]["current"].push(
+                    [new Date(time), entry["system"]["systemTime"], entry["system"]["userTime"]]
+                );
 
         });
-        delete self.LastValues;
+        Object.keys(self.series).forEach(function(group) {
+                Object.keys(self.series[group]).forEach(function(figure) {
+                    Object.keys(self.series[group][figure]).forEach(function(valueList) {
+                        if (valueList === "lineChartDiffBased") {
+                            self.series[group][figure]["current"] = self.series[group][figure][valueList];
+                            delete self.series[group][figure][valueList];
+                        } else if (valueList === "accumulated") {
+                            delete self.series[group][figure][valueList];
+                        } else if (valueList === "current") {
+
+                        } else if (valueList === "distribution") {
+
+                        } else if (valueList === "currentDistribution")  {
+                            self.series[group][figure]["current"] = self.series[group][figure][valueList];
+                            delete self.series[group][figure][valueList];
+                        }
+                    });
+                });
+        });
         console.log(self.series);
+        delete self.LastValues;
     },
 
     renderFigures: function () {
@@ -141,7 +164,6 @@
         );
 
         this.history = this.documentStore.history;
-        console.log(this.history);
     },
 
     startUpdating: function () {
