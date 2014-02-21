@@ -215,6 +215,13 @@
                         },
                         {
                             "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "vertex-name",
+                            "description": "The name of the vertex "
+                        },
+                        {
+                            "dataType": "String",
                             "paramType": "query",
                             "name": "rev",
                             "description": "Revision of a vertex "
@@ -535,7 +542,7 @@
                             "description": "The call expects a JSON hash array as body with the edge properties: "
                         }
                     ],
-                    "notes": "Creates an edge in a graph. <br><br>The call expects a JSON hash array as body with the edge properties: <br><br>- <em>_key</em>: The name of the edge.- <em>_from</em>: The name of the from vertex.- <em>_to</em>: The name of the to vertex.- <em>$label</em>: A label for the edge (optional).- further optional attributes.<br><br>Returns an object with an attribute <em>edge</em> containing the list of all edge properties. <br><br>",
+                    "notes": "Creates an edge in a graph. <br><br>The call expects a JSON hash array as body with the edge properties: <br><br>- <em>_key</em>: The name of the edge (optional, if edge collection allows user defined keys).- <em>_from</em>: The name of the from vertex.- <em>_to</em>: The name of the to vertex.- <em>$label</em>: A label for the edge (optional).- further optional attributes.<br><br>Returns an object with an attribute <em>edge</em> containing the list of all edge properties. <br><br>",
                     "summary": "create edge",
                     "httpMethod": "POST",
                     "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/graph/graph/edge\n{\"_key\":\"edge1\",\"_from\":\"vert2\",\"_to\":\"vert1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 178143655\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"178143655\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert2\", \n    \"_to\" : \"vertices/vert1\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
@@ -572,6 +579,13 @@
                             "required": "true",
                             "name": "graph-name",
                             "description": "The name of the graph "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "edge-name",
+                            "description": "The name of the edge "
                         },
                         {
                             "dataType": "String",

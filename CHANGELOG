@@ -1,4 +1,4 @@
-v1.4.10 (XXXX-XX-XX)
+v1.4.10 (2014-02-21)
 --------------------
 
 * fixed graph constructor to allow graph with some parameter to be used
