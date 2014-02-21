@@ -86,6 +86,9 @@
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
+        "frontend/js/lib/underscore.js",
+        "frontend/js/lib/backbone.js",
+        "frontend/js/lib/jsoneditor-min.js",
         "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/strftime-min.js",
         "frontend/js/lib/dygraph-combined.js",
@@ -129,7 +132,6 @@
         "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
-        "frontend/css/documentSourceView.css",
         "frontend/css/swaggerView.css",
         "frontend/css/foxxView.css",
         "frontend/css/graphView.css",
@@ -147,6 +149,7 @@
         "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
         "frontend/css/clusterDashboardView.css",
+        "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]
     },

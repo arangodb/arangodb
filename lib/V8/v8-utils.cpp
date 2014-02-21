@@ -2735,7 +2735,7 @@ static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
   }
 
   string address = TRI_ObjectToString(argv[0]);
-  Endpoint* endpoint = Endpoint::serverFactory(address);
+  Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
   if (0 == endpoint) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
                       "address description invalid, cannot create endpoint");

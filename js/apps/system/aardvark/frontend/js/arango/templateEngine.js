@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global EJS, window*/
+/*global EJS, window, _, $*/
 (function() {
   "use strict";
   var TemplateEngine = function() {
