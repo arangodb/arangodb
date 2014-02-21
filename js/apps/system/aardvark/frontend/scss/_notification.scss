@@ -22,9 +22,12 @@
 }
 
 .fixedDropdown .notificationItemContent {
-  width: 160px;
+  width: 155px;
   float: left;
   margin-left: 15px;
+  max-width: 155px;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 .fixedDropdown button {
@@ -62,7 +65,7 @@
   float: left;
   font-size: 20px;
   position: relative;
-  right: 8px;
+  right: 4px;
   top: -9px;
 }
 
@@ -84,7 +87,7 @@
   font-weight: 300;
 }
 
-#stat_hd:hover {
+.fullNotification:hover {
   cursor:pointer;
 }
 
