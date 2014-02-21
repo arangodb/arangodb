@@ -418,7 +418,7 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonCancel.appendChild(document.createTextNode("Close"));
     
     buttonSubmit.id = idprefix + "submit";
-    buttonSubmit.className = "btn btn-success";
+    buttonSubmit.className = "button-success";
     buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode(buttonTitle));
     
@@ -482,7 +482,7 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonCancel.appendChild(document.createTextNode("Close"));
     
     buttonSubmit.id = idprefix + "submit";
-    buttonSubmit.className = "btn btn-danger";
+    buttonSubmit.className = "button-danger";
     buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode("Delete"));
     

@@ -39,7 +39,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
     li.className = "graph_control " + prefix;
     li.id = prefix;
     li.appendChild(button);
-    button.className = "btn btn-primary gv_dropdown_entry";
+    button.className = "button-primary gv_dropdown_entry";
     button.appendChild(document.createTextNode(title));
     list.appendChild(li);
     button.id = prefix + "_button";
