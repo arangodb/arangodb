@@ -1,54 +1,26 @@
 <script id="userBarView.ejs" type="text/template">
 <ul class="navlist" id="userBarUl">
 
-  <div class="navlogo">
-    <div id="stat_hd" class="notificationButton"><a id="stat_hd_counter">0</a></div>
-  </div>
-
-  <li class="dropdown user-menu">
-    <a href="#" class="tab" id="user" >
+  <li class="dropdown user-menu userImg">
+    <a href="#" class="tab userImg" id="user" >
       <img class="userMenuImg" src="<%=img%>" id="userimage" /> <b class="caret"></b>
     </a>
     <ul class="user-dropdown-menu" id="user_dropdown">
       <li class="dropdown-header" style="text-transform: none">
         <%
-        if(username === null) {
-          %>User Management<%
-        } else {
-          if (name) {%>
+        if (name) {%>
         <%=name%> (<%=username%>)
         <% } else {%>
         <%=username%>
-        <%}
-
-        }
-       %>
-      <% if(username !== null) { %>
+        <% } %>
       <li class="dropdown-item">
         <a id="userProfile" class="tab" href="#user">User profile</a>
       </li>
-      <% } %>
-      <li class="dropdown-item">
-        <a id="userManagement" class="internalLink" href="#userManagement">User management</a>
-      </li>
-      <% if(username !== null) { %>
       <li class="dropdown-item">
         <a id="userLogout" class="tab" href="#user">Logout</a>
       </li>
-      <% } %>
     </ul>
   </li>
-
-  <li class="dropdown">
-    <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
-      <li class="dropdown-header"><a>Notifications</a></li>
-      <ul class="innerDropdownInnerUL"></ul>
-      <button id="removeAllNotifications" class="btn btn-danger">Clear</button>
-    </ul>
-  </li>
-
-
-
 
 </ul>
 </script>
