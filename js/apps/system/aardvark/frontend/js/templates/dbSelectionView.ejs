@@ -13,7 +13,7 @@ if (list.length > 1) {
       }
   %>
     <li class="dropdown-item">
-        <a id=<%=i%> class="dbSelectionLink" href="#"><%=i%></a>
+        <a id=<%=i%> class="dbSelectionLink tab" href="#"><%=i%></a>
     </li>
   <%
     });
@@ -23,7 +23,9 @@ if (list.length > 1) {
 %>
     <% if (current === "_system") { %>
     <li class="dropdown-header">Manager</li>
-    <li id="databaseNavi" class="dropdown-item"><a id="databases" class="" href="#databases">Manage DBs</a></li>
+    <li id="databaseNavi" class="dropdown-item">
+      <a id="databases" class="tab" href="#databases">Manage DBs</a>
+    </li>
     <% } %>
 </ul>
 </script>
