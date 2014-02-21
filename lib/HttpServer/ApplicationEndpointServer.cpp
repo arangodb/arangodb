@@ -100,6 +100,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _endpointList(),
     _httpPort(),
     _endpoints(),
+    _reuseAddress(true),
     _keepAliveTimeout(300.0),
     _defaultApiCompatibility(0),
     _allowMethodOverride(false),
@@ -213,6 +214,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   // issue #175: add deprecated hidden option for downwards compatibility
   options[ApplicationServer::OPTIONS_HIDDEN]
     ("server.http-port", &_httpPort, "http port for client requests (deprecated)")
+    ("server.reuse-address", "try to reuse address")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER]
@@ -224,6 +226,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.backlog-size", &_backlogSize, "listen backlog size")
     ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version (e.g. 10300)")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
+    ("server.no-reuse-address", "do not try to reuse address")
   ;
 
   options[ApplicationServer::OPTIONS_SSL]
@@ -247,6 +250,15 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   if (! ok) {
     return false;
   }
+  
+  // check if want to reuse the address
+  if (options.has("server.reuse-address")) {
+    _reuseAddress = true;
+  }
+
+  if (options.has("server.no-reuse-address")) {
+    _reuseAddress = false;
+  }
 
   if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
     LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
@@ -262,7 +274,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), dbNames, _backlogSize);
+    bool ok = _endpointList.add((*i), dbNames, _backlogSize, _reuseAddress);
 
     if (! ok) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
@@ -325,7 +337,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
       WRITE_LOCKER(_endpointsLock);
 
       Endpoint* endpoint;
-      bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, &endpoint);
+      bool ok = _endpointList.add(newEndpoint, dbNames, _backlogSize, _reuseAddress, &endpoint);
 
       if (! ok) {
         return false;
@@ -474,7 +486,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
   std::map<std::string, std::vector<std::string> >::const_iterator it;
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
       
-    bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize);
+    bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize, _reuseAddress);
 
     if (! ok) {
       return false;

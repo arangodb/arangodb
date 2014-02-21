@@ -14,13 +14,16 @@
     },
 
     initialize: function () {
+      this.userCollection = this.options.userCollection,
       this.dbSelectionView = new window.DBSelectionView({
         collection: window.arangoDatabase,
         current: window.currentDB
       });
       this.userBarView = new window.UserBarView({
-        collection: this.options.notificationCollection,
         userCollection: window.userCollection
+      });
+      this.notificationView = new window.NotificationView({
+        collection: this.options.notificationCollection,
       });
       this.statisticBarView = new window.StatisticBarView({});
     },
@@ -29,7 +32,6 @@
       this.dbSelectionView.render($("#dbSelect"));
     },
 
-
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function () {
@@ -37,7 +39,10 @@
         isSystem: window.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
-      this.userBarView.render();
+      this.notificationView.render($("#notificationBar"));
+      if (this.userCollection.whoAmI() !== null) {
+        this.userBarView.render();
+      }
       this.statisticBarView.render($("#statisticBar"));
       return this;
     },
