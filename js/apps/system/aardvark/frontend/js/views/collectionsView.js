@@ -198,7 +198,6 @@
     },
 
     restrictToSearchPhraseKey: function (e) {
-      this.currentSearchString =
       // key pressed in search box
       var self = this;
       
