@@ -15,7 +15,6 @@
       "login"                               : "login",
       "collection/:colid/documents/:pageid" : "documents",
       "collection/:colid/:docid"            : "document",
-      "collection/:colid/:docid/source"     : "source",
       "shell"                               : "shell",
       "query"                               : "query",
       "logs"                                : "logs",
@@ -65,8 +64,9 @@
       });
       window.arangoCollectionsStore.fetch();
       window.documentsView = new window.DocumentsView();
-      window.documentView = new window.DocumentView();
-      window.documentSourceView = new window.DocumentSourceView();
+      window.documentView = new window.DocumentView({
+        collection: window.arangoDocumentStore
+      });
       window.arangoLogsStore = new window.ArangoLogs();
       window.arangoLogsStore.fetch({
         success: function () {
@@ -80,7 +80,8 @@
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView({
-        notificationCollection: this.notificationList
+        notificationCollection: this.notificationList,
+        userCollection: window.userCollection
       });
       this.footerView.render();
       this.naviView.render();
@@ -269,24 +270,12 @@
     },
 
     document: function(colid, docid) {
-      if (!window.documentView) {
-        window.documentView.initTable();
-      }
       window.documentView.colid = colid;
       window.documentView.docid = docid;
       window.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
       window.documentView.type = type;
       window.documentView.typeCheck(type);
-    },
-
-    source: function(colid, docid) {
-      window.documentSourceView.render();
-      window.documentSourceView.colid = colid;
-      window.documentSourceView.docid = docid;
-      var type = arangoHelper.collectionApiType(colid);
-      window.documentSourceView.type = type;
-      window.documentSourceView.typeCheck(type);
     },
 
     shell: function() {

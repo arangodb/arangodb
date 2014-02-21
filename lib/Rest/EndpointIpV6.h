@@ -59,6 +59,7 @@ namespace triagens {
                       const EncryptionType,
                       const std::string&,
                       int,
+                      bool,
                       const std::string&,
                       const uint16_t);
 
