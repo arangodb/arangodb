@@ -244,10 +244,17 @@ ClusterInfo* ClusterInfo::instance () {
   // This does not have to be thread-safe, because we guarantee that
   // this is called very early in the startup phase when there is still
   // a single thread.
-  if (0 == _theinstance) {
-    _theinstance = new ClusterInfo();  // this now happens exactly once
-  }
+  assert(_theinstance != 0);
   return _theinstance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the cluster info singleton object
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::initialise () {
+  assert(_theinstance == 0);
+  _theinstance = new ClusterInfo();  // this now happens exactly once
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2084,7 +2091,6 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   shardID = shards->at(hash % shards->size());
   return error;
 }
-
 
 // Local Variables:
 // mode: outline-minor
