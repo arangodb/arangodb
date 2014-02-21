@@ -141,7 +141,7 @@ function makeAuthorisationHeaders (options) {
                                                       options.password)}};
 }
 
-function startInstance (protocol, options) {
+function startInstance (protocol, options, addArgs) {
   // protocol must be one of ["tcp", "ssl", "unix"]
   var topDir = findTopDir();
   var instanceInfo = {};
@@ -152,16 +152,19 @@ function startInstance (protocol, options) {
 
   var endpoint;
   var pos;
+  var dispatcher;
   if (options.cluster) {
     // FIXME: protocol and valgrind currently ignored!
+    dispatcher = {"endpoint":"tcp://localhost:",
+                  "arangodExtraArgs":makeTestingArgs(),
+                  "username": "root",
+                  "password": ""};
+    if (addArgs !== undefined) {
+      dispatcher.arangodExtraArgs = addArgs;
+    }
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
-                         "dispatchers": 
-                           {"me":{"endpoint":"tcp://localhost:",
-                                  "arangodExtraArgs":makeTestingArgs(),
-                                  "username": "root",
-                                  "password": ""}}
-                        });
+                         "dispatchers": {"me": dispatcher}});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -173,7 +176,7 @@ function startInstance (protocol, options) {
   else {   // single instance mode
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
-    var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+    dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
     var pf = new PortFinder([8529],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
@@ -189,6 +192,9 @@ function startInstance (protocol, options) {
     if (protocol === "ssl") {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
+    }
+    if (addArgs !== undefined) {
+      args = args.concat(addArgs);
     }
     instanceInfo.pid = executeExternal(ArangoServerState.executablePath(), 
                                        args);
@@ -788,16 +794,21 @@ testFuncs.dump = function (options) {
 };
 
 var benchTodo = [
-  ["--requests","10000","--concurrency","2","--test","version", 
-   "--async","true"],
-  ["--requests","20000","--concurrency","1","--test","version", 
-   "--async","true"],
-  ["--requests","100000","--concurrency","2","--test","shapes", 
-   "--batch-size","16"],
-  ["--requests","1000","--concurrency","2","--test","version", 
-   "--batch-size", "16"],
-  ["--requests","100","--concurrency","1","--test","version", 
-   "--batch-size", "0"]
+  ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
+  ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
+  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16"],
+  ["--requests","1000","--concurrency","2","--test","version", "--batch-size", "16"],
+  ["--requests","100","--concurrency","1","--test","version", "--batch-size", "0"],
+  ["--requests","100","--concurrency","2","--test","document", "--batch-size",
+   "10", "--complexity", "1"],
+  ["--requests","2000","--concurrency","2","--test","crud", "--complexity", "1"],
+  ["--requests","4000","--concurrency","2","--test","crud-append", "--complexity", "4"],
+  ["--requests","4000","--concurrency","2","--test","edge", "--complexity", "4"], 
+  ["--requests","5000","--concurrency","2","--test","hash","--complexity","1"], 
+  ["--requests","5000","--concurrency","2","--test","skiplist","--complexity","1"],
+  ["--requests","500","--concurrency","3","--test","aqltrx","--complexity","1"],
+  ["--requests","100","--concurrency","3","--test","counttrx"],
+  ["--requests","500","--concurrency","3","--test","multitrx"]
 ];
   
 testFuncs.arangob = function (options) {
@@ -812,12 +823,100 @@ testFuncs.arangob = function (options) {
       break;
     }
   }
-
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
   return results;
 };
+
+testFuncs.authentication = function (options) {
+  print("Authentication tests...");
+  var instanceInfo = startInstance("tcp",options,
+                       ["--server.disable-authentication", "false"]);
+  var results = {};
+  results.auth = runInArangosh(options, instanceInfo,
+                               fs.join("js","client","tests","shell-auth.js"));
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
+var urlsTodo = [
+  "/_api/",
+  "/_api",
+  "/_api/version",
+  "/_admin/html",
+  "/_admin/html/",
+  "/test",
+  "/the-big-fat-fox"
+];
+
+testFuncs.authentication_parameters = function (options) {
+  print("Authentication with parameters tests...");
+  var results = {};
+  // With full authentication:
+  var instanceInfo = startInstance("tcp",options,
+                       ["--server.disable-authentication", "false",
+                        "--server.authenticate-system-only", "false"]);
+  var r;
+  var i;
+  var re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re,[401, 401, 401, 401, 401, 401, 401])) {
+    results.auth_full = 0;
+  }
+  else {
+    results.auth_full = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  // Only system authentication:
+  instanceInfo = startInstance("tcp",options,
+                   ["--server.disable-authentication", "false",
+                    "--server.authenticate-system-only", "true"]);
+  re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re, [401, 401, 401, 401, 401, 404, 404])) {
+    results.auth_system = 0;
+  }
+  else {
+    results.auth_system = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  // No authentication:
+  instanceInfo = startInstance("tcp",options,
+                   ["--server.disable-authentication", "true",
+                    "--server.authenticate-system-only", "true"]);
+  re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re, [404, 404, 200, 301, 301, 404, 404])) {
+    results.auth_none = 0;
+  }
+  else {
+    results.auth_none = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
 
 var allTests = 
   [
@@ -857,6 +956,9 @@ function printUsage () {
   print('         "skipRanges": skip the ranges tests');
   print('         "valgrind": arangods are run with valgrind');
   print('         "cluster": tests are run on a small local cluster');
+  print('         "test": name of test to run for "single" test');
+  print('         "skipClient": for "single" test');
+  print('         "skipServer": for "single" test');
 }
 
 function UnitTest (which, options) {
