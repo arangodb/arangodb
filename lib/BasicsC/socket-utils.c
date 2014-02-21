@@ -77,9 +77,6 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flag
   #ifdef _WIN32
     res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
   #else
-    // This looks like a bug which does not show up since this code
-    // is only called under Windows. fileDescriptor should probably
-    // be fileHandle here.
     res = read(s.fileDescriptor, buffer, numBytesToRead);
   #endif
   return res;
