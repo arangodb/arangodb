@@ -168,8 +168,12 @@ function startInstance (protocol, options, addArgs) {
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
-    var roles = runInfo[runInfo.length-1].roles;
-    var endpoints = runInfo[runInfo.length-1].endpoints;
+    var j = runInfo.length-1;
+    while (j > 0 && runInfo[j].isStartServers === undefined) {
+      j--;
+    }
+    var roles = runInfo[j].roles;
+    var endpoints = runInfo[j].endpoints;
     pos = roles.indexOf("Coordinator");
     endpoint = endpoints[pos];
   }
@@ -523,6 +527,12 @@ function rubyTests (options, ssl) {
                    '  c.add_setting :ARANGO_PASSWORD\n'+
                    '  c.ARANGO_PASSWORD = "' + options.password + '"\n'+
                    'end\n');
+  var logsdir = fs.join(findTopDir(),"logs");
+  try {
+    fs.makeDirectory(logsdir);
+  }
+  catch (err) {
+  }
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
   var result = {};
   var args;
@@ -549,6 +559,7 @@ function rubyTests (options, ssl) {
       }
     }
   }
+  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
