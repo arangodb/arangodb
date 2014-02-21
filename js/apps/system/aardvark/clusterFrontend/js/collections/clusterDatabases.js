@@ -8,7 +8,7 @@
 
     model: window.ClusterDatabase,
     
-    url: "/_admin/aardvark/cluster/Databases",
+    url: "cluster/Databases",
 
     initialize: function() {
       this.isUpdating = false;

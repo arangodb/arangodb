@@ -83,8 +83,13 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
 
 nav.navbar {
   top: 0px;
-  height: 34px;
+  height: 37px;
   margin-bottom: 3px; }
+
+div.navlogo {
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-right: 1px; }
 
 ul.navlist {
   list-style: none; }
@@ -94,9 +99,11 @@ ul.navlist {
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
     background-color: #8aa051; }
+  ul.navlist li.dropdown-item {
+    margin-left: 0px; }
 
 a.tab {
-  padding-top: 7px;
+  padding-top: 8px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
@@ -108,6 +115,19 @@ a.tab {
   float: right;
   padding-bottom: 0;
   margin-bottom: 0;
+  margin-right: 15px; }
+
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 5px solid white;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: ""; }
+
+.navbar-spacer {
   margin-right: 15px; }
 
 footer.footer {
@@ -192,6 +212,14 @@ li.tile, li.bigtile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+li.bigtile {
+  height: 250px;
+  width: 345px; }
+  li.bigtile div.shardContainer {
+    font-size: 30px; }
+    li.bigtile div.shardContainer span {
+      padding: 2px; }
 
 div.resizecontainer {
   margin: 0px auto; }
@@ -289,7 +317,3 @@ div.centralContent {
 .scenarioImage {
   height: 70%;
   width: auto; }
-
-li.bigtile {
-  height: 250px;
-  width: 345px; }

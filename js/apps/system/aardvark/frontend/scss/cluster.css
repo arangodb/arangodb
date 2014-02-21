@@ -1,7 +1,7 @@
-ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
+ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile {
   float: left; }
 
-div.navmenu, div.footer-right, li.tile div.iconSet span {
+div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
 ul.tileList:after, div.resizecontainer:after {
@@ -12,7 +12,7 @@ ul.tileList:after, div.resizecontainer:after {
   height: 0px;
   visibility: hidden; }
 
-li.tile div.iconSet span, .contentDiv .icon, .scenarioImage {
+li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -98,8 +98,13 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
 
 nav.navbar {
   top: 0px;
-  height: 34px;
+  height: 37px;
   margin-bottom: 3px; }
+
+div.navlogo {
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-right: 1px; }
 
 ul.navlist {
   list-style: none; }
@@ -109,9 +114,11 @@ ul.navlist {
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
     background-color: #8aa051; }
+  ul.navlist li.dropdown-item {
+    margin-left: 0px; }
 
 a.tab {
-  padding-top: 7px;
+  padding-top: 8px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
@@ -123,6 +130,19 @@ a.tab {
   float: right;
   padding-bottom: 0;
   margin-bottom: 0;
+  margin-right: 15px; }
+
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 5px solid white;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: ""; }
+
+.navbar-spacer {
   margin-right: 15px; }
 
 footer.footer {
@@ -137,7 +157,7 @@ ul.tileList {
   margin-left: -6px;
   margin-right: -6px; }
 
-li.tile {
+li.tile, li.bigtile {
   position: relative;
   text-align: center;
   height: 100px;
@@ -150,7 +170,7 @@ li.tile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none; }
-  li.tile h5 {
+  li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -159,45 +179,45 @@ li.tile {
     background: #686766;
     padding: 4px 8px;
     margin: 0; }
-  li.tile div.iconSet {
+  li.tile div.iconSet, li.bigtile div.iconSet {
     position: absolute;
     top: 5px;
     right: 5px; }
-    li.tile div.iconSet span {
+    li.tile div.iconSet span, li.bigtile div.iconSet span {
       opacity: 0.5;
       font-size: 18px;
       padding-left: 7px; }
-      li.tile div.iconSet span:hover {
+      li.tile div.iconSet span:hover, li.bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      li.tile div.iconSet span.disabled {
+      li.tile div.iconSet span.disabled, li.bigtile div.iconSet span.disabled {
         opacity: 0.2;
         cursor: default; }
-  li.tile .badge-success {
+  li.tile .badge-success, li.bigtile .badge-success {
     font-weight: 300; }
-  li.tile .unloaded div {
+  li.tile .unloaded div, li.bigtile .unloaded div {
     border-bottom: 16px solid #FF8F35; }
-  li.tile .deleted div {
+  li.tile .deleted div, li.bigtile .deleted div {
     border-bottom: 16px solid red; }
-  li.tile div.tileBadge {
+  li.tile div.tileBadge, li.bigtile div.tileBadge {
     position: absolute;
     right: 0px;
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     color: white; }
-    li.tile div.tileBadge span {
+    li.tile div.tileBadge span, li.bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      li.tile div.tileBadge span div.corneredBadge {
+      li.tile div.tileBadge span div.corneredBadge, li.bigtile div.tileBadge span div.corneredBadge {
         padding-left: 4px;
         padding-right: 9px;
         height: 0px;
         border-left: 17px solid transparent;
         border-bottom-width: 17px;
         border-bottom-style: solid; }
-        li.tile div.tileBadge span div.corneredBadge.loaded {
+        li.tile div.tileBadge span div.corneredBadge.loaded, li.bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        li.tile div.tileBadge span div.corneredBadge.unloaded {
+        li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
 .collectionName {
@@ -207,6 +227,14 @@ li.tile {
   bottom: 0px;
   left: 0px;
   right: 0px; }
+
+li.bigtile {
+  height: 250px;
+  width: 345px; }
+  li.bigtile div.shardContainer {
+    font-size: 30px; }
+    li.bigtile div.shardContainer span {
+      padding: 2px; }
 
 div.resizecontainer {
   margin: 0px auto; }
