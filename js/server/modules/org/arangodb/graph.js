@@ -422,6 +422,9 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
         throw "graph with that name already exists";
       }
     }
+
+    vertices = db._collection(graphProperties.vertices);
+    edges = db._collection(graphProperties.edges);
   }
 
   this._properties = graphProperties;
