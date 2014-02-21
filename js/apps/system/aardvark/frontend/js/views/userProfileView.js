@@ -17,7 +17,6 @@
     initialize: function() {
       this.collection.fetch({async:false});
       this.user = this.collection.findWhere({loggedIn: true});
-
     },
 
     render: function(){
@@ -34,25 +33,23 @@
       this.collection.fetch();
       $('#editUsername').html(this.user.get("user"));
       $('#editName').val(this.user.get("extra").name);
-      $('#editImg').val(this.user.get("extra").img);
+      $('#editUserProfileImg').val(this.user.get("extra").img);
 
       this.showModal();
     },
 
     submitEditUserProfile : function() {
       var self = this;
-      var userName  = this.user.get("user");
       var name      = $('#editName').val();
-      var img       = $('#editImg').val();
-      var active    = this.user.get("active");
+      var img       = $('#editUserProfileImg').val();
 
       img = this.parseImgString(img);
 /*      if (!this.validateName(name)) {
         $('#editName').closest("th").css("backgroundColor", "red");
         return;
       }*/
-      this.user.set({"extra": {"name":name, "img":img}, "active":active});
-      this.user.save();
+
+      this.user.save({"extra": {"name":name, "img":img}});
       this.hideModal();
       this.updateUserProfile();
     },
