@@ -172,12 +172,13 @@
     },
 
 
-    createLineChart: function(figure) {
-        if (!this.graphs[figure]) {
-            var g = new Dygraph(
-                document.getElementById(id),
-                data,
-                {   title: 'Average request time in milliseconds'
+    createLineChart: function() {
+        if (!this.graphs["request"]) {
+            console.log(this.series["http"]["requests"]["current"]);
+            this.graphs["request"] = new Dygraph(
+                document.getElementById("dashboardHttpGroup"),
+                this.series["http"]["requests"]["current"],
+                {   title: 'Average request time in milliseconds',
                     //yLabelWidth: "15",
                     //labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
                     //hideOverlayOnMouseOut: true,
@@ -189,7 +190,10 @@
                     //drawPoints: true,
                     //width: 480,
                     //height: 320,
-                    //labels: createLabels(),
+                    labels: ["dateTime", "requestsGet","requestsHead",
+                        "requestsPost","requestsPut",
+                        "requestsPatch","requestsDelete",
+                        "requestsOptions", "requestsOther"],
                     //visibility:getVisibility() ,
                     //valueRange: [self.min -0.1 * self.min, self.max + 0.1 * self.max],
                     //stackedGraph: false,
@@ -215,39 +219,29 @@
                     //highlightCircleSize: 2,
                     //strokeWidth: 1,
                     //strokeBorderWidth: null,
-                    //highlightSeriesOpts: {
-//                        strokeWidth: 3,
-//                        strokeBorderWidth: 1,
-//                        highlightCircleSize: 5
-                        //}
+                   highlightSeriesOpts: {
+                        strokeWidth: 3,
+                        strokeBorderWidth: 1,
+                        highlightCircleSize: 5
+                      }
                     });
                 var onclick = function(ev) {
-                    if (self.graph.isSeriesLocked()) {
-                        self.graph.clearSelection();
+                    if (this.graphs["request"].isSeriesLocked()) {
+                        this.graphs["request"].clearSelection();
                     } else {
-                        self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
+                        this.graphs["request"].setSelection(this.graphs["request"].getSelection(), this.graphs["request"].getHighlightSeries(), true);
                     }
                 };
-                self.graph.updateOptions({clickCallback: onclick}, true);
-                self.graph.setSelection(false, 'ClusterAverage', true);
-            }
-    },
+                this.graphs["request"].updateOptions({clickCallback: onclick}, true);
+                this.graphs["request"].setSelection(false, 'ClusterAverage', true);
+             } else {
 
-    renderGroups: function () {
-      var self = this;
-      _.forEach(this.series, function(k,v) {
-        $('.contentDiv').append(self.groupTemplate.render({"name": v}));
-      });
-    },
-
-    renderCharts: function () {
-      var self = this;
-      _.forEach(self.series, function(key, group) {
-        _.forEach(key, function(x,y) {
-          $('#'+group).append(self.chartTemplate.render({"name": y}));
-        })
-      });
-    },
+            this.graph.updateOptions( {
+                'file': this.series["http"]["requests"]["current"]
+            } );
+        }
+        }
+    ,
 
     renderFigures: function () {
 
@@ -292,7 +286,7 @@
                     self.calculateSeries();
                     self.renderFigures();
                     self.renderPieCharts();
-                    self.renderLineChart();
+                    self.createLineChart();
                 },
                  error: function() {
 
@@ -305,9 +299,11 @@
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
-    chartTemplate: templateEngine.createTemplate("dashboardChart.ejs"),
+    httpTemplate: templateEngine.createTemplate("dashboardHttpGroup.ejs"),
 
-    groupTemplate: templateEngine.createTemplate("dashboardGroup.ejs"),
+    renderHttpGroup: function() {
+      $('.contentDiv').append(this.httpTemplate.render());
+    },
 
     render: function() {
       var self = this;
@@ -316,10 +312,10 @@
       this.calculateSeries();
       this.renderFigures();
       this.renderPieCharts();
-      this.renderCharts();
+      this.createLineChart();
 
-      this.renderGroups();
-      this.renderCharts();
+      this.renderHttpGroup();
+      console.log(this.series);
     }
 
 
