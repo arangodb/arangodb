@@ -1,3 +1,8 @@
+body, input, textarea, .page-title span, .pingback a.url {
+  /*font-family: "Helvetica",sans-serif;*/
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400; }
+
 ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile {
   float: left; }
 
@@ -12,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after {
   height: 0px;
   visibility: hidden; }
 
-li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .addButton, .deleteButton, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -24,9 +29,9 @@ nav.navbar, footer.footer {
   color: white;
   z-index: 1000; }
 
-div.danger.coordinator, div.danger.dbserver {
+.btn-danger, div.danger.coordinator, div.danger.dbserver {
   background-color: #da4f49; }
-  div.danger.coordinator:hover, div.danger.dbserver:hover {
+  .btn-danger:hover, div.danger.coordinator:hover, div.danger.dbserver:hover {
     background-color: #be342e; }
 
 .deleteButton {
@@ -34,9 +39,9 @@ div.danger.coordinator, div.danger.dbserver {
   .deleteButton:hover {
     color: #be342e; }
 
-div.success.coordinator, div.success.dbserver {
+.btn-success, div.success.coordinator, div.success.dbserver {
   background-color: #8aa051; }
-  div.success.coordinator:hover, div.success.dbserver:hover {
+  .btn-success:hover, div.success.coordinator:hover, div.success.dbserver:hover {
     background-color: #788f3d; }
 
 .addButton {
@@ -44,10 +49,30 @@ div.success.coordinator, div.success.dbserver {
   .addButton:hover {
     color: #788f3d; }
 
-div.warning.coordinator, div.warning.dbserver {
+.btn-warning, div.warning.coordinator, div.warning.dbserver {
   background-color: #faa732; }
-  div.warning.coordinator:hover, div.warning.dbserver:hover {
+  .btn-warning:hover, div.warning.coordinator:hover, div.warning.dbserver:hover {
     background-color: #f89406; }
+
+.btn {
+  background-color: #8f8d8c; }
+  .btn:hover {
+    background-color: #736b68; }
+
+.btn-primary {
+  background-color: #564e4a; }
+  .btn-primary:hover {
+    background-color: #3a322e; }
+
+.btn-notification {
+  background-color: #faa020; }
+  .btn-notification:hover {
+    background-color: #f87c0f; }
+
+.btn-inactive {
+  background-color: lightgrey; }
+  .btn-inactive:hover {
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu {
   position: absolute;
@@ -120,6 +145,19 @@ ul.navlist {
   list-style: none; }
   ul.navlist li {
     margin-left: 1px; }
+    ul.navlist li.navbar-spacer {
+      width: 1px;
+      height: 28px;
+      margin-top: 5px;
+      background-color: white; }
+      ul.navlist li.navbar-spacer.big {
+        margin-left: 10px;
+        margin-right: 10px; }
+      ul.navlist li.navbar-spacer.med {
+        margin-left: 5px;
+        margin-right: 5px; }
+      ul.navlist li.navbar-spacer:hover {
+        background-color: white; }
   ul.navlist > li.active,
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
@@ -135,7 +173,7 @@ a.tab {
   color: white;
   display: block; }
   a.tab.userImg {
-    padding-bottom: 4px; }
+    padding-bottom: 5px; }
 
 #arangoCollectionSelect {
   display: none;
@@ -154,12 +192,6 @@ a.tab {
   border-left: 5px solid transparent;
   content: ""; }
 
-.navbar-spacer-big {
-  margin-right: 18px; }
-
-.navbar-spacer-med {
-  margin-right: 10px; }
-
 footer.footer {
   bottom: 0px;
   height: 40px; }
@@ -167,6 +199,235 @@ footer.footer {
     padding-top: 10px;
     padding-bottom: 10px;
     margin-bottom: 0; }
+
+.btn, .btn-primary, .btn-notification, .btn-success, .btn-danger, .btn-warning, .btn-inactive {
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: 0;
+  -moz-box-shadow: 0;
+  box-shadow: 0;
+  border: none;
+  color: white;
+  margin-left: 10px;
+  padding: 5px 16px;
+  font-weight: 300 !important;
+  font-size: 14px; }
+
+.btn-notification {
+  margin-right: 5px; }
+
+.addButton {
+  position: relative;
+  margin-right: 7px;
+  font-size: 22px;
+  margin-top: 2px; }
+
+.deleteButton {
+  font-size: 22px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative; }
+
+ul.headerButtonList {
+  display: inline-block;
+  *display: inline;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0 !important; }
+  ul.headerButtonList li {
+    display: inline;
+    margin-right: 2px; }
+
+a.headerButton {
+  float: left;
+  margin-top: 2px;
+  margin-left: 5px;
+  margin-right: 3px;
+  position: relative;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+  background-color: #dddddd;
+  color: #555555;
+  height: 17px;
+  width: 9px;
+  padding: 4px 9px 2px 9px;
+  border: 1px solid #222222; }
+  a.headerButton:hover {
+    background-color: white;
+    color: black; }
+  a.headerButton .icon_arangodb_filter {
+    top: 3px !important; }
+  a.headerButton .icon_arangodb_import {
+    top: 1px !important; }
+  a.headerButton .icon_arangodb_checklist {
+    top: 3px !important;
+    right: 5px; }
+  a.headerButton .icon_arangodb_arrowleft,
+  a.headerButton .icon_arangodb_arrowright {
+    font-weight: bold; }
+
+/* Graph Viewer */
+div.toolbox > div.gv_action_button {
+  text-align: center;
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background-color: #333232;
+  color: white;
+  margin-top: 2px;
+  margin-bottom: 2px; }
+  div.toolbox > div.gv_action_button.active {
+    background-color: #8aa051; }
+  div.toolbox > div.gv_action_button:first-child {
+    margin-top: 0px; }
+  div.toolbox > div.gv_action_button:last-child {
+    margin-bottom: 0px; }
+
+h6 h6.gv_icon_icon, h6 h6.gv_button_title {
+  position: absolute;
+  margin: 0px;
+  left: 0px;
+  right: 0px; }
+h6.gv_icon_icon {
+  font-size: 22px;
+  top: 6px; }
+h6.gv_button_title {
+  bottom: 1px; }
+
+button.graphViewer-icon-button {
+  border: medium none;
+  width: 20px;
+  height: 20px;
+  margin-top: -2px;
+  margin-left: 5px;
+  padding: 0px;
+  background-color: transparent; }
+
+button.graphViewer-icon-button > img {
+  width: 20px;
+  height: 20px;
+  padding-bottom: 10px; }
+
+button.gv_dropdown_entry {
+  width: 160px;
+  height: 30px;
+  margin: 4px 4px 4px 30px; }
+
+button.gv_context_button {
+  width: 65px; }
+
+.btn-icon {
+  padding: 4px 4px;
+  background-color: #383434; }
+
+button.gv-icon-small {
+  background-size: 16px 16px;
+  width: 16px;
+  height: 16px; }
+
+button.gv-icon-small.delete {
+  background-image: url("../img/icon_delete.png"); }
+
+button.gv-icon-small.add {
+  background-image: url("../img/plus_icon.png"); }
+
+button.gv-icon-btn {
+  width: 36px;
+  height: 36px;
+  background-size: 36px 36px;
+  border-radius: 0px !important;
+  -webkit-border-radius: 0px !important;
+  -moz-border-radius: 0px !important; }
+
+button.gv-icon-btn.active {
+  background-color: #8aa051; }
+
+button.btn-zoom:hover {
+  background: inherit; }
+
+button.btn-zoom {
+  width: 16px;
+  height: 16px;
+  padding: 0px;
+  margin: 0px;
+  position: absolute;
+  background: none; }
+
+button.btn-zoom-top {
+  left: 13px;
+  top: 0px; }
+
+button.btn-zoom-left {
+  left: 0px;
+  top: 12px; }
+
+button.btn-zoom-bottom {
+  left: 13px;
+  top: 24px; }
+
+button.btn-zoom-right {
+  right: 0px;
+  top: 12px; }
+
+button.gv-zoom-btn {
+  width: 14px;
+  height: 14px;
+  background-size: 14px 14px;
+  vertical-align: baseline; }
+
+button.gv-zoom-btn.pan-right {
+  background-image: url("../img/gv_arrow_right.png"); }
+
+button.gv-zoom-btn.pan-left {
+  background-image: url("../img/gv_arrow_left.png"); }
+
+button.gv-zoom-btn.pan-top {
+  background-image: url("../img/gv_arrow_top.png"); }
+
+button.gv-zoom-btn.pan-bottom {
+  background-image: url("../img/gv_arrow_bottom.png"); }
+
+a.paginationButton,
+ul.arangoPagination a {
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px; }
+
+.badge, .label, .btn {
+  text-shadow: none !important; }
+
+.thumbnail, .navbar-inner {
+  -moz-border-radius: 0px;
+  -webkit-border-radius: 0px;
+  border-radius: 0px;
+  -webkit-box-shadow: 0;
+  -moz-box-shadow: 0;
+  box-shadow: 0; }
+
+.modal-body th.actionCell > button {
+  margin-top: -12px; }
+
+button {
+  font-family: 'Open Sans', sans-serif !important; }
+
+.btn-old-padding {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important; }
+
+.btn-group.open .btn-inverse.dropdown-toggle {
+  background-color: #736b68; }
+
+/* Cluster View */
+button.btn-overview, button.btn-server {
+  margin: 5px; }
+
+button.btn-server {
+  width: 120px; }
 
 ul.tileList {
   margin-left: -6px;
@@ -220,7 +481,7 @@ li.tile, li.bigtile {
     font-size: 11px;
     font-weight: 300;
     color: white; }
-    li.tile div.tileBadge button.btn, li.bigtile div.tileBadge button.btn {
+    li.tile div.tileBadge button, li.bigtile div.tileBadge button {
       margin-left: 0px;
       margin-right: 5px; }
     li.tile div.tileBadge span, li.bigtile div.tileBadge span {
@@ -347,127 +608,6 @@ div.centralContent {
 .clusterInfoIcon {
   font-size: 30px; }
 
-.btn {
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
-  -webkit-box-shadow: 0;
-  -moz-box-shadow: 0;
-  box-shadow: 0; }
-
-.addButton {
-  position: relative;
-  margin-right: 7px;
-  font-size: 22px;
-  margin-top: 2px; }
-
-.deleteButton {
-  font-size: 22px;
-  padding-right: 3px;
-  top: 3px;
-  position: relative;
-  cursor: pointer; }
-
-ul.headerButtonList {
-  display: inline-block;
-  *display: inline;
-  margin-bottom: 0;
-  margin-left: 0;
-  padding-left: 0 !important; }
-  ul.headerButtonList li {
-    display: inline;
-    margin-right: 2px; }
-
-a.headerButton {
-  float: left;
-  cursor: pointer;
-  margin-top: 2px;
-  margin-left: 5px;
-  margin-right: 3px;
-  min-height: 15px;
-  border-radius: 3px;
-  position: relative;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  box-shadow: none;
-  background-color: #dddddd;
-  color: #555555;
-  height: 17px;
-  width: 9px;
-  padding: 4px 9px 2px 9px;
-  border: 1px solid #222222; }
-
-a.headerButton:hover {
-  background-color: white;
-  color: black; }
-
-a.paginationButton, ul.arangoPagination a {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px; }
-
-/* better look of some icons */
-a.headerButton .icon_arangodb_filter {
-  top: 3px !important; }
-a.headerButton .icon_arangodb_import {
-  top: 1px !important; }
-a.headerButton .icon_arangodb_checklist {
-  top: 3px !important;
-  right: 5px; }
-a.headerButton .icon_arangodb_arrowleft,
-a.headerButton .icon_arangodb_arrowright {
-  font-weight: bold; }
-
-/* Graph Viewer */
-div.toolbox > div.gv_action_button:first-child {
-  margin-top: 0px; }
-div.toolbox > div.gv_action_button:last-child {
-  margin-bottom: 0px; }
-
-div.gv_action_button {
-  text-align: center;
-  position: relative;
-  width: 50px;
-  height: 50px;
-  background-color: #333232;
-  color: white;
-  cursor: pointer;
-  margin-top: 2px;
-  margin-bottom: 2px; }
-
-div.gv_action_button.active {
-  background-color: #8aa051; }
-
-h6.gv_icon_icon,
-h6.gv_button_title {
-  position: absolute;
-  margin: 0px;
-  left: 0px;
-  right: 0px; }
-
-h6.gv_icon_icon {
-  font-size: 22px;
-  top: 6px; }
-
-h6.gv_button_title {
-  bottom: 1px; }
-
-/*
-#documentsToolbar span {
-  position: absolute;
-  top: 0;
-  right: 2px;
-  font-size: 25px;
-  margin-right: 3px;
-  margin-left: 0px;
-}
-
-#documentsToolbar li a {
-  margin-top: 0px !important;
-  padding: 5px 11px 2px 9px;
-}
-
-*/
 .scenarioImage {
   height: 70%;
   width: auto; }
