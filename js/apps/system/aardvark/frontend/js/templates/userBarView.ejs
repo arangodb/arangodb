@@ -12,30 +12,17 @@
     <ul class="user-dropdown-menu" id="user_dropdown">
       <li class="dropdown-header" style="text-transform: none">
         <%
-        if(username === null) {
-          %>User Management<%
-        } else {
-          if (name) {%>
+        if (name) {%>
         <%=name%> (<%=username%>)
         <% } else {%>
         <%=username%>
-        <%}
-
-        }
-       %>
-      <% if(username !== null) { %>
+        <% } %>
       <li class="dropdown-item">
         <a id="userProfile" class="tab" href="#user">User profile</a>
       </li>
-      <% } %>
-      <li class="dropdown-item">
-        <a id="userManagement" class="internalLink" href="#userManagement">User management</a>
-      </li>
-      <% if(username !== null) { %>
       <li class="dropdown-item">
         <a id="userLogout" class="tab" href="#user">Logout</a>
       </li>
-      <% } %>
     </ul>
   </li>
 
