@@ -408,7 +408,7 @@ bool RestDocumentHandler::createDocument () {
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
   string const collname(collection);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
@@ -671,7 +671,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
                               string const& collname,
                               string const& key,
                               bool generateBody) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
   map<string, string> resultHeaders;
@@ -850,7 +850,7 @@ bool RestDocumentHandler::readAllDocuments () {
 #ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::getAllDocumentsCoordinator (
                               string const& collname ) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   string contentType;
@@ -1559,7 +1559,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
                               bool waitForSync,
                               bool isPatch,
                               TRI_json_t* json) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
@@ -1803,7 +1803,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
                               TRI_voc_rid_t const rev,
                               TRI_doc_update_policy_e policy,
                               bool waitForSync) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
   map<string, string> resultHeaders;

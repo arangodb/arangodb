@@ -77,9 +77,6 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     CoordTransactionIDKey(),
 #endif
     DatabaseKey(),
-#ifdef TRI_ENABLE_CLUSTER
-    OriginalDatabaseKey(),
-#endif
     DoCompactKey(),
     DomainKey(),
     ErrorKey(),
@@ -130,9 +127,6 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _RevKey(),
     _ToKey(),
 
-#ifdef TRI_ENABLE_CLUSTER
-    _originalDatabase(0),
-#endif
     _currentTransaction(0),
     _server(0),
     _vocbase(0),
@@ -160,17 +154,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   CompatibilityKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("compatibility"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
-
 #ifdef TRI_ENABLE_CLUSTER
   CoordTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("coordTransactionID"));
 #endif
-
   DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
-
-#ifdef TRI_ENABLE_CLUSTER
-  OriginalDatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("originalDatabase"));
-#endif
-
   DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
   DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
   ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));
@@ -276,10 +263,14 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->Set(TRI_V8_SYMBOL(name), 
+                           v8::FunctionTemplate::New(func)->GetFunction(), 
+                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+    context->Global()->Set(TRI_V8_SYMBOL(name), 
+                           v8::FunctionTemplate::New(func)->GetFunction(), 
+                           v8::ReadOnly);
   }
 }
 
@@ -293,10 +284,14 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->Set(TRI_V8_SYMBOL(name), 
+                           func, 
+                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
+    context->Global()->Set(TRI_V8_SYMBOL(name), 
+                           func, 
+                           v8::ReadOnly);
   }
 }
 

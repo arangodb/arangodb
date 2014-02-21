@@ -2,6 +2,7 @@
 /*global window, $, Backbone, document, arangoCollection,arangoHelper,dashboardView,arangoDatabase*/
 
 (function() {
+<<<<<<< HEAD
     "use strict";
 
     window.Router = Backbone.Router.extend({
@@ -39,6 +40,129 @@
         test: function() {
             if(!this.clusterDashboardView) {
                 this.clusterDashboardView = new window.ClusterDashboardView();
+=======
+  "use strict";
+
+  window.Router = Backbone.Router.extend({
+    routes: {
+      ""                                    : "dashboard",
+      "dashboard"                           : "dashboard",
+      "collection/:colid"                   : "collection",
+      "collections"                         : "collections",
+      "collectionInfo/:colid"               : "collectionInfo",
+      "new"                                 : "newCollection",
+      "login"                               : "login",
+      "collection/:colid/documents/:pageid" : "documents",
+      "collection/:colid/:docid"            : "document",
+      "shell"                               : "shell",
+      "query"                               : "query",
+      "logs"                                : "logs",
+      "api"                                 : "api",
+      "databases"                           : "databases",
+      "application/installed/:key"          : "applicationEdit",
+      "application/available/:key"          : "applicationInstall",
+      "applications/installed"              : "applicationsInstalled",
+      "applications/available"              : "applicationsAvailable",
+      "applications"                        : "applications",
+      "application/documentation/:key"      : "appDocumentation",
+      "graph"                               : "graph",
+      "graphManagement"                     : "graphManagement",
+      "graphManagement/add"                 : "graphAddNew",
+      "graphManagement/delete/:name"        : "graphDelete",
+      "userManagement"                      : "userManagement",
+      "test"                                : "test",
+      "userProfile"                         : "userProfile"
+    },
+
+    test: function() {
+      if(!this.clusterDashboardView) {
+        this.clusterDashboardView = new window.ClusterDashboardView();
+      }
+      this.clusterDashboardView.render();
+    },
+
+    initialize: function () {
+      this.graphs = new window.GraphCollection();
+      this.notificationList = new window.NotificationCollection();
+
+      window.currentDB = new window.CurrentDatabase();
+      window.currentDB.fetch({
+        async: false
+      });
+
+      window.userCollection = new window.ArangoUsers();
+
+      window.arangoDatabase = new window.ArangoDatabase();
+
+      window.arangoCollectionsStore = new window.arangoCollections();
+      window.arangoDocumentsStore = new window.arangoDocuments();
+      window.arangoDocumentStore = new window.arangoDocument();
+
+      window.collectionsView = new window.CollectionsView({
+        collection: window.arangoCollectionsStore
+      });
+      window.arangoCollectionsStore.fetch();
+      window.documentsView = new window.DocumentsView();
+      window.documentView = new window.DocumentView({
+        collection: window.arangoDocumentStore
+      });
+      window.arangoLogsStore = new window.ArangoLogs();
+      window.arangoLogsStore.fetch({
+        success: function () {
+          window.logsView = new window.LogsView({
+            collection: window.arangoLogsStore
+          });
+        }
+      });
+
+      this.foxxList = new window.FoxxCollection();
+
+      this.footerView = new window.FooterView();
+      this.naviView = new window.NavigationView({
+        notificationCollection: this.notificationList,
+        userCollection: window.userCollection
+      });
+      this.footerView.render();
+      this.naviView.render();
+      this.graphView = new window.GraphView({
+        graphs: this.graphs,
+        collection: window.arangoCollectionsStore
+      });
+
+      // this.initVersionCheck();
+
+      var self = this;
+      $(window).resize(function() {
+        self.handleResize();
+      });
+      this.handleResize();
+      this.bind("all", function(page) {
+        if(page === "route") {
+          return;
+        }
+        if (page !== "route:test") {
+          if (this.clusterDashboardView) {
+            this.clusterDashboardView.stopUpdating(); 
+          }
+        }
+      });
+    },
+
+/*
+    initVersionCheck: function () {
+      // this checks for version updates
+
+      var self = this;
+      var versionCheck = function () {
+        $.ajax({ 
+          async: true,
+          crossDomain: true,
+          dataType: "jsonp",
+          url: "https://www.arangodb.org/repositories/versions.php?callback=parseVersions",
+          success: function (json) {
+            if (typeof json !== 'object') {
+              return;
+>>>>>>> 9ff135f97121e438b5f263c0dd4aeb6c184944ce
             }
             this.clusterDashboardView.render();
         },
@@ -301,6 +425,7 @@
             if (!this.queryView) {
                 this.queryView = new window.queryView();
             }
+<<<<<<< HEAD
             this.queryView.render();
             this.naviView.selectMenuItem('query-menu');
         },
@@ -511,6 +636,184 @@
             }
             this.userProfileView.render();
             this.naviView.selectMenuItem('user-menu');
+=======
+          },
+          error: function () {  
+            // re-schedule the version check
+            window.setTimeout(versionCheck, 60000);
+          }
+        });
+      };
+
+      window.setTimeout(versionCheck, 5000);
+    },
+*/
+
+    logsAllowed: function () {
+      return (window.databaseName === '_system');
+    },
+
+    checkUser: function () {
+      if (window.userCollection.models.length === 0) {
+        this.navigate("login", {trigger: true});
+        return false;
+      }
+      return true;
+    },
+
+    login: function () {
+      if (!this.loginView) {
+        this.loginView = new window.loginView({
+          collection: window.userCollection
+        });
+      }
+      this.loginView.render();
+      this.naviView.selectMenuItem('');
+    },
+
+    collections: function() {
+      var naviView = this.naviView;
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          window.collectionsView.render();
+          naviView.selectMenuItem('collections-menu');
+        }
+      });
+    },
+
+    collection: function(colid) {
+      if (!this.collectionView) {
+        this.collectionView = new window.CollectionView();
+      }
+      this.collectionView.setColId(colid);
+      this.collectionView.render();
+      this.naviView.selectMenuItem('collections-menu');
+    },
+    collectionInfo: function(colid) {
+      if (!this.collectionInfoView) {
+        this.collectionInfoView = new window.CollectionInfoView();
+      }
+      this.collectionInfoView.setColId(colid);
+      this.collectionInfoView.render();
+      this.naviView.selectMenuItem('collections-menu');
+    },
+    newCollection: function() {
+      if (!this.newCollectionView) {
+        this.newCollectionView = new window.newCollectionView({});
+      }
+      this.newCollectionView.render();
+      this.naviView.selectMenuItem('collections-menu');
+    },
+
+    documents: function(colid, pageid) {
+      if (!window.documentsView) {
+        window.documentsView.initTable(colid, pageid);
+      }
+      window.documentsView.collectionID = colid;
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentsView.colid = colid;
+      window.documentsView.pageid = pageid;
+      window.documentsView.type = type;
+      window.documentsView.render();
+      window.arangoDocumentsStore.getDocuments(colid, pageid);
+    },
+
+    document: function(colid, docid) {
+      window.documentView.colid = colid;
+      window.documentView.docid = docid;
+      window.documentView.render();
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentView.type = type;
+      window.documentView.typeCheck(type);
+    },
+
+    shell: function() {
+      if (!this.shellView) {
+        this.shellView = new window.shellView();
+      }
+      this.shellView.render();
+      this.naviView.selectMenuItem('tools-menu');
+    },
+
+    query: function() {
+      if (!this.queryView) {
+        this.queryView = new window.queryView();
+      }
+      this.queryView.render();
+      this.naviView.selectMenuItem('query-menu');
+    },
+
+    api: function() {
+      if (!this.apiView) {
+        this.apiView = new window.apiView();
+      }
+      this.apiView.render();
+      this.naviView.selectMenuItem('tools-menu');
+    },
+
+    databases: function() {
+      if (arangoHelper.databaseAllowed() === true) {
+        if (!this.databaseView) {
+          this.databaseView = new window.databaseView({
+            collection: arangoDatabase
+          });
+        }
+        this.databaseView.render();
+        this.naviView.selectMenuItem('databases-menu');
+      }
+      else {
+        this.navigate("#", {trigger: true});
+        this.naviView.selectMenuItem('dashboard-menu');
+        $('#databaseNavi').css('display','none');
+        $('#databaseNaviSelect').css('display','none');
+      }
+    },
+
+    logs: function() {
+      if (! this.logsAllowed()) {
+        this.navigate('', { trigger: true });
+        return;
+      }
+
+      window.arangoLogsStore.fetch({
+        success: function () {
+          window.logsView.render();
+          $('#logNav a[href="#all"]').tab('show');
+          window.logsView.initLogTables();
+          window.logsView.drawTable();
+          $('#all-switch').click();
+        }
+      });
+      this.naviView.selectMenuItem('tools-menu');
+    },
+
+    dashboard: function() {
+      this.naviView.selectMenuItem('dashboard-menu');
+      if (this.statisticsDescription === undefined) {
+        this.statisticsDescription = new window.StatisticsDescription();
+        this.statisticsDescription.fetch({
+          async:false
+        });
+      }
+      if (this.statistics === undefined) {
+        this.statisticsCollection = new window.StatisticsCollection();
+      }
+      if (this.dashboardView === undefined) {
+        this.dashboardView = new dashboardView({
+          collection: this.statisticsCollection,
+          description: this.statisticsDescription
+        });
+         }
+        this.dashboardView.render();
+    },
+
+    graph: function() {
+      var self = this;
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          self.graphView.render();
+          self.naviView.selectMenuItem('graphviewer-menu');
+>>>>>>> 9ff135f97121e438b5f263c0dd4aeb6c184944ce
         }
 
     });

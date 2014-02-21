@@ -337,12 +337,6 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), database.size()));
 
-#ifdef TRI_ENABLE_CLUSTER
-  // set originally requested database
-  string const& originalDatabase = request->originalDatabaseName();
-  req->Set(v8g->OriginalDatabaseKey, v8::String::New(originalDatabase.c_str(), originalDatabase.size()));
-#endif  
-
   // set the full url
   string const& fullUrl = request->fullUrl();
   req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
@@ -1043,13 +1037,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
-  v8::Isolate* isolate;
-
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  isolate = v8::Isolate::GetCurrent();
-  v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 5) {
     TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<offset>, <period>, <module>, <funcname>, <string-parameter>)");

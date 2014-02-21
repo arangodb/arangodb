@@ -386,10 +386,10 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
-               @top_srcdir@/js/server/tests/cluster.js \
-               @top_srcdir@/js/server/tests/compaction.js \
-               @top_srcdir@/js/server/tests/transactions.js \
-               @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
+               @top_srcdir@/js/server/tests/shell-compaction.js \
+               @top_srcdir@/js/server/tests/shell-transactions.js \
+               @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/server/tests/shell-bitarray-index.js \
                @top_srcdir@/js/server/tests/shell-database.js \
@@ -485,15 +485,15 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-02.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-03.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-04.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-05.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-06.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-07.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-08.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-09.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
@@ -530,7 +530,7 @@ unittests-shell-server-ahuacatl:
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
-	       @top_srcdir@/js/client/tests/client.js
+	       @top_srcdir@/js/client/tests/shell-client.js
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
@@ -661,7 +661,7 @@ unittests-replication-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -675,7 +675,7 @@ unittests-replication-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
@@ -892,7 +892,7 @@ unittests-authentication:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/shell-auth.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/auth.js || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 

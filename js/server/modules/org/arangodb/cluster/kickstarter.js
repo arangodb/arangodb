@@ -286,7 +286,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
 
-  console.info("Waiting for servers to come to live...");
+  console.info("Waiting for servers to come to life...");
   wait(20);
 
   return {"error": false, "isStartServers": true, 
@@ -331,14 +331,14 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var url;
   for (i = 0;i < run.endpoints.length;i++) {
-    console.info("Using API to shutdown %s", run.pids[i].toString());
+    console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     download(url);
   }
   console.info("Waiting 5 seconds for servers to shutdown gracefully...");
   wait(5);
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Shutting down %s the hard way...", run.pids[i].toString());
+    console.info("Shutting down %s the hard way...", JSON.stringify(run.pids[i]));
     killExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
@@ -403,7 +403,7 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var r = [];
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Checking health of server %s", run.pids[i].toString());
+    console.info("Checking health of server %s", JSON.stringify(run.pids[i]));
     r.push(statusExternal(run.pids[i]));
   }
   return {"error": false, "isStartServers": true, "status": r};

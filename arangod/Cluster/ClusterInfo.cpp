@@ -38,6 +38,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/StringUtils.h"
+#include "VocBase/server.h"
 
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
@@ -244,10 +245,17 @@ ClusterInfo* ClusterInfo::instance () {
   // This does not have to be thread-safe, because we guarantee that
   // this is called very early in the startup phase when there is still
   // a single thread.
-  if (0 == _theinstance) {
-    _theinstance = new ClusterInfo();  // this now happens exactly once
-  }
+  assert(_theinstance != 0);
   return _theinstance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the cluster info singleton object
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::initialise () {
+  assert(_theinstance == 0);
+  _theinstance = new ClusterInfo();  // this now happens exactly once
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +488,7 @@ void ClusterInfo::loadPlannedDatabases () {
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string& name = (*it).first;
+      string const& name = (*it).first;
       TRI_json_t* options = (*it).second._json;
 
       // steal the json
@@ -1823,9 +1831,14 @@ void ClusterInfo::loadServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string server = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+      TRI_json_t const* sub 
+        = triagens::basics::JsonHelper::getArrayElement((*it).second._json,
+                                                        "endpoint");
+      if (0 != sub) {
+        const std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
-      _servers.insert(std::make_pair((*it).first, server));
+        _servers.insert(std::make_pair((*it).first, server));
+      }
       ++it;
     }
 
@@ -2084,7 +2097,6 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   shardID = shards->at(hash % shards->size());
   return error;
 }
-
 
 // Local Variables:
 // mode: outline-minor

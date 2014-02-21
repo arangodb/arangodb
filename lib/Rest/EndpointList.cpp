@@ -90,6 +90,7 @@ EndpointList::~EndpointList () {
 bool EndpointList::add (const std::string& specification, 
                         const std::vector<std::string>& dbNames,
                         int backLogSize,
+                        bool reuseAddress,
                         Endpoint** dst) {
   const string key = Endpoint::getUnifiedForm(specification);
 
@@ -108,7 +109,7 @@ bool EndpointList::add (const std::string& specification,
     return true;
   }
 
-  Endpoint* ep = Endpoint::serverFactory(key, backLogSize);
+  Endpoint* ep = Endpoint::serverFactory(key, backLogSize, reuseAddress);
 
   if (ep == 0) {
     return false;
