@@ -120,7 +120,22 @@
 
         });
         delete self.LastValues;
-        console.log(self.series);
+    },
+
+    renderGroups: function () {
+      var self = this;
+      _.forEach(this.series, function(k,v) {
+        $('.contentDiv').append(self.groupTemplate.render({"name": v}));
+      });
+    },
+
+    renderCharts: function () {
+      var self = this;
+      _.forEach(self.series, function(key, group) {
+        _.forEach(key, function(x,y) {
+          $('#'+group).append(self.chartTemplate.render({"name": y}));
+        })
+      });
     },
 
     renderFigures: function () {
@@ -141,7 +156,7 @@
         );
 
         this.history = this.documentStore.history;
-        console.log(this.history);
+        //console.log(this.history);
     },
 
     startUpdating: function () {
@@ -180,6 +195,10 @@
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
+    chartTemplate: templateEngine.createTemplate("dashboardChart.ejs"),
+
+    groupTemplate: templateEngine.createTemplate("dashboardGroup.ejs"),
+
     render: function() {
       var self = this;
       $(this.el).html(this.template.render({}));
@@ -189,7 +208,8 @@
       this.renderPieCharts();
       this.renderLineCharts();
 
-
+      this.renderGroups();
+      this.renderCharts();
     }
 
 
