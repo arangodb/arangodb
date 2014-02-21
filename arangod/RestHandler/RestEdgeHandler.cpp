@@ -350,7 +350,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  TRI_json_t* json,
                                                  char const* from,
                                                  char const* to) {
-  string const& dbname = _request->originalDatabaseName();
+  string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;

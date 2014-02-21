@@ -44,6 +44,8 @@
 #include "BasicsC/tri-strings.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 #include "VocBase/auth.h"
+#include "VocBase/replication-applier.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -66,8 +68,8 @@
 /// @brief eventually acquire a write-lock on the databases
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRITE_LOCK_DATABASES(server) \
-  while (! TRI_TryWriteLockReadWriteLock(&server->_databasesLock)) { \
+#define WRITE_LOCK_DATABASES(lock) \
+  while (! TRI_TryWriteLockReadWriteLock(&(lock))) { \
     usleep(1000); \
   }
 
@@ -75,22 +77,22 @@
 /// @brief write-unlock the databases
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRITE_UNLOCK_DATABASES(server) \
-  TRI_WriteUnlockReadWriteLock(&server->_databasesLock)
+#define WRITE_UNLOCK_DATABASES(lock) \
+  TRI_WriteUnlockReadWriteLock(&(lock))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-lock the databases
 ////////////////////////////////////////////////////////////////////////////////
 
-#define READ_LOCK_DATABASES(server) \
-  TRI_ReadLockReadWriteLock(&server->_databasesLock)
+#define READ_LOCK_DATABASES(lock) \
+  TRI_ReadLockReadWriteLock(&(lock))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-unlock the databases
 ////////////////////////////////////////////////////////////////////////////////
 
-#define READ_UNLOCK_DATABASES(server) \
-  TRI_ReadUnlockReadWriteLock(&server->_databasesLock)
+#define READ_UNLOCK_DATABASES(lock) \
+  TRI_ReadUnlockReadWriteLock(&(lock))
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -749,7 +751,9 @@ static int OpenDatabases (TRI_server_t* server,
       continue;
     }
 
-    databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, nameJson->_value._string.data, nameJson->_value._string.length);
+    databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                         nameJson->_value._string.data, 
+                                         nameJson->_value._string.length);
 
     // .............................................................................
     // setup defaults
@@ -824,7 +828,10 @@ static int OpenDatabases (TRI_server_t* server,
     // we found a valid database
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
 
-    res = TRI_InsertKeyAssociativePointer2(&server->_databases, vocbase->_name, vocbase, &found);
+    res = TRI_InsertKeyAssociativePointer2(&server->_databases, 
+                                           vocbase->_name, 
+                                           vocbase, 
+                                           &found);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("could not add database '%s': out of memory",
@@ -853,7 +860,7 @@ static int OpenDatabases (TRI_server_t* server,
 static int CloseDatabases (TRI_server_t* server) {
   size_t i, n;
 
-  WRITE_LOCK_DATABASES(server);
+  WRITE_LOCK_DATABASES(server->_databasesLock);
 
   n = server->_databases._nrAlloc;
 
@@ -861,6 +868,8 @@ static int CloseDatabases (TRI_server_t* server) {
     TRI_vocbase_t* vocbase = server->_databases._table[i];
 
     if (vocbase != NULL) {
+      assert(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+      
       TRI_DestroyVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 
@@ -868,8 +877,26 @@ static int CloseDatabases (TRI_server_t* server) {
       server->_databases._table[i] = NULL;
     }
   }
+  
+#ifdef TRI_ENABLE_CLUSTER  
+  n = server->_coordinatorDatabases._nrAlloc;
 
-  WRITE_UNLOCK_DATABASES(server);
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+
+    if (vocbase != NULL) {
+      assert(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+      
+      TRI_DestroyInitialVocBase(vocbase);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+
+      // clear to avoid potential double freeing
+      server->_coordinatorDatabases._table[i] = NULL;
+    }
+  }
+#endif  
+
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1436,7 +1463,7 @@ static void DatabaseManager (void* data) {
     // check if we have to drop some database
     database = NULL;
 
-    READ_LOCK_DATABASES(server);
+    READ_LOCK_DATABASES(server->_databasesLock);
 
     n = server->_droppedDatabases._length;
 
@@ -1452,59 +1479,71 @@ static void DatabaseManager (void* data) {
       break;
     }
     
-    READ_UNLOCK_DATABASES(server);
+    READ_UNLOCK_DATABASES(server->_databasesLock);
 
     if (database != NULL) {
-      // remember the database path
-      char* path;
-
-      LOG_TRACE("physically removing database directory '%s' of database '%s'",
-                database->_path,
-                database->_name);
-
-      // remove apps directory for database
-      if (strlen(server->_appPath) > 0) {
-        path = TRI_Concatenate3File(server->_appPath, "databases", database->_name);
-
-        if (path != NULL) {
-          if (TRI_IsDirectory(path)) {
-            LOG_TRACE("removing app directory '%s' of database '%s'",
-                      path,
-                      database->_name);
-
-            TRI_RemoveDirectory(path);
-          }
-
-          TRI_Free(TRI_CORE_MEM_ZONE, path);
-        }
+      if (database->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+        // coordinator database
+        // ---------------------------
+        
+        TRI_DestroyInitialVocBase(database);
       }
+      else {
+        // regular database
+        // ---------------------------
 
-      // remove dev-apps directory for database
-      if (strlen(server->_devAppPath) > 0) {
-        path = TRI_Concatenate3File(server->_devAppPath, "databases", database->_name);
+        // remember the database path
+        char* path;
 
-        if (path != NULL) {
-          if (TRI_IsDirectory(path)) {
-            LOG_TRACE("removing dev-app directory '%s' of database '%s'",
-                      path,
-                      database->_name);
+        LOG_TRACE("physically removing database directory '%s' of database '%s'",
+                  database->_path,
+                  database->_name);
 
-            TRI_RemoveDirectory(path);
+        // remove apps directory for database
+        if (strlen(server->_appPath) > 0) {
+          path = TRI_Concatenate3File(server->_appPath, "databases", database->_name);
+
+          if (path != NULL) {
+            if (TRI_IsDirectory(path)) {
+              LOG_TRACE("removing app directory '%s' of database '%s'",
+                        path,
+                        database->_name);
+
+              TRI_RemoveDirectory(path);
+            }
+
+            TRI_Free(TRI_CORE_MEM_ZONE, path);
           }
-
-          TRI_Free(TRI_CORE_MEM_ZONE, path);
         }
-      }
 
-      path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
+        // remove dev-apps directory for database
+        if (strlen(server->_devAppPath) > 0) {
+          path = TRI_Concatenate3File(server->_devAppPath, "databases", database->_name);
 
-      TRI_DestroyVocBase(database);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
+          if (path != NULL) {
+            if (TRI_IsDirectory(path)) {
+              LOG_TRACE("removing dev-app directory '%s' of database '%s'",
+                        path,
+                        database->_name);
 
-      // remove directory
-      if (path != NULL) {
-        TRI_RemoveDirectory(path);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+              TRI_RemoveDirectory(path);
+            }
+
+            TRI_Free(TRI_CORE_MEM_ZONE, path);
+          }
+        }
+
+        path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
+
+        TRI_DestroyVocBase(database);
+
+        // remove directory
+        if (path != NULL) {
+          TRI_RemoveDirectory(path);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, path);
+        }
+        
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
       }
 
       // directly start next iteration
@@ -1647,6 +1686,15 @@ int TRI_InitServer (TRI_server_t* server,
                              HashElementDatabaseName,
                              EqualKeyDatabaseName,
                              NULL);
+  
+#ifdef TRI_ENABLE_CLUSTER
+  TRI_InitAssociativePointer(&server->_coordinatorDatabases,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             &TRI_HashStringKeyAssociativePointer,
+                             HashElementDatabaseName,
+                             EqualKeyDatabaseName,
+                             NULL);
+#endif  
 
   TRI_InitReadWriteLock(&server->_databasesLock);
 
@@ -1654,10 +1702,8 @@ int TRI_InitServer (TRI_server_t* server,
 
   TRI_InitMutex(&server->_createLock);
 
-
   server->_disableReplicationLoggers  = disableLoggers;
   server->_disableReplicationAppliers = disableAppliers;
-
 
   server->_wasShutdownCleanly = false;
   server->_initialised = true;
@@ -1676,6 +1722,9 @@ void TRI_DestroyServer (TRI_server_t* server) {
     TRI_DestroyMutex(&server->_createLock);
     TRI_DestroyVectorPointer(&server->_droppedDatabases);
     TRI_DestroyReadWriteLock(&server->_databasesLock);
+#ifdef TRI_ENABLE_CLUSTER    
+    TRI_DestroyAssociativePointer(&server->_coordinatorDatabases);
+#endif
     TRI_DestroyAssociativePointer(&server->_databases);
 
     TRI_Free(TRI_CORE_MEM_ZONE, server->_devAppPath);
@@ -1834,7 +1883,7 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
   if (! TRI_IsWritable(server->_databasePath)) {
-    LOG_ERROR("database drectory '%s' is not writable",
+    LOG_ERROR("database directory '%s' is not writable",
               server->_databasePath);
 
     return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
@@ -1998,6 +2047,92 @@ int TRI_StopServer (TRI_server_t* server) {
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_CLUSTER
+int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
+                                         TRI_voc_tick_t tick,
+                                         char const* name,
+                                         TRI_vocbase_defaults_t const* defaults,
+                                         TRI_vocbase_t** database) {
+  TRI_vocbase_t* vocbase;
+  int res;
+
+  if (! TRI_IsAllowedNameVocBase(true, name)) {
+    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  }
+
+  TRI_LockMutex(&server->_createLock);
+
+  READ_LOCK_DATABASES(server->_databasesLock);
+
+  vocbase = TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name);
+
+  if (vocbase != NULL) {
+    // name already in use
+    READ_UNLOCK_DATABASES(server->_databasesLock);
+    TRI_UnlockMutex(&server->_createLock);
+
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
+  // name not yet in use, release the read lock
+  READ_UNLOCK_DATABASES(server->_databasesLock);
+
+  vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name, defaults);
+
+  if (vocbase == NULL) {
+    TRI_UnlockMutex(&server->_createLock);
+
+    // grab last error
+    res = TRI_errno();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // but we must have an error...
+      res = TRI_ERROR_INTERNAL;
+    }
+
+    LOG_ERROR("could not create database '%s': %s",
+              name,
+              TRI_errno_string(res));
+
+    return res;
+  }
+  
+  assert(vocbase != NULL);
+
+  vocbase->_replicationLogger  = TRI_CreateReplicationLogger(vocbase);
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+  if (vocbase->_replicationLogger == NULL ||
+      vocbase->_replicationApplier == NULL) {
+    TRI_DestroyInitialVocBase(vocbase);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // TODO: create application directories??
+//  CreateApplicationDirectory(vocbase->_name, server->_appPath);
+//  CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
+
+  // increase reference counter
+  TRI_UseVocBase(vocbase);
+  
+  WRITE_LOCK_DATABASES(server->_databasesLock);
+  TRI_InsertKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name, vocbase, false);
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
+
+  TRI_UnlockMutex(&server->_createLock);
+
+  *database = vocbase;
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new database
+////////////////////////////////////////////////////////////////////////////////
+
 int TRI_CreateDatabaseServer (TRI_server_t* server,
                               char const* name,
                               TRI_vocbase_defaults_t const* defaults,
@@ -2007,7 +2142,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   char* file;
   char* path;
   int res;
-  size_t i, n;
 
   if (! TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
@@ -2015,25 +2149,20 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   TRI_LockMutex(&server->_createLock);
 
-  READ_LOCK_DATABASES(server);
+  READ_LOCK_DATABASES(server->_databasesLock);
 
-  n = server->_databases._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    vocbase = server->_databases._table[i];
+  vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
 
-    if (vocbase != NULL) {
-      if (TRI_EqualString(name, vocbase->_name)) {
-        // name already in use
-        READ_UNLOCK_DATABASES(server);
-        TRI_UnlockMutex(&server->_createLock);
+  if (vocbase != NULL) {
+    // name already in use
+    READ_UNLOCK_DATABASES(server->_databasesLock);
+    TRI_UnlockMutex(&server->_createLock);
 
-        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
-      }
-    }
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   // name not yet in use, release the read lock
-  READ_UNLOCK_DATABASES(server);
+  READ_UNLOCK_DATABASES(server->_databasesLock);
 
   // create the database directory
   tick = TRI_NewTickServer();
@@ -2083,9 +2212,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   // increase reference counter
   TRI_UseVocBase(vocbase);
   
-  WRITE_LOCK_DATABASES(server);
+  WRITE_LOCK_DATABASES(server->_databasesLock);
   TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
-  WRITE_UNLOCK_DATABASES(server);
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   TRI_UnlockMutex(&server->_createLock);
 
@@ -2093,6 +2222,59 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing coordinator database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
+                                       char const* name) {
+  TRI_vocbase_t* vocbase;
+  int res;
+
+  if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
+    // prevent deletion of system database
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  WRITE_LOCK_DATABASES(server->_databasesLock);
+
+  if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
+    // we need space for one more element
+    WRITE_UNLOCK_DATABASES(server->_databasesLock);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  vocbase = TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, name);
+
+  if (vocbase == NULL) {
+    // not found
+    res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  else {
+    // mark as deleted
+    assert(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+
+    if (TRI_DropVocBase(vocbase)) {
+      LOG_INFO("dropping coordinator database '%s'",
+               vocbase->_name);
+
+      TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
+      res = TRI_ERROR_NO_ERROR;
+    }
+    else {
+      // already deleted
+      res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
+  }
+
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
+
+  return res;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
@@ -2108,11 +2290,11 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  WRITE_LOCK_DATABASES(server);
+  WRITE_LOCK_DATABASES(server->_databasesLock);
 
   if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
     // we need space for one more element
-    WRITE_UNLOCK_DATABASES(server);
+    WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2125,8 +2307,9 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   }
   else {
     // mark as deleted
-    if (TRI_DropVocBase(vocbase)) {
+    assert(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
+    if (TRI_DropVocBase(vocbase)) {
       LOG_INFO("dropping database '%s', directory '%s'",
                vocbase->_name,
                vocbase->_path);
@@ -2145,10 +2328,37 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     }
   }
 
-  WRITE_UNLOCK_DATABASES(server);
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a coordinator database by its name
+/// this will increase the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
+                                                 char const* name) {
+  TRI_vocbase_t* vocbase;
+
+  READ_LOCK_DATABASES(server->_databasesLock);
+
+  vocbase = TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name);
+
+  if (vocbase != NULL) {
+    bool result = TRI_UseVocBase(vocbase);
+
+    // if we got here, no one else can have deleted the database
+    assert(result == true);
+  }
+  
+  READ_UNLOCK_DATABASES(server->_databasesLock);
+
+  return vocbase;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a database by its name
@@ -2159,7 +2369,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
                                       char const* name) {
   TRI_vocbase_t* vocbase;
 
-  READ_LOCK_DATABASES(server);
+  READ_LOCK_DATABASES(server->_databasesLock);
 
   vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
 
@@ -2170,7 +2380,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
     assert(result == true);
   }
   
-  READ_UNLOCK_DATABASES(server);
+  READ_UNLOCK_DATABASES(server->_databasesLock);
 
   return vocbase;
 }
@@ -2200,7 +2410,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
 
   res = TRI_ERROR_NO_ERROR;
 
-  READ_LOCK_DATABASES(server);
+  READ_LOCK_DATABASES(server->_databasesLock);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -2232,7 +2442,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
     }
   }
   
-  READ_UNLOCK_DATABASES(server);
+  READ_UNLOCK_DATABASES(server->_databasesLock);
 
   SortDatabaseNames(names);
 
@@ -2251,7 +2461,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
 
   res = TRI_ERROR_NO_ERROR;
 
-  READ_LOCK_DATABASES(server);
+  READ_LOCK_DATABASES(server->_databasesLock);
   n = server->_databases._nrAlloc;
 
   for (i = 0; i < n; ++i) {
@@ -2278,7 +2488,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
     }
   }
 
-  READ_UNLOCK_DATABASES(server);
+  READ_UNLOCK_DATABASES(server->_databasesLock);
 
   SortDatabaseNames(names);
 

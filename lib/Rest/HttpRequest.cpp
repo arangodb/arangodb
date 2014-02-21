@@ -76,9 +76,6 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _suffix(),
     _version(HTTP_UNKNOWN),
     _databaseName(),
-#ifdef TRI_ENABLE_CLUSTER    
-    _originalDatabaseName(),
-#endif
     _user(),
     _requestContext(0),
     _isRequestContextOwner(false),
@@ -671,16 +668,6 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 string const& HttpRequest::databaseName () const {
   return _databaseName;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the database name
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
-string const& HttpRequest::originalDatabaseName () const {
-  return _originalDatabaseName;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
@@ -1319,10 +1306,14 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
 
 string HttpRequest::translateVersion (HttpVersion version) {
   switch (version) {
-    case HTTP_1_0:      return "HTTP/1.0";
-    case HTTP_1_1:      return "HTTP/1.1";
+    case HTTP_1_1: {
+      return "HTTP/1.1";
+    }
+    case HTTP_1_0:      
     case HTTP_UNKNOWN:   
-    default:            return "HTTP/1.0";
+    default: {
+      return "HTTP/1.0";
+    }
   }
 }
 
