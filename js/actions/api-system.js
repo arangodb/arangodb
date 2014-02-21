@@ -724,6 +724,16 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
+          
+          {
+            group: "http",
+            identifier: "requestsOther",
+            name: "other HTTP requests",
+            description: "Number of other HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+
 
           // .............................................................................
           // server statistics
