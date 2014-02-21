@@ -200,6 +200,19 @@ ul.navlist {
   list-style: none; }
   ul.navlist li {
     margin-left: 1px; }
+    ul.navlist li.navbar-spacer {
+      width: 1px;
+      height: 28px;
+      margin-top: 5px;
+      background-color: white; }
+      ul.navlist li.navbar-spacer.big {
+        margin-left: 10px;
+        margin-right: 10px; }
+      ul.navlist li.navbar-spacer.med {
+        margin-left: 5px;
+        margin-right: 5px; }
+      ul.navlist li.navbar-spacer:hover {
+        background-color: white; }
   ul.navlist > li.active,
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
@@ -233,12 +246,6 @@ a.tab {
   border-right: 5px solid transparent;
   border-left: 5px solid transparent;
   content: ""; }
-
-.navbar-spacer-big {
-  margin-right: 18px; }
-
-.navbar-spacer-med {
-  margin-right: 10px; }
 
 footer.footer {
   bottom: 0px;
@@ -502,8 +509,6 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
-  height: "26";
-  width: "26";
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051;
