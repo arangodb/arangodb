@@ -24,11 +24,15 @@
     template: templateEngine.createTemplate("notificationView.ejs"),
 
     toggleNotification: function (e) {
-      $('#notification_menu').toggle();
+      var counter = this.collection.length;
+      if (counter !== 0) {
+        $('#notification_menu').toggle();
+      }
     },
 
     removeAllNotifications: function () {
       this.collection.reset();
+      $('#notification_menu').hide();
     },
 
     removeNotification: function(e) {
@@ -40,6 +44,7 @@
       $('#stat_hd_counter').text(this.collection.length);
       if (this.collection.length === 0) {
         $('#stat_hd').removeClass('fullNotification');
+        $('#notification_menu').hide();
       }
       else {
         $('#stat_hd').addClass('fullNotification');
