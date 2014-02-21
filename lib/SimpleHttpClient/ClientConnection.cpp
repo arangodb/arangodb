@@ -265,8 +265,11 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 
     if (lenRead == 0) {
       // nothing more to read
+      // since we come from a call to select which indicated that there 
+      // is something to read and we are reading from a socket, this is
+      // an error condition. Therefore we return false
       _isConnected = false;
-      break;
+      return false;
     }
 
     stringBuffer.increaseLength(lenRead);
