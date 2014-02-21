@@ -10,21 +10,13 @@
       "click .tab"                    : "navigateByTab",
       "mouseenter .dropdown"          : "showDropdown",
       "mouseleave .dropdown"          : "hideDropdown",
-      "click .navlogo #stat_hd"       : "toggleNotification",
-      "click .notificationItem .fa"   : "removeNotification",
-      "click #removeAllNotifications" : "removeAllNotifications",
       "click #userLogout"             : "userLogout"
     },
 
     initialize: function () {
-      this.collection.bind("add", this.renderNotifications.bind(this));
-      this.collection.bind("remove", this.renderNotifications.bind(this));
-      this.collection.bind("reset", this.renderNotifications.bind(this));
       this.userCollection = this.options.userCollection;
       this.userCollection.bind("change", this.render(this.$el));
     },
-
-    notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
 
     template: templateEngine.createTemplate("userBarView.ejs"),
 
@@ -46,10 +38,6 @@
       e.preventDefault();
     },
 
-    toggleNotification: function (e) {
-      $('#notification_menu').toggle();
-    },
-
     showDropdown: function (e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
@@ -61,30 +49,6 @@
 
     hideDropdown: function (e) {
       $("#user_dropdown").hide();
-    },
-
-    removeAllNotifications: function () {
-      this.collection.reset();
-    },
-
-    removeNotification: function(e) {
-      var cid = e.target.id;
-      this.collection.get(cid).destroy();
-    },
-
-    renderNotifications: function() {
-
-      $('#stat_hd_counter').text(this.collection.length);
-      if (this.collection.length === 0) {
-        $('#stat_hd').removeClass('fullNotification');
-      }
-      else {
-        $('#stat_hd').addClass('fullNotification');
-      }
-
-      $('.innerDropdownInnerUL').html(this.notificationItem.render({
-        notifications : this.collection
-      }));
     },
 
     render: function (el) {
@@ -115,14 +79,10 @@
         img : img,
         name : name,
         username : username,
-        active : active,
-        notifications : this.collection
+        active : active
       }));
 
-      this.renderNotifications();
-
       this.delegateEvents();
-      this.renderNotifications();
       return this.$el;
     },
 

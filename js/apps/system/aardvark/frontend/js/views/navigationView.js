@@ -19,8 +19,10 @@
         current: window.currentDB
       });
       this.userBarView = new window.UserBarView({
-        collection: this.options.notificationCollection,
         userCollection: window.userCollection
+      });
+      this.notificationView = new window.NotificationView({
+        collection: this.options.notificationCollection,
       });
       this.statisticBarView = new window.StatisticBarView({});
     },
@@ -28,7 +30,6 @@
     handleSelectDatabase: function () {
       this.dbSelectionView.render($("#dbSelect"));
     },
-
 
     template: templateEngine.createTemplate("navigationView.ejs"),
 
@@ -38,6 +39,7 @@
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.userBarView.render($("#userBar"));
+      this.notificationView.render($("#notificationBar"));
       this.statisticBarView.render($("#statisticBar"));
       return this;
     },
