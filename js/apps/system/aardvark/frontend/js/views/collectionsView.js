@@ -75,11 +75,18 @@
       "click #sortName"       : "sortName",
       "click #sortType"       : "sortType",
       "click #sortOrder"      : "sortOrder",
-      "click #collectionsToggle"     : "toggleView"
+      "click #collectionsToggle"     : "toggleView",
+      "click .css-label" : "checkBoxes"
     },
 
     toggleView: function() {
       $('#collectionsDropdown2').slideToggle(200);
+    },
+
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
     },
 
     checkSystem: function () {

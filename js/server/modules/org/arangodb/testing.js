@@ -141,7 +141,7 @@ function makeAuthorisationHeaders (options) {
                                                       options.password)}};
 }
 
-function startInstance (protocol, options) {
+function startInstance (protocol, options, addArgs) {
   // protocol must be one of ["tcp", "ssl", "unix"]
   var topDir = findTopDir();
   var instanceInfo = {};
@@ -152,28 +152,35 @@ function startInstance (protocol, options) {
 
   var endpoint;
   var pos;
+  var dispatcher;
   if (options.cluster) {
     // FIXME: protocol and valgrind currently ignored!
+    dispatcher = {"endpoint":"tcp://localhost:",
+                  "arangodExtraArgs":makeTestingArgs(),
+                  "username": "root",
+                  "password": ""};
+    if (addArgs !== undefined) {
+      dispatcher.arangodExtraArgs = addArgs;
+    }
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
-                         "dispatchers": 
-                           {"me":{"endpoint":"tcp://localhost:",
-                                  "arangodExtraArgs":makeTestingArgs(),
-                                  "username": "root",
-                                  "password": ""}}
-                        });
+                         "dispatchers": {"me": dispatcher}});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
-    var roles = runInfo[runInfo.length-1].roles;
-    var endpoints = runInfo[runInfo.length-1].endpoints;
+    var j = runInfo.length-1;
+    while (j > 0 && runInfo[j].isStartServers === undefined) {
+      j--;
+    }
+    var roles = runInfo[j].roles;
+    var endpoints = runInfo[j].endpoints;
     pos = roles.indexOf("Coordinator");
     endpoint = endpoints[pos];
   }
   else {   // single instance mode
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
-    var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+    dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
     var pf = new PortFinder([8529],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
@@ -189,6 +196,9 @@ function startInstance (protocol, options) {
     if (protocol === "ssl") {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
+    }
+    if (addArgs !== undefined) {
+      args = args.concat(addArgs);
     }
     instanceInfo.pid = executeExternal(ArangoServerState.executablePath(), 
                                        args);
@@ -237,123 +247,68 @@ function makePath (path) {
   return fs.join.apply(null,path.split("/"));
 }
 
-var tests_shell_common =
-  [ makePath("js/common/tests/shell-require.js"),
-    makePath("js/common/tests/shell-aqlfunctions.js"),
-    makePath("js/common/tests/shell-attributes.js"),
-    makePath("js/common/tests/shell-base64.js"),
-    makePath("js/common/tests/shell-collection.js"),
-    makePath("js/common/tests/shell-collection-volatile.js"),
-    makePath("js/common/tests/shell-crypto.js"),
-    makePath("js/common/tests/shell-database.js"),
-    makePath("js/common/tests/shell-document.js"),
-    makePath("js/common/tests/shell-download.js"),
-    makePath("js/common/tests/shell-edge.js"),
-    makePath("js/common/tests/shell-fs.js"),
-    makePath("js/common/tests/shell-graph-traversal.js"),
-    makePath("js/common/tests/shell-graph-algorithms.js"),
-    makePath("js/common/tests/shell-graph-measurement.js"),
-    makePath("js/common/tests/shell-keygen.js"),
-    makePath("js/common/tests/shell-simple-query.js"),
-    makePath("js/common/tests/shell-statement.js"),
-    makePath("js/common/tests/shell-transactions.js"),
-    makePath("js/common/tests/shell-unload.js"),
-    makePath("js/common/tests/shell-users.js"),
-    makePath("js/common/tests/shell-index.js"),
-    makePath("js/common/tests/shell-index-geo.js"),
-    makePath("js/common/tests/shell-cap-constraint.js"),
-    makePath("js/common/tests/shell-unique-constraint.js"),
-    makePath("js/common/tests/shell-hash-index.js"),
-    makePath("js/common/tests/shell-fulltext.js"),
-    makePath("js/common/tests/shell-graph.js")
-  ];
+var foundTests = false;
 
-var tests_shell_server_only =
-  [
-    makePath("js/server/tests/cluster.js"),
-    makePath("js/server/tests/compaction.js"),
-    makePath("js/server/tests/transactions.js"),
-    makePath("js/server/tests/routing.js"),
-    makePath("js/server/tests/shell-any.js"),
-    makePath("js/server/tests/shell-bitarray-index.js"),
-    makePath("js/server/tests/shell-database.js"),
-    makePath("js/server/tests/shell-foxx.js"),
-    makePath("js/server/tests/shell-foxx-repository.js"),
-    makePath("js/server/tests/shell-foxx-model.js"),
-    makePath("js/server/tests/shell-foxx-base-middleware.js"),
-    makePath("js/server/tests/shell-foxx-template-middleware.js"),
-    makePath("js/server/tests/shell-foxx-format-middleware.js"),
-    makePath("js/server/tests/shell-foxx-preprocessor.js"),
-    makePath("js/server/tests/shell-skiplist-index.js"),
-    makePath("js/server/tests/shell-skiplist-rm-performance.js"),
-    makePath("js/server/tests/shell-skiplist-correctness.js")
-  ];
+var tests_shell_common;
+var tests_shell_server_only;
+var tests_shell_client_only;
+var tests_shell_server;
+var tests_shell_client;
+var tests_shell_server_ahuacatl;
+var tests_shell_server_ahuacatl_extended;
 
-var tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
+function findTests () {
+  if (foundTests) {
+    return;
+  }
+  tests_shell_common = _.filter(fs.list(makePath("js/common/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/common/tests"),x);
+            }).sort();
+  tests_shell_server_only = _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_client_only = _.filter(fs.list(makePath("js/client/tests")),
+            function (p) {
+              return p.substr(0,6) === "shell-" &&
+                     p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/client/tests"),x);
+            }).sort();
+  tests_shell_server_ahuacatl = _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,9) === "ahuacatl-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") === -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_server_ahuacatl_extended = 
+            _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,9) === "ahuacatl-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") !== -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
 
-var tests_shell_server_ahuacatl =
-  [
-    makePath("js/server/tests/ahuacatl-ranges.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-in.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-limit.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-sort.js"),
-    makePath("js/server/tests/ahuacatl-queries-optimiser-ref.js"),
-    makePath("js/server/tests/ahuacatl-escaping.js"),
-    makePath("js/server/tests/ahuacatl-functions.js"),
-    makePath("js/server/tests/ahuacatl-variables.js"),
-    makePath("js/server/tests/ahuacatl-bind.js"),
-    makePath("js/server/tests/ahuacatl-complex.js"),
-    makePath("js/server/tests/ahuacatl-logical.js"),
-    makePath("js/server/tests/ahuacatl-arithmetic.js"),
-    makePath("js/server/tests/ahuacatl-relational.js"),
-    makePath("js/server/tests/ahuacatl-ternary.js"),
-    makePath("js/server/tests/ahuacatl-parse.js"),
-    makePath("js/server/tests/ahuacatl-hash.js"),
-    makePath("js/server/tests/ahuacatl-skiplist.js"),
-    makePath("js/server/tests/ahuacatl-cross.js"),
-    makePath("js/server/tests/ahuacatl-graph.js"),
-    makePath("js/server/tests/ahuacatl-edges.js"),
-    makePath("js/server/tests/ahuacatl-refaccess-variable.js"),
-    makePath("js/server/tests/ahuacatl-refaccess-attribute.js"),
-    makePath("js/server/tests/ahuacatl-queries-simple.js"),
-    makePath("js/server/tests/ahuacatl-queries-variables.js"),
-    makePath("js/server/tests/ahuacatl-queries-geo.js"),
-    makePath("js/server/tests/ahuacatl-queries-fulltext.js"),
-    makePath("js/server/tests/ahuacatl-queries-collection.js"),
-    makePath("js/server/tests/ahuacatl-queries-noncollection.js"),
-    makePath("js/server/tests/ahuacatl-subquery.js"),
-    makePath("js/server/tests/ahuacatl-operators.js")
-  ];
-
-var tests_shell_server_ahuacatl_extended =
-  [
-    makePath("js/server/tests/ahuacatl-ranges-combined-1.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-2.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-3.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-4.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-5.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-6.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-7.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-8.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-9.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-10.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-11.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-12.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-13.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-14.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-15.js"),
-    makePath("js/server/tests/ahuacatl-ranges-combined-16.js")
-  ];
-
-var tests_shell_client_only = 
-  [
-    makePath("js/client/tests/shell-endpoints.js"),
-    makePath("js/client/tests/shell-fm.js"),
-    makePath("js/client/tests/client.js")
-  ];
-
-var tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
+  tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
+  tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
+  foundTests = true;
+}
 
 function runThere (options, instanceInfo, file) {
   var r;
@@ -413,10 +368,16 @@ function performTests(options, testList) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     print("\nTrying",te,"...");
-    var r = runThere(options, instanceInfo, te);
-    results[te] = r;
-    if (r !== true && !options.force) {
-      break;
+    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+      var r = runThere(options, instanceInfo, te);
+      results[te] = r;
+      if (r !== true && !options.force) {
+        break;
+      }
+    }
+    else {
+      print("Skipped because of cluster/non-cluster.");
     }
   }
   print("Shutting down...");
@@ -426,14 +387,17 @@ function performTests(options, testList) {
 }
 
 testFuncs.shell_server = function (options) {
+  findTests();
   return performTests(options, tests_shell_server);
 };
 
 testFuncs.shell_server_only = function (options) {
+  findTests();
   return performTests(options, tests_shell_server_only);
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
+  findTests();
   if (!options.skipAhuacatl) {
     if (options.skipRanges) {
       return performTests(options, tests_shell_server_ahuacatl);
@@ -445,6 +409,7 @@ testFuncs.shell_server_ahuacatl = function(options) {
 };
 
 testFuncs.shell_client = function(options) {
+  findTests();
   var topDir = findTopDir();
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -453,10 +418,16 @@ testFuncs.shell_client = function(options) {
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
-    var r = runInArangosh(options, instanceInfo, te);
-    results[te] = r;
-    if (r !== 0 && !options.force) {
-      break;
+    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+      var r = runInArangosh(options, instanceInfo, te);
+      results[te] = r;
+      if (r !== 0 && !options.force) {
+        break;
+      }
+    }
+    else {
+      print("Skipped because of cluster/non-cluster.");
     }
   }
   print("Shutting down...");
@@ -556,6 +527,12 @@ function rubyTests (options, ssl) {
                    '  c.add_setting :ARANGO_PASSWORD\n'+
                    '  c.ARANGO_PASSWORD = "' + options.password + '"\n'+
                    'end\n');
+  var logsdir = fs.join(findTopDir(),"logs");
+  try {
+    fs.makeDirectory(logsdir);
+  }
+  catch (err) {
+  }
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
   var result = {};
   var args;
@@ -582,6 +559,7 @@ function rubyTests (options, ssl) {
       }
     }
   }
+  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
@@ -788,16 +766,21 @@ testFuncs.dump = function (options) {
 };
 
 var benchTodo = [
-  ["--requests","10000","--concurrency","2","--test","version", 
-   "--async","true"],
-  ["--requests","20000","--concurrency","1","--test","version", 
-   "--async","true"],
-  ["--requests","100000","--concurrency","2","--test","shapes", 
-   "--batch-size","16"],
-  ["--requests","1000","--concurrency","2","--test","version", 
-   "--batch-size", "16"],
-  ["--requests","100","--concurrency","1","--test","version", 
-   "--batch-size", "0"]
+  ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
+  ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
+  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16"],
+  ["--requests","1000","--concurrency","2","--test","version", "--batch-size", "16"],
+  ["--requests","100","--concurrency","1","--test","version", "--batch-size", "0"],
+  ["--requests","100","--concurrency","2","--test","document", "--batch-size",
+   "10", "--complexity", "1"],
+  ["--requests","2000","--concurrency","2","--test","crud", "--complexity", "1"],
+  ["--requests","4000","--concurrency","2","--test","crud-append", "--complexity", "4"],
+  ["--requests","4000","--concurrency","2","--test","edge", "--complexity", "4"], 
+  ["--requests","5000","--concurrency","2","--test","hash","--complexity","1"], 
+  ["--requests","5000","--concurrency","2","--test","skiplist","--complexity","1"],
+  ["--requests","500","--concurrency","3","--test","aqltrx","--complexity","1"],
+  ["--requests","100","--concurrency","3","--test","counttrx"],
+  ["--requests","500","--concurrency","3","--test","multitrx"]
 ];
   
 testFuncs.arangob = function (options) {
@@ -812,16 +795,103 @@ testFuncs.arangob = function (options) {
       break;
     }
   }
-
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
   return results;
 };
 
+testFuncs.authentication = function (options) {
+  print("Authentication tests...");
+  var instanceInfo = startInstance("tcp",options,
+                       ["--server.disable-authentication", "false"]);
+  var results = {};
+  results.auth = runInArangosh(options, instanceInfo,
+                               fs.join("js","client","tests","auth.js"));
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
+var urlsTodo = [
+  "/_api/",
+  "/_api",
+  "/_api/version",
+  "/_admin/html",
+  "/_admin/html/",
+  "/test",
+  "/the-big-fat-fox"
+];
+
+testFuncs.authentication_parameters = function (options) {
+  print("Authentication with parameters tests...");
+  var results = {};
+  // With full authentication:
+  var instanceInfo = startInstance("tcp",options,
+                       ["--server.disable-authentication", "false",
+                        "--server.authenticate-system-only", "false"]);
+  var r;
+  var i;
+  var re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re,[401, 401, 401, 401, 401, 401, 401])) {
+    results.auth_full = 0;
+  }
+  else {
+    results.auth_full = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  // Only system authentication:
+  instanceInfo = startInstance("tcp",options,
+                   ["--server.disable-authentication", "false",
+                    "--server.authenticate-system-only", "true"]);
+  re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re, [401, 401, 401, 401, 401, 404, 404])) {
+    results.auth_system = 0;
+  }
+  else {
+    results.auth_system = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  // No authentication:
+  instanceInfo = startInstance("tcp",options,
+                   ["--server.disable-authentication", "true",
+                    "--server.authenticate-system-only", "true"]);
+  re = [];
+  for (i = 0;i < urlsTodo.length;i++) {
+    print("GETting",instanceInfo.url+urlsTodo[i]);
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    re.push(r.code);
+  }
+  if (_.isEqual(re, [404, 404, 200, 301, 301, 404, 404])) {
+    results.auth_none = 0;
+  }
+  else {
+    results.auth_none = re;
+  }
+  print("Shutting down...");
+  shutdownInstance(instanceInfo,options);
+  print("done.");
+  return results;
+};
+
+
 var allTests = 
   [
-    "make",
     "config",
     "boost",
     "shell_server",
@@ -833,7 +903,6 @@ var allTests =
     "arangob",
     "importing",
     "upgrade",
-    // "dfdb",    needs input redirection, but is not a good test anyway
     "foxx_manager",
     "authentication",
     "authentication_parameters"
@@ -857,6 +926,9 @@ function printUsage () {
   print('         "skipRanges": skip the ranges tests');
   print('         "valgrind": arangods are run with valgrind');
   print('         "cluster": tests are run on a small local cluster');
+  print('         "test": name of test to run for "single" test');
+  print('         "skipClient": for "single" test');
+  print('         "skipServer": for "single" test');
 }
 
 function UnitTest (which, options) {
@@ -868,21 +940,48 @@ function UnitTest (which, options) {
     printUsage();
     return;
   }
+  var i;
+  var ok;
+  var r;
   if (which === "all") {
     var n;
     var results = {};
+    var allok = true;
     for (n = 0;n < allTests.length;n++) {
-      results[allTests[n]] = testFuncs[allTests[n]](options);
+      results[allTests[n]] = r = testFuncs[allTests[n]](options);
+      ok = true;
+      for (i in r) {
+        if (r.hasOwnProperty(i)) {
+          if (r[i] !== 0 && r[i] !== true) {
+            ok = false;
+          }
+        }
+      }
+      r.ok = ok;
+      if (!ok) {
+        allok = false;
+      }
     }
+    results.all_ok = allok;
     return results;
   }
   if (!testFuncs.hasOwnProperty(which)) {
     printUsage();
     throw 'Unknown test "'+which+'"';
   }
-  var r = {};
-  r[which] = testFuncs[which](options);
-  return r;
+  var rr = {};
+  rr[which] = r = testFuncs[which](options);
+  ok = true;
+  for (i in r) {
+    if (r.hasOwnProperty(i)) {
+      if (r[i] !== 0 && r[i] !== true) {
+        ok = false;
+      }
+    }
+  }
+  r.ok = ok;
+  rr.all_ok = ok;
+  return rr;
 }
 
 exports.UnitTest = UnitTest;

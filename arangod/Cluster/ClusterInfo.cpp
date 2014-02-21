@@ -1831,9 +1831,14 @@ void ClusterInfo::loadServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string server = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
+      TRI_json_t const* sub 
+        = triagens::basics::JsonHelper::getArrayElement((*it).second._json,
+                                                        "endpoint");
+      if (0 != sub) {
+        const std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
-      _servers.insert(std::make_pair((*it).first, server));
+        _servers.insert(std::make_pair((*it).first, server));
+      }
       ++it;
     }
 

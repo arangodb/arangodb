@@ -54,6 +54,7 @@ namespace triagens {
                     const EncryptionType,
                     const std::string&,
                     int,
+                    bool,
                     const std::string&,
                     const uint16_t);
 
@@ -139,6 +140,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to reuse the address
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _reuseAddress;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief host name / address (IPv4 or IPv6)

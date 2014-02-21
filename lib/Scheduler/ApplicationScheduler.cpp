@@ -333,7 +333,6 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
     _multiSchedulerAllowed(true),
     _nrSchedulerThreads(4),
     _backend(0),
-    _reuseAddress(true),
     _descriptorMinimum(256) {
 }
 
@@ -379,14 +378,6 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   _scheduler->registerTask(task);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true, if address reuse is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::addressReuseAllowed () {
-  return _reuseAddress;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -421,16 +412,9 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
     ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
 #endif
     ("scheduler.report-interval", &_reportInterval, "scheduler report interval")
-    ("server.no-reuse-address", "do not try to reuse address")
 #ifdef TRI_HAVE_GETRLIMIT
     ("server.descriptors-minimum", &_descriptorMinimum, "minimum number of file descriptors needed to start")
 #endif
-  ;
-
-  // deprecated option, only remaining for downwards-compatibility
-  // reuse-address is always true
-  options[ApplicationServer::OPTIONS_HIDDEN]
-    ("server.reuse-address", "try to reuse address")
   ;
 
   if (_multiSchedulerAllowed) {
@@ -460,16 +444,6 @@ bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& option
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& options) {
-
-  // check if want to reuse the address
-  if (options.has("server.reuse-address")) {
-    _reuseAddress = true;
-  }
-
-  if (options.has("server.no-reuse-address")) {
-    _reuseAddress = false;
-  }
-
   // adjust file descriptors
   adjustFileDescriptors();
 
