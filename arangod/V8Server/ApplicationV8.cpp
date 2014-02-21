@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
@@ -62,11 +62,6 @@ static std::string DeprecatedPath;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace {
 
@@ -118,18 +113,9 @@ namespace {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global method
@@ -147,10 +133,10 @@ void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   v8::HandleScope scope;
- 
+
   vector<string> copy;
 
-  { 
+  {
     // we need to copy the vector of functions so we do not need to hold the
     // lock while we execute them
     // this avoids potential deadlocks when one of the executed functions itself
@@ -172,10 +158,6 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ApplicationV8
 // -----------------------------------------------------------------------------
@@ -185,15 +167,12 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (TRI_server_t* server) 
+ApplicationV8::ApplicationV8 (TRI_server_t* server,
+                              ApplicationScheduler* scheduler,
+                              ApplicationDispatcher* dispatcher)
   : ApplicationFeature("V8"),
     _server(server),
     _startupPath(),
@@ -219,7 +198,9 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server)
     _dirtyContexts(),
     _busyContexts(),
     _stopping(0),
-    _gcThread(0) {
+    _gcThread(0),
+    _scheduler(scheduler),
+    _dispatcher(dispatcher) {
 
   assert(_server != 0);
 }
@@ -231,18 +212,9 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server)
 ApplicationV8::~ApplicationV8 () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the concurrency
@@ -280,7 +252,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, 
+ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
@@ -309,13 +281,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
-  
+
   // set the current database
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   v8g->_vocbase = vocbase;
   v8g->_allowUseDatabase = allowUseDatabase;
-  
+
 
   LOG_TRACE("entering V8 context %d", (int) context->_id);
   context->handleGlobalContextMethods();
@@ -548,18 +520,9 @@ void ApplicationV8::enableDevelopmentMode () {
   _developmentMode = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -589,7 +552,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::prepare () {
+bool ApplicationV8::prepare2 () {
 
   // check the startup path
   if (_startupPath.empty()) {
@@ -602,9 +565,9 @@ bool ApplicationV8::prepare () {
   // derive all other options from --javascript.startup-directory
   _actionPath  = _startupPath + TRI_DIR_SEPARATOR_STR + "actions";
 
-  _modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" + 
-                 _startupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" + 
-                 _startupPath + TRI_DIR_SEPARATOR_STR + "node"; 
+  _modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                 _startupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                 _startupPath + TRI_DIR_SEPARATOR_STR + "node";
 
   // dump paths
   {
@@ -627,7 +590,7 @@ bool ApplicationV8::prepare () {
 
     LOG_INFO("JavaScript using %s", StringUtils::join(paths, ", ").c_str());
   }
-  
+
   // check whether app-path was specified
   if (_appPath.empty()) {
     LOG_FATAL_AND_EXIT("no value has been specified for --javascript.app-path.");
@@ -709,18 +672,9 @@ void ApplicationV8::stop () {
   delete _gcThread;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares a V8 instance
@@ -767,7 +721,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
 
   if (_useActions) {
-    TRI_InitV8Actions(context->_context, this);
+    TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);
   }
 
   TRI_InitV8Buffer(context->_context);
@@ -795,30 +749,30 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   // load all init files
   for (size_t j = 0;  j < files.size();  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
-    
+
     if (! ok) {
       LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", files[j].c_str());
     }
   }
-  
-  
+
+
   // run upgrade script
   if (i == 0 && ! _skipUpgrade) {
     LOG_DEBUG("running database version check");
-    
+
     // can do this without a lock as this is the startup
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
       TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
 
       if (vocbase != 0) {
-        // special check script to be run just once in first thread (not in all) 
+        // special check script to be run just once in first thread (not in all)
         // but for all databases
         v8::HandleScope scope;
 
         context->_context->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
 
         bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
-      
+
         if (! ok) {
           if (_performUpgrade) {
             LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
@@ -827,7 +781,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
             LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
           }
         }
-  
+
         LOG_DEBUG("database version check passed for '%s'", vocbase->_name);
       }
     }
@@ -841,16 +795,16 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     delete context->_locker;
 
     // regular shutdown... wait for all threads to finish
-    
+
     // again, can do this without the lock
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
       TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
-   
+
       if (vocbase != 0) {
         vocbase->_state = 2;
 
         int res = TRI_ERROR_NO_ERROR;
-        
+
         res |= TRI_JoinThread(&vocbase->_synchroniser);
         res |= TRI_JoinThread(&vocbase->_compactor);
         vocbase->_state = 3;
@@ -861,7 +815,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
         }
       }
     }
-    
+
     LOG_INFO("finished");
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
@@ -871,7 +825,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     // once again, we don't need the lock as this is the startup
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
       TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
-   
+
       if (vocbase != 0) {
         TRI_V8InitialiseFoxx(vocbase, context->_context);
       }
@@ -895,7 +849,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
                                   v8::String::New("action loaded"),
                                   false);
     }
-  
+
   }
 
   // and return from the context
@@ -947,10 +901,6 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
   LOG_TRACE("closed V8 context #%d", (int) i);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
