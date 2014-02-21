@@ -283,9 +283,11 @@
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
-    httpTemplate: templateEngine.createTemplate("dashboardChart.ejs"),
+    httpTemplate: templateEngine.createTemplate("dashboardHttpGroup.ejs"),
 
-    groupTemplate: templateEngine.createTemplate("dashboardGroup.ejs"),
+    renderHttpGroup: function() {
+      $('.contentDiv').append(this.httpTemplate.render());
+    },
 
     render: function() {
       var self = this;
@@ -296,6 +298,7 @@
       this.renderPieCharts();
       //this.renderLineCharts();
 
+      this.renderHttpGroup();
       console.log(this.series);
     }
 
