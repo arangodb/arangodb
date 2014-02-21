@@ -37,7 +37,7 @@
         isSystem: window.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
-      this.userBarView.render($("#userBar"));
+      this.userBarView.render();
       this.statisticBarView.render($("#statisticBar"));
       return this;
     },
