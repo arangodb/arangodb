@@ -43,6 +43,8 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.historian = function (param) {
+  "use strict";
+
   try {
     var result = {};
 
