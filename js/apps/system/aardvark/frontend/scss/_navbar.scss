@@ -1,7 +1,7 @@
 nav.navbar {
   @extend %fixedbar;
   top: 0px;
-  height: 37px;
+  height: 38px;
   margin-bottom: 3px;
 }
 
@@ -34,7 +34,7 @@ ul.navlist {
 
 a.tab {
   padding: {
-    top: 8px;
+    top: 9px;
     left: 10px;
     bottom: 10px;
     right: 10px;
@@ -73,6 +73,10 @@ ul.user-dropdown-menu {
   content: "";
 }
 
-.navbar-spacer {
-  margin-right: 15px;
+.navbar-spacer-big {
+  margin-right: 18px;
 }
+
+.navbar-spacer-med {
+   margin-right: 10px;
+ }

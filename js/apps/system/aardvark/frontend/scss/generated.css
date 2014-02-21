@@ -188,7 +188,7 @@ div.centralContent {
 
 nav.navbar {
   top: 0px;
-  height: 37px;
+  height: 38px;
   margin-bottom: 3px; }
 
 div.navlogo {
@@ -208,7 +208,7 @@ ul.navlist {
     margin-left: 0px; }
 
 a.tab {
-  padding-top: 8px;
+  padding-top: 9px;
   padding-left: 10px;
   padding-bottom: 10px;
   padding-right: 10px;
@@ -234,8 +234,11 @@ a.tab {
   border-left: 5px solid transparent;
   content: ""; }
 
-.navbar-spacer {
-  margin-right: 15px; }
+.navbar-spacer-big {
+  margin-right: 18px; }
+
+.navbar-spacer-med {
+  margin-right: 10px; }
 
 footer.footer {
   bottom: 0px;
@@ -504,7 +507,7 @@ select.filterSelect {
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051;
-  margin-top: -3px; }
+  margin-top: -4px; }
 
 .tooltip-inner {
   max-width: 300px !important;
