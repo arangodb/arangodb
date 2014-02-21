@@ -125,19 +125,6 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     return listenSocket;
   }
 
-  // reuse address
-  int opt = 1;
-
-  if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-    LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
-
-    TRI_CLOSE_SOCKET(listenSocket);
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
-    return listenSocket;
-  }
-  LOG_TRACE("reuse address flag set");
-
   struct sockaddr_un address;
 
   memset(&address, 0, sizeof(address));
