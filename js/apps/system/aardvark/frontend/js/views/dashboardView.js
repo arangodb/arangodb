@@ -34,6 +34,17 @@
             bytesReceived: "currentDistribution"
         }
     },
+    combinedCharts : {
+        http_requests: [
+            "requestsGet","requestsHead",
+            "requestsPost","requestsPut",
+            "requestsPatch","requestsDelete",
+            "requestsOptions", "requestsOther"
+        ],
+        system_systemUserTime: ["systemTime","userTime"]
+    },
+
+    stackedCharts : ["http_requests", "system_systemUserTime"],
 
 
     initialize: function () {
@@ -84,86 +95,82 @@
     calculateSeries: function () {
         var self = this;
         self.LastValues = {};
-        self.series["system"]["systemUserTime"] = {
-            current:  []
-        };
         self.history.forEach(function(entry) {
-                var time = entry.time * 1000;
-                //iteration über Gruppen
-                self.description.get("groups").forEach(function(g) {
-                    //iteration über figures
-                    Object.keys(entry[g.group]).forEach(function(figure) {
-                       //iteration über valuelisten:
-                       var valueLists = self.series[g.group][figure];
-                        Object.keys(valueLists).forEach(function (valueList) {
-                            var val = entry[g.group][figure];
-                            if (valueList === "lineChartDiffBased") {
-                                if (!self.LastValues[figure]) {
-                                    self.LastValues[figure] = val;
-                                }
-                                valueLists[valueList].push([new Date(time), val - self.LastValues[figure]]);
-                                self.LastValues[figure] = val;
-                            } else if (valueList === "distribution") {
-                                valueLists[valueList] = val;
-                            } else if (valueList === "accumulated") {
-
-                            } else if (valueList === "current") {
-                                valueLists[valueList].push([new Date(time), val]);
-                            } else if (valueList === "currentDistribution")  {
-                                valueLists[valueList].push([
-                                    new Date(time),
-                                    val.count === 0 ? 0 : val.sum / val.count
-                                ]);
-                            }
-                        });
-
-                    });
-                });
-                self.series["system"]["systemUserTime"]["current"].push(
-                    [new Date(time), entry["system"]["systemTime"], entry["system"]["userTime"]]
-                );
-
-        });
-
-        Object.keys(self.series).forEach(function(group) {
-                Object.keys(self.series[group]).forEach(function(figure) {
-                    Object.keys(self.series[group][figure]).forEach(function(valueList) {
+            var time = entry.time * 1000;
+            //iteration über Gruppen
+            self.description.get("groups").forEach(function(g) {
+                //iteration über figures
+                Object.keys(entry[g.group]).forEach(function(figure) {
+                   //iteration über valuelisten:
+                   var valueLists = self.series[g.group][figure];
+                    Object.keys(valueLists).forEach(function (valueList) {
+                        var val = entry[g.group][figure];
                         if (valueList === "lineChartDiffBased") {
-                            self.series[group][figure]["current"] = self.series[group][figure][valueList];
-                            delete self.series[group][figure][valueList];
-                        } else if (valueList === "accumulated") {
-                            delete self.series[group][figure][valueList];
-                        } else if (valueList === "current") {
-
+                            if (!self.LastValues[figure]) {
+                                self.LastValues[figure] = val;
+                            }
+                            valueLists[valueList].push([new Date(time), (val - self.LastValues[figure]) / val]);
+                            self.LastValues[figure] = val;
                         } else if (valueList === "distribution") {
+                            valueLists[valueList] = val;
+                        } else if (valueList === "accumulated") {
 
+                        } else if (valueList === "current") {
+                            valueLists[valueList].push([new Date(time), val]);
                         } else if (valueList === "currentDistribution")  {
-                            self.series[group][figure]["current"] = self.series[group][figure][valueList];
-                            delete self.series[group][figure][valueList];
+                            valueLists[valueList].push([
+                                new Date(time),
+                                val.count === 0 ? 0 : val.sum / val.count
+                            ]);
                         }
                     });
-                });
-        });
-        delete self.LastValues;
-    },
 
-    Charts : function() {
-        var self = this;
+                });
+            });
+            Object.keys(self.combinedCharts).forEach(function (cc) {
+                var part = cc.split("_");
+                if (!self.series[part[0]][part[1]]) {
+                    self.series[part[0]][part[1]] = {
+                        current:  []
+                    };
+                }
+                var val = [new Date(time)];
+                self.combinedCharts[cc].sort().forEach(function(attrib) {
+                    val.push(entry[part[0]][attrib]);
+                })
+                self.series[part[0]][part[1]]["current"].push(val);
+            })
+        });
+
         Object.keys(self.series).forEach(function(group) {
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
-                    if (valueList === "current") {
-                        self.renderLineChart();
+                    if (valueList === "lineChartDiffBased") {
+                        self.series[group][figure]["current"] = self.series[group][figure][valueList];
                         delete self.series[group][figure][valueList];
-                    } else if (valueList === "distribution") {
+                    } else if (valueList === "accumulated") {
                         delete self.series[group][figure][valueList];
                     } else if (valueList === "current") {
 
+                    } else if (valueList === "distribution") {
+
+                    } else if (valueList === "currentDistribution")  {
+                        self.series[group][figure]["current"] = self.series[group][figure][valueList];
+                        delete self.series[group][figure][valueList];
                     }
                 });
             });
         });
+        Object.keys(self.combinedCharts).forEach(function (cc) {
+            var part = cc.split("_");
+            self.combinedCharts[cc].sort().forEach(function(attrib) {
+                delete self.series[part[0]][attrib];
+            })
+        })
+        console.log(self.series);
+        delete self.LastValues;
     },
+
 
     createLineChart: function(figure) {
         if (!this.graphs[figure]) {
@@ -252,7 +259,6 @@
 
     renderLineChart: function () {
 
-        makeGraph(data , id);
     },
 
     getStatisticHistory : function () {
@@ -286,7 +292,7 @@
                     self.calculateSeries();
                     self.renderFigures();
                     self.renderPieCharts();
-                    self.renderLineCharts();
+                    self.renderLineChart();
                 },
                  error: function() {
 
@@ -310,7 +316,7 @@
       this.calculateSeries();
       this.renderFigures();
       this.renderPieCharts();
-      this.renderLineCharts();
+      this.renderCharts();
 
       this.renderGroups();
       this.renderCharts();
