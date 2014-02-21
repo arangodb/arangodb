@@ -124,6 +124,7 @@
                 );
 
         });
+
         Object.keys(self.series).forEach(function(group) {
                 Object.keys(self.series[group]).forEach(function(figure) {
                     Object.keys(self.series[group][figure]).forEach(function(valueList) {
@@ -146,7 +147,7 @@
         delete self.LastValues;
     },
 
-    renderCharts : function() {
+    Charts : function() {
         var self = this;
         Object.keys(self.series).forEach(function(group) {
             Object.keys(self.series[group]).forEach(function(figure) {
@@ -222,7 +223,23 @@
                 };
                 self.graph.updateOptions({clickCallback: onclick}, true);
                 self.graph.setSelection(false, 'ClusterAverage', true);
-            };
+            }
+    },
+
+    renderGroups: function () {
+      var self = this;
+      _.forEach(this.series, function(k,v) {
+        $('.contentDiv').append(self.groupTemplate.render({"name": v}));
+      });
+    },
+
+    renderCharts: function () {
+      var self = this;
+      _.forEach(self.series, function(key, group) {
+        _.forEach(key, function(x,y) {
+          $('#'+group).append(self.chartTemplate.render({"name": y}));
+        })
+      });
     },
 
     renderFigures: function () {
@@ -282,6 +299,10 @@
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
+    chartTemplate: templateEngine.createTemplate("dashboardChart.ejs"),
+
+    groupTemplate: templateEngine.createTemplate("dashboardGroup.ejs"),
+
     render: function() {
       var self = this;
       $(this.el).html(this.template.render({}));
@@ -291,7 +312,8 @@
       this.renderPieCharts();
       this.renderLineCharts();
 
-
+      this.renderGroups();
+      this.renderCharts();
     }
 
 
