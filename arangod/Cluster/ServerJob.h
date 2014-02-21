@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief DB server job
+/// @brief Cluster server job
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_DBSERVER_JOB_H
-#define TRIAGENS_CLUSTER_DBSERVER_JOB_H 1
+#ifndef TRIAGENS_CLUSTER_SERVER_JOB_H
+#define TRIAGENS_CLUSTER_SERVER_JOB_H 1
 
 #include "Dispatcher/Job.h"
 
@@ -39,7 +39,7 @@ extern "C" {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class DBServerJob
+// --SECTION--                                                 class ServerJob
 // -----------------------------------------------------------------------------
 
 namespace triagens {
@@ -51,10 +51,10 @@ namespace triagens {
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-    class DBServerJob : public triagens::rest::Job {
+    class ServerJob : public triagens::rest::Job {
       private:
-        DBServerJob (DBServerJob const&);
-        DBServerJob& operator= (DBServerJob const&);
+        ServerJob (ServerJob const&);
+        ServerJob& operator= (ServerJob const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -66,15 +66,15 @@ namespace triagens {
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        DBServerJob (HeartbeatThread* heartbeat,
-                     struct TRI_server_s* server,
-                     ApplicationV8* applicationV8); 
+        ServerJob (HeartbeatThread* heartbeat,
+                   struct TRI_server_s* server,
+                   ApplicationV8* applicationV8); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~DBServerJob ();
+        ~ServerJob ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

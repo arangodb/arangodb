@@ -31,15 +31,7 @@
       "graphManagement/add"                 : "graphAddNew",
       "graphManagement/delete/:name"        : "graphDelete",
       "userManagement"                      : "userManagement",
-      "test"                                : "test",
       "userProfile"                         : "userProfile"
-    },
-
-    test: function() {
-      if(!this.clusterDashboardView) {
-        this.clusterDashboardView = new window.ClusterDashboardView();
-      }
-      this.clusterDashboardView.render();
     },
 
     initialize: function () {
@@ -97,16 +89,6 @@
         self.handleResize();
       });
       this.handleResize();
-      this.bind("all", function(page) {
-        if(page === "route") {
-          return;
-        }
-        if (page !== "route:test") {
-          if (this.clusterDashboardView) {
-            this.clusterDashboardView.stopUpdating(); 
-          }
-        }
-      });
     },
 
 /*
@@ -352,10 +334,11 @@
       if (this.dashboardView === undefined) {
         this.dashboardView = new dashboardView({
           collection: this.statisticsCollection,
-          description: this.statisticsDescription
+          description: this.statisticsDescription,
+          documentStore: window.arangoDocumentsStore
         });
-         }
-        this.dashboardView.render();
+      }
+      this.dashboardView.render();
     },
 
     graph: function() {
