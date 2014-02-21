@@ -202,17 +202,20 @@ ul.navlist {
     margin-left: 1px; }
     ul.navlist li.navbar-spacer {
       width: 1px;
-      height: 28px;
-      margin-top: 5px;
-      background-color: white; }
+      box-shadow: 1px 0px 0px #c8c8c8;
+      -moz-box-shadow: 1px 0px 0px #c8c8c8;
+      -webkit-box-shadow: 1px 0px 0px #c8c8c8;
+      height: 21px;
+      margin-top: 9px;
+      background-color: #a0a0a0; }
       ul.navlist li.navbar-spacer.big {
-        margin-left: 10px;
-        margin-right: 10px; }
+        margin-left: 15px;
+        margin-right: 15px; }
       ul.navlist li.navbar-spacer.med {
         margin-left: 5px;
         margin-right: 5px; }
       ul.navlist li.navbar-spacer:hover {
-        background-color: white; }
+        background-color: #a0a0a0; }
   ul.navlist > li.active,
   ul.navlist li.dropdown-item:hover,
   ul.navlist > li:hover {
