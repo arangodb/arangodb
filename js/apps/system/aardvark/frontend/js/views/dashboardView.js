@@ -291,11 +291,7 @@
     distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
 
     renderHttpGroup: function(id) {
-<<<<<<< HEAD
-      $('.contentDiv').append(this.httpTemplate.render({id : id}));
-=======
       $(this.contentEl).append(this.httpTemplate.render({id : id}));
->>>>>>> 940cf861cb9f426ef188d1da0403ed24b7a1e39c
     },
 
     render: function() {
@@ -342,10 +338,7 @@
     renderDistributionPlaceholder: function () {
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
-<<<<<<< HEAD
-=======
         $(self.contentEl).append(self.distributionTemplate.render({elementId: v}));
->>>>>>> 940cf861cb9f426ef188d1da0403ed24b7a1e39c
       });
     }
 
