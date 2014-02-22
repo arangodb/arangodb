@@ -469,7 +469,15 @@
     },
 
     createDistributionSeries: function(name) {
-      console.log(name);
+      var cuts = [];
+
+      _.each(this.description.attributes.figures, function(k, v) {
+        if (k.identifier === name) {
+          cuts = k.cuts;
+          cuts.unshift(0);
+        }
+      });
+
       //value prep for d3 graphs
       var distributionValues = this.series.client[name].distribution.data.counts;
       var sum = this.series.client[name].distribution.data.sum;
@@ -479,13 +487,13 @@
 
       _.each(distributionValues, function() {
         values.push({
-          "label" : (sum / areaLength) * counter,
+          //"label" : (sum / areaLength) * counter,
+          "label" : cuts[counter-1],
           "value" : distributionValues[counter-1]
         });
         counter++;
       });
-      console.log(values);
-    return values;
+      return values;
     },
 
     createDistributionCharts: function () {
@@ -506,10 +514,10 @@
           .x(function(d) { return d.label })
           .y(function(d) { return d.value })
           //.margin({top: 30, right: 20, bottom: 50, left: 175})
-          .showValues(true) //Show bar value next to each bar.
-          .tooltips(true) //Show tooltips on hover.
+          .margin({left: 80})
+          .showValues(true)
           .transitionDuration(350)
-          .showControls(true); //Allow user to switch between "Grouped" and "Stacked" mode.
+          .showControls(false);
 
           chart.yAxis
           .tickFormat(d3.format(',.2f'));
