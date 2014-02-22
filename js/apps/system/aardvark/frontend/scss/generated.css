@@ -803,3 +803,8 @@ select.filterSelect {
   max-width: 160px;
   float: left;
   margin-right: 3px; }
+
+#dashboardHttpGroup {
+  width: 100%;
+  height: 300px;
+  border: 1px solid black; }
