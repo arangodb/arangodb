@@ -303,8 +303,7 @@
                                 '" type="text" placeholder="Attribute value" ' + 
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus"></i></a>'+
-                                ' <span>AND</span></div>');
+                                '<i class="icon icon-minus"></i></a></div>');
       this.filters[num] = true;
     },
 
