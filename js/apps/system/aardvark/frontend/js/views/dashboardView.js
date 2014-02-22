@@ -343,7 +343,7 @@
 
         var data = [{
           key: v,
-          color: "#D67777",
+          color: "#617E2B",
           values: valueData
         }];
 
@@ -355,6 +355,7 @@
           .margin({left: 80})
           .showValues(true)
           .transitionDuration(350)
+          .tooltips(false)
           .showControls(false);
 
           chart.yAxis
