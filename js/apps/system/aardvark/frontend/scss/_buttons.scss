@@ -9,38 +9,38 @@
   font-weight: 300 !important;
   font-size: 14px;
 }
-.btn {
+.button-neutral {
   @extend %btn;
   @extend %neutral;
 }
 
-.btn-primary {
+.button-primary {
   @extend %btn;
   @extend %primary;
 }
 
-.btn-notification {
+.button-notification {
   @extend %btn;
   @extend %notification;
   margin-right: 5px;
 }
 
-.btn-success {
+.button-success {
   @extend %btn;
   @extend %positive;
 }
 
-.btn-danger {
+.button-danger {
   @extend %btn;
   @extend %negative;
 }
 
-.btn-warning {
+.button-warning {
   @extend %btn;
   @extend %warning;
 }
 
-.btn-inactive {
+.button-inactive {
   @extend %btn;
   @extend %inactive;
 }
@@ -145,13 +145,14 @@ div.toolbox > {
   }
 }
 
+%gvButton {
+  position: absolute;
+  margin: 0px;
+  left: 0px;
+  right: 0px;
+}
+
 h6 {
-  %gvButton {
-    position: absolute;
-    margin: 0px;
-    left: 0px;
-    right: 0px;
-  }
 
   &.gv_icon_icon {
     @extend %gvButton;
