@@ -7,7 +7,18 @@ $c_negative_hover: #BE342E;
 $c_neutral: #8F8D8C;
 $c_neutral_hover: #736B68;
 
+$c_warning: #FAA732;
+$c_warning_hover: #F89406;
 $c_unloaded: #FF8F35;
+
+$c_primary: #564E4A;
+$c_primary_hover: #3A322E;
+
+$c_notification: #FAA020;
+$c_notification_hover: #F87C0F;
+
+$c_inactive: lightgrey;
+$c_inactive_hover: grey;
 
 $c_header_btn_bg: #DDDDDD;
 $c_header_btn_fg: #555555;
@@ -25,6 +36,7 @@ $c_grey: #E5E5E5;
 $c_dark_grey: #999999;
 
 $c_transp: transparent;
+$c_low_transp: rgba(0, 0, 0, 0.7);
 $c_semi_transp: rgba(0, 0, 0, 0.2);
 $c_very_transp: rgba(0, 0, 0, 0.05);
 $c_content_transp: rgba(0, 0, 0, 0.0675);
@@ -36,3 +48,5 @@ $c_even : #FFFFFF;
 
 $c_navBarSpacer : #A0A0A0;
 $c_navBarSpacerShadow : #C8C8C8;
+
+$c_btn_inverse : #736B68;

@@ -49,6 +49,10 @@ ul.navlist {
   }
   li.dropdown-item {
     margin-left: 0px;
+
+    a {
+      display: block;
+    }
   }
 }
 
@@ -72,6 +76,37 @@ ul.link-dropdown-menu {
 
 ul.user-dropdown-menu {
   @extend %dropdown-menu;
+}
+
+ul.gv-dropdown-menu {
+  @extend %dropdown-menu;
+  @include border-radius(0px);
+  margin-top: 6px;
+  margin-right: -20px;
+  background-color: $c_low_transp;
+  border: solid 1px $c_bar_bg;
+
+  &:after {
+    border-bottom-color: $c_nav_bg;
+  }
+
+  li {
+    &:hover {
+      background-image:none;
+      background-color: $c_positive;
+    }
+    a {
+      padding: 0px;
+      label {
+        color: $c_white;
+        padding-left: 5px;
+      }
+      &:focus {
+        background-image:none;
+        background-color: $c_positive !important;
+      }
+    }
+  }
 }
 
 #arangoCollectionSelect {

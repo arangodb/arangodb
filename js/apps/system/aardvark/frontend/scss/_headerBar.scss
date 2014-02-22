@@ -39,25 +39,6 @@ div.breadcrumb a.disabledBread {
   color: $c_white;
 }
 
-// Dropdown filter
-div.headerBar .dropdown-menu {
-  @include border-radius(0px);
-  margin-top: 6px;
-  margin-right: -20px;
-  background-color: rgba(0, 0, 0, 0.7);
-  border: solid 1px #686766;
-}
-
-div.headerBar .dropdown-menu .checkboxLabel {
-  color: white !important;
-}
-
-div.headerBar .dropdown-menu .divider {
-  background-color: #686755 !important;
-  border-bottom: 0 !important;
-  color: #686755 !important;
-}
-
 // arangoHeader
 .arangoHeader {
   font-weight: 400;
