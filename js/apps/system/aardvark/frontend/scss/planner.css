@@ -604,6 +604,8 @@ div.centralRow {
 
 div.centralContent {
   padding: 5px;
+  margin-left: -5px;
+  margin-right: -5px;
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.0675);
