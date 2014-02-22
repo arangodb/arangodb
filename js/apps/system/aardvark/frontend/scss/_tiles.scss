@@ -72,6 +72,13 @@ li.tile {
     font-weight: 300;
     color: $c_white;
 
+    button {
+      margin: {
+        left: 0px;
+        right: 5px;
+      }
+    }
+
     span {
       display: inline-block;
       line-height: 13px;
