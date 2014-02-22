@@ -57,24 +57,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     //mousePointerBox = document.createElement("div"),
     svg,
     
-    makeBootstrapDropdown = function (div, id, title) {
-      var btn, caret, list;
-      div.className = "btn-group";
-      btn = document.createElement("button");
-      btn.className = "button-inverse btn-small dropdown-toggle";
-      btn.id = id;
-      btn.setAttribute("data-toggle", "dropdown");
-      btn.appendChild(document.createTextNode(title + " "));
-      caret = document.createElement("span");
-      caret.className = "caret";
-      btn.appendChild(caret);
-      list = document.createElement("ul");
-      list.className = "dropdown-menu";
-      div.appendChild(btn);
-      div.appendChild(list);
-      return list;
-    },
-
     makeFilterDiv = function() {
       var 
         div = document.createElement("div"),
@@ -141,7 +123,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchAttrExampleToggle.id = "attribute_example_toggle";
       searchAttrExampleToggle.className = "button-neutral gv_example_toggle";
       searchAttrExampleCaret.className = "caret gv_caret";
-      searchAttrExampleList.className = "dropdown-menu";
+      searchAttrExampleList.className = "gv-dropdown-menu";
       searchValueField.id = "value";
       searchValueField.className = "searchInput gv_searchInput";
       //searchValueField.className = "filterValue";
