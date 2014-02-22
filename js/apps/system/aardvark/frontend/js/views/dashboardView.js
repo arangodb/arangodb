@@ -44,6 +44,7 @@
         ],
         system_systemUserTime: ["systemTime","userTime"]
     },
+    colors : ["#617e2b", "#708a40", "#809755", "#90a46a", "#a0b17f", "#b0be95"],
 
     figureDependedOptions : {
         numberOfThreads : {},
@@ -51,13 +52,28 @@
             axes: {
                 y: {
                     valueFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
-
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     },
                     axisLabelFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     }
                 }
             }
@@ -66,13 +82,28 @@
             axes: {
                 y: {
                     valueFormatter: function(y) {
-                        y = y / 1000000000;
-                        return y.toPrecision(2) + "GB";
-
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     },
                     axisLabelFormatter: function(y) {
-                        y = y / 1000000000;
-                        return y.toPrecision(2) + "GB";
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     }
                 }
             }
@@ -91,13 +122,28 @@
             axes: {
                 y: {
                     valueFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
-
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     },
                     axisLabelFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     }
                 }
             }
@@ -106,13 +152,28 @@
             axes: {
                 y: {
                     valueFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
-
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     },
                     axisLabelFormatter: function(y) {
-                        y = y / 1000000;
-                        return y.toPrecision(2) + "MB";
+                        if (y > 10000000) {
+                            y = y / 100000000;
+                            return y.toPrecision(2) + "GB";
+                        } else if (y > 100000)  {
+                            y = y / 100000;
+                            return y.toPrecision(2) + "MB";
+                        } else {
+                            y = y / 1000;
+                            return y.toPrecision(2) + "KB";
+                        }
                     }
                 }
             }
@@ -164,7 +225,9 @@
     getChartStructure: function (figure) {
         var options = {
             labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
-            labelsSeparateLines: true
+            labelsSeparateLines: true,
+            fillGraph : true,
+            colors: [this.colors[0]]
         };
         if (figure.name) {
             options["title"] =  figure.name;
@@ -206,10 +269,13 @@
             var part = cc.split("_");
             var fig = {identifier : part[1], group : part[0], type : "current"};
             var label = ["datetime"];
+            var colors = self.colors.concat([]);
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 label.push(attrib);
             })
             self.getChartsForFigure(fig);
+            console.log(colors.slice(0, label.length));
+            self.series[fig.group][fig.identifier]["current"]["options"]["colors"] = colors.slice(0, label.length);
             self.series[fig.group][fig.identifier]["current"]["options"]["labels"] = label;
          });
 
@@ -298,6 +364,7 @@
                     if (chart["type"] === "current" && chart["showGraph"] === true) {
                         if (!chart["graph"]) {
                             console.log(figure);
+                            console.log(chart["options"]);
                             self.renderHttpGroup(figure);
                             chart["graph"] = new Dygraph(
                                 document.getElementById(figure+"LineChart"),
@@ -450,7 +517,7 @@
           chart.xAxis
           .tickFormat(d3.format(',.2f'));
 
-          d3.select('#' + v + ' svg')
+          d3.select('#' + v + 'Distribution svg')
           .datum(data)
           .call(chart)
           .append("text")
