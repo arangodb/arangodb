@@ -67,18 +67,39 @@
             result[this.chartTypeExceptions[figure.type][figure.identifier]] =
                 this.getChartStructure(this.chartTypeExceptions[figure.type][figure.identifier]);
             if (figure.type === "distribution") {
-                result[figure.type] = this.getChartStructure(figure.type);
+                result[figure.type] = this.getChartStructure(figure);
             }
         } else {
-            result[figure.type] = this.getChartStructure(figure.type);
+            result[figure.type] = this.getChartStructure(figure);
         }
         this.series[figure.group][figure.identifier] =  result;
     },
 
-    getChartStructure: function (type) {
+    getChartStructure: function (figure) {
+        var type = figure.type;
+        var showGraph = true;
+        if (type === "lineChartDiffBased") {
+            type = "current";
+        } else if (type === "distribution") {
+            type = "distribution";
+        } else if (type === "accumulated") {
+            showGraph = false;
+        } else if (type === "currentDistribution")  {
+            type = "current";
+        }
+        var options = {title: figure.group + figure.identifier };
+        if (type === "current") {
+            options["label"] = ["datetime" , figure.identifier];
+        }
+        if (this.stackedCharts.indexOf(figure.group + "_" + figure.identifier) != -1) {
+            options["stackedGraph"] = true;
+        }
         return {
+            type : type,
+            showGraph: showGraph,
             data: type === "distribution" ? undefined  : [],
-            options : {}
+            options : options,
+            graph : undefined
         };
     },
 
@@ -94,9 +115,14 @@
         Object.keys(self.combinedCharts).forEach(function (cc) {
             var part = cc.split("_");
             var fig = {identifier : part[1], group : part[0], type : "current"};
+            var label = ["datetime"];
+            self.combinedCharts[cc].sort().forEach(function(attrib) {
+                label.push(attrib);
+            })
             self.getChartsForFigure(fig);
+            self.series[fig.group][fig.identifier]["current"]["options"]["label"] = label;
+         });
 
-        });
     },
 
 
@@ -147,106 +173,54 @@
             self.processSingleStatistic(entry);
         });
 
-        Object.keys(self.series).forEach(function(group) {
-            Object.keys(self.series[group]).forEach(function(figure) {
-                Object.keys(self.series[group][figure]).forEach(function(valueList) {
-                    if (valueList === "lineChartDiffBased") {
-                        self.series[group][figure]["current"] = self.series[group][figure][valueList];
-                        delete self.series[group][figure][valueList];
-                    } else if (valueList === "accumulated") {
-                        delete self.series[group][figure][valueList];
-                    } else if (valueList === "current") {
-                        self.graphs[figure] = undefined;
-                    } else if (valueList === "distribution") {
-
-                    } else if (valueList === "currentDistribution")  {
-                        self.series[group][figure]["current"] = self.series[group][figure][valueList];
-                        delete self.series[group][figure][valueList];
-                    }
-                });
-            });
-        });
         Object.keys(self.combinedCharts).forEach(function (cc) {
             var part = cc.split("_");
             self.combinedCharts[cc].sort().forEach(function(attrib) {
-                delete self.series[part[0]][attrib];
+                Object.keys(self.series[part[0]][attrib]).forEach(function(c) {
+                    self.series[part[0]][attrib][c]["showGraph"] = false;
+                })
             })
         })
-        console.log(self.series);
-        delete self.LastValues;
     },
 
 
     updateSeries : function(data) {
-
+        self.processSingleStatistic(data);
     },
 
 
     createLineCharts: function() {
         var self = this;
+        console.log(self.series);
         Object.keys(self.series).forEach(function(group) {
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
-                    if (valueList === "current") {
-                        if (!self.graphs[figure]) {
+                    var chart = self.series[group][figure][valueList];
+                    if (chart["type"] === "current" && chart["showGraph"] === true) {
+                        if (!chart["graph"]) {
                             self.renderHttpGroup(figure);
-                            var label = ["dateTime"];
-                            if (self.combinedCharts[group + "_"  +figure]) {
-                                label = label.concat(self.combinedCharts[group + "_"  +figure].sort());
-                            } else {
-                                label.push(figure);
-                            }
-                            var stacked = false;
-                            if (self.stackedCharts.indexOf(group + "_" + figure) != -1) {
-                                stacked = true;
-                            }
+                            console.log(_.extend(
+                                self.series[group][figure]["current"]["options"],
+                                {
+                                    highlightSeriesOpts: {
+                                        strokeWidth: 3,
+                                        strokeBorderWidth: 1,
+                                        highlightCircleSize: 5
+                                    }
+                                }));
                             self.graphs[figure] = new Dygraph(
                                 document.getElementById(figure),
-                                self.series[group][figure]["current"],
-                                {   title: group + figure,
-                                    //yLabelWidth: "15",
-                                    //labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
-                                    //hideOverlayOnMouseOut: true,
-                                    //labelsSeparateLines: true,
-                                    //legend: "always",
-                                    //labelsDivWidth: 150,
-                                    //labelsShowZeroValues: false,
-                                    //highlightSeriesBackgroundAlpha: 0.5,
-                                    //drawPoints: true,
-                                    //width: 480,
-                                    //height: 320,
-                                    labels: label,
-                                    //visibility:getVisibility() ,
-                                    //valueRange: [self.min -0.1 * self.min, self.max + 0.1 * self.max],
-                                    stackedGraph: false,
-                                    //axes: {
-                                    //  y: {
-                                    //        valueFormatter: function(y) {
-                                    //          return y.toPrecision(2);
-                                    //                          },
-                                    //      axisLabelFormatter: function(y) {
-                                    //          return y.toPrecision(2);
-                                    //      }
-                                    //  },
-                                    //      x: {
-                                    //      valueFormatter: function(d) {
-                                    //              if (d === -1) {return "";}
-                                    //              var date = new Date(d);
-                                    //              return Dygraph.zeropad(date.getHours()) + ":"
-                                    //                  + Dygraph.zeropad(date.getMinutes()) + ":"
-                                    //                  + Dygraph.zeropad(date.getSeconds());
-                                    //                          }
-                                    //  }
-                                    //                  },
-                                    //highlightCircleSize: 2,
-                                    //strokeWidth: 1,
-                                    //strokeBorderWidth: null,
+                                self.series[group][figure]["current"]["data"],
+                                _.extend(
+                                 self.series[group][figure]["current"]["options"],
+                                {
                                    highlightSeriesOpts: {
                                         strokeWidth: 3,
                                         strokeBorderWidth: 1,
                                         highlightCircleSize: 5
                                       }
-                                    });
+                                 })
+                                );
                                 var onclick = function(ev) {
                                     if (self.graphs[figure].isSeriesLocked()) {
                                         self.graphs[figure].clearSelection();
@@ -307,8 +281,6 @@
                         system: self.collection.first().get("system")
 
                     });
-                    self.prepareSeries();
-                    self.calculateSeries();
                     self.renderFigures();
                     self.renderPieCharts();
                     self.createLineCharts();
@@ -336,15 +308,15 @@
       var self = this;
       $(this.el).html(this.template.render({}));
       this.renderDistributionPlaceholder();
-      //this.prepareSeries();
-      //this.calculateSeries();
-      //this.renderFigures();
-      //this.renderPieCharts();
-      //this.createLineCharts();
+      this.prepareSeries();
+      this.calculateSeries();
+      this.renderFigures();
+      this.renderPieCharts();
+      this.createLineCharts();
       this.createDistributionCharts();
     },
 
-    createDistributionCharts: function () {
+    createDistributionCharts: function () { /*
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
 
@@ -370,6 +342,7 @@
          });
 
       });
+      */
     },
 
     renderDistributionPlaceholder: function () {
