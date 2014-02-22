@@ -51,12 +51,12 @@
     </table>
   </div>
   <div id="colFooter" class="modal-footer">
-    <button id="uninstall" class="btn btn-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
-    <button id="change" class="btn btn-success pull-right">Save</button>
+    <button id="uninstall" class="button-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
+    <button id="change" class="button-success pull-right">Save</button>
     <%if (false && attributes.active) {%>
-      <button id="deactivate" class="btn btn-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
+      <button id="deactivate" class="button-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
     <%} else if (false) {%>
-      <button id="activate" class="btn btn-success pull-right" style="margin-right:8px" disabled>Activate</button>
+      <button id="activate" class="button-success pull-right" style="margin-right:8px" disabled>Activate</button>
     <%}%>
     
   </div>
