@@ -755,3 +755,8 @@ select.filterSelect {
   width: 100%;
   height: 300px;
   border: 1px solid black; }
+
+.dashboardDistribution {
+  width: 50%;
+  height: 300px;
+  float: left; }
