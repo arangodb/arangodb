@@ -132,7 +132,6 @@
         "frontend/css/api.css",
         "frontend/css/general.css",
         "frontend/css/headerBar.css",
-        "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
