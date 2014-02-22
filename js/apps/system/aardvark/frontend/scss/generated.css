@@ -487,6 +487,8 @@ ul.navlist {
     background-color: #8aa051; }
   ul.navlist li.dropdown-item {
     margin-left: 0px; }
+    ul.navlist li.dropdown-item a {
+      display: block; }
 
 a.tab {
   padding-top: 9px;
