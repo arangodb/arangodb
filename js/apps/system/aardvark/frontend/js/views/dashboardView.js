@@ -8,7 +8,7 @@
   window.dashboardView = Backbone.View.extend({
     el: '#content',
     contentEL: '.contentDiv',
-    interval: 100000,
+    interval: 1000,
     defaultHistoryElements: 3, //in days
     chartTypeExceptions : {
         accumulated : {
@@ -87,9 +87,9 @@
         } else if (type === "currentDistribution")  {
             type = "current";
         }
-        var options = {title: figure.group + figure.identifier };
+        var options = {title: figure.identifier };
         if (type === "current") {
-            options["label"] = ["datetime" , figure.identifier];
+            options["labels"] = ["datetime" , figure.identifier];
         }
         if (this.stackedCharts.indexOf(figure.group + "_" + figure.identifier) != -1) {
             options["stackedGraph"] = true;
@@ -120,7 +120,7 @@
                 label.push(attrib);
             })
             self.getChartsForFigure(fig);
-            self.series[fig.group][fig.identifier]["current"]["options"]["label"] = label;
+            self.series[fig.group][fig.identifier]["current"]["options"]["labels"] = label;
          });
 
     },
@@ -185,13 +185,12 @@
 
 
     updateSeries : function(data) {
-        self.processSingleStatistic(data);
+        this.processSingleStatistic(data);
     },
 
 
     createLineCharts: function() {
         var self = this;
-        console.log(self.series);
         Object.keys(self.series).forEach(function(group) {
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
@@ -199,15 +198,6 @@
                     if (chart["type"] === "current" && chart["showGraph"] === true) {
                         if (!chart["graph"]) {
                             self.renderHttpGroup(figure);
-                            console.log(_.extend(
-                                self.series[group][figure]["current"]["options"],
-                                {
-                                    highlightSeriesOpts: {
-                                        strokeWidth: 3,
-                                        strokeBorderWidth: 1,
-                                        highlightCircleSize: 5
-                                    }
-                                }));
                             self.graphs[figure] = new Dygraph(
                                 document.getElementById(figure),
                                 self.series[group][figure]["current"]["data"],
@@ -299,7 +289,6 @@
     httpTemplate: templateEngine.createTemplate("dashboardHttpGroup.ejs"),
 
     renderHttpGroup: function(id) {
-        console.log(id, "render");
       $('.contentDiv').append(this.httpTemplate.render({id : id}));
     },
 
@@ -318,7 +307,6 @@
       var self = this;
 
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
-        console.log(k);
       });
     }
 
