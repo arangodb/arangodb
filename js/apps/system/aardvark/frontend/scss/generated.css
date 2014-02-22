@@ -858,6 +858,9 @@ select.filterSelect {
   float: left;
   margin-right: 3px; }
 
+.contentDiv {
+  background-color: white; }
+
 #dashboardHttpGroup {
   width: 100%;
   height: 300px;
