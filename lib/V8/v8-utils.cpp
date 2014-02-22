@@ -765,28 +765,37 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   }
 
   // execute script inside the context
-  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+  v8::Handle<v8::Script> script;
+  v8::Handle<v8::Value> result;
 
-  // compilation failed, print errors that happened during compilation
-  if (script.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+  {
+    v8::TryCatch tryCatch;
+
+    script = v8::Script::Compile(source->ToString(), filename);
+
+    // compilation failed, print errors that happened during compilation
+    if (script.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
+
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
 
-    return scope.Close(v8::Undefined());
-  }
+    // compilation succeeded, run the script
+    result = script->Run();
 
-  // compilation succeeded, run the script
-  v8::Handle<v8::Value> result = script->Run();
+    if (result.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
 
-  if (result.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
-
-    return scope.Close(v8::Undefined());
   }
 
   // copy result back into the sandbox
