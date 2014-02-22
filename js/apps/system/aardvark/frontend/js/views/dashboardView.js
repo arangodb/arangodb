@@ -7,9 +7,9 @@
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
-    contentEL: '.contentDiv',
-    interval: 1000,
-    defaultHistoryElements: 3, //in days
+    contentEl: '.contentDiv',
+    interval: 100000,
+    defaultHistoryElements: 1 / 1000, //in days
     chartTypeExceptions : {
         accumulated : {
             minorPageFaults : "lineChartDiffBased",
@@ -288,8 +288,14 @@
 
     httpTemplate: templateEngine.createTemplate("dashboardHttpGroup.ejs"),
 
+    distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
+
     renderHttpGroup: function(id) {
+<<<<<<< HEAD
       $('.contentDiv').append(this.httpTemplate.render({id : id}));
+=======
+      $(this.contentEl).append(this.httpTemplate.render({id : id}));
+>>>>>>> 940cf861cb9f426ef188d1da0403ed24b7a1e39c
     },
 
     render: function() {
@@ -301,12 +307,45 @@
       this.renderFigures();
       this.renderPieCharts();
       this.createLineCharts();
+      this.createDistributionCharts();
+    },
+
+    createDistributionCharts: function () { /*
+      var self = this;
+      _.each(this.chartTypeExceptions.distribution, function(k, v) {
+
+         nv.addGraph(function() {
+           var chart = nv.models.multiBarHorizontalChart()
+           .x(function(d) { return d.label })
+           .y(function(d) { return d.value })
+           .margin({top: 30, right: 20, bottom: 50, left: 175})
+           .showValues(true) //Show bar value next to each bar.
+           .tooltips(true) //Show tooltips on hover.
+           .transitionDuration(350)
+           .showControls(true); //Allow user to switch between "Grouped" and "Stacked" mode.
+
+           chart.yAxis
+           .tickFormat(d3.format(',.2f'));
+
+           d3.select('#' + v + ' svg')
+           .datum(data)
+           .call(chart);
+
+           nv.utils.windowResize(chart.update);
+           return chart;
+         });
+
+      });
+      */
     },
 
     renderDistributionPlaceholder: function () {
       var self = this;
-
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
+<<<<<<< HEAD
+=======
+        $(self.contentEl).append(self.distributionTemplate.render({elementId: v}));
+>>>>>>> 940cf861cb9f426ef188d1da0403ed24b7a1e39c
       });
     }
 
