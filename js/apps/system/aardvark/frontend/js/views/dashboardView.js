@@ -352,6 +352,7 @@
           .x(function(d) { return d.label })
           .y(function(d) { return d.value })
           //.margin({top: 30, right: 20, bottom: 50, left: 175})
+          .margin({left: 80})
           .showValues(true)
           .transitionDuration(350)
           .showControls(false);
