@@ -23,19 +23,22 @@ ul.navlist {
     margin-left: 1px;
       &.navbar-spacer {
         width: 1px;
-        height: 28px;
-        margin-top: 5px;
-        background-color: $c_white;
+        box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        -moz-box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        -webkit-box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        height: 21px;
+        margin-top: 9px;
+        background-color: $c_navBarSpacer;
         &.big {
-          margin-left: 10px;
-          margin-right: 10px;
+          margin-left: 15px;
+          margin-right: 15px;
         }
         &.med {
           margin-left: 5px;
           margin-right: 5px;
         }
         &:hover {
-          background-color: $c_white;
+          background-color: $c_navBarSpacer;
         }
       }
   }
@@ -69,6 +72,37 @@ ul.link-dropdown-menu {
 
 ul.user-dropdown-menu {
   @extend %dropdown-menu;
+}
+
+ul.gv-dropdown-menu {
+  @extend %dropdown-menu;
+  @include border-radius(0px);
+  margin-top: 6px;
+  margin-right: -20px;
+  background-color: $c_low_transp;
+  border: solid 1px $c_bar_bg;
+
+  &:after {
+    border-bottom-color: $c_nav_bg;
+  }
+
+  li {
+    &:hover {
+      background-image:none;
+      background-color: $c_positive;
+    }
+    a {
+      padding: 0px;
+      label {
+        color: $c_white;
+        padding-left: 5px;
+      }
+      &:focus {
+        background-image:none;
+        background-color: $c_positive !important;
+      }
+    }
+  }
 }
 
 #arangoCollectionSelect {
