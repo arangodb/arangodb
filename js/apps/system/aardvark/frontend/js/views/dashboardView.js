@@ -7,6 +7,7 @@
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
+    contentEL: '.contentDiv',
     interval: 100000,
     defaultHistoryElements: 3, //in days
     chartTypeExceptions : {
@@ -333,16 +334,23 @@
     render: function() {
       var self = this;
       $(this.el).html(this.template.render({}));
+      this.renderDistributionPlaceholder();
       this.prepareSeries();
       this.calculateSeries();
       this.renderFigures();
       this.renderPieCharts();
       this.createLineCharts();
+    },
 
+    renderDistributionPlaceholder: function () {
+      var self = this;
 
+      _.each(this.chartTypeExceptions.distribution(function(k, v) {
+        console.log(k);
+      }));
     }
 
 
-   });
+  });
 }()
-  );
+);
