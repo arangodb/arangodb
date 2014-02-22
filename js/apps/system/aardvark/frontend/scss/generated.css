@@ -167,6 +167,8 @@ ul.navlist {
     background-color: #8aa051; }
   ul.navlist li.dropdown-item {
     margin-left: 0px; }
+    ul.navlist li.dropdown-item a {
+      display: block; }
 
 a.tab {
   padding-top: 9px;
@@ -815,6 +817,7 @@ div.queryline {
       display: none; }
 
 div.dropdownImport {
+  display: none;
   background-color: white;
   padding-top: 10px;
   padding-left: 10px;
