@@ -3,7 +3,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span {
@@ -74,7 +74,7 @@ nav.navbar, footer.footer {
   .button-inactive:hover {
     background-color: grey; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   position: absolute;
   top: 80%;
   right: 0px;
@@ -90,24 +90,24 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
   -moz-border-radius: 6px;
   -webkit-border-radius: 6px;
   border-radius: 6px; }
-  ul.link-dropdown-menu li, ul.user-dropdown-menu li {
+  ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.gv-dropdown-menu li {
     line-height: 20px;
     white-space: nowrap;
     width: 100%; }
-  ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header {
+  ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
     font-weight: bold;
     font-size: 11px;
     color: #999999;
     padding: 0px 20px;
     text-transform: uppercase; }
-  ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider {
+  ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
     margin: 10px 1px; }
-  ul.link-dropdown-menu a, ul.user-dropdown-menu a {
+  ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.gv-dropdown-menu a {
     color: #333232;
     padding: 0px 20px; }
-  ul.link-dropdown-menu:before, ul.user-dropdown-menu:before {
+  ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.gv-dropdown-menu:before {
     position: absolute;
     top: -7px;
     right: 7px;
@@ -119,7 +119,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu {
     border-bottom-color: rgba(0, 0, 0, 0.2);
     display: inline-block;
     content: ''; }
-  ul.link-dropdown-menu:after, ul.user-dropdown-menu:after {
+  ul.link-dropdown-menu:after, ul.user-dropdown-menu:after, ul.gv-dropdown-menu:after {
     top: -6px;
     right: 8px;
     position: absolute;
@@ -498,6 +498,28 @@ a.tab {
   a.tab.userImg {
     padding-bottom: 5px; }
 
+ul.gv-dropdown-menu {
+  -moz-border-radius: 0px;
+  -webkit-border-radius: 0px;
+  border-radius: 0px;
+  margin-top: 6px;
+  margin-right: -20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: solid 1px #686766; }
+  ul.gv-dropdown-menu:after {
+    border-bottom-color: #333232; }
+  ul.gv-dropdown-menu li:hover {
+    background-image: none;
+    background-color: #8aa051; }
+  ul.gv-dropdown-menu li a {
+    padding: 0px; }
+    ul.gv-dropdown-menu li a label {
+      color: white;
+      padding-left: 5px; }
+    ul.gv-dropdown-menu li a:focus {
+      background-image: none;
+      background-color: #8aa051 !important; }
+
 #arangoCollectionSelect {
   display: none;
   float: right;
@@ -769,16 +791,17 @@ div.queryline {
   div.queryline .removeFilterItem i {
     margin-top: 0px !important;
     margin-left: 5px !important; }
-  div.queryline div.searchByAttribute > ul.dropdown-menu {
-    position: absolute;
-    border-radius: 0px;
-    top: 21px;
-    left: 5px;
-    width: 247px;
-    background-color: #333232;
-    color: white;
-    margin-bottom: 100%;
-    display: none; }
+  div.queryline div.searchByAttribute {
+    position: relative; }
+    div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
+      position: absolute;
+      border-radius: 0px;
+      top: 20px;
+      left: 0px;
+      width: 247px;
+      background-color: #333232;
+      color: white;
+      display: none; }
 
 div.dropdownImport {
   display: none;

@@ -53,16 +53,19 @@ div.queryline {
     margin-left: 5px !important;
   }
 
-  div.searchByAttribute > ul.dropdown-menu {
-    position: absolute;
-    border-radius: 0px;
-    top: 21px;
-    left: 5px;
-    width: 247px;
-    background-color: $c_nav_bg;
-    color: $c_white;
-    margin-bottom: 100%;
-    display: none;
+  div.searchByAttribute {
+    position: relative;
+
+    & > ul.gv-dropdown-menu {
+      position: absolute;
+      border-radius: 0px;
+      top: 20px;
+      left: 0px;
+      width: 247px;
+      background-color: $c_nav_bg;
+      color: $c_white;
+      display: none;
+    }
   }
 
 }
