@@ -756,6 +756,30 @@ div.headerDropdown {
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
       background-position: 0 -15px; }
 
+div.queryline {
+  color: black;
+  height: 35px; }
+  div.queryline select, div.queryline input {
+    margin-bottom: 5px; }
+  div.queryline.querylineAdd span {
+    position: relative;
+    top: -21px;
+    color: white;
+    padding-left: 10px; }
+  div.queryline .removeFilterItem i {
+    margin-top: 0px !important;
+    margin-left: 5px !important; }
+  div.queryline div.searchByAttribute > ul.dropdown-menu {
+    position: absolute;
+    border-radius: 0px;
+    top: 21px;
+    left: 5px;
+    width: 247px;
+    background-color: #333232;
+    color: white;
+    margin-bottom: 100%;
+    display: none; }
+
 div.dropdownImport {
   display: none;
   background-color: white;
