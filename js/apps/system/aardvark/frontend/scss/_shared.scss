@@ -1,5 +1,7 @@
 // Shortcuts for multi-browser support
 @import "mixins";
+// Fonts and font bindings
+@import "fonts";
 // All Abstract classes
 @import "colors";
 // All Abstract classes
@@ -8,11 +10,11 @@
 @import "navbar";
 // Footer
 @import "footer";
+// Buttons
+@import "buttons";
 // List tiles
 @import "tiles";
 // Shared classes
 @import "resizing";
 
 @import "icons";
-// Buttons
-@import "buttons";

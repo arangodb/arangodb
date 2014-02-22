@@ -401,33 +401,69 @@
       this.createDistributionCharts();
     },
 
-    createDistributionCharts: function () { /*
+    createDistributionSeries: function(name) {
+      console.log(name);
+      //value prep for d3 graphs
+      var distributionValues = this.series.client[name].distribution.data.counts;
+      var sum = this.series.client[name].distribution.data.sum;
+      var areaLength = this.series.client[name].distribution.data.counts.length;
+      var values = [];
+      var counter = 1;
+
+      _.each(distributionValues, function() {
+        values.push({
+          "label" : (sum / areaLength) * counter,
+          "value" : distributionValues[counter-1]
+        });
+        counter++;
+      });
+      console.log(values);
+    return values;
+    },
+
+    createDistributionCharts: function () {
+      //distribution bar charts
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
 
-         nv.addGraph(function() {
-           var chart = nv.models.multiBarHorizontalChart()
-           .x(function(d) { return d.label })
-           .y(function(d) { return d.value })
-           .margin({top: 30, right: 20, bottom: 50, left: 175})
-           .showValues(true) //Show bar value next to each bar.
-           .tooltips(true) //Show tooltips on hover.
-           .transitionDuration(350)
-           .showControls(true); //Allow user to switch between "Grouped" and "Stacked" mode.
+        var valueData = self.createDistributionSeries(v);
 
-           chart.yAxis
-           .tickFormat(d3.format(',.2f'));
+        var data = [{
+          key: v,
+          color: "#D67777",
+          values: valueData
+        }];
 
-           d3.select('#' + v + ' svg')
-           .datum(data)
-           .call(chart);
+        nv.addGraph(function() {
+          var chart = nv.models.multiBarHorizontalChart()
+          .x(function(d) { return d.label })
+          .y(function(d) { return d.value })
+          //.margin({top: 30, right: 20, bottom: 50, left: 175})
+          .showValues(true) //Show bar value next to each bar.
+          .tooltips(true) //Show tooltips on hover.
+          .transitionDuration(350)
+          .showControls(true); //Allow user to switch between "Grouped" and "Stacked" mode.
 
-           nv.utils.windowResize(chart.update);
-           return chart;
-         });
+          chart.yAxis
+          .tickFormat(d3.format(',.2f'));
 
+          chart.xAxis
+          .tickFormat(d3.format(',.2f'));
+
+          d3.select('#' + v + ' svg')
+          .datum(data)
+          .call(chart)
+          .append("text")
+          .attr("x", 0)
+          .attr("y", 16)
+          .style("font-size", "16px")
+          .style("text-decoration", "underline")
+          .text(v);
+
+          nv.utils.windowResize(chart.update);
+          return chart;
+        });
       });
-      */
     },
 
     renderDistributionPlaceholder: function () {

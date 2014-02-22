@@ -324,28 +324,6 @@
   margin-left: 11px;
 }
 
-.queryline select, .queryline input {
-  margin-bottom: 5px !important;
-}
-
-.queryline {
-  color: black;
-  height: 50px;
-  margin-bottom: -15px;
-}
-
-.querylineAdd span {
-  position: relative;
-  top: -21px;
-  color: white;
-  padding-left: 10px;
-}
-
-.removeFilterItem i {
-  margin-top: 0px !important;
-  margin-left: 5px !important;
-}
-
 
 #indexHeaderContent > div {
   padding: 10px;
