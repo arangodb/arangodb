@@ -22,8 +22,6 @@
       "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
       "application/available/:key"          : "applicationInstall",
-      "applications/installed"              : "applicationsInstalled",
-      "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph",
@@ -387,26 +385,6 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationsAvailable: function() {
-      if (this.applicationsInstalledView === undefined) {
-        this.applicationsInstalledView = new window.FoxxInstalledListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsInstalledView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationsInstalled: function() {
-      if (this.applicationsActiveView === undefined) {
-        this.applicationsActiveView = new window.FoxxActiveListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
 
