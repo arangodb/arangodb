@@ -78,9 +78,6 @@
       "files": [
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
         "frontend/js/lib/jquery.dataTables.js",
-        "frontend/js/lib/jquery.autogrow.js",
-        "frontend/js/lib/jquery.jeditable.js",
-        "frontend/js/lib/jquery.jeditable.autogrow.js",
         "frontend/js/lib/jquery.snippet.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
@@ -146,8 +143,6 @@
         "frontend/css/api.css",
         "frontend/css/general.css",
         "frontend/css/headerBar.css",
-        "frontend/css/buttons.css",
-        "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
         "frontend/css/clusterDashboardView.css",
         "frontend/css/jsoneditor.css",
