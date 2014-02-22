@@ -863,6 +863,13 @@ select.filterSelect {
   height: 300px;
   border: 1px solid black; }
 
+.dashboardChart {
+  float: left; }
+
+.dashboardDistribution {
+  width: 270px;
+  float: left; }
+
 .dashboardDistribution svg {
-  width: 300px;
-  height: 300px; }
+  width: 250px;
+  height: 220px; }
