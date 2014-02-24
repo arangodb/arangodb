@@ -48,14 +48,14 @@
         if (!img) {
           img = " ";
         } else {
-          img = "https://s.gravatar.com/avatar/" + img + "?s=23";
+          img = '<img src="https://s.gravatar.com/avatar/' + encodeURI(img) + '?s=23" />';
         }
         if (!name) {
           name = " ";
         }
         $("#userManagementTable tbody").append(
           '<tr class="editUser" id="' + username + '">' +
-            '<td><a><img src="' + img + '"></a></td>' +//avatar
+            '<td><a>' + img + '</a></td>' +//avatar
             '<td><a>' + username + '</a></td>' +//username
             '<td><a>' + name + '</a></td>' +//name
             '<td><a>' + active + '</a></td>' +//active
