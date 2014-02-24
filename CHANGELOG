@@ -1,3 +1,9 @@
+v1.4.11 (XXXX-XX-XX)
+--------------------
+
+* fixed small memleak in AQL optimiser
+
+
 v1.4.10 (2014-02-21)
 --------------------
 

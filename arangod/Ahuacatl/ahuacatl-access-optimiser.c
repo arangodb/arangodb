@@ -2257,6 +2257,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     
     if (value->_type != TRI_JSON_LIST) {
       // rhs is not a list. no idea how to run an IN query on this...
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
       fieldAccess->_type = TRI_AQL_ACCESS_ALL;
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
 
