@@ -164,7 +164,9 @@ function startInstance (protocol, options, addArgs) {
     }
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher}});
+                         "dispatchers": {"me": dispatcher},
+                         "dataPath": tmpDataDir,
+                         "logPath": tmpDataDir});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
