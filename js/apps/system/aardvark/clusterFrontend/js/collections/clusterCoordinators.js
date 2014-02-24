@@ -20,7 +20,6 @@
       res = res || {};
       this.forEach(function(m) {
         var addr = m.get("address");
-        addr = addr.substr(6);
         addr = addr.split(":")[0];
         res[addr] = res[addr] || {};
         res[addr].coords = res[addr].coords || [];

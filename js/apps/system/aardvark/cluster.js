@@ -142,8 +142,6 @@
         noBeat = beats.noBeat(),
         serving = beats.getServing();
 
-      require("console").log(JSON.stringify(diffList));
-
       _.each(list, function(v, k) {
         v.name = k;
         resList.push(v);
@@ -157,12 +155,17 @@
         }
         v.status = "ok";
       });
+      _.each(diffList.missing, function(v) {
+        v.status = "missing";
+        resList.push(v);
+      });
       res.json(resList);
     });
 
     controller.get("/Coordinators", function(req, res) {
       var resList = [],
         list = coords.getList(),
+        diffList = diff.Coordinators(),
         noBeat = beats.noBeat();
       
       _.each(list, function(url, k) {
@@ -175,6 +178,10 @@
           return;
         }
         v.status = "ok";
+      });
+      _.each(diffList.missing, function(v) {
+        v.status = "missing";
+        resList.push(v);
       });
       res.json(resList);
     });

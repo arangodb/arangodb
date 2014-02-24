@@ -69,9 +69,9 @@ nav.navbar, footer.footer {
   .button-notification:hover {
     background-color: #f87c0f; }
 
-.button-inactive {
+.button-inactive, div.inactive.coordinator, div.inactive.dbserver {
   background-color: lightgrey; }
-  .button-inactive:hover {
+  .button-inactive:hover, div.inactive.coordinator:hover, div.inactive.dbserver:hover {
     background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {

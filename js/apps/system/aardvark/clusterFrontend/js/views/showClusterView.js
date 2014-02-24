@@ -151,14 +151,14 @@
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
             var stat = new window.Statistics({name: dbserver.id});
-            stat.url = dbserver.get("address").replace("tcp", "http") + "/_admin/statistics";
+            stat.url = "http://" + dbserver.get("address") + "/_admin/statistics";
             statCollect.add(stat);
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
             var stat = new window.Statistics({name: coordinator.id});
-            stat.url = coordinator.get("address").replace("tcp", "http") + "/_admin/statistics";
+            stat.url = "http://" + coordinator.get("address") + "/_admin/statistics";
             statCollect.add(stat);
         });
         statCollect.fetch();
@@ -222,8 +222,8 @@
 
           var getData = function() {
               var data = [];
-              self.max = 0;
-              self.min = 0;
+              self.max = Number.NEGATIVE_INFINITY;
+              self.min = Number.POSITIVE_INFINITY;
               Object.keys(self.totalTimeChart).sort().forEach(function(time) {
                   var entry = [new Date(parseInt(time))];
                   Object.keys(self.totalTimeChart[time]).sort().forEach(function(server) {
@@ -286,7 +286,8 @@
               this.graph.updateOptions( {
                   'file': getData(),
                   'labels': createLabels(),
-                  'visibility' : getVisibility()
+                  'visibility' : getVisibility(),
+                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max],
               } );
               return;
           }
