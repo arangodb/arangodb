@@ -1417,9 +1417,10 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // backslash.
   // ...........................................................................
 
-  if ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) {
-    if ((fileName[1] != '\0') && (fileName[1] == ':')) {
-      if ((fileName[2] != '\0') && (fileName[2] == '/' || fileName[2] == '\\')) {
+  if ((fileName[0] > 64 && fileName[0] < 91) || 
+      (fileName[0] > 96 && fileName[0] < 123)) {
+    if (fileName[1] == ':') {
+      if (fileName[2] == '/' || fileName[2] == '\\') {
         return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fileName);
       }
     }
@@ -1448,9 +1449,10 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // ...........................................................................
 
   ok = false;
-  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
-    if ((currentWorkingDirectory[1] != '\0') && (currentWorkingDirectory[1] == ':')) {
-      if ((currentWorkingDirectory[2] != '\0') && (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\')) {
+  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || 
+      (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
+    if (currentWorkingDirectory[1] == ':') {
+      if (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\') {
         ok = true;
       }
     }
@@ -1468,7 +1470,8 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   cwdLength  = strlen(currentWorkingDirectory);
   fileLength = strlen(fileName);
 
-  if (currentWorkingDirectory[cwdLength - 1] != '\\' && currentWorkingDirectory[cwdLength - 1] != '/') {
+  if (currentWorkingDirectory[cwdLength - 1] == '\\' || 
+      currentWorkingDirectory[cwdLength - 1] == '/') {
     // we do not require a backslash
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false);
     memcpy(result, currentWorkingDirectory, cwdLength);
