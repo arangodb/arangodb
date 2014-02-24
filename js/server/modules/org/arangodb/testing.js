@@ -973,7 +973,8 @@ function UnitTest (which, options) {
   rr[which] = r = testFuncs[which](options);
   ok = true;
   for (i in r) {
-    if (r.hasOwnProperty(i)) {
+    if (r.hasOwnProperty(i) && 
+        (which !== "single" || i !== "test")) {
       if (r[i] !== 0 && r[i] !== true) {
         ok = false;
       }
