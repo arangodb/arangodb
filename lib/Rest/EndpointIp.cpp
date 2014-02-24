@@ -134,6 +134,18 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
       }
     }
 
+#ifdef _WIN32
+    int excl = 1;
+    if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, 
+        reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+      LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
+
+      TRI_CLOSE_SOCKET(listenSocket);
+      TRI_invalidatesocket(&listenSocket);
+      return listenSocket;
+    }
+#endif
+
     // server needs to bind to socket
     int result = TRI_bind(listenSocket, aip->ai_addr, (int) aip->ai_addrlen);
 
