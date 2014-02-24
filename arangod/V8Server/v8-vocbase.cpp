@@ -628,7 +628,7 @@ static bool EqualCollection (CollectionNameResolver const& resolver,
     return false;
   }
 #endif
-  if (collectionName != resolver.getCollectionName(collection->_cid)) {
+  if (collectionName == resolver.getCollectionName(collection->_cid)) {
     return true;
   }
 
