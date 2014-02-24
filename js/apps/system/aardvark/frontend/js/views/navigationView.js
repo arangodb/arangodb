@@ -13,7 +13,7 @@
     },
 
     initialize: function () {
-      this.userCollection = this.options.userCollection,
+      this.userCollection = this.options.userCollection;
       this.dbSelectionView = new window.DBSelectionView({
         collection: window.arangoDatabase,
         current: window.currentDB
