@@ -4,6 +4,52 @@
 
 (function() {
   "use strict";
+   var formatBytes = function (y) {
+        if (y > 100000000) {
+            y = y / 1000000000;
+            return y.toPrecision(3) + "GB";
+        } else if (y > 100000)  {
+            y = y / 100000;
+            return y.toPrecision(3) + "MB";
+        } else if (y > 100) {
+            y = y / 1000;
+            return y.toPrecision(3) + "KB";
+        } else  {
+           return y.toPrecision(3) + "B";
+       }
+  };
+  var formatSeconds = function (y) {
+    //  return y * 1000 + "ms";
+      return y
+  };
+  var zeropad = function(x) {
+     if (x < 10) return "0" + x; else return "" + x;
+  };
+
+  var xAxisFormat = function (d) {
+    if (d === -1) {return "";}
+    var date = new Date(d);
+    return zeropad(date.getHours()) + ":"
+        + zeropad(date.getMinutes()) + ":"
+        + zeropad(date.getSeconds());
+  };
+
+  var mergeObjects = function(o1, o2, mergeAttribList) {
+      if (!mergeAttribList) {mergeAttribList = [];}
+      var vals = {};
+      mergeAttribList.forEach(function (a) {
+        var valO1 = o1[a];
+        var valO2 = o2[a];
+        valO1 === undefined ? valO1 = {} :null ;
+        valO2 === undefined ? valO2 = {} :null ;
+        vals[a] = _.extend(valO1, valO2);
+      });
+      var res = _.extend(o1,o2);
+      Object.keys(vals).forEach(function(k) {
+          res[k] = vals[k];
+      })
+      return res;
+  }
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
@@ -44,69 +90,18 @@
         ],
         system_systemUserTime: ["systemTime","userTime"]
     },
-    colors : ["#617e2b", "#708a40", "#809755", "#90a46a", "#a0b17f", "#b0be95"],
+    colors : ["#617e2b", "#cad4b8", "#617e2b", "#40541c", "#202a0e", "#767676", "#b8860b","#4779f4"],
+
+
+
 
     figureDependedOptions : {
-        numberOfThreads : {},
+        numberOfThreads : {
+            sigFigs : 0
+        },
         residentSize : {
-            axes: {
-                y: {
-                    valueFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
-                    },
-                    axisLabelFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
-                    }
-                }
-            }
         },
         virtualSize : {
-            axes: {
-                y: {
-                    valueFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
-                    },
-                    axisLabelFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
-                    }
-                }
-            }
         },
         minorPageFaults : {},
         majorPageFaults : {},
@@ -115,67 +110,51 @@
             stacked : true
         },
         httpConnections : {},
-        totalTime : {},
-        requestTime : {},
-        queueTime : {},
-        bytesSent : {
+        totalTime : {
             axes: {
                 y: {
+                    ticker: Dygraph.numericLinearTicks,
                     valueFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
+                        return formatSeconds(y);
                     },
                     axisLabelFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
+                        return formatSeconds(y);
                     }
                 }
             }
         },
-        bytesReceived : {
+        requestTime : {
             axes: {
                 y: {
+                    ticker: Dygraph.numericLinearTicks,
                     valueFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
+                        return formatSeconds(y);
                     },
                     axisLabelFormatter: function(y) {
-                        if (y > 10000000) {
-                            y = y / 100000000;
-                            return y.toPrecision(2) + "GB";
-                        } else if (y > 100000)  {
-                            y = y / 100000;
-                            return y.toPrecision(2) + "MB";
-                        } else {
-                            y = y / 1000;
-                            return y.toPrecision(2) + "KB";
-                        }
+                        return formatSeconds(y);
                     }
                 }
+            }
+        },
+        queueTime : {
+            axes: {
+                y: {
+                    ticker: Dygraph.numericLinearTicks,
+                    valueFormatter: function(y) {
+                        return formatSeconds(y);
+                    },
+                    axisLabelFormatter: function(y) {
+                        return formatSeconds(y);
+                    }
+                }
+            }
+        },
+        bytesSent : {
+            axes: {
+            }
+        },
+        bytesReceived : {
+            axes: {
             }
         },
         requestsTotal : {},
@@ -227,7 +206,19 @@
             labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
             labelsSeparateLines: true,
             fillGraph : true,
-            colors: [this.colors[0]]
+            strokeWidth: 3,
+            colors: [this.colors[0]],
+            axes : {
+                x: {
+                    valueFormatter: function(d) {
+                        return xAxisFormat(d);
+                    }
+                },
+                y: {
+                    labelsKMG2: true,
+                    ticker: Dygraph.numericLinearTicks
+                }
+            }
         };
         if (figure.name) {
             options["title"] =  figure.name;
@@ -312,6 +303,21 @@
                             val.count === 0 ? 0 : val.sum / val.count
                         ]);
                     }
+                    if (valueLists[valueList]["data"] && valueList !== "distribution") {
+                        var v = valueLists[valueList]["data"][valueLists[valueList]["data"].length-1];
+                        if (!self.maxMinValue[figure]) {
+                            self.maxMinValue[figure] = {
+                                max: v,
+                                min: v
+                            };
+                        } else {
+                            self.maxMinValue[figure] = {
+                                max: v >=  self.maxMinValue[figure] ? v :  self.maxMinValue[figure],
+                                min: v <= self.maxMinValue[figure] ? v :  self.maxMinValue[figure]
+                            }
+                        }
+                    }
+
                 });
 
             });
@@ -333,6 +339,7 @@
     calculateSeries: function () {
         var self = this;
         self.LastValues = {};
+        self.maxMinValue = {};
         self.history.forEach(function(entry) {
             self.processSingleStatistic(entry);
         });
@@ -364,14 +371,16 @@
                     if (chart["type"] === "current" && chart["showGraph"] === true) {
                         if (!chart["graph"]) {
                             console.log(figure);
+                            console.log(chart["data"]);
                             console.log(chart["options"]);
                             self.renderHttpGroup(figure);
                             chart["graph"] = new Dygraph(
                                 document.getElementById(figure+"LineChart"),
                                 chart["data"],
-                                _.extend(
-                                chart["options"],
-                                    self.figureDependedOptions[figure])
+                                mergeObjects(
+                                    chart["options"],
+                                    self.figureDependedOptions[figure],
+                                    ["axes"])
                                 );
                                 var onclick = function(ev) {
                                     if (chart["graph"].isSeriesLocked()) {
