@@ -21,6 +21,26 @@ ul.navlist {
   li {
     @extend %pull-left;
     margin-left: 1px;
+      &.navbar-spacer {
+        width: 1px;
+        box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        -moz-box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        -webkit-box-shadow: 1px 0px 0px $c_navBarSpacerShadow;
+        height: 21px;
+        margin-top: 9px;
+        background-color: $c_navBarSpacer;
+        &.big {
+          margin-left: 15px;
+          margin-right: 15px;
+        }
+        &.med {
+          margin-left: 5px;
+          margin-right: 5px;
+        }
+        &:hover {
+          background-color: $c_navBarSpacer;
+        }
+      }
   }
   > li.active,
   li.dropdown-item:hover,
@@ -29,6 +49,10 @@ ul.navlist {
   }
   li.dropdown-item {
     margin-left: 0px;
+
+    a {
+      display: block;
+    }
   }
 }
 
@@ -40,7 +64,7 @@ a.tab {
     right: 10px;
   }
   &.userImg {
-    padding-bottom: 4px;
+    padding-bottom: 5px;
   }
   color: $c_white;
   display: block;
@@ -52,6 +76,37 @@ ul.link-dropdown-menu {
 
 ul.user-dropdown-menu {
   @extend %dropdown-menu;
+}
+
+ul.gv-dropdown-menu {
+  @extend %dropdown-menu;
+  @include border-radius(0px);
+  margin-top: 6px;
+  margin-right: -20px;
+  background-color: $c_low_transp;
+  border: solid 1px $c_bar_bg;
+
+  &:after {
+    border-bottom-color: $c_nav_bg;
+  }
+
+  li {
+    &:hover {
+      background-image:none;
+      background-color: $c_positive;
+    }
+    a {
+      padding: 0px;
+      label {
+        color: $c_white;
+        padding-left: 5px;
+      }
+      &:focus {
+        background-image:none;
+        background-color: $c_positive !important;
+      }
+    }
+  }
 }
 
 #arangoCollectionSelect {
@@ -72,11 +127,3 @@ ul.user-dropdown-menu {
   border-left: 5px solid transparent;
   content: "";
 }
-
-.navbar-spacer-big {
-  margin-right: 18px;
-}
-
-.navbar-spacer-med {
-   margin-right: 10px;
- }

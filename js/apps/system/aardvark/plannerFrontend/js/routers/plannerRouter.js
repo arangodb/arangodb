@@ -49,10 +49,8 @@
     },
 
     initialize: function () {
-      /*
       this.footerView = new window.FooterView();
       this.footerView.render();
-      */
     },
 
     handleResize: function() {

@@ -30,13 +30,16 @@
 #include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/DBServerJob.h"
+#include "Cluster/ServerJob.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/Job.h"
 #include "V8Server/ApplicationV8.h"
+#include "V8/v8-globals.h"
+#include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 using namespace triagens::arango;
 
@@ -143,7 +146,33 @@ void HeartbeatThread::run () {
 
     bool shouldSleep = true;
     
-    if (! isCoordinator) {
+    if (isCoordinator) {
+      // isCoordinator
+      // --------------------
+      
+      // get the current version of the Plan
+      AgencyCommResult result = _agency.getValues("Plan/Version", false);
+
+      if (result.successful()) {
+        result.parse("", false);
+
+        std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+
+        if (it != result._values.end()) {
+          // there is a plan version
+          uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+
+          if (planVersion > lastPlanVersion) {
+            handlePlanChangeCoordinator(planVersion, lastPlanVersion);
+          }
+        }
+      }
+
+    }
+    else {
+      // ! isCoordinator
+      // --------------------
+
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
@@ -160,7 +189,7 @@ void HeartbeatThread::run () {
           uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
           if (planVersion > lastPlanVersion) {
-            handlePlanChange(planVersion, lastPlanVersion);
+            handlePlanChangeDBServer(planVersion, lastPlanVersion);
             changed = true;
           }
         }
@@ -190,7 +219,7 @@ void HeartbeatThread::run () {
                 uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
                 if (planVersion > lastPlanVersion) {
-                  handlePlanChange(planVersion, lastPlanVersion);
+                  handlePlanChangeDBServer(planVersion, lastPlanVersion);
                   shouldSleep = false;
                 }
               }
@@ -270,19 +299,97 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a plan version change
+/// @brief handles a plan version change, coordinator case
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::handlePlanChange (uint64_t currentPlanVersion,
-                                        uint64_t& remotePlanVersion) {
+bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
+                                                   uint64_t& remotePlanVersion) {
+  static const string prefix = "Plan/Databases";
+
+  LOG_TRACE("found a plan update");
+        
+  // invalidate our local cache
+  ClusterInfo::instance()->flush();
+
+  AgencyCommResult result; 
+
+  {   
+    AgencyCommLocker locker("Plan", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefix, true);
+    }
+  }
+  
+  if (result.successful()) {
+    result.parse(prefix + "/", false);
+
+    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+    while (it != result._values.end()) {
+      string const& name = (*it).first;
+
+      TRI_json_t const* options = (*it).second._json;
+      
+      TRI_json_t const* v = TRI_LookupArrayJson(options, "coordinator");
+      if (TRI_IsStringJson(v)) {
+        // check which coordinator created the database
+        string const coordinator = string(v->_value._string.data, v->_value._string.length - 1);
+
+        if (coordinator == _myId) {
+          // we created the database ourselves. nothing to do
+          ++it;
+          continue;
+        }
+      }
+
+      TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
+
+      if (vocbase == 0) {
+        // database does not yet exist, create it now
+        TRI_voc_tick_t id;
+        TRI_json_t const* v = TRI_LookupArrayJson(options, "id");
+
+        if (TRI_IsStringJson(v)) {
+          id = triagens::basics::StringUtils::uint64(v->_value._string.data);
+        }
+        else {
+          id = ClusterInfo::instance()->uniqid();
+        }
+
+        TRI_vocbase_defaults_t defaults;
+        TRI_GetDatabaseDefaultsServer(_server, &defaults);
+
+        // create a local database object...
+        TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
+      }
+      else {
+        TRI_ReleaseVocBase(vocbase);
+      }
+
+      ++it;
+    }
+  }  
+  
+  remotePlanVersion = currentPlanVersion;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a plan version change, DBServer case
+/// this is triggered if the heartbeat thread finds a new plan version number
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
+                                                uint64_t& remotePlanVersion) {
   LOG_TRACE("found a plan update");
   
   // invalidate our local cache
   ClusterInfo::instance()->flush();
 
   // schedule a job for the change
-  triagens::rest::Job* job = new DBServerJob(this, _server, _applicationV8);
+  triagens::rest::Job* job = new ServerJob(this, _server, _applicationV8);
 
   assert(job != 0);
 

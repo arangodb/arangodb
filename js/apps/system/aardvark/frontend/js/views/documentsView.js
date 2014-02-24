@@ -303,8 +303,7 @@
                                 '" type="text" placeholder="Attribute value" ' + 
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus"></i></a>'+
-                                ' <span>AND</span></div>');
+                                '<i class="icon icon-minus"></i></a></div>');
       this.filters[num] = true;
     },
 
@@ -422,11 +421,11 @@
       var result;
       if (this.type === 'document') {
         result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
-        if (result === true) {
+        if (result) {
           //on success
           deleted = true;
         }
-        else if (result === false) {
+        else {
           arangoHelper.arangoError('Doc error');
         }
       }
@@ -436,7 +435,7 @@
           //on success
           deleted = true;
         }
-        else if (result === false) {
+        else {
           arangoHelper.arangoError('Edge error');
         }
       }
@@ -594,13 +593,12 @@
     showLoadingState: function () {
       $('.dataTables_empty').text('Loading...');
     },
-    renderPagination: function (totalPages, filter) {
-
-      var checkFilter = filter;
+    renderPagination: function (totalPages, checkFilter) {
+      $('#documentsToolbarF').html("");
       var self = this;
 
       var currentPage;
-      if (checkFilter === true) {
+      if (checkFilter) {
         currentPage = window.arangoDocumentsStore.currentFilterPage;
       }
       else {
@@ -614,7 +612,7 @@
         lastPage: totalPages,
         click: function(i) {
           options.page = i;
-          if (checkFilter === true) {
+          if (checkFilter) {
             var filterArray = self.getFilterContent();
             var filters = filterArray[0];
             var bindValues = filterArray[1];

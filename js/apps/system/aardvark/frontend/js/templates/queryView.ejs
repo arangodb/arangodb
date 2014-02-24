@@ -1,100 +1,100 @@
 <script id="queryView.ejs" type="text/template">
-<ul class="thumbnails2">
-  <div class="headerBar">
-    <div class="headerButtonBar pull-right">
-      <ul class="headerButtonList">
-        <li class="enabled" style="visibility:hidden">
-          <a id="aqlToggle" class="headerButton">
-            <span class="" title="Settings"></span>
-          </a>
-        </li>
-        <li class="enabled">
-          <a id="editAQL" class="headerButton">
-            <span class="icon_arangodb_checklist" title="Edit custom Queries"></span>
-          </a>
-        </li>
+  <div class="thumbnails2">
+    <div class="headerBar">
+      <a class="arangoHeader">AQL Editor</a>
+    </div>
+
+    <div id="queryContent">
+      <ul class="nav nav-tabs arangoTab">
+        <li class="pull-right"><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
+        <li class="pull-right"><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
       </ul>
-    </div>
-    <a class="arangoHeader">AQL Editor</a>
-  </div>
-</ul>
+      <div class="tab-content" id="tabContentQuery">
+        <div class="tab-pane active" id="query">
 
-<div id="queryDropdown" class="headerDropdown">
-  <div class="dropdownInner" id="queryDropdownIn">
-    <a class="arangoHeader">Edit custom queries</a>
-    <div id="queryDropdownLeft">
-      Name
-      <select id="queryModalSelect"/>
-    </div>
-    <div id="queryDropdownRight">
-      Query
-      <textarea id="edit-aql-textarea"/>
-    </div>
-    <div class="buttonContainer">
-      <button id="delete-edit-query" class="btn btn-danger">Delete</button>
-      <button id="save-edit-query" class="btn btn-success">Save</button>
-    </div>
-  </div>
-  <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
-    <strong>Really delete query?</strong>
-    <button id="confirmDeleteQuery" class="btn btn-danger pull-right" style="margin-top: -4px; margin-right: -18px !important;">Yes</button>
-    <button id="abortDeleteQuery" class="btn pull-right" style="margin-top: -4px; margin-right:10px;">No</button>
-  </div>
-</div>
+          <div id="queryDropdown" class="headerDropdown">
+            <div class="dropdownInner" id="queryDropdownIn">
+              <a class="arangoHeader">Edit custom queries</a>
 
-<div id="queryDiv" style="display:none">
-  <div id="editorLabel"><h6>Query</h6></div>
-  <div id="editorToolbar" class="queryToolbar">
-    <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearInput"/>
-    <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
-    <span class="icon_arangodb icon_arangodb_bubble1 queryTooltips" title="Comment" id="commentText"/>
-    <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips" title="Redo" id="redoText"/>
-    <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips" title="Undo" id="undoText"/>
-  </div>
-  <div id="aqlEditor"></div>
-  <div id="wideButtonDiv">
-    <button id="submitQueryButton" class="btn btn-success">Submit</button>
-    <button id="clearQueryButton" class="btn">Clear</button>
-    <div class="styled-select">
-      <select id="querySelect"/>
-    </div>
-    <div class="styled-select querySizeDiv">
-      <select id="querySize"/>
-    </div>
-  </div>
-  <div id="editorLabel"><h6>Result</h6></div>
-  <div id="outputToolbar" class="queryToolbar">
-      <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearOutput"></span>
-      <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
-  </div>
-  <div id="queryOutput" class="contentDiv">
-  </div>
-    <div id="shortcutDiv">
-      <b>Submit:</b> CTRL/CMD + Return ; <b>Undo:</b> CTRL/CMD + Z ; <b>Redo:</b> CTRL/CMD + SHIFT + Z ;
-      <b>Toggle Comments:</b> CTRL/CMD + SHIFT + C
-      <br /><b>Warning:</b> Right now there is a bug in Safari, the cursor is misplaced. Please use a different browser for now. Fix in progress.
-    </div>
+              <div id="queryDropdownLeft">
+                Name
+                <select id="queryModalSelect"/>
+              </div>
+              <div id="queryDropdownRight">
+                Query
+                <textarea id="edit-aql-textarea"/>
+              </div>
+              <div class="buttonContainer">
+                <button id="delete-edit-query" class="button-danger">Delete</button>
+                <button id="save-edit-query" class="button-success">Save</button>
+              </div>
+            </div>
+            <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
+              <strong>Really delete query?</strong>
+              <button id="confirmDeleteQuery" class="button-danger pull-right"
+                      style="margin-top: -4px; margin-right: -18px !important;">Yes
+              </button>
+              <button id="abortDeleteQuery" class="button-neutral pull-right" style="margin-top: -4px; margin-right:10px;">No
+              </button>
+            </div>
+          </div>
 
-</div>
+          <div id="queryDiv" style="display:none">
+            <div id="editorLabel"><h6>Query</h6></div>
+            <div id="editorToolbar" class="queryToolbar">
+              <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearInput"/>
+              <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
+              <span class="icon_arangodb icon_arangodb_bubble1 queryTooltips" title="Comment" id="commentText"/>
+              <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips" title="Redo" id="redoText"/>
+              <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips" title="Undo" id="undoText"/>
+            </div>
 
-<div id="new-aql-query" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Save new query</a>
-  </div>
-  <div id="new-aql-body" class="modal-body">
-    <table>
-      <tr>
-        <th class="queryTH">Name:</th>
-        <th class="queryTH2"><input type="text" id="new-query-name" name="name" value=""/></th>
-      </tr>
-    </table>
-  </div>
-  <div id="colFooter" class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="save-new-query" class="btn btn-success pull-right">Save</button>
-  </div>
-</div>
+            <div id="aqlEditor"></div>
 
-</div>
+
+            <div id="wideButtonDiv">
+              <div>
+
+                <div id="shortcutDiv">
+                  <b>Submit:</b> CTRL/CMD + Return ; <b>Undo:</b> CTRL/CMD + Z ; <b>Redo:</b> CTRL/CMD + SHIFT + Z ;
+                  <b>Toggle Comments:</b> CTRL/CMD + SHIFT + C
+                  <br/><b>Warning:</b> Right now there is a bug in Safari, the cursor is misplaced. Please use a different
+                  browser for now. Fix in progress.
+                </div>
+              </div>
+              <div>
+
+                <button id="submitQueryButton" class="btn btn-success">Submit</button>
+                <button id="clearQueryButton" class="btn">Clear</button>
+                <div class="styled-select">
+                  <select id="querySelect"/>
+                </div>
+                <div class="styled-select querySizeDiv">
+                  <select id="querySize"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+      </div>
+      <div class="tab-content" id="tabContentResult">
+
+        <div class="tab-pane" id="result">
+          <div id="editorLabel"><h6>Result</h6></div>
+          <div id="outputToolbar" class="queryToolbar">
+            <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearOutput"></span>
+            <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
+          </div>
+          <div id="queryOutput" class="contentDiv">
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
 </script>
+
