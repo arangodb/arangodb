@@ -1799,10 +1799,9 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
-                                  TRI_vocbase_col_t const* collection,
-                                  v8::Arguments const& argv,
-                                  bool generateDocument) {
+static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
+                                                            v8::Arguments const& argv,
+                                                            bool generateDocument) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -1927,14 +1926,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, true));
-  }
-#endif
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1944,6 +1939,12 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -2043,12 +2044,6 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, false));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2076,6 +2071,12 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     // for any other error that happens, we'll rethrow it
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);
