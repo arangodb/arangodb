@@ -104,6 +104,10 @@ Command-Line Options for arangod {#CommandLineArangod}
 @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 
 @CLEARPAGE
+@anchor CommandLineArangoReuseAddress
+@copydetails triagens::rest::ApplicationEndpointServer::_reuseAddress
+
+@CLEARPAGE
 @anchor CommandLineArangoDisableAuthentication
 @copydetails triagens::arango::ArangoServer::_disableAuthentication
 
