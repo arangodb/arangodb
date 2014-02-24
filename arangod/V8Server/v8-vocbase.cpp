@@ -606,6 +606,36 @@ static bool ExtractDocumentHandle (v8::Handle<v8::Value> const& val,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a name belongs to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualCollection (CollectionNameResolver const& resolver,
+                             string const& collectionName,
+                             TRI_vocbase_col_t const* collection) {
+  if (collectionName == StringUtils::itoa(collection->_cid)) {
+    return true;
+  }
+
+  if (collectionName == string(collection->_name)) {
+    return true;
+  }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    if (collectionName == resolver.getCollectionNameCluster(collection->_cid)) {
+      return true;
+    }
+    return false;
+  }
+#endif
+  if (collectionName != resolver.getCollectionName(collection->_cid)) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -644,8 +674,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (CollectionNameResolv
     // we read a collection name from the document id
     // check cross-collection requests
     if (collection != 0) {
-      if (collectionName != resolver.getCollectionName(collection->_cid) &&
-          collectionName != StringUtils::itoa(collection->_cid)) {
+      if (! EqualCollection(resolver, collectionName, collection)) {
         return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
       }
     }
@@ -1929,14 +1958,13 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
-
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -2052,7 +2080,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
     // check if we got an error object in return
     if (err->IsObject()) {
@@ -2258,7 +2286,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -2598,15 +2626,15 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
+  if (key == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+  
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
   
-  if (key == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
   assert(col != 0);
   assert(key != 0);
 
@@ -2829,7 +2857,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -6185,7 +6213,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
+static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const& resolver,
+                                                   TRI_vocbase_col_t const* collection,
                                                    v8::Handle<v8::Value> const& val) {
   v8::HandleScope scope;
   
@@ -6212,8 +6241,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
   }
 
   if (collectionName != "") {
-    if (collectionName != collection->_name &&
-        collectionName != StringUtils::itoa(collection->_cid)) {
+    if (! EqualCollection(resolver, collectionName, collection)) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
   }
@@ -6263,13 +6291,14 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
+  CollectionNameResolver resolver(collection->_vocbase);
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DropIndexCoordinator(collection, argv[0]));
+    return scope.Close(DropIndexCoordinator(resolver, collection, argv[0]));
   }
 #endif
 
-  CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
@@ -8832,10 +8861,19 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
     // same database. nothing to do
     return scope.Close(WrapVocBase(vocbase));
   }
-  
-  // check if the other database exists, and increase its refcount
-  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    vocbase = TRI_UseCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+  }
+  else {
+    // check if the other database exists, and increase its refcount
+    vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
+  }
+#else
+  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
+#endif  
+  
   if (vocbase != 0) {
     // switch databases
     void* orig = v8g->_vocbase;
@@ -8843,7 +8881,9 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 
     v8g->_vocbase = vocbase;
 
-    TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
+    if (orig != vocbase) {
+      TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
+    }
     
     return scope.Close(WrapVocBase(vocbase));
   }
@@ -9882,8 +9922,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
   }
 
   if (collectionName != "") {
-    if (collectionName != collection->_name && 
-        collectionName != StringUtils::itoa(collection->_cid)) {
+    CollectionNameResolver resolver(collection->_vocbase);
+    if (! EqualCollection(resolver, collectionName, collection)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
