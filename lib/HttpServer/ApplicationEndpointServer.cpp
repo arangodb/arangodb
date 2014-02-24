@@ -100,7 +100,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _endpointList(),
     _httpPort(),
     _endpoints(),
-    _reuseAddress(true),
+    _reuseAddress(false),
     _keepAliveTimeout(300.0),
     _defaultApiCompatibility(0),
     _allowMethodOverride(false),
