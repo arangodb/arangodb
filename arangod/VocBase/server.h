@@ -38,6 +38,8 @@
 
 #ifdef __cplusplus
 extern "C" {
+
+struct TRI_vocbase_s;
 #endif
 
 // -----------------------------------------------------------------------------
@@ -179,6 +181,24 @@ int TRI_CreateDatabaseServer (TRI_server_t*,
                               struct TRI_vocbase_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the ids of all local coordinator databases
+/// the caller is responsible for freeing the result
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing coordinator database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
+                                           TRI_voc_tick_t);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,6 +213,16 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t*,
 
 int TRI_DropDatabaseServer (TRI_server_t*,
                             char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a coordinator database by its id
+/// this will increase the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+struct TRI_vocbase_s* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t*,
+                                                            TRI_voc_tick_t);
+#endif  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a coordinator database by its name
