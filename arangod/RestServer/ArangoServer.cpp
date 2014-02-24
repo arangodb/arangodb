@@ -901,33 +901,34 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
   v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
-
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  // set-up unit tests array
-  v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-  for (size_t i = 0;  i < _unitTests.size();  ++i) {
-    sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
-  }
-
-  context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-  // run tests
-  char const* input = "require(\"jsunity\").runCommandLineTests();";
-  TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
-
+ 
   bool ok = false;
+  {
+    v8::HandleScope scope;
+    v8::TryCatch tryCatch;
 
-  if (tryCatch.HasCaught()) {
-    cout << TRI_StringifyV8Exception(&tryCatch);
+    // set-up unit tests array
+    v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+    for (size_t i = 0;  i < _unitTests.size();  ++i) {
+      sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
+    }
+
+    context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+    context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+    // run tests
+    char const* input = "require(\"jsunity\").runCommandLineTests();";
+    TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
+    }
+    else {
+      ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
+    }
   }
-  else {
-    ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-  }
-    
+   
   _applicationV8->exitContext(context);
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

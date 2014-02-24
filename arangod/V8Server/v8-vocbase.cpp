@@ -9046,24 +9046,30 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
 
-  // database was created successfully in Cluster
+  // database was created successfully in agency
 
-  // now create a local database object
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
+  // now wait for heartbeat thread to create the database object
   TRI_vocbase_t* vocbase = 0;
-  TRI_vocbase_defaults_t defaults;
-  TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
+  int tries = 0;
 
+  while (++tries <= 6000) {
+    vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
 
-  res = TRI_CreateCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id, name.c_str(), &defaults, &vocbase);
+    if (vocbase != 0) {
+      break;
+    }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    // sleep
+    usleep(10000);
   }
 
-  assert(vocbase != 0);
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
 
+  // now run upgrade etc
   v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
 
   if (TRI_V8RunVersionCheck(vocbase, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
@@ -9237,8 +9243,20 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   // Arguments are already checked, there is exactly one argument
   string const name = TRI_ObjectToString(argv[0]);
+  TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+
+  if (vocbase == 0) {
+    // no such database
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  TRI_voc_tick_t const id = vocbase->_id;
+  TRI_ReleaseVocBase(vocbase);
+
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
@@ -9248,10 +9266,21 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
+  
+  // now wait for heartbeat thread to drop the database object
+  int tries = 0;
 
-  // mark the local object as dropped
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  TRI_DropCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+  while (++tries <= 6000) {
+    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+
+    if (vocbase == 0) {
+      // object has vanished
+      break;
+    }
+
+    // sleep
+    usleep(10000);
+  }
 
   return scope.Close(v8::True());
 }

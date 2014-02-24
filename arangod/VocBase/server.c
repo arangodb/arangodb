@@ -2224,6 +2224,95 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the ids of all local coordinator databases
+/// the caller is responsible for freeing the result
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) { 
+  TRI_vector_t v;
+  TRI_voc_tick_t* data;
+  TRI_voc_tick_t zero;
+  size_t i, n;
+
+  TRI_InitVector(&v, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tick_t));
+
+  READ_LOCK_DATABASES(server->_databasesLock);
+  n = server->_coordinatorDatabases._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+
+    if (vocbase != NULL &&
+        ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+      TRI_PushBackVector(&v, &vocbase->_id);
+    }
+  }
+
+  READ_UNLOCK_DATABASES(server->_databasesLock);
+
+  // append a 0
+  zero = 0;
+  TRI_PushBackVector(&v, &zero);
+
+  // steal the elements from the vector
+  data = (TRI_voc_tick_t*) v._buffer;
+  v._buffer = NULL;
+
+  TRI_DestroyVector(&v);
+
+  return data;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing coordinator database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
+                                           TRI_voc_tick_t id) {
+  size_t i, n;
+  int res;
+  
+  res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+
+  WRITE_LOCK_DATABASES(server->_databasesLock);
+
+  if (TRI_ReserveVectorPointer(&server->_droppedDatabases, 1) != TRI_ERROR_NO_ERROR) {
+    // we need space for one more element
+    WRITE_UNLOCK_DATABASES(server->_databasesLock);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  n = server->_coordinatorDatabases._nrAlloc;
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+
+    if (vocbase != NULL && 
+        vocbase->_id == id &&
+        ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+      TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name);
+    
+      if (TRI_DropVocBase(vocbase)) {
+        LOG_INFO("dropping coordinator database '%s'",
+                 vocbase->_name);
+
+        TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
+        res = TRI_ERROR_NO_ERROR;
+      }
+      break;
+    }
+  }
+
+  WRITE_UNLOCK_DATABASES(server->_databasesLock);
+
+  return res;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2332,6 +2421,39 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a coordinator database by its id
+/// this will increase the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
+                                                     TRI_voc_tick_t id) {
+  TRI_vocbase_t* vocbase;
+  size_t i, n;
+
+  READ_LOCK_DATABASES(server->_databasesLock);
+  n = server->_coordinatorDatabases._nrAlloc;
+ 
+  for (i = 0; i < n; ++i) {
+    vocbase = server->_coordinatorDatabases._table[i];
+
+    if (vocbase != NULL && vocbase->_id == id) {
+      bool result = TRI_UseVocBase(vocbase);
+
+      // if we got here, no one else can have deleted the database
+      assert(result == true);
+      READ_UNLOCK_DATABASES(server->_databasesLock);
+      return vocbase;
+    }
+  }
+  
+  READ_UNLOCK_DATABASES(server->_databasesLock);
+
+  return NULL;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a coordinator database by its name
