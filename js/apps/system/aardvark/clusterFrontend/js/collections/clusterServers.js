@@ -22,8 +22,8 @@
       });
       res = res || {};
       this.forEach(function(m) {
+        console.log(m);
         var addr = m.get("address");
-        addr = addr.substr(6);
         addr = addr.split(":")[0];
         res[addr] = res[addr] || {};
         res[addr].dbs = res[addr].dbs || [];
