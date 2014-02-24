@@ -22,7 +22,7 @@
         userCollection: window.userCollection
       });
       this.notificationView = new window.NotificationView({
-        collection: this.options.notificationCollection,
+        collection: this.options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({});
     },
@@ -67,7 +67,7 @@
         e.preventDefault();
         return;
       }
-      if (navigateTo === "dbselection" || navigateTo === "dbselection") {
+      if (navigateTo === "dbselection") {
         $("#dbs_dropdown").slideToggle(200);
         e.preventDefault();
         return;
