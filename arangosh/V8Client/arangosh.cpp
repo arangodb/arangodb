@@ -1297,7 +1297,7 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
 /// @brief dynamically replace %d, %e, %u in the prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string BuildPrompt () {
+static std::string BuildPrompt (V8ClientConnection* connection) {
   string result;
 
   char const* p = Prompt.c_str();
@@ -1315,7 +1315,7 @@ static std::string BuildPrompt () {
         result.push_back(c);
       }
       else if (c == 'd') {
-        result.append(BaseClient.databaseName());
+        result.append(connection->getDatabaseName());
       }
       else if (c == 'e') {
         result.append(BaseClient.endpointString());
@@ -1396,7 +1396,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     // set up prompts
     string dynamicPrompt;
     if (ClientConnection != 0) {
-      dynamicPrompt = BuildPrompt();
+      dynamicPrompt = BuildPrompt(ClientConnection);
     }
     else {
       dynamicPrompt = "-";
