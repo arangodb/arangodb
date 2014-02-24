@@ -308,7 +308,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   static const string prefix = "Plan/Databases";
 
   LOG_TRACE("found a plan update");
-        
+
   // invalidate our local cache
   ClusterInfo::instance()->flush();
 
@@ -325,35 +325,31 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   if (result.successful()) {
     result.parse(prefix + "/", false);
 
+    vector<TRI_voc_tick_t> ids;
+
+    // loop over all database names we got and create a local database instance if not yet present
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
     while (it != result._values.end()) {
       string const& name = (*it).first;
-
       TRI_json_t const* options = (*it).second._json;
-      
-      TRI_json_t const* v = TRI_LookupArrayJson(options, "coordinator");
+        
+      TRI_voc_tick_t id = 0;
+      TRI_json_t const* v = TRI_LookupArrayJson(options, "id");
       if (TRI_IsStringJson(v)) {
-        // check which coordinator created the database
-        string const coordinator = string(v->_value._string.data, v->_value._string.length - 1);
-
-        if (coordinator == _myId) {
-          // we created the database ourselves. nothing to do
-          ++it;
-          continue;
-        }
+        id = triagens::basics::StringUtils::uint64(v->_value._string.data);
       }
 
+      if (id > 0) {
+        ids.push_back(id);
+      }
+      
       TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
 
       if (vocbase == 0) {
         // database does not yet exist, create it now
-        TRI_voc_tick_t id;
-        TRI_json_t const* v = TRI_LookupArrayJson(options, "id");
 
-        if (TRI_IsStringJson(v)) {
-          id = triagens::basics::StringUtils::uint64(v->_value._string.data);
-        }
-        else {
+        if (id == 0) {
+          // verify that we have an id
           id = ClusterInfo::instance()->uniqid();
         }
 
@@ -368,6 +364,25 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       }
 
       ++it;
+    }
+
+   
+    TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server); 
+
+    if (localIds != 0) {
+      TRI_voc_tick_t* p = localIds;
+
+      while (*p != 0) {
+        vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
+
+        if (r == ids.end()) {
+          TRI_DropByIdCoordinatorDatabaseServer(_server, *p);
+        }
+
+        ++p;
+      }
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, localIds);
     }
   }  
   
