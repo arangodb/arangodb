@@ -105,6 +105,11 @@ li.tile {
   }
 }
 
+.searchField {
+  @extend %pull-left;
+  margin-left: 25px;
+}
+
 .collectionName {
   text-align:left;
   font-weight: 300;
