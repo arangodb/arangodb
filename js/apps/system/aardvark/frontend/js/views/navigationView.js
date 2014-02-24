@@ -8,7 +8,6 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
-      "click .internalLink": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },

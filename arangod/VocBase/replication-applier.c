@@ -636,7 +636,6 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase) {
   TRI_replication_applier_t* applier;
-  int res;
 
   applier = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_applier_t), false);
 
@@ -647,28 +646,31 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
   TRI_InitConfigurationReplicationApplier(&applier->_configuration);
   TRI_InitStateReplicationApplier(&applier->_state);
 
-  res = LoadConfiguration(vocbase, &applier->_configuration);
+  if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
+    int res;
+    res = LoadConfiguration(vocbase, &applier->_configuration);
   
-  if (res != TRI_ERROR_NO_ERROR && 
-      res != TRI_ERROR_FILE_NOT_FOUND) {
-    TRI_set_errno(res);
-    TRI_DestroyStateReplicationApplier(&applier->_state);
-    TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
-    TRI_Free(TRI_CORE_MEM_ZONE, applier);
+    if (res != TRI_ERROR_NO_ERROR && 
+        res != TRI_ERROR_FILE_NOT_FOUND) {
+      TRI_set_errno(res);
+      TRI_DestroyStateReplicationApplier(&applier->_state);
+      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
+      TRI_Free(TRI_CORE_MEM_ZONE, applier);
 
-    return NULL;
-  }
+      return NULL;
+    }
 
-  res = TRI_LoadStateReplicationApplier(vocbase, &applier->_state);
+    res = TRI_LoadStateReplicationApplier(vocbase, &applier->_state);
 
-  if (res != TRI_ERROR_NO_ERROR && 
-      res != TRI_ERROR_FILE_NOT_FOUND) {
-    TRI_set_errno(res);
-    TRI_DestroyStateReplicationApplier(&applier->_state);
-    TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
-    TRI_Free(TRI_CORE_MEM_ZONE, applier);
+    if (res != TRI_ERROR_NO_ERROR && 
+        res != TRI_ERROR_FILE_NOT_FOUND) {
+      TRI_set_errno(res);
+      TRI_DestroyStateReplicationApplier(&applier->_state);
+      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
+      TRI_Free(TRI_CORE_MEM_ZONE, applier);
 
-    return NULL;
+      return NULL;
+    }
   }
   
   TRI_InitReadWriteLock(&applier->_statusLock);
@@ -766,12 +768,15 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
                                  bool useTick) {
   int res;
   
-  res = TRI_ERROR_NO_ERROR;
-
   LOG_TRACE("requesting replication applier start. initialTick: %llu, useTick: %d",
             (unsigned long long) initialTick,
             (int) useTick);
+  
+  if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
+  res = TRI_ERROR_NO_ERROR;
   // wait until previous applier thread is shut down
   while (! TRI_WaitReplicationApplier(applier, 10 * 1000));
   
@@ -793,17 +798,19 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
 int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
                                 bool resetError) {
   int res;
-
-  res = TRI_ERROR_NO_ERROR;
   
   LOG_TRACE("requesting replication applier stop");
+
+  if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
  
   TRI_WriteLockReadWriteLock(&applier->_statusLock);
 
   if (! applier->_state._active) {
     TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
 
-    return res;
+    return TRI_ERROR_NO_ERROR;
   }
 
   res = StopApplier(applier, resetError);
@@ -839,6 +846,10 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
 int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
                                      TRI_replication_applier_configuration_t const* config) {
   int res;
+  
+  if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   res = TRI_ERROR_NO_ERROR;
 
@@ -1060,6 +1071,10 @@ void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state)
 int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
   char* filename;
   int res;
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   filename = GetStateFilename(vocbase);
 
@@ -1090,6 +1105,10 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   char* filename;
   int res;
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   json = JsonApplyState(state);
 
@@ -1123,6 +1142,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_json_t* serverId;
   char* filename;
   int res;
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
   
   TRI_InitStateReplicationApplier(state);
   filename = GetStateFilename(vocbase);
@@ -1278,6 +1301,10 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
 int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
   char* filename;
   int res;
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   filename = GetConfigurationFilename(vocbase);
 
@@ -1307,6 +1334,10 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   char* filename;
   int res;
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   json = JsonConfiguration(config, true);
 

@@ -11,7 +11,7 @@
     template: templateEngine.createTemplate("testPlan.ejs"),
 
     events: {
-      "click #startPlan": "startPlan"
+      "click #startTestPlan": "startPlan"
     },
 
     startPlan: function() {
