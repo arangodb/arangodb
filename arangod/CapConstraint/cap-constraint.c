@@ -296,6 +296,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
 
   idx->typeName = TypeNameCapConstraint;
   TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->json        = JsonCapConstraint;
   idx->removeIndex = RemoveIndexCapConstraint;
@@ -316,6 +317,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCapConstraint (TRI_index_t* idx) {
+  TRI_DestroyVectorString(&idx->_fields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
