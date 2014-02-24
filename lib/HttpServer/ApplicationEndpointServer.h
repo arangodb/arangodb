@@ -392,6 +392,16 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to reuse address
+///
+/// @CMDOPT{\--server.reuse-address}
+///
+/// If this boolean option is set to `true` then the socket option 
+/// SO_REUSEADDR is set on the server endpoint, which is the default.
+/// Please note that under some operating systems this is a security
+/// risk because it might be possible for another process to bind
+/// to the same address and port, possibly hijacking network traffic.
+/// Under Windows, ArangoDB additionally sets the flag SO_EXCLUSIVEADDRUSE
+/// as a try to alleviate this problem.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _reuseAddress;
