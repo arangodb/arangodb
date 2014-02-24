@@ -1262,8 +1262,9 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
-  
-    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+    
+    if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
+        fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       ScopeOutput(generator, "aql.GET_DOCUMENTS_HASH_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
@@ -1407,7 +1408,8 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       return;
     }
 
-    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+    if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
+        fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       ScopeOutput(generator, "aql.GET_DOCUMENTS_SKIPLIST_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
@@ -1527,8 +1529,9 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
-    
-    if (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+   
+    if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
+        fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
