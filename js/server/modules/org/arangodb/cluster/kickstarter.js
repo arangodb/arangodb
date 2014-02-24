@@ -316,7 +316,7 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
-  console.info("Shutting down agent %s", run.pid);
+  console.info("Shutting down agent %s", JSON.stringify(run.pid));
   killExternal(run.pid);
   return {"error": false, "isStartAgent": true};
 };
@@ -392,7 +392,7 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
 };
 
 isHealthyActions.startAgent = function (dispatchers, cmd, run) {
-  console.info("Checking health of agent %s", run.pid);
+  console.info("Checking health of agent %s", JSON.strinfify(run.pid));
   var r = statusExternal(run.pid);
   r.isStartAgent = true;
   r.error = false;
