@@ -253,8 +253,8 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(i);
 
-        var res = collection.BY_CONDITION_SKIPLIST(idx.id, { a: [[">=", val]] }, 0, null );
-        var result = res.documents.map(function(a) { return a._key; });
+        var res = collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }, 0, null ).toArray();
+        var result = res.map(function(a) { return a._key; });
 
         assertEqual([i, ">=", expect], [i, ">=", result]);
       }
@@ -264,8 +264,8 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(i + 1);
 
-        var res = collection.BY_CONDITION_SKIPLIST(idx.id, { a: [[">", val]] }, 0, null );
-        var result = res.documents.map(function(a) { return a._key; });
+        var res = collection.byConditionSkiplist(idx.id, { a: [[">", val]] }, 0, null ).toArray();
+        var result = res.map(function(a) { return a._key; });
 
         assertEqual([i, ">", expect], [i, ">", result]);
       }
@@ -275,8 +275,8 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(1, i + 1);
 
-        var res = collection.BY_CONDITION_SKIPLIST(idx.id, { a: [["<=", val]] }, 0, null );
-        var result = res.documents.map(function(a) { return a._key; });
+        var res = collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }, 0, null ).toArray();
+        var result = res.map(function(a) { return a._key; });
 
         assertEqual([i, "<=", expect], [i, "<=", result]);
       }
@@ -287,8 +287,8 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(1, i);
 
-        var res = collection.BY_CONDITION_SKIPLIST(idx.id, { a: [["<", val]] }, 0, null );
-        var result = res.documents.map(function(a) { return a._key; });
+        var res = collection.byConditionSkiplist(idx.id, { a: [["<", val]] }, 0, null ).toArray();
+        var result = res.map(function(a) { return a._key; });
 
         assertEqual([i, "<", expect], [i, "<", result]);
       }
@@ -301,8 +301,8 @@ function SkipListSuite() {
           var valj = values[j].a;
           var expect = documents.slice(i, j + 1);
 
-          var res = collection.BY_CONDITION_SKIPLIST(idx.id, { a: [[">=", vali], ["<=", valj]] }, 0, null );
-          var result = res.documents.map(function(a) { return a._key; });
+          var res = collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }, 0, null ).toArray();
+          var result = res.map(function(a) { return a._key; });
 
           assertEqual([i, ">= <=", expect], [i, ">= <=", result]);
         }

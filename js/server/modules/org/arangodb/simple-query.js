@@ -39,6 +39,7 @@ var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
+var SimpleQueryByCondition = sq.SimpleQueryByCondition;
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -514,6 +515,166 @@ SimpleQueryByExample.prototype.execute = function () {
     }
     else {
       documents = byExample(this);
+    }
+
+    this._execution = new GeneralArrayCursor(documents.documents);
+    this._countQuery = documents.count;
+    this._countTotal = documents.total;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query by condition
+////////////////////////////////////////////////////////////////////////////////
+
+function byCondition (data) {
+  var collection = data._collection;
+  var condition  = data._condition;
+  var skip       = data._skip;
+  var limit      = data._limit;
+  var index;
+    
+  if (data._index !== undefined && data._index !== null) {
+    if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
+      index = data._index.id;
+    }
+    else if (typeof data._index === 'string') {
+      index = data._index;
+    }
+  }
+  else {
+    var err1 = new ArangoError();
+    err1.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+    err1.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+    throw err1;
+  }
+
+  if (typeof condition !== "object" || Array.isArray(condition)) {
+    // invalid datatype for condition
+    var err2 = new ArangoError();
+    err2.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    err2.errorMessage = "invalid document type";
+    throw err2;
+  }
+
+  // always se an index
+  switch (data._type) {
+    case "skiplist":
+      return collection.BY_CONDITION_SKIPLIST(index, condition, skip, limit);
+    case "bitarray":
+      return collection.BY_CONDITION_BITARRAY(index, condition, skip, limit);
+  }
+
+  // an index type is required, but no index will be used
+  var err3 = new ArangoError();
+  err3.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+  err3.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+  throw err3;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query-by-condition
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryByCondition.prototype.execute = function () {
+  var documents;
+  
+  if (this._execution === null) {
+    if (this._skip === null || this._skip <= 0) {
+      this._skip = 0;
+    }
+    
+    var cluster = require("org/arangodb/cluster");
+    
+    if (cluster.isCoordinator()) {
+      var dbName = require("internal").db._name();
+      var shards = cluster.shardList(dbName, this._collection.name());
+      var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+      var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+      var limit = 0;
+      if (this._limit > 0) {
+        if (this._skip >= 0) {
+          limit = this._skip + this._limit;
+        }
+      }
+
+      var method;
+      if (this._type !== undefined) {
+        switch (this._type) {
+          case "skiplist": 
+            method = "by-condition-skiplist";
+            break;
+          case "bitarray":
+            method = "by-condition-bitarray";
+            break;
+        }
+      }
+      
+      var self = this;
+      shards.forEach(function (shard) {
+        ArangoClusterComm.asyncRequest("put", 
+                                       "shard:" + shard, 
+                                       dbName, 
+                                       "/_api/simple/" + method,
+                                       JSON.stringify({ 
+                                         condition: self._condition,
+                                         collection: shard,
+                                         skip: 0, 
+                                         limit: limit || undefined, 
+                                         batchSize: 100000000,
+                                         index: rewriteIndex(self._index)
+                                       }), 
+                                       { }, 
+                                       options);
+      });
+
+      var _documents = [ ];
+      var result = cluster.wait(coord, shards);
+      var toSkip = this._skip, toLimit = this._limit;
+      
+      if (toSkip < 0) {
+        // negative skip is special
+        toLimit = null;
+      }
+
+      result.forEach(function(part) {
+        var body = JSON.parse(part.body);
+
+        if (toSkip > 0) {
+          if (toSkip >= body.result.length) {
+            toSkip -= body.result.length;
+            return;
+          }
+          
+          body.result = body.result.slice(toSkip);
+          toSkip = 0;
+        }
+
+        if (toLimit !== null && toLimit !== undefined) {
+          if (body.result.length >= toLimit) {
+            body.result = body.result.slice(0, toLimit);
+            toLimit = 0;
+          }
+          else {
+            toLimit -= body.result.length;
+          }
+        }
+
+        _documents = _documents.concat(body.result);
+      });
+      
+      if (this._skip < 0) {
+        // apply negative skip
+        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+      }
+
+      documents = { 
+        documents: _documents, 
+        count: _documents.length
+      };
+    }
+    else {
+      documents = byCondition(this);
     }
 
     this._execution = new GeneralArrayCursor(documents.documents);
@@ -1105,6 +1266,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryByCondition = SimpleQueryByCondition;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
