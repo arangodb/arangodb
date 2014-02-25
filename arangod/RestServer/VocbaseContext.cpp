@@ -131,7 +131,6 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   
   // authentication required
   
-  
   bool found;
   char const* auth = _request->header("authorization", found);
   
@@ -168,7 +167,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     return HttpResponse::BAD;
   }
    
-  const string username = up.substr(0, n);
+  string const username = up.substr(0, n);
     
   LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
 
