@@ -1992,8 +1992,8 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   int tries = 0;
 
-  if (! _collectionsValid) {
-    loadPlannedCollections(true);
+  if (! _collectionsCurrentValid) {
+    loadCurrentCollections(true);
     tries++;
   }
 
