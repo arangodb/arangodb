@@ -93,14 +93,14 @@ string const& RestShardHandler::queue () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
+triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (role != ServerState::ROLE_COORDINATOR) {
     generateError(triagens::rest::HttpResponse::BAD, 
                   (int) triagens::rest::HttpResponse::BAD, 
                   "this API is meant to be called on a coordinator node");
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
 
   bool found;
@@ -110,7 +110,7 @@ triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
     generateError(triagens::rest::HttpResponse::BAD, 
                   (int) triagens::rest::HttpResponse::BAD, 
                   "header 'X-Arango-Coordinator' is missing");
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
   
   string coordinatorHeader = _coordinator;
@@ -126,7 +126,7 @@ triagens::rest::HttpHandler::status_e RestShardHandler::execute () {
                   result.c_str());
   }
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 // Local Variables:

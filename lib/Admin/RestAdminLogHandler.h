@@ -94,7 +94,7 @@ namespace triagens {
 /// @brief returns the log files (inheritDoc)
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_e execute ();
+        status_t execute ();
     };
   }
 }

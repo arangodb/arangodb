@@ -81,20 +81,21 @@ ServerJob::~ServerJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_e ServerJob::work () {
+Job::status_t ServerJob::work () {
   LOG_TRACE("starting plan update handler");
 
   if (_shutdown != 0) {
-    return Job::JOB_DONE;
+    return status_t(Job::JOB_DONE);
   }
 
   bool result = execute();
   _heartbeat->ready(true);
 
   if (result) {
-    return triagens::rest::Job::JOB_DONE;
+    return status_t(Job::JOB_DONE);
   }
-  return triagens::rest::Job::JOB_FAILED;
+
+  return status_t(Job::JOB_FAILED);
 }
 
 // -----------------------------------------------------------------------------

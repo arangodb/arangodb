@@ -336,9 +336,9 @@ namespace triagens {
 
           // execute handle and requeue
           while (true) {
-            Handler::status_e status = handleRequestDirectly(task, handler);
+            Handler::status_t status = handleRequestDirectly(task, handler);
 
-            if (status != Handler::HANDLER_REQUEUE) {
+            if (status.status != Handler::HANDLER_REQUEUE) {
               shutdownHandlerByTask(task);
               return true;
             }
@@ -476,8 +476,8 @@ namespace triagens {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_e handleRequestDirectly (CT* task, GeneralHandler * handler) {
-          Handler::status_e status = Handler::HANDLER_FAILED;
+        Handler::status_t handleRequestDirectly (CT* task, GeneralHandler * handler) {
+          Handler::status_t status(Handler::HANDLER_FAILED);
 
           RequestStatisticsAgentSetRequestStart(handler);
 
@@ -503,7 +503,7 @@ namespace triagens {
               handler->handleError(err);
             }
 
-            if (status == Handler::HANDLER_REQUEUE) {
+            if (status.status == Handler::HANDLER_REQUEUE) {
               handler->RequestStatisticsAgent::transfer(task);
               return status;
             }

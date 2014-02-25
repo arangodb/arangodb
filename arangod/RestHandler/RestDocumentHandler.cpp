@@ -83,7 +83,7 @@ RestDocumentHandler::RestDocumentHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestDocumentHandler::execute () {
+HttpHandler::status_t RestDocumentHandler::execute () {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -104,7 +104,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   }
 
   // this handler is done
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

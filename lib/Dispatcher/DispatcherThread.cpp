@@ -34,6 +34,8 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
+#include "Dispatcher/RequeueTask.h"
+#include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -47,11 +49,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,17 +59,12 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
   allowAsynchronousCancelation();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
+/// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
@@ -123,7 +115,7 @@ void DispatcherThread::run () {
       _queue->_accessQueue.unlock();
 
       // do the work (this might change the job type)
-      Job::status_e status = Job::JOB_FAILED;
+      Job::status_t status(Job::JOB_FAILED);
 
       try {
         RequestStatisticsAgentSetQueueEnd(job);
@@ -148,7 +140,7 @@ void DispatcherThread::run () {
           LOG_WARNING("caught error while handling error!");
         }
 
-        status = Job::JOB_FAILED;
+        status = Job::status_t(Job::JOB_FAILED);
       }
       catch (std::exception const& ex) {
         try {
@@ -166,7 +158,7 @@ void DispatcherThread::run () {
           LOG_WARNING("caught error while handling error!");
         }
 
-        status = Job::JOB_FAILED;
+        status = Job::status_t(Job::JOB_FAILED);
       }
       catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -191,7 +183,7 @@ void DispatcherThread::run () {
           LOG_WARNING("caught error while handling error!");
         }
 
-        status = Job::JOB_FAILED;
+        status = Job::status_t(Job::JOB_FAILED);
       }
 
       // trigger GC
@@ -200,8 +192,7 @@ void DispatcherThread::run () {
       // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
       // it is not safe to use detached jobs after job->work()
 
-      // detached jobs
-      if (status == Job::JOB_DETACH) {
+      if (status.status == Job::JOB_DETACH) {
         // we must do absolutely nothing with dispatched jobs here because they might be
         // killed asynchronously and this is not under our control
       }
@@ -213,13 +204,23 @@ void DispatcherThread::run () {
         try {
           job->setDispatcherThread(0);
 
-          if (status == Job::JOB_DONE) {
+          if (status.status == Job::JOB_DONE) {
             job->cleanup();
           }
-          else if (status == Job::JOB_REQUEUE) {
-            _queue->_dispatcher->addJob(job);
+          else if (status.status == Job::JOB_REQUEUE) {
+            if (0.0 < status.sleep) {
+              LOG_ERROR("requeuing with sleep %f", status.sleep);
+              _queue->_scheduler->registerTask(
+                new RequeueTask(_queue->_scheduler,
+                                _queue->_dispatcher,
+                                status.sleep,
+                                job));
+            }
+            else {
+              _queue->_dispatcher->addJob(job);
+            }
           }
-          else if (status == Job::JOB_FAILED) {
+          else if (status.status == Job::JOB_FAILED) {
             job->cleanup();
           }
         }
@@ -282,18 +283,9 @@ void DispatcherThread::run () {
   LOG_TRACE("dispatcher thread has finished");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to report the status of the thread
@@ -308,10 +300,6 @@ void DispatcherThread::reportStatus () {
 
 void DispatcherThread::tick (bool) {
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

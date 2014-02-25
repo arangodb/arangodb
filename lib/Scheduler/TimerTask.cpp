@@ -64,6 +64,7 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   else {
     watcher = 0;
   }
+
   return true;
 }
 
@@ -75,6 +76,7 @@ void TimerTask::cleanup () {
     watcher = 0;
     return;
   }
+
   scheduler->uninstallEvent(watcher);
   watcher = 0;
 }

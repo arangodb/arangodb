@@ -45,7 +45,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ServerStateTempl(),
     ClusterCommTempl(),
 #endif
-    ErrorTempl(),
+    ArangoErrorTempl(),
+    SleepAndRequeueTempl(),
+    SleepAndRequeueFuncTempl(),
     GeneralCursorTempl(),
     ShapedJsonTempl(),
     VocbaseColTempl(),
@@ -107,6 +109,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ServerKey(),
 #ifdef TRI_ENABLE_CLUSTER
     ShardIDKey(),
+#endif
+    SleepKey(),
+#ifdef TRI_ENABLE_CLUSTER
     StatusKey(),
 #endif
     SuffixKey(),
@@ -188,6 +193,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
 #ifdef TRI_ENABLE_CLUSTER
   ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
+#endif
+  SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
+#ifdef TRI_ENABLE_CLUSTER
   StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
 #endif
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
