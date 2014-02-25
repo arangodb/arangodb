@@ -334,7 +334,6 @@ function buildAssetContent (app, assets, basePath) {
 function buildFileAsset (app, path, basePath, asset) {
   var content = buildAssetContent(app, asset.files, basePath);
   var type;
-  var route;
 
   // -----------------------------------------------------------------------------
   // content-type detection
