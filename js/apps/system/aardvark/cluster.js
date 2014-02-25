@@ -95,6 +95,46 @@
     }
   });
 
+  controller.post("/shutdown", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    var shutdownInfo = k.shutdown();
+    if (shutdownInfo.error) {
+      res.json("Unable to shutdown cluster");
+      res.status(409);
+    }
+  });
+
+  controller.post("/cleanup", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    var shutdownInfo = k.shutdown();
+    if (shutdownInfo.error) {
+      res.json("Unable to shutdown cluster");
+      res.status(409);
+      return;
+    }
+    k.cleanup();
+  });
+
+  controller.post("/relaunch", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    var r = k.relaunch();
+    if (r.error) {
+      res.json("Unable to relaunch cluster");
+      res.status(409);
+      return;
+    }
+    res.json({
+      config: input.config,
+      plan: r.plan,
+      runInfo: r.runInfo
+    });
+  });
+
   // FAKE TO BE REMOVED TODO 
   controller.get("/ClusterType", function(req, res) {
     res.json({
