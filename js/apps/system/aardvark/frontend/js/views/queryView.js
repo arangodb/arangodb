@@ -408,7 +408,6 @@
       this.customQueries = _.sortBy(this.customQueries, 'name');
     },
     submitQuery: function () {
-      console.log("submitQuery");
       this.result();
       var self = this;
       var sizeBox = $('#querySize');
@@ -479,8 +478,7 @@
        this.table = "logTableID";
        this.clearTable();
        this.collection.fillLocalStorage(this.table, this.offset, this.size);*/
-    },
-
+    }
 
   });
 }());

@@ -27,6 +27,7 @@
 
 var cluster = require("org/arangodb/cluster");
 var jsunity = require("jsunity");
+var _ = require("underscore");
 
 var compareStringIds = function (l, r) {
   if (l.length != r.length) {
@@ -269,7 +270,7 @@ function ClusterEnabledSuite () {
         shardKeys: [ "_key" ],
         shards: { "s1" : "myself", "s2" : "other" }
       };
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
+      assertTrue(agency.set("Plan/Collections/test/" + collection.id, collection));
 
       var data = ci.getCollectionInfo("test", collection.id);
 
@@ -295,7 +296,9 @@ function ClusterEnabledSuite () {
         shards: { "s1" : "myself", "s2" : "other", "s3" : "foo", "s4" : "bar" }
       };
 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
+      assertTrue(agency.set("Plan/Collections/test/" + collection.id, collection));
+
+      ci.flush();
 
       var data = ci.getCollectionInfo("test", collection.id);
 
@@ -318,17 +321,26 @@ function ClusterEnabledSuite () {
         type: 3,
         status: 2, // LOADED 
         shardKeys: [ "_key", "a", "bc" ],
-        shards: { "s1" : "myself" }
+        shards: { "s1" : "myself" },
+        error: false,
+        errorNum: 0,
+        DBServer: "myself"
       };
 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
+      assertTrue(agency.set("Current/Collections/test/" + collection.id +
+                            "/s1", collection));
       ci.flush();
 
       assertEqual("myself", ci.getResponsibleServer("s1"));
       assertEqual("", ci.getResponsibleServer("s9999"));
      
       collection.shards = { s1: "other", s2: "myself" }; 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id, collection));
+      collection.DBServer = "myself";
+      assertTrue(agency.set("Current/Collections/test/" + collection.id +
+                            "/s2", collection));
+      collection.DBServer = "other";
+      assertTrue(agency.set("Current/Collections/test/" + collection.id +
+                            "/s1", collection));
       ci.flush();
 
       assertEqual("other", ci.getResponsibleServer("s1"));
@@ -340,18 +352,18 @@ function ClusterEnabledSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetServerEndpoint : function () {
-      assertTrue(agency.set("Current/ServersRegistered/myself", "tcp://127.0.0.1:8529"));
+      assertTrue(agency.set("Current/ServersRegistered/myself", {endpoint:"tcp://127.0.0.1:8529"}));
       ci.flush();
 
       assertEqual("tcp://127.0.0.1:8529", ci.getServerEndpoint("myself"));
       
-      assertTrue(agency.set("Current/ServersRegistered/myself", "tcp://127.0.0.1:8530"));
+      assertTrue(agency.set("Current/ServersRegistered/myself", {endpoint:"tcp://127.0.0.1:8530"}));
       ci.flush();
 
       assertEqual("tcp://127.0.0.1:8530", ci.getServerEndpoint("myself"));
       
       assertTrue(agency.remove("Current/ServersRegistered/myself"));
-      assertTrue(agency.set("Current/ServersRegistered/other", "tcp://127.0.0.1:8529"));
+      assertTrue(agency.set("Current/ServersRegistered/other", {endpoint:"tcp://127.0.0.1:8529"}));
       ci.flush();
 
       assertEqual("", ci.getServerEndpoint("myself"));

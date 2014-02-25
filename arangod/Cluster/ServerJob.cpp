@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerJob.h"
@@ -57,7 +57,7 @@ using namespace triagens::rest;
 
 ServerJob::ServerJob (HeartbeatThread* heartbeat,
                       TRI_server_t* server,
-                      ApplicationV8* applicationV8) 
+                      ApplicationV8* applicationV8)
   : Job("HttpServerJob"),
     _heartbeat(heartbeat),
     _server(server),
@@ -81,20 +81,21 @@ ServerJob::~ServerJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_e ServerJob::work () {
+Job::status_t ServerJob::work () {
   LOG_TRACE("starting plan update handler");
 
   if (_shutdown != 0) {
-    return Job::JOB_DONE;
+    return status_t(Job::JOB_DONE);
   }
 
   bool result = execute();
   _heartbeat->ready(true);
 
   if (result) {
-    return triagens::rest::Job::JOB_DONE;
+    return status_t(Job::JOB_DONE);
   }
-  return triagens::rest::Job::JOB_FAILED;
+
+  return status_t(Job::JOB_FAILED);
 }
 
 // -----------------------------------------------------------------------------
@@ -133,7 +134,7 @@ bool ServerJob::execute () {
   }
 
   // get the pointer to the last used vocbase
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   void* orig = v8g->_vocbase;
 
   _applicationV8->exitContext(context);

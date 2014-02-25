@@ -212,6 +212,7 @@ namespace triagens {
               _jobManager->finishAsyncJob<S, HF>(job);
               delete handler;
             }
+
             return;
           }
 
@@ -330,9 +331,9 @@ namespace triagens {
 
             // directly execute the handler within the scheduler thread
             if (handler->isDirect()) {
-              Handler::status_e status = this->handleRequestDirectly(task, handler);
+              Handler::status_t status = this->handleRequestDirectly(task, handler);
 
-              if (status != Handler::HANDLER_REQUEUE) {
+              if (status.status != Handler::HANDLER_REQUEUE) {
                 this->shutdownHandlerByTask(task);
                 return true;
               }

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_H
@@ -88,11 +88,6 @@
 // --SECTION--                                               class GeneralServer
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 namespace triagens {
   namespace rest {
 
@@ -109,18 +104,9 @@ namespace triagens {
         typedef typename HF::GeneralHandler GeneralHandler;
         typedef GeneralServerJob<S, typename HF::GeneralHandler> ServerJob;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -156,18 +142,9 @@ namespace triagens {
           GENERAL_SERVER_DESTROY(&_commTasksLock);
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -288,7 +265,7 @@ namespace triagens {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void handleConnected (TRI_socket_t s, 
+        virtual void handleConnected (TRI_socket_t s,
                                       ConnectionInfo& info) {
           GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, _keepAliveTimeout);
 
@@ -336,9 +313,9 @@ namespace triagens {
 
           // execute handle and requeue
           while (true) {
-            Handler::status_e status = handleRequestDirectly(task, handler);
+            Handler::status_t status = handleRequestDirectly(task, handler);
 
-            if (status != Handler::HANDLER_REQUEUE) {
+            if (status.status != Handler::HANDLER_REQUEUE) {
               shutdownHandlerByTask(task);
               return true;
             }
@@ -347,18 +324,9 @@ namespace triagens {
           return true;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   protected types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -434,18 +402,9 @@ namespace triagens {
             }
         };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -476,8 +435,8 @@ namespace triagens {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_e handleRequestDirectly (CT* task, GeneralHandler * handler) {
-          Handler::status_e status = Handler::HANDLER_FAILED;
+        Handler::status_t handleRequestDirectly (CT* task, GeneralHandler * handler) {
+          Handler::status_t status(Handler::HANDLER_FAILED);
 
           RequestStatisticsAgentSetRequestStart(handler);
 
@@ -503,7 +462,7 @@ namespace triagens {
               handler->handleError(err);
             }
 
-            if (status == Handler::HANDLER_REQUEUE) {
+            if (status.status == Handler::HANDLER_REQUEUE) {
               handler->RequestStatisticsAgent::transfer(task);
               return status;
             }
@@ -589,18 +548,9 @@ namespace triagens {
           delete element._handler;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -662,10 +612,6 @@ namespace triagens {
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

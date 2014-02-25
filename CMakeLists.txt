@@ -105,6 +105,7 @@ endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
+add_definitions("-DTRI_ENABLE_CLUSTER=1")
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           OPTIONS

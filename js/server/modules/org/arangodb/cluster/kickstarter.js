@@ -51,7 +51,6 @@ var cleanupActions = {};
 var isHealthyActions = {};
 
 var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
-var getAddr = require("org/arangodb/cluster/planner").getAddr;
 var getPort = require("org/arangodb/cluster/planner").getPort;
 
 function encode (st) {
@@ -69,6 +68,14 @@ function encode (st) {
     }
   }
   return encodeURIComponent(st2);
+}
+
+function getAuthorizationHeader (username, passwd) {
+  return "Basic " + base64Encode(username + ":" + passwd);
+}
+
+function getAuthorization (dispatcher) {
+  return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
 }
 
 function sendToAgency (agencyURL, path, obj) {
@@ -287,7 +294,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
 
   console.info("Waiting for servers to come to life...");
-  wait(20);
+  wait(15);
 
   return {"error": false, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
@@ -295,22 +302,27 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
 launchActions.createSystemColls = function (dispatchers, cmd) {
   console.info("Waiting for coordinator to come up...");
+  
+  var hdrs = {
+    Authorization: getAuthorizationHeader("root", "") // default username and passwd
+  };
+
   var url = cmd.url + "/_api/version";
   var r;
   while (true) {
-    r = download(url);
+    r = download(url, "", { method: "GET", headers: hdrs });
     if (r.code === 200) {
       break;
     }
     wait(0.5);
   }
-  wait(5);
+  wait(3);
   console.info("Creating system collections...");
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
              'return load("js/server/version-check.js");\n';
-  var o = { method: "POST", timeout: 90 };
+  var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   return r;
 };
@@ -502,9 +514,7 @@ Kickstarter.prototype.launch = function () {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -598,9 +608,7 @@ Kickstarter.prototype.relaunch = function () {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -683,9 +691,7 @@ Kickstarter.prototype.shutdown = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -763,9 +769,7 @@ Kickstarter.prototype.cleanup = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -844,9 +848,7 @@ Kickstarter.prototype.isHealthy = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {

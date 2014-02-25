@@ -61,8 +61,8 @@ namespace triagens {
                         ApplicationV8*,
                         rest::Scheduler*,
                         rest::Dispatcher*,
-                        double _offset,
-                        double _period,
+                        double offset,
+                        double period,
                         const string& module,
                         const string& func,
                         const string& parameter);

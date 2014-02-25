@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-globals.h"
@@ -45,7 +45,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ServerStateTempl(),
     ClusterCommTempl(),
 #endif
-    ErrorTempl(),
+    ArangoErrorTempl(),
+    SleepAndRequeueTempl(),
+    SleepAndRequeueFuncTempl(),
     GeneralCursorTempl(),
     ShapedJsonTempl(),
     VocbaseColTempl(),
@@ -107,6 +109,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ServerKey(),
 #ifdef TRI_ENABLE_CLUSTER
     ShardIDKey(),
+#endif
+    SleepKey(),
+#ifdef TRI_ENABLE_CLUSTER
     StatusKey(),
 #endif
     SuffixKey(),
@@ -142,7 +147,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   PatchConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PATCH"));
   PostConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("POST"));
   PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
-  
+
   AddressKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("address"));
   BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
@@ -188,6 +193,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
 #ifdef TRI_ENABLE_CLUSTER
   ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
+#endif
+  SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
+#ifdef TRI_ENABLE_CLUSTER
   StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
 #endif
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
@@ -199,7 +207,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
   ValueKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("value"));
   WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
-  
+
   _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));
   _DbNameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_dbName"));
   _IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_id"));
@@ -263,13 +271,13 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), 
-                           v8::FunctionTemplate::New(func)->GetFunction(), 
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           v8::FunctionTemplate::New(func)->GetFunction(),
                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), 
-                           v8::FunctionTemplate::New(func)->GetFunction(), 
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           v8::FunctionTemplate::New(func)->GetFunction(),
                            v8::ReadOnly);
   }
 }
@@ -284,19 +292,19 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), 
-                           func, 
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           func,
                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), 
-                           func, 
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           func,
                            v8::ReadOnly);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global variable to the given context
+/// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,

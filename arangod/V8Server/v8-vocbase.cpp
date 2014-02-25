@@ -894,13 +894,74 @@ static bool IndexComparator (TRI_json_t const* lhs,
       }
     }
   }
+  
+  if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+    // bitarray indexes are considered identical if they are based on the same attributes
+    TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
+    value = TRI_LookupArrayJson(lhs, "fields");
 
-  // fields must be identical if present
-  value = TRI_LookupArrayJson(lhs, "fields");
-  if (TRI_IsListJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
-      return false;
+    if (TRI_IsListJson(value) && 
+        TRI_IsListJson(r) && 
+        value->_value._objects._length == r->_value._objects._length) {
+
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* l1 = TRI_LookupListJson(value, i);
+        TRI_json_t const* r1 = TRI_LookupListJson(r, i);
+
+        if (TRI_IsListJson(l1) && 
+            TRI_IsListJson(r1) && 
+            l1->_value._objects._length == 2 && 
+            r1->_value._objects._length == 2) {
+        
+          // element at position 0 is the attribute name
+          if (! TRI_CheckSameValueJson(TRI_LookupListJson(l1, 0), TRI_LookupListJson(r1, 0))) {
+            return false;
+          }
+        }
+
+      }
     }
+
+    // we must always exit here to avoid the "regular" fields comparison
+    return true;
+  }
+    
+  // other index types: fields must be identical if present
+  value = TRI_LookupArrayJson(lhs, "fields");
+
+  if (TRI_IsListJson(value)) {
+    if (type == TRI_IDX_TYPE_HASH_INDEX) {
+      // compare fields in arbitrary order
+      TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
+
+      if (! TRI_IsListJson(r) || 
+          value->_value._objects._length != r->_value._objects._length) {
+        return false;
+      }
+   
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* v = TRI_LookupListJson(value, i);
+
+        bool found = false;
+        
+        for (size_t j = 0; j < r->_value._objects._length; ++j) {
+          if (TRI_CheckSameValueJson(v, TRI_LookupListJson(r, j))) {
+            found = true;
+            break;
+          }
+        }
+
+        if (! found) {
+          return false;
+        }
+      }
+    }
+    else {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
+        return false;
+      }
+    }
+
   }
 
   return true;
@@ -1174,11 +1235,9 @@ static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
                                      bool create) {
   int res = ProcessBitarrayIndexFields(obj, json, create);
   ProcessIndexUndefinedFlag(obj, json);
- 
-  if (TRI_LookupArrayJson(json, "unique") != NULL) {
-    // unique bitarrays are not supported
-    return TRI_ERROR_BAD_PARAMETER;
-  }
+  
+  // bitarrays are always non-unique
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
 
   return res;
 }
@@ -1747,23 +1806,26 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 
   
 #ifdef TRI_ENABLE_CLUSTER 
-  // check if there is an attempt to create a unique index on non-shard keys
-  if (create &&
-      res == TRI_ERROR_NO_ERROR &&
+  if (res == TRI_ERROR_NO_ERROR &&
       ServerState::instance()->isCoordinator()) {
-    TRI_json_t const* v = TRI_LookupArrayJson(json, "unique");
+    string const dbname(collection->_dbName);
+    // TODO: someone might rename the collection while we're reading its name...
+    string const collname(collection->_name);
+    TRI_shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
 
-    if (TRI_IsBooleanJson(v) && v->_value._boolean) {
-      // unique index, now check if fields and shard keys match
-      TRI_json_t const* flds = TRI_LookupArrayJson(json, "fields");
+    if (c->empty()) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
 
-      if (TRI_IsListJson(flds)) {
-        string const dbname(collection->_dbName);
-        // TODO: someone might rename the collection while we're reading its name...
-        string const collname(collection->_name);
-        TRI_shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
+    // check if there is an attempt to create a unique index on non-shard keys
+    if (create) {
+      TRI_json_t const* v = TRI_LookupArrayJson(json, "unique");
 
-        if (c->numberOfShards() > 1) {
+      if (TRI_IsBooleanJson(v) && v->_value._boolean) {
+        // unique index, now check if fields and shard keys match
+        TRI_json_t const* flds = TRI_LookupArrayJson(json, "fields");
+
+        if (TRI_IsListJson(flds) && c->numberOfShards() > 1) {
           vector<string> const& shardKeys = c->shardKeys();
           size_t const n = flds->_value._objects._length;
 
@@ -1788,6 +1850,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
         }
       }
     }
+
   }
 #endif
 
@@ -3687,6 +3750,21 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                                         lockTimeout,
                                                                         waitForSync,
                                                                         replicate); 
+
+#ifdef TRI_ENABLE_CLUSTER
+  // If we are compiled for cluster and are a coordinator, then we simply
+  // ignore the transaction semantics for now:
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> args = params;
+    v8::Handle<v8::Value> result = action->Call(current, 1, &args);
+    
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+
+    return scope.Close(result);
+  }
+#endif
 
   int res = trx.begin();
 
@@ -6133,38 +6211,23 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-
 static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* collection) {
   v8::HandleScope scope;
 
   string const databaseName(collection->_dbName);
-
-  // First we need the collection ID as a string:
   string const cid = StringUtils::itoa(collection->_cid);
   
-  // delete the collection name from the db.<xxx> cache
-  string cacheKey(collection->_name);
-  cacheKey.push_back('*');
-  v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
-
-  v8::Handle<v8::Value> db = v8::Context::GetCurrent()->Global()->Get(v8::String::New("db"));
-  if (db->IsObject()) {
-    v8::Handle<v8::Object> dbObj = v8::Handle<v8::Object>::Cast(db);
-    dbObj->Delete(cacheName);
-  }
-
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
  
-  int res = ci->dropCollectionCoordinator( databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
-
+  
   return scope.Close(v8::True());
 }
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6191,7 +6254,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   }
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
-  
+ 
 #ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
@@ -8057,7 +8120,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
  
       // check if the collection is still alive 
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0) {
+      if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 && collection->_isLocal) {
         TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
 
         if (value->Has(v8g->_IdKey)) {
@@ -8081,11 +8144,17 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   if (ServerState::instance()->isCoordinator()) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(vocbase->_name, std::string(key));
-    collection = CollectionInfoToVocBaseCol(vocbase, *ci);
 
-    if (collection != 0 && collection->_cid == 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-      return scope.Close(v8::Handle<v8::Value>());
+    if ((*ci).empty()) {
+      collection = 0;
+    }
+    else {
+      collection = CollectionInfoToVocBaseCol(vocbase, *ci);
+
+      if (collection != 0 && collection->_cid == 0) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+        return scope.Close(v8::Handle<v8::Value>());
+      }
     }
   }
   else {
@@ -8109,7 +8178,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   if (result.IsEmpty()) {
     return scope.Close(v8::Undefined());
   }
- 
+
   holder->Set(cacheName, result, v8::DontEnum);
 
   return scope.Close(result);
@@ -8197,7 +8266,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
-    if ((*ci).id() == 0) {
+    if ((*ci).id() == 0 || (*ci).empty()) {
       // not found
       return scope.Close(v8::Null());
     }

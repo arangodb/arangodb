@@ -161,7 +161,7 @@ exports.Communication = function() {
       }
     });
     var oldRoute = base.route;
-    base.route = base.route.replace("Databases", "Collections")
+    base.route = base.route.replace("Databases", "Collections");
     _.each(list, function(d) {
       agency.addLevel(base, d, d, ["get", "checkVersion"]);
     });
