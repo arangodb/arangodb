@@ -776,7 +776,19 @@ function handleChanges (plan, current) {
   handleDatabaseChanges(plan, current);
   handleCollectionChanges(plan, current);
 }
-      
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throw an ArangoError
+////////////////////////////////////////////////////////////////////////////////
+
+var raiseError = function (code, msg) {
+  var err = new ArangoError();
+  err.errorNum = code;
+  err.errorMessage = msg;
+  
+  throw err;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieve a list of shards for a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -795,19 +807,12 @@ var shardList = function (dbName, collectionName) {
     }
   }
 
+  if (shards.length === 0) {
+    raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, 
+               arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+  }
+
   return shards;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief throw an ArangoError
-////////////////////////////////////////////////////////////////////////////////
-
-var raiseError = function (code, msg) {
-  var err = new ArangoError();
-  err.errorNum = code;
-  err.errorMessage = msg;
-  
-  throw err;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
