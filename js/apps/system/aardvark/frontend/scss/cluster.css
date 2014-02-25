@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after {
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -706,6 +706,79 @@ div.centralContent {
 
 .clusterInfoIcon {
   font-size: 30px; }
+
+div.headerDropdown {
+  background-color: white;
+  position: relative;
+  display: none;
+  padding: 10px;
+  width: auto; }
+  div.headerDropdown > div.dropdownInner {
+    position: relative;
+    min-height: 125px;
+    width: auto;
+    box-shadow: 0; }
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+      background-position: 0 -15px; }
+
+div.queryline {
+  color: black;
+  height: 35px; }
+  div.queryline select, div.queryline input {
+    margin-bottom: 5px; }
+  div.queryline.querylineAdd span {
+    position: relative;
+    top: -21px;
+    color: white;
+    padding-left: 10px; }
+  div.queryline .removeFilterItem i {
+    margin-top: 0px !important;
+    margin-left: 5px !important; }
+  div.queryline div.searchByAttribute {
+    position: relative; }
+    div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
+      position: absolute;
+      border-radius: 0px;
+      top: 20px;
+      left: 0px;
+      width: 247px;
+      background-color: #333232;
+      color: white;
+      display: none; }
+
+div.dropdownImport {
+  display: none;
+  background-color: white;
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  position: relative; }
+  div.dropdownImport input {
+    line-height: 0px;
+    margin-top: 5px;
+    margin-bottom: -15px; }
+
+select.filterSelect {
+  width: 100px;
+  margin-left: 10px;
+  margin-right: 10px; }
+
+#filterHeader button {
+  float: right;
+  margin-top: 1px;
+  margin-left: 10px !important; }
 
 .scenarioImage {
   height: 70%;
