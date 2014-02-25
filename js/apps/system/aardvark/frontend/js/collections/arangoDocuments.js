@@ -143,7 +143,7 @@
             sortString = " SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)";
           }
 
-          var myQueryVal = "FOR u in @@collection" + filterString + sortString + 
+          var myQueryVal = "FOR u in @@collection" + filterString + sortString +
             " LIMIT @offset, @count RETURN u";
 
           this.offset = (this.currentPage - 1) * this.documentsPerPage;
@@ -210,6 +210,55 @@
         },
         clearDocuments: function () {
           window.arangoDocumentsStore.reset();
+        },
+        getStatisticsHistory: function(startDate, endDate) {
+            var self = this;
+            var filterString = "";
+            if (startDate) {
+                filterString += " filter u.time > " + startDate;
+            } else {
+                endDate = startDate;
+            }
+            if (endDate) {
+                filterString += " filter u.time < " + endDate;
+            }
+
+            var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time return u";
+            var result = [];
+            console.log(JSON.stringify(myQueryVal));
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                async: false,
+                url: '/_api/cursor',
+                data: JSON.stringify({query: myQueryVal}),
+                contentType: "application/json",
+                success: function(data) {
+
+                  result = result.concat(data.result);
+                  while(data.hasMore === true) {
+                       $.ajax({
+                           cache: false,
+                           type: 'PUT',
+                           async: false,
+                           url: '/_api/cursor/'+data.id,
+                           contentType: "application/json",
+                           success: function(cursor) {
+                               if (cursor.hasMore === false) {
+                                   data.hasMore = false;
+                               }
+                               result = result.concat(cursor.result);
+                           },
+                           error: function(data) {
+                               console.log(data);
+                           }
+                       });
+                   }
+                   self.history =  result;
+                },
+                error: function(data) {
+                }
+            });
         }
   });
 }());

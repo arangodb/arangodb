@@ -25,6 +25,10 @@
   &.warning {
     @extend %warning
   }
+
+  &.inactive {
+    @extend %inactive
+  }
 }
 
 div.coordinator {

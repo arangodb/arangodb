@@ -214,7 +214,6 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   // issue #175: add deprecated hidden option for downwards compatibility
   options[ApplicationServer::OPTIONS_HIDDEN]
     ("server.http-port", &_httpPort, "http port for client requests (deprecated)")
-    ("server.reuse-address", "try to reuse address")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER]
@@ -226,7 +225,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.backlog-size", &_backlogSize, "listen backlog size")
     ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version (e.g. 10300)")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
-    ("server.no-reuse-address", "do not try to reuse address")
+    ("server.reuse-address", &_reuseAddress, "try to reuse address")
   ;
 
   options[ApplicationServer::OPTIONS_SSL]
@@ -251,15 +250,6 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     return false;
   }
   
-  // check if want to reuse the address
-  if (options.has("server.reuse-address")) {
-    _reuseAddress = true;
-  }
-
-  if (options.has("server.no-reuse-address")) {
-    _reuseAddress = false;
-  }
-
   if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
     LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
   }

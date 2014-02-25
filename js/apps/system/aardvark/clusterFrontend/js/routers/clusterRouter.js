@@ -7,20 +7,27 @@
   window.ClusterRouter = Backbone.Router.extend({
 
     routes: {
-      ""                       : "showCluster"
+      ""                       : "showCluster",
+      "shards"                 : "showShards"
     },
 
     initialize: function () {
-      /*
       this.footerView = new window.FooterView();
       this.footerView.render();
-      */
     },
+
     showCluster: function() {
       if (!this.showClusterView) {
         this.showClusterView = new window.ShowClusterView();
       }
       this.showClusterView.render();
+    },
+
+    showShards: function() {
+      if (!this.showShardsView) {
+        this.showShardsView = new window.ShowShardsView();
+      }
+      this.showShardsView.render();
     },
 
     handleResize: function() {
