@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
@@ -48,7 +48,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 const string RestShardHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
@@ -60,11 +60,11 @@ const string RestShardHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
-                                    void* data) 
+                                    void* data)
   : RestBaseHandler(request),
     _dispatcher(0) {
-  
-  _dispatcher = static_cast<triagens::rest::Dispatcher*>(data);    
+
+  _dispatcher = static_cast<triagens::rest::Dispatcher*>(data);
 
   assert(_dispatcher != 0);
 }
@@ -97,8 +97,8 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (role != ServerState::ROLE_COORDINATOR) {
-    generateError(triagens::rest::HttpResponse::BAD, 
-                  (int) triagens::rest::HttpResponse::BAD, 
+    generateError(triagens::rest::HttpResponse::BAD,
+                  (int) triagens::rest::HttpResponse::BAD,
                   "this API is meant to be called on a coordinator node");
     return status_t(HANDLER_DONE);
   }
@@ -107,12 +107,12 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
   if (! found) {
-    generateError(triagens::rest::HttpResponse::BAD, 
-                  (int) triagens::rest::HttpResponse::BAD, 
+    generateError(triagens::rest::HttpResponse::BAD,
+                  (int) triagens::rest::HttpResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
-  
+
   string coordinatorHeader = _coordinator;
   string result = ClusterComm::instance()->processAnswer(coordinatorHeader,
                                                          stealRequest());
@@ -121,8 +121,8 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
     _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   }
   else {
-    generateError(triagens::rest::HttpResponse::BAD, 
-                  (int) triagens::rest::HttpResponse::BAD, 
+    generateError(triagens::rest::HttpResponse::BAD,
+                  (int) triagens::rest::HttpResponse::BAD,
                   result.c_str());
   }
 

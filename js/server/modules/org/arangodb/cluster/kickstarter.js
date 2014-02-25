@@ -169,7 +169,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   var pid = executeExternal(agentPath, args);
   var res;
   var count = 0;
-  while (++count < 60) {
+  while (++count < 20) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {

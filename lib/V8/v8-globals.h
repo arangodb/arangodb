@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_V8_V8_GLOBALS_H
@@ -60,7 +60,7 @@
   v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
   while (0)
-  
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope
@@ -71,7 +71,7 @@
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
   v8::HandleScope scope;                                        \
   while (0)
-  
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception with an error code
@@ -825,7 +825,7 @@ inline void TRI_V8_AddMethod (v8::Handle<v8::FunctionTemplate> tpl,
                               v8::InvocationCallback callback,
                               const bool isHidden) {
   TRI_V8_AddMethod(tpl->GetFunction(), name, callback, isHidden);
-}                       
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a method to an object

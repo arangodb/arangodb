@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
@@ -44,13 +44,13 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request, 
+RestActionHandler::RestActionHandler (HttpRequest* request,
                                       action_options_t* data)
   : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
     _allowed(false) {
-  
+
   _action = TRI_LookupActionVocBase(request);
 
   // check if the action is allowed

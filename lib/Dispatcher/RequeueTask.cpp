@@ -45,7 +45,7 @@ using namespace triagens::rest;
 RequeueTask::RequeueTask (Scheduler* scheduler,
                           Dispatcher* dispatcher,
                           double sleep,
-  Job* job)
+                          Job* job)
   : Task("Requeue Task"),
     TimerTask(sleep),
     _scheduler(scheduler),
@@ -62,7 +62,6 @@ RequeueTask::RequeueTask (Scheduler* scheduler,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RequeueTask::handleTimeout () {
-  LOG_ERROR("timeout reach");
   _dispatcher->addJob(_job);
   _scheduler->destroyTask(this);
 

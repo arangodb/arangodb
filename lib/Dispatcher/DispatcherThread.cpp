@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherThread.h"
@@ -209,7 +209,6 @@ void DispatcherThread::run () {
           }
           else if (status.status == Job::JOB_REQUEUE) {
             if (0.0 < status.sleep) {
-              LOG_ERROR("requeuing with sleep %f", status.sleep);
               _queue->_scheduler->registerTask(
                 new RequeueTask(_queue->_scheduler,
                                 _queue->_dispatcher,

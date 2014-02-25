@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_HTTP_SERVER_PATH_HANDLER_H
@@ -107,14 +107,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleError (basics::TriagensError const&);
-      
+
       private:
         string path;
         string contentType;
         bool allowSymbolicLink;
         string defaultFile;
         int64_t cacheMaxAge;
-        string maxAgeHeader; 
+        string maxAgeHeader;
     };
   }
 }

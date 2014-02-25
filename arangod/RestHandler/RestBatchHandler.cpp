@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBatchHandler.h"
@@ -42,15 +42,10 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestBatchHandler::RestBatchHandler (HttpRequest* request) 
+RestBatchHandler::RestBatchHandler (HttpRequest* request)
   : RestVocbaseBaseHandler(request),
     _partContentType(HttpRequest::getPartContentType()) {
 }
@@ -62,18 +57,9 @@ RestBatchHandler::RestBatchHandler (HttpRequest* request)
 RestBatchHandler::~RestBatchHandler () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a batch request
@@ -85,7 +71,7 @@ RestBatchHandler::~RestBatchHandler () {
 /// batch parts.
 ///
 /// @RESTDESCRIPTION
-/// Executes a batch request. A batch request can contain any number of 
+/// Executes a batch request. A batch request can contain any number of
 /// other requests that can be sent to ArangoDB in isolation. The benefit of
 /// using batch requests is that batching requests requires less client/server
 /// roundtrips than when sending isolated requests.
@@ -94,39 +80,39 @@ RestBatchHandler::~RestBatchHandler () {
 /// server will return the results of all parts in a single response when all
 /// parts are finished.
 ///
-/// Technically, a batch request is a multipart HTTP request, with 
-/// content-type `multipart/form-data`. A batch request consists of an 
-/// envelope and the individual batch part actions. Batch part actions 
-/// are "regular" HTTP requests, including full header and an optional body. 
-/// Multiple batch parts are separated by a boundary identifier. The 
+/// Technically, a batch request is a multipart HTTP request, with
+/// content-type `multipart/form-data`. A batch request consists of an
+/// envelope and the individual batch part actions. Batch part actions
+/// are "regular" HTTP requests, including full header and an optional body.
+/// Multiple batch parts are separated by a boundary identifier. The
 /// boundary identifier is declared in the batch envelope. The MIME content-type
 /// for each individual batch part must be `application/x-arango-batchpart`.
 ///
-/// Please note that when constructing the individual batch parts, you must 
+/// Please note that when constructing the individual batch parts, you must
 /// use CRLF (`\r\n`) as the line terminator as in regular HTTP messages.
 ///
 /// The response sent by the server will be an `HTTP 200` response, with an
-/// optional error summary header `x-arango-errors`. This header contains the 
-/// number of batch part operations that failed with an HTTP error code of at 
+/// optional error summary header `x-arango-errors`. This header contains the
+/// number of batch part operations that failed with an HTTP error code of at
 /// least 400. This header is only present in the response if the number of
 /// errors is greater than zero.
 ///
 /// The response sent by the server is a multipart response, too. It contains
 /// the individual HTTP responses for all batch parts, including the full HTTP
-/// result header (with status code and other potential headers) and an 
-/// optional result body. The individual batch parts in the result are 
+/// result header (with status code and other potential headers) and an
+/// optional result body. The individual batch parts in the result are
 /// seperated using the same boundary value as specified in the request.
 ///
-/// The order of batch parts in the response will be the same as in the 
-/// original client request. Client can additionally use the `Content-Id` 
-/// MIME header in a batch part to define an individual id for each batch part. 
+/// The order of batch parts in the response will be the same as in the
+/// original client request. Client can additionally use the `Content-Id`
+/// MIME header in a batch part to define an individual id for each batch part.
 /// The server will return this id is the batch part responses, too.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the batch was received successfully. HTTP 200 is returned 
-/// even if one or multiple batch part actions failed. 
+/// is returned if the batch was received successfully. HTTP 200 is returned
+/// even if one or multiple batch part actions failed.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the batch envelope is malformed or incorrectly formatted.
@@ -144,13 +130,13 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// - DELETE /_api/collection/products
 ///
-/// - POST /_api/collection/products 
+/// - POST /_api/collection/products
 ///
-/// - GET /_api/collection/products/figures 
+/// - GET /_api/collection/products/figures
 ///
 /// - DELETE /_api/collection/products
 ///
-/// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP 
+/// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
 /// `Content-Type` HTTP header.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
@@ -163,7 +149,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
 ///     var headers = { "Content-Type" : "multipart/form-data; boundary=" + boundary };
-///     var body = "--" + boundary + "\r\n" +  
+///     var body = "--" + boundary + "\r\n" +
 ///                parts.join("\r\n" + "--" + boundary + "\r\n") +
 ///                "--" + boundary + "--\r\n";
 ///
@@ -183,7 +169,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE /_api/collection/notexisting2 HTTP/1.1\r\n"
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
-///     var body = "--" + boundary + "\r\n" +  
+///     var body = "--" + boundary + "\r\n" +
 ///                parts.join("\r\n" + "--" + boundary + "\r\n") +
 ///                "--" + boundary + "--\r\n";
 ///
@@ -212,7 +198,7 @@ Handler::status_t RestBatchHandler::execute() {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type or boundary received");
     return status_t(Handler::HANDLER_FAILED);
   }
-  
+
   LOG_TRACE("boundary of multipart-message is '%s'", boundary.c_str());
 
   size_t errors = 0;
@@ -225,9 +211,9 @@ Handler::status_t RestBatchHandler::execute() {
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
-  MultipartMessage message(boundary.c_str(), 
-                           boundary.size(), 
-                           _request->body(), 
+  MultipartMessage message(boundary.c_str(),
+                           boundary.size(),
+                           _request->body(),
                            _request->body() + _request->bodySize());
 
   SearchHelper helper;
@@ -283,7 +269,7 @@ Handler::status_t RestBatchHandler::execute() {
     HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength, _request->compatibility(), false);
 
     if (request == 0) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY); 
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 
       return status_t(Handler::HANDLER_FAILED);
     }
@@ -407,7 +393,7 @@ Handler::status_t RestBatchHandler::execute() {
 bool RestBatchHandler::getBoundaryBody (string* result) {
   char const* p = _request->body();
   char const* e = p + _request->bodySize();
-  
+
   // skip whitespace
   while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') {
     ++p;
@@ -424,12 +410,12 @@ bool RestBatchHandler::getBoundaryBody (string* result) {
 
   const char* q = p;
 
-  while (q < e && 
-         *q && 
+  while (q < e &&
+         *q &&
          *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
     ++q;
   }
-  
+
   if ((q - p) < 5) {
     // 3 bytes is min length for boundary (without "--")
     return false;
@@ -618,7 +604,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
         hasTypeHeader = true;
       }
       else {
-        LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'", 
+        LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'",
                     value.c_str(),
                     _partContentType.c_str());
       }
@@ -669,10 +655,6 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
