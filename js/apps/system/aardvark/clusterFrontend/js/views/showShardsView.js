@@ -16,11 +16,15 @@
     },
 
     initialize: function() {
-      this.dbservers = new window.ClusterServers();
+      this.dbservers = new window.ClusterServers([], {
+        interval: 10000
+      });
       this.dbservers.fetch({
         async : false
       });
-      this.dbs = new window.ClusterDatabases();
+      this.dbs = new window.ClusterDatabases([], {
+        interval: this.interval
+      });
       this.cols = new window.ClusterCollections();
       this.shards = new window.ClusterShards()
     },
@@ -56,7 +60,6 @@
     },
 
     render: function() {
-      console.log(_.pluck(this.cols.getList("_system", "_routing"), "name"));
       $(this.el).html(this.template.render({
         names: this.dbservers.pluck("name"),
         dbs: _.pluck(this.dbs.getList(), "name")
