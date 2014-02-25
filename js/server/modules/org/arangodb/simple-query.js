@@ -221,6 +221,35 @@ function normalizeAttributes (obj, prefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not an index supports a query
+////////////////////////////////////////////////////////////////////////////////
+
+function supportsQuery (idx, attributes) {
+  var i, n;
+  var fields;
+  
+  if (idx.type === "bitarray") {
+    fields = [ ];
+    for (i = 0; i < idx.fields.length; ++i) {
+      fields.push(idx.fields[i][0]);
+    } 
+  }
+  else {
+    fields = idx.fields;
+  }
+
+  n = fields.length;
+  for (i = 0; i < n; ++i) {
+    var field = fields[i];
+    if (attributes.indexOf(field) === -1) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by scan or hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -233,7 +262,17 @@ function byExample (data) {
   var example    = data._example;
   var skip       = data._skip;
   var limit      = data._limit;
-     
+  var index;
+    
+  if (data._index !== undefined && data._index !== null) {
+    if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
+      index = data._index.id;
+    }
+    else if (typeof data._index === 'string') {
+      index = data._index;
+    }
+  }
+
   if (typeof example !== "object" || Array.isArray(example)) {
     // invalid datatype for example
     var err1 = new ArangoError();
@@ -287,65 +326,64 @@ function byExample (data) {
   var normalized = normalizeAttributes(example, "");
   var keys = Object.keys(normalized);
   
-  // try these index types
-  var checks = [
-    { type: "hash", fields: keys, unique: false },
-    { type: "skiplist", fields: keys, unique: false }
-  ];
 
-  if (unique) {
-    checks.push({ type: "hash", fields: keys, unique: true });
-    checks.push({ type: "skiplist", fields: keys, unique: true });
-  }
+  if (index !== undefined) {
+    var all = collection.getIndexes();
+    for (k = 0; k < all.length; ++k) {
+      if (all[k].type === data._type &&
+          rewriteIndex(all[k].id) === rewriteIndex(index)) {
+
+        if (supportsQuery(all[k], keys)) {
+          idx = all[k];
+        }
+        break;
+      }
+    }
     
-  var fields = [ ];
-  for (k in normalized) {
-    if (normalized.hasOwnProperty(k)) {
-      fields.push([ k, [ normalized[k] ] ]);
-    } 
-  }
-  checks.push({ type: "bitarray", fields: fields });
-
-  for (k = 0; k < checks.length; ++k) {
-    if (data._type !== undefined && data._type !== checks[k].type) {
-      continue;
-    }
-
-    idx = collection.lookupIndex(checks[k]);
-    if (idx !== null) {
-      // found an index
-      break;
-    }
-  }
-
-  if (data._index !== undefined) {
     var invalid = false;
 
     // an index was specified
-    if (idx === null || 
-        idx.type !== data._type) {
-      invalid = true;
-    }
-    else if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
-      if (rewriteIndex(idx.id) !== rewriteIndex(data._index.id)) {
-        invalid = true;
-      }
-    }
-    else if (typeof data._index === 'string') {
-      if (rewriteIndex(idx.id) !== rewriteIndex(data._index)) {
-        invalid = true;
-      }
-    }
-
-    if (invalid) {
-      // but none was found or the found one has a different type
+    if (idx === null) { 
+      // but none was found or the found one had a different type
       var err2 = new ArangoError();
       err2.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
       err2.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
       throw err2;
     }
   }
+  else {
+    // try these index types
+    var checks = [
+      { type: "hash", fields: keys, unique: false },
+      { type: "skiplist", fields: keys, unique: false }
+    ];
 
+    if (unique) {
+      checks.push({ type: "hash", fields: keys, unique: true });
+      checks.push({ type: "skiplist", fields: keys, unique: true });
+    }
+    
+    var fields = [ ];
+    for (k in normalized) {
+      if (normalized.hasOwnProperty(k)) {
+        fields.push([ k, [ normalized[k] ] ]);
+      } 
+    }
+    checks.push({ type: "bitarray", fields: fields });
+
+    for (k = 0; k < checks.length; ++k) {
+      if (data._type !== undefined && data._type !== checks[k].type) {
+        continue;
+      }
+
+      idx = collection.lookupIndex(checks[k]);
+      if (idx !== null) {
+        // found an index
+        break;
+      }
+    }
+  }
+  
   if (idx !== null) {
     // use an index
     switch (idx.type) {
@@ -356,6 +394,14 @@ function byExample (data) {
       case "bitarray":
         return collection.BY_EXAMPLE_BITARRAY(idx.id, normalized, skip, limit);
     }
+  }
+
+  if (typeof data._type === "string") {
+    // an index type is required, but no index will be used
+    var err3 = new ArangoError();
+    err3.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+    err3.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+    throw err3;
   }
 
   // use full collection scan
@@ -411,7 +457,7 @@ SimpleQueryByExample.prototype.execute = function () {
                                        "/_api/simple/" + method,
                                        JSON.stringify({ 
                                          example: self._example,
-                                         collection: shard, 
+                                         collection: shard,
                                          skip: 0, 
                                          limit: limit || undefined, 
                                          batchSize: 100000000,

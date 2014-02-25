@@ -83,6 +83,7 @@ function BitarrayIndexSuite() {
 
     try {
       idx = collection.ensureBitarray("a");
+      fail();
     }
     catch(err) {
       return;
@@ -98,6 +99,7 @@ function BitarrayIndexSuite() {
 
     try {
       idx = collection.ensureBitarray("a",[0,1,2,3],"b");
+      fail();
     }
     catch(err) {
       return;
@@ -112,6 +114,7 @@ function BitarrayIndexSuite() {
 
     try {
       idx = collection.ensureBitarray("a",[0,1,2,3],"a",[4,5,6,7]);
+      fail();
     }
     catch(err) {
       return;
@@ -125,6 +128,7 @@ function BitarrayIndexSuite() {
 
     try {
       idx = collection.ensureBitarray("a",[0,1,2,3],"b",[4,5,6,7,4]);
+      fail();
     }
     catch(err) {
       return;
@@ -141,12 +145,11 @@ function BitarrayIndexSuite() {
   testCreationBitarrayIndex_2a : function () {
     var idx;
    
-    
     // .........................................................................
     // Create a bit array index with one attribute
     // .........................................................................
     
-    idx = collection.ensureBitarray("a",[0,1,2,3,4,5,6,7,8,9,[]]);
+    idx = collection.ensureBitarray("a", [0,1,2,3,4,5,6,7,8,9,[]]);
     
     
     // .........................................................................
@@ -160,7 +163,6 @@ function BitarrayIndexSuite() {
     assertEqual([["a", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, [ ]]]], idx.fields);
     assertEqual(true, idx.isNewlyCreated);
 
-    
     // .........................................................................
     // Attempt to create the index again this time we are going to change 
     // the list of values 
@@ -168,15 +170,13 @@ function BitarrayIndexSuite() {
     // original attribute/values.
     // .........................................................................
 
-    idx = collection.ensureBitarray("a",["a","b","c","d",0,1,2,3,4,5,6,7,8,9,[]]);
-    
+    idx = collection.ensureBitarray("a", ["a","b","c","d",0,1,2,3,4,5,6,7,8,9, [ ]]);
+   
     assertNotEqual(0, idx.id);                
     assertEqual("bitarray", idx.type);        
     assertEqual(false, idx.unique);
     assertEqual([["a", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, [ ]]]], idx.fields);
     assertEqual(false, idx.isNewlyCreated);
-    
-    return;
   },
 
   
@@ -203,8 +203,8 @@ function BitarrayIndexSuite() {
     assertEqual(true, idx.isNewlyCreated);
 
     
- // .........................................................................
- // Remove the index
+    // .........................................................................
+    // Remove the index
     // .........................................................................
  
     result = collection.dropIndex(idx.id);         
@@ -223,8 +223,6 @@ function BitarrayIndexSuite() {
     assertEqual(false, idx.unique);
     assertEqual([["a", ["a", "b", "c", "d", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, [ ]]]], idx.fields);
     assertEqual(true, idx.isNewlyCreated);
-    
-    return;
   },
 
   
@@ -248,8 +246,6 @@ function BitarrayIndexSuite() {
     assertEqual(false, idx.unique);
     assertEqual([["x", ["male", "female", "other"]], ["y", [0, 1, 3, [ ]]], ["z", [{ "z1" : 0 }, { "z2" : 1 }, [[["hello","goodbye"]],0, 1, 2, 3, ["4","4a","4b"], 5, 6, 7, 8, 9], [ ]]]], idx.fields);
     assertEqual(true, idx.isNewlyCreated);
-    
-    return;
   },
 
 
@@ -282,8 +278,6 @@ function BitarrayIndexSuite() {
     }
     
     /* print("End writing",n," documents into index"); */
-    
-    return;
   },
 
   testCreationBitarrayIndex_3b : function () {
@@ -311,8 +305,6 @@ function BitarrayIndexSuite() {
     }
     
     /* print("End writing",n," documents into index"); */
-    
-    return;
   },
   
 
@@ -331,16 +323,14 @@ function BitarrayIndexSuite() {
     // .........................................................................    
     
     try {
-      collection.save({"x":"hi there!"});      
+      collection.save({"x":"hi there!"}); 
+      fail(); 
     }
     catch(err) {
       return;
     }  
     
-   
     throw("Bitarray index should not allow the insertion of this document within the collection");
-    
-    return;
   },
   
 
@@ -372,8 +362,6 @@ function BitarrayIndexSuite() {
     }
     
     /* print("End writing",n," documents into index"); */
-    
-    return;
   },
 
 
@@ -432,7 +420,6 @@ function BitarrayIndexSuite() {
     }
     
     // print("End removal ",n," documents into index"); 
-    return;
   },
   
   
@@ -449,7 +436,6 @@ function BitarrayIndexSuite() {
     var totalDocs = 0;
     var result;
 
-    
     // .........................................................................
     // initialise our counters to 0
     // .........................................................................
@@ -481,7 +467,7 @@ function BitarrayIndexSuite() {
       if (value > bitarrayValues[bitarrayValues.length - 2]) {
         value = bitarrayValues.length - 1;
       }  
-      shelves[value] = shelves[value] + 1;
+      shelves[value]++;
       totalDocs += 1;
     }
         
@@ -497,14 +483,11 @@ function BitarrayIndexSuite() {
     // print("Start Lookup");
     // print(shelves);
     for (var j = 0; j < bitarrayValues.length; ++j) {
-      result = collection.BY_EXAMPLE_BITARRAY(idx.id,{"x":j,"y":6,"z":-1}, null, null);
-      //print(result['total'],shelves[j],j);
-      assertEqual(result['total'],shelves[j]);
+      result = collection.byExampleBitarray(idx.id, {"x":j,"y":6,"z":-1}, null, null).toArray();
+      assertEqual(result.length, shelves[j]);
     }
     
     // print("End Lookup");
-    return;
-    
   },
   
   
