@@ -1,105 +1,203 @@
 <script id="userManagementView.ejs" type="text/template">
-<ul class="thumbnails2" id="userManagementHeader">
-  <div class="headerBar">
+<div class="headerBar">
+  <div class="headerButtonBar pull-right">
+    <ul class="headerButtonList">
+      <li class="enabled">
+        <a id="userManagementToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="pull-left">
     <a class="arangoHeader">User Management</a>
   </div>
-</ul>
-
-<div class="contentDiv">
-  <table id="userManagementTable" class="arangoDataTable contentTables">
-    <thead>
-    <tr>
-      <td width="23px"></td>
-      <td>Username</td>
-      <td>Name</td>
-      <td>Active</td>
-      <td class="dbThSecond">
-        <span id="createUser" class="icon_arangodb_roundplus" data-original-title="Create new user"></span>
-      </td>
-    </tr>
-    </thead>
-    <tbody id="userManagementTableBody">
-    </tbody>
-  </table>
-</div>
-
-<div id="createUserModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Create new user</a>
-  </div>
-
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th>Username*:</th>
-        <th><input type="text" id="newUsername" name="username" value="" placeholder="Username"/></th>
-      </tr>
-      <tr>
-        <th>Name:</th>
-        <th><input type="text" id="newName" name="name" value="" placeholder="Name"/></th>
-      </tr>
-      <tr>
-        <th>Password:</th>
-        <th><input type="password" id="newPassword" name="password" value=""/></th>
-      </tr>
-      <tr>
-        <th>Active:</th>
-        <th><input type="checkbox" id="newStatus" name="status" value="active"/></th>
-      </tr>
-    </table>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitCreateUser" class="button-success pull-right">Create</button>
+  <div class="searchField pull-left">
+    <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="searchInput" placeholder="Search..."/><img id="userManagementSearchSubmit"
+                                                                                                                                  width="16" height="16"
+                                                                                                                                  src="img/enter_icon.png" class="searchSubmitIcon">
   </div>
 </div>
 
-<div id="deleteUserModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Delete User</a>
+
+<div id="userManagementDropdown2" class="headerDropdown">
+
+  <div id="userManagementDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Sorting</li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortName">
+          <label class="css-label css-label-round"></label>Sort by username
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortType">
+          <label class="css-label css-label-round"></label>Sort by status
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortOrder">
+          <label class="css-label"></label>Sort descending
+        </label>
+      </a></li>
+    </ul>
   </div>
 
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th>Really delete?</th>
-        <th></th>
-      </tr>
-    </table>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitDeleteUser" class="button-danger pull-right">Delete</button>
-  </div>
 </div>
 
-<div id="editUserModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Edit user</a>
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div class="containerdivNewLine"/>
+    <ul id="userManagementThumbnailsIn" class="tileList">
+      <li class="tile">
+        <a href="#" id="createUser" class="add">
+          <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add User
+        </a>
+      </li>
+
+
+            <% collection.forEach(function(user) {
+              var deleteButton = '<span class="arangoicon icon_arangodb_roundminus"' +
+                'data-original-title="Delete user"></span>';
+              if(user.get("loggedIn")) {
+                deleteButton = '';
+              }
+              var username = user.get("user"),
+                extra = user.get("extra"),
+                name = extra.name,
+                img = extra.img,
+                active = user.get("active"),
+                avatar = '<img src="';
+
+              if (!img) {
+                avatar += 'img/arangodblogoAvatar_50.png';
+              } else {
+                avatar += 'https://s.gravatar.com/avatar/';
+                avatar += img;
+                avatar += '?s=50';
+              }
+              avatar += '" height="50" width="50" alt="" class="icon" id="';
+              avatar += username;
+              avatar += '" />';
+              if (!name) {
+                name = " ";
+              }
+      %>
+
+      <li class="tile">
+        <div class="iconSet">
+          <span class="icon_arangodb_settings2 editUser" id="<%=username %>" alt="Edit user" title="Edit user"></span>
+        </div>
+        <%=avatar %>
+        <div class="tileBadge">
+          <span>
+            <%if (active) {%>
+            <div class="corneredBadge loaded">
+              active
+            </div>
+            <%} else {%>
+            <div class="corneredBadge unloaded">
+              inactive
+            </div>
+            <%}%>
+          </span>
+        </div>
+
+        <h5 class="collectionName"><%=username %> <% if (name !== ' ') { %>(<%=name %>)<%}%></h5>
+      </li>
+      <%});%>
+     </ul>
   </div>
 
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th>Username:</th>
-        <th id="editUsername"></th>
-      </tr>
-      <tr>
-        <th>Name:</th>
-        <th><input type="text" id="editName" name="name" value="" placeholder="Name"/></th>
-      </tr>
-      <tr>
-        <th>Active:</th>
-        <th><input type="checkbox" id="editStatus" name="status" value="active"/></th>
-      </tr>
-    </table>
+
+  <div id="createUserModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Create new user</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Username*:</th>
+          <th><input type="text" id="newUsername" name="username" value="" placeholder="Username"/></th>
+        </tr>
+        <tr>
+          <th>Name:</th>
+          <th><input type="text" id="newName" name="name" value="" placeholder="Name"/></th>
+        </tr>
+        <tr>
+          <th>Password:</th>
+          <th><input type="password" id="newPassword" name="password" value=""/></th>
+        </tr>
+        <tr>
+          <th>Active:</th>
+          <th><input type="checkbox" id="newStatus" name="status" value="active"/></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="submitCreateUser" class="button-success pull-right">Create</button>
+    </div>
   </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitEditUser" class="button-success pull-right">Save</button>
+
+  <div id="editUserModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Edit user</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Username:</th>
+          <th id="editUsername"></th>
+        </tr>
+        <tr>
+          <th>Name:</th>
+          <th><input type="text" id="editName" name="name" value="" placeholder="Name"/></th>
+        </tr>
+        <tr>
+          <th>Active:</th>
+          <th><input type="checkbox" id="editStatus" name="status" value="active"/></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="submitEditUser" class="button-success pull-right">Save</button>
+      <button id="deleteUser" class="button-danger pull-right">Delete</button>
+    </div>
   </div>
-</div>
+
+  <div id="deleteUserModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Delete User</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Really delete?</th>
+          <th></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="submitDeleteUser" class="button-danger pull-right">Delete</button>
+    </div>
+  </div>
+
 </script>

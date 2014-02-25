@@ -20,6 +20,9 @@ window.Users = Backbone.Model.extend({
   },
 
   url: function () {
+    if (this.isNew()) {
+      return "/_api/user";
+    }
     if (this.get("user") !== "") {
       return "/_api/user/" + this.get("user");
     }
