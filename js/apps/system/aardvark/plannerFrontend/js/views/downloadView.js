@@ -20,7 +20,9 @@
       this.content = "data:application/octet-stream," + encodeURIComponent(JSON.stringify(content, 2));
       var toShow = _.findWhere(content.runInfo.runInfo, {isStartServers: true});
       $(this.el).html(this.template.render({
-        endpoints: toShow.endpoints,
+        endpoints: _.map(toShow.endpoints, function(e) {
+          return e.replace("tcp://","http://").replace("ssl://", "https://");
+        }),
         roles: toShow.roles
       }));
     }
