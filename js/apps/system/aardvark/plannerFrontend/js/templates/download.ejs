@@ -24,7 +24,7 @@
           var first = roles.indexOf("Coordinator");
           if (first > -1) {
         %>
-          <a href="<%=endpoints[first]%>/_db/_system/_admin/aardvark/cluster.html">Cluster Overview</a>
+          <a target="_blank" href="<%=endpoints[first]%>/_db/_system/_admin/aardvark/cluster.html">Cluster Overview</a>
         <% } %>
       </div>
     </div>
@@ -35,7 +35,7 @@
         <% if(roles[i] === "DBserver") { %>
           <span><%= endpoints[i] %></span>
         <% } else { %>
-          <a href="<%=endpoints[i]%>"><%= endpoints[i] %></a>
+          <a target="_blank" href="<%=endpoints[i]%>"><%= endpoints[i] %></a>
         <% } %>
       </div>
     </div>
