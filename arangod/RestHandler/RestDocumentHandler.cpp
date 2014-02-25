@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
@@ -54,36 +54,22 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestDocumentHandler::RestDocumentHandler (HttpRequest* request) 
+RestDocumentHandler::RestDocumentHandler (HttpRequest* request)
   : RestVocbaseBaseHandler(request) {
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestDocumentHandler::execute () {
+HttpHandler::status_t RestDocumentHandler::execute () {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -104,21 +90,12 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   }
 
   // this handler is done
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document
@@ -332,7 +309,7 @@ bool RestDocumentHandler::createDocument () {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
-  
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
@@ -368,14 +345,14 @@ bool RestDocumentHandler::createDocument () {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
-  
+
   Barrier barrier(trx.primaryCollection());
 
   TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
-    
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
@@ -492,7 +469,7 @@ bool RestDocumentHandler::readDocument () {
 /// handle and `_rev` containing the revision.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -506,7 +483,7 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
@@ -517,14 +494,14 @@ bool RestDocumentHandler::readDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-/// 
+///
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -534,13 +511,13 @@ bool RestDocumentHandler::readDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-None-Match": "\"" + document._rev + "\""};
-/// 
+///
 ///     var response = logCurlRequest('GET', url, "", headers);
-/// 
+///
 ///     assert(response.code === 304);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -548,11 +525,11 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentUnknownHandle}
 ///     var url = "/_api/document/products/unknownhandle";
-/// 
+///
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +540,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // split the document reference
   const string& collection = suffix[0];
   const string& key = suffix[1];
-  
+
   // check for an etag
   bool isValidRevision;
   const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
@@ -738,16 +715,16 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///     db.products.save({"hello3":"world1"});
 ///     var url = "/_api/document/?collection=" + cn;
-/// 
+///
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -757,11 +734,11 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///     var cn = "doesnotexist";
 ///     db._drop(cn);
 ///     var url = "/_api/document/?collection=" + cn;
-/// 
+///
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -886,26 +863,26 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally fetch a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. If the current document revision is different to the specified etag,
-/// an `HTTP 200` response is returned. If the current document revision is 
+/// an `HTTP 200` response is returned. If the current document revision is
 /// identical to the specified etag, then an `HTTP 304` is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally fetch a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -927,12 +904,12 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-/// 
+///
 ///     var response = logCurlRequest('HEAD', url);
-/// 
+///
 ///     assert(response.code === 200);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -962,7 +939,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 /// The handle of the document.
-/// 
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -971,7 +948,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter (see below).
@@ -981,7 +958,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally replace a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by `document-handle`.
 /// If the document exists and can be updated, then a `HTTP 201` is returned
@@ -1027,7 +1004,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you can use the following request:
-/// 
+///
 /// - PUT /_api/document/`document-handle`?rev=`etag`
 ///
 /// If a target revision id is provided in the request (e.g. via the `etag` value
@@ -1069,7 +1046,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
@@ -1080,14 +1057,14 @@ bool RestDocumentHandler::checkDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
-/// 
+///
 ///     assert(response.code === 202);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -1097,15 +1074,15 @@ bool RestDocumentHandler::checkDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     db.products.remove(document._id);
 ///     var url = "/_api/document/" + document._id;
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, "{}");
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -1115,16 +1092,16 @@ bool RestDocumentHandler::checkDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var document2 = db.products.save({"hello2":"world"});
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
-/// 
+///
 ///     assert(response.code === 412);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -1134,12 +1111,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var document2 = db.products.replace(document._id,{"other":"content"});
 ///     var url = "/_api/document/products/" + document._rev + "?policy=last";
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, "{}", headers);
 ///     assert(response.code === 202);
 ///
@@ -1152,18 +1129,18 @@ bool RestDocumentHandler::checkDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var document2 = db.products.save({"hello2":"world"});
 ///     var url = "/_api/document/" + document._id + "?rev=" + document2._rev;
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, '{"other":"content"}');
-/// 
+///
 ///     assert(response.code === 412);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::replaceDocument () {
   return modifyDocument(false);
@@ -1185,7 +1162,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
-/// If the intention is to delete existing attributes with the patch command, 
+/// If the intention is to delete existing attributes with the patch command,
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
@@ -1197,7 +1174,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter.
@@ -1207,7 +1184,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally patch a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
@@ -1216,7 +1193,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// in the existing document if they do exist there.
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default. 
+/// value of `null` be saved for the attribute by default.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
@@ -1263,7 +1240,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
@@ -1274,14 +1251,14 @@ bool RestDocumentHandler::replaceDocument () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"one":"world"});
 ///     var url = "/_api/document/" + document._id;
-/// 
+///
 ///     var response = logCurlRequest("PATCH", url, { "hello": "world" });
-/// 
+///
 ///     assert(response.code === 202);
-/// 
+///
 ///     logJsonResponse(response);
 ///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
 ///     assert(response2.code === 202);
@@ -1354,7 +1331,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside
-    return modifyDocumentCoordinator(collection, key, revision, policy, 
+    return modifyDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync, isPatch, json);
   }
 #endif
@@ -1381,7 +1358,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_primary_collection_t* primary = trx.primaryCollection();
   assert(primary != 0);
   TRI_shaper_t* shaper = primary->_shaper;
-      
+
 #ifdef TRI_ENABLE_CLUSTER
   const string cidString = StringUtils::itoa(primary->base._info._planId);
 #endif
@@ -1448,7 +1425,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         generateTransactionError(collection, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
-      } 
+      }
     }
 #endif
 
@@ -1476,10 +1453,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       // compare attributes in shardKeys
       // read the existing document
       TRI_doc_mptr_t oldDocument;
-    
+
       // do not lock again
       trx.lockWrite();
-    
+
       res = trx.read(&oldDocument, key);
       if (res != TRI_ERROR_NO_ERROR) {
         trx.abort();
@@ -1500,7 +1477,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_shaped_json_t shapedJson;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-      
+
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {
         TRI_FreeJson(shaper->_memoryZone, old);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1511,7 +1488,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
 
-      if (old != 0) { 
+      if (old != 0) {
         TRI_FreeJson(shaper->_memoryZone, old);
       }
     }
@@ -1524,7 +1501,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const bool wasSynchronous = trx.synchronous();
 
   res = trx.finish(res);
-    
+
   // .............................................................................
   // outside write transaction
   // .............................................................................
@@ -1571,7 +1548,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   }
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
-            dbname, collname, key, rev, policy, waitForSync, isPatch, 
+            dbname, collname, key, rev, policy, waitForSync, isPatch,
             keepNull, json, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -1596,14 +1573,14 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by `document-handle`. 
-/// 
+/// Deletes the document identified by `document-handle`.
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing
@@ -1617,7 +1594,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally delete a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute `_id` contains the known
@@ -1647,7 +1624,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ///
 /// @EXAMPLES
@@ -1693,16 +1670,16 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     var document = db.products.save({"hello":"world"});
 ///     var document2 = db.products.save({"hello2":"world"});
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
-/// 
+///
 ///     var response = logCurlRequest('DELETE', url, "", headers);
-/// 
+///
 ///     assert(response.code === 412);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -1744,7 +1721,7 @@ bool RestDocumentHandler::deleteDocument () {
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return deleteDocumentCoordinator(collection, key, revision, policy, 
+    return deleteDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync);
   }
 #endif
@@ -1765,7 +1742,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
-  
+
   const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
@@ -1825,10 +1802,6 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

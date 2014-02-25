@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief upload request handler
+/// @brief requeue task
 ///
 /// @file
 ///
@@ -21,64 +21,56 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_REST_UPLOAD_HANDLER_H
-#define TRIAGENS_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
+#include "RequeueTask.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-#include "HttpServer/HttpServer.h"
+#include "BasicsC/logging.h"
+#include "Dispatcher/Dispatcher.h"
+#include "Scheduler/Scheduler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
 using namespace std;
-
-namespace triagens {
-  namespace arango {
-
-    class RestUploadHandler : public RestVocbaseBaseHandler {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 RestUploadHandler
-// -----------------------------------------------------------------------------
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestUploadHandler (rest::HttpRequest*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-        ~RestUploadHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        Handler::status_t execute();
-
-     };
-  }
+RequeueTask::RequeueTask (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          double sleep,
+                          Job* job)
+  : Task("Requeue Task"),
+    TimerTask(sleep),
+    _scheduler(scheduler),
+    _dispatcher(dispatcher),
+    _job(job) {
 }
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PeriodicTask methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles the next tick
+////////////////////////////////////////////////////////////////////////////////
+
+bool RequeueTask::handleTimeout () {
+  _dispatcher->addJob(_job);
+  _scheduler->destroyTask(this);
+
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

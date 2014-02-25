@@ -160,6 +160,7 @@ add_library(
     Dispatcher/DispatcherQueue.cpp
     Dispatcher/DispatcherThread.cpp
     Dispatcher/Job.cpp
+    Dispatcher/RequeueTask.cpp
     HttpServer/ApplicationEndpointServer.cpp
     HttpServer/HttpHandler.cpp
     HttpServer/HttpHandlerFactory.cpp

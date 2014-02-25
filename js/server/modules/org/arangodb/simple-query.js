@@ -277,8 +277,8 @@ function byExample (data) {
   if (typeof example !== "object" || Array.isArray(example)) {
     // invalid datatype for example
     var err1 = new ArangoError();
-    err1.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-    err1.errorMessage = "invalid document type";
+    err1.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
+    err1.errorMessage = "invalid document type '" + (typeof example) + "'";
     throw err1;
   }
 

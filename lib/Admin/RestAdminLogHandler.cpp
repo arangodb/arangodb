@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminLogHandler.h"
@@ -39,11 +39,6 @@ using namespace triagens::admin;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ascending
@@ -67,18 +62,9 @@ static int LidCompareDesc (void const* l, void const* r) {
   return (int) (((int64_t) right->_lid) - ((int64_t) left->_lid));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -88,18 +74,9 @@ RestAdminLogHandler::RestAdminLogHandler (rest::HttpRequest* request)
   : RestAdminBaseHandler(request) {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -130,7 +107,7 @@ bool RestAdminLogHandler::isDirect () {
 /// `upto` and `level` are mutually exclusive.
 ///
 /// @RESTQUERYPARAM{start,number,optional}
-/// Returns all log entries such that their log entry identifier (`lid` value) 
+/// Returns all log entries such that their log entry identifier (`lid` value)
 /// is greater or equal to `start`.
 ///
 /// @RESTQUERYPARAM{size,number,optional}
@@ -144,7 +121,7 @@ bool RestAdminLogHandler::isDirect () {
 /// Only return the log entries containing the text specified in `search`.
 ///
 /// @RESTQUERYPARAM{sort,string,optional}
-/// Sort the log entries either ascending (if `sort` is `asc`) or descending 
+/// Sort the log entries either ascending (if `sort` is `asc`) or descending
 /// (if `sort` is `desc`) according to their `lid` values. Note that the `lid`
 /// imposes a chronological order. The default value is `asc`.
 ///
@@ -178,11 +155,12 @@ bool RestAdminLogHandler::isDirect () {
 /// error.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestAdminLogHandler::execute () {
-  // /log can only be called for the _system database
+HttpHandler::status_t RestAdminLogHandler::execute () {
+
+  // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
     generateError(HttpResponse::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
 
   // .............................................................................
@@ -232,7 +210,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     string("unknown '") + (found2 ? "level" : "upto") + "' log level: '" + logLevel + "'");
-      return HANDLER_DONE;
+      return status_t(HANDLER_DONE);
     }
   }
 
@@ -302,7 +280,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
 
   if (logs == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
 
 
@@ -408,12 +386,8 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

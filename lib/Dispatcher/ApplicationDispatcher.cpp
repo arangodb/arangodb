@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -43,11 +43,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace {
 
@@ -72,10 +67,6 @@ namespace {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                       class ApplicationDispatcher
 // -----------------------------------------------------------------------------
@@ -85,17 +76,12 @@ namespace {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationDispatcher::ApplicationDispatcher (ApplicationScheduler* applicationScheduler)
+ApplicationDispatcher::ApplicationDispatcher ()
   : ApplicationFeature("dispatcher"),
-    _applicationScheduler(applicationScheduler),
+    _applicationScheduler(0),
     _dispatcher(0),
     _dispatcherReporterTask(0),
     _reportInterval(60.0) {
@@ -111,18 +97,17 @@ ApplicationDispatcher::~ApplicationDispatcher () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
+/// @brief sets the scheduler
 ////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::setApplicationScheduler (ApplicationScheduler* scheduler) {
+  _applicationScheduler = scheduler;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the dispatcher
@@ -151,7 +136,7 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
 /// @brief builds the named dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildNamedQueue (string const& name, 
+void ApplicationDispatcher::buildNamedQueue (string const& name,
                                              size_t nrThreads,
                                              size_t maxSize) {
   if (_dispatcher == 0) {
@@ -163,18 +148,9 @@ void ApplicationDispatcher::buildNamedQueue (string const& name,
   _dispatcher->addQueue(name, nrThreads, maxSize);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -192,7 +168,7 @@ void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::prepare () {
-  buildDispatcher();
+  buildDispatcher(_applicationScheduler->scheduler());
 
   return true;
 }
@@ -236,7 +212,6 @@ bool ApplicationDispatcher::open () {
 
 void ApplicationDispatcher::stop () {
   if (_dispatcherReporterTask != 0) {
-    _applicationScheduler->scheduler()->destroyTask(_dispatcherReporterTask);
     _dispatcherReporterTask = 0;
   }
 
@@ -257,29 +232,20 @@ void ApplicationDispatcher::stop () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildDispatcher () {
+void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
   if (_dispatcher != 0) {
     LOG_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
-  _dispatcher = new Dispatcher();
+  _dispatcher = new Dispatcher(scheduler);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,10 +263,6 @@ void ApplicationDispatcher::buildDispatcherReporter () {
     _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

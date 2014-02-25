@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathHandler.h"
@@ -68,7 +68,7 @@ namespace triagens {
     // Handler methods
 // -----------------------------------------------------------------------------
 
-    HttpHandler::status_e PathHandler::execute () {
+    HttpHandler::status_t PathHandler::execute () {
       static string const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
       vector<string> names = _request->suffix();
@@ -94,7 +94,7 @@ namespace triagens {
         _response->body().appendText(url);
         _response->body().appendText("</a>.</p></body></html>");
 
-        return HANDLER_DONE;
+        return status_t(HANDLER_DONE);
       }
 
       for (vector<string>::const_iterator j = names.begin();  j != names.end();  ++j) {
@@ -105,7 +105,7 @@ namespace triagens {
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '.'");
-          return HANDLER_DONE;
+          return status_t(HANDLER_DONE);
         }
 
         if (next == "..") {
@@ -113,7 +113,7 @@ namespace triagens {
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '..'");
-          return HANDLER_DONE;
+          return status_t(HANDLER_DONE);
         }
 
         string::size_type sc = next.find_first_not_of(allowed);
@@ -123,7 +123,7 @@ namespace triagens {
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
-          return HANDLER_DONE;
+          return status_t(HANDLER_DONE);
         }
 
         if (! path.empty()) {
@@ -132,7 +132,7 @@ namespace triagens {
 
             _response = createResponse(HttpResponse::NOT_FOUND);
             _response->body().appendText("file not found");
-            return HANDLER_DONE;
+            return status_t(HANDLER_DONE);
           }
         }
 
@@ -144,7 +144,7 @@ namespace triagens {
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("symbolic links are not allowed");
-          return HANDLER_DONE;
+          return status_t(HANDLER_DONE);
         }
       }
 
@@ -153,7 +153,7 @@ namespace triagens {
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
-        return HANDLER_DONE;
+        return status_t(HANDLER_DONE);
       }
 
       _response = createResponse(HttpResponse::OK);
@@ -166,11 +166,11 @@ namespace triagens {
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not readable");
-        return HANDLER_DONE;
+        return status_t(HANDLER_DONE);
       }
 
       // check if we should use caching and this is an HTTP GET request
-      if (cacheMaxAge > 0 && 
+      if (cacheMaxAge > 0 &&
           _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
         // yes, then set a pro-caching header
         _response->setHeader("cache-control", strlen("cache-control"), maxAgeHeader);
@@ -188,7 +188,7 @@ namespace triagens {
           if (mimetype != 0) {
             _response->setContentType(mimetype);
 
-            return HANDLER_DONE;
+            return status_t(HANDLER_DONE);
           }
         }
         else {
@@ -196,10 +196,10 @@ namespace triagens {
           LOG_TRACE("unknown suffix '%s'", suffix.c_str());
         }
       }
-      
+
       _response->setContentType(contentType);
 
-      return HANDLER_DONE;
+      return status_t(HANDLER_DONE);
     }
 
 

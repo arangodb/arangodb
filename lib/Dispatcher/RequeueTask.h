@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
+/// @brief requeue task
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,31 +21,26 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Dr. Frank Celler
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_REST_SHUTDOWN_HANDLER_H
-#define TRIAGENS_ADMIN_REST_SHUTDOWN_HANDLER_H 1
+#ifndef TRIAGENS_DISPATCHER_REQUEUE_TASK_H
+#define TRIAGENS_DISPATCHER_REQUEUE_TASK_H 1
 
-#include "ApplicationServer/ApplicationServer.h"
+#include "Scheduler/TimerTask.h"
 
-#include "Admin/RestBaseHandler.h"
-
-#include "Rest/HttpResponse.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class V8PeriodicTask
+// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace admin {
+  namespace rest {
+    class Dispatcher;
+    class Job;
+    class Scheduler;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestShutdownHandler
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown request handler
-////////////////////////////////////////////////////////////////////////////////
-
-    class RestShutdownHandler : public RestBaseHandler {
+    class RequeueTask : public TimerTask {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,31 +52,22 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShutdownHandler (rest::HttpRequest*, void* applicationServer);
+        RequeueTask (Scheduler*,
+                     Dispatcher*,
+                     double sleep,
+                     Job* job);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                              PeriodicTask methods
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief handles the timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        string const& queue () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initiates the shutdown process
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute ();
+        bool handleTimeout ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -90,25 +76,31 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
+/// @brief scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const std::string QUEUE_NAME;
+        Scheduler* _scheduler;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server
+/// @brief dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::rest::ApplicationServer* _applicationServer;
+        Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief job
+////////////////////////////////////////////////////////////////////////////////
+
+        Job* _job;
     };
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

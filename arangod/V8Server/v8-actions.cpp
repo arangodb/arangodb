@@ -63,11 +63,11 @@ using namespace triagens::arango;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           v8::Isolate* isolate,
-                                           TRI_action_t const* action,
-                                           v8::Handle<v8::Function> callback,
-                                           HttpRequest* request);
+static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                                 v8::Isolate* isolate,
+                                                 TRI_action_t const* action,
+                                                 v8::Handle<v8::Function> callback,
+                                                 HttpRequest* request);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -139,11 +139,12 @@ class v8_action_t : public TRI_action_t {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates callback for a context
+/// @brief executes the callback for a request
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase,
-                           HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase,
+                                 HttpRequest* request) {
+      TRI_action_result_t result;
 
       // determine whether we should force a re-initialistion of the engine in development mode
       bool allowEngineReset;
@@ -152,11 +153,12 @@ class v8_action_t : public TRI_action_t {
       allowEngineReset = false;
 
       string const& fullUrl = request->fullUrl();
+
+      // only URLs starting with /dev will trigger an engine reset
       if (fullUrl.find("/dev/") == 0) {
-        // only URLs starting with /dev will trigger an engine reset
         allowEngineReset = true;
       }
-      
+
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
         vocbase,
         request,
@@ -165,10 +167,10 @@ class v8_action_t : public TRI_action_t {
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
-        // it is safe to return 0 as the caller checks for a 0 return value
-        return 0;
+        return result;
       }
 
+      // locate the callback
       READ_LOCKER(_callbacksLock);
 
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
@@ -178,14 +180,18 @@ class v8_action_t : public TRI_action_t {
 
         GlobalV8Dealer->exitContext(context);
 
-        return new HttpResponse(HttpResponse::NOT_FOUND);
+        result.isValid = true;
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+
+        return result;
       }
 
-      HttpResponse* response = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
+      // and execute it
+      result = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
 
       GlobalV8Dealer->exitContext(context);
 
-      return response;
+      return result;
     }
 
   private:
@@ -228,8 +234,8 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 /// @brief add cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddCookie (TRI_v8_global_t const* v8g, 
-                       HttpResponse* response, 
+static void AddCookie (TRI_v8_global_t const* v8g,
+                       HttpResponse* response,
                        v8::Handle<v8::Object> data) {
 
   string name;
@@ -371,7 +377,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   for (; iter != headers.end(); ++iter) {
     headerFields->Set(v8::String::New(iter->first.c_str(),
-                      iter->first.size()), 
+                      iter->first.size()),
                       v8::String::New(iter->second.c_str(),
                       iter->second.size()));
   }
@@ -382,7 +388,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), 
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
                request->bodySize()));
       break;
 
@@ -420,12 +426,12 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   v8::Handle<v8::Object> valuesObject = v8::Object::New();
   map<string, string> values = request->values();
 
-  for (map<string, string>::iterator i = values.begin(); 
+  for (map<string, string>::iterator i = values.begin();
        i != values.end();  ++i) {
     string const& k = i->first;
     string const& v = i->second;
 
-    valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+    valuesObject->Set(v8::String::New(k.c_str(), k.size()),
                       v8::String::New(v.c_str(), v.size()));
   }
 
@@ -456,13 +462,13 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   for (; iter != cookies.end(); ++iter) {
     cookiesObject->Set(v8::String::New(iter->first.c_str(),
-                       iter->first.size()), 
+                       iter->first.size()),
                        v8::String::New(iter->second.c_str(),
                        iter->second.size()));
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
-  
+
   // determine API compatibility version
   int32_t compatibility = request->compatibility();
   req->Set(v8g->CompatibilityKey, v8::Integer::New(compatibility));
@@ -474,13 +480,13 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 /// @brief convert a C++ HttpRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
+static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
                                       v8::Handle<v8::Object> res) {
   HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
   if (res->Has(v8g->ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (HttpResponse::HttpResponseCode) 
+    code = (HttpResponse::HttpResponseCode)
            ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
   }
 
@@ -508,7 +514,7 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
       v8::Handle<v8::Array> transformations = val.As<v8::Array>();
 
       for (uint32_t i = 0; i < transformations->Length(); i++) {
-        v8::Handle<v8::Value> transformator 
+        v8::Handle<v8::Value> transformator
               = transformations->Get(v8::Integer::New(i));
         string name = TRI_ObjectToString(transformator);
 
@@ -539,7 +545,7 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
   // .........................................................................
 
   else if (res->Has(v8g->BodyFromFileKey)) {
-    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               res->Get(v8g->BodyFromFileKey));
     size_t length;
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
@@ -549,7 +555,7 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
     }
     else {
-      string msg = string("cannot read file '") + *filename + "': " + 
+      string msg = string("cannot read file '") + *filename + "': " +
                    TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
@@ -570,7 +576,7 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
 
       for (uint32_t i = 0; i < props->Length(); i++) {
         v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-        response->setHeader(TRI_ObjectToString(key), 
+        response->setHeader(TRI_ObjectToString(key),
                             TRI_ObjectToString(v8Headers->Get(key)));
       }
     }
@@ -586,9 +592,9 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
 
     if (v8Cookies->IsArray()) {
       v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
-      
+
       for (uint32_t i = 0; i < v8Array->Length(); i++) {
-        v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
+        v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
         if (v8Cookie->IsObject()) {
           AddCookie(v8g, response, v8Cookie.As<v8::Object>());
         }
@@ -596,22 +602,23 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
     }
     else if (v8Cookies->IsObject()) {
       // one cookie
-      AddCookie(v8g, response, v8Cookies);               
+      AddCookie(v8g, response, v8Cookies);
     }
   }
 
   return response;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           v8::Isolate* isolate,
-                                           TRI_action_t const* action,
-                                           v8::Handle<v8::Function> callback,
-                                           HttpRequest* request) {
+static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                                 v8::Isolate* isolate,
+                                                 TRI_action_t const* action,
+                                                 v8::Handle<v8::Function> callback,
+                                                 HttpRequest* request) {
+  TRI_action_result_t result;
   TRI_v8_global_t const* v8g;
 
   v8::HandleScope scope;
@@ -630,7 +637,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   char const* sep = "";
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
-    suffixArray->Set(index++, v8::String::New(suffix[s].c_str(), 
+    suffixArray->Set(index++, v8::String::New(suffix[s].c_str(),
                      suffix[s].size()));
 
     path += sep + suffix[s];
@@ -649,17 +656,31 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   callback->Call(callback, 2, args);
 
   // convert the result
-  if (tryCatch.HasCaught()) {
-    string msg = TRI_StringifyV8Exception(&tryCatch);
+  result.isValid = true;
 
-    HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
-    response->body().appendText(msg);
-    return response;
+  if (tryCatch.HasCaught()) {
+    v8::Handle<v8::Value> exception = tryCatch.Exception();
+    bool isSleepAndRequeue = v8g->SleepAndRequeueFuncTempl->HasInstance(exception);
+
+    if (isSleepAndRequeue) {
+      result.requeue = true;
+      result.sleep = TRI_ObjectToDouble(exception->ToObject()->Get(v8g->SleepKey));
+    }
+    else {
+      string msg = TRI_StringifyV8Exception(&tryCatch);
+
+      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      response->body().appendText(msg);
+
+      result.response = response;
+    }
   }
 
   else {
-    return ResponseV8ToCpp(v8g, res);
+    result.response = ResponseV8ToCpp(v8g, res);
   }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -805,12 +826,12 @@ class CallbackTest : public ClusterCommCallback {
 
 static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) 
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*)
                          v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() != 9) {
-    TRI_V8_EXCEPTION_USAGE(scope, 
+    TRI_V8_EXCEPTION_USAGE(scope,
       "SYS_CLUSTER_TEST(<req>, <res>, <dest>, <path>, <clientTransactionID>, "
       "<headers>, <body>, <timeout>, <asyncMode>)");
   }
@@ -822,12 +843,12 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   ClusterComm* cc = ClusterComm::instance();
 
   if (cc == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
 
   // Now get the arguments to form our request:
-  triagens::rest::HttpRequest::HttpRequestType reqType 
+  triagens::rest::HttpRequest::HttpRequestType reqType
     = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
   if (argv[0]->IsObject()) {
     v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
@@ -838,7 +859,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
       reqType = triagens::rest::HttpRequest::translateMethod(methstring);
     }
   }
-  
+
   string destination = TRI_ObjectToString(argv[2]);
   if (destination == "") {
     destination = "shard:shardBlubb";
@@ -884,15 +905,15 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   v8::Handle<v8::Object> r = v8::Object::New();
 
   if (asyncMode) {
-    res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination, 
-                         reqType, path, &body, false, headerFields, 
+    res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination,
+                         reqType, path, &body, false, headerFields,
                          new CallbackTest("Hello Callback"), timeout);
 
     if (res == 0) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                                "couldn't queue async request");
     }
-    
+
     LOG_DEBUG("JS_ClusterTest: request has been submitted");
 
     OperationID opID = res->operationID;
@@ -904,7 +925,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
     while (true) {
       res = cc->enquire(opID);
       if (res == 0) {
-        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, 
+        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                                  "couldn't enquire operation");
       }
       status = res->status;
@@ -913,7 +934,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
         break;
       }
       LOG_DEBUG("JS_ClusterTest: request not yet sent");
-      
+
       usleep(50000);
     }
 
@@ -976,7 +997,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
     }
   }
   else {   // synchronous mode
-    res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination, 
+    res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination,
                           reqType, path, body, *headerFields, timeout);
     delete headerFields;
     if (res != 0) {
