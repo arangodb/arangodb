@@ -1,11 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 export PID=$$
 mkdir data-$PID
 export SCRIPT=$1
 shift
+export PORT=`expr 1024 + $RANDOM`
 export ARGS=""
 for i in $*; do
     ARGS="$ARGS --javascript.script-parameter $i"
 done
-bin/arangod --configuration none --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:$RANDOM --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT --ruby.action-directory mr/actions/system --ruby.modules-path "mr/server/modules;mr/common/modules" $ARGS
+bin/arangod --configuration none --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:$PORT --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT --ruby.action-directory mr/actions/system --ruby.modules-path "mr/server/modules;mr/common/modules" $ARGS
 rm -rf data-$PID log-$PID

@@ -40,7 +40,7 @@ var simple = require("org/arangodb/simple-query");
 
 var SimpleQueryAll = simple.SimpleQueryAll;
 var SimpleQueryByExample = simple.SimpleQueryByExample;
-var SimpleQueryByExampleIndex = simple.SimpleQueryByExampleIndex;
+var SimpleQueryByCondition = simple.SimpleQueryByCondition;
 var SimpleQueryRange = simple.SimpleQueryRange;
 var SimpleQueryGeo = simple.SimpleQueryGeo;
 var SimpleQueryNear = simple.SimpleQueryNear;
@@ -438,6 +438,30 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 
 ArangoCollection.prototype.byExampleBitarray = function (index, example) {
   var sq = this.byExample(example);
+  sq._index = index;
+  sq._type = "bitarray";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-condition using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
+  var sq = new SimpleQueryByCondition(this, condition);
+  sq._index = index;
+  sq._type = "skiplist";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-condition using a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
+  var sq = new SimpleQueryByCondition(this, condition);
   sq._index = index;
   sq._type = "bitarray";
 

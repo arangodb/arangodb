@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, plannerTemplateEngine, alert */
+/*global window, $, Backbone, templateEngine, alert */
 
 (function() {
   "use strict";
@@ -11,8 +11,10 @@
     template: templateEngine.createTemplate("showCluster.ejs"),
 
       events: {
-          "mouseover #lineGraph"      : "setShowAll",
-          "mouseout #lineGraph"      : "resetShowAll"
+        "change #selectDB" : "updateCollections",
+        "change #selectCol" : "updateShards",
+        "mouseover #lineGraph" : "setShowAll",
+        "mouseout #lineGraph" : "resetShowAll"
       },
 
       updateServerTime: function() {
@@ -41,28 +43,36 @@
         this.updateServerTime();
 
 
-        this.dbservers = new window.ClusterServers();
-        this.dbservers.startUpdating();
+        this.dbservers = new window.ClusterServers([], {
+          interval: this.interval
+        });
         this.dbservers.fetch({
-            async : false
+          async: false
         });
-        this.coordinators = new window.ClusterCoordinators();
-        this.coordinators.startUpdating();
+        this.dbservers.startUpdating();
+        this.coordinators = new window.ClusterCoordinators([], {
+          interval: this.interval
+        });
         this.coordinators.fetch({
-            async : false
+          async: false
         });
-        if (this.statisticsDescription === undefined) {
-            this.statisticsDescription = new window.StatisticsDescription();
-            this.statisticsDescription.fetch({
-                async:false
-            });
-        }
+        this.coordinators.startUpdating();
+        this.statisticsDescription = new window.StatisticsDescription();
+        this.statisticsDescription.fetch({
+          async: false
+        });
         this.dbservers.bind("add", this.rerender.bind(this));
         this.dbservers.bind("change", this.rerender.bind(this));
         this.dbservers.bind("remove", this.rerender.bind(this));
         this.coordinators.bind("add", this.rerender.bind(this));
         this.coordinators.bind("change", this.rerender.bind(this));
         this.coordinators.bind("remove", this.rerender.bind(this));
+
+        this.dbs = new window.ClusterDatabases([], {
+          interval: this.interval
+        });
+        this.cols = new window.ClusterCollections();
+        this.shards = new window.ClusterShards()
         this.startUpdating();
 
         var typeModel = new window.ClusterType();
@@ -80,6 +90,25 @@
       return byAddress;
     },
 
+    updateCollections: function() {
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var list = this.cols.getList(dbName);
+      $("#selectCol").html("");
+      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
+        $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      this.updateShards();
+    },
+
+    updateShards: function() {
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      var list = this.shards.getList(dbName, colName);
+      $(".shardCounter").html("0");
+      _.each(list, function(s) {
+        $("#" + s.server + "Shards").html(s.shards.length)
+      });
+    },
 
     rerender : function() {
         this.getServerStatistics();
@@ -98,6 +127,7 @@
         this.type = "other";
       }
       $(this.el).html(this.template.render({
+        dbs: _.pluck(this.dbs.getList(), "name"),
         byAddress: byAddress,
         type: this.type
       }));
@@ -106,6 +136,7 @@
       this.renderPieChart(data);
       this.transformForLineChart(data);
       this.renderLineChart();
+      this.updateCollections();
     },
 
     generatePieData: function() {
@@ -151,14 +182,14 @@
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
             var stat = new window.Statistics({name: dbserver.id});
-            stat.url = dbserver.get("address").replace("tcp", "http") + "/_admin/statistics";
+            stat.url = "http://" + dbserver.get("address") + "/_admin/statistics";
             statCollect.add(stat);
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
             var stat = new window.Statistics({name: coordinator.id});
-            stat.url = coordinator.get("address").replace("tcp", "http") + "/_admin/statistics";
+            stat.url = "http://" + coordinator.get("address") + "/_admin/statistics";
             statCollect.add(stat);
         });
         statCollect.fetch();
@@ -222,8 +253,8 @@
 
           var getData = function() {
               var data = [];
-              self.max = 0;
-              self.min = 0;
+              self.max = Number.NEGATIVE_INFINITY;
+              self.min = Number.POSITIVE_INFINITY;
               Object.keys(self.totalTimeChart).sort().forEach(function(time) {
                   var entry = [new Date(parseInt(time))];
                   Object.keys(self.totalTimeChart[time]).sort().forEach(function(server) {
@@ -286,7 +317,8 @@
               this.graph.updateOptions( {
                   'file': getData(),
                   'labels': createLabels(),
-                  'visibility' : getVisibility()
+                  'visibility' : getVisibility(),
+                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max],
               } );
               return;
           }

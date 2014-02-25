@@ -1351,6 +1351,9 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
     
   TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
+
+  TRI_DestroyVectorPointer(&vocbase->_collections);
+  TRI_DestroyVectorPointer(&vocbase->_deadCollections);
     
   TRI_DestroySpin(&vocbase->_usage._lock);
 

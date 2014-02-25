@@ -17,6 +17,7 @@ TOC {#CommandLineTOC}
   - @ref CommandLineArangod
     - @ref CommandLineConsole "console"
     - @ref CommandLineArangoEndpoint "server.endpoint"
+    - @ref CommandLineArangoReuseAddress "server.reuse-address"
     - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
     - @ref CommandLineArangoDisableAuthenticationUnixSockets "server.disable-authentication-unix-sockets"
     - @ref CommandLineArangoAuthenticateSystemOnly "server.authenticate-system-only"

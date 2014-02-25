@@ -22,8 +22,6 @@
       "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
       "application/available/:key"          : "applicationInstall",
-      "applications/installed"              : "applicationsInstalled",
-      "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph",
@@ -31,15 +29,7 @@
       "graphManagement/add"                 : "graphAddNew",
       "graphManagement/delete/:name"        : "graphDelete",
       "userManagement"                      : "userManagement",
-      "test"                                : "test",
       "userProfile"                         : "userProfile"
-    },
-
-    test: function() {
-      if(!this.clusterDashboardView) {
-        this.clusterDashboardView = new window.ClusterDashboardView();
-      }
-      this.clusterDashboardView.render();
     },
 
     initialize: function () {
@@ -97,16 +87,6 @@
         self.handleResize();
       });
       this.handleResize();
-      this.bind("all", function(page) {
-        if(page === "route") {
-          return;
-        }
-        if (page !== "route:test") {
-          if (this.clusterDashboardView) {
-            this.clusterDashboardView.stopUpdating(); 
-          }
-        }
-      });
     },
 
 /*
@@ -352,10 +332,11 @@
       if (this.dashboardView === undefined) {
         this.dashboardView = new dashboardView({
           collection: this.statisticsCollection,
-          description: this.statisticsDescription
+          description: this.statisticsDescription,
+          documentStore: window.arangoDocumentsStore
         });
-         }
-        this.dashboardView.render();
+      }
+      this.dashboardView.render();
     },
 
     graph: function() {
@@ -404,26 +385,6 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationsAvailable: function() {
-      if (this.applicationsInstalledView === undefined) {
-        this.applicationsInstalledView = new window.FoxxInstalledListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsInstalledView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationsInstalled: function() {
-      if (this.applicationsActiveView === undefined) {
-        this.applicationsActiveView = new window.FoxxActiveListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
 

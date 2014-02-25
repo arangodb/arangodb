@@ -164,7 +164,9 @@ function startInstance (protocol, options, addArgs) {
     }
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher}});
+                         "dispatchers": {"me": dispatcher},
+                         "dataPath": tmpDataDir,
+                         "logPath": tmpDataDir});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -973,7 +975,8 @@ function UnitTest (which, options) {
   rr[which] = r = testFuncs[which](options);
   ok = true;
   for (i in r) {
-    if (r.hasOwnProperty(i)) {
+    if (r.hasOwnProperty(i) && 
+        (which !== "single" || i !== "test")) {
       if (r[i] !== 0 && r[i] !== true) {
         ok = false;
       }

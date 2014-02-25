@@ -2223,6 +2223,8 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }
 
+  assert(value != NULL);
+
   if (operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // create an exact value access
     fieldAccess->_type = TRI_AQL_ACCESS_EXACT;
@@ -2254,9 +2256,10 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   }
   else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_json_t* list;
-    
+
     if (value->_type != TRI_JSON_LIST) {
       // rhs is not a list. no idea how to run an IN query on this...
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
       fieldAccess->_type = TRI_AQL_ACCESS_ALL;
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
 

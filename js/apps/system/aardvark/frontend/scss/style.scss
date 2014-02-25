@@ -1,15 +1,7 @@
 //shared
 @import "shared";
-// Fonts and font bindings
-@import "fonts";
-// Buttons
-// @import "buttons";
 // Navbar
 @import "statMenu";
-// Footer
-@import "footer";
-// List tiles
-@import "tiles";
 // Notifications
 @import "notification";
 //contentTables
@@ -22,3 +14,9 @@
 @import "tooltips";
 // dbSelection
 @import "dbSelection";
+// dashboard http group
+@import "dashboard";
+// dashboard http group
+@import "dashboardHttpGroup";
+// dashboard distribution charts
+@import "dashboardDistribution";

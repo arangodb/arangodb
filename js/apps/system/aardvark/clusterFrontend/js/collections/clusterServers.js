@@ -10,10 +10,10 @@
     
     url: "/_admin/aardvark/cluster/DBServers",
 
-    initialize: function() {
+    initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
-      this.interval = 1000;
+      this.interval = options.interval;
     },
 
     byAddress: function (res) {
@@ -22,8 +22,8 @@
       });
       res = res || {};
       this.forEach(function(m) {
+        console.log(m);
         var addr = m.get("address");
-        addr = addr.substr(6);
         addr = addr.split(":")[0];
         res[addr] = res[addr] || {};
         res[addr].dbs = res[addr].dbs || [];

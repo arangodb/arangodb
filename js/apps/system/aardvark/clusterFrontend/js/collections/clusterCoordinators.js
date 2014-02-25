@@ -5,12 +5,12 @@
   window.ClusterCoordinators = Backbone.Collection.extend({
     model: window.ClusterCoordinator,
     
-    url: "/_admin/aardvark/cluster/Coordinators",
+    url: "cluster/Coordinators",
 
-    initialize: function() {
+    initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
-      this.interval = 1000;
+      this.interval = options.interval;
     },
 
     byAddress: function (res) {
@@ -20,7 +20,6 @@
       res = res || {};
       this.forEach(function(m) {
         var addr = m.get("address");
-        addr = addr.substr(6);
         addr = addr.split(":")[0];
         res[addr] = res[addr] || {};
         res[addr].coords = res[addr].coords || [];

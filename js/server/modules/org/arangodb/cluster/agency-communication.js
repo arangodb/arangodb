@@ -85,8 +85,11 @@ exports.Communication = function() {
     };
     var stubs = {
       get: function(route, recursive) {
-        var res = _agency.get(route, recursive);
-        return res;
+        return _agency.get(route, recursive);
+      },
+      getValue: function(route, name) {
+        var res  = _agency.get(route + "/" + name);
+        return _.values(res)[0];
       },
       set: function(route, name, value) {
         if (value !== undefined) {
@@ -121,34 +124,18 @@ exports.Communication = function() {
       base[name] = newLevel;
       return newLevel;
     };
-    var addLevelsForDBs = function(base, writeAccess) {
-      var list = base.list();
-      _.each(list, function(d) {
-        addLevel(base, d, d, ["get", "checkVersion"]);
-        var colList = mapCollectionIDsToNames(base[d].get(true));
-        var acts = ["get"];
-        if (writeAccess) {
-          acts.push("set");
-        }
-        _.each(colList, function(id, name) {
-          addLevel(base[d], name, id, acts);
-        });
-      });
-    };
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
-    addLevel(target, "db", "Collections", ["list"]);
-    //addLevelsForDBs(target.db, true);
+    addLevel(target, "db", "Databases", ["list"]);
     addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
+    addLevel(target, "endpoints", "MapIDToEndpoint", ["getValue"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
-    addLevel(plan, "db", "Collections", ["list"]);
-    //addLevelsForDBs(plan.db);
+    addLevel(plan, "db", "Databases", ["list"]);
     addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
-    addLevel(current, "db", "Collections", ["list"]);
-    //addLevelsForDBs(current.db);
+    addLevel(current, "db", "Databases", ["list"]);
     addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
@@ -173,9 +160,12 @@ exports.Communication = function() {
         delete base[k];
       }
     });
+    var oldRoute = base.route;
+    base.route = base.route.replace("Databases", "Collections")
     _.each(list, function(d) {
       agency.addLevel(base, d, d, ["get", "checkVersion"]);
     });
+    base.route = oldRoute;
   };
 
   updateCollectionRouteForName = function(route, db, name, writeAccess) {
@@ -228,7 +218,7 @@ exports.Communication = function() {
 /// and remove servers are allowed.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var DBServersObject = function(route, writeAccess) {
+  var DBServersObject = function(route, endpoints, writeAccess) {
     var cache = {};
     var servers;
     var getList = function() {
@@ -241,6 +231,9 @@ exports.Communication = function() {
     };
     this.getList = function() {
       return getList();
+    };
+    this.getEndpoint = function(name) {
+      return endpoints.getValue(name).split("://")[1];
     };
     if (writeAccess) {
       this.addPrimary = function(name) {
@@ -286,9 +279,12 @@ exports.Communication = function() {
 /// If write access is granted also options to add
 /// and remove servers are allowed.
 ////////////////////////////////////////////////////////////////////////////////
-  var CoordinatorsObject = function(route, writeAccess) {
+  var CoordinatorsObject = function(route, endpoints, writeAccess) {
     this.getList = function() {
       return route.list();
+    };
+    this.getEndpoint = function(name) {
+      return endpoints.getValue(name).split("://")[1];
     };
     if (writeAccess) {
       this.add = function(name) {
@@ -321,6 +317,21 @@ exports.Communication = function() {
         return;
       }
       return info.shards;
+    };
+    this.getShardsByServers = function() {
+      var list = this.getShards();
+      var res = {};
+      _.each(list, function(v, k) {
+        require("internal").print(v);
+        res[v] = res[v] || {
+          shards: [],
+          name: v
+        };
+        res[v].shards.push(k);
+      });
+      var resList = [];
+      _.each(res, function(v) { resList.push(v);});
+      return resList;
     };
     this.getShardsForServer = function(name) {
       var list = this.getShards();
@@ -427,7 +438,7 @@ exports.Communication = function() {
 
     this.DBServers = function() {
       if (!DBServers) {
-        DBServers = new DBServersObject(agency.target.dbServers, true);
+        DBServers = new DBServersObject(agency.target.dbServers, agency.target.endpoints, true);
       }
       return DBServers;
     };
@@ -441,7 +452,7 @@ exports.Communication = function() {
 
     this.Coordinators = function() {
       if (!Coordinators) {
-        Coordinators = new CoordinatorsObject(agency.target.coordinators, true);
+        Coordinators = new CoordinatorsObject(agency.target.coordinators, agency.target.endpoints, true);
       }
       return Coordinators;
     };
@@ -466,7 +477,7 @@ exports.Communication = function() {
 
     this.DBServers = function() {
       if (!DBServers) {
-        DBServers = new DBServersObject(agency.plan.dbServers);
+        DBServers = new DBServersObject(agency.plan.dbServers, agency.target.endpoints);
       }
       return DBServers;
     };
@@ -480,7 +491,7 @@ exports.Communication = function() {
 
     this.Coordinators = function() {
       if (!Coordinators) {
-        Coordinators = new CoordinatorsObject(agency.plan.coordinators);
+        Coordinators = new CoordinatorsObject(agency.plan.coordinators, agency.target.endpoints);
       }
       return Coordinators;
     };
@@ -519,7 +530,7 @@ exports.Communication = function() {
           _.each(addresses, function(v, k) {
             var pName = splitServerName(k);
             if (cache[pName]) {
-              cache[pName].address = v;
+              cache[pName].address = v.endpoint.split("://")[1];
             }
           });
         }
@@ -543,7 +554,7 @@ exports.Communication = function() {
           _.each(addresses, function(v, k) {
             var pName = splitServerName(k);
             if (_.contains(servers, pName)) {
-              cache[pName] = v;
+              cache[pName] = v.endpoint.split("://")[1];
             }
           });
         }
@@ -717,12 +728,13 @@ exports.Communication = function() {
         default:
           throw "Sorry please give a correct superior name";
       }
-      var difference = function(superior, inferior) {
+      var difference = function(superior, inferior, getEndpoint) {
         var diff = {
           missing: [],
           difference: {}
         };
         var comp;
+        // diff of plan
         if (_.isArray(superior)) {
           comp = inferior;
           if (!_.isArray(inferior)) {
@@ -731,14 +743,24 @@ exports.Communication = function() {
           }
           _.each(superior, function(v) {
             if (!_.contains(comp, v)) {
-              diff.missing.push(v);
+              var toAdd = {
+                name: v,
+                address: getEndpoint(v)
+              };
+              diff.missing.push(toAdd);
             }
           });
           return diff;
         }
+        // diff of current
         _.each(superior, function(v, k) {
           if (!inferior.hasOwnProperty(k)) {
-            diff.missing.push(k);
+            var toAdd = {
+              name: k,
+              role: v.role,
+              address: getEndpoint(k)
+            };
+            diff.missing.push(toAdd);
             return;
           }
           var compTo = _.clone(inferior[k]);
@@ -752,10 +774,10 @@ exports.Communication = function() {
         return diff;
       };
       this.DBServers = function() {
-        return difference(supRoute.DBServers().getList(), infRoute.DBServers().getList()); 
+        return difference(supRoute.DBServers().getList(), infRoute.DBServers().getList(), supRoute.DBServers().getEndpoint); 
       };
       this.Coordinators = function() {
-        return difference(supRoute.Coordinators().getList(), infRoute.Coordinators().getList()); 
+        return difference(supRoute.Coordinators().getList(), infRoute.Coordinators().getList(), supRoute.Coordinators().getEndpoint); 
       };
     };
 

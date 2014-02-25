@@ -8,12 +8,12 @@
 
     model: window.ClusterDatabase,
     
-    url: "/_admin/aardvark/cluster/Databases",
+    url: "cluster/Databases",
 
-    initialize: function() {
+    initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
-      this.interval = 1000;
+      this.interval = options.interval;
     },
 
     getList: function() {

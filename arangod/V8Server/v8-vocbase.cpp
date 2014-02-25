@@ -606,6 +606,36 @@ static bool ExtractDocumentHandle (v8::Handle<v8::Value> const& val,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a name belongs to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool EqualCollection (CollectionNameResolver const& resolver,
+                             string const& collectionName,
+                             TRI_vocbase_col_t const* collection) {
+  if (collectionName == StringUtils::itoa(collection->_cid)) {
+    return true;
+  }
+
+  if (collectionName == string(collection->_name)) {
+    return true;
+  }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    if (collectionName == resolver.getCollectionNameCluster(collection->_cid)) {
+      return true;
+    }
+    return false;
+  }
+#endif
+  if (collectionName == resolver.getCollectionName(collection->_cid)) {
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -644,8 +674,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (CollectionNameResolv
     // we read a collection name from the document id
     // check cross-collection requests
     if (collection != 0) {
-      if (collectionName != resolver.getCollectionName(collection->_cid) &&
-          collectionName != StringUtils::itoa(collection->_cid)) {
+      if (! EqualCollection(resolver, collectionName, collection)) {
         return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
       }
     }
@@ -865,9 +894,41 @@ static bool IndexComparator (TRI_json_t const* lhs,
       }
     }
   }
+  
+  if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+    // bitarray indexes are considered identical if they are based on the same attributes
+    TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
+    value = TRI_LookupArrayJson(lhs, "fields");
 
-  // fields must be identical if present
+    if (TRI_IsListJson(value) && 
+        TRI_IsListJson(r) && 
+        value->_value._objects._length == r->_value._objects._length) {
+
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* l1 = TRI_LookupListJson(value, i);
+        TRI_json_t const* r1 = TRI_LookupListJson(r, i);
+
+        if (TRI_IsListJson(l1) && 
+            TRI_IsListJson(r1) && 
+            l1->_value._objects._length == 2 && 
+            r1->_value._objects._length == 2) {
+        
+          // element at position 0 is the attribute name
+          if (! TRI_CheckSameValueJson(TRI_LookupListJson(l1, 0), TRI_LookupListJson(r1, 0))) {
+            return false;
+          }
+        }
+
+      }
+    }
+
+    // we must always exit here to avoid the "regular" fields comparison
+    return true;
+  }
+    
+  // other index types: fields must be identical if present
   value = TRI_LookupArrayJson(lhs, "fields");
+
   if (TRI_IsListJson(value)) {
     if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
       return false;
@@ -1145,11 +1206,9 @@ static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
                                      bool create) {
   int res = ProcessBitarrayIndexFields(obj, json, create);
   ProcessIndexUndefinedFlag(obj, json);
- 
-  if (TRI_LookupArrayJson(json, "unique") != NULL) {
-    // unique bitarrays are not supported
-    return TRI_ERROR_BAD_PARAMETER;
-  }
+  
+  // bitarrays are always non-unique
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
 
   return res;
 }
@@ -1799,10 +1858,9 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> DocumentVocbaseCol_Coordinator (
-                                  TRI_vocbase_col_t const* collection,
-                                  v8::Arguments const& argv,
-                                  bool generateDocument) {
+static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
+                                                            v8::Arguments const& argv,
+                                                            bool generateDocument) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -1927,11 +1985,6 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, true));
-  }
-#endif
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
@@ -1941,9 +1994,15 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -2043,12 +2102,6 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DocumentVocbaseCol_Coordinator(col, argv, false));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2057,7 +2110,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
     // check if we got an error object in return
     if (err->IsObject()) {
@@ -2076,6 +2129,12 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     // for any other error that happens, we'll rethrow it
     return scope.Close(v8::ThrowException(err));
   }
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
+  }
+#endif
 
   assert(col != 0);
   assert(key != 0);
@@ -2257,7 +2316,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -2597,15 +2656,15 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
+  if (key == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+  
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
   
-  if (key == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
   assert(col != 0);
   assert(key != 0);
 
@@ -2828,7 +2887,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
 
   if (! err.IsEmpty()) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -6184,7 +6243,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
+static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const& resolver,
+                                                   TRI_vocbase_col_t const* collection,
                                                    v8::Handle<v8::Value> const& val) {
   v8::HandleScope scope;
   
@@ -6211,8 +6271,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
   }
 
   if (collectionName != "") {
-    if (collectionName != collection->_name &&
-        collectionName != StringUtils::itoa(collection->_cid)) {
+    if (! EqualCollection(resolver, collectionName, collection)) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
   }
@@ -6262,13 +6321,14 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
+  CollectionNameResolver resolver(collection->_vocbase);
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DropIndexCoordinator(collection, argv[0]));
+    return scope.Close(DropIndexCoordinator(resolver, collection, argv[0]));
   }
 #endif
 
-  CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
@@ -8831,10 +8891,19 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
     // same database. nothing to do
     return scope.Close(WrapVocBase(vocbase));
   }
-  
-  // check if the other database exists, and increase its refcount
-  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    vocbase = TRI_UseCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+  }
+  else {
+    // check if the other database exists, and increase its refcount
+    vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
+  }
+#else
+  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
+#endif  
+  
   if (vocbase != 0) {
     // switch databases
     void* orig = v8g->_vocbase;
@@ -8842,7 +8911,9 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 
     v8g->_vocbase = vocbase;
 
-    TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
+    if (orig != vocbase) {
+      TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
+    }
     
     return scope.Close(WrapVocBase(vocbase));
   }
@@ -9046,24 +9117,30 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
 
-  // database was created successfully in Cluster
+  // database was created successfully in agency
 
-  // now create a local database object
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
+  // now wait for heartbeat thread to create the database object
   TRI_vocbase_t* vocbase = 0;
-  TRI_vocbase_defaults_t defaults;
-  TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
+  int tries = 0;
 
+  while (++tries <= 6000) {
+    vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
 
-  res = TRI_CreateCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id, name.c_str(), &defaults, &vocbase);
+    if (vocbase != 0) {
+      break;
+    }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    // sleep
+    usleep(10000);
   }
 
-  assert(vocbase != 0);
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
 
+  // now run upgrade etc
   v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
 
   if (TRI_V8RunVersionCheck(vocbase, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
@@ -9237,8 +9314,20 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
   // Arguments are already checked, there is exactly one argument
   string const name = TRI_ObjectToString(argv[0]);
+  TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+
+  if (vocbase == 0) {
+    // no such database
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  TRI_voc_tick_t const id = vocbase->_id;
+  TRI_ReleaseVocBase(vocbase);
+
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
@@ -9248,10 +9337,21 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
+  
+  // now wait for heartbeat thread to drop the database object
+  int tries = 0;
 
-  // mark the local object as dropped
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  TRI_DropCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+  while (++tries <= 6000) {
+    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+
+    if (vocbase == 0) {
+      // object has vanished
+      break;
+    }
+
+    // sleep
+    usleep(10000);
+  }
 
   return scope.Close(v8::True());
 }
@@ -9852,8 +9952,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
   }
 
   if (collectionName != "") {
-    if (collectionName != collection->_name && 
-        collectionName != StringUtils::itoa(collection->_cid)) {
+    CollectionNameResolver resolver(collection->_vocbase);
+    if (! EqualCollection(resolver, collectionName, collection)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
