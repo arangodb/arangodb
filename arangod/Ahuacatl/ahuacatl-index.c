@@ -253,7 +253,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 /// @brief check eligibility of an index for further inspection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CanUseIndex (const TRI_index_t* const idx) {
+static bool CanUseIndex (TRI_index_t const* idx) {
   if (idx->_fields._length == 0) {
     // index should contain at least one field
     return false;

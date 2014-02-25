@@ -835,6 +835,82 @@ SimpleQueryByExample.prototype._PRINT = function (context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                QUERY BY CONDITION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query-by-condition
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryByCondition (collection, condition) {
+  this._collection = collection;
+  this._condition = condition;
+}
+
+SimpleQueryByCondition.prototype = new SimpleQuery();
+SimpleQueryByCondition.prototype.constructor = SimpleQueryByCondition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a query-by-condition
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryByCondition.prototype.clone = function () {
+  var query;
+
+  query = new SimpleQueryByCondition(this._collection, this._condition);
+  query._skip = this._skip;
+  query._limit = this._limit;
+
+  return query;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a query-by-condition
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryByCondition.prototype._PRINT = function (context) {
+  var text;
+
+  text = "SimpleQueryByCondition(" + this._collection.name() + ")";
+
+  if (this._skip !== null && this._skip !== 0) {
+    text += ".skip(" + this._skip + ")";
+  }
+
+  if (this._limit !== null) {
+    text += ".limit(" + this._limit + ")";
+  }
+
+  context.output += text;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       RANGE QUERY
 // -----------------------------------------------------------------------------
 
@@ -1425,6 +1501,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryByCondition = SimpleQueryByCondition;
 exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;

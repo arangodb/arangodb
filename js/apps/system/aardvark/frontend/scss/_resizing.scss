@@ -34,6 +34,11 @@ div.resizecontainer {
     div.resizecontainer {
       width: $min;
     }
+    div.modalChartDetail {
+      width: $min;
+      left: 50%;
+      margin-left: -$min/2;
+    }
   }
 }
 

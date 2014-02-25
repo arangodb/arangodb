@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
@@ -54,7 +54,7 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                       initialise static variables
 // -----------------------------------------------------------------------------
-  
+
 const uint64_t RestReplicationHandler::defaultChunkSize = 16 * 1024;
 
 const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
@@ -64,15 +64,10 @@ const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestReplicationHandler::RestReplicationHandler (HttpRequest* request)  
+RestReplicationHandler::RestReplicationHandler (HttpRequest* request)
   : RestVocbaseBaseHandler(request) {
 }
 
@@ -83,27 +78,18 @@ RestReplicationHandler::RestReplicationHandler (HttpRequest* request)
 RestReplicationHandler::~RestReplicationHandler () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_e RestReplicationHandler::execute() {
+Handler::status_t RestReplicationHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
-  
+
   vector<string> const& suffix = _request->suffix();
 
   const size_t len = suffix.size();
@@ -144,7 +130,7 @@ Handler::status_e RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      handleCommandLoggerFollow(); 
+      handleCommandLoggerFollow();
     }
     else if (command == "batch") {
       handleCommandBatch();
@@ -159,31 +145,31 @@ Handler::status_e RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      handleCommandDump(); 
+      handleCommandDump();
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandRestoreCollection(); 
+      handleCommandRestoreCollection();
     }
     else if (command == "restore-indexes") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandRestoreIndexes(); 
+      handleCommandRestoreIndexes();
     }
     else if (command == "restore-data") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandRestoreData(); 
+      handleCommandRestoreData();
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandSync(); 
+      handleCommandSync();
     }
     else if (command == "server-id") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -230,8 +216,8 @@ Handler::status_e RestReplicationHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid command");
     }
-      
-    return Handler::HANDLER_DONE;
+
+    return status_t(Handler::HANDLER_DONE);
   }
 
 BAD_CALL:
@@ -243,37 +229,28 @@ BAD_CALL:
   else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-  
-  return Handler::HANDLER_DONE;
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  return status_t(Handler::HANDLER_DONE);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
-/// because edges depend on vertices being there), then name 
+/// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::sortCollections (const void* l, 
+int RestReplicationHandler::sortCollections (const void* l,
                                              const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
-  
+
   if (leftType != rightType) {
     return leftType - rightType;
   }
@@ -288,14 +265,14 @@ int RestReplicationHandler::sortCollections (const void* l,
 /// @brief filter a collection based on collection attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection, 
+bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
                                                void* data) {
-  if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT && 
+  if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT &&
       collection->_type != (TRI_col_type_t) TRI_COL_TYPE_EDGE) {
     // invalid type
     return false;
   }
-  
+
   bool includeSystem = *((bool*) data);
   if (! includeSystem && collection->_name[0] == '_') {
     // exclude all system collections
@@ -322,18 +299,9 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the applier action into an action list
@@ -357,7 +325,7 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 uint64_t RestReplicationHandler::determineChunkSize () const {
   // determine chunk size
   uint64_t chunkSize = defaultChunkSize;
@@ -429,7 +397,7 @@ void RestReplicationHandler::handleCommandLoggerStart () {
   }
 
   TRI_json_t result;
-    
+
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
@@ -489,7 +457,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
   }
 
   TRI_json_t result;
-    
+
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
 
@@ -519,7 +487,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 ///   - `running`: whether or not the logger is running
 ///
-///   - `lastLogTick`: the tick value of the latest tick the logger has logged. 
+///   - `lastLogTick`: the tick value of the latest tick the logger has logged.
 ///     This value can be used for incremental fetching of log data.
 ///
 ///   - `totalEvents`: total number of events logged since the server was started.
@@ -534,8 +502,8 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///   - `serverId`: the logger server's id
 ///
 /// - `clients`: a list of all replication clients that ever connected to
-///   the logger since it was started. This list can be used to determine 
-///   approximately how much data the individual clients have already fetched 
+///   the logger since it was started. This list can be used to determine
+///   approximately how much data the individual clients have already fetched
 ///   from the logger server. Each entry in the list contains a `time` value
 ///   indicating the server time the client last fetched data from the
 ///   replication logger. The `lastServedTick` value of each client indicates
@@ -596,7 +564,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-  
+
   generateResult(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
@@ -618,11 +586,11 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
-/// - `maxEvents`: the maximum number of log events kept by the replication 
+/// - `maxEvents`: the maximum number of log events kept by the replication
 ///    logger before deleting oldest events. A value of `0` means that the
 ///    number of events is not restricted.
 ///
-/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
+/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the
 ///    replication logger before deleting oldest events. A value of `0` means
 ///    that the cumulated size of events is not restricted.
 ///
@@ -650,20 +618,20 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
   assert(_vocbase->_replicationLogger != 0);
-    
+
   TRI_replication_logger_configuration_t config;
-    
+
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
   TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
   TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-  
+
   TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
-    
+
   if (json == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-    
+
   generateResult(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
@@ -677,7 +645,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 /// A JSON representation of the configuration.
 ///
 /// @RESTDESCRIPTION
-/// Sets the configuration of the replication logger. 
+/// Sets the configuration of the replication logger.
 ///
 /// The body of the request must be JSON hash with the configuration. The
 /// following attributes are allowed for the configuration:
@@ -688,15 +656,15 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
-/// - `maxEvents`: the maximum number of log events kept by the replication 
+/// - `maxEvents`: the maximum number of log events kept by the replication
 ///    logger before deleting oldest events. Use a value of `0` to not restrict
 ///    the number of events.
 ///
-/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
-///    replication logger before deleting oldest events. Use a value of `0` to 
+/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the
+///    replication logger before deleting oldest events. Use a value of `0` to
 ///    not restrict the size.
 ///
-/// Note that when setting both `maxEvents` and `maxEventsSize`, reaching 
+/// Note that when setting both `maxEvents` and `maxEventsSize`, reaching
 /// either limitation will trigger a deletion of the "oldest" log events from
 /// the replication log.
 ///
@@ -724,7 +692,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///     re.applier.stop();
 ///
 ///     var url = "/_api/replication/logger-config";
-///     var body = { 
+///     var body = {
 ///       logRemoteChanges: true,
 ///       maxEvents: 1048576
 ///     };
@@ -740,7 +708,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///     re.applier.stop();
 ///
 ///     var url = "/_api/replication/logger-config";
-///     var body = { 
+///     var body = {
 ///       logRemoteChanges: false,
 ///       maxEvents: 16384,
 ///       maxEventsSize: 16777216
@@ -755,14 +723,14 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 
 void RestReplicationHandler::handleCommandLoggerSetConfig () {
   assert(_vocbase->_replicationLogger != 0);
-  
+
   TRI_replication_logger_configuration_t config;
 
   // copy previous config
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
   TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
   TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-  
+
   TRI_json_t* json = parseJsonBody();
 
   if (json == 0) {
@@ -771,7 +739,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   }
 
   TRI_json_t const* value;
-  
+
   value = JsonHelper::getArrayElement(json, "autoStart");
   if (JsonHelper::isBoolean(value)) {
     config._autoStart = value->_value._boolean;
@@ -781,12 +749,12 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   if (JsonHelper::isBoolean(value)) {
     config._logRemoteChanges = value->_value._boolean;
   }
-  
+
   value = JsonHelper::getArrayElement(json, "maxEvents");
   if (JsonHelper::isNumber(value)) {
     config._maxEvents = (uint64_t) value->_value._number;
   }
-  
+
   value = JsonHelper::getArrayElement(json, "maxEventsSize");
   if (JsonHelper::isNumber(value)) {
     config._maxEventsSize = (uint64_t) value->_value._number;
@@ -795,7 +763,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   int res = TRI_ConfigureReplicationLogger(_vocbase->_replicationLogger, &config);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION) {
       generateError(HttpResponse::BAD, res);
@@ -805,7 +773,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
     }
     return;
   }
- 
+
   handleCommandLoggerGetConfig();
 }
 
@@ -827,7 +795,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// The response is a JSON hash with the following attributes:
 ///
 /// - `id`: the id of the batch
-///   
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -854,7 +822,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// The id of the batch.
 ///
 /// @RESTDESCRIPTION
-/// Extends the ttl of an existing dump batch, using the batch's id and 
+/// Extends the ttl of an existing dump batch, using the batch's id and
 /// the provided ttl value.
 ///
 /// The body of the request must be a JSON hash with the following attributes:
@@ -862,7 +830,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// - `ttl`: the time-to-live for the batch (in seconds)
 ///
 /// If the batch's ttl can be extended successully, the response is empty.
-///   
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -887,7 +855,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
-///   
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -910,7 +878,7 @@ void RestReplicationHandler::handleCommandBatch () {
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
     // create a new blocker
-    
+
     TRI_json_t* input = _request->toJson(0);
 
     if (input == 0) {
@@ -935,7 +903,7 @@ void RestReplicationHandler::handleCommandBatch () {
     TRI_json_t json;
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
-  
+
     generateResult(&json);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
     return;
@@ -944,7 +912,7 @@ void RestReplicationHandler::handleCommandBatch () {
   if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
     // extend an existing blocker
     TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
-  
+
     TRI_json_t* input = _request->toJson(0);
 
     if (input == 0) {
@@ -956,9 +924,9 @@ void RestReplicationHandler::handleCommandBatch () {
 
     // extract ttl
     double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
-    
+
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
-    
+
     // now extend the blocker
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
 
@@ -1008,7 +976,7 @@ void RestReplicationHandler::handleCommandBatch () {
 ///
 /// @RESTDESCRIPTION
 /// Returns data from the server's replication log. This method can be called
-/// by replication clients after an initial synchronisation of data. The method 
+/// by replication clients after an initial synchronisation of data. The method
 /// will return all "recent" log entries from the logger server, and the clients
 /// can replay and apply these entries locally so they get to the same data
 /// state as the logger server.
@@ -1017,9 +985,9 @@ void RestReplicationHandler::handleCommandBatch () {
 /// from the logger server. In this case, they should provide the `from` value so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the `from` URL parameter is not used, the logger server will return log 
+/// When the `from` URL parameter is not used, the logger server will return log
 /// entries starting at the beginning of its replication log. When the `from`
-/// parameter is used, the logger server will only return log entries which have 
+/// parameter is used, the logger server will only return log entries which have
 /// higher tick values than the specified `from` value (note: the log entry with a
 /// tick value equal to `from` will be excluded). Use the `from` value when
 /// incrementally fetching log data.
@@ -1027,24 +995,24 @@ void RestReplicationHandler::handleCommandBatch () {
 /// The `to` URL parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will contain only log events
 /// with tick values up to (including) `to`. In incremental fetching, there is no
-/// need to use the `to` parameter. It only makes sense in special situations, 
+/// need to use the `to` parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The `chunkSize` URL parameter can be used to control the size of the result. 
-/// It must be specified in bytes. The `chunkSize` value will only be honored 
-/// approximately. Otherwise a too low `chunkSize` value could cause the server 
-/// to not be able to put just one log entry into the result and return it. 
+/// The `chunkSize` URL parameter can be used to control the size of the result.
+/// It must be specified in bytes. The `chunkSize` value will only be honored
+/// approximately. Otherwise a too low `chunkSize` value could cause the server
+/// to not be able to put just one log entry into the result and return it.
 /// Therefore, the `chunkSize` value will only be consulted after a log entry has
-/// been written into the result. If the result size is then bigger than 
+/// been written into the result. If the result size is then bigger than
 /// `chunkSize`, the server will respond with as many log entries as there are
 /// in the response already. If the result size is still smaller than `chunkSize`,
 /// the server will try to return more data if there's more data left to return.
 ///
 /// If `chunkSize` is not specified, some server-side default value will be used.
 ///
-/// The `Content-Type` of the result is `application/x-arango-dump`. This is an 
+/// The `Content-Type` of the result is `application/x-arango-dump`. This is an
 /// easy-to-process format, with all log events going onto separate lines in the
-/// response body. Each log event itself is a JSON hash, with at least the 
+/// response body. Each log event itself is a JSON hash, with at least the
 /// following attributes:
 ///
 /// - `tick`: the log event tick value
@@ -1058,26 +1026,26 @@ void RestReplicationHandler::handleCommandBatch () {
 /// - `cid`: id of the collection the event was for
 ///
 /// - `tid`: id of the transaction the event was contained in
-/// 
+///
 /// - `key`: document key
 ///
 /// - `rev`: document revision id
 ///
 /// - `data`: the original document data
-/// 
-/// A more detailed description of the individual replication event types and their 
+///
+/// A more detailed description of the individual replication event types and their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// The response will also contain the following HTTP headers:
 ///
 /// - `x-arango-replication-active`: whether or not the logger is active. Clients
-///   can use this flag as an indication for their polling frequency. If the 
+///   can use this flag as an indication for their polling frequency. If the
 ///   logger is not active and there are no more replication events available, it
 ///   might be sensible for a client to abort, or to go to sleep for a long time
 ///   and try again later to check whether the logger has been activated.
 ///
 /// - `x-arango-replication-lastincluded`: the tick value of the last included
-///   value in the result. In incremental log fetching, this value can be used 
+///   value in the result. In incremental log fetching, this value can be used
 ///   as the `from` value for the following request. Note that if the result is
 ///   empty, the value will be `0`. This value should not be used as `from` value
 ///   by clients in the next request (otherwise the server would return the log
@@ -1094,8 +1062,8 @@ void RestReplicationHandler::handleCommandBatch () {
 ///   value to fetch remaining log entries until there are no more.
 ///
 ///   If there isn't any more log data to fetch, the client might decide to go
-///   to sleep for a while before calling the logger again. 
-///   
+///   to sleep for a while before calling the logger again.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1139,12 +1107,12 @@ void RestReplicationHandler::handleCommandBatch () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
 ///     var re = require("org/arangodb/replication");
-///     db._drop("products"); 
+///     db._drop("products");
 ///
 ///     re.logger.start();
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
-///     db._create("products"); 
+///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
 ///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
 ///     db.products.remove("p1");
@@ -1164,12 +1132,12 @@ void RestReplicationHandler::handleCommandBatch () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
 ///     var re = require("org/arangodb/replication");
-///     db._drop("products"); 
+///     db._drop("products");
 ///
 ///     re.logger.start();
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
-///     db._create("products"); 
+///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
 ///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
 ///     db.products.remove("p1");
@@ -1192,7 +1160,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
   bool found;
   char const* value;
-  
+
   value = _request->value("from", found);
   if (found) {
     tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
@@ -1210,25 +1178,25 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
                   "invalid from/to values");
     return;
   }
-  
-  const uint64_t chunkSize = determineChunkSize(); 
-  
+
+  const uint64_t chunkSize = determineChunkSize();
+
   // initialise the dump container
-  TRI_replication_dump_t dump; 
+  TRI_replication_dump_t dump;
   if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
   int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
-  
+
   TRI_replication_logger_state_t state;
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
   }
- 
-  if (res == TRI_ERROR_NO_ERROR) { 
+
+  if (res == TRI_ERROR_NO_ERROR) {
     const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
 
     // generate the result
@@ -1244,30 +1212,30 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
     // set headers
-    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
-                         strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
+    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE,
+                         strlen(TRI_REPLICATION_HEADER_CHECKMORE),
                          checkMore ? "true" : "false");
 
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED, 
-                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED), 
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED),
                          StringUtils::itoa(dump._lastFoundTick));
-    
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK, 
-                         strlen(TRI_REPLICATION_HEADER_LASTTICK), 
+
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK,
+                         strlen(TRI_REPLICATION_HEADER_LASTTICK),
                          StringUtils::itoa(state._lastLogTick));
-    
-    _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE, 
-                         strlen(TRI_REPLICATION_HEADER_ACTIVE), 
+
+    _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
+                         strlen(TRI_REPLICATION_HEADER_ACTIVE),
                          state._active ? "true" : "false");
 
     if (length > 0) {
       // transfer ownership of the buffer contents
       _response->body().set(dump._buffer);
-      
+
       // avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
-    
+
     insertClient(dump._lastFoundTick);
   }
   else {
@@ -1309,7 +1277,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// - `running`: whether or not the replication logger is currently active
 ///
-/// - `lastLogTick`: the value of the last tick the replication logger has written  
+/// - `lastLogTick`: the value of the last tick the replication logger has written
 ///
 /// - `time`: the current time on the server
 ///
@@ -1320,33 +1288,33 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 /// To create a full copy of the collections on the logger server, a replication client
 /// can execute these steps:
 ///
-/// - call the `/inventory` API method. This returns the `lastLogTick` value and the 
+/// - call the `/inventory` API method. This returns the `lastLogTick` value and the
 ///   list of collections and indexes from the logger server.
 ///
-/// - for each collection returned by `/inventory`, create the collection locally and 
-///   call `/dump` to stream the collection data to the client, up to the value of 
-///   `lastLogTick`. 
-///   After that, the client can create the indexes on the collections as they were 
+/// - for each collection returned by `/inventory`, create the collection locally and
+///   call `/dump` to stream the collection data to the client, up to the value of
+///   `lastLogTick`.
+///   After that, the client can create the indexes on the collections as they were
 ///   reported by `/inventory`.
 ///
 /// If the clients wants to continuously stream replication log events from the logger
 /// server, the following additional steps need to be carried out:
 ///
-/// - the client should call `/logger-follow` initially to fetch the first batch of 
+/// - the client should call `/logger-follow` initially to fetch the first batch of
 ///   replication events that were logged after the client's call to `/inventory`.
-/// 
+///
 ///   The call to `/logger-follow` should use a `from` parameter with the value of the
-///   `lastLogTick` as reported by `/inventory`. The call to `/logger-follow` will return the 
-///   `x-arango-replication-lastincluded` which will contain the last tick value included 
+///   `lastLogTick` as reported by `/inventory`. The call to `/logger-follow` will return the
+///   `x-arango-replication-lastincluded` which will contain the last tick value included
 ///   in the response.
 ///
-/// - the client can then continuously call `/logger-follow` to incrementally fetch new 
+/// - the client can then continuously call `/logger-follow` to incrementally fetch new
 ///   replication events that occurred after the last transfer.
 ///
 ///   Calls should use a `from` parameter with the value of the `x-arango-replication-lastincluded`
-///   header of the previous response. If there are no more replication events, the 
+///   header of the previous response. If there are no more replication events, the
 ///   response will be empty and clients can go to sleep for a while and try again
-///   later.  
+///   later.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1401,7 +1369,7 @@ void RestReplicationHandler::handleCommandInventory () {
   assert(_vocbase->_replicationLogger != 0);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-  
+
   // include system collections?
   bool includeSystem = false;
   bool found;
@@ -1420,8 +1388,8 @@ void RestReplicationHandler::handleCommandInventory () {
   }
 
   assert(JsonHelper::isList(collections));
- 
-  // sort collections by type, then name 
+
+  // sort collections by type, then name
   const size_t n = collections->_value._objects._length;
 
   if (n > 1) {
@@ -1440,18 +1408,18 @@ void RestReplicationHandler::handleCommandInventory () {
     generateError(HttpResponse::SERVER_ERROR, res);
     return;
   }
-    
+
   TRI_json_t json;
-  
+
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
-  
+
   char* tickString = TRI_StringUInt64(tick);
 
   // add collections data
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
-  
+
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 }
@@ -1480,7 +1448,7 @@ TRI_voc_cid_t RestReplicationHandler::getCid (TRI_json_t const* json) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the JSON provided TODO: move
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 int RestReplicationHandler::createCollection (TRI_json_t const* json,
                                               TRI_vocbase_col_t** dst,
                                               bool reuseId,
@@ -1492,7 +1460,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
   if (! JsonHelper::isArray(json)) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
-  
+
   const string name = JsonHelper::getStringValue(json, "name", "");
 
   if (name.empty()) {
@@ -1508,16 +1476,16 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
       return TRI_ERROR_HTTP_BAD_PARAMETER;
     }
   }
-  
+
   const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = 0;
-  
+
   if (cid > 0) {
     col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
   }
 
-  if (col != 0 && 
+  if (col != 0 &&
       (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
@@ -1529,10 +1497,10 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
   if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
     keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
   }
-  
+
   TRI_col_info_t params;
-  TRI_InitCollectionInfo(_vocbase, 
-                         &params, 
+  TRI_InitCollectionInfo(_vocbase,
+                         &params,
                          name.c_str(),
                          type,
                          (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
@@ -1542,16 +1510,16 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
+  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true);
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
-  params._isSystem =    (name[0] == '_'); 
-  
+  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false);
+  params._isSystem =    (name[0] == '_');
+
   if (cid > 0) {
     // wait for "old" collection to be dropped
     char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
                                                name.c_str(),
-                                               type, 
+                                               type,
                                                cid);
 
     if (dirName != 0) {
@@ -1602,7 +1570,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   bool found;
   char const* value;
-  
+
   bool overwrite = false;
   value = _request->value("overwrite", found);
 
@@ -1615,7 +1583,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   if (found) {
     recycleIds = StringUtils::boolean(value);
   }
-  
+
   bool force = false;
   value = _request->value("force", found);
   if (found) {
@@ -1627,16 +1595,16 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   int res = processRestoreCollection(json, overwrite, recycleIds, force, remoteServerId, errorMsg);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
   else {
     TRI_json_t result;
-    
+
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-  
+
     generateResult(&result);
   }
 }
@@ -1654,7 +1622,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
                   "invalid JSON");
     return;
   }
-  
+
   bool found;
   bool force = false;
   char const* value = _request->value("force", found);
@@ -1667,16 +1635,16 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
   else {
     TRI_json_t result;
-    
+
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-  
+
     generateResult(&result);
   }
 }
@@ -1712,22 +1680,22 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
-  
+
   const string name = JsonHelper::getStringValue(parameters, "name", "");
-  
+
   if (name.empty()) {
     errorMsg = "collection name is missing";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
-  
-  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {  
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
- 
+
   TRI_vocbase_col_t* col = 0;
- 
+
   if (reuseId) {
     TRI_json_t const* idString = JsonHelper::getArrayElement(parameters, "cid");
 
@@ -1736,13 +1704,13 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 
       return TRI_ERROR_HTTP_BAD_PARAMETER;
     }
-  
+
     TRI_voc_cid_t cid = StringUtils::uint64(idString->_value._string.data, idString->_value._string.length - 1);
-  
+
     // first look up the collection by the cid
     col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
   }
-  
+
 
   if (col == 0) {
     // not found, try name next
@@ -1778,7 +1746,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 
         return res;
       }
- 
+
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
 
@@ -1793,10 +1761,10 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
       return res;
     }
   }
-    
+
   // now re-create the collection
   int res = createCollection(parameters, &col, reuseId, remoteServerId);
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
 
@@ -1835,26 +1803,26 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
-  
+
   const size_t n = indexes->_value._objects._length;
   if (n == 0) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   const string name = JsonHelper::getStringValue(parameters, "name", "");
-  
+
   if (name.empty()) {
     errorMsg = "collection name is missing";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
-  
-  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {  
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   // look up the collection
   TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
@@ -1868,9 +1836,9 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   TRI_primary_collection_t* primary = col->_collection;
-  
+
   TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -1878,9 +1846,9 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
     TRI_index_t* idx = 0;
- 
+
     // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-  
+
     res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1898,9 +1866,9 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
       }
     }
   }
-  
+
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-  
+
   TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
 
   TRI_ReleaseCollectionVocBase(_vocbase, col);
@@ -1948,14 +1916,14 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
           const string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
           const string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
-          
+
 
           // parse _from
           TRI_document_edge_t edge;
           if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
-          
+
           // parse _to
           if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1977,20 +1945,20 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
       }
       else {
         // update
-  
+
         // init the update policy
         TRI_doc_update_policy_t policy;
-        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
         res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
-      
+
       TRI_FreeShapedJson(zone, shaped);
 
       return res;
     }
     else {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-      
+
       return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
@@ -1999,7 +1967,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     // {"type":2402,"key":"592063"}
     // init the update policy
     TRI_doc_update_policy_t policy;
-    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
     int res = primary->remove(trxCollection, key, rid, &policy, false, false);
@@ -2034,7 +2002,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
                                                      bool useRevision,
                                                      bool force,
                                                      std::string& errorMsg) {
-  const string invalidMsg = "received invalid JSON data for collection " + 
+  const string invalidMsg = "received invalid JSON data for collection " +
                             StringUtils::itoa(trxCollection->_cid);
 
   char const* ptr = _request->body();
@@ -2060,7 +2028,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
         }
 
         errorMsg = invalidMsg;
-      
+
         return TRI_ERROR_HTTP_CORRUPTED_JSON;
       }
 
@@ -2073,14 +2041,14 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
 
       for (size_t i = 0; i < n; i += 2) {
         TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-  
+
         if (! JsonHelper::isString(element)) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
           errorMsg = invalidMsg;
-      
+
           return TRI_ERROR_HTTP_CORRUPTED_JSON;
         }
- 
+
         const char* attributeName = element->_value._string.data;
         TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
 
@@ -2095,7 +2063,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
             key = value->_value._string.data;
           }
         }
-      
+
         else if (useRevision && TRI_EqualString(attributeName, "rev")) {
           if (JsonHelper::isString(value)) {
             rid = StringUtils::uint64(value->_value._string.data, value->_value._string.length - 1);
@@ -2113,12 +2081,12 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       if (key == 0) {
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
-      
+
         return TRI_ERROR_HTTP_BAD_PARAMETER;
       }
- 
+
       int res = applyCollectionDumpMarker(resolver, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
-      
+
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
       if (res != TRI_ERROR_NO_ERROR && ! force) {
@@ -2143,10 +2111,10 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 bool force,
                                                 string& errorMsg) {
 
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase, 
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
                                                  generatingServer,
-                                                 false, 
-                                                 0.0, 
+                                                 false,
+                                                 0.0,
                                                  false);
 
   if (trx == 0) {
@@ -2154,7 +2122,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-    
+
   int res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2163,17 +2131,17 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
 
     return res;
   }
-    
+
   // TODO: can we use this hint?
   res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
     errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
-    
+
     return TRI_ERROR_INTERNAL;
   }
-    
+
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
 
   if (trxCollection == NULL) {
@@ -2186,7 +2154,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     trxCollection->_waitForSync = false;
     res = processRestoreDataBatch(resolver, trxCollection, generatingServer, useRevision, force, errorMsg);
   }
-      
+
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
   }
@@ -2202,14 +2170,14 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
 
 void RestReplicationHandler::handleCommandRestoreData () {
   char const* value = _request->value("collection");
-    
+
   if (value == 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
-  
+
   CollectionNameResolver resolver(_vocbase);
 
   TRI_voc_cid_t cid = resolver.getCollectionId(value);
@@ -2218,7 +2186,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
-    return; 
+    return;
   }
 
   bool recycleIds = false;
@@ -2226,13 +2194,13 @@ void RestReplicationHandler::handleCommandRestoreData () {
   if (value != 0) {
     recycleIds = StringUtils::boolean(value);
   }
-  
+
   bool force = false;
   value = _request->value("force");
   if (value != 0) {
     force = StringUtils::boolean(value);
   }
-    
+
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
 
@@ -2243,14 +2211,14 @@ void RestReplicationHandler::handleCommandRestoreData () {
   }
   else {
     TRI_json_t result;
-    
+
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-  
+
     generateResult(&result);
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps the data of a collection
 ///
@@ -2278,28 +2246,28 @@ void RestReplicationHandler::handleCommandRestoreData () {
 ///
 /// When the `from` URL parameter is not used, collection events are returned from
 /// the beginning. When the `from` parameter is used, the result will only contain
-/// collection entries which have higher tick values than the specified `from` value 
-/// (note: the log entry with a tick value equal to `from` will be excluded). 
+/// collection entries which have higher tick values than the specified `from` value
+/// (note: the log entry with a tick value equal to `from` will be excluded).
 ///
 /// The `to` URL parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will only contain
-/// collection entries with tick values up to (including) `to`. 
+/// collection entries with tick values up to (including) `to`.
 ///
-/// The `chunkSize` URL parameter can be used to control the size of the result. 
-/// It must be specified in bytes. The `chunkSize` value will only be honored 
-/// approximately. Otherwise a too low `chunkSize` value could cause the server 
-/// to not be able to put just one entry into the result and return it. 
+/// The `chunkSize` URL parameter can be used to control the size of the result.
+/// It must be specified in bytes. The `chunkSize` value will only be honored
+/// approximately. Otherwise a too low `chunkSize` value could cause the server
+/// to not be able to put just one entry into the result and return it.
 /// Therefore, the `chunkSize` value will only be consulted after an entry has
-/// been written into the result. If the result size is then bigger than 
+/// been written into the result. If the result size is then bigger than
 /// `chunkSize`, the server will respond with as many entries as there are
 /// in the response already. If the result size is still smaller than `chunkSize`,
 /// the server will try to return more data if there's more data left to return.
 ///
 /// If `chunkSize` is not specified, some server-side default value will be used.
 ///
-/// The `Content-Type` of the result is `application/x-arango-dump`. This is an 
+/// The `Content-Type` of the result is `application/x-arango-dump`. This is an
 /// easy-to-process format, with all entries going onto separate lines in the
-/// response body. 
+/// response body.
 ///
 /// Each line itself is a JSON hash, with at least the following attributes:
 ///
@@ -2318,7 +2286,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
 /// - `data`: the actual document/edge data for types 2300 and 2301. The full
 ///   document/edge data will be returned even for updates.
 ///
-/// A more detailed description of the different entry types and their 
+/// A more detailed description of the different entry types and their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// Note: there will be no distinction between inserts and updates when calling this method.
@@ -2380,14 +2348,14 @@ void RestReplicationHandler::handleCommandRestoreData () {
 
 void RestReplicationHandler::handleCommandDump () {
   char const* collection = _request->value("collection");
-    
+
   if (collection == 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
-  
+
   // determine start tick for dump
   TRI_voc_tick_t tickStart    = 0;
   TRI_voc_tick_t tickEnd      = (TRI_voc_tick_t) UINT64_MAX;
@@ -2396,7 +2364,7 @@ void RestReplicationHandler::handleCommandDump () {
 
   bool found;
   char const* value;
-  
+
   value = _request->value("from", found);
 
   if (found) {
@@ -2421,13 +2389,13 @@ void RestReplicationHandler::handleCommandDump () {
   if (found) {
     withTicks = StringUtils::boolean(value);
   }
-  
+
   value = _request->value("translateIds", found);
   if (found) {
     translateCollectionIds = StringUtils::boolean(value);
   }
-  
-  const uint64_t chunkSize = determineChunkSize(); 
+
+  const uint64_t chunkSize = determineChunkSize();
 
   TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
@@ -2449,10 +2417,10 @@ void RestReplicationHandler::handleCommandDump () {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
-  
+
 
   // initialise the dump container
-  TRI_replication_dump_t dump; 
+  TRI_replication_dump_t dump;
   if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
     TRI_ReleaseCollectionVocBase(_vocbase, col);
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -2460,7 +2428,7 @@ void RestReplicationHandler::handleCommandDump () {
   }
 
   int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks, translateCollectionIds);
-  
+
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2477,17 +2445,17 @@ void RestReplicationHandler::handleCommandDump () {
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
     // set headers
-    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
-                         strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
+    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE,
+                         strlen(TRI_REPLICATION_HEADER_CHECKMORE),
                          ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
 
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED, 
-                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED), 
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED),
                          StringUtils::itoa(dump._lastFoundTick));
-    
+
     // transfer ownership of the buffer contents
     _response->body().set(dump._buffer);
-    
+
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
   }
@@ -2525,23 +2493,23 @@ void RestReplicationHandler::handleCommandDump () {
 /// - `restrictType`: an optional string value for collection filtering. When
 ///    specified, the allowed values are `include` or `exclude`.
 ///
-/// - `restrictCollections`: an optional list of collections for use with 
+/// - `restrictCollections`: an optional list of collections for use with
 ///   `restrictType`. If `restrictType` is `include`, only the specified collections
 ///    will be sychronised. If `restrictType` is `exclude`, all but the specified
 ///    collections will be synchronised.
 ///
 /// In case of success, the body of the response is a JSON hash with the following
-/// attributes: 
+/// attributes:
 ///
-/// - `collections`: a list of collections that were transferred from the endpoint 
+/// - `collections`: a list of collections that were transferred from the endpoint
 ///
 /// - `lastLogTick`: the last log tick on the endpoint at the time the transfer
-///   was started. Use this value as the `from` value when starting the continuous 
+///   was started. Use this value as the `from` value when starting the continuous
 ///   synchronisation later.
 ///
 /// WARNING: calling this method will sychronise data from the collections found
 /// on the remote endpoint to the local ArangoDB database. All data in the local
-/// collections will be purged and replaced with data from the endpoint. 
+/// collections will be purged and replaced with data from the endpoint.
 ///
 /// Use with caution!
 ///
@@ -2567,12 +2535,12 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
-  
+
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
   const string database = JsonHelper::getStringValue(json, "database", _vocbase->_name);
   const string username = JsonHelper::getStringValue(json, "username", "");
   const string password = JsonHelper::getStringValue(json, "password", "");
-  
+
 
   if (endpoint.empty()) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2591,13 +2559,13 @@ void RestReplicationHandler::handleCommandSync () {
       TRI_json_t const* cname = (TRI_json_t const*) TRI_AtVector(&restriction->_value._objects, i);
 
       if (JsonHelper::isString(cname)) {
-        restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true)); 
+        restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true));
       }
     }
   }
 
   string restrictType = JsonHelper::getStringValue(json, "restrictType", "");
-  
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if ((restrictType.empty() && ! restrictCollections.empty()) ||
@@ -2606,7 +2574,7 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
-  
+
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
@@ -2632,9 +2600,9 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::SERVER_ERROR, res, errorMsg);
     return;
   }
-  
+
   TRI_json_t result;
-    
+
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
   TRI_json_t* jsonCollections = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
@@ -2649,8 +2617,8 @@ void RestReplicationHandler::handleCommandSync () {
       TRI_json_t* ci = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
 
       if (ci != 0) {
-        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
-                             ci, 
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                             ci,
                              "id",
                              TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
 
@@ -2658,11 +2626,11 @@ void RestReplicationHandler::handleCommandSync () {
                              ci,
                              "name",
                              TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
-      
+
         TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
       }
     }
-  
+
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", jsonCollections);
   }
 
@@ -2713,9 +2681,9 @@ void RestReplicationHandler::handleCommandServerId () {
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
   const string serverId = StringUtils::itoa(TRI_GetIdServer());
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
-                       &result, 
-                       "serverId", 
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       &result,
+                       "serverId",
                        TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
 
   generateResult(&result);
@@ -2741,8 +2709,8 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
-///   will make in a row. If the applier cannot establish a connection to the 
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier
+///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
 /// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
@@ -2783,22 +2751,22 @@ void RestReplicationHandler::handleCommandServerId () {
 
 void RestReplicationHandler::handleCommandApplierGetConfig () {
   assert(_vocbase->_replicationApplier != 0);
-    
+
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-    
+
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
   TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
   TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
-  
+
   TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
   TRI_DestroyConfigurationReplicationApplier(&config);
-    
+
   if (json == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-    
+
   generateResult(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
@@ -2813,8 +2781,8 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @RESTDESCRIPTION
 /// Sets the configuration of the replication applier. The configuration can
-/// only be changed while the applier is not running. The updated configuration 
-/// will be saved immediately but only become active with the next start of the 
+/// only be changed while the applier is not running. The updated configuration
+/// will be saved immediately but only become active with the next start of the
 /// applier.
 ///
 /// The body of the request must be JSON hash with the configuration. The
@@ -2830,8 +2798,8 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
-///   will make in a row. If the applier cannot establish a connection to the 
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier
+///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
 /// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
@@ -2854,7 +2822,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///   longer for the replication applier to detect that there are new replication
 ///   events on the logger server.
 ///
-///   Setting `adaptivePolling` to false will make the replication applier 
+///   Setting `adaptivePolling` to false will make the replication applier
 ///   contact the logger server in a constant interval, regardless of whether
 ///   the logger server provides updates frequently or seldomly.
 ///
@@ -2883,7 +2851,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///     re.applier.stop();
 ///
 ///     var url = "/_api/replication/applier-config";
-///     var body = { 
+///     var body = {
 ///       endpoint: "tcp://127.0.0.1:8529",
 ///       username: "replicationApplier",
 ///       password: "applier1234@foxx",
@@ -2901,17 +2869,17 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 
 void RestReplicationHandler::handleCommandApplierSetConfig () {
   assert(_vocbase->_replicationApplier != 0);
-  
+
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
-  
+
   TRI_json_t* json = parseJsonBody();
 
   if (json == 0) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
-  
+
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
   TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
   TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
@@ -2925,7 +2893,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     }
     config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   }
-  
+
   value = JsonHelper::getArrayElement(json, "database");
   if (config._database != 0) {
     // free old value
@@ -2938,7 +2906,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   else {
     config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, _vocbase->_name);
   }
-  
+
   value = JsonHelper::getArrayElement(json, "username");
   if (JsonHelper::isString(value)) {
     if (config._username != 0) {
@@ -2967,9 +2935,9 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
-  
+
   TRI_DestroyConfigurationReplicationApplier(&config);
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
@@ -2980,7 +2948,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     }
     return;
   }
- 
+
   handleCommandApplierGetConfig();
 }
 
@@ -3004,10 +2972,10 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// If the replication applier is not already running, the applier configuration
 /// will be checked, and if it is complete, the applier will be started in a
 /// background thread. This means that even if the applier will encounter any
-/// errors while running, they will not be reported in the response to this 
-/// method. 
+/// errors while running, they will not be reported in the response to this
+/// method.
 ///
-/// To detect replication applier errors after the applier was started, use the 
+/// To detect replication applier errors after the applier was started, use the
 /// `/_api/replication/applier-state` API instead.
 ///
 /// @RESTRETURNCODES
@@ -3049,7 +3017,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 
 void RestReplicationHandler::handleCommandApplierStart () {
   assert(_vocbase->_replicationApplier != 0);
-  
+
   bool found;
   const char* value = _request->value("from", found);
 
@@ -3058,11 +3026,11 @@ void RestReplicationHandler::handleCommandApplierStart () {
     // url parameter "from" specified
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
-  
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, 
+
+  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier,
                                         initialTick,
                                         found);
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
@@ -3073,7 +3041,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
     }
     return;
   }
-  
+
   handleCommandApplierGetState();
 }
 
@@ -3124,12 +3092,12 @@ void RestReplicationHandler::handleCommandApplierStop () {
   assert(_vocbase->_replicationApplier != 0);
 
   int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
     return;
   }
-    
+
   handleCommandApplierGetState();
 }
 
@@ -3145,14 +3113,14 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// The response is a JSON hash with the following attributes:
 ///
 /// - `state`: a JSON hash with the following sub-attributes:
-/// 
+///
 ///   - `running`: whether or not the applier is active and running
 ///
 ///   - `lastAppliedContinuousTick`: the last tick value from the continuous
 ///     replication log the applier has applied.
 ///
 ///   - `lastProcessedContinuousTick`: the last tick value from the continuous
-///     replication log the applier has processed. 
+///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
 ///     identical. For transactional operations, the replication applier will first
@@ -3199,7 +3167,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///   - `version`: the applier server's version
 ///
 ///   - `serverId`: the applier server's id
-///  
+///
 /// - `endpoint`: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
@@ -3251,13 +3219,13 @@ void RestReplicationHandler::handleCommandApplierStop () {
 void RestReplicationHandler::handleCommandApplierGetState () {
   assert(_vocbase->_replicationApplier != 0);
 
-  TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier); 
-  
-  if (json == 0) {  
+  TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
+
+  if (json == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-    
+
   generateResult(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
@@ -3270,7 +3238,7 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
   assert(_vocbase->_replicationApplier != 0);
 
   int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
     return;
@@ -3278,10 +3246,6 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
 
   handleCommandApplierGetState();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

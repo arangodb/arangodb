@@ -226,4 +226,5 @@ div.gv_colour_list {
 div.gv_colour_list li {
   background-color: transparent;
   padding: 2px 6px;
+  float:none;
 }

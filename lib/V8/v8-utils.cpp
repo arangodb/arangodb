@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -128,7 +128,8 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+  v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
+
   if (! proto.IsEmpty()) {
     errorObject->SetPrototype(proto);
   }
@@ -263,7 +264,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
                               char const* name,
                               StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New();
- 
+
   result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
   result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
 
@@ -396,7 +397,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 /// Downloads the data from the URL specified by @FA{url} and saves the
 /// response body to @FA{outfile}. The following @FA{options} are supported:
 ///
-/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are 
+/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
 ///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
 ///
 /// - @LIT{timeout}: a timeout value for the connection
@@ -444,7 +445,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
   // options
   // ------------------------------------------------------------------------
-  
+
   map<string, string> headerFields;
   double timeout = 10.0;
   bool followRedirects = true;
@@ -496,7 +497,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     if (options->Has(TRI_V8_SYMBOL("followRedirects"))) {
       followRedirects = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("followRedirects")));
     }
-    
+
     // max redirects
     if (options->Has(TRI_V8_SYMBOL("maxRedirects"))) {
       if (! options->Get(TRI_V8_SYMBOL("maxRedirects"))->IsNumber()) {
@@ -579,7 +580,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
     }
 
-    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s", 
+    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s",
               endpoint.c_str(),
               url.c_str());
 
@@ -598,17 +599,17 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     SimpleHttpClient* client = new SimpleHttpClient(connection, timeout, false);
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    
+
     if (numRedirects > 0) {
       // do not send extra headers now
       headerFields.clear();
     }
 
     // send the actual request
-    SimpleHttpResult* response = client->request(method, 
-                                                relative, 
-                                                (body.size() > 0 ? body.c_str() : 0), 
-                                                body.size(), 
+    SimpleHttpResult* response = client->request(method,
+                                                relative,
+                                                (body.size() > 0 ? body.c_str() : 0),
+                                                body.size(),
                                                 headerFields);
 
     int returnCode;
@@ -632,7 +633,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       returnCode = response->getHttpReturnCode();
 
       // follow redirects?
-      if (followRedirects && 
+      if (followRedirects &&
           (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
         url = response->getHeaderField(string("location"), found);
@@ -765,28 +766,37 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   }
 
   // execute script inside the context
-  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+  v8::Handle<v8::Script> script;
+  v8::Handle<v8::Value> result;
 
-  // compilation failed, print errors that happened during compilation
-  if (script.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+  {
+    v8::TryCatch tryCatch;
+
+    script = v8::Script::Compile(source->ToString(), filename);
+
+    // compilation failed, print errors that happened during compilation
+    if (script.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
+
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
 
-    return scope.Close(v8::Undefined());
-  }
+    // compilation succeeded, run the script
+    result = script->Run();
 
-  // compilation succeeded, run the script
-  v8::Handle<v8::Value> result = script->Run();
+    if (result.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
 
-  if (result.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
-
-    return scope.Close(v8::Undefined());
   }
 
   // copy result back into the sandbox
@@ -918,7 +928,7 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
   if (path == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
-  
+
   v8::Handle<v8::Value> result = v8::String::New(path);
   TRI_Free(TRI_CORE_MEM_ZONE, path);
 
@@ -1052,7 +1062,7 @@ static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
 
   char *abs = TRI_GetAbsolutePath (*name, cwd.c_str());
   v8::Handle<v8::String> res;
-  
+
   if (0 != abs) {
     res = v8::String::New(abs);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
@@ -1687,9 +1697,9 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 /// - numberOfThreads: Number of threads in this process.
 ///
-/// - residentSize: Resident Set Size: total size of the number of pages 
-///   the process has in real memory.  This is just the pages which count 
-///   toward text, data, or stack space.  This does not include pages which 
+/// - residentSize: Resident Set Size: total size of the number of pages
+///   the process has in real memory.  This is just the pages which count
+///   toward text, data, or stack space.  This does not include pages which
 ///   have not been demand-loaded in, or which are swapped out.
 ///
 ///   The resident set size is reported in bytes.
@@ -1972,7 +1982,7 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   if (! force) {
     // check if we're inside the temp directory. force will override this check
     char* tempPath = TRI_GetUserTempPath();
-  
+
     if (tempPath == 0 || strlen(tempPath) < 6) {
       // some security measure so we don't accidently delete all our files
       if (tempPath != 0) {
@@ -1983,10 +1993,10 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     }
 
     const string path(*name);
-#ifdef _WIN32    
+#ifdef _WIN32
     // windows paths are case-insensitive
     if (! TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
-#else      
+#else
     if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
 #endif
       TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
@@ -2020,7 +2030,7 @@ static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_server_statistics_t info = TRI_GetServerStatistics();
-  
+
   v8::Handle<v8::Object> result = v8::Object::New();
 
   result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
@@ -2184,6 +2194,33 @@ static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sleeps
+///
+/// @FUN{internal.sleep(@FA{seconds})}
+///
+/// Wait for @FA{seconds}, without calling the garbage collection.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sleep (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sleep(<seconds>)");
+  }
+
+  double n = TRI_ObjectToDouble(argv[0]);
+  double until = TRI_microtime() + n;
+
+  // TODO: use select etc. to wait until point in time
+  while (TRI_microtime() < until) {
+    usleep(10000);
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
 /// @FUN{internal.time()}
@@ -2200,7 +2237,8 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current time
+/// @brief waits for the specified amount of time and calls the garbage
+/// collection.
 ///
 /// @FUN{internal.wait(@FA{seconds})}
 ///
@@ -2395,7 +2433,7 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "queueTime", queueTime);
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
-  
+
   return scope.Close(result);
 }
 
@@ -2503,19 +2541,19 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8::String::New("pid"), v8::Number::New(external.pid));
   if (external.readPipe >= 0) {
-    result->Set(v8::String::New("readPipe"), 
+    result->Set(v8::String::New("readPipe"),
                 v8::Number::New(external.readPipe));
   }
   if (external.writePipe >= 0) {
-    result->Set(v8::String::New("writePipe"), 
+    result->Set(v8::String::New("writePipe"),
                 v8::Number::New(external.writePipe));
   }
   return scope.Close(result);
 #else
-  size_t pid_len, readPipe_len, writePipe_len; 
+  size_t pid_len, readPipe_len, writePipe_len;
   char * hProcess  = NULL;
-  char * readPipe  = NULL; 
-  char * writePipe = NULL; 
+  char * readPipe  = NULL;
+  char * writePipe = NULL;
 
   if (external._hProcess) {
     hProcess = TRI_EncodeHexString((const char *)&external._hProcess, sizeof(HANDLE), &pid_len);
@@ -2649,19 +2687,19 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
   if (pid.empty()) {
      TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
-  size_t pid_len /*, readPipe_len, writePipe_len*/; 
+  size_t pid_len /*, readPipe_len, writePipe_len*/;
   char * thePid    = TRI_DecodeHexString(pid.c_str(), pid.size(), &pid_len);
 /*
   char * readPipe  = TRI_DecodeHexString(hChildStdoutRd.c_str(), hChildStdoutRd.c_str.size(), &readPipe_len);
   char * writePipe = TRI_DecodeHexString(hChildStdinWr.c_str(), hChildStdinWr.c_str.size(), &writePipe_len);
 */
   TRI_external_id_t external;
-  external._hProcess = (HANDLE)(*((intptr_t* )thePid)); 
+  external._hProcess = (HANDLE)(*((intptr_t* )thePid));
   external._hChildStdoutRd = NULL;
   external._hChildStdinWr = NULL;
 /*
-  external._hChildStdoutRd = (HANDLE)(*readPipe); 
-  external._hChildStdinWr = (HANDLE)(*writePipe); 
+  external._hChildStdoutRd = (HANDLE)(*readPipe);
+  external._hChildStdinWr = (HANDLE)(*writePipe);
 */
   TRI_KillExternalProcess(&external);
 
@@ -2694,7 +2732,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   string hProcessStr =  TRI_ObjectToString(obj->Get(pidname));
   size_t pid_len;
   char * hProcessCharPtr    = TRI_DecodeHexString(hProcessStr.c_str(), hProcessStr.size(), &pid_len);
-  HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr)); 
+  HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr));
   TRI_external_status_t external = TRI_CheckExternalProcess(hProcess, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2788,7 +2826,29 @@ static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
   }
 
   return scope.Close(self);
-} 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SleepAndRequeue
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SleepAndRequeue (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder()->ToObject();
+
+  if (0 < args.Length() && args[0]->IsObject()) {
+    v8::Handle<v8::Object> data = args[0]->ToObject();
+
+    if (data->Has(v8g->SleepKey)) {
+      self->Set(v8g->SleepKey, data->Get(v8g->SleepKey));
+    }
+  }
+
+  return scope.Close(self);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -3169,7 +3229,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& startupPath,
                       string const& modules) {
   v8::HandleScope scope;
- 
+
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
@@ -3195,7 +3255,26 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "ArangoError", ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->ArangoErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+
+  // .............................................................................
+  // sleep and requeue a job
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("SleepAndRequeue"));
+  ft->SetCallHandler(JS_SleepAndRequeue);
+
+  // SleepAndRequeue is a "sub-class" of Error
+  v8::Handle<v8::Function> SleepAndRequeueFunc = ft->GetFunction();
+
+  SleepAndRequeueFunc->Get(TRI_V8_SYMBOL("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
+
+  TRI_AddGlobalFunctionVocbase(context, "SleepAndRequeue", SleepAndRequeueFunc);
+
+  rt = ft->InstanceTemplate();
+  v8g->SleepAndRequeueTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->SleepAndRequeueFuncTempl = v8::Persistent<v8::FunctionTemplate>::New(isolate, ft);
 
   // .............................................................................
   // create the global functions
@@ -3245,6 +3324,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SLEEP", JS_Sleep);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);

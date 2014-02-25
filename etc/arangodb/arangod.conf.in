@@ -29,6 +29,8 @@ directory = @LOCALSTATEDIR@/lib/arangodb
 #
 endpoint = tcp://0.0.0.0:8529
 
+# reuse-address = false
+
 disable-authentication = yes
 threads = 5
 

@@ -74,7 +74,7 @@ RestImportHandler::RestImportHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestImportHandler::execute () {
+HttpHandler::status_t RestImportHandler::execute () {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -104,7 +104,7 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   // this handler is done
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
