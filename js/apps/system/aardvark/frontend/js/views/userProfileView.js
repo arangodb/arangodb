@@ -22,8 +22,9 @@
     },
 
     render: function(){
+      var img = this.getAvatarSource(this.user.get("extra").img);
       $(this.el).html(this.template.render({
-        img : this.user.get("extra").img,
+        img : img,
         name : this.user.get("extra").name,
         username : this.user.get("user")
 
@@ -140,6 +141,19 @@
 
     validatePassword : function (pwd) {
         return true;
+    },
+
+    getAvatarSource: function(img) {
+      var result = '<img src="';
+      if(img) {
+        result += 'https://s.gravatar.com/avatar/';
+        result += img;
+        result += '?s=150';
+      } else {
+        result += 'img/arangodblogoAvatar_150.png';
+      }
+      result += '" />';
+      return result;
     }
 
   });
