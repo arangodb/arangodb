@@ -83,6 +83,25 @@ namespace triagens {
           JOB_FAILED
         };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief result of execution
+////////////////////////////////////////////////////////////////////////////////
+
+        class status_t {
+          public:
+            status_t ()
+              : status(JOB_FAILED) {
+            }
+
+            explicit
+            status_t (status_e status)
+              : status(status) {
+            }
+
+            status_e status;
+            double sleep;
+        };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -144,7 +163,7 @@ namespace triagens {
 /// @brief starts working
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual status_e work () = 0;
+        virtual status_t work () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up after work and delete

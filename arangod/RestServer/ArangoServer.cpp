@@ -140,8 +140,8 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
-  
-#ifdef TRI_ENABLE_CLUSTER  
+
+#ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<void*>,
@@ -284,7 +284,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
 #ifdef TRI_ENABLE_CLUSTER
     _applicationCluster(0),
-#endif    
+#endif
     _jobManager(0),
 #ifdef TRI_ENABLE_MRUBY
     _applicationMR(0),
@@ -376,6 +376,18 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // .............................................................................
+  // dispatcher
+  // .............................................................................
+
+  _applicationDispatcher = new ApplicationDispatcher();
+
+  if (_applicationDispatcher == 0) {
+    LOG_FATAL_AND_EXIT("out of memory");
+  }
+
+  _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
   // multi-threading scheduler
   // .............................................................................
 
@@ -384,20 +396,11 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationScheduler == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
+
   _applicationScheduler->allowMultiScheduler(true);
+  _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
-
-  // .............................................................................
-  // dispatcher
-  // .............................................................................
-
-  _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
-
-  if (_applicationDispatcher == 0) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-  _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
   // V8 engine
@@ -523,12 +526,12 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
   ;
-  
+
 
   // .............................................................................
   // cluster options
   // .............................................................................
-  
+
 #ifdef TRI_ENABLE_CLUSTER
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8, _argv[0]);
 
@@ -557,8 +560,8 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
   ;
- 
-  
+
+
 
   bool disableStatistics = false;
 
@@ -581,7 +584,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
 #ifdef TRI_ENABLE_CLUSTER
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer,
                                     ClusterCommRestCallback);
 #else
   _jobManager = new AsyncJobManager(&TRI_NewTickServer, 0);
@@ -734,6 +737,7 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -836,7 +840,7 @@ int ArangoServer::startupServer () {
   else {
     runServer(vocbase);
   }
-  
+
   _applicationServer->stop();
 
   closeDatabases();
@@ -844,7 +848,7 @@ int ArangoServer::startupServer () {
   if (mode == OperationMode::MODE_CONSOLE) {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
-  
+
   return 0;
 }
 
@@ -873,11 +877,11 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   console.start();
 
   _applicationServer->wait();
-  
+
   // .............................................................................
   // and cleanup
   // .............................................................................
-  
+
   console.userAbort();
   console.stop();
 
@@ -886,7 +890,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   while (! console.done() && ++iterations < 30) {
     usleep(100000); // spin while console is still needed
   }
-  
+
   return EXIT_SUCCESS;
 }
 
@@ -896,12 +900,12 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
   ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
-  
+
   v8::HandleScope globalScope;
 
   v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
- 
+
   bool ok = false;
   {
     v8::HandleScope scope;
@@ -928,7 +932,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
       ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
     }
   }
-   
+
   _applicationV8->exitContext(context);
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -940,7 +944,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
   ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
-    
+
   v8::HandleScope globalScope;
 
   v8::Context::Scope contextScope(context->_context);
@@ -987,9 +991,9 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
       ok = TRI_ObjectToDouble(result) == 0;
     }
   }
-  
+
   _applicationV8->exitContext(context);
-  
+
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

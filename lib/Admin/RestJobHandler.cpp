@@ -105,7 +105,7 @@ string const& RestJobHandler::queue () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestJobHandler::execute () {
+HttpHandler::status_t RestJobHandler::execute () {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -122,7 +122,7 @@ HttpHandler::status_e RestJobHandler::execute () {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, (int) HttpResponse::METHOD_NOT_ALLOWED);
   }
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
