@@ -128,7 +128,7 @@ SimpleQueryAll.prototype.execute = function () {
 
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
-        total += body.total;
+        total += body.count;
 
         if (toSkip > 0) {
           if (toSkip >= body.result.length) {
@@ -341,8 +341,6 @@ function byExample (data) {
       }
     }
     
-    var invalid = false;
-
     // an index was specified
     if (idx === null) { 
       // but none was found or the found one had a different type
@@ -468,7 +466,7 @@ SimpleQueryByExample.prototype.execute = function () {
                                        options);
       });
 
-      var _documents = [ ];
+      var _documents = [ ], total = 0;
       var result = cluster.wait(coord, shards);
       var toSkip = this._skip, toLimit = this._limit;
       
@@ -479,6 +477,7 @@ SimpleQueryByExample.prototype.execute = function () {
 
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
+        total += body.count;
 
         if (toSkip > 0) {
           if (toSkip >= body.result.length) {
@@ -510,7 +509,8 @@ SimpleQueryByExample.prototype.execute = function () {
 
       documents = { 
         documents: _documents, 
-        count: _documents.length
+        count: _documents.length,
+        total: total
       };
     }
     else {
@@ -628,7 +628,7 @@ SimpleQueryByCondition.prototype.execute = function () {
                                        options);
       });
 
-      var _documents = [ ];
+      var _documents = [ ], total = 0;
       var result = cluster.wait(coord, shards);
       var toSkip = this._skip, toLimit = this._limit;
       
@@ -639,6 +639,7 @@ SimpleQueryByCondition.prototype.execute = function () {
 
       result.forEach(function(part) {
         var body = JSON.parse(part.body);
+        total += body.count;
 
         if (toSkip > 0) {
           if (toSkip >= body.result.length) {
@@ -670,7 +671,8 @@ SimpleQueryByCondition.prototype.execute = function () {
 
       documents = { 
         documents: _documents, 
-        count: _documents.length
+        count: _documents.length,
+        total: total
       };
     }
     else {
@@ -757,7 +759,7 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
-      total += body.total;
+      total += body.count;
 
       _documents = _documents.concat(body.result);
     });
