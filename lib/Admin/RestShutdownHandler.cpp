@@ -32,15 +32,18 @@
 #include "Rest/HttpRequest.h"
 
 using namespace std;
+using namespace triagens::admin;
+using namespace triagens::rest;
 
-namespace triagens {
-  namespace admin {
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestShutdownHandler::QUEUE_NAME           = "STANDARD";
+const string RestShutdownHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -53,8 +56,8 @@ const string RestShutdownHandler::QUEUE_NAME           = "STANDARD";
 RestShutdownHandler::RestShutdownHandler (triagens::rest::HttpRequest* request, 
                                           void* applicationServer)  
   : RestBaseHandler(request), 
-    _applicationServer( static_cast<triagens::rest::ApplicationServer*>
-                                   (applicationServer) ) {
+    _applicationServer(
+      static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {
 }
 
 // -----------------------------------------------------------------------------
@@ -91,7 +94,7 @@ string const& RestShutdownHandler::queue () const {
 /// is returned in all cases.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::rest::HttpHandler::status_e RestShutdownHandler::execute () {
+HttpHandler::status_t RestShutdownHandler::execute () {
 
   _applicationServer->beginShutdown();
 
@@ -100,11 +103,12 @@ triagens::rest::HttpHandler::status_e RestShutdownHandler::execute () {
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
-  }   // end of namespace admin
-}   // end of namespace triagens
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

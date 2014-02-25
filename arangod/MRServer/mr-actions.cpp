@@ -129,7 +129,8 @@ class mr_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+      TRI_action_result_t result;
       ApplicationMR::MRContext* context = GlobalMRDealer->enterContext();
       mrb_state* mrb = context->_mrb;
 
@@ -139,7 +140,11 @@ class mr_action_t : public TRI_action_t {
 
       if (i == _callbacks.end()) {
         LOG_WARNING("no callback function for Ruby action '%s'", _url.c_str());
-        return new HttpResponse(HttpResponse::NOT_FOUND);
+
+        result.isValid = true;
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+
+        return result;
       }
 
       mrb_value callback = i->second;
@@ -148,7 +153,10 @@ class mr_action_t : public TRI_action_t {
 
       GlobalMRDealer->exitContext(context);
 
-      return response;
+      result.isValid = true;
+      result.response = response;
+
+      return result;
     }
 
   private:

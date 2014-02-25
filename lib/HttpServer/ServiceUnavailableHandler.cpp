@@ -53,8 +53,8 @@ namespace triagens {
     // Handler methods
 // -----------------------------------------------------------------------------
 
-    HttpHandler::status_e ServiceUnavailableHandler::execute () {
-      return HANDLER_DONE;
+    HttpHandler::status_t ServiceUnavailableHandler::execute () {
+      return status_t(HANDLER_DONE);
     }
 
 

@@ -128,7 +128,8 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+  v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
+
   if (! proto.IsEmpty()) {
     errorObject->SetPrototype(proto);
   }
@@ -2799,6 +2800,28 @@ static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
   return scope.Close(self);
 } 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SleepAndRequeue
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SleepAndRequeue (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder()->ToObject();
+
+  if (0 < args.Length() && args[0]->IsObject()) {
+    v8::Handle<v8::Object> data = args[0]->ToObject();
+
+    if (data->Has(v8g->SleepKey)) {
+      self->Set(v8g->SleepKey, data->Get(v8g->SleepKey));
+    }
+  }
+
+  return scope.Close(self);
+} 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -3204,7 +3227,26 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "ArangoError", ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->ArangoErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+
+  // .............................................................................
+  // sleep and requeue a job
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("SleepAndRequeue"));
+  ft->SetCallHandler(JS_SleepAndRequeue);
+
+  // SleepAndRequeue is a "sub-class" of Error
+  v8::Handle<v8::Function> SleepAndRequeueFunc = ft->GetFunction();
+
+  SleepAndRequeueFunc->Get(TRI_V8_SYMBOL("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
+
+  TRI_AddGlobalFunctionVocbase(context, "SleepAndRequeue", SleepAndRequeueFunc);
+
+  rt = ft->InstanceTemplate();
+  v8g->SleepAndRequeueTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->SleepAndRequeueFuncTempl = v8::Persistent<v8::FunctionTemplate>::New(isolate, ft);
 
   // .............................................................................
   // create the global functions

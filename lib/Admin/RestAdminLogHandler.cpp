@@ -178,11 +178,12 @@ bool RestAdminLogHandler::isDirect () {
 /// error.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestAdminLogHandler::execute () {
-  // /log can only be called for the _system database
+HttpHandler::status_t RestAdminLogHandler::execute () {
+
+  // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
     generateError(HttpResponse::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
 
   // .............................................................................
@@ -232,7 +233,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     string("unknown '") + (found2 ? "level" : "upto") + "' log level: '" + logLevel + "'");
-      return HANDLER_DONE;
+      return status_t(HANDLER_DONE);
     }
   }
 
@@ -302,7 +303,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
 
   if (logs == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return HANDLER_DONE;
+    return status_t(HANDLER_DONE);
   }
 
 
@@ -408,7 +409,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

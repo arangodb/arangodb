@@ -63,11 +63,11 @@ using namespace triagens::arango;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           v8::Isolate* isolate,
-                                           TRI_action_t const* action,
-                                           v8::Handle<v8::Function> callback,
-                                           HttpRequest* request);
+static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                                 v8::Isolate* isolate,
+                                                 TRI_action_t const* action,
+                                                 v8::Handle<v8::Function> callback,
+                                                 HttpRequest* request);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -139,11 +139,12 @@ class v8_action_t : public TRI_action_t {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates callback for a context
+/// @brief executes the callback for a request
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase,
-                           HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase,
+                                 HttpRequest* request) {
+      TRI_action_result_t result;
 
       // determine whether we should force a re-initialistion of the engine in development mode
       bool allowEngineReset;
@@ -152,8 +153,9 @@ class v8_action_t : public TRI_action_t {
       allowEngineReset = false;
 
       string const& fullUrl = request->fullUrl();
+
+      // only URLs starting with /dev will trigger an engine reset
       if (fullUrl.find("/dev/") == 0) {
-        // only URLs starting with /dev will trigger an engine reset
         allowEngineReset = true;
       }
       
@@ -165,10 +167,10 @@ class v8_action_t : public TRI_action_t {
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
-        // it is safe to return 0 as the caller checks for a 0 return value
-        return 0;
+        return result;
       }
 
+      // locate the callback
       READ_LOCKER(_callbacksLock);
 
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
@@ -178,14 +180,18 @@ class v8_action_t : public TRI_action_t {
 
         GlobalV8Dealer->exitContext(context);
 
-        return new HttpResponse(HttpResponse::NOT_FOUND);
+        result.isValid = true;
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+
+        return result;
       }
 
-      HttpResponse* response = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
+      // and execute it
+      result = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
 
       GlobalV8Dealer->exitContext(context);
 
-      return response;
+      return result;
     }
 
   private:
@@ -474,7 +480,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 /// @brief convert a C++ HttpRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
+static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
                                       v8::Handle<v8::Object> res) {
   HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
@@ -607,11 +613,12 @@ static HttpResponse* ResponseV8ToCpp( TRI_v8_global_t const* v8g,
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
-                                           v8::Isolate* isolate,
-                                           TRI_action_t const* action,
-                                           v8::Handle<v8::Function> callback,
-                                           HttpRequest* request) {
+static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
+                                                 v8::Isolate* isolate,
+                                                 TRI_action_t const* action,
+                                                 v8::Handle<v8::Function> callback,
+                                                 HttpRequest* request) {
+  TRI_action_result_t result;
   TRI_v8_global_t const* v8g;
 
   v8::HandleScope scope;
@@ -649,17 +656,33 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   callback->Call(callback, 2, args);
 
   // convert the result
-  if (tryCatch.HasCaught()) {
-    string msg = TRI_StringifyV8Exception(&tryCatch);
+  result.isValid = true;
 
-    HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
-    response->body().appendText(msg);
-    return response;
+  if (tryCatch.HasCaught()) {
+    v8::Handle<v8::Value> exception = tryCatch.Exception();
+    bool isSleepAndRequeue = v8g->SleepAndRequeueFuncTempl->HasInstance(exception);
+
+    if (isSleepAndRequeue) {
+      result.requeue = true;
+      result.sleep = TRI_ObjectToDouble(exception->ToObject()->Get(v8g->SleepKey));
+
+      LOG_ERROR("SLEEEEEEEEEEEEEEEEEEP %f", result.sleep);
+    }
+    else {
+      string msg = TRI_StringifyV8Exception(&tryCatch);
+
+      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      response->body().appendText(msg);
+
+      result.response = response;
+    }
   }
 
   else {
-    return ResponseV8ToCpp(v8g, res);
+    result.response = ResponseV8ToCpp(v8g, res);
   }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------

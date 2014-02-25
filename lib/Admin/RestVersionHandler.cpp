@@ -154,7 +154,7 @@ string const& RestVersionHandler::queue () const {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestVersionHandler::execute () {
+HttpHandler::status_t RestVersionHandler::execute () {
   TRI_json_t result;
 
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
@@ -182,7 +182,7 @@ HttpHandler::status_e RestVersionHandler::execute () {
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

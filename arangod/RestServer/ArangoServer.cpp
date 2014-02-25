@@ -376,6 +376,18 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // .............................................................................
+  // dispatcher
+  // .............................................................................
+
+  _applicationDispatcher = new ApplicationDispatcher();
+
+  if (_applicationDispatcher == 0) {
+    LOG_FATAL_AND_EXIT("out of memory");
+  }
+
+  _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
   // multi-threading scheduler
   // .............................................................................
 
@@ -384,20 +396,11 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationScheduler == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
+
   _applicationScheduler->allowMultiScheduler(true);
+  _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
-
-  // .............................................................................
-  // dispatcher
-  // .............................................................................
-
-  _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
-
-  if (_applicationDispatcher == 0) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-  _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
   // V8 engine
@@ -734,6 +737,7 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................

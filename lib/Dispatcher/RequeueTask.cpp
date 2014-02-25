@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract base class for jobs
+/// @brief requeue task
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,64 +22,51 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Job.h"
+#include "RequeueTask.h"
 
-using namespace triagens::rest;
+#include "BasicsC/logging.h"
+#include "Dispatcher/Dispatcher.h"
+#include "Scheduler/Scheduler.h"
+
 using namespace std;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a job
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::Job (string const& name)
-  : _name(name) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-Job::~Job () {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for the name
-////////////////////////////////////////////////////////////////////////////////
-
-const string& Job::getName () const {
-  return _name;
+RequeueTask::RequeueTask (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          double sleep,
+  Job* job)
+  : Task("Requeue Task"),
+    TimerTask(sleep),
+    _scheduler(scheduler),
+    _dispatcher(dispatcher),
+    _job(job) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
+// --SECTION--                                              PeriodicTask methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name to use
+/// @brief handles the next tick
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& Job::queue () {
-  static string const standard = "STANDARD";
-  return standard;
-}
+bool RequeueTask::handleTimeout () {
+  LOG_ERROR("timeout reach");
+  _dispatcher->addJob(_job);
+  _scheduler->destroyTask(this);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the thread which currently dealing with the job
-////////////////////////////////////////////////////////////////////////////////
-
-void Job::setDispatcherThread (DispatcherThread*) {
+  return true;
 }
 
 // -----------------------------------------------------------------------------

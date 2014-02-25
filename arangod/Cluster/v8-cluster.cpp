@@ -65,7 +65,7 @@ static v8::Handle<v8::Value> CreateAgencyException (AgencyCommResult const& resu
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
   errorObject->Set(v8::String::New("error"), v8::True());
   
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+  v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
   if (! proto.IsEmpty()) {
     errorObject->SetPrototype(proto);
   }

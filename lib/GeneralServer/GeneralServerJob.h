@@ -166,28 +166,22 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_e work () {
+        status_t work () {
           LOG_TRACE("beginning job %p", (void*) this);
 
           this->RequestStatisticsAgent::transfer(_handler);
 
           if (_shutdown != 0) {
-            return Job::JOB_DONE;
+            return status_t(Job::JOB_DONE);
           }
 
           RequestStatisticsAgentSetRequestStart(_handler);
-          Handler::status_e status = _handler->execute();
+          Handler::status_t status = _handler->execute();
           RequestStatisticsAgentSetRequestEnd(_handler);
 
-          LOG_TRACE("finished job %p with status %d", (void*) this, (int) status);
+          LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
 
-          switch (status) {
-            case Handler::HANDLER_DONE:    return Job::JOB_DONE;
-            case Handler::HANDLER_REQUEUE: return Job::JOB_REQUEUE;
-            case Handler::HANDLER_FAILED:  return Job::JOB_FAILED;
-          }
-
-          return Job::JOB_FAILED;
+          return status.jobStatus();
         }
 
 ////////////////////////////////////////////////////////////////////////////////

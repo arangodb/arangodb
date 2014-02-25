@@ -93,9 +93,9 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationDispatcher::ApplicationDispatcher (ApplicationScheduler* applicationScheduler)
+ApplicationDispatcher::ApplicationDispatcher ()
   : ApplicationFeature("dispatcher"),
-    _applicationScheduler(applicationScheduler),
+    _applicationScheduler(0),
     _dispatcher(0),
     _dispatcherReporterTask(0),
     _reportInterval(60.0) {
@@ -123,6 +123,14 @@ ApplicationDispatcher::~ApplicationDispatcher () {
 /// @addtogroup Dispatcher
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the scheduler
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::setApplicationScheduler (ApplicationScheduler* scheduler) {
+  _applicationScheduler = scheduler;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the dispatcher
@@ -192,7 +200,7 @@ void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::prepare () {
-  buildDispatcher();
+  buildDispatcher(_applicationScheduler->scheduler());
 
   return true;
 }
@@ -236,7 +244,6 @@ bool ApplicationDispatcher::open () {
 
 void ApplicationDispatcher::stop () {
   if (_dispatcherReporterTask != 0) {
-    _applicationScheduler->scheduler()->destroyTask(_dispatcherReporterTask);
     _dispatcherReporterTask = 0;
   }
 
@@ -274,12 +281,12 @@ void ApplicationDispatcher::stop () {
 /// @brief builds the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::buildDispatcher () {
+void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
   if (_dispatcher != 0) {
     LOG_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
-  _dispatcher = new Dispatcher();
+  _dispatcher = new Dispatcher(scheduler);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
