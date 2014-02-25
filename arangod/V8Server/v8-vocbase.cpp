@@ -894,9 +894,41 @@ static bool IndexComparator (TRI_json_t const* lhs,
       }
     }
   }
+  
+  if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+    // bitarray indexes are considered identical if they are based on the same attributes
+    TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
+    value = TRI_LookupArrayJson(lhs, "fields");
 
-  // fields must be identical if present
+    if (TRI_IsListJson(value) && 
+        TRI_IsListJson(r) && 
+        value->_value._objects._length == r->_value._objects._length) {
+
+      for (size_t i = 0; i < value->_value._objects._length; ++i) {
+        TRI_json_t const* l1 = TRI_LookupListJson(value, i);
+        TRI_json_t const* r1 = TRI_LookupListJson(r, i);
+
+        if (TRI_IsListJson(l1) && 
+            TRI_IsListJson(r1) && 
+            l1->_value._objects._length == 2 && 
+            r1->_value._objects._length == 2) {
+        
+          // element at position 0 is the attribute name
+          if (! TRI_CheckSameValueJson(TRI_LookupListJson(l1, 0), TRI_LookupListJson(r1, 0))) {
+            return false;
+          }
+        }
+
+      }
+    }
+
+    // we must always exit here to avoid the "regular" fields comparison
+    return true;
+  }
+    
+  // other index types: fields must be identical if present
   value = TRI_LookupArrayJson(lhs, "fields");
+
   if (TRI_IsListJson(value)) {
     if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
       return false;
@@ -1174,11 +1206,9 @@ static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const& obj,
                                      bool create) {
   int res = ProcessBitarrayIndexFields(obj, json, create);
   ProcessIndexUndefinedFlag(obj, json);
- 
-  if (TRI_LookupArrayJson(json, "unique") != NULL) {
-    // unique bitarrays are not supported
-    return TRI_ERROR_BAD_PARAMETER;
-  }
+  
+  // bitarrays are always non-unique
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
 
   return res;
 }
