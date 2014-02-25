@@ -65,11 +65,6 @@
 
 
             <% collection.forEach(function(user) {
-              var deleteButton = '<span class="arangoicon icon_arangodb_roundminus"' +
-                'data-original-title="Delete user"></span>';
-              if(user.get("loggedIn")) {
-                deleteButton = '';
-              }
               var username = user.get("user"),
                 extra = user.get("extra"),
                 name = extra.name,

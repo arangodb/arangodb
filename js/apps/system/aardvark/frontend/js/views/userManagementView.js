@@ -30,8 +30,6 @@
     },
 
     render: function () {
-      console.log("render");
-
       var dropdownVisible = false;
       if ($('#userManagementDropdown').is(':visible')) {
         dropdownVisible = true;
@@ -187,8 +185,14 @@
       $('#editStatus').attr("checked", user.get("active"));
       if (user.get("loggedIn")) {
         $('#editStatus').attr("disabled", true);
+        $('#deleteUser').attr("disabled", true);
+        $('#deleteUser').removeClass("button-danger");
+        $('#deleteUser').addClass("button-inactive");
       } else {
         $('#editStatus').attr("disabled", false);
+        $('#deleteUser').attr("disabled", false);
+        $('#deleteUser').removeClass("button-inactive");
+        $('#deleteUser').addClass("button-danger");
       }
     },
 
