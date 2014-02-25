@@ -15,6 +15,15 @@
 <ul class="thumbnails2">
   <div class="headerBar">
     <a class="arangoHeader">Cluster Dashboard</a>
+    <div class="headerButtonBar pull-right">
+      <select id="selectDB">
+        <% _.each(dbs, function(d) { %>
+          <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
+        <% }); %>
+      </select>
+      <select id="selectCol">
+      </select>
+    </div>
   </div>
 </ul>
 <ul id="clusterLayout" class="tileList">
@@ -36,7 +45,7 @@
         <div class="dbserver <%=statusClass(c.get('status'))%>">
           <span class="clusterInfoIcon icon_arangodb_database1"></span>
         </div>
-        <h5 class="collectionName"><%=c.get("name")%></h5>
+        <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
       </li>
     <%
         });
@@ -50,14 +59,17 @@
             <span class="clusterInfoIcon icon_arangodb_compass"></span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
-        <% }); %>
-        <% _.each(s.dbs, function(c) { %>
+        <% });
+          var dbName = "";
+          _.each(s.dbs, function(c) {
+            dbName = c.get("name");
+        %>
           <div class="dbserver <%=statusClass(c.get('status'))%>">
             <span class="clusterInfoIcon icon_arangodb_database1"></span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
         <% }); %>
-        <h5 class="collectionName"><%=a%></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\"/>)":""%></h5>
       </li>
     <%
     });
