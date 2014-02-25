@@ -93,7 +93,7 @@
     },
 
     createUser : function(e) {
-      e.preventDefault()
+      e.preventDefault();
       this.showModal();
     },
 
