@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global templateEngine */
+/*global document, Dygraph, _,templateEngine */
 
 (function() {
   "use strict";
@@ -21,7 +21,10 @@
   };
 
   var zeropad = function(x) {
-     if (x < 10) return "0" + x; else return "" + x;
+     if (x < 10) {
+         return "0" + x;
+     }
+     return x;
   };
 
   var xAxisFormat = function (d) {
@@ -38,22 +41,26 @@
       mergeAttribList.forEach(function (a) {
         var valO1 = o1[a];
         var valO2 = o2[a];
-        valO1 === undefined ? valO1 = {} :null ;
-        valO2 === undefined ? valO2 = {} :null ;
+        if (valO1 === undefined) {
+            valO1 = {};
+        }
+        if (valO2 === undefined) {
+            valO2 = {};
+        }
         vals[a] = _.extend(valO1, valO2);
       });
       var res = _.extend(o1,o2);
       Object.keys(vals).forEach(function(k) {
           res[k] = vals[k];
-      })
+      });
       return res;
-  }
+  };
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
     contentEl: '.contentDiv',
     interval: 3000,
-    defaultHistoryElements: 1/10, //in days
+    defaultHistoryElements: 1, //in days
     initialStartWindow :  60,  // in minutes
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
@@ -97,27 +104,30 @@
         ],
         system_systemUserTime: ["systemTime","userTime"]
     },
-    colors : ["#617e2b", "#cad4b8", "#40541c", "#202a0e", "#767676", "#b8860b","#4779f4", "#1e2414", "#c7d4b2", "#d0b2d4"],
+    colors : ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
+        "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
     showDetail : function(e) {
         var self = this;
         var id = $(e.currentTarget).attr("id").replace(/LineChart/g , "");
         $(self.detailEl).html(this.detailTemplate.render({figure: id}));
         var group;
-        Object.keys(self.description.get("figures")).forEach(function (f) {
-            var figure = self.description.get("figures")[f];
-            if (figure.identifier === id) {
-                 group = figure.group;
-            }
+        Object.keys(self.series).forEach(function (g) {
+            Object.keys(self.series[g]).forEach(function (f) {
+                if (f === id) {
+                    group = g;
+                }
+            });
         });
+
         var chart;
         Object.keys(self.series[group][id]).forEach(function(valueList) {
             var c = self.series[group][id][valueList];
-            if (c["type"] === "current" && c["showGraph"] === true) {
+            if (c.type === "current" && c.showGraph === true) {
                 chart = c;
             }
         });
-        chart["graphCreated"] = false;
+        chart.graphCreated = false;
         self.showDetailFor("dashboardDetailed", id, chart);
         self.createLineChart(chart, id,  "dashboardDetailed");
         $('#lineChartDetail').modal('show');
@@ -142,21 +152,64 @@
         },
         virtualSize : {
         },
-        minorPageFaults : {},
-        majorPageFaults : {},
+        minorPageFaults : {
+            labelsKMG2: false
+        },
+        majorPageFaults : {
+            labelsKMG2: false
+        },
         systemUserTime : {
             title : "System and User Time",
             stacked : true
         },
         httpConnections : {},
         totalTime : {
-
+            title : "Total time in milliseconds",
+            labelsKMG2: false,
+            axes : {
+                y: {
+                    valueFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    },
+                    axisLabelFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    }
+                }
+            }
         },
         requestTime : {
-
+            title : "Request time in milliseconds",
+            labelsKMG2: false,
+            axes : {
+                y: {
+                    valueFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    },
+                    axisLabelFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    }
+                }
+            }
         },
         queueTime : {
-
+            title : "Queue time in milliseconds",
+            labelsKMG2: false,
+            axes : {
+                y: {
+                    valueFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    },
+                    axisLabelFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    }
+                }
+            }
         },
         bytesSent : {
 
@@ -183,7 +236,7 @@
                             return y.toPrecision(3) + "m";
                         }
                         y = y/3600;
-                        return y.toPrecision(3) + "h";;
+                        return y.toPrecision(3) + "h";
                     }
                 }
             }
@@ -233,15 +286,18 @@
             digitsAfterDecimal: 4,
             fillGraph : true,
             strokeWidth: 3,
-            dateWindow : [new Date().getTime() - this.initialStartWindow * 60 * 1000, new Date().getTime()],
+            axisLabelFont: "Open Sans",
+            dateWindow : [new Date().getTime() - this.initialStartWindow * 60 * 1000,
+                new Date().getTime()],
             colors: [this.colors[0]],
             xAxisLabelWidth : "60",
             rollPeriod: this.defaultRollPeriod,
             showRangeSelector: true,
             rangeSelectorHeight: 30,
             rangeSelectorPlotStrokeColor: '#617e2b',
-            rangeSelectorPlotFillColor: '#617e2b',
-
+            rangeSelectorPlotFillColor: '#414a4c',
+            pixelsPerLabel : 60,
+            labelsKMG2: true,
             axes : {
                 x: {
                     valueFormatter: function(d) {
@@ -249,18 +305,17 @@
                     }
                 },
                 y: {
-                    labelsKMG2: true,
                     ticker: Dygraph.numericLinearTicks
                 }
             }
         };
         if (figure.name) {
-            options["title"] =  figure.name;
+            options.title =  figure.name;
         }
         var type = figure.type;
         var showGraph = true;
         if (type === "lineChartDiffBased") {
-            options["title"] +=  " per seconds";
+            options.title +=  " per seconds";
             type = "current";
         } else if (type === "distribution") {
             type = "distribution";
@@ -270,7 +325,7 @@
             type = "current";
         }
         if (type === "current") {
-            options["labels"] = ["datetime" , figure.identifier];
+            options.labels = ["datetime" , figure.identifier];
         }
         return {
             type : type,
@@ -297,10 +352,11 @@
             var colors = self.colors.concat([]);
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 label.push(attrib);
-            })
+            });
             self.getChartsForFigure(fig);
-            self.series[fig.group][fig.identifier]["current"]["options"]["colors"] = colors.slice(0, label.length-1);
-            self.series[fig.group][fig.identifier]["current"]["options"]["labels"] = label;
+            self.series[fig.group][fig.identifier].current.options.colors
+                = colors.slice(0, label.length-1);
+            self.series[fig.group][fig.identifier].current.options.labels = label;
          });
 
     },
@@ -318,20 +374,19 @@
                         if (!self.LastValues[figure]) {
                             self.LastValues[figure] = {value : val , time: 0};
                         }
-                        val = (val - self.LastValues[figure]["value"]) / (time - self.LastValues[figure]["time"]);
-                        valueLists[valueList]["data"].push(
+                        val = (val - self.LastValues[figure].value) /
+                            (time - self.LastValues[figure].time);
+                        valueLists[valueList].data.push(
                             [new Date(time), val]
                         );
                         self.LastValues[figure] = {value : val , time: time};
 
                     } else if (valueList === "distribution") {
-                        valueLists[valueList]["data"] = val;
-                    } else if (valueList === "accumulated") {
-
+                        valueLists[valueList].data = val;
                     } else if (valueList === "current") {
-                        valueLists[valueList]["data"].push([new Date(time), val]);
+                        valueLists[valueList].data.push([new Date(time), val]);
                     } else if (valueList === "currentDistribution")  {
-                        valueLists[valueList]["data"].push([
+                        valueLists[valueList].data.push([
                             new Date(time),
                             val.count === 0 ? 0 : val.sum / val.count
                         ]);
@@ -345,13 +400,13 @@
             var val = [new Date(time)];
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 if (self.LastValues[attrib])  {
-                    val.push(self.LastValues[attrib]["value"]);
+                    val.push(self.LastValues[attrib].value);
                 } else {
                     val.push(entry[part[0]][attrib]);
                 }
-            })
-            self.series[part[0]][part[1]]["current"]["data"].push(val);
-        })
+            });
+            self.series[part[0]][part[1]].current.data.push(val);
+        });
     },
 
     calculateSeries: function () {
@@ -366,10 +421,10 @@
             var part = cc.split("_");
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 Object.keys(self.series[part[0]][attrib]).forEach(function(c) {
-                    self.series[part[0]][attrib][c]["showGraph"] = false;
-                })
-            })
-        })
+                    self.series[part[0]][attrib][c].showGraph = false;
+                });
+            });
+        });
     },
 
 
@@ -384,33 +439,35 @@
             displayOptions.height = $('#lineChartDetail').height() - 34 -29;
             displayOptions.width = $('#lineChartDetail').width() -60;
         }
-        if (!chart["graphCreated"]) {
+        if (!chart.graphCreated) {
             if (createDiv) {
             self.renderHttpGroup(figure);
             }
-            chart["graph"] = new Dygraph(
+            chart.graph = new Dygraph(
                 document.getElementById(div+"LineChart"),
-                chart["data"],
+                chart.data,
                 mergeObjects(
-                    mergeObjects(chart["options"],  displayOptions),
+                    mergeObjects(chart.options,  displayOptions),
                     self.figureDependedOptions[figure],
                     ["axes"])
             );
             var onclick = function(ev) {
-                if (chart["graph"].isSeriesLocked()) {
-                    chart["graph"].clearSelection();
+                if (chart.graph.isSeriesLocked()) {
+                    chart.graph.clearSelection();
                 } else {
-                    chart["graph"].setSelection(chart["graph"].getSelection(), chart["graph"].getHighlightSeries(), true);
+                    chart.graph.setSelection(chart.graph.getSelection(),
+                        chart.graph.getHighlightSeries(), true);
                 }
             };
-            chart["graph"].updateOptions({clickCallback: onclick}, true);
-            chart["graph"].setSelection(false, 'ClusterAverage', true);
-            chart["graphCreated"] = true;
+            chart.graph.updateOptions({clickCallback: onclick}, true);
+            chart.graph.setSelection(false, 'ClusterAverage', true);
+            chart.graphCreated = true;
         } else {
-            chart["graph"].updateOptions( {
-                file: chart["data"],
-                rollPeriod : self.initialStartWindow * 60 * 1000 / self.interval,
-                dateWindow : [new Date().getTime() - self.initialStartWindow * 60 * 1000, new Date().getTime()]
+            chart.graph.updateOptions( {
+                file: chart.data,
+                //rollPeriod : self.initialStartWindow * 60 * 1000 / self.interval,
+                dateWindow : [new Date().getTime() -
+                    self.initialStartWindow * 60 * 1000, new Date().getTime()]
             } );
         }
     },
@@ -421,7 +478,7 @@
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
                     var chart = self.series[group][figure][valueList];
-                    if (chart["type"] === "current" && chart["showGraph"] === true) {
+                    if (chart.type === "current" && chart.showGraph === true) {
                         self.createLineChart(chart, figure, figure, true);
                     }
                 });
@@ -446,7 +503,6 @@
             return;
         }
         this.isUpdating = true;
-        var self = this;
         this.timer = window.setInterval(function() {
                 self.collection.fetch({
                 success: function() {
@@ -460,10 +516,11 @@
 
                     });
                     if (Object.keys(self.detailChart).length === 0) {
-                       // self.createLineCharts();
+                        self.createLineCharts();
                         self.createDistributionCharts();
                     } else {
-                        self.createLineChart(self.detailChart["chart"], self.detailChart["figure"], self.detailChart["div"]);
+                        self.createLineChart(self.detailChart.chart,
+                            self.detailChart.figure, self.detailChart.div);
                     }
                 },
                  error: function() {
@@ -505,7 +562,7 @@
       _.each(this.description.attributes.figures, function(k, v) {
         if (k.identifier === name) {
           cuts = k.cuts;
-          if (cuts[0] != 0) {
+          if (cuts[0] !== 0) {
             cuts.unshift(0);
           }
         }
@@ -542,8 +599,8 @@
         }];
         nv.addGraph(function() {
           var chart = nv.models.multiBarHorizontalChart()
-          .x(function(d) { return d.label })
-          .y(function(d) { return d.value })
+          .x(function(d) { return d.label; })
+          .y(function(d) { return d.value; })
           //.margin({top: 30, right: 20, bottom: 50, left: 175})
           .margin({left: 80})
           .showValues(true)

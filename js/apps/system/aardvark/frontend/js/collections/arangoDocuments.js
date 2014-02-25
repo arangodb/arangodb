@@ -225,7 +225,6 @@
 
             var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time return u";
             var result = [];
-            console.log(JSON.stringify(myQueryVal));
             $.ajax({
                 cache: false,
                 type: 'POST',
@@ -236,6 +235,12 @@
                 success: function(data) {
 
                   result = result.concat(data.result);
+                  var callback = function(cursor) {
+                          if (cursor.hasMore === false) {
+                              data.hasMore = false;
+                          }
+                          result = result.concat(cursor.result);
+                      };
                   while(data.hasMore === true) {
                        $.ajax({
                            cache: false,
@@ -243,15 +248,8 @@
                            async: false,
                            url: '/_api/cursor/'+data.id,
                            contentType: "application/json",
-                           success: function(cursor) {
-                               if (cursor.hasMore === false) {
-                                   data.hasMore = false;
-                               }
-                               result = result.concat(cursor.result);
-                           },
-                           error: function(data) {
-                               console.log(data);
-                           }
+                           success:callback,
+                           error:null
                        });
                    }
                    self.history =  result;
