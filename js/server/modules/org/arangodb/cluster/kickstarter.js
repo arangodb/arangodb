@@ -51,7 +51,6 @@ var cleanupActions = {};
 var isHealthyActions = {};
 
 var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
-var getAddr = require("org/arangodb/cluster/planner").getAddr;
 var getPort = require("org/arangodb/cluster/planner").getPort;
 
 function encode (st) {
@@ -287,7 +286,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
 
   console.info("Waiting for servers to come to life...");
-  wait(20);
+  wait(15);
 
   return {"error": false, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
@@ -304,7 +303,7 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
     }
     wait(0.5);
   }
-  wait(5);
+  wait(3);
   console.info("Creating system collections...");
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
