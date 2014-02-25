@@ -166,8 +166,29 @@ function post_api_user (req, res) {
   if (json === undefined) {
     return;
   }
+ 
+  var user; 
+  if (req.suffix.length === 1) {
+    // validate if a combination or username / password is valid
+    user = decodeURIComponent(req.suffix[0]);
+    var result = users.isValid(user, json.passwd);
 
-  var user = json.user;
+    if (result) {
+      actions.resultOk(req, res, actions.HTTP_OK, { result: true });
+    }
+    else {
+      actions.resultNotFound(req, res, arangodb.errors.ERROR_USER_NOT_FOUND.code);
+    }
+    return;
+  }
+
+  if (req.suffix.length !== 0) {
+    // unexpected URL
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  user = json.user;
   if (user === undefined && json.hasOwnProperty("username")) {
     // deprecated usage
     user = json.username;

@@ -13,22 +13,20 @@
       <ul class="link-dropdown-menu" id="tools_dropdown">
         <li class="dropdown-header">Tools</li>
         <li class="dropdown-item">
-          <a id="shell" class="internalLink" href="#shell">JS Shell</a>
+          <a id="shell" class="tab" href="#shell">JS Shell</a>
         </li>
 
-                    <% if (isSystem) { %>
+        <% if (isSystem) { %>
+          <li class="dropdown-item">
+            <a id="logs" class="tab" href="#logs">Logs</a>
+          </li>
+        <% } %>
 
         <li class="dropdown-item">
-          <a id="logs" class="internalLink" href="#logs">Logs</a>
-        </li>
-
-                    <% } %>
-
-        <li class="dropdown-item">
-          <a id="api" class="internalLink" href="#api">API</a>
+          <a id="api" class="tab" href="#api">API</a>
         </li>
         <li class="dropdown-item">
-          <a id="userManagement" class="internalLink" href="#api">User Management</a>
+          <a id="userManagement" class="tab" href="#api">User Management</a>
         </li>
       </ul>
     </li>

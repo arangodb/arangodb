@@ -60,4 +60,8 @@ web interface.
 @anchor UserManagementReload
 @copydetails JSF_reloadUsers
 
+@CLEARPAGE
+@anchor UserManagementIsValid
+@copydetails JSF_isValidUsers
+
 @BNAVIGATE_DbaManualAuthentication

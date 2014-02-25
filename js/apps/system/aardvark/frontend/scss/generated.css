@@ -3,7 +3,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.tile a span.add-Icon {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span {
@@ -192,6 +192,8 @@ div.centralRow {
 
 div.centralContent {
   padding: 5px;
+  margin-left: -5px;
+  margin-right: -5px;
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.0675);
@@ -487,6 +489,8 @@ ul.navlist {
     background-color: #8aa051; }
   ul.navlist li.dropdown-item {
     margin-left: 0px; }
+    ul.navlist li.dropdown-item a {
+      display: block; }
 
 a.tab {
   padding-top: 9px;
@@ -562,6 +566,12 @@ li.tile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none; }
+  li.tile a span.add-Icon {
+    position: relative;
+    margin-left: 22px;
+    font-size: 22px;
+    margin-top: -5px;
+    margin-right: 10px; }
   li.tile h5 {
     font-size: 12px;
     white-space: nowrap !important;
@@ -614,6 +624,9 @@ li.tile {
           border-bottom-color: #8aa051; }
         li.tile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
+
+.searchField {
+  margin-left: 25px; }
 
 .collectionName {
   text-align: left;
@@ -827,7 +840,7 @@ select.filterSelect {
   margin-left: 10px !important; }
 
 .userMenuImg {
-  background-color: #333232;
+  background-color: lightgrey;
   border-radius: 3px;
   border: 2px solid #8AA051;
   margin-top: -4px; }
@@ -844,3 +857,11 @@ select.filterSelect {
   max-width: 160px;
   float: left;
   margin-right: 3px; }
+
+div img.searchSubmitIcon {
+  height: 14px;
+  margin-left: -18px;
+  margin-top: 11px;
+  opacity: 0.2;
+  position: absolute;
+  width: 14px; }

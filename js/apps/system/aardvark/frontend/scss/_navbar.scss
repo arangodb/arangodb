@@ -49,6 +49,10 @@ ul.navlist {
   }
   li.dropdown-item {
     margin-left: 0px;
+
+    a {
+      display: block;
+    }
   }
 }
 
