@@ -2129,6 +2129,33 @@ static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sleeps
+///
+/// @FUN{internal.sleep(@FA{seconds})}
+///
+/// Wait for @FA{seconds}, without calling the garbage collection.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sleep (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sleep(<seconds>)");
+  }
+
+  double n = TRI_ObjectToDouble(argv[0]);
+  double until = TRI_microtime() + n;
+
+  // TODO: use select etc. to wait until point in time
+  while (TRI_microtime() < until) {
+    usleep(10000);
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current time
 ///
 /// @FUN{internal.time()}
@@ -2145,7 +2172,8 @@ static v8::Handle<v8::Value> JS_Time (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current time
+/// @brief waits for the specified amount of time and calls the garbage
+/// collection.
 ///
 /// @FUN{internal.wait(@FA{seconds})}
 ///
@@ -3127,6 +3155,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SLEEP", JS_Sleep);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);

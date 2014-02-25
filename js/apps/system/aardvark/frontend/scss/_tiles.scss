@@ -19,6 +19,19 @@ li.tile {
   }
   @include box-shadow(none);
 
+  a {
+    span {
+      &.add-Icon {
+        @extend %pull-left;
+        position: relative;
+        margin-left: 22px;
+        font-size: 22px;
+        margin-top: -5px;
+        margin-right: 10px;
+      }
+    }
+  }
+
   h5 {
     font-size: 12px;
     white-space: nowrap !important;
@@ -105,6 +118,11 @@ li.tile {
   }
 }
 
+.searchField {
+ // @extend %pull-left;
+  margin-left: 25px;
+}
+
 .collectionName {
   text-align:left;
   font-weight: 300;
@@ -113,4 +131,3 @@ li.tile {
   left: 0px;
   right: 0px;
 }
-
