@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathHandler.h"
@@ -170,7 +170,7 @@ namespace triagens {
       }
 
       // check if we should use caching and this is an HTTP GET request
-      if (cacheMaxAge > 0 && 
+      if (cacheMaxAge > 0 &&
           _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
         // yes, then set a pro-caching header
         _response->setHeader("cache-control", strlen("cache-control"), maxAgeHeader);
@@ -196,7 +196,7 @@ namespace triagens {
           LOG_TRACE("unknown suffix '%s'", suffix.c_str());
         }
       }
-      
+
       _response->setContentType(contentType);
 
       return status_t(HANDLER_DONE);

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
@@ -42,46 +42,23 @@ using namespace std;
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-  
 const string RestVersionHandler::QUEUE_NAME           = "STANDARD";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler (HttpRequest* request)  
+RestVersionHandler::RestVersionHandler (HttpRequest* request)
   : RestBaseHandler(request) {
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -109,21 +86,21 @@ string const& RestVersionHandler::queue () const {
 /// @RESTQUERYPARAM{details,boolean,optional}
 /// If set to `true`, the response will contain a `details` attribute with
 /// additional information about included components and their versions. The
-/// attribute names and internals of the `details` object may vary depending on 
+/// attribute names and internals of the `details` object may vary depending on
 /// platform and ArangoDB version.
 ///
 /// @RESTDESCRIPTION
 /// Returns the server name and version number. The response is a JSON object
 /// with the following attributes:
-/// 
+///
 /// - `server`: will always contain `arango`
 ///
-/// - `version`: the server version string. The string has the format 
+/// - `version`: the server version string. The string has the format
 ///   "`major`.`minor`.`sub`". `major` and `minor` will be numeric, and `sub`
-///   may contain a number or a textual version. 
+///   may contain a number or a textual version.
 ///
 /// - `details`: an optional JSON object with additional details. This is
-///   returned only if the `details` URL parameter is set to `true` in the 
+///   returned only if the `details` URL parameter is set to `true` in the
 ///   request.
 ///
 /// @RESTRETURNCODES
@@ -184,10 +161,6 @@ HttpHandler::status_t RestVersionHandler::execute () {
 
   return status_t(HANDLER_DONE);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

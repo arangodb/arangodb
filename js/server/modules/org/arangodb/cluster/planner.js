@@ -38,7 +38,7 @@ var download = require("internal").download;
 
 var PlannerLocalDefaults = {
   "agencyPrefix"            : "meier",
-  "numberOfAgents"          : 1,
+  "numberOfAgents"          : 3,
   "numberOfDBservers"       : 2,
   "startSecondaries"        : false,
   "numberOfCoordinators"    : 1,

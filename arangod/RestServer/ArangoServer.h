@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
@@ -214,7 +214,7 @@ namespace triagens {
 /// @brief cluster application feature
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER        
+#ifdef TRI_ENABLE_CLUSTER
         triagens::arango::ApplicationCluster* _applicationCluster;
 #endif
 
@@ -289,9 +289,9 @@ namespace triagens {
 /// @CMDOPT{\--server.disable-authentication-unix-sockets @CA{value}}
 ///
 /// Setting @CA{value} to true will turn off authentication on the server side
-/// for requests coming in via UNIX domain sockets. With this flag enabled, 
-/// clients located on the same host as the ArangoDB server can use UNIX domain 
-/// sockets to connect to the server without authentication. 
+/// for requests coming in via UNIX domain sockets. With this flag enabled,
+/// clients located on the same host as the ArangoDB server can use UNIX domain
+/// sockets to connect to the server without authentication.
 /// Requests coming in by other means (e.g. TCP/IP) are not affected by this
 /// option.
 ///

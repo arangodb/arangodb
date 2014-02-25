@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Dispatcher.h"
@@ -101,11 +101,11 @@ bool Dispatcher::isRunning () {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name, 
+void Dispatcher::addQueue (std::string const& name,
                            size_t nrThreads,
                            size_t maxSize) {
   _queues[name] = new DispatcherQueue(
-    _scheduler, 
+    _scheduler,
     this,
     name,
     defaultDispatcherThread,
@@ -117,8 +117,8 @@ void Dispatcher::addQueue (std::string const& name,
 /// @brief adds a queue which given dispatcher thread type
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name, 
-                           newDispatcherThread_fptr func, 
+void Dispatcher::addQueue (std::string const& name,
+                           newDispatcherThread_fptr func,
                            size_t nrThreads,
                            size_t maxSize) {
   _queues[name] = new DispatcherQueue(
@@ -267,26 +267,6 @@ void Dispatcher::reportStatus () {
                 (int) q->_nrStopped,
                 (int) q->_nrSpecial,
                 (q->_monopolizer ? "yes" : "no"));
-/*
-      LOGGER_HEARTBEAT(
-         LoggerData::Task("dispatcher status")
-      << LoggerData::Extra(name)
-      << LoggerData::Extra("threads")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrThreads))
-      << LoggerData::Extra("started")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrStarted))
-      << LoggerData::Extra("running")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrRunning))
-      << LoggerData::Extra("waiting")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrWaiting))
-      << LoggerData::Extra("stopped")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrStopped))
-      << LoggerData::Extra("special")
-      << LoggerData::Extra(StringUtils::itoa(q->_nrSpecial))
-      << LoggerData::Extra("monopilizer")
-      << LoggerData::Extra((q->_monopolizer ? "1" : "0"))
-      << "dispatcher status");
-*/      
 #endif
       CONDITION_LOCKER(guard, q->_accessQueue);
 

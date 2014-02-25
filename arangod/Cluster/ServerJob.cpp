@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerJob.h"
@@ -57,7 +57,7 @@ using namespace triagens::rest;
 
 ServerJob::ServerJob (HeartbeatThread* heartbeat,
                       TRI_server_t* server,
-                      ApplicationV8* applicationV8) 
+                      ApplicationV8* applicationV8)
   : Job("HttpServerJob"),
     _heartbeat(heartbeat),
     _server(server),
@@ -134,7 +134,7 @@ bool ServerJob::execute () {
   }
 
   // get the pointer to the last used vocbase
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   void* orig = v8g->_vocbase;
 
   _applicationV8->exitContext(context);

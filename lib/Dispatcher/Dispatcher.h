@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_DISPATCHER_DISPATCHER_H
@@ -115,17 +115,17 @@ namespace triagens {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addQueue (std::string const&, 
-                       size_t, 
+        void addQueue (std::string const&,
+                       size_t,
                        size_t);
 
 /////////////////////////////////////////////////////////////////////////
 /// @brief adds a queue which given dispatcher thread type
 /////////////////////////////////////////////////////////////////////////
 
-        void addQueue (std::string const&, 
+        void addQueue (std::string const&,
                        newDispatcherThread_fptr,
-                       size_t, 
+                       size_t,
                        size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

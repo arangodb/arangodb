@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8SERVER_REQUEUE_TASK_H
-#define TRIAGENS_V8SERVER_REQUEUE_TASK_H 1
+#ifndef TRIAGENS_DISPATCHER_REQUEUE_TASK_H
+#define TRIAGENS_DISPATCHER_REQUEUE_TASK_H 1
 
 #include "Scheduler/TimerTask.h"
 

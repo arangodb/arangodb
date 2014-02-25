@@ -96,8 +96,6 @@ function routing (req, res) {
       func(req, res, action.route.callback.options, next);
     }
     catch (err) {
-      console.error("HERE 2");
-
       if (err instanceof internal.SleepAndRequeue) {
         throw err;
       }

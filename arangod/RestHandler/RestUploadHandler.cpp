@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUploadHandler.h"
@@ -43,11 +43,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,18 +57,9 @@ RestUploadHandler::RestUploadHandler (HttpRequest* request)
 RestUploadHandler::~RestUploadHandler () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -83,14 +69,14 @@ Handler::status_t RestUploadHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST) { 
+  if (type != HttpRequest::HTTP_REQUEST_POST) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return status_t(Handler::HANDLER_DONE);
   }
 
   char* filename = NULL;
-  
+
   if (TRI_GetTempName("uploads", &filename, false) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not generate temp file");
     return status_t(Handler::HANDLER_FAILED);
@@ -113,29 +99,25 @@ Handler::status_t RestUploadHandler::execute() {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not save file");
     return status_t(Handler::HANDLER_FAILED);
   }
-  
+
   char* fullName = TRI_Concatenate2File("uploads", relative);
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
- 
+
   // create the response
   _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
-  
+
   TRI_json_t json;
-    
+
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "filename", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, fullName));
-  
+
   generateResult(HttpResponse::CREATED, &json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
-    
+
   // success
   return status_t(Handler::HANDLER_DONE);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
