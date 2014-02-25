@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_ACTIONS_ACTIONS_H
@@ -48,9 +48,22 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief action result
 ////////////////////////////////////////////////////////////////////////////////
+
+class TRI_action_result_t {
+  public:
+    TRI_action_result_t ()
+      : isValid(false), response(0), requeue(false), sleep(0.0) {
+    }
+
+    bool isValid;
+
+    triagens::rest::HttpResponse* response;
+
+    bool requeue;
+    double sleep;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action descriptor
@@ -64,7 +77,7 @@ class TRI_action_t {
 
     virtual ~TRI_action_t () {}
 
-    virtual triagens::rest::HttpResponse* execute (struct TRI_vocbase_s*, triagens::rest::HttpRequest*) = 0;
+    virtual TRI_action_result_t execute (struct TRI_vocbase_s*, triagens::rest::HttpRequest*) = 0;
 
     std::string _type;
     std::string _url;
@@ -74,18 +87,9 @@ class TRI_action_t {
     std::set<std::string> _contexts;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
@@ -105,15 +109,11 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request);
 
 void TRI_CleanupActions ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-LINE
 // -----------------------------------------------------------------------------
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
@@ -41,21 +41,16 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request, 
+RestActionHandler::RestActionHandler (HttpRequest* request,
                                       action_options_t* data)
   : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
     _allowed(false) {
-  
+
   _action = TRI_LookupActionVocBase(request);
 
   // check if the action is allowed
@@ -83,18 +78,9 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -116,7 +102,9 @@ std::string const& RestActionHandler::queue () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestActionHandler::execute () {
+HttpHandler::status_t RestActionHandler::execute () {
+  TRI_action_result_t result;
+
   // need an action
   if (_action == 0) {
     generateNotImplemented(_request->requestPath());
@@ -142,51 +130,59 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_HEAD:
       case HttpRequest::HTTP_REQUEST_OPTIONS:
       case HttpRequest::HTTP_REQUEST_PATCH: {
-        executeAction();
+        result = executeAction();
         break;
       }
 
       default:
+        result.isValid = true;
         generateNotImplemented("METHOD");
         break;
     }
   }
 
-  // this handler is done
-  return HANDLER_DONE;
-}
+  // handler has finished, generate result
+  if (result.isValid) {
+    if (result.requeue) {
+      status_t status(HANDLER_REQUEUE);
+      status.sleep = result.sleep;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+      return status;
+    }
+    else {
+      return status_t(HANDLER_DONE);
+    }
+  }
+  else {
+    return status_t(HANDLER_FAILED);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::executeAction () {
-  _response = _action->execute(_vocbase, _request);
+TRI_action_result_t RestActionHandler::executeAction () {
+  TRI_action_result_t result = _action->execute(_vocbase, _request);
 
-  if (_response == 0) {
+  if (result.isValid) {
+    _response = result.response;
+  }
+  else {
+    result.isValid = true;
     generateNotImplemented(_action->_url);
-    return false;
   }
 
-  return (int) _response->responseCode() < 400;
+  return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
