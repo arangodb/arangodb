@@ -47,7 +47,7 @@ describe ArangoDB do
         iid = doc.parsed_response['id']
 
         cmd = api + "/by-example-hash"
-        body = "{ \"collection\" : \"#{@cn}\", \"index\" : \"#{iid}\", \"example\" : { \"j\" : 12 } }"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"j\" : 12 } }"
         doc = ArangoDB.log_put("#{prefix}-hash", cmd, :body => body)
 
         doc.code.should eq(404)
@@ -62,13 +62,11 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"i\" : 12 } }"
         doc = ArangoDB.log_put("#{prefix}-hash", cmd, :body => body)
    
-        doc.code.should eq(201)
+        doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(0)
-        doc.parsed_response['count'].should eq(0)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(1209)
       end
       
       it "finds the examples, unique index" do
