@@ -70,6 +70,14 @@ function encode (st) {
   return encodeURIComponent(st2);
 }
 
+function getAuthorizationHeader (username, passwd) {
+  return "Basic " + base64Encode(username + ":" + passwd);
+}
+
+function getAuthorization (dispatcher) {
+  return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
+}
+
 function sendToAgency (agencyURL, path, obj) {
   var res;
   var body;
@@ -294,10 +302,15 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
 launchActions.createSystemColls = function (dispatchers, cmd) {
   console.info("Waiting for coordinator to come up...");
+  
+  var hdrs = {
+    Authorization: getAuthorizationHeader("root", "") // default username and passwd
+  };
+
   var url = cmd.url + "/_api/version";
   var r;
   while (true) {
-    r = download(url);
+    r = download(url, "", { method: "GET", headers: hdrs });
     if (r.code === 200) {
       break;
     }
@@ -309,7 +322,7 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
              'return load("js/server/version-check.js");\n';
-  var o = { method: "POST", timeout: 90 };
+  var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   return r;
 };
@@ -501,9 +514,7 @@ Kickstarter.prototype.launch = function () {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -597,9 +608,7 @@ Kickstarter.prototype.relaunch = function () {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -682,9 +691,7 @@ Kickstarter.prototype.shutdown = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -762,9 +769,7 @@ Kickstarter.prototype.cleanup = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
@@ -843,9 +848,7 @@ Kickstarter.prototype.isHealthy = function() {
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
-        hdrs.Authorization = "Basic "+
-                        base64Encode(dispatchers[cmd.dispatcher].username+":"+
-                                     dispatchers[cmd.dispatcher].passwd);
+        hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
       }
       var response = download(url, body, {method: "POST", headers: hdrs, timeout: 90});
       if (response.code !== 200) {
