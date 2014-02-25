@@ -38,6 +38,7 @@ var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
+var SimpleQueryByCondition = sq.SimpleQueryByCondition;
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -153,6 +154,78 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
           break;
         case "bitarray":
           method = "by-example-bitarray";
+          break;
+      }
+    }
+
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/" + method, JSON.stringify(data));
+
+    arangosh.checkRequestResult(requestResult);
+
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+      this._countTotal = requestResult.count;
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                QUERY BY CONDITION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a query-by-condition
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryByCondition.prototype.execute = function (batchSize) {
+  if (this._execution === null) {
+    if (batchSize !== undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }  
+
+    var data = {
+      collection: this._collection.name(),
+      condition: this._condition
+    };
+
+    if (this._limit !== null) {
+      data.limit = this._limit;
+    }
+
+    if (this._skip !== null) {
+      data.skip = this._skip;
+    }
+    
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
+    }
+
+    var method = "by-condition";
+    if (this.hasOwnProperty("_type")) {
+      data.index = this._index;
+
+      switch (this._type) {
+        case "skiplist":
+          method = "by-condition-skiplist";
+          break;
+        case "bitarray":
+          method = "by-condition-bitarray";
           break;
       }
     }
@@ -443,6 +516,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryByCondition = SimpleQueryByCondition;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;

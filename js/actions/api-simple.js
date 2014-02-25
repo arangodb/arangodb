@@ -363,8 +363,8 @@ function setupIndexQueries () {
     "by-example-hash"       : [ "byExampleHash", true ],
     "by-example-skiplist"   : [ "byExampleSkiplist", true ],
     "by-example-bitarray"   : [ "byExampleBitarray", true ],
-    "by-condition-skiplist" : [ "BY_CONDITION_SKIPLIST", false ],
-    "by-condition-bitarray" : [ "BY_CONDITION_BITARRAY", false ]
+    "by-condition-skiplist" : [ "byConditionSkiplist", false ],
+    "by-condition-bitarray" : [ "byConditionBitarray", false ]
   };
 
   var m;
