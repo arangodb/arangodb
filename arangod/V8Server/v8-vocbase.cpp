@@ -3718,6 +3718,21 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                                         waitForSync,
                                                                         replicate); 
 
+#ifdef TRI_ENABLE_CLUSTER
+  // If we are compiled for cluster and are a coordinator, then we simply
+  // ignore the transaction semantics for now:
+  if (ServerState::instance()->isCoordinator()) {
+    v8::Handle<v8::Value> args = params;
+    v8::Handle<v8::Value> result = action->Call(current, 1, &args);
+    
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+
+    return scope.Close(result);
+  }
+#endif
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
