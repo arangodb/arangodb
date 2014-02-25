@@ -564,40 +564,100 @@ div.resizecontainer {
     font-size: 14px; } }
 @media (min-width: 6px) and (max-width: 247px) {
   div.resizecontainer {
-    width: 0px; } }
+    width: 0px; }
+
+  div.modalChartDetail {
+    width: 0px;
+    left: 50%;
+    margin-left: 0px; } }
 @media (min-width: 248px) and (max-width: 489px) {
   div.resizecontainer {
-    width: 242px; } }
+    width: 242px; }
+
+  div.modalChartDetail {
+    width: 242px;
+    left: 50%;
+    margin-left: -121px; } }
 @media (min-width: 490px) and (max-width: 731px) {
   div.resizecontainer {
-    width: 484px; } }
+    width: 484px; }
+
+  div.modalChartDetail {
+    width: 484px;
+    left: 50%;
+    margin-left: -242px; } }
 @media (min-width: 732px) and (max-width: 973px) {
   div.resizecontainer {
-    width: 726px; } }
+    width: 726px; }
+
+  div.modalChartDetail {
+    width: 726px;
+    left: 50%;
+    margin-left: -363px; } }
 @media (min-width: 974px) and (max-width: 1215px) {
   div.resizecontainer {
-    width: 968px; } }
+    width: 968px; }
+
+  div.modalChartDetail {
+    width: 968px;
+    left: 50%;
+    margin-left: -484px; } }
 @media (min-width: 1216px) and (max-width: 1457px) {
   div.resizecontainer {
-    width: 1210px; } }
+    width: 1210px; }
+
+  div.modalChartDetail {
+    width: 1210px;
+    left: 50%;
+    margin-left: -605px; } }
 @media (min-width: 1458px) and (max-width: 1699px) {
   div.resizecontainer {
-    width: 1452px; } }
+    width: 1452px; }
+
+  div.modalChartDetail {
+    width: 1452px;
+    left: 50%;
+    margin-left: -726px; } }
 @media (min-width: 1700px) and (max-width: 1941px) {
   div.resizecontainer {
-    width: 1694px; } }
+    width: 1694px; }
+
+  div.modalChartDetail {
+    width: 1694px;
+    left: 50%;
+    margin-left: -847px; } }
 @media (min-width: 1942px) and (max-width: 2183px) {
   div.resizecontainer {
-    width: 1936px; } }
+    width: 1936px; }
+
+  div.modalChartDetail {
+    width: 1936px;
+    left: 50%;
+    margin-left: -968px; } }
 @media (min-width: 2184px) and (max-width: 2425px) {
   div.resizecontainer {
-    width: 2178px; } }
+    width: 2178px; }
+
+  div.modalChartDetail {
+    width: 2178px;
+    left: 50%;
+    margin-left: -1089px; } }
 @media (min-width: 2426px) and (max-width: 2667px) {
   div.resizecontainer {
-    width: 2420px; } }
+    width: 2420px; }
+
+  div.modalChartDetail {
+    width: 2420px;
+    left: 50%;
+    margin-left: -1210px; } }
 @media (min-width: 2668px) and (max-width: 2909px) {
   div.resizecontainer {
-    width: 2662px; } }
+    width: 2662px; }
+
+  div.modalChartDetail {
+    width: 2662px;
+    left: 50%;
+    margin-left: -1331px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -868,7 +928,15 @@ select.filterSelect {
   height: 300px;
   border: 1px solid black; }
 
+#dashboardDetailedChart {
+  width: 100%;
+  height: 300px;
+  border: 1px solid black; }
+
 .dashboardChart {
+  width: 33%;
+  height: 300px;
+  border: 1px solid black;
   float: left; }
 
 .dashboardDistribution {
@@ -878,3 +946,8 @@ select.filterSelect {
 .dashboardDistribution svg {
   width: 250px;
   height: 220px; }
+
+.modalChartDetail {
+  height: 70%;
+  width: 70%;
+  margin-left: 0px; }
