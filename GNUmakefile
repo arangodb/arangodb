@@ -252,7 +252,7 @@ pack-winXX-cmake:
 ### @brief cmake build
 ################################################################################
 
-.PHONY: cmake-setpup
+.PHONY: cmake-setup
 
 cmake-setup:
 	test -d Build || mkdir Build
