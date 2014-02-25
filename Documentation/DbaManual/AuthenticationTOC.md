@@ -10,3 +10,4 @@ TOC {#DbaManualAuthenticationTOC}
     - @ref UserManagementReplace "users.replace"
     - @ref UserManagementRemove "users.remove"
     - @ref UserManagementReload "users.reload"
+    - @ref UserManagementIsValid "users.isValid"

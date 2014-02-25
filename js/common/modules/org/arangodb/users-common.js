@@ -474,6 +474,11 @@ exports.all = function () {
 /// @FUN{users.isvalid(@FA{user}, @FA{password})}
 ///
 /// Checks whether the given combination of username and password is valid.
+/// The function will return a boolean value if the combination of username
+/// and password is valid.
+///
+/// Each call to this function is penalized by the server sleeping a random 
+/// amount of time.
 ///
 /// Note: this function will not work from within the web interface
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,6 +493,9 @@ exports.isValid = function (user, password) {
 
   var salted = previous.password.substr(3, 8) + password;
   var hex = crypto.sha256(salted);
+
+  // penalize the call
+  internal.sleep(Math.random());
 
   return (previous.password.substr(12) === hex);
 };
