@@ -110,6 +110,9 @@ ArangoCollection.prototype.truncate = function () {
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
+    if (this.status() === ArangoCollection.STATUS_UNLOADED) {
+      this.load();
+    }
     var dbName = require("internal").db._name();
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
