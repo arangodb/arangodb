@@ -155,7 +155,8 @@ SimpleQueryAll.prototype.execute = function () {
      
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -504,7 +505,8 @@ SimpleQueryByExample.prototype.execute = function () {
       
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -666,7 +668,8 @@ SimpleQueryByCondition.prototype.execute = function () {
       
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -779,7 +782,8 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     }
     else if (skip < 0) {
       // apply negative skip
-      _documents = _documents.slice(_documents.length + skip, limit || 100000000);
+      var start = _documents.length + skip;
+      _documents = _documents.slice(start, start + (limit || 100000000));
     }
 
     documents = { 
