@@ -388,7 +388,7 @@ SHELL_COMMON = \
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-noncluster-compaction.js \
-               @top_srcdir@/js/server/tests/shell-transactions.js \
+               @top_srcdir@/js/server/tests/shell-noncluster-transactions.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/server/tests/shell-bitarray-index.js \
