@@ -3019,6 +3019,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
+  bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
   vector<string> shardKeys;
       
@@ -3035,12 +3036,19 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     if (p->Has(TRI_V8_SYMBOL("keyOptions")) && p->Get(TRI_V8_SYMBOL("keyOptions"))->IsObject()) {
       v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(p->Get(TRI_V8_SYMBOL("keyOptions")));
 
-      string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
-      if (type != "" && type != "traditional") {
-        // invalid key generator
-        TRI_V8_EXCEPTION_MESSAGE(scope, 
-                                 TRI_ERROR_CLUSTER_UNSUPPORTED, 
-                                 "non-traditional key generators are not supported for sharded collections");
+      if (o->Has(TRI_V8_SYMBOL("type"))) {
+        string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
+
+        if (type != "" && type != "traditional") {
+          // invalid key generator
+          TRI_V8_EXCEPTION_MESSAGE(scope, 
+                                   TRI_ERROR_CLUSTER_UNSUPPORTED, 
+                                   "non-traditional key generators are not supported for sharded collections");
+        }
+      }
+
+      if (o->Has(TRI_V8_SYMBOL("allowUserKeys"))) {
+        allowUserKeys = TRI_ObjectToBoolean(o->Get(TRI_V8_SYMBOL("allowUserKeys")));
       }
     }
 
@@ -3124,14 +3132,19 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
 
-  if (parameter._keyOptions != 0) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameter._keyOptions));
+  TRI_json_t* keyOptions = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (keyOptions != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
+
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions));
   }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
 
   TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (indexes == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
@@ -3172,9 +3185,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
 
   string errorMsg;
-  int myerrno = ci->createCollectionCoordinator( databaseName, cid, 
-                                                 numberOfShards, json,
-                                                 errorMsg, 240.0 );
+  int myerrno = ci->createCollectionCoordinator(databaseName, 
+                                                cid, 
+                                                numberOfShards, 
+                                                json,
+                                                errorMsg, 
+                                                240.0);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
