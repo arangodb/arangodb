@@ -706,27 +706,15 @@ function ClusterCrudDeleteSuite () {
 
     // remove by id
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old._id);
+    assertTrue(c.remove(old._id));
 
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
-    
     // remove by key
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old._key);
-    
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
+    assertTrue(c.remove(old._key));
     
     // remove by document
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old);
-    
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
+    assertTrue(c.remove(old));
     
     // remove by document, non-existing
     try {
@@ -767,27 +755,15 @@ function ClusterCrudDeleteSuite () {
 
     // remove by id
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old._id);
+    assertTrue(c.remove(old._id));
 
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
-    
     // remove by key
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old._key);
-    
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
+    assertTrue(c.remove(old._key));
     
     // remove by document
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.remove(old);
-    
-    assertEqual(old._id, doc._id);
-    assertEqual(old._key, doc._key);
-    assertEqual(old._rev, doc._rev);
+    assertTrue(c.remove(old));
     
     // remove by document, non-existing
     try {
