@@ -204,6 +204,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
                               ":" + basics::StringUtils::itoa(op->operationID) +
                               ":" + clientTransactionID + ":" +
                               basics::StringUtils::itoa(coordTransactionID);
+  (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();                              
 
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
@@ -317,9 +318,12 @@ ClusterCommResult* ClusterComm::syncRequest (
                                 connection->connection,
                                 endTime-currentTime, false);
       client->keepConnectionOnDestruction(true);
+ 
+      map<string, string> headersCopy(headerFields);
+      headersCopy.insert(make_pair(string("Authorization"), ServerState::instance()->getAuthentication())); 
 
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
-                                    headerFields);
+                                    headersCopy);
       if (! res->result->isComplete()) {
         cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
@@ -680,8 +684,9 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   map<string, string> headers = responseToSend->headers();
   headers["X-Arango-Coordinator"] = coordinatorHeader;
-  headers["X-Arango-Response-Code"] 
-    = responseToSend->responseString( responseToSend->responseCode());
+  headers["X-Arango-Response-Code"] = responseToSend->responseString(responseToSend->responseCode());
+  headers["Authorization"] = ServerState::instance()->getAuthentication();
+
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
@@ -718,8 +723,8 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 /// DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
                 
-string ClusterComm::processAnswer(string& coordinatorHeader,
-                                  triagens::rest::HttpRequest* answer) {
+string ClusterComm::processAnswer (string& coordinatorHeader,
+                                   triagens::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;

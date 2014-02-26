@@ -440,6 +440,8 @@ ArangoDatabase.prototype._flushCache = function () {
       var collection = this[name];
 
       if (collection instanceof this._collectionConstructor) {
+        // reset the collection status
+        collection._status = null;
         this[name] = undefined;
       }
     }
