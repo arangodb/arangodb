@@ -358,7 +358,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
-               @top_srcdir@/js/common/tests/shell-database.js \
+               @top_srcdir@/js/common/tests/shell-noncluster-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-download.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
@@ -387,8 +387,8 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
-               @top_srcdir@/js/server/tests/shell-compaction.js \
-               @top_srcdir@/js/server/tests/shell-transactions.js \
+               @top_srcdir@/js/server/tests/shell-noncluster-compaction.js \
+               @top_srcdir@/js/server/tests/shell-noncluster-transactions.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/server/tests/shell-bitarray-index.js \
