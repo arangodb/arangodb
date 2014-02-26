@@ -1355,7 +1355,7 @@ function put_api_collection (req, res) {
     put_api_collection_rotate(req, res, collection);
   }
   else {
-    actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
+    actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
                            "expecting one of the actions 'load', 'unload',"
                            + " 'truncate', 'properties', 'rename'");
   }
