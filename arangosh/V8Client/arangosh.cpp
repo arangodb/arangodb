@@ -1426,7 +1426,9 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   }
 
   TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
-  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
+  
+  // do not use TRI_AddGlobalVariableVocBase because it creates read-only variables!!
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
   // run tests
   char const* input = "require(\"jsunity\").runCommandLineTests();";
