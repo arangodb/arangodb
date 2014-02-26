@@ -299,17 +299,17 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "base64Decode(<value>)");
   }
 
-  string base64;
-
   try {
-    string value = TRI_ObjectToString(argv[0]);
-    base64 = StringUtils::decodeBase64(value);
+    string const value = TRI_ObjectToString(argv[0]);
+    string const base64 = StringUtils::decodeBase64(value);
+  
+    return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,17 +327,17 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "base64Encode(<value>)");
   }
 
-  string base64;
-
   try {
-    string value = TRI_ObjectToString(argv[0]);
-    base64 = StringUtils::encodeBase64(value);
+    string const value = TRI_ObjectToString(argv[0]);
+    string const base64 = StringUtils::encodeBase64(value);
+  
+    return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
