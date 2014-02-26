@@ -31,7 +31,7 @@
 CLEANUP_3RD += clean-etcd
 
 clean-etcd:
-	cd @top_srcdir@/3rdParty/etcd && rm -rf bin pkg src
+	cd @top_srcdir@/3rdParty/etcd && ./clean
 	rm -f @top_srcdir@/bin/etcd
 
 ## -----------------------------------------------------------------------------
