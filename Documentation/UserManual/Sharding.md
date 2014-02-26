@@ -266,6 +266,7 @@ The following does not yet work:
   - db.<collection>.rename() not implemented
   - db.<collection>.checksum() is currently unsupported for sharded
     collections
+  - automatic creation of collections on db._save(ID) not supported
 
 
 Recommended firewall setup
