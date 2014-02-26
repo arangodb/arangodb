@@ -49,6 +49,7 @@
         result = {},
         starter,
         i,
+        tmp,
         planner;
 
     if (input.type === "testSetup") {
@@ -63,7 +64,8 @@
       planner = new cluster.Planner(config);
       result.plan = planner.getPlan();
       starter = new cluster.Kickstarter(planner.getPlan());
-      result.runInfo = starter.launch();
+      tmp = starter.launch();
+      result.runInfo = tmp.runInfo;
       res.json(result);
     } else {
       i = 0;
@@ -90,9 +92,17 @@
       planner = new cluster.Planner(config);
       result.plan = planner.getPlan();
       starter = new cluster.Kickstarter(planner.getPlan());
-      result.runInfo = starter.launch();
+      tmp = starter.launch();
+      result.runInfo = tmp.runInfo;
       res.json(result);
     }
+  });
+
+  controller.post("/healthcheck", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    res.json(k.isHealthy());
   });
 
   controller.post("/shutdown", function(req, res) {
@@ -101,7 +111,7 @@
     k.runInfo = input.runInfo;
     var shutdownInfo = k.shutdown();
     if (shutdownInfo.error) {
-      res.json("Unable to shutdown cluster");
+      res.json(shutdownInfo.results);
       res.status(409);
     }
   });

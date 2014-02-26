@@ -22,7 +22,7 @@ rspec -I . --color --format d \
 	api-edge-noncluster-spec.rb \
 	api-edges-spec.rb \
 	api-graph-spec.rb \
-	api-import-spec.rb \
+	api-import-noncluster-spec.rb \
 	api-index-spec.rb \
 	api-index-bitarray-spec.rb \
 	api-index-hash-spec.rb \
