@@ -1537,6 +1537,106 @@ If no bounds are set, a traversal might run into an endless loop in a cyclic gra
 and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
 time and memory for the result set.
 
+- @FN{SHORTEST_PATH(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{endVertex}, @FA{direction}, @FA{options})}: 
+  determines the first shortest path from the @FA{startVertex} to the @FA{endVertex}.
+  Both vertices must be present in the vertex collection specified in @FA{vertexcollection},
+  and any connecting edges must be present in the collection specified by @FA{edgecollection}.
+  Vertex connectivity is specified by the @FA{direction} parameter:
+  - `"outbound"`: vertices are connected in `_from` to `_to` order
+  - `"inbound"`: vertices are connected in `_to` to `_from` order
+  - `"any"`: vertices are connected in both `_to` to `_from` and in 
+    `_from` to `_to` order
+  The search is aborted when a shortest path is found. Only the first shortest path will be
+  returned. Any vertex will be visited at most once by the search.
+
+  Additional options for the traversal can be provided via the @FA{options} document:
+  - `maxIterations`: Maximum number of iterations in the search. This number can be
+    set to bound long-running searches. When a search performs as many iterations as the 
+    `maxIterations` value, the search will abort with an error. If `maxIterations` is not 
+    set, a server-defined value may be used.
+  - `paths`: if `true`, the result will not only contain the vertices along the shortest
+    path, but also the connecting edges. If `false`, only the encountered vertices will 
+    be returned.
+  - `distance`: an optional custom function to be used when calculating the distance 
+    between a vertex and a neighboring vertex. The expected function signature is:
+
+        function (config, vertex1, vertex2, edge)
+
+    Both vertices and the connecting edge will be passed into the function. The function
+    is expected to return a numeric value that expresses the distance between the two
+    vertices. Higher values will mean higher distances, giving the connection a lower
+    priority in further analysis.
+    If no custom distance function is specified, all vertices are assumed to have the
+    same distance (1) to each other. If a function name is specified, it must have been
+    registered as a regular user-defined AQL function.
+
+  - `followEdges`: an optional list of example edge documents that the search will
+    expand into. If no examples are given, the search will follow all edges. If one
+    or many edge examples are given, the search will only follow an edge if it matches
+    at least one of the specified examples. `followEdges` can also be a string with the
+    name of an AQL user-defined function that should be responsible for checking if an
+    edge should be followed. In this case, the AQL function will is expected to have the
+    following signature:
+
+        function (config, vertex, edge, path)
+
+    The function is expected to return a boolean value. If ìt returns `true`, the edge
+    will be followed. If `false` is returned, the edge will be ignored.
+
+  - `filterVertices`: an optional list of example vertex documents that the search will
+    treat specially. If no examples are given, the search will handle all encountered
+    vertices equally. If one or many vertex examples are given, the search will exclude
+    the vertex from the result and/or not descend into it. Optionally, `filterVertices` can 
+    contain the name of a user-defined AQL function that should be responsible for filtering.
+    If so, the AQL function is expected to have the following signature:
+
+        function (config, vertex, path)
+
+    If a custom AQL function is used, it is expected to return one of the following values:
+    - `[ ]`: include the vertex in the result and descend into its connected edges
+    - `[ "prune" ]`: will include the vertex in the result but not descend into its connected edges
+    - `[ "exclude" ]`: will not include the vertex in the result but descend into its connected edges
+    - `[ "prune", "exclude" ]`: will completely ignore the vertex and its connected edges
+
+  The result of the SHORTEST_PATH function is a list with the components of the shortest
+  path. Each component is a document consisting of the following attributes:
+  - `vertex`: the vertex at the traversal point
+  - `path`: The path history for the traversal point. The path is a document with the
+    attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
+    in the result if the `paths` attribute is set in the @FA{options}. 
+
+Example calls:
+
+    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+      paths: true
+    })
+
+    // using a user-defined distance function
+    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+      paths: true,
+      distance: "myfunctions::citydistance"
+    })
+
+    // using a user-defined function to filter edges
+    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+      paths: true,
+      followEdges: "myfunctions::checkedge"
+    })
+
+    // to register a custom AQL distance function, execute something in the fashion of the 
+    // following commands in arangosh once: 
+    var aqlfunctions = require("org/arangodb/aql/functions");
+
+    // this is the actual distance function
+    aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+      return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+    }, false);
+
+    // this is the filter function for the edges
+    aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+      return (edge.underConstruction === false); // don't follow these edges
+    }, false);
+
 - @FN{EDGES(@FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
   return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
   @FA{direction} are:
