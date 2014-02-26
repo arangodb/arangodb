@@ -7204,6 +7204,8 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// If renaming fails for any reason, an error is thrown.
 ///
+/// Note: this method is not available in a cluster.
+///
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-rename
@@ -7216,7 +7218,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "rename(<name>)");
   }
 
-  string name = TRI_ObjectToString(argv[0]);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
+
+  string const name = TRI_ObjectToString(argv[0]);
 
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
@@ -7417,10 +7426,19 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// read-only datafile). The purpose of the rotation is to include the
 /// datafile in a following compaction run and perform earlier garbage 
 /// collection.
+///
+/// Note: this method is not available in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
