@@ -82,7 +82,7 @@ function sendToAgency (agencyURL, path, obj) {
       res = download(agencyURL+path,body,
           {"method":"PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-      if (res.code === 201) {
+      if (res.code === 201 || res.code === 200) {
         return true;
       }
     }
@@ -109,7 +109,7 @@ function sendToAgency (agencyURL, path, obj) {
     res = download(agencyURL+path,body,
           {"method": "PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-    if (res.code === 201) {
+    if (res.code === 201 || res.code === 200) {
       return true;
     }
   }
