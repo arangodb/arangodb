@@ -358,6 +358,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
+               @top_srcdir@/js/common/tests/shell-noncluster-collection.js \
                @top_srcdir@/js/common/tests/shell-noncluster-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-download.js \
