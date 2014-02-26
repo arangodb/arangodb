@@ -65,14 +65,16 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _dispatcher(dispatcher),
     _applicationV8(applicationV8),
     _heartbeat(0),
-    _disableHeartbeat(false),
     _heartbeatInterval(0),
     _agencyEndpoints(),
     _agencyPrefix(),
     _myId(),
     _myAddress(),
+    _myExecutablePath(executablePath),
+    _username("root"),
+    _password(),
     _enableCluster(false),
-    _myExecutablePath(executablePath) {
+    _disableHeartbeat(false) {
 
   assert(_dispatcher != 0);
 }
@@ -102,6 +104,8 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
     ("cluster.my-id", &_myId, "this server's id")
     ("cluster.my-address", &_myAddress, "this server's endpoint")
+    ("cluster.username", &_username, "username used for cluster-internal communication")
+    ("cluster.password", &_password, "password used for cluster-internal communication")
   ;
 }
 
@@ -169,6 +173,10 @@ bool ApplicationCluster::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::start () {
+  // set authentication data
+  ServerState::instance()->setAuthentication(_username, _password);
+  // overwrite memory area
+  _username = _password = "someotherusername";
 
   // Some information about ourselves eventually used by dispatcher in cluster:
   int err = 0;

@@ -362,7 +362,7 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, false);
   TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
-
+    
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   return true;
@@ -464,6 +464,11 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
   void** beg;
   void** end;
   void** ptr;
+
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // do not flush coordinator databases
+    return;
+  }
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
