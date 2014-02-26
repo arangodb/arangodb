@@ -38,6 +38,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "V8/v8-globals.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -358,6 +359,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
+  
+        if (vocbase != 0 &&
+            name == TRI_VOC_SYSTEM_DATABASE) {
+          // insert initial user for system database
+          TRI_InsertInitialAuthInfo(vocbase);
+        }
       }
       else {
         TRI_ReleaseVocBase(vocbase);

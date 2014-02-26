@@ -17,6 +17,17 @@
   </div>
 
   <legend class="gv_inner">The following ArangoDBs have been started</legend>
+    <div class="control-group">
+      <label class="control-label">Cluster Overview</label>
+      <div class="controls">
+        <%
+          var first = roles.indexOf("Coordinator");
+          if (first > -1) {
+        %>
+          <a target="_blank" href="<%=endpoints[first]%>/_db/_system/_admin/aardvark/cluster.html">Cluster Overview</a>
+        <% } %>
+      </div>
+    </div>
   <% for(var i = 0; i < endpoints.length; ++i) { %>
     <div class="control-group">
       <label for="host" class="control-label"><%= roles[i] %>:</label>
@@ -24,7 +35,7 @@
         <% if(roles[i] === "DBserver") { %>
           <span><%= endpoints[i] %></span>
         <% } else { %>
-          <a href="<%='http://' + endpoints[i].substr(6)%>"><%= endpoints[i] %></a>
+          <a target="_blank" href="<%=endpoints[i]%>"><%= endpoints[i] %></a>
         <% } %>
       </div>
     </div>

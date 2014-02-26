@@ -13,6 +13,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   url: "/_api/user",
 
+  comparator : function(obj) {
+    return obj.get("user").toLowerCase();
+  },
+
   initialize: function() {
     //check cookies / local storage
   },
