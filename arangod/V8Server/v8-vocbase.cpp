@@ -6222,7 +6222,19 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
   v8::HandleScope scope;
 
   string const databaseName(collection->_dbName);
+  string const collectionName(collection->_name);
   string const cid = StringUtils::itoa(collection->_cid);
+  
+  char const* name = collectionName.c_str();
+  if (TRI_IsSystemNameCollection(name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(name, TRI_COL_NAME_USERS) ||
+        TRI_EqualString(name, TRI_COL_NAME_STATISTICS)) {
+      TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
+    }
+  }
   
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
