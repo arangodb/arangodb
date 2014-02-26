@@ -1,6 +1,29 @@
 v1.4.11 (XXXX-XX-XX)
 --------------------
 
+* added SHORTEST_PATH AQL function 
+
+  this calculates the shortest paths between two vertices, using the Dijkstra
+  algorithm, employing a min-heap
+
+  By default, ArangoDB does not know the distance between any two vertices and
+  will use a default distance of 1. A custom distance function can be registered
+  as an AQL user function to make the distance calculation use any document 
+  attributes or custom logic:
+    
+      RETURN SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        distance: "myfunctions::citydistance"
+      }) 
+
+      // using the following custom distance function
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+      }, false);
+
+* fixed bug in Graph.pathTo function
+
 * fixed small memleak in AQL optimiser
 
 * fixed access to potentially uninitialised variable when collection had a cap constraint
