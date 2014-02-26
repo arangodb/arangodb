@@ -193,35 +193,27 @@ function SimpleQueryAllSkipLimitSuite () {
 
     testAllSkip : function () {
       var n = collection.all().skip(0).toArray().map(num);
-
       assertEqual(n, numbers);
 
       n = collection.all().skip(1).toArray().map(num);
-
       assertEqual(n, numbers.slice(1,10));
 
       n = collection.all().skip(2).toArray().map(num);
-
       assertEqual(n, numbers.slice(2,10));
 
       n = collection.all().skip(1).skip(1).toArray().map(num);
-
       assertEqual(n, numbers.slice(2,10));
 
       n = collection.all().skip(10).toArray().map(num);
-      
       assertEqual(n, []);
 
       n = collection.all().skip(11).toArray().map(num);
-
       assertEqual(n, []);
 
       n = collection.all().skip(9).toArray().map(num);
-
       assertEqual(n, [numbers[9]]);
 
       n = collection.all().skip(9).skip(1).toArray().map(num);
-
       assertEqual(n, []);
     },
 
@@ -231,15 +223,12 @@ function SimpleQueryAllSkipLimitSuite () {
 
     testAllLimit : function () {
       var n = collection.all().limit(10).toArray().map(num);
-
       assertEqual(n, numbers);
 
       n = collection.all().limit(9).toArray().map(num);
-
       assertEqual(n, numbers.slice(0,9));
 
       n = collection.all().limit(9).limit(8).limit(7).toArray().map(num);
-
       assertEqual(n, numbers.slice(0,7));
     },
 
@@ -249,32 +238,25 @@ function SimpleQueryAllSkipLimitSuite () {
 
     testAllSkipLimit : function () {
       var n = collection.all().skip(0).limit(10).toArray().map(num);
-
       assertEqual(n, numbers);
 
       n = collection.all().limit(10).skip(0).toArray().map(num);
-
       assertEqual(n, numbers);
 
       n = collection.all().limit(9).skip(1).toArray().map(num);
-
-      assertEqual(n, numbers.slice(1,9));
+      assertEqual(n, numbers.slice(1, 9));
 
       n = collection.all().limit(9).skip(1).limit(7).toArray().map(num);
-
-      assertEqual(n, numbers.slice(1,8));
+      assertEqual(n, numbers.slice(1, 8));
 
       n = collection.all().skip(-5).limit(3).toArray().map(num);
-
-      assertEqual(n, numbers.slice(5,8));
+      assertEqual(n, numbers.slice(5, 8));
 
       n = collection.all().skip(-8).limit(7).skip(1).limit(4).toArray().map(num);
-
-      assertEqual(n, numbers.slice(3,7));
+      assertEqual(n, numbers.slice(3, 7));
 
       n = collection.all().skip(-10).limit(9).skip(1).limit(7).toArray().map(num);
-
-      assertEqual(n, numbers.slice(1,8));
+      assertEqual(n, numbers.slice(1, 8));
     }
   };
 }
