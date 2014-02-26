@@ -304,7 +304,7 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global variable to the given context
+/// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,

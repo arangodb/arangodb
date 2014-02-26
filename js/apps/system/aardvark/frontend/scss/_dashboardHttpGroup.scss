@@ -4,6 +4,15 @@
   border: 1px solid black;
 }
 
+#dashboardDetailedChart {
+  width: 100%;
+  height: 300px;
+  border: 1px solid black;
+}
+
 .dashboardChart {
+  width: 33%;
+  height: 300px;
+  border: 1px solid $c_black;
   float: left;
 }

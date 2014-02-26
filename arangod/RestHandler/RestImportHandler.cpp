@@ -75,6 +75,13 @@ RestImportHandler::RestImportHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestImportHandler::execute () {
+  if (ServerState::instance()->isCoordinator()) {
+    generateError(HttpResponse::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "'/_api/import' is not yet supported in a cluster");
+    return status_t(HANDLER_DONE);
+  }
+
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -82,7 +89,7 @@ HttpHandler::status_t RestImportHandler::execute () {
     case HttpRequest::HTTP_REQUEST_POST: {
       // extract the import type
       bool found;
-      string documentType = _request->value("type", found);
+      string const documentType = _request->value("type", found);
 
       if (found && 
           (documentType == "documents" ||

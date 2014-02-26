@@ -49,6 +49,7 @@
         result = {},
         starter,
         i,
+        tmp,
         planner;
 
     if (input.type === "testSetup") {
@@ -63,7 +64,8 @@
       planner = new cluster.Planner(config);
       result.plan = planner.getPlan();
       starter = new cluster.Kickstarter(planner.getPlan());
-      result.runInfo = starter.launch();
+      tmp = starter.launch();
+      result.runInfo = tmp.runInfo;
       res.json(result);
     } else {
       i = 0;
@@ -90,9 +92,57 @@
       planner = new cluster.Planner(config);
       result.plan = planner.getPlan();
       starter = new cluster.Kickstarter(planner.getPlan());
-      result.runInfo = starter.launch();
+      tmp = starter.launch();
+      result.runInfo = tmp.runInfo;
       res.json(result);
     }
+  });
+
+  controller.post("/healthcheck", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    res.json(k.isHealthy());
+  });
+
+  controller.post("/shutdown", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    var shutdownInfo = k.shutdown();
+    if (shutdownInfo.error) {
+      res.json(shutdownInfo.results);
+      res.status(409);
+    }
+  });
+
+  controller.post("/cleanup", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    k.runInfo = input.runInfo;
+    var shutdownInfo = k.shutdown();
+    if (shutdownInfo.error) {
+      res.json("Unable to shutdown cluster");
+      res.status(409);
+      return;
+    }
+    k.cleanup();
+  });
+
+  controller.post("/relaunch", function(req, res) {
+    var input = req.body();
+    var k = new cluster.Kickstarter(input.plan);
+    var r = k.relaunch();
+    if (r.error) {
+      res.json("Unable to relaunch cluster");
+      res.status(409);
+      return;
+    }
+    res.json({
+      config: input.config,
+      plan: r.plan,
+      runInfo: r.runInfo
+    });
   });
 
   // FAKE TO BE REMOVED TODO 

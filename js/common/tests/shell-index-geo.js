@@ -80,28 +80,28 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(false, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("loc");
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(false, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("loc", true);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(true, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -109,10 +109,10 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(true, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,28 +125,28 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(true, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("loc", true);
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(true, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("loc", false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(false, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -154,10 +154,10 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(false, idx.constraint);
-      assertEqual(false, idx.geoJson);
+      assertFalse(idx.constraint);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,17 +170,17 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo2", idx.type);
-      assertEqual(false, idx.constraint);
+      assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoIndex("lat", "lon");
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(false, idx.constraint);
+      assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -188,9 +188,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(false, idx.constraint);
+      assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,31 +203,31 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", false);
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", true, false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -235,11 +235,11 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,31 +252,31 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", true, false);
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", false, false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -284,11 +284,11 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,19 +301,19 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("lat", "lon", false);
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -321,10 +321,10 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,31 +337,31 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", true);
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", true, true);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -369,21 +369,21 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -391,11 +391,11 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,31 +408,31 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", true, true);
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(true, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", false, true);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -440,11 +440,11 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
-      assertEqual(false, idx.geoJson);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,19 +457,19 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("lat", "lon", true);
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -477,19 +477,19 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(true, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertTrue(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("lat", "lon", false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       collection.unload();
 
@@ -497,10 +497,10 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertEqual(true, idx.constraint);
-      assertEqual(false, idx.ignoreNull);
+      assertTrue(idx.constraint);
+      assertFalse(idx.ignoreNull);
       assertEqual(["lat", "lon"], idx.fields);
-      assertEqual(false, idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
     }
   };
 }

@@ -3,13 +3,13 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon, .scenarioMachine {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
-ul.tileList:after, div.resizecontainer:after {
+ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSingleMachine:after {
   clear: both;
   content: ".";
   display: block;
@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after {
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -474,6 +474,12 @@ li.tile, li.bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none; }
+  li.tile a span.add-Icon, li.bigtile a span.add-Icon {
+    position: relative;
+    margin-left: 22px;
+    font-size: 22px;
+    margin-top: -5px;
+    margin-right: 10px; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
@@ -527,6 +533,9 @@ li.tile, li.bigtile {
         li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
+.searchField {
+  margin-left: 25px; }
+
 .collectionName {
   text-align: left;
   font-weight: 300;
@@ -564,40 +573,100 @@ div.resizecontainer {
     font-size: 14px; } }
 @media (min-width: 6px) and (max-width: 247px) {
   div.resizecontainer {
-    width: 0px; } }
+    width: 0px; }
+
+  div.modalChartDetail {
+    width: 0px;
+    left: 50%;
+    margin-left: 0px; } }
 @media (min-width: 248px) and (max-width: 489px) {
   div.resizecontainer {
-    width: 242px; } }
+    width: 242px; }
+
+  div.modalChartDetail {
+    width: 242px;
+    left: 50%;
+    margin-left: -121px; } }
 @media (min-width: 490px) and (max-width: 731px) {
   div.resizecontainer {
-    width: 484px; } }
+    width: 484px; }
+
+  div.modalChartDetail {
+    width: 484px;
+    left: 50%;
+    margin-left: -242px; } }
 @media (min-width: 732px) and (max-width: 973px) {
   div.resizecontainer {
-    width: 726px; } }
+    width: 726px; }
+
+  div.modalChartDetail {
+    width: 726px;
+    left: 50%;
+    margin-left: -363px; } }
 @media (min-width: 974px) and (max-width: 1215px) {
   div.resizecontainer {
-    width: 968px; } }
+    width: 968px; }
+
+  div.modalChartDetail {
+    width: 968px;
+    left: 50%;
+    margin-left: -484px; } }
 @media (min-width: 1216px) and (max-width: 1457px) {
   div.resizecontainer {
-    width: 1210px; } }
+    width: 1210px; }
+
+  div.modalChartDetail {
+    width: 1210px;
+    left: 50%;
+    margin-left: -605px; } }
 @media (min-width: 1458px) and (max-width: 1699px) {
   div.resizecontainer {
-    width: 1452px; } }
+    width: 1452px; }
+
+  div.modalChartDetail {
+    width: 1452px;
+    left: 50%;
+    margin-left: -726px; } }
 @media (min-width: 1700px) and (max-width: 1941px) {
   div.resizecontainer {
-    width: 1694px; } }
+    width: 1694px; }
+
+  div.modalChartDetail {
+    width: 1694px;
+    left: 50%;
+    margin-left: -847px; } }
 @media (min-width: 1942px) and (max-width: 2183px) {
   div.resizecontainer {
-    width: 1936px; } }
+    width: 1936px; }
+
+  div.modalChartDetail {
+    width: 1936px;
+    left: 50%;
+    margin-left: -968px; } }
 @media (min-width: 2184px) and (max-width: 2425px) {
   div.resizecontainer {
-    width: 2178px; } }
+    width: 2178px; }
+
+  div.modalChartDetail {
+    width: 2178px;
+    left: 50%;
+    margin-left: -1089px; } }
 @media (min-width: 2426px) and (max-width: 2667px) {
   div.resizecontainer {
-    width: 2420px; } }
+    width: 2420px; }
+
+  div.modalChartDetail {
+    width: 2420px;
+    left: 50%;
+    margin-left: -1210px; } }
 @media (min-width: 2668px) and (max-width: 2909px) {
   div.resizecontainer {
-    width: 2662px; } }
+    width: 2662px; }
+
+  div.modalChartDetail {
+    width: 2662px;
+    left: 50%;
+    margin-left: -1331px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -638,6 +707,134 @@ div.centralContent {
 .clusterInfoIcon {
   font-size: 30px; }
 
-.scenarioImage {
-  height: 70%;
+div.headerDropdown {
+  background-color: white;
+  position: relative;
+  display: none;
+  padding: 10px;
   width: auto; }
+  div.headerDropdown > div.dropdownInner {
+    position: relative;
+    min-height: 125px;
+    width: auto;
+    box-shadow: 0; }
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle; }
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+      background-position: 0 -15px; }
+
+div.queryline {
+  color: black;
+  height: 35px; }
+  div.queryline select, div.queryline input {
+    margin-bottom: 5px; }
+  div.queryline.querylineAdd span {
+    position: relative;
+    top: -21px;
+    color: white;
+    padding-left: 10px; }
+  div.queryline .removeFilterItem i {
+    margin-top: 0px !important;
+    margin-left: 5px !important; }
+  div.queryline div.searchByAttribute {
+    position: relative; }
+    div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
+      position: absolute;
+      border-radius: 0px;
+      top: 20px;
+      left: 0px;
+      width: 247px;
+      background-color: #333232;
+      color: white;
+      display: none; }
+
+div.dropdownImport {
+  display: none;
+  background-color: white;
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  position: relative; }
+  div.dropdownImport input {
+    line-height: 0px;
+    margin-top: 5px;
+    margin-bottom: -15px; }
+
+select.filterSelect {
+  width: 100px;
+  margin-left: 10px;
+  margin-right: 10px; }
+
+#filterHeader button {
+  float: right;
+  margin-top: 1px;
+  margin-left: 10px !important; }
+
+.machineClass {
+  padding: 10px;
+  float: left;
+  background-color: #E1E1E1;
+  width: 311px;
+  height: 175px;
+  margin-left: 8px; }
+
+.scenarioBox {
+  position: absolute;
+  margin-top: 10px;
+  width: auto;
+  height: 65px;
+  left: 10px;
+  right: 10px;
+  -moz-border-radius: 3px 3px 0 0;
+  -webkit-border-radius: 3px 3px 0 0;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioBox.bottomBox {
+    bottom: 10px; }
+
+.scenarioBoxHeader {
+  width: auto;
+  height: 5px;
+  line-height: 5px;
+  text-align: right;
+  margin-top: -5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.19); }
+
+.scenarioBoxText {
+  width: auto;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 17px; }
+
+.scenarioMachine {
+  position: relative;
+  margin-right: 20px;
+  height: 177px;
+  width: 87px;
+  -moz-border-radius: 3px 3px 0 0;
+  -webkit-border-radius: 3px 3px 0 0;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioMachine:last-child {
+    margin-right: 0px; }
+
+.scenarioSingleMachine {
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioSingleMachine .scenarioMachine {
+    border: 1px solid transparent; }

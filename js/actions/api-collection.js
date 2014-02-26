@@ -750,6 +750,8 @@ function get_api_collections (req, res) {
 ///
 /// - `revision`: The collection revision id as a string.
 ///
+/// Note: this method is not available in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
@@ -1300,6 +1302,8 @@ function put_api_collection_rename (req, res, collection) {
 /// If returns an object with the attributes
 ///
 /// - `result`: will be `true` if rotation succeeded
+///
+/// Note: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///

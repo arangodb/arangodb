@@ -358,6 +358,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
+               @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-download.js \
@@ -367,6 +368,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                @top_srcdir@/js/common/tests/shell-keygen.js \
+               @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
                @top_srcdir@/js/common/tests/shell-index-ensure.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
@@ -387,12 +389,12 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
-               @top_srcdir@/js/server/tests/shell-compaction.js \
-               @top_srcdir@/js/server/tests/shell-transactions.js \
+               @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/server/tests/shell-bitarray-index.js \
-               @top_srcdir@/js/server/tests/shell-database.js \
+               @top_srcdir@/js/server/tests/shell-database-noncluster.js \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \

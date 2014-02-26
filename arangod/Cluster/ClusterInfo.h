@@ -189,6 +189,20 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection allows user-defined keys
+////////////////////////////////////////////////////////////////////////////////
+
+        bool allowUserKeys () const {
+          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
+
+          if (keyOptions != 0) {
+            return triagens::basics::JsonHelper::getBooleanValue(keyOptions, "allowUserKeys", true);
+          }
+
+          return true; // the default value
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the waitforsync flag
 ////////////////////////////////////////////////////////////////////////////////
 
