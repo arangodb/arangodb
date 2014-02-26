@@ -304,6 +304,10 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
         TRI_EqualString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       c->_canDrop   = false;
+      c->_canRename = false;
+      
+      // the replication collection cannot be unloaded manually)
+      // (this would make the server hang)
       c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
     }
   }
@@ -6248,8 +6252,10 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
+
+  collection->_status = TRI_VOC_COL_STATUS_DELETED;
   
-  return scope.Close(v8::True());
+  return scope.Close(v8::Undefined());
 }
 #endif
 
@@ -7826,6 +7832,10 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName, 
                                         StringUtils::itoa(collection->_cid));
+
+    if ((*ci).empty()) {
+      return scope.Close(v8::Number::New((int) TRI_VOC_COL_STATUS_DELETED));
+    }
     return scope.Close(v8::Number::New((int) ci->status()));
   } 
   // fallthru intentional 
@@ -7947,6 +7957,10 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName,
                                       StringUtils::itoa(collection->_cid));
+   
+    if ((*ci).empty()) {
+      return scope.Close(v8::Number::New((int) collection->_type));
+    }
     return scope.Close(v8::Number::New((int) ci->type()));
   } 
   // fallthru intentional 
@@ -9476,7 +9490,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   }
 #endif
 
-  const string name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
 
   int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
