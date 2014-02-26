@@ -56,10 +56,11 @@ static ServerState* Instance = 0;
 ServerState::ServerState () 
   : _id(),
     _address(),
-    _initialised(false),
+    _authentication(),
     _lock(),
     _role(ROLE_UNDEFINED),
-    _state(STATE_UNDEFINED) {
+    _state(STATE_UNDEFINED),
+    _initialised(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,11 +175,29 @@ std::string ServerState::stateToString (StateEnum state) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the authentication data for cluster-internal communication
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setAuthentication (std::string const& username,
+                                     std::string const& password) {
+  _authentication = "Basic " + basics::StringUtils::encodeBase64(username + ":" + password);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the authentication data for cluster-internal communication
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getAuthentication () {
+  return _authentication;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the server state (used for testing)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::flush () {
   WRITE_LOCKER(_lock);
+
   if (_id.empty()) {
     return;
   }

@@ -35,6 +35,96 @@ describe ArangoDB do
     end
 
 ################################################################################
+## validating a user
+################################################################################
+
+    context "validating users" do
+      it "create a user and validate, empty password" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-1", :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['result'].should eq(true)
+      end
+
+      it "create a user and validate" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-1", :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['result'].should eq(true)
+      end
+      
+      it "create a user and validate" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"derhansgehtInDENWALD\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"derhansgehtInDENWALD\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-1", :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['result'].should eq(true)
+      end
+      
+      it "create a user and validate, non-existing user" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-2", :body => body)
+
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorNum'].should eq(1703)
+      end
+      
+      it "create a user and validate, invalid password" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"Fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-2", :body => body)
+
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorNum'].should eq(1703)
+      end
+      
+      it "create a user and validate, invalid password" do
+        body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"passwd\" : \"foxxy\" }"
+        doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-2", :body => body)
+
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorNum'].should eq(1703)
+      end
+    end
+
+################################################################################
 ## adding users 
 ################################################################################
 

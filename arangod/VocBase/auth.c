@@ -330,6 +330,45 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert initial authentication info
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
+  TRI_vocbase_auth_t* auth;
+  TRI_vocbase_auth_cache_t* cached;
+  
+  auth = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+
+  if (auth == NULL) {
+    return false;
+  }
+    
+  cached = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false);
+
+  if (cached == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, auth);
+    return false;
+  }
+
+  auth->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "root");
+  auth->_password = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "");
+  auth->_active = true;
+     
+  cached->_hash     = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "cm9vdDo="); // base64Encode("root:")
+  cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "root");
+
+  // insert the authentication info inside a lock
+  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
+
+  TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, false);
+  TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
+    
+  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -425,6 +464,11 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
   void** beg;
   void** end;
   void** ptr;
+
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // do not flush coordinator databases
+    return;
+  }
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 

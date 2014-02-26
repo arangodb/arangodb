@@ -30,6 +30,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Rest/ConnectionInfo.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
@@ -39,7 +40,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoServer
@@ -91,6 +91,25 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to use special cluster authentication
+////////////////////////////////////////////////////////////////////////////////
+  
+#ifdef TRI_ENABLE_CLUSTER
+bool VocbaseContext::useClusterAuthentication () const {
+  if (ServerState::instance()->isDBserver()) {
+    return true;
+  }
+
+  if (ServerState::instance()->isCoordinator() &&
+      string(_request->requestPath()) == "/_api/shard-comm") {
+    return true;
+  }
+
+  return false;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -130,7 +149,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
   
   // authentication required
-  
+  // -----------------------
   
   bool found;
   char const* auth = _request->header("authorization", found);
@@ -146,6 +165,29 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     ++auth;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (useClusterAuthentication()) {
+    string const expected = ServerState::instance()->getAuthentication();
+  
+    if (expected.substr(6) != string(auth)) {
+      return HttpResponse::UNAUTHORIZED;
+    }
+
+    string const up = StringUtils::decodeBase64(auth);    
+    std::string::size_type n = up.find(':', 0);
+    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+      LOG_TRACE("invalid authentication data found, cannot extract username/password");
+  
+      return HttpResponse::BAD;
+    }
+   
+    string const username = up.substr(0, n);
+    _request->setUser(username);
+
+    return HttpResponse::OK;
+  }
+#endif
+
   // look up the info in the cache first
   char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth);
 
@@ -159,7 +201,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
   // no entry found in cache, decode the basic auth info and look it up
 
-  string up = StringUtils::decodeBase64(auth);    
+  string const up = StringUtils::decodeBase64(auth);    
 
   std::string::size_type n = up.find(':', 0);
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
@@ -168,7 +210,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     return HttpResponse::BAD;
   }
    
-  const string username = up.substr(0, n);
+  string const username = up.substr(0, n);
     
   LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
 

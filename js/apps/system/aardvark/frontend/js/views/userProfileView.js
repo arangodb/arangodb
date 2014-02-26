@@ -11,7 +11,9 @@
 
     events: {
       "click #profileContent" : "editUserProfile",
-      "click #submitEditUserProfile" : "submitEditUserProfile"
+      "click #callEditUserPassword" : "editUserPassword",
+      "click #submitEditUserProfile" : "submitEditUserProfile",
+      "click #submitEditUserPassword" : "submitEditUserPassword"
     },
 
     initialize: function() {
@@ -20,8 +22,9 @@
     },
 
     render: function(){
+      var img = this.getAvatarSource(this.user.get("extra").img);
       $(this.el).html(this.template.render({
-        img : this.user.get("extra").img,
+        img : img,
         name : this.user.get("extra").name,
         username : this.user.get("user")
 
@@ -35,7 +38,7 @@
       $('#editName').val(this.user.get("extra").name);
       $('#editUserProfileImg').val(this.user.get("extra").img);
 
-      this.showModal();
+      this.showModal('#editUserProfileModal');
     },
 
     submitEditUserProfile : function() {
@@ -50,7 +53,7 @@
       }*/
 
       this.user.save({"extra": {"name":name, "img":img}});
-      this.hideModal();
+      this.hideModal('#editUserProfileModal');
       this.updateUserProfile();
     },
 
@@ -63,13 +66,60 @@
       });
     },
 
-
-    showModal: function() {
-      $('#editUserProfileModal').modal('show');
+    editUserPassword : function () {
+      this.hideModal('#editUserProfileModal');
+      this.showModal('#editUserPasswordModal');
     },
 
-    hideModal: function() {
-      $('#editUserProfileModal').modal('hide');
+    submitEditUserPassword : function () {
+      var self        = this,
+        oldPasswd     = $('#oldPassword').val(),
+        newPasswd     = $('#newPassword').val(),
+        confirmPasswd = $('#confirmPassword').val();
+      $('#oldPassword').val('');
+      $('#newPassword').val('');
+      $('#confirmPassword').val('');
+
+      //check input
+      //clear all "errors"
+      $('#oldPassword').closest("th").css("backgroundColor", "white");
+      $('#newPassword').closest("th").css("backgroundColor", "white");
+      $('#confirmPassword').closest("th").css("backgroundColor", "white");
+
+
+      //check
+      var hasError = false;
+      //Check old password
+      if (!this.validateCurrentPassword(oldPasswd)) {
+        $('#oldPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check confirmation
+      if (newPasswd !== confirmPasswd) {
+        $('#confirmPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check new password
+      if (!this.validatePassword(newPasswd)) {
+        $('#newPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+
+      if (hasError) {
+        return;
+      }
+      this.user.setPassword(newPasswd);
+//      this.showModal('#editUserProfileModal');
+      this.hideModal('#editUserPasswordModal');
+    },
+
+
+    showModal: function(dialog) {
+      $(dialog).modal('show');
+    },
+
+    hideModal: function(dialog) {
+      $(dialog).modal('hide');
     },
 
     parseImgString : function(img) {
@@ -83,9 +133,28 @@
         img = strings[0];
       }
       return img;
+    },
+
+    validateCurrentPassword : function (pwd) {
+      return this.user.checkPassword(pwd);
+    },
+
+    validatePassword : function (pwd) {
+        return true;
+    },
+
+    getAvatarSource: function(img) {
+      var result = '<img src="';
+      if(img) {
+        result += 'https://s.gravatar.com/avatar/';
+        result += img;
+        result += '?s=150';
+      } else {
+        result += 'img/arangodblogoAvatar_150.png';
+      }
+      result += '" />';
+      return result;
     }
-
-
 
   });
 }());

@@ -315,8 +315,18 @@ ArangoCollection.prototype.type = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.properties = function (properties) {
-  var requestResult;
+  var attributes = {
+    "doCompact": true,
+    "journalSize": true,
+    "isVolatile": false,
+    "waitForSync": true,
+    "shardKeys": false,
+    "numberOfShards": false,
+    "keyOptions": false
+  };
+  var a;
 
+  var requestResult;
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl("properties"));
 
@@ -325,14 +335,12 @@ ArangoCollection.prototype.properties = function (properties) {
   else {
     var body = {};
 
-    if (properties.hasOwnProperty("doCompact")) {
-      body.doCompact = properties.doCompact;
-    }
-    if (properties.hasOwnProperty("journalSize")) {
-      body.journalSize = properties.journalSize;
-    }
-    if (properties.hasOwnProperty("waitForSync")) {
-      body.waitForSync = properties.waitForSync;
+    for (a in attributes) {
+      if (attributes.hasOwnProperty(a)) {
+        if (properties.hasOwnProperty(a) && properties[a]) {
+          body[a] = properties[a];
+        }
+      }
     }
 
     requestResult = this._database._connection.PUT(this._baseurl("properties"),
@@ -341,15 +349,13 @@ ArangoCollection.prototype.properties = function (properties) {
     arangosh.checkRequestResult(requestResult);
   }
 
-  var result = { 
-    waitForSync : requestResult.waitForSync,
-    journalSize : requestResult.journalSize,
-    isVolatile : requestResult.isVolatile,
-    doCompact : requestResult.doCompact
-  };
-    
-  if (requestResult.keyOptions !== undefined) {
-    result.keyOptions = requestResult.keyOptions;
+  var result = { };
+  for (a in attributes) {
+    if (attributes.hasOwnProperty(a) && 
+        requestResult.hasOwnProperty(a) &&
+        requestResult[a] !== undefined) {
+      result[a] = requestResult[a];
+    }
   }
     
   return result;

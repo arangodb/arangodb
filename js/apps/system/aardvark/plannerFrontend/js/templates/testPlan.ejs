@@ -10,21 +10,21 @@
     <div class="control-group">
       <label for="host" class="control-label">Server:</label>
       <div class="controls">
-        <input type="text" id="host" placeholder="Server" class="input-xlarge"></input>
+        <input type="text" id="host" placeholder="Server" class="input-xlarge" value="<%=window.location.hostname%>"></input>
         <span class="searchEqualsLabel">:</span>
-        <input type="text" maxlength="5" class="input-small" id="port" placeholder="port"></input>
+        <input type="text" maxlength="5" class="input-small" id="port" placeholder="port" value="<%=window.location.port%>"></input>
       </div>
     </div>
     <div class="control-group">
       <label for="coordinators" class="control-label">Coordinators:</label>
       <div class="controls">
-        <input type="text" id="coordinators" placeholder="1" class="input-xlarge"></input>
+        <input type="text" id="coordinators" placeholder="Number of Coordinators" class="input-xlarge" value="1"></input>
       </div>
     </div>
     <div class="control-group">
-      <label for="coordinators" class="control-label">DB Servers:</label>
+      <label for="dbs" class="control-label">DB Servers:</label>
       <div class="controls">
-        <input type="text" id="dbs" placeholder="1" class="input-xlarge"></input>
+        <input type="text" id="dbs" placeholder="Number of DBServers" class="input-xlarge" value="2"></input>
       </div>
     </div>
   </fieldset>

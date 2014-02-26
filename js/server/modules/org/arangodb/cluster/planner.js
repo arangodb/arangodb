@@ -580,9 +580,7 @@ Planner.prototype.makePlan = function() {
   var c = coordinators[0];
   var e = exchangePort(dispatchers[c.dispatcher].endpoint,c.port);
   tmp.push( { "action": "createSystemColls",
-              "url": "http://"+getAddrPort(e) } );
-  tmp.push( { "action": "initializeFoxx",
-              "url": "http://"+getAddrPort(e) } );
+              "url": "http://"+getAddrPort(e) });
   this.myname = "me";
 };
 

@@ -173,7 +173,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
   if (ServerState::instance()->isCoordinator() ||  
       ServerState::instance()->isDBserver()) {
     // create-collection is not supported in a cluster
-    generateTransactionError(name, TRI_ERROR_NOT_IMPLEMENTED);
+    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
     return false;
   }
 #endif
@@ -467,8 +467,13 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
-    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
+    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: { 
       generateError(HttpResponse::BAD, res);
+      return;
+    }
+    
+    case TRI_ERROR_CLUSTER_UNSUPPORTED: {
+      generateError(HttpResponse::NOT_IMPLEMENTED, res);
       return;
     }
 #endif

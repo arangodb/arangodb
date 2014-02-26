@@ -155,7 +155,8 @@ SimpleQueryAll.prototype.execute = function () {
      
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -264,7 +265,7 @@ function byExample (data) {
   var skip       = data._skip;
   var limit      = data._limit;
   var index;
-    
+
   if (data._index !== undefined && data._index !== null) {
     if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
       index = data._index.id;
@@ -350,7 +351,7 @@ function byExample (data) {
       throw err2;
     }
   }
-  else {
+  else if (keys.length > 0) {
     // try these index types
     var checks = [
       { type: "hash", fields: keys, unique: false },
@@ -504,7 +505,8 @@ SimpleQueryByExample.prototype.execute = function () {
       
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -666,7 +668,8 @@ SimpleQueryByCondition.prototype.execute = function () {
       
       if (this._skip < 0) {
         // apply negative skip
-        _documents = _documents.slice(_documents.length + this._skip, this._limit || 100000000);
+        var start = _documents.length + this._skip;
+        _documents = _documents.slice(start, start + (this._limit || 100000000));
       }
 
       documents = { 
@@ -779,7 +782,8 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     }
     else if (skip < 0) {
       // apply negative skip
-      _documents = _documents.slice(_documents.length + skip, limit || 100000000);
+      var start = _documents.length + skip;
+      _documents = _documents.slice(start, start + (limit || 100000000));
     }
 
     documents = { 
