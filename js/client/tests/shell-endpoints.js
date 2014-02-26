@@ -95,7 +95,7 @@ function EndpointsSuite () {
         }
       }
 
-      arango.reconnect(originalEndpoint, "", "root", "");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
