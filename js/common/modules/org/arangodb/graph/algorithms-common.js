@@ -331,14 +331,18 @@ Vertex.prototype.getNeighbors = function (options) {
   if ((direction === 'both') || (direction === 'outbound')) {
     this.getOutEdges().forEach(function (current_edge) {
       current_vertex = current_edge.getInVertex();
-      addNeighborToList(current_edge, current_vertex);
+      if (current_vertex !== null) {
+        addNeighborToList(current_edge, current_vertex);
+      }
     });
   }
 
   if ((direction === 'both') || (direction === 'inbound')) {
     this.getInEdges().forEach(function (current_edge) {
       current_vertex = current_edge.getOutVertex();
-      addNeighborToList(current_edge, current_vertex);
+      if (current_vertex !== null) {
+        addNeighborToList(current_edge, current_vertex);
+      }
     });
   }
 

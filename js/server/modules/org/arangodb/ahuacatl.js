@@ -3809,12 +3809,17 @@ function TRAVERSAL_FUNC (func,
                          vertexCollection, 
                          edgeCollection, 
                          startVertex, 
+                         endVertex,
                          direction, 
                          params) {
   "use strict";
 
   if (startVertex.indexOf('/') === -1) {
     startVertex = vertexCollection + '/' + startVertex;
+  }
+  
+  if (endVertex !== undefined && endVertex.indexOf('/') === -1) {
+    endVertex = vertexCollection + '/' + endVertex;
   }
   
   vertexCollection = COLLECTION(vertexCollection);
@@ -3843,6 +3848,7 @@ function TRAVERSAL_FUNC (func,
   }
 
   var config = {
+    distance: params.distance, 
     connect: params.connect,
     datasource: TRAVERSAL.collectionDatasourceFactory(edgeCollection),
     trackPaths: params.paths || false,
@@ -3895,11 +3901,21 @@ function TRAVERSAL_FUNC (func,
   }
   catch (err1) {
   }
+  
+  // end vertex
+  var e;
+  if (endVertex !== undefined) {
+    try {
+      e = INTERNAL.db._document(endVertex);
+    }
+    catch (err2) {
+    }
+  }
 
   var result = [ ];
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
-    traverser.traverse(result, v);
+    traverser.traverse(result, v, e);
   }
 
   return result;
@@ -3925,6 +3941,7 @@ function GRAPH_TRAVERSAL (vertexCollection,
                         vertexCollection, 
                         edgeCollection, 
                         startVertex,
+                        undefined,
                         direction, 
                         params);
 }
@@ -3956,7 +3973,8 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
   var result = TRAVERSAL_FUNC("TRAVERSAL_TREE", 
                               vertexCollection, 
                               edgeCollection, 
-                              startVertex, 
+                              startVertex,
+                              undefined, 
                               direction, 
                               params);
 
@@ -3964,6 +3982,46 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
     return [ ];
   }
   return [ result[0][params.connect] ];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path algorithm
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_SHORTEST_PATH (vertexCollection, 
+                              edgeCollection, 
+                              startVertex, 
+                              endVertex,
+                              direction, 
+                              params) {
+  "use strict";
+  
+  if (params === undefined) {
+    params = { };
+  }
+
+  params.strategy = "dijkstra";
+  params.itemorder = "forward";
+  params.visitor = TRAVERSAL_VISITOR;
+
+  if (typeof params.distance === "string") {
+    var name = params.distance.toUpperCase();
+
+    params.distance = function (config, vertex1, vertex2, edge) {
+      return FCALL_USER(name, [ config, vertex1, vertex2, edge ]);
+    }; 
+  }
+  else {
+    params.distance = undefined;
+  }
+
+  return TRAVERSAL_FUNC("SHORTEST_PATH", 
+                        vertexCollection, 
+                        edgeCollection, 
+                        startVertex, 
+                        endVertex,
+                        direction, 
+                        params);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4146,6 +4204,7 @@ exports.GEO_NEAR = GEO_NEAR;
 exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
+exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;

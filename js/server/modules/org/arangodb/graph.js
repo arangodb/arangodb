@@ -581,25 +581,12 @@ Graph.prototype._replaceEdge = function (edge_id, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
-  var ref, vertex;
-
   try {
-    ref = this._vertices.document(id);
-  } catch (e) {
-    ref = null;
+    return this.constructVertex(id);
   }
-
-  if (ref !== null) {
-    vertex = this.constructVertex(ref);
-  } else {
-    try {
-      vertex = this.constructVertex(id);
-    } catch (e1) {
-      vertex = null;
-    }
+  catch (e) {
+    return null;
   }
-
-  return vertex;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
