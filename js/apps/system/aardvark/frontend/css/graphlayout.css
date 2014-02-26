@@ -279,11 +279,6 @@ input.gv_radio_button {
   margin-top: 3px;
 }
 
-label.gv_dropdown_label {
-  color: white !important;
-  padding-left: 0px !important;
-}
-
 /*Overriding the slider UI*/
 .ui-slider {
   background: #333333;
@@ -307,11 +302,19 @@ label.gv_dropdown_label {
   background: white;
 }
 
-.gv_example_toggle {
+div.input-append button.gv_example_toggle {
   background-color:#8F8D8C;
-  height: 29px;
+  height: 30px;
   padding-left: 10px;
   padding-right: 10px;
+  padding-top: 12px;
+  margin-left: -1px;
+  // Stolen from bootstrap
+  vertical-align: top;
+  -webkit-border-radius: 0 4px 4px 0;
+     -moz-border-radius: 0 4px 4px 0;
+          border-radius: 0 4px 4px 0;
+
 }
 
 .gv_example_toggle:hover {
@@ -364,17 +367,5 @@ div.gv_colour_list {
 div.gv_colour_list li {
   background-color: transparent;
   padding: 2px 6px;
-}
-
-div.queryline div.searchByAttribute > ul.dropdown-menu {
-  position: absolute;
-  border-radius: 0px;
-  top: 21px;
-  left: 5px;
-  width: 247px;
-  background-color: #333231;
-  color: white;
-  margin-bottom: 100%;
-  display: none;
-  /* background-color: #8F8D8C; */
+  float:none;
 }

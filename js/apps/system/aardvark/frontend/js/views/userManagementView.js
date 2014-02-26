@@ -6,16 +6,22 @@
 
   window.userManagementView = Backbone.View.extend({
     el: '#content',
+    el2: '#userManagementThumbnailsIn',
+
 
     template: templateEngine.createTemplate("userManagementView.ejs"),
 
     events: {
       "click #createUser"                                     : "createUser",
       "click #submitCreateUser"                               : "submitCreateUser",
-      "click #userManagementTable .icon_arangodb_roundminus"  : "removeUser",
+      "click #deleteUser"                                     : "removeUser",
       "click #submitDeleteUser"                               : "submitDeleteUser",
       "click .editUser"                                       : "editUser",
-      "click #submitEditUser"                                 : "submitEditUser"
+      "click .icon"                                           : "editUser",
+      "click #submitEditUser"                                 : "submitEditUser",
+      "click #userManagementToggle"                           : "toggleView",
+      "keyup #userManagementSearchInput"                      : "search",
+      "click #userManagementSearchSubmit"                     : "search"
     },
 
     initialize: function() {
@@ -23,56 +29,71 @@
       this.collection.fetch({async:false});
     },
 
-    render: function(){
+    render: function () {
+      var dropdownVisible = false;
+      if ($('#userManagementDropdown').is(':visible')) {
+        dropdownVisible = true;
+      }
+
+      this.collection.sort();
       $(this.el).html(this.template.render({
-        collection: this.collection
+        collection   : this.collection,
+        searchString : ''
       }));
-      this.renderTable();
-      //this.selectCurrentUser(); //selectCurrentUser not implemented yet
+//      this.setFilterValues();
+
+      if (dropdownVisible === true) {
+        $('#userManagementDropdown2').show();
+      }
+
+//      var searchOptions = this.collection.searchOptions;
+
+      //************
+/*      this.userCollection.getFiltered(searchOptions).forEach(function (arango_collection) {
+        $('#userManagementThumbnailsIn', this.el).append(new window.CollectionListItemView({
+          model: arango_collection
+        }).render().el);
+      }, this);
+*/
+/*      $('#searchInput').val(searchOptions.searchPhrase);
+      $('#searchInput').focus();
+      var val = $('#searchInput').val();
+      $('#searchInput').val('');
+      $('#searchInput').val(val);
+*/
+//      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+
       return this;
     },
 
-    renderTable: function () {
-      this.collection.forEach(function(user) {
-        var deleteButton = '<span class="arangoicon icon_arangodb_roundminus"' +
-          'data-original-title="Delete user"></span>';
-        if(user.get("loggedIn")) {
-          deleteButton = '';
-        }
-        var username = user.get("user"),
-          extra = user.get("extra"),
-          name = extra.name,
-          img = extra.img,
-          active = user.get("active");
+    search: function() {
+      var searchInput,
+        searchString,
+        strLength,
+        reducedCollection;
 
-        if (!img) {
-          img = " ";
-        } else {
-          img = "https://s.gravatar.com/avatar/" + img + "?s=23";
+      searchInput = $('#userManagementSearchInput');
+      searchString = $("#userManagementSearchInput").val();
+      reducedCollection = this.collection.filter(
+        function(u) {
+          return u.get("user").indexOf(searchString) !== -1;
         }
-        if (!name) {
-          name = " ";
-        }
-        $("#userManagementTable tbody").append(
-          '<tr class="editUser" id="' + username + '">' +
-            '<td><a><img src="' + img + '"></a></td>' +//avatar
-            '<td><a>' + username + '</a></td>' +//username
-            '<td><a>' + name + '</a></td>' +//name
-            '<td><a>' + active + '</a></td>' +//active
-            '<td>' + deleteButton + '</td>' +
-          '</tr>'
-        );
-      });
+      );
+      $(this.el).html(this.template.render({
+        collection   : reducedCollection,
+        searchString : searchString
+      }));
+
+      //after rendering, get the "new" element
+      searchInput = $('#userManagementSearchInput');
+      //set focus on end of text in input field
+      strLength= searchInput.val().length;
+      searchInput.focus();
+      searchInput[0].setSelectionRange(strLength, strLength);
     },
 
-    selectCurrentUser : function() {
-      $('#userManagementTableBody tr').addClass('userInactive');
-      var tr = $('#userManagementTableBody td:contains('+this.currentUser+')').parent();
-      $(tr).removeClass('userInactive').addClass('userActive');
-
-    },
-
-    createUser : function() {
+    createUser : function(e) {
+      e.preventDefault();
       this.showModal();
     },
 
@@ -139,7 +160,8 @@
     },
 
     removeUser : function(e) {
-      this.userToDelete = $(e.currentTarget).parent().parent().attr("id");
+      $('#editUserModal').modal('hide');
+      this.userToDelete = $("#editUsername").html();
       $('#deleteUserModal').modal('show');
       e.stopPropagation();
     },
@@ -163,8 +185,14 @@
       $('#editStatus').attr("checked", user.get("active"));
       if (user.get("loggedIn")) {
         $('#editStatus').attr("disabled", true);
+        $('#deleteUser').attr("disabled", true);
+        $('#deleteUser').removeClass("button-danger");
+        $('#deleteUser').addClass("button-inactive");
       } else {
         $('#editStatus').attr("disabled", false);
+        $('#deleteUser').attr("disabled", false);
+        $('#deleteUser').removeClass("button-inactive");
+        $('#deleteUser').addClass("button-danger");
       }
     },
 
@@ -228,7 +256,25 @@
         return false;
       }
       return true;
+    },
+
+    toggleView: function() {
+      $('#userManagementDropdown2').slideToggle(200);
+    },
+
+    setFilterValues: function () {
+/*      var searchOptions = this.collection.searchOptions;
+      $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
+      $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
+      $('#checkSystem').attr('checked', searchOptions.includeSystem);
+      $('#checkEdge').attr('checked', searchOptions.includeEdge);
+      $('#checkDocument').attr('checked', searchOptions.includeDocument);
+      $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
+      $('#sortType').attr('checked', searchOptions.sortBy === 'type');
+      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);*/
     }
+
+
 
   });
 }());

@@ -1,78 +1,86 @@
 <script id="navigationView.ejs" type="text/template">
-<ul class="navlist" id="arangoCollectionUl">
-<!--    <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard">Dashboard</a></li>-->
-
+  <ul class="navlist" id="arangoCollectionUl">
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
-    <li class="navbar-spacer big"></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Applications</a>
     </li>
+    <li class="navbar-spacer big"></li>
     <li class="query-menu"><a id="query" class="tab" href="#query">AQL Editor</a></li>
-    <li class="dropdown tools-menu navbar-spacer-med" id="toolsDropdown">
-        <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
-        <ul class="link-dropdown-menu" id="tools_dropdown">
-            <li class="dropdown-header">Tools</li>
-            <li class="dropdown-item">
-                <a id="shell" class="internalLink" href="#shell">JS Shell</a>
-            </li>
-            <% if (isSystem) { %>
-            <li class="dropdown-item">
-                <a id="logs" class="internalLink" href="#logs">Logs</a>
-            </li>
-            <% } %>
-            <li class="dropdown-item">
-                <a id="api" class="internalLink" href="#api">API</a>
-            </li>
-            <li class="dropdown-item">
-                <a id="userManagement" class="internalLink" href="#api">User Management</a>
-            </li>
-        </ul>
-    </li>
-  <li class="navbar-spacer med"></li>
-    <li class="dropdown" id="linkDropdown">
-        <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
-        <ul class="link-dropdown-menu" id="link_dropdown">
-            <li class="dropdown-header">Documentation</li>
-            <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html"
-                                         target="_blank">JS Shell Documentation</a></li>
-            <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL
-                    Documentation</a></li>
-            <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/" target="_blank">General
-                    Documentation</a></li>
-            <li class="divider"></li>
-            <li class="dropdown-header">ArangoDB</li>
-            <li class="dropdown-item"><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub
-                    Repository</a></li>
-            <li class="dropdown-item"><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
-            <li class="divider"></li>
-            <li class="dropdown-header">Social</li>
-            <li class="dropdown-item"><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
-            <li class="dropdown-item"><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a>
-            </li>
-            <li class="dropdown-item"><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a>
-            </li>
-            <li class="dropdown-item"><a href="https://groups.google.com/group/arangodb" target="_blank">Google
-                    Groups</a></li>
-        </ul>
-    </li>
-</ul>
+    <li class="dropdown tools-menu" id="toolsDropdown">
+      <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
+      <ul class="link-dropdown-menu" id="tools_dropdown">
+        <li class="dropdown-header">Tools</li>
+        <li class="dropdown-item">
+          <a id="shell" class="tab" href="#shell">JS Shell</a>
+        </li>
 
-<select id="arangoCollectionSelect">
+        <% if (isSystem) { %>
+          <li class="dropdown-item">
+            <a id="logs" class="tab" href="#logs">Logs</a>
+          </li>
+        <% } %>
+
+        <li class="dropdown-item">
+          <a id="api" class="tab" href="#api">API</a>
+        </li>
+        <li class="dropdown-item">
+          <a id="userManagement" class="tab" href="#api">User Management</a>
+        </li>
+      </ul>
+    </li>
+    <li class="navbar-spacer big"></li>
+    <li class="dropdown" id="linkDropdown">
+      <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
+      <ul class="link-dropdown-menu" id="link_dropdown">
+        <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html"
+                                     target="_blank">JS Shell Documentation</a></li>
+        <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">AQL
+          Documentation</a></li>
+        <li class="dropdown-item"><a href="https://www.arangodb.org/manuals/current/" target="_blank">General
+          Documentation</a></li>
+        <li class="divider"></li>
+        <li class="dropdown-header">ArangoDB</li>
+        <li class="dropdown-item"><a href="https://github.com/triAGENS/ArangoDB" target="_blank">GitHub
+          Repository</a></li>
+        <li class="dropdown-item"><a href="https://www.arangodb.org" target="_blank">ArangoDB.org</a></li>
+        <li class="divider"></li>
+        <li class="dropdown-header">Social</li>
+        <li class="dropdown-item"><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
+        <li class="dropdown-item"><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a>
+        </li>
+        <li class="dropdown-item"><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a>
+        </li>
+        <li class="dropdown-item"><a href="https://groups.google.com/group/arangodb" target="_blank">Google
+          Groups</a></li>
+      </ul>
+    </li>
+  </ul>
+
+  <select id="arangoCollectionSelect">
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
-    <% if(isSystem) { %>
+
+        <% if(isSystem) { %>
+
     <option style="display:none" id="databaseNaviSelect" value="#databases">Databases</option>
-    <% } %>
+
+        <% } %>
+
     <option value="#collections">Collections</option>
     <option value="#applications">Applications</option>
     <option value="#graph">Graph</option>
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
-    <% if(isSystem) { %>
+
+        <% if(isSystem) { %>
+
     <option value="#logs">Logs</option>
-    <% } %>
+
+        <% } %>
+
     <option value="#api">Api</option>
-</select>
+  </select>
 </script>

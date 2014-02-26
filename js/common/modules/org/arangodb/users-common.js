@@ -468,6 +468,39 @@ exports.all = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_isValidUsers
+/// @brief checks whether a combination of username / password is valid.
+///
+/// @FUN{users.isvalid(@FA{user}, @FA{password})}
+///
+/// Checks whether the given combination of username and password is valid.
+/// The function will return a boolean value if the combination of username
+/// and password is valid.
+///
+/// Each call to this function is penalized by the server sleeping a random 
+/// amount of time.
+///
+/// Note: this function will not work from within the web interface
+////////////////////////////////////////////////////////////////////////////////
+
+exports.isValid = function (user, password) {
+  var users = getStorage();
+  var previous = users.firstExample({ user: user });
+  
+  if (previous === null || ! previous.active) {
+    return false;
+  }
+
+  var salted = previous.password.substr(3, 8) + password;
+  var hex = crypto.sha256(salted);
+
+  // penalize the call
+  internal.sleep(Math.random());
+
+  return (previous.password.substr(12) === hex);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_reloadUsers
 /// @brief reloads the user authentication data
 ///
