@@ -1757,6 +1757,10 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
         code = exports.HTTP_CONFLICT; 
         break;
+
+      case arangodb.ERROR_CLUSTER_UNSUPPORTED: 
+        code = exports.HTTP_NOT_IMPLEMENTED;
+        break; 
     }
   }
   else if (err instanceof TypeError) {

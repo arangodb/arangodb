@@ -2298,10 +2298,19 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 /// If the optional argument @FA{withData} is set to @LIT{true}, then the 
 /// actual document data is also checksummed. Including the document data in
 /// checksumming will make the calculation slower, but is more accurate.
+///
+/// Note: this method is not available in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());

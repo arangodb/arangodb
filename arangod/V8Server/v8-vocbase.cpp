@@ -304,6 +304,10 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
         TRI_EqualString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       c->_canDrop   = false;
+      c->_canRename = false;
+      
+      // the replication collection cannot be unloaded manually)
+      // (this would make the server hang)
       c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
     }
   }
@@ -1156,9 +1160,13 @@ int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const& obj,
-                            TRI_json_t* json) {
+                            TRI_json_t* json,
+                            bool fillConstraint = false) {
   bool unique = ExtractBoolFlag(obj, "unique", false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+  if (fillConstraint) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1195,7 +1203,7 @@ static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(obj, json, 1, create);
-  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexUniqueFlag(obj, json, true);
   ProcessIndexIgnoreNullFlag(obj, json);
   ProcessIndexGeoJsonFlag(obj, json);
   return res;
@@ -1209,7 +1217,7 @@ static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(obj, json, 2, create);
-  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexUniqueFlag(obj, json, true);
   ProcessIndexIgnoreNullFlag(obj, json);
   return res;
 }
@@ -2175,14 +2183,14 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
+  assert(col != 0);
+  assert(key != 0);
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 #endif
-
-  assert(col != 0);
-  assert(key != 0);
 
   ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2224,7 +2232,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
+static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   TRI_vocbase_col_t const* collection,
                                   TRI_doc_update_policy_e policy,
                                   bool waitForSync,
@@ -2232,6 +2240,8 @@ static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
                                   bool keepNull, // only counts if isPatch==true
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+  assert(collection != 0);
 
   // First get the initial data:
   string const dbname(collection->_dbName);
@@ -2344,15 +2354,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
-                                        false,  // isPatch
-                                        true,   // keepNull, does not matter
-                                        argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2367,6 +2368,17 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseColCoordinator(col, 
+                                                   policy, 
+                                                   forceSync,
+                                                   false,  // isPatch
+                                                   true,   // keepNull, does not matter
+                                                   argv));
+  }
+#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2689,15 +2701,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
-                                        true,  // isPatch
-                                        !nullMeansRemove,     // keepNull
-                                        argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2712,6 +2715,17 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseColCoordinator(col, 
+                                                   policy, 
+                                                   forceSync,
+                                                   true,  // isPatch
+                                                   ! nullMeansRemove,     // keepNull
+                                                   argv));
+  }
+#endif
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
@@ -2925,12 +2939,6 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2945,6 +2953,12 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
+  }
+#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -6248,8 +6262,10 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
   }
+
+  collection->_status = TRI_VOC_COL_STATUS_DELETED;
   
-  return scope.Close(v8::True());
+  return scope.Close(v8::Undefined());
 }
 #endif
 
@@ -7204,6 +7220,8 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// If renaming fails for any reason, an error is thrown.
 ///
+/// Note: this method is not available in a cluster.
+///
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-rename
@@ -7216,7 +7234,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "rename(<name>)");
   }
 
-  string name = TRI_ObjectToString(argv[0]);
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
+
+  string const name = TRI_ObjectToString(argv[0]);
 
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
@@ -7417,10 +7442,19 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// read-only datafile). The purpose of the rotation is to include the
 /// datafile in a following compaction run and perform earlier garbage 
 /// collection.
+///
+/// Note: this method is not available in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -7808,6 +7842,10 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName, 
                                         StringUtils::itoa(collection->_cid));
+
+    if ((*ci).empty()) {
+      return scope.Close(v8::Number::New((int) TRI_VOC_COL_STATUS_DELETED));
+    }
     return scope.Close(v8::Number::New((int) ci->status()));
   } 
   // fallthru intentional 
@@ -7929,6 +7967,10 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
     TRI_shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName,
                                       StringUtils::itoa(collection->_cid));
+   
+    if ((*ci).empty()) {
+      return scope.Close(v8::Number::New((int) collection->_type));
+    }
     return scope.Close(v8::Number::New((int) ci->type()));
   } 
   // fallthru intentional 
@@ -9160,10 +9202,6 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
   if (argv.Length() > 1) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
                          TRI_ObjectToJson(argv[1]));
-    if (argv.Length() > 2) {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "users",
-                           TRI_ObjectToJson(argv[2]));
-    }
   }
   
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "coordinator",
@@ -9202,8 +9240,16 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
-  // now run upgrade etc
-  v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  // now run upgrade and copy users into context
+  if (argv.Length() >= 3 && argv[2]->IsArray()) {
+    v8::Handle<v8::Object> users = v8::Object::New();
+    users->Set(v8::String::New("users"), argv[2]);
+
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), users);
+  }
+  else {
+    v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  }
 
   if (TRI_V8RunVersionCheck(vocbase, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
     // version check ok
@@ -9458,7 +9504,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   }
 #endif
 
-  const string name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
 
   int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());

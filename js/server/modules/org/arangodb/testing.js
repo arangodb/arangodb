@@ -370,8 +370,8 @@ function performTests(options, testList) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster") === -1 || options.cluster === false)) {
       var r = runThere(options, instanceInfo, te);
       results[te] = r;
       if (r !== true && !options.force) {
@@ -420,8 +420,8 @@ testFuncs.shell_client = function(options) {
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster-") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster-") === -1 || options.cluster === false)) {
+    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
+        (te.indexOf("-noncluster") === -1 || options.cluster === false)) {
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
       if (r !== 0 && !options.force) {
@@ -543,8 +543,8 @@ function rubyTests (options, ssl) {
     var n = files[i];
     if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
       print("Considering",n,"...");
-      if ((n.indexOf("-cluster-") === -1 || options.cluster) &&
-          (n.indexOf("-noncluster-") === -1 || options.cluster === false) &&
+      if ((n.indexOf("-cluster") === -1 || options.cluster) &&
+          (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
           n.indexOf("replication") === -1) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
