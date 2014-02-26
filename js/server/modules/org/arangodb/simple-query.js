@@ -264,7 +264,7 @@ function byExample (data) {
   var skip       = data._skip;
   var limit      = data._limit;
   var index;
-    
+
   if (data._index !== undefined && data._index !== null) {
     if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
       index = data._index.id;
@@ -350,7 +350,7 @@ function byExample (data) {
       throw err2;
     }
   }
-  else {
+  else if (keys.length > 0) {
     // try these index types
     var checks = [
       { type: "hash", fields: keys, unique: false },
