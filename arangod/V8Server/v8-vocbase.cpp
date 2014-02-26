@@ -295,6 +295,18 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   c->_canDrop   = true;
   c->_canUnload = true;
   c->_canRename = true;
+  
+  if (TRI_IsSystemNameCollection(c->_name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_STATISTICS)) {
+      // these collections cannot be dropped or renamed
+      c->_canDrop   = false;
+      c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
+    }
+  }
 
   TRI_InitReadWriteLock(&c->_lock);
 
@@ -6221,20 +6233,12 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* collection) {
   v8::HandleScope scope;
 
-  string const databaseName(collection->_dbName);
-  string const collectionName(collection->_name);
-  string const cid = StringUtils::itoa(collection->_cid);
-  
-  char const* name = collectionName.c_str();
-  if (TRI_IsSystemNameCollection(name)) {
-    // a few system collections have special behavior
-    if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-        TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-        TRI_EqualString(name, TRI_COL_NAME_USERS) ||
-        TRI_EqualString(name, TRI_COL_NAME_STATISTICS)) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
-    }
+  if (! collection->_canDrop) { 
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
   }
+  
+  string const databaseName(collection->_dbName);
+  string const cid = StringUtils::itoa(collection->_cid);
   
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
