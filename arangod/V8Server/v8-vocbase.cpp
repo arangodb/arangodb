@@ -1160,9 +1160,13 @@ int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const& obj,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const& obj,
-                            TRI_json_t* json) {
+                            TRI_json_t* json,
+                            bool fillConstraint = false) {
   bool unique = ExtractBoolFlag(obj, "unique", false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+  if (fillConstraint) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1199,7 +1203,7 @@ static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const& obj,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(obj, json, 1, create);
-  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexUniqueFlag(obj, json, true);
   ProcessIndexIgnoreNullFlag(obj, json);
   ProcessIndexGeoJsonFlag(obj, json);
   return res;
@@ -1213,7 +1217,7 @@ static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const& obj,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(obj, json, 2, create);
-  ProcessIndexUniqueFlag(obj, json);
+  ProcessIndexUniqueFlag(obj, json, true);
   ProcessIndexIgnoreNullFlag(obj, json);
   return res;
 }
@@ -2179,14 +2183,14 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
+  assert(col != 0);
+  assert(key != 0);
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 #endif
-
-  assert(col != 0);
-  assert(key != 0);
 
   ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2228,7 +2232,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
+static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   TRI_vocbase_col_t const* collection,
                                   TRI_doc_update_policy_e policy,
                                   bool waitForSync,
@@ -2236,6 +2240,8 @@ static v8::Handle<v8::Value> ModifyVocbaseCol_Coordinator (
                                   bool keepNull, // only counts if isPatch==true
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+  assert(collection != 0);
 
   // First get the initial data:
   string const dbname(collection->_dbName);
@@ -2348,15 +2354,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
-                                        false,  // isPatch
-                                        true,   // keepNull, does not matter
-                                        argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2371,6 +2368,17 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseColCoordinator(col, 
+                                                   policy, 
+                                                   forceSync,
+                                                   false,  // isPatch
+                                                   true,   // keepNull, does not matter
+                                                   argv));
+  }
+#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2693,15 +2701,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(ModifyVocbaseCol_Coordinator(col, policy, forceSync,
-                                        true,  // isPatch
-                                        !nullMeansRemove,     // keepNull
-                                        argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2716,6 +2715,17 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(ModifyVocbaseColCoordinator(col, 
+                                                   policy, 
+                                                   forceSync,
+                                                   true,  // isPatch
+                                                   ! nullMeansRemove,     // keepNull
+                                                   argv));
+  }
+#endif
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
@@ -2929,12 +2939,6 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-  if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
-  }
-#endif
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
   
@@ -2949,6 +2953,12 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   assert(col != 0);
   assert(key != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
+  }
+#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
