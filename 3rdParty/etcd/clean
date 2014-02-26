@@ -10,3 +10,5 @@ export GOPATH=${PWD}
 
 go clean -i -r github.com/coreos/etcd >/dev/null 2>&1
 go clean -i -r github.com/coreos/etcd/bench >/dev/null 2>&1 
+
+rm -rf src
