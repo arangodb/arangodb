@@ -318,6 +318,7 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     "doCompact": true,
     "journalSize": true,
+    "isVolatile": false,
     "waitForSync": true,
     "shardKeys": false,
     "numberOfShards": false,
@@ -350,13 +351,11 @@ ArangoCollection.prototype.properties = function (properties) {
 
   var result = { };
   for (a in attributes) {
-    if (attributes.hasOwnProperty(a) && requestResult.hasOwnProperty(a)) {
+    if (attributes.hasOwnProperty(a) && 
+        requestResult.hasOwnProperty(a) &&
+        requestResult[a] !== undefined) {
       result[a] = requestResult[a];
     }
-  }
-    
-  if (requestResult.keyOptions !== undefined) {
-    result.keyOptions = requestResult.keyOptions;
   }
     
   return result;
