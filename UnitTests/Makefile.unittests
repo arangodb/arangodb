@@ -444,7 +444,7 @@ unittests-shell-server-only:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
