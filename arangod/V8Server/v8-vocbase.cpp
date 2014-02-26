@@ -884,6 +884,20 @@ static bool IndexComparator (TRI_json_t const* lhs,
         return false;
       }
     }
+    value = TRI_LookupArrayJson(lhs, "ignoreNull");
+    if (TRI_IsBooleanJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "ignoreNull"))) {
+        return false;
+      }
+    }
+  }
+  else if (type == TRI_IDX_TYPE_GEO2_INDEX) {
+    value = TRI_LookupArrayJson(lhs, "ignoreNull");
+    if (TRI_IsBooleanJson(value)) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "ignoreNull"))) {
+        return false;
+      }
+    }
   }
   else if (type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
     // minLength
