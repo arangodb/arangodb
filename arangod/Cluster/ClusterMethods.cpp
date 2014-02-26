@@ -200,11 +200,12 @@ int revisionOnCoordinator (std::string const& dbname,
 
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
-                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/" + dbname + "/_api/collection/" + 
-                          StringUtils::urlEncode(it->first)+ "/revision",
-                          0, false, headers, NULL, 300.0);
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" + 
+                           StringUtils::urlEncode(it->first) + "/revision",
+                           0, false, headers, NULL, 300.0);
     delete res;
   }
 
@@ -281,11 +282,12 @@ int figuresOnCoordinator (string const& dbname,
 
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
-                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/" + dbname + "/_api/collection/" + 
-                          StringUtils::urlEncode(it->first)+ "/figures",
-                          0, false, headers, NULL, 300.0);
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" + 
+                           StringUtils::urlEncode(it->first) + "/figures",
+                           0, false, headers, NULL, 300.0);
     delete res;
   }
 
@@ -373,18 +375,19 @@ int countOnCoordinator (
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
-                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/" + dbname + "/_api/collection/"+
-                          StringUtils::urlEncode(it->first)+"/count",
-                          0, false, headers, NULL, 300.0);
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+                           StringUtils::urlEncode(it->first) + "/count",
+                           0, false, headers, NULL, 300.0);
     delete res;
   }
   // Now listen to the results:
   int count;
   int nrok = 0;
   for (count = shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
         TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
@@ -431,10 +434,12 @@ int createDocumentOnCoordinator (
 
   // First determine the collection ID from the name:
   TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
+
+  string const collid = StringUtils::itoa(collinfo->id());
 
   // Sort out the _key attribute:
   // The user is allowed to specify _key, provided that _key is the one
@@ -480,10 +485,10 @@ int createDocumentOnCoordinator (
 
   // Send a synchronous request to that shard using ClusterComm:
   ClusterCommResult* res;
-  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
+  res = cc->syncRequest("", TRI_NewTickServer(), "shard:" + shardID,
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
-                        "/_db/"+dbname+"/_api/document?collection="+
-                        StringUtils::urlEncode(shardID)+"&waitForSync="+
+                        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection="+
+                        StringUtils::urlEncode(shardID) + "&waitForSync=" +
                         (waitForSync ? "true" : "false"), body, headers, 60.0);
   
   if (res->status == CL_COMM_TIMEOUT) {
@@ -615,12 +620,13 @@ int deleteDocumentOnCoordinator (
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headersCopy = new map<string, string>(headers);
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
-                          triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
-                          "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key)+
-                          "?waitForSync="+(waitForSync ? "true" : "false")+
-                          revstr+policystr, 0, false, headersCopy, NULL, 60.0);
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_DELETE,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
+                           StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
+                           "?waitForSync=" + (waitForSync ? "true" : "false")+
+                           revstr+policystr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -639,6 +645,7 @@ int deleteDocumentOnCoordinator (
     }
     delete res;
   }
+
   // Note that nrok is always at least 1!
   if (nrok > 1) {
     return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
@@ -748,10 +755,11 @@ int getDocumentOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headersCopy = new map<string, string>(headers);
 
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
-                          "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key)+
-                          revstr, 0, false, headersCopy, NULL, 60.0);
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first, 
+                           reqType,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
+                           StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
+                           revstr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -808,10 +816,10 @@ int getAllDocumentsOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
 
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first,
-                          triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                          "/_db/"+dbname+"/_api/document?collection="+
-                          it->first, 0, false, headers, NULL, 3600.0);
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection="+
+                           it->first, 0, false, headers, NULL, 3600.0);
     delete res;
   }
   // Now listen to the results:
@@ -996,11 +1004,12 @@ int modifyDocumentOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headersCopy = new map<string, string>(headers);
 
-    res = cc->asyncRequest("", coordTransactionID, "shard:"+it->first, reqType,
-                          "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(it->first)+"/"+StringUtils::urlEncode(key) + 
-                          "?waitForSync="+(waitForSync ? "true" : "false") + revstr + policystr,
-                          &body, false, headersCopy, NULL, 60.0);
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first, 
+                           reqType,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
+                           StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) + 
+                           "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr,
+                           &body, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
