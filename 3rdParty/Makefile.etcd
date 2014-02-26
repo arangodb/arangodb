@@ -8,11 +8,7 @@
 ### @brief etcd
 ################################################################################
 
-BUILT_SOURCES += @ZLIB_LIBS@
-
-@ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
-
-@srcdir@/.etcd-build-@TRI_BITS@:
+@top_srcdir@/bin/etcd:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING etcd"
@@ -21,8 +17,6 @@ BUILT_SOURCES += @ZLIB_LIBS@
 
 	cd @top_srcdir@/3rdParty/etcd && ./build
 	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin
-
-	@touch @srcdir@/.etcd-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -37,7 +31,6 @@ BUILT_SOURCES += @ZLIB_LIBS@
 CLEANUP_3RD += clean-etcd
 
 clean-etcd:
-	rm -f @srcdir@/.etcd-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/etcd && rm -rf bin pkg src
 	rm -f @top_srcdir@/bin/etcd
 
