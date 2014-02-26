@@ -8,13 +8,12 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
-      "click .internalLink": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
     initialize: function () {
-      this.userCollection = this.options.userCollection,
+      this.userCollection = this.options.userCollection;
       this.dbSelectionView = new window.DBSelectionView({
         collection: window.arangoDatabase,
         current: window.currentDB
@@ -23,7 +22,7 @@
         userCollection: window.userCollection
       });
       this.notificationView = new window.NotificationView({
-        collection: this.options.notificationCollection,
+        collection: this.options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({});
     },
@@ -55,15 +54,21 @@
     navigateByTab: function (e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
+      if (navigateTo === "") {
+        navigateTo = $(tab).attr("class");
+      }
       if (navigateTo === "links") {
+        $("#link_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }
       if (navigateTo === "tools") {
+        $("#tools_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }
       if (navigateTo === "dbselection") {
+        $("#dbs_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }

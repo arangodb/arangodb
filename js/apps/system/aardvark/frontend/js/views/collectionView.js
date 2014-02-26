@@ -19,9 +19,7 @@
       });
       this.fillModal();
 
-      $('.modalTooltips, .arangoicon').tooltip({
-        placement: "left"
-      });
+      $("[data-toggle=tooltip]").tooltip();
 
       return this;
     },
@@ -66,7 +64,7 @@
 
       if (this.myCollection.status === 'unloaded') {
         $('#colFooter').prepend(
-          '<button id="load-modified-collection" class="btn btn-notification">Load</button>'
+          '<button id="load-modified-collection" class="button-notification">Load</button>'
         );
         $('#collectionSizeBox').hide();
         $('#collectionSyncBox').hide();
@@ -75,7 +73,7 @@
       else if (this.myCollection.status === 'loaded') {
         $('#colFooter').prepend(
           '<button id="unload-modified-collection"'+
-          'class="btn btn-notification">Unload</button>'
+          'class="button-notification">Unload</button>'
         );
         var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
         this.fillLoadedModal(data);
