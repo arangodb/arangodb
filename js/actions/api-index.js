@@ -311,6 +311,8 @@ function get_api_index (req, res) {
 ///   `ignoreNull` is true, then documents with a null in `location` or at
 ///   least one null in `latitude` or `longitude` are ignored.
 ///
+/// Note: unique indexes on non-shard keys are not supported in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -385,6 +387,8 @@ function get_api_index (req, res) {
 /// - `fields`: A list of attribute paths.
 ///
 /// - `unique`: If `true`, then create a unique index.
+///
+/// Note: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -465,6 +469,8 @@ function get_api_index (req, res) {
 /// - `fields`: A list of attribute paths.
 ///
 /// - `unique`: If `true`, then create a unique index.
+///
+/// Note: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -673,6 +679,9 @@ function get_api_index (req, res) {
 /// - cap constraints
 /// - fulltext indexes
 /// - bitarray indexes
+///
+/// Note also that unique indexes on non-shard keys are not supported in a 
+/// cluster.
 ///
 /// @RESTRETURNCODES
 ///
