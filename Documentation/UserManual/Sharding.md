@@ -8,9 +8,11 @@ Introduction {#ShardingIntroduction}
 ====================================
 
 Sharding allows to use multiple machines to run a cluster of ArangoDB
-instances that together appear to be a single database. This enables
+instances that together constitute a single database. This enables
 you to store much more data, since ArangoDB distributes the data 
-automatically to the different servers.
+automatically to the different servers. In many situations one can 
+also reap a benefit in data throughput, again because the load can
+be distributed to multiple machines.
 
 In a cluster there are essentially two types of processes: "DBservers"
 and "coordinators". The former actually store the data, the latter
@@ -24,9 +26,10 @@ As a central highly available service to hold the cluster configuration
 and to synchronise reconfiguration and failover operations we currently
 use a an external program called `etcd`. It provides a hierarchical
 key value store with strong consistency and reliability promises.
+This is called the "agency" and its processes are called "agents".
 
 All this is admittedly a relatively complicated setup and involves a lot
-of steps for startup and shutdown of clusters. Therefore we have created
+of steps for the startup and shutdown of clusters. Therefore we have created
 convenience functionality to plan, setup, start and shutdown clusters.
 
 The whole process works in two phases, first the "planning" phase and
@@ -46,14 +49,17 @@ exactly as you would in a normal ArangoDB instance.
 However, you can use any of these dispatchers to plan and start your
 cluster. In the planning phase, you have tell the planner about all
 dispatchers in your cluster and it will automatically distribute your
-agency, DBserver and coordinator processes amonst the dispatchers. The
+agency, DBserver and coordinator processes amongst the dispatchers. The
 result is the cluster plan which you feed into the kickstarter. The
 kickstarter is a program that actually uses the dispatchers to
 manipulate the processes in your cluster. It runs on one of the
-dispatchers, which analyses the cluster plan, and executes all actions,
+dispatchers, which analyses the cluster plan and executes those actions,
 for which it is personally responsible, and forwards all other actions
 to the corresponding dispatcher. This is possible, because the cluster
 plan incorporates the information about all dispatchers.
+
+We also offer a graphical user interface to the cluster planner and
+dispatcher, see ??? for details.
 
 
 How to try it out {#ShardingTryItOut}
@@ -62,8 +68,8 @@ How to try it out {#ShardingTryItOut}
 In this text we assume that you are working with a standard installation
 of ArangoDB with version at least 2.0. This means that everything
 is compiled for cluster operation and that `etcd` is compiled and
-the executable is installed in the `bin` directory of your ArangoDB
-installation.
+the executable is installed in the same place as your `arangod`
+executable.
 
 We will first plan and launch a cluster, such that all your servers run
 on the local machine.
@@ -115,16 +121,15 @@ components tell you more about the layout of your cluster:
       } 
     ]
 
-This for example tells you the ports on which your ArangoDB processes
-will run. We will need the 8530 (or whatever appears on your machine) 
-for the coordinators below.
+This tells you the ports on which your ArangoDB processes will listen.
+We will need the 8530 (or whatever appears on your machine) for the
+coordinators below.
 
 More interesting is that such a cluster plan document can be used to
-start up the cluster conveniently using a `Kickstarter` object.
-Please note that the `launch` method of the kickstarter shown below
-initialises all
-data directories and log files, so if you have previously used the same
-cluster plan you will lose all your data. Use the `relaunch` method
+start up the cluster conveniently using a `Kickstarter` object. Please
+note that the `launch` method of the kickstarter shown below initialises
+all data directories and log files, so if you have previously used the
+same cluster plan you will lose all your data. Use the `relaunch` method
 described below instead in that case.
 
     arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
@@ -228,10 +233,44 @@ At this stage all the basic CRUD operation for single documents or edges
 and all simple queries are implemented. AQL queries work but not with
 the best possible performance.
 Creating collections, dropping collections, creating databases,
-dropping databases works, however these operations are relatively 
+dropping databases all work, however these operations are relatively 
 slow at this stage. This is mostly due to the `etcd` program we are
 currently using. We will probably see a speedup in a later release.
 The basic CRUD operations already have a relatively good performance,
 the simple queries are in need of further optimisations as well.
+
+The following does not yet work:
+
+  - Transactions
+  - optimised AQL
+  - writing AQL/parallel
+  - replication/automatic failover
+  - hot swap/maintenance of cluster
+  - resizing cluster, moving shards
+  - sharding of edge collections is currently independent from the one
+    on vertex collections
+  - no distributed graph algorithms
+  - Custom key generators:
+    db._create("...", { keyOptions: { ... } })
+  - unique constraints on non-shard keys are unsupported
+    db.ensureIndex(): 
+  - import API is broken for sharded collections (will not work, but
+    there is no error ATM)
+  - db.<collection>.revision() returns the highest revision number from
+    all shards. But revision numbers are assigned per shard, so this is
+    not guaranteed to be the revision of the latest inserted document.
+  - db.<collection>.first() and db.<collection>.last() are unsupported
+    for collections with more than one shard.
+  - collections objects are broken if their database is dropped
+  - db.<collection>.rotate() not implemented
+  - db.<collection>.rename() not implemented
+  - db.<collection>.checksum() is currently unsupported for sharded
+    collections
+
+
+Recommended firewall setup
+==========================
+
+
 
 @NAVIGATE_Sharding

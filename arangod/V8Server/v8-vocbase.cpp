@@ -295,6 +295,18 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
   c->_canDrop   = true;
   c->_canUnload = true;
   c->_canRename = true;
+  
+  if (TRI_IsSystemNameCollection(c->_name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
+        TRI_EqualString(c->_name, TRI_COL_NAME_STATISTICS)) {
+      // these collections cannot be dropped or renamed
+      c->_canDrop   = false;
+      c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
+    }
+  }
 
   TRI_InitReadWriteLock(&c->_lock);
 
@@ -2802,11 +2814,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
-                                  TRI_vocbase_col_t const* collection,
-                                  TRI_doc_update_policy_e policy,
-                                  bool waitForSync,
-                                  v8::Arguments const& argv) {
+static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
+                                                          TRI_doc_update_policy_e policy,
+                                                          bool waitForSync,
+                                                          v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -2816,6 +2827,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
   string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(argv[0], key, rev);
+
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
   }
@@ -2828,7 +2840,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
   error = triagens::arango::deleteDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, headers,
             responseCode, resultHeaders, resultBody);
-
+    
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, error);
   }
@@ -2836,7 +2848,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
   // 404/412
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsArrayJson(json)) {
+    if (! TRI_IsArrayJson(json)) {
       if (0 != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
@@ -2854,13 +2866,21 @@ static v8::Handle<v8::Value> RemoveVocbaseCol_Coordinator (
                             subjson->_value._string.length-1);
     }
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+    if (errorNum == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+        policy == TRI_DOC_UPDATE_LAST_WRITE) {
+      // this is not considered an error
+      return scope.Close(v8::False());
+    }
+
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
-  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+
   if (0 != json) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
-  return scope.Close(ret);
+
+  return scope.Close(v8::True());
 }
 #endif
 
@@ -2907,8 +2927,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(
-               RemoveVocbaseCol_Coordinator(col, policy, forceSync, argv));
+    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
   }
 #endif
 
@@ -6214,6 +6233,10 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* collection) {
   v8::HandleScope scope;
 
+  if (! collection->_canDrop) { 
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
+  }
+  
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
   
@@ -9695,7 +9718,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   }
 
   // convert the JavaScript string to a string
-  const string key = TRI_ObjectToString(name);
+  string const key = TRI_ObjectToString(name);
 
   if (key.size() == 0) {
     // we must not throw a v8 exception here because this will cause follow up errors
@@ -9840,7 +9863,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
+  string const key = TRI_ObjectToString(name);
 
   if (key == "") {
     return scope.Close(v8::Handle<v8::Integer>());

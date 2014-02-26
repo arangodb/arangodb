@@ -1579,6 +1579,8 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const& parameter,
         }
       }
     }
+    
+    seenObjects.pop_back();
 
     return arrayJson;
   }
