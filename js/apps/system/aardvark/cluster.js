@@ -52,15 +52,11 @@
           "_cluster_kickstarter_plans"
         )),
       getStarter = function() {
-          require("console").log("load conf");
         var config = plans.loadConfig(),
           k;
-          require("console").log("loaded conf");
         if (!config) {
-          require("console").log("No conf found");
           return;
         }
-        require("console").log("Conf found");
         k = new cluster.Kickstarter(config.plan);
         k.runInfo = config.runInfo;
         return k;
@@ -73,9 +69,7 @@
       };
     // only make these functions available in dispatcher mode!
     controller.post("/plan", function(req, res) {
-      require("console").log("Mueller");
       cleanUp();
-      require("console").log("Peter");
       var config = {},
           input = req.body(),
           result = {},
@@ -134,7 +128,7 @@
     });
 
     controller.get("/healthcheck", function(req, res) {
-      res.json(getStarter().isHealthy());
+      res.json(!getStarter().isHealthy().error);
     });
 
     controller.get("/shutdown", function(req, res) {

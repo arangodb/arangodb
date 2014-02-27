@@ -143,6 +143,10 @@ bool shardKeysChanged (std::string const& dbname,
   const std::vector<std::string>& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
+    if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {
+      continue;
+    }
+
     TRI_json_t const* n = TRI_LookupArrayJson(newJson, shardKeys[i].c_str());
 
     if (n == 0 && isPatch) {
@@ -922,15 +926,12 @@ int modifyDocumentOnCoordinator (
 
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error;
-  if (isPatch) {
-    error = ci->getResponsibleShard( collid, json, false, shardID,
-                                     usesDefaultShardingAttributes );
-  }
-  else {
-    error = ci->getResponsibleShard( collid, json, true, shardID,
-                                     usesDefaultShardingAttributes );
-  }
+
+  int error = ci->getResponsibleShard(collid, 
+                                      json, 
+                                      ! isPatch, 
+                                      shardID, 
+                                      usesDefaultShardingAttributes);
 
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     return error;
@@ -940,12 +941,12 @@ int modifyDocumentOnCoordinator (
   ClusterCommResult* res;
   string revstr;
   if (rev != 0) {
-    revstr = "&rev="+StringUtils::itoa(rev);
+    revstr = "&rev=" + StringUtils::itoa(rev);
   }
   triagens::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
-    if (!keepNull) {
+    if (! keepNull) {
       revstr += "&keepNull=false";
     }
   }
@@ -961,17 +962,17 @@ int modifyDocumentOnCoordinator (
   string body = JsonHelper::toString(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (!isPatch || 
+  if (! isPatch || 
       error != TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN) {
     // This is the fast method, we only have to ask one shard, unless
     // the we are in isPatch==false and the user has actually changed the
     // sharding attributes
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID, reqType,
-                          "/_db/"+dbname+"/_api/document/"+
-                          StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key) +
-                          "?waitForSync="+(waitForSync ? "true" : "false")+
+    res = cc->syncRequest("", TRI_NewTickServer(), "shard:" + shardID, reqType,
+                          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
+                          StringUtils::urlEncode(shardID) + "/" + StringUtils::urlEncode(key) +
+                          "?waitForSync=" + (waitForSync ? "true" : "false") +
                           revstr + policystr, body, headers, 60.0);
   
     if (res->status == CL_COMM_TIMEOUT) {
