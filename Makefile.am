@@ -512,7 +512,9 @@ include 3rdParty/Makefile.zlib
 ### @brief etcd
 ################################################################################
 
+if ENABLE_ALL_IN_ONE_ETCD
 include 3rdParty/Makefile.etcd
+endif
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
