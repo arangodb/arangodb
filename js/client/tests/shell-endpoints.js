@@ -44,7 +44,6 @@ var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function EndpointsSuite () {
-
   var cleanupEndpoints = function () {
     db._useDatabase("_system");
 
@@ -94,6 +93,7 @@ function EndpointsSuite () {
       }
 
       arango.reconnect(originalEndpoint, "_system", "root", "");
+      db._useDatabase("_system");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
