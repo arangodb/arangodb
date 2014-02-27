@@ -10,24 +10,38 @@
       "planTest"               : "planTest",
       "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
-      "shards"                 : "showShards"
+      "shards"                 : "showShards",
+      "showCluster"            : "showCluster"
+    },
+
+    getNewRoute: function(last) {
+      if (last === "statistics") {
+        return this.clusterPlan.getCoordinator()
+          + "/_admin/"
+          + last;
+      }
+      return this.clusterPlan.getCoordinator()
+        + "/_admin/aardvark/cluster/"
+        + last;
+    },
+
+    updateAllUrls: function() {
+      _.each(this.toUpdate, function(u) {
+        u.updateUrl();
+      });
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+      o.updateUrl();
     },
 
     initialize: function () {
+      this.toUpdate = [];
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({
         async: false
       });
-
-      //für zum testen
-//      this.clusterPlan.set({"plan": "blub"});
-
-      if(this.clusterPlan.get("plan")) {
-        this.showCluster();
-      } else {
-        this.planScenario();
-      }
-
       this.footerView = new window.FooterView();
       this.footerView.render();
     },
@@ -52,7 +66,9 @@
 
     planTest: function() {
       if (!this.planTestView) {
-        this.planTestView = new window.PlanTestView();
+        this.planTestView = new window.PlanTestView(
+          {model : this.clusterPlan}
+        );
       }
       this.planTestView.render();
     },
@@ -83,6 +99,13 @@
         this.downloadView = new window.DownloadView();
       }
       this.downloadView.render(content);
+    },
+
+    handleClusterDown : function() {
+      if (!this.clusterDownView) {
+        this.clusterDownView = new window.ClusterDownView();
+      }
+      this.clusterDownView.render(content);
     }
 
   });
