@@ -158,6 +158,15 @@ LIBS += @MRUBY_LIBS@
 
 endif
 
+################################################################################
+### @brief program suffix
+################################################################################
+
+PROGRAM_SUFFIX=$(shell echo | sed '$(program_transform_name)')
+
+emil:
+	echo $(PROGRAM_SUFFIX)
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                              LIBRARIES & PROGRAMS
 ## -----------------------------------------------------------------------------
@@ -232,7 +241,7 @@ noinst_PROGRAMS =
 
 arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
 
-arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*.conf" -print)
+arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFFIX).conf" -print)
 
 ################################################################################
 ### @brief /share data
@@ -275,12 +284,11 @@ install-data-local:
 ################################################################################
 
 install-exec-hook:
-	rm -f $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
-	$(LN_S) `echo arangosh | sed '$(program_transform_name)'` $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+	rm -f $(DESTDIR)$(bindir)/foxx-manager$(PROGRAM_SUFFIX)
+	$(LN_S) arangosh$(PROGRAM_SUFFIX) $(DESTDIR)$(bindir)/foxx-manager$(PROGRAM_SUFFIX)
 
-	rm -f $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
-	$(LN_S) `echo arangod | sed '$(program_transform_name)'` $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
-
+	rm -f $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
+	$(LN_S) arangod$(PROGRAM_SUFFIX) $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
