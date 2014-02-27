@@ -1,4 +1,5 @@
 <script src="sharedLibs.js"></script>
 <script src="libs.js"></script>
 <script src="cluster.js"></script>
+<script src="planner.js"></script>
 
