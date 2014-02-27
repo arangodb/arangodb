@@ -3975,7 +3975,7 @@ function TRAVERSAL_FUNC (func,
   }
   catch (err1) {
   }
-
+  
   // end vertex
   var e;
   if (endVertex !== undefined) {
