@@ -72,15 +72,7 @@
           interval: this.interval
         });
         this.cols = new window.ClusterCollections();
-        this.shards = new window.ClusterShards()
-        this.startUpdating();
-
-        var typeModel = new window.ClusterType();
-        typeModel.fetch({
-          async: false
-        });
-        this.type = typeModel.get("type");
-
+        this.shards = new window.ClusterShards();
       this.startUpdating();
     },
 

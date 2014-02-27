@@ -35,6 +35,7 @@ var ArangoError = arangodb.ArangoError;
 var PortFinder = require("org/arangodb/cluster/planner").PortFinder;
 var Planner = require("org/arangodb/cluster/planner").Planner;
 var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get values from Plan or Current by a prefix
@@ -890,6 +891,10 @@ var isCoordinator = function () {
   return ArangoServerState.isCoordinator();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief role
+////////////////////////////////////////////////////////////////////////////////
+
 var role = function () {
   if (! isCluster()) {
     return undefined;
@@ -897,6 +902,10 @@ var role = function () {
 
   return ArangoServerState.role();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status
+////////////////////////////////////////////////////////////////////////////////
 
 var status = function () {
   if (! isCluster()) {
@@ -906,6 +915,10 @@ var status = function () {
   return ArangoServerState.status();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isCoordinatorRequest
+////////////////////////////////////////////////////////////////////////////////
+
 var isCoordinatorRequest = function (req) {
   if (! req || ! req.hasOwnProperty("headers")) {
     return false;
@@ -913,6 +926,10 @@ var isCoordinatorRequest = function (req) {
 
   return req.headers.hasOwnProperty("x-arango-coordinator");
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handlePlanChange
+////////////////////////////////////////////////////////////////////////////////
 
 var handlePlanChange = function () {
   if (! isCluster() || isCoordinator()) {
@@ -933,18 +950,31 @@ var handlePlanChange = function () {
   }
 };
 
-exports.shardList            = shardList;
-exports.wait                 = wait;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcherDisabled
+////////////////////////////////////////////////////////////////////////////////
+
+var dispatcherDisabled = function () {
+  return internal.DISABLE_CLUSTER_DISPATCHER;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+exports.dispatcherDisabled   = dispatcherDisabled;
+exports.handlePlanChange     = handlePlanChange;
 exports.isCluster            = isCluster;
 exports.isCoordinator        = isCoordinator;
-exports.role                 = role;
-exports.status               = status;
 exports.isCoordinatorRequest = isCoordinatorRequest;
-exports.handlePlanChange     = handlePlanChange;
+exports.role                 = role;
+exports.shardList            = shardList;
+exports.status               = status;
+exports.wait                 = wait;
 
-exports.PortFinder = PortFinder;
-exports.Planner = Planner;
 exports.Kickstarter = Kickstarter;
+exports.Planner = Planner;
+exports.PortFinder = PortFinder;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

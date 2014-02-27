@@ -43,118 +43,132 @@
    * This will plan a new cluster with the information
    * given in the body
    */
-  controller.post("/plan", function(req, res) {
-    var config = {},
-        input = req.body(),
-        result = {},
-        starter,
-        i,
-        tmp,
-        planner;
 
-    if (input.type === "testSetup") {
-      config.dispatchers = {
-        "d1": {
-          "endpoint": "tcp://" + input.dispatcher
+
+  if (!cluster.dispatcherDisabled()) {
+    var Plans = require("./repositories/plans.js"),
+      plans = new Plans.Repository(
+        require("internal").db._collection(
+          "_cluster_kickstarter_plans"
+        )),
+      getStarter = function() {
+        var config = plans.loadConfig(),
+          k;
+        if (!config) {
+          return;
+        }
+        k = new cluster.Kickstarter(config.plan);
+        k.runInfo = config.runInfo;
+        return k;
+      },
+      cleanUp = function() {
+        var k = getStarter();
+        if (k) {
+          k.cleanup();
         }
       };
-      config.numberOfDBservers = input.numberDBServers;
-      config.numberOfCoordinators = input.numberCoordinators;
+    // only make these functions available in dispatcher mode!
+    controller.post("/plan", function(req, res) {
+      cleanUp();
+      var config = {},
+          input = req.body(),
+          result = {},
+          starter,
+          i,
+          tmp,
+          planner;
+
+      if (input.type === "testSetup") {
+        config.dispatchers = {
+          "d1": {
+            "endpoint": "tcp://" + input.dispatcher
+          }
+        };
+        config.numberOfDBservers = input.numberDBServers;
+        config.numberOfCoordinators = input.numberCoordinators;
+      } else {
+        i = 0;
+        config.dispatchers = {};
+        config.numberOfDBservers = 0;
+        config.numberOfCoordinators = 0;
+        _.each(input.dispatcher, function(d) {
+          i++;
+          var inf = {};
+          inf.endpoint = "tcp://" + d.host;
+          if (d.isCoordinator) {
+            config.numberOfCoordinators++;
+          } else {
+            inf.allowCoordinators = false;
+          }
+          if (d.isDBServer) {
+            config.numberOfDBservers++;
+          } else {
+            inf.allowDBservers = false;
+          }
+          config.dispatchers["d" + i] = inf;
+        });
+      }
       result.config = config;
       planner = new cluster.Planner(config);
       result.plan = planner.getPlan();
       starter = new cluster.Kickstarter(planner.getPlan());
       tmp = starter.launch();
       result.runInfo = tmp.runInfo;
+      plans.storeConfig(result);
       res.json(result);
-    } else {
-      i = 0;
-      config.dispatchers = {};
-      config.numberOfDBservers = 0;
-      config.numberOfCoordinators = 0;
-      _.each(input.dispatcher, function(d) {
-        i++;
-        var inf = {};
-        inf.endpoint = "tcp://" + d.host;
-        if (d.isCoordinator) {
-          config.numberOfCoordinators++;
-        } else {
-          inf.allowCoordinators = false;
-        }
-        if (d.isDBServer) {
-          config.numberOfDBservers++;
-        } else {
-          inf.allowDBservers = false;
-        }
-        config.dispatchers["d" + i] = inf;
-      });
-      result.config = config;
-      planner = new cluster.Planner(config);
-      result.plan = planner.getPlan();
-      starter = new cluster.Kickstarter(planner.getPlan());
-      tmp = starter.launch();
-      result.runInfo = tmp.runInfo;
+    });
+    
+    controller.get("/plan", function(req, res) {
+      res.json(plans.loadConfig());
+    });
+
+    controller.del("/plan", function(req, res) {
+      plans.clear();
+      res.json("ok");
+    });
+
+    controller.get("/healthcheck", function(req, res) {
+      res.json(!getStarter().isHealthy().error);
+    });
+
+    controller.get("/shutdown", function(req, res) {
+      var k = getStarter();
+      var shutdownInfo = k.shutdown();
+      if (shutdownInfo.error) {
+        res.json(shutdownInfo.results);
+        res.status(409);
+      }
+    });
+
+    controller.get("/cleanup", function(req, res) {
+      var k = getStarter();
+      var shutdownInfo = k.shutdown();
+      cleanUp();
+      if (shutdownInfo.error) {
+        res.json("Unable to shutdown cluster");
+        res.status(409);
+        return;
+      }
+    });
+
+    controller.get("/relaunch", function(req, res) {
+      var k = getStarter();
+      var r = k.relaunch();
+      if (r.error) {
+        res.json("Unable to relaunch cluster");
+        res.status(409);
+        return;
+      }
+      var result = {
+        plan: r.plan,
+        runInfo: r.runInfo
+      };
+      result = plans.updateConfig(result);
       res.json(result);
-    }
-  });
-
-  controller.post("/healthcheck", function(req, res) {
-    var input = req.body();
-    var k = new cluster.Kickstarter(input.plan);
-    k.runInfo = input.runInfo;
-    res.json(k.isHealthy());
-  });
-
-  controller.post("/shutdown", function(req, res) {
-    var input = req.body();
-    var k = new cluster.Kickstarter(input.plan);
-    k.runInfo = input.runInfo;
-    var shutdownInfo = k.shutdown();
-    if (shutdownInfo.error) {
-      res.json(shutdownInfo.results);
-      res.status(409);
-    }
-  });
-
-  controller.post("/cleanup", function(req, res) {
-    var input = req.body();
-    var k = new cluster.Kickstarter(input.plan);
-    k.runInfo = input.runInfo;
-    var shutdownInfo = k.shutdown();
-    if (shutdownInfo.error) {
-      res.json("Unable to shutdown cluster");
-      res.status(409);
-      return;
-    }
-    k.cleanup();
-  });
-
-  controller.post("/relaunch", function(req, res) {
-    var input = req.body();
-    var k = new cluster.Kickstarter(input.plan);
-    var r = k.relaunch();
-    if (r.error) {
-      res.json("Unable to relaunch cluster");
-      res.status(409);
-      return;
-    }
-    res.json({
-      config: input.config,
-      plan: r.plan,
-      runInfo: r.runInfo
     });
-  });
-
-  // FAKE TO BE REMOVED TODO 
-  controller.get("/ClusterType", function(req, res) {
-    res.json({
-      type: "symmetricSetup"
-    });
-  });
-
+  }
   if (cluster.isCluster()) {
     // only make these functions available in cluster mode!
-
     var Communication = require("org/arangodb/cluster/agency-communication"),
     comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),

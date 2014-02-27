@@ -1543,7 +1543,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   string resultBody;
 
   bool keepNull = true;
-  if (!strcmp(_request->value("keepNull"),"false")) {
+  if (! strcmp(_request->value("keepNull"),"false")) {
     keepNull = false;
   }
 

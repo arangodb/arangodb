@@ -17,11 +17,14 @@
         name: this.get("name"),
         status: this.get("status")
       };
-    },
-
-    url: function() {
-      return "/_admin/aardvark/cluster/Databases";
     }
+    /*
+    url: "/_admin/aardvark/cluster/Databases";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("Databases");
+    }
+    */
     
   });
 }());

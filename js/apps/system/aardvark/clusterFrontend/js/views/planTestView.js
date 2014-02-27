@@ -35,21 +35,34 @@
         alert("Please define a number of DBServers");
         return;
       }
-      $.ajax("cluster/plan", {
-        type: "POST",
-        data: JSON.stringify({
+      this.model.save(
+        {
           type: "testSetup",
           dispatcher: h + ":" + p,
           numberDBServers: parseInt(d, 10),
           numberCoordinators: parseInt(c, 10)
-        })
-      }).done(function(info) {
-        window.App.showDownload(info);
-      });
+        },
+        {success : function(info) {
+          console.log("planTestView.js");
+          window.App.navigate("showCluster", {trigger: true});
+        }}
+      );
     },
 
     render: function() {
-      $(this.el).html(this.template.render({}));
+      //<fake*******************
+      this.model.set({
+        config : {
+          type: "testSetup",
+          dispatcher: "192.168.173.2:8888",
+          numberDBServers: 3,
+          numberCoordinators: 3
+        }
+      })
+      //*******************fake>
+      $(this.el).html(this.template.render({
+      config : this.model.get("config")
+    }));
     }
   });
 

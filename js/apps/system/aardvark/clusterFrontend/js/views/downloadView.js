@@ -17,6 +17,7 @@
     },
 
     render: function(content) {
+      console.log(window.App.clusterPlan.getCoordinator());
       this.content = "data:application/octet-stream," + encodeURIComponent(JSON.stringify(content));
       var toShow = _.findWhere(content.runInfo, {isStartServers: true});
       $(this.el).html(this.template.render({

@@ -5,6 +5,10 @@
   window.ClusterCollections = Backbone.Collection.extend({
     model: window.ClusterCollection,
     
+    updateUrl: function() {
+      this.url = window.App.getNewRoute(this.dbname + "/Collections");
+    },
+
     url: function() {
       return "/_admin/aardvark/cluster/"
         + this.dbname + "/"
@@ -15,10 +19,12 @@
       this.isUpdating = false;
       this.timer = null;
       this.interval = 1000;
+      window.App.registerForUpdate(this);
     },
 
     getList: function(db) {
       this.dbname = db;
+      this.updateUrl();
       this.fetch({
         async: false
       });
@@ -39,6 +45,7 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
+        this.updateUrl();
         self.fetch();
       }, this.interval);
     }
