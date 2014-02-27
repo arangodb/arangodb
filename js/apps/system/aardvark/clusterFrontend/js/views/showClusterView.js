@@ -72,7 +72,7 @@
           interval: this.interval
         });
         this.cols = new window.ClusterCollections();
-        this.shards = new window.ClusterShards()
+        this.shards = new window.ClusterShards();
         this.startUpdating();
 
         var typeModel = new window.ClusterType();
