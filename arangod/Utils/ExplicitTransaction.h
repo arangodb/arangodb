@@ -60,12 +60,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExplicitTransaction (struct TRI_vocbase_s* const vocbase,
-                             const triagens::arango::CollectionNameResolver& resolver,
-                             const vector<string>& readCollections,
-                             const vector<string>& writeCollections,
-                             const double lockTimeout,
-                             const bool waitForSync,
-                             const bool doReplicate) :
+                             triagens::arango::CollectionNameResolver const& resolver,
+                             vector<string> const& readCollections,
+                             vector<string> const& writeCollections,
+                             double lockTimeout,
+                             bool waitForSync,
+                             bool doReplicate) :
           Transaction<T>(vocbase, TRI_GetIdServer(), resolver, doReplicate) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);

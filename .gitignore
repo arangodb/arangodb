@@ -105,3 +105,5 @@ js/apps/*
 !js/apps/system/*
 
 .sass-cache/
+
+3rdParty/etcd/src/
