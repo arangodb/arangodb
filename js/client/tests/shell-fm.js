@@ -28,7 +28,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
 var jsunity = require("jsunity");
 var fm = require("org/arangodb/foxx/manager");
 var arango = require("org/arangodb").arango;
@@ -411,8 +410,6 @@ function FoxxManagerSuite () {
 jsunity.run(FoxxManagerSuite);
 
 return jsunity.done();
-
-}());
 
 // Local Variables:
 // mode: outline-minor

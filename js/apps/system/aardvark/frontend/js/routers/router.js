@@ -29,7 +29,13 @@
       "graphManagement/add"                 : "graphAddNew",
       "graphManagement/delete/:name"        : "graphDelete",
       "userManagement"                      : "userManagement",
-      "userProfile"                         : "userProfile"
+      "userProfile"                         : "userProfile",
+      "testing"                             : "testview"
+    },
+
+    testview: function() {
+      this.testView = new window.testView();
+      this.testView.render();
     },
 
     initialize: function () {

@@ -25,7 +25,9 @@ function main (argv) {
     j--;
   }
   var l = r.runInfo[j];
-  for (i = 0;i < l.endpoints.length;i++) {
-    print("  " + l.roles[i] + ": " + l.endpoints[i]);
+  if (l.endpoints) {
+    for (i = 0; i < l.endpoints.length;i++) {
+      print("  " + l.roles[i] + ": " + l.endpoints[i]);
+    }
   }
 }

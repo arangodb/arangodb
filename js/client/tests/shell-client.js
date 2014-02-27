@@ -30,8 +30,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 
@@ -214,8 +212,6 @@ function clientTestSuite () {
 jsunity.run(clientTestSuite);
 
 return jsunity.done();
-
-}());
 
 // Local Variables:
 // mode: outline-minor
