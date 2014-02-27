@@ -778,6 +778,8 @@ build_cpu
 build
 ENABLE_RELATIVE_FALSE
 ENABLE_RELATIVE_TRUE
+ENABLE_INTERNAL_GO_FALSE
+ENABLE_INTERNAL_GO_TRUE
 ENABLE_ALL_IN_ONE_ETCD_FALSE
 ENABLE_ALL_IN_ONE_ETCD_TRUE
 ENABLE_ALL_IN_ONE_BOOST_FALSE
@@ -838,6 +840,7 @@ enable_all_in_one_v8
 enable_all_in_one_icu
 enable_all_in_one_boost
 enable_all_in_one_etcd
+enable_internal_go
 enable_relative
 enable_silent_rules
 enable_dependency_tracking
@@ -1508,6 +1511,8 @@ Optional Features:
   --enable-all-in-one-etcd
                           use supplied etcd from 3rdParty directory (default:
                           yes)
+  --enable-internal-go    use go binaries from 3rdParty directory (default:
+                          no)
   --enable-relative       all path are relative to the binary (default: no)
   --enable-silent-rules   less verbose build output (undo: "make V=1")
   --disable-silent-rules  verbose build output (undo: "make V=0")
@@ -2638,6 +2643,25 @@ fi
 else
   ENABLE_ALL_IN_ONE_ETCD_TRUE='#'
   ENABLE_ALL_IN_ONE_ETCD_FALSE=
+fi
+
+
+
+# Check whether --enable-internal-go was given.
+if test "${enable_internal_go+set}" = set; then :
+  enableval=$enable_internal_go; tr_INTERNAL_GO="${enableval:-yes}"
+else
+  tr_INTERNAL_GO=no
+
+fi
+
+
+ if test "x$tr_INTERNAL_GO" = xyes; then
+  ENABLE_INTERNAL_GO_TRUE=
+  ENABLE_INTERNAL_GO_FALSE='#'
+else
+  ENABLE_INTERNAL_GO_TRUE='#'
+  ENABLE_INTERNAL_GO_FALSE=
 fi
 
 
@@ -9217,6 +9241,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ALL_IN_ONE_ETCD_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_ETCD_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE_ETCD\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_INTERNAL_GO_TRUE}" && test -z "${ENABLE_INTERNAL_GO_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_INTERNAL_GO\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then
