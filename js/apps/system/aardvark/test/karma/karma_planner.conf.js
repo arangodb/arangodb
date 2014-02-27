@@ -190,9 +190,9 @@ module.exports = function(karma) {
       'frontend/js/views/clusterShardsView.js',
 
       //Views Planner
-      'plannerFrontend/js/views/planScenarioSelectorView.js',
-      'plannerFrontend/js/views/planSymmetricView.js',
-      'plannerFrontend/js/views/planTestView.js',
+      'clusterFrontend/js/views/planScenarioSelectorView.js',
+      'clusterFrontend/js/views/planSymmetricView.js',
+      'clusterFrontend/js/views/planTestView.js',
 
 
       // Router
