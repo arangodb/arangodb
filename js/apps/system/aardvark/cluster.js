@@ -73,9 +73,7 @@
       };
     // only make these functions available in dispatcher mode!
     controller.post("/plan", function(req, res) {
-      require("console").log("Mueller");
       cleanUp();
-      require("console").log("Peter");
       var config = {},
           input = req.body(),
           result = {},
