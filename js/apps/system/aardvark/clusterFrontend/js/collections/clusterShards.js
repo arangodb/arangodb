@@ -31,10 +31,10 @@
     getList: function(dbname, colname) {
       this.dbname = dbname;
       this.colname = colname;
+      this.updateUrl();
       this.fetch({
         async: false
       });
-      console.log(this);
       return this.map(function(m) {
         return m.forList();
       });
@@ -52,6 +52,7 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
+        this.updateUrl();
         self.fetch();
       }, this.interval);
     }
