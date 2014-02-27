@@ -830,7 +830,6 @@ testFuncs.authentication_parameters = function (options) {
   var i;
   var re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    print("GETting",instanceInfo.url+urlsTodo[i]);
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
     re.push(r.code);
   }
@@ -849,7 +848,6 @@ testFuncs.authentication_parameters = function (options) {
                     "--server.authenticate-system-only", "true"]);
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    print("GETting",instanceInfo.url+urlsTodo[i]);
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
     re.push(r.code);
   }
@@ -868,7 +866,6 @@ testFuncs.authentication_parameters = function (options) {
                     "--server.authenticate-system-only", "true"]);
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    print("GETting",instanceInfo.url+urlsTodo[i]);
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
     re.push(r.code);
   }
