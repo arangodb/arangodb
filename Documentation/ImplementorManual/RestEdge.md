@@ -93,7 +93,7 @@ See @ref RestDocument for details.
 See @ref RestDocument for details.
 
 @anchor RestEdgeHead
-@RESTHEADER{GET /_api/edge,reads an edge header}
+@RESTHEADER{HEAD /_api/edge,reads an edge header}
 
 @REST{HEAD /_api/edge/@FA{document-handle}}
 
