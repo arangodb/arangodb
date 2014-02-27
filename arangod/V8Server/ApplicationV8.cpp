@@ -749,6 +749,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), _devAppPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
     TRI_AddGlobalVariableVocbase(context->_context, "FE_DEVELOPMENT_MODE", v8::Boolean::New(_frontendDevelopmentMode));
+
+    for (map<string, bool>::iterator i = _definedBooleans.begin();  i != _definedBooleans.end(); ++i) {
+      TRI_AddGlobalVariableVocbase(context->_context, i->first.c_str(), v8::Boolean::New(i->second));
+    }
   }
 
   // set global flag before loading system files

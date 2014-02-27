@@ -450,6 +450,20 @@ namespace triagens {
         bool _disableReplicationApplier;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the dispatcher functionality
+///
+/// @CMDOPT{\--server.disable-cluster-dispatcher @CA{flag}}
+///
+/// If @LIT{true} the server can be used as dispatcher for a cluster. if you
+/// enable this option, you should secure access to the dispatcher with a 
+/// password.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableClusterDispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on compaction
 ///
 /// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
