@@ -13,6 +13,8 @@
       events: {
         "change #selectDB"        : "updateCollections",
         "change #selectCol"       : "updateShards",
+        "click .coordinator"      : "dashboard",
+        "click .dbserver"         : "dashboard",
         "click #clusterShutdown"  : "clusterShutdown",
         "mouseover #lineGraph"    : "setShowAll",
         "mouseout #lineGraph"     : "resetShowAll"
@@ -402,8 +404,11 @@
 
     clusterShutdown : function() {
       window.App.navigate("", {trigger: true});
+    },
+    dashboard: function(e) {
+        var id = $(e.currentTarget).attr("id");
+        window.App.navigate("dashboard/"+id, {trigger: true});
     }
-
   });
 
 }());

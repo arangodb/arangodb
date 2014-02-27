@@ -155,6 +155,10 @@
         "frontend/html/start.html.part",
         "clusterFrontend/html/head.html.part",
         "frontend/js/templates/**",
+        "frontend/js/templates/dashboardView.ejs",
+        "frontend/js/templates/dashboardDistributed.ejs",
+        "frontend/js/templates/dashboardHttpGroup.ejs",
+        "frontend/js/templates/lineChartDetailView.ejs",
         "clusterFrontend/js/templates/**",
         "frontend/html/body.html.part",
         "clusterFrontend/html/scripts.html.part",
@@ -164,7 +168,8 @@
 
     "css/cluster.css": {
         "files": [
-         "frontend/scss/cluster.css"
+         "frontend/scss/cluster.css",
+         "frontend/scss/generated.css"
         ]
     },
 
@@ -176,7 +181,10 @@
         "clusterFrontend/js/models/**",
         "clusterFrontend/js/collections/**",
         "frontend/js/views/footerView.js",
+        "frontend/js/views/dashboardView.js",
         "frontend/js/collections/arangoStatisticsCollection.js",
+        "frontend/js/collections/arangoDocuments.js",
+        "frontend/js/models/arangoDocument.js",
         "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
         "clusterFrontend/js/views/**",
         "clusterFrontend/js/routers/**"
