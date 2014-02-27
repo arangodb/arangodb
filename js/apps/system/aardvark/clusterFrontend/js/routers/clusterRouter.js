@@ -16,11 +16,11 @@
 
     getNewRoute: function(last) {
       if (last === "statistics") {
-        return this.cluterPlan.getCoordinator()
+        return this.clusterPlan.getCoordinator()
           + "/_admin/"
           + last;
       }
-      return this.cluterPlan.getCoordinator()
+      return this.clusterPlan.getCoordinator()
         + "/_admin/aardvark/cluster/"
         + last;
     },
@@ -33,9 +33,11 @@
 
     registerForUpdate: function(o) {
       this.toUpdate.push(o);
+      o.updateUrl();
     },
 
     initialize: function () {
+      this.toUpdate = [];
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({
         async: false
