@@ -1112,12 +1112,12 @@ int createEdgeOnCoordinator (
   // Send a synchronous request to that shard using ClusterComm:
   ClusterCommResult* res;
   map<string, string> headers;
-  res = cc->syncRequest("", TRI_NewTickServer(), "shard:"+shardID,
+  res = cc->syncRequest("", TRI_NewTickServer(), "shard:" + shardID,
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
-                        "/_db/"+dbname+"/_api/edge?collection="+
-                        StringUtils::urlEncode(shardID)+"&waitForSync="+
-                        (waitForSync ? "true" : "false")+
-                        "&from="+StringUtils::urlEncode(from)+"&to="+StringUtils::urlEncode(to), 
+                        "/_db/" + dbname + "/_api/edge?collection=" +
+                        StringUtils::urlEncode(shardID) + "&waitForSync=" + 
+                        (waitForSync ? "true" : "false") +
+                        "&from=" + StringUtils::urlEncode(from) + "&to=" + StringUtils::urlEncode(to), 
                         body, headers, 60.0);
   
   if (res->status == CL_COMM_TIMEOUT) {

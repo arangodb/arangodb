@@ -8,7 +8,7 @@
 ### @brief etcd
 ################################################################################
 
-@top_srcdir@/bin/etcd:
+@top_srcdir@/bin/etcd-arango:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING etcd"
@@ -16,7 +16,7 @@
 	@echo
 
 	cd @top_srcdir@/3rdParty/etcd && ./build
-	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin
+	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -32,7 +32,7 @@ CLEANUP_3RD += clean-etcd
 
 clean-etcd:
 	cd @top_srcdir@/3rdParty/etcd && ./clean
-	rm -f @top_srcdir@/bin/etcd
+	rm -f @top_srcdir@/bin/etcd-arango
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
