@@ -153,6 +153,10 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
               "-peer-addr", getAddrPort(
                           exchangePort(dispatchers[cmd.dispatcher].endpoint,
                                        cmd.intPort))
+              // the following might speed up etcd, but it might also
+              // make it more unstable:
+              // ,"-peer-heartbeat-timeout=10",
+              // "-peer-election-timeout=20"
              ];
   var i;
   if (cmd.peers.length > 0) {
@@ -161,7 +165,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     for (i = 1; i < cmd.peers.length; i++) {
       st = st + "," + getAddrPort(cmd.peers[i]);
     }
-    args.push(getAddrPort(cmd.peers[0]));
+    args.push(st);
   }
   var agentPath = fs.makeAbsolute(cmd.agentPath);
   if (agentPath !== cmd.agentPath) {
@@ -186,6 +190,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
+      wait(0.5);
       return {"error":false, "isStartAgent": true, "pid": pid, 
               "endpoint": "tcp://"+extEndpoint};
     }
@@ -197,8 +202,8 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (isRelaunch) {
     // nothing to do here
-    console.info("Waiting 5 seconds for agency to come alive...");
-    wait(5);
+    console.info("Waiting 1 second for agency to come alive...");
+    wait(1);
     return {"error":false, "isSendConfiguration": true};
   }
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
@@ -299,8 +304,8 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
   }
 
-  console.info("Waiting for servers to come to life...");
-  wait(15);
+  console.info("Waiting 3 seconds for servers to come to life...");
+  wait(3);
 
   return {"error": false, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
@@ -340,8 +345,8 @@ shutdownActions.startAgent = function (dispatchers, cmd, run) {
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  console.info("Waiting for 5 seconds for servers before shutting down agency.");
-  wait(5);
+  console.info("Waiting for 3 seconds for servers before shutting down agency.");
+  wait(3);
   return {"error": false, "isSendConfiguration": true};
 };
 
@@ -353,8 +358,8 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     download(url);
   }
-  console.info("Waiting 5 seconds for servers to shutdown gracefully...");
-  wait(5);
+  console.info("Waiting 3 seconds for servers to shutdown gracefully...");
+  wait(3);
   for (i = 0;i < run.pids.length;i++) {
     console.info("Shutting down %s the hard way...", JSON.stringify(run.pids[i]));
     killExternal(run.pids[i]);
