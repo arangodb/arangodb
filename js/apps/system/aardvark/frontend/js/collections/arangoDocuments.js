@@ -12,7 +12,7 @@
         offset: 0,
 
         url: '/_api/documents',
-        model: arangoDocumentModel,
+        model: window.arangoDocumentModel,
         getFirstDocuments: function () {
           if (this.currentPage !== 1) {
             var link = window.location.hash.split("/");

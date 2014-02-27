@@ -398,6 +398,8 @@ bool ApplicationServer::parse (int argc,
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
+  TRI_SetLogLevelLogging(_logLevel.c_str());
+
   // .............................................................................
   // parse phase 1
   // .............................................................................
@@ -881,7 +883,7 @@ bool ApplicationServer::readConfigurationFile () {
 
     // do not use init files
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOG_DEBUG("using no init file at all");
+      LOG_INFO("using no init file at all");
       return true;
     }
 
