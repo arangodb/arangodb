@@ -8900,6 +8900,7 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@@ENABLE_INTERNAL_GO_TRUE@	cd @top_srcdir@/3rdParty/etcd && GOROOT="`pwd`/../go-$(TRI_BITS)/" PATH="`pwd`/../go-$(TRI_BITS)/bin:$$PATH" ./build
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@@ENABLE_INTERNAL_GO_FALSE@	cd @top_srcdir@/3rdParty/etcd && ./build
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@	strip @top_srcdir@/bin/etcd-arango
 
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo "--------------------------------------------------------------------------------"
