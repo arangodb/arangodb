@@ -6,7 +6,8 @@
     model: window.ClusterCollection,
     
     url: function() {
-      return "/_admin/aardvark/cluster/"
+      return window.App.clusterPlan.getCoordinator()
+        + "/_admin/aardvark/cluster/"
         + this.dbname + "/"
         + "Collections";
     },
