@@ -3,13 +3,13 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon, .scenarioMachine {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
-ul.tileList:after, div.resizecontainer:after {
+ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSingleMachine:after {
   clear: both;
   content: ".";
   display: block;
@@ -814,3 +814,62 @@ div.coordinator {
 
 div.dbserver {
   right: 15px; }
+
+.machineClass {
+  padding: 10px;
+  float: left;
+  background-color: #E1E1E1;
+  width: 311px;
+  height: 175px;
+  margin-left: 8px; }
+
+.scenarioBox {
+  position: absolute;
+  margin-top: 10px;
+  width: auto;
+  height: 65px;
+  left: 10px;
+  right: 10px;
+  -moz-border-radius: 3px 3px 0 0;
+  -webkit-border-radius: 3px 3px 0 0;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioBox.bottomBox {
+    bottom: 10px; }
+
+.scenarioBoxHeader {
+  width: auto;
+  height: 5px;
+  line-height: 5px;
+  text-align: right;
+  margin-top: -5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.19); }
+
+.scenarioBoxText {
+  width: auto;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 17px; }
+
+.scenarioMachine {
+  position: relative;
+  margin-right: 20px;
+  height: 177px;
+  width: 87px;
+  -moz-border-radius: 3px 3px 0 0;
+  -webkit-border-radius: 3px 3px 0 0;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioMachine:last-child {
+    margin-right: 0px; }
+
+.scenarioSingleMachine {
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.19);
+  background-color: white; }
+  .scenarioSingleMachine .scenarioMachine {
+    border: 1px solid transparent; }

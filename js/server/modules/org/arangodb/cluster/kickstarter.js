@@ -90,7 +90,7 @@ function sendToAgency (agencyURL, path, obj) {
       res = download(agencyURL+path,body,
           {"method":"PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-      if (res.code === 201) {
+      if (res.code === 201 || res.code === 200) {
         return true;
       }
     }
@@ -117,7 +117,7 @@ function sendToAgency (agencyURL, path, obj) {
     res = download(agencyURL+path,body,
           {"method": "PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
-    if (res.code === 201) {
+    if (res.code === 201 || res.code === 200) {
       return true;
     }
   }
@@ -152,7 +152,8 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
                                                     : "0.0.0.0:")+cmd.intPort,
               "-peer-addr", getAddrPort(
                           exchangePort(dispatchers[cmd.dispatcher].endpoint,
-                                       cmd.intPort)) ];
+                                       cmd.intPort))
+             ];
   var i;
   if (cmd.peers.length > 0) {
     args.push("-peers");
@@ -166,7 +167,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   if (agentPath !== cmd.agentPath) {
     if (cmd.agentPath === "") {
       agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..", "etcd" ));
+                                       "..", "etcd-arango" ));
     }
     else {
       agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
@@ -409,7 +410,7 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
 };
 
 isHealthyActions.startAgent = function (dispatchers, cmd, run) {
-  console.info("Checking health of agent %s", JSON.strinfify(run.pid));
+  console.info("Checking health of agent %s", JSON.stringify(run.pid));
   var r = statusExternal(run.pid);
   r.isStartAgent = true;
   r.error = false;
