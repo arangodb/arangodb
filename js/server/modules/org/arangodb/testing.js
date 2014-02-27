@@ -207,7 +207,6 @@ function startInstance (protocol, options, addArgs) {
   }
 
   // Wait until the server/coordinator is up:
-  var up = false;
   var url;
   if (protocol === "ssl") {
     url = "https";
@@ -353,7 +352,6 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
 function runArangoshCmd (options, instanceInfo, cmds) {
   var args = makeTestingArgsClient(options);
-  var topDir = findTopDir();
   args.push("--server.endpoint");
   args.push(instanceInfo.endpoint);
   args = args.concat(cmds);
@@ -412,7 +410,6 @@ testFuncs.shell_server_ahuacatl = function(options) {
 
 testFuncs.shell_client = function(options) {
   findTests();
-  var topDir = findTopDir();
   var instanceInfo = startInstance("tcp",options);
   var results = {};
   var i;
@@ -481,7 +478,6 @@ testFuncs.boost = function (options) {
 testFuncs.single = function (options) {
   var instanceInfo = startInstance("tcp",options);
   var result = { };
-  var r;
   if (options.test !== undefined) {
     var te = options.test;
     result.test = te;
@@ -596,7 +592,6 @@ function runArangoImp (options, instanceInfo, what) {
 }
 
 function runArangoDumpRestore (options, instanceInfo, which, database) {
-  var topDir = findTopDir();
   var args = ["--configuration",               "none",
               "--server.username",             options.username,
               "--server.password",             options.password,
@@ -619,7 +614,6 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
 }
 
 function runArangoBenchmark (options, instanceInfo, cmds) {
-  var topDir = findTopDir();
   var args = ["--configuration",               "none",
               "--quiet",
               "--server.username",             options.username,
@@ -694,7 +688,6 @@ testFuncs.upgrade = function (options) {
 
   var result = {};
 
-  var topDir = findTopDir();
   var tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
 
