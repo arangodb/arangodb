@@ -11,10 +11,11 @@
     template: templateEngine.createTemplate("showCluster.ejs"),
 
       events: {
-        "change #selectDB" : "updateCollections",
-        "change #selectCol" : "updateShards",
-        "mouseover #lineGraph" : "setShowAll",
-        "mouseout #lineGraph" : "resetShowAll"
+        "change #selectDB"        : "updateCollections",
+        "change #selectCol"       : "updateShards",
+        "click #clusterShutdown"  : "clusterShutdown",
+        "mouseover #lineGraph"    : "setShowAll",
+        "mouseout #lineGraph"     : "resetShowAll"
       },
 
       updateServerTime: function() {
@@ -397,7 +398,23 @@
           this.timer = window.setInterval(function() {
               self.rerender();
           }, this.interval);
-      }
+      },
+
+    clusterShutdown : function() {
+      this.stopUpdating();
+      $.ajax({
+        cache: false,
+        type: "GET",
+        async: false, // sequential calls!
+        url: "cluster/shutdown",
+        success: function(data) {
+        },
+        error: function(data) {
+        }
+      });
+      window.App.navigate("handleClusterDown", {trigger: true});
+    }
+
   });
 
 }());
