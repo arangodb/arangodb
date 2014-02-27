@@ -11,7 +11,7 @@ tests (target "shell_server_ahuacatl"). Those, whose filename
 contains the string "ranges-combined" are only taken if the
 flag "skipRanges" in the test options is set to false.
 
-If the filename contains the string "-cluster-", then it is
+If the filename contains the string "-cluster", then it is
 only executed when testing in cluster mode. If the filename
-contains the string "-noncluster-", then it is only executed
+contains the string "-noncluster", then it is only executed
 when testing in single instance mode.
