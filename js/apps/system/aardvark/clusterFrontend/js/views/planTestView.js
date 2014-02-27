@@ -50,6 +50,7 @@
     },
 
     render: function() {
+      //<fake*******************
       this.model.set({
         config : {
           type: "testSetup",
@@ -58,6 +59,7 @@
           numberCoordinators: 3
         }
       })
+      //*******************fake>
       $(this.el).html(this.template.render({
       config : this.model.get("config")
     }));
