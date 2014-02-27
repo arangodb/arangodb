@@ -436,7 +436,7 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
 /// @fn JSF_Cluster_Kickstarter_Constructor
 /// @brief the cluster kickstarter constructor
 ///
-/// @FUN{new require("org/arangodb/cluster/kickstarter").Kickstarter(@FA{plan})}
+/// @FUN{new require("org/arangodb/cluster").Kickstarter(@FA{plan})}
 ///
 /// This constructor constructs a kickstarter object. Its first
 /// argument is a cluster plan as for example provided by the planner
