@@ -9,7 +9,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, 
 div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
-ul.tileList:after, div.resizecontainer:after {
+ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after {
   clear: both;
   content: ".";
   display: block;
