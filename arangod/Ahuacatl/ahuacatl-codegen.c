@@ -1529,7 +1529,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
-    
+
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
         fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
