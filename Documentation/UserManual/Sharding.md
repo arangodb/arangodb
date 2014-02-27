@@ -232,9 +232,11 @@ Status of the implementation {#ShardingStatusImpl}
 
 This version 2.0 of ArangoDB contains the first usable implementation
 of the sharding extensions. However, not all planned features are
-included in this release. In particular, we do not yet recommend to
-use sharding in version 2.0 for production systems. This section
-provides an overview over the implemented and future features.
+included in this release. In particular, automatic failover is fully
+prepared in the architecture but is not yet implemented. If you use
+Version 2.0 in cluster mode in a production system, you have to
+organise failure recovery manually. This section provides an overview
+over the implemented and future features.
 
 In normal single instance mode, ArangoDB works completely as usual
 with the same performance and functionality as in previous releases.
@@ -326,10 +328,17 @@ to implement efficiently:
     to improve this for version 2.? (see roadmap). However, due to the
     distributed nature of a sharded collection, not everything that is
     possible in the single instance situation will be possible on a
-    cluster.
+    cluster. For example the autoincrement feature in a cluster with
+    multiple DBservers and coordinators would have to lock the whole
+    collection centrally for every document creation, which
+    essentially defeats the performance purpose of sharding.
   - Unique constraints on non-sharding keys are unsupported. The reason
     for this is that we do not plan to have global indices for sharded
-    collections.
+    collections. Therefore, there is no single authority that could
+    efficiently decide whether or not the unique constraint is
+    satisfied by a new document. The only possibility would be to have
+    a central locking mechanism and use heavy communication for every
+    document creation to ensure the unique constraint.
   - The method `db.<collection>.revision()` for a sharded collection 
     returns the highest revision number from all shards. However,
     revision numbers are assigned per shard, so this is not guaranteed
@@ -340,7 +349,12 @@ to implement efficiently:
     unsupported for collections with more than one shard. The reason for
     this is that temporal order in a highly parallelised environment
     like a cluster is difficult or even impossible to achieve
-    efficiently.
+    efficiently. In a cluster it is entirely possible that two
+    different coordinators add two different documents to two
+    different shards *at the same time*. In such a situation it is not
+    even well-defined which of the two documents is "later". The only
+    way to overcome this fundamental problem would again be a central
+    locking mechanism, which is not desirable for performance reasons.
   - Contrary to the situation in a single instance, objects representing
     sharded collections are broken after their database is dropped.
     In a future version they might report that they are broken, but
@@ -361,13 +375,10 @@ In this section we describe how authentication in a cluster is done
 properly. For experiments it is possible to run the cluster completely
 unauthorised by using the option `--server.disable-authentication true`
 on the command line or the corresponding entry in the configuration
-file. However, for production use this is not desirable. We reiterate
-our advice not to use ArangoDB Version 2.0 in cluster mode for
-production systems.
+file. However, for production use this is not desirable.
 
 You switch on authentication in the cluster by switching it on in the
-configuration of your dispatchers. This is the default setup in the
-binary packages we distribute. When you now use the planner and
+configuration of your dispatchers. When you now use the planner and
 kickstarter to create and launch a cluster, the `arangod` processes in
 your cluster will automatically run with authentication, exactly as the
 dispatchers themselves. However, the cluster will have a sharded
