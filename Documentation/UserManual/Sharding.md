@@ -250,9 +250,9 @@ and work:
     collections with only a single shard. After creation, these
     differences are transparent to the client.
   - Creating and dropping cluster-wide databases works.
-  - Creating, dropping and modifying cluster-wide collections works.
+  - Creating, dropping and modifying cluster-wide collections all work.
     Since these operations occur seldom, we will only improve their
-    performance in a future release, when we will have a our own
+    performance in a future release, when we will have our own
     implemenation of the agency as well as a cluster-wide event managing
     system (see roadmap for release 2.?).
   - The sharding in a collection can be configured to use hashing
@@ -271,7 +271,7 @@ and work:
   - Authentication on the cluster works with the method known from
     single ArangoDB instances on the coordinators. A new cluster-internal
     authorisation scheme has been created. See below for hints on a
-    correct firewall and authorisation setup.
+    sensible firewall and authorisation setup.
   - Most standard API calls of the REST interface work on the cluster
     as usual, with a few exceptions which do no longer make sense on
     a cluster or are harder to implement. See below for details.
@@ -314,16 +314,19 @@ roadmap):
   - The `db.<collection>.rename()` method for sharded collections is not
     yet implemented, but will be supported from version 2.? onwards.
   - The `db.<collection>.checksum()` method for sharded collections is
-    not yet implemented, but will be supported from versionn 2.?
+    not yet implemented, but will be supported from version 2.?
     onwards.
-  - Custom key generators with the `keyOptions` property in the
-    `_create` method for collections are not yet supported. We plan
-    to implement them for version 2.? (see roadmap).
 
 The following restrictions will probably stay for cluster mode, even in
 future versions. This is because they are difficult or even impossible
 to implement efficiently:
 
+  - Custom key generators with the `keyOptions` property in the
+    `_create` method for collections are not supported. We plan
+    to improve this for version 2.? (see roadmap). However, due to the
+    distributed nature of a sharded collection, not everything that is
+    possible in the single instance situation will be possible on a
+    cluster.
   - Unique constraints on non-sharding keys are unsupported. The reason
     for this is that we do not plan to have global indices for sharded
     collections.
@@ -351,12 +354,122 @@ to implement efficiently:
     cluster mode.
 
 
-Authentication in a cluster
-===========================
+Authentication in a cluster {#ShardingAuthentication}
+=====================================================
 
-Recommended firewall setup
-==========================
+In this section we describe how authentication in a cluster is done
+properly. For experiments it is possible to run the cluster completely
+unauthorised by using the option `--server.disable-authentication true`
+on the command line or the corresponding entry in the configuration
+file. However, for production use this is not desirable. We reiterate
+our advice not to use ArangoDB Version 2.0 in cluster mode for
+production systems.
 
+You switch on authentication in the cluster by switching it on in the
+configuration of your dispatchers. This is the default setup in the
+binary packages we distribute. When you now use the planner and
+kickstarter to create and launch a cluster, the `arangod` processes in
+your cluster will automatically run with authentication, exactly as the
+dispatchers themselves. However, the cluster will have a sharded
+collection `_users` with one shard containing only the user `root` with
+an empty password. We emphasise that this sharded cluster-wide
+collection is different from the `_users` collections in each
+dispatcher!
+
+The coordinators in your cluster will use this cluster-wide sharded collection
+to authenticate HTTP requests. If you add users using the usual methods
+via a coordinator, you will in fact change the cluster-wide
+collection `_users` and thus all coordinators will eventually see the
+new users and authenticate against them. "Eventually" means that one has
+to reload the user cache on each coordinator using
+
+    require("org/arangodb/users").reload();
+
+or restart the coordinators.
+
+The DBservers will have their authentication switched on as well.
+However, they do not use the cluster-wide `_users` collection for
+authentication, because the idea is that the outside clients do not talk
+to the DBservers directly, but always go via the coordinators. For the
+cluster-internal communication between coordinators and DBservers (in
+both directions), we use a simpler setup: There are two new
+configuration options `cluster.username` and `cluster.password`, which
+default to `root` and the empty password `""`. If you want to deviate
+from this default you have to change these two configuration options
+in all configuration files on all machines in the cluster. This just
+means that you have to set these two options to the same values in all
+configuration files `arangod.conf` in all dispatchers, since the
+coordinators and DBservers will simply inherit this configuration file
+from the dispatcher that has launched them.
+
+We summarise what you have to do to enable authentication in a cluster:
+
+  1. Set `server.disable-authentication` to `false` in all configuration
+     files of all dispatchers (this is already the default).
+  2. Put the same values for `cluster.username` and `cluster.password`
+     in the very same configuration files of all dispatchers.
+  3. Create users via the usual interface on the coordinators
+     (initially after the cluster launch there will be a single user `root`
+     with empty password).
+  4. Run
+
+         require("org/arangodb/users").reload();
+
+     on all coordinators.
+
+Note that in Version 2.0 of ArangoDB you can already configure the endpoints
+of the coordinators to use SSL, however, this is not yet conveniently
+supported in the planner and kickstarter, and this not yet in the
+graphical cluster management tools. We will fix this in the next
+version.
+
+Please also consider the comments in the following section about
+firewall setup.
+
+
+Recommended firewall setup {#ShardingFirewallSetup}
+===================================================
+
+This section is intended for people who run a cluster in production
+systems. We reiterate our advice not to use ArangoDB Version 2.0 in
+cluster mode for production systems.
+
+The whole idea of the cluster setup is that the coordinators serve HTTP
+requests to the outside world and that all other processes (DBservers
+and agency) are only available from within the cluster itself.
+Therefore, in a production environment, one has to put the whole cluster
+behind a firewall and only open the ports to the coordinators to the
+client processes. 
+
+Note however that for the asynchronous cluster-internal communication 
+the DBservers perform HTTP requests to the coordinators, which means
+that the coordinators must also be reachable from within the cluster.
+
+Furthermore, it is of the utmost importance to hide the agent processes of
+the agency behind the firewall, since, at least at this stage, requests
+to them are completely unauthorised. Leaving their ports exposed to
+the outside world endangers all data in the cluster, because everybody
+on the internet could make the cluster believe that you wanted your
+databases dropped! This weakness will be alleviated in future versions,
+because we will replace `etcd` by our own specialised agency
+implementation, which will allow for authentication.
+
+A further comment applies to the dispatchers. Usually you will open the
+HTTP endpoints of your dispatchers to the outside and switch on
+authentication for them. This is necessary to contact them from the
+outside in the cluster launch phase. However, in actual fact you only
+need to contact one of them, who will then in turn contact the others
+using cluster-internal communication. You can even get away with closing
+access to all dispatchers to the outside world, provided the machine
+running your browser is within the cluster network and does not have to
+go through the firewall to contact the dispatchers. Note that anybody
+who can reach a dispatcher and can authorise himself to it can launch
+arbitrary processes on the machine on which the dispatcher runs!
+
+Therefore we recommend to use SSL endpoints with user/password 
+authentication on the dispatchers *and* to shut down access to them in
+the firewall. You then have to launch the cluster using an `arangosh`
+or browser running within the cluster.
 
 
 @NAVIGATE_Sharding
