@@ -729,9 +729,9 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   if (collection == 0) {
     // no collection object was passed, now check the user-supplied collection name
     
-#ifdef TRI_ENABLE_CLUSTER
     TRI_vocbase_col_t const* col = 0;
 
+#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
@@ -742,7 +742,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     }
 
 #else
-    TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collectionName);
+    col = resolver.getCollectionStruct(collectionName);
 #endif
 
     if (col == 0) {
@@ -2062,7 +2062,7 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
 /// @brief looks up a document and returns it
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
                                                  v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2099,7 +2099,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
 
-  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2181,7 +2181,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 /// @brief looks up a document and returns whether it exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2217,7 +2217,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2372,7 +2372,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
 /// @brief replaces a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                 v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2418,7 +2418,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2723,7 +2723,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 /// @brief updates (patches) a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2767,7 +2767,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2967,7 +2967,7 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -3007,7 +3007,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -3865,21 +3865,6 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                                         lockTimeout,
                                                                         waitForSync,
                                                                         replicate); 
-
-#ifdef TRI_ENABLE_CLUSTER
-  // If we are compiled for cluster and are a coordinator, then we simply
-  // ignore the transaction semantics for now:
-  if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> args = params;
-    v8::Handle<v8::Value> result = action->Call(current, 1, &args);
-    
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
-
-    return scope.Close(result);
-  }
-#endif
 
   int res = trx.begin();
 
