@@ -226,48 +226,133 @@ work exactly as in the single server case.
 See @ref JSModuleCluster "the corresponding chapter of the reference manual"
 for detailed information about the `Planner` and `Kickstarter` classes.
 
+
 Status of the implementation {#ShardingStatusImpl}
 ==================================================
 
-At this stage all the basic CRUD operation for single documents or edges
-and all simple queries are implemented. AQL queries work but not with
-the best possible performance.
-Creating collections, dropping collections, creating databases,
-dropping databases all work, however these operations are relatively 
-slow at this stage. This is mostly due to the `etcd` program we are
-currently using. We will probably see a speedup in a later release.
-The basic CRUD operations already have a relatively good performance,
-the simple queries are in need of further optimisations as well.
+This version 2.0 of ArangoDB contains the first usable implementation
+of the sharding extensions. However, not all planned features are
+included in this release. In particular, we do not yet recommend to
+use sharding in version 2.0 for production systems. This section
+provides an overview over the implemented and future features.
 
-The following does not yet work:
+In normal single instance mode, ArangoDB works completely as usual
+with the same performance and functionality as in previous releases.
 
-  - Transactions
-  - optimised AQL
-  - writing AQL/parallel
-  - replication/automatic failover
-  - hot swap/maintenance of cluster
-  - resizing cluster, moving shards
-  - sharding of edge collections is currently independent from the one
-    on vertex collections
-  - no distributed graph algorithms
-  - Custom key generators:
-    db._create("...", { keyOptions: { ... } })
-  - unique constraints on non-shard keys are unsupported
-    db.ensureIndex(): 
-  - import API is broken for sharded collections (will not work, but
-    there is no error ATM)
-  - db.<collection>.revision() returns the highest revision number from
-    all shards. But revision numbers are assigned per shard, so this is
-    not guaranteed to be the revision of the latest inserted document.
-  - db.<collection>.first() and db.<collection>.last() are unsupported
-    for collections with more than one shard.
-  - collections objects are broken if their database is dropped
-  - db.<collection>.rotate() not implemented
-  - db.<collection>.rename() not implemented
-  - db.<collection>.checksum() is currently unsupported for sharded
-    collections
-  - automatic creation of collections on db._save(ID) not supported
+In cluster mode, the following things are implemented in version 2.0 
+and work:
 
+  - All basic CRUD operations for single documents and edges work
+    essentially with good performance.
+  - One can use sharded collections and can configure the number of
+    shards for each such collection individually. In particular, one
+    can have fully sharded collections as well as cluster-wide available
+    collections with only a single shard. After creation, these
+    differences are transparent to the client.
+  - Creating and dropping cluster-wide databases works.
+  - Creating, dropping and modifying cluster-wide collections works.
+    Since these operations occur seldom, we will only improve their
+    performance in a future release, when we will have a our own
+    implemenation of the agency as well as a cluster-wide event managing
+    system (see roadmap for release 2.?).
+  - The sharding in a collection can be configured to use hashing
+    on arbitrary properties of the documents in the collection.
+  - Creating and dropping indices on sharded collections works. Please
+    note that an index on a sharded collection is not a global index 
+    but only leads to a local index of the same type on each shard.
+  - All SimpleQueries work, again, we will improve the performance in
+    future releases, when we revisit the AQL query optimiser 
+    (see roadmap for release 2.?).
+  - AQL queries work but with relatively bad performance. Also, if the
+    result of a query on a sharded collection is large, this can lead
+    to an out of memory situation on the coordinator handling the
+    request. We will improve this situation when we revisit the AQL
+    query optimiser (see roadmap for release 2.?).
+  - Authentication on the cluster works with the method known from
+    single ArangoDB instances on the coordinators. A new cluster-internal
+    authorisation scheme has been created. See below for hints on a
+    correct firewall and authorisation setup.
+  - Most standard API calls of the REST interface work on the cluster
+    as usual, with a few exceptions which do no longer make sense on
+    a cluster or are harder to implement. See below for details.
+
+
+The following does not yet work but is planned for future releases (see
+roadmap):
+
+  - Transactions can be run but do not behave like transactions. They
+    simply execute but have no atomicity or isolation in version 2.0.
+    See the roadmap for version 2.?.
+  - We plan to revise the AQL optimiser for version 2.?. This is
+    necessary since for efficient queries in cluster mode we have to
+    do as much as possible of the filtering and sorting on the
+    individual DBservers rather than on the coordinator.
+  - Our software architecture is fully prepared for replication, automatic 
+    failover and recovery of a cluster, which will be implemented
+    for version 2.? (see our roadmap).
+  - This setup will at the same time allow for hot swap and in-service 
+    maintenance and scaling of a cluster. However, in version 2.0 the
+    cluster layout is static and no redistribution of data between the
+    DBservers or moving of shards between servers is possible. 
+  - For version 2.? we envision an extension for AQL to allow writing
+    queries. This will also allow to run modifying queries in parallel
+    on all shards.
+  - At this stage the sharding of an edge collection is independent of
+    the sharding of the corresponding vertex collection in a graph.
+    For version 2.? we plan to synchronise the two to allow for more
+    efficient graph traversal functions in large, sharded graphs. We
+    will also do research on distributed algorithms for graphs and
+    implement new algorithms in ArangoDB. However, at this stage, all
+    graph traversal algorithms are executed on the coordinator and
+    this means relatively poor performance since every single edge
+    step leads to a network exchange.
+  - In this version 2.0 the import API is broken for sharded collections.
+    It will appear to work but will in fact silently fail. Fixing this
+    is on the roadmap for version 2.?.
+  - The `db.<collection>.rotate()` method for sharded collections is not
+    yet implemented, but will be supported from version 2.? onwards.
+  - The `db.<collection>.rename()` method for sharded collections is not
+    yet implemented, but will be supported from version 2.? onwards.
+  - The `db.<collection>.checksum()` method for sharded collections is
+    not yet implemented, but will be supported from versionn 2.?
+    onwards.
+  - Custom key generators with the `keyOptions` property in the
+    `_create` method for collections are not yet supported. We plan
+    to implement them for version 2.? (see roadmap).
+
+The following restrictions will probably stay for cluster mode, even in
+future versions. This is because they are difficult or even impossible
+to implement efficiently:
+
+  - Unique constraints on non-sharding keys are unsupported. The reason
+    for this is that we do not plan to have global indices for sharded
+    collections.
+  - The method `db.<collection>.revision()` for a sharded collection 
+    returns the highest revision number from all shards. However,
+    revision numbers are assigned per shard, so this is not guaranteed
+    to be the revision of the latest inserted document. Again,
+    maintaining a global revision number over all shards is very
+    difficult to maintain efficiently.
+  - The methods `db.<collection>.first()` and `db.<collection>.last()` are 
+    unsupported for collections with more than one shard. The reason for
+    this is that temporal order in a highly parallelised environment
+    like a cluster is difficult or even impossible to achieve
+    efficiently.
+  - Contrary to the situation in a single instance, objects representing
+    sharded collections are broken after their database is dropped.
+    In a future version they might report that they are broken, but
+    it is not feasible and not desirable to retain the cluster database 
+    in the background until all collection objects are garbage
+    collected.
+  - In a cluster, the automatic creation of collections on a call to
+    `db._save(ID)` is not supported. This is because one would have no
+    way to specify the number or distribution of shards for the newly
+    created collection. Therefore we will not offer this feature for
+    cluster mode.
+
+
+Authentication in a cluster
+===========================
 
 Recommended firewall setup
 ==========================
