@@ -211,7 +211,7 @@ noinst_bin =
 sbin_SCRIPTS =
 
 if ENABLE_ALL_IN_ONE_ETCD
-sbin_SCRIPTS += bin/etcd
+sbin_SCRIPTS += bin/etcd-arango
 endif
 
 ################################################################################
