@@ -45,7 +45,7 @@
         cache: false,
         type: "GET",
         async: false, // sequential calls!
-        url: "/cluster/healthcheck",
+        url: "cluster/healthcheck",
         success: function(data) {
           result = data;
         },
