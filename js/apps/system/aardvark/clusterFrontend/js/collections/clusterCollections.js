@@ -24,6 +24,7 @@
 
     getList: function(db) {
       this.dbname = db;
+      this.updateUrl();
       this.fetch({
         async: false
       });
@@ -44,6 +45,7 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
+        this.updateUrl();
         self.fetch();
       }, this.interval);
     }
