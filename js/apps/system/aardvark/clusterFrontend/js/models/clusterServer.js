@@ -12,11 +12,13 @@
     },
 
     idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/DBServers";
 
-    url: function() {
-      return "/_admin/aardvark/cluster/DBServers";
+    updateUrl: function() {
+      this.url = window.getNewRoute("DBServers");
     },
-
+    */
     forList: function() {
       return {
         name: this.get("name"),
