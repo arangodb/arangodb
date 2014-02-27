@@ -401,7 +401,18 @@
       },
 
     clusterShutdown : function() {
-      window.App.navigate("", {trigger: true});
+      this.stopUpdating();
+      $.ajax({
+        cache: false,
+        type: "GET",
+        async: false, // sequential calls!
+        url: "cluster/shutdown",
+        success: function(data) {
+        },
+        error: function(data) {
+        }
+      });
+      window.App.navigate("handleClusterDown", {trigger: true});
     }
 
   });
