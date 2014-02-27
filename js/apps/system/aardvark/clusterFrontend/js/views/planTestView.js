@@ -50,16 +50,6 @@
     },
 
     render: function() {
-      //<fake*******************
-      this.model.set({
-        config : {
-          type: "testSetup",
-          dispatcher: "192.168.173.2:8888",
-          numberDBServers: 3,
-          numberCoordinators: 3
-        }
-      })
-      //*******************fake>
       $(this.el).html(this.template.render({
       config : this.model.get("config")
     }));

@@ -5,3 +5,5 @@ TOC {#ShardingTOC}
   - @ref ShardingIntroduction
   - @ref ShardingTryItOut
   - @ref ShardingStatusImpl
+  - @ref ShardingAuthentication
+  - @ref ShardingFirewallSetup

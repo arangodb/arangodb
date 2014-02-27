@@ -129,6 +129,18 @@ AC_ARG_ENABLE(all-in-one-etcd,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
 
+dnl ----------------------------------------------------------------------------
+dnl GO
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(internal-go,
+  AS_HELP_STRING([--enable-internal-go], [use  go binaries from 3rdParty directory (default: no)]),
+  [tr_INTERNAL_GO="${enableval:-yes}"],
+  [tr_INTERNAL_GO=no]
+)
+
+AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
+
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================
