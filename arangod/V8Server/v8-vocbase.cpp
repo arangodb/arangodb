@@ -7688,6 +7688,24 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a key from a v8 object
+////////////////////////////////////////////////////////////////////////////////
+  
+static string GetId (v8::Handle<v8::Value> const& arg) {
+  if (arg->IsObject() && ! arg->IsArray()) {
+    v8::Local<v8::Object> obj = arg->ToObject();
+  
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    if (obj->Has(v8g->_IdKey)) {
+      return TRI_ObjectToString(obj->Get(v8g->_IdKey));
+    }
+  }
+  
+  return TRI_ObjectToString(arg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an edge, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7706,11 +7724,14 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
   if (argv.Length() < 3 || argv.Length() > 4) {
     TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
   }
-  string _from = TRI_ObjectToString(argv[0]);
-  string _to = TRI_ObjectToString(argv[1]);
+
+  string _from = GetId(argv[0]);
+  string _to   = GetId(argv[1]);
+
   TRI_json_t* json = TRI_ObjectToJson(argv[2]);
+
   const bool waitForSync = ExtractForceSync(argv, 3);
-  if (!TRI_IsArrayJson(json)) {
+  if (! TRI_IsArrayJson(json)) {
     if (0 != json) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
