@@ -359,10 +359,10 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"limit\" : 5 }"
         doc = ArangoDB.log_put("#{prefix}-remove-by-example-limit", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(501)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(501)
         doc.parsed_response['errorNum'].should eq(1470)
       end
     end
@@ -437,10 +437,10 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"foo\" : \"bar\" }, \"limit\" : 5 }"
         doc = ArangoDB.log_put("#{prefix}-replace-by-example-limit", cmd, :body => body)
         
-        doc.code.should eq(400)
+        doc.code.should eq(501)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(501)
         doc.parsed_response['errorNum'].should eq(1470)
       end
       
@@ -534,10 +534,10 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"foo\" : \"bar\", \"value2\" : 17 }, \"limit\" : 5 }"
         doc = ArangoDB.log_put("#{prefix}-update-by-example-limit", cmd, :body => body)
         
-        doc.code.should eq(400)
+        doc.code.should eq(501)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(501)
         doc.parsed_response['errorNum'].should eq(1470)
       end
       
