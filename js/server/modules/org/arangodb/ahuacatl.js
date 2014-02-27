@@ -800,7 +800,7 @@ function GET_DOCUMENTS (collection, offset, limit) {
   }
 
   if (isCoordinator) {
-    return COLLECTION(collection).all(offset, limit).toArray();
+    return COLLECTION(collection).all().skip(offset).limit(limit).toArray();
   }
 
   return COLLECTION(collection).ALL(offset, limit).documents;
