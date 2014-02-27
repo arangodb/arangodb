@@ -442,8 +442,7 @@ Recommended firewall setup {#ShardingFirewallSetup}
 ===================================================
 
 This section is intended for people who run a cluster in production
-systems. We reiterate our advice not to use ArangoDB Version 2.0 in
-cluster mode for production systems.
+systems.
 
 The whole idea of the cluster setup is that the coordinators serve HTTP
 requests to the outside world and that all other processes (DBservers
