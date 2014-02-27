@@ -215,8 +215,10 @@ v1.4.11 (XXXX-XX-XX)
 * fixed access to potentially uninitialised variable when collection had a cap constraint
 
 
-v1.4.10 (XXXX-XX-XX)
+v1.4.10 (2014-02-21)
 --------------------
+
+* fixed graph constructor to allow graph with some parameter to be used
 
 * added node.js "events" and "stream"
 
