@@ -1509,7 +1509,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (col->_type != TRI_COL_TYPE_EDGE) {
-    TRI_V8_TYPE_ERROR(scope, "invalid collection type for edge query");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
   CollectionNameResolver resolver(col->_vocbase);
