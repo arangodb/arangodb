@@ -14,6 +14,27 @@
       "showCluster"            : "showCluster"
     },
 
+    getNewRoute: function(last) {
+      if (last === "statistics") {
+        return this.cluterPlan.getCoordinator()
+          + "/_admin/"
+          + last;
+      }
+      return this.cluterPlan.getCoordinator()
+        + "/_admin/aardvark/cluster/"
+        + last;
+    },
+
+    updateAllUrls: function() {
+      _.each(this.toUpdate, function(u) {
+        u.updateUrl();
+      });
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+    },
+
     initialize: function () {
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({

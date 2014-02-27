@@ -12,9 +12,13 @@
     },
 
     idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/Coordinators";
 
-    url: "/_admin/aardvark/cluster/Coordinators",
-
+    updateUrl: function() {
+      this.url = window.getNewRoute("Coordinators");
+    },
+    */
     forList: function() {
       return {
         name: this.get("name"),
