@@ -38,7 +38,7 @@ var download = require("internal").download;
 
 var PlannerLocalDefaults = {
   "agencyPrefix"            : "meier",
-  "numberOfAgents"          : 3,
+  "numberOfAgents"          : 1,
   "numberOfDBservers"       : 2,
   "startSecondaries"        : false,
   "numberOfCoordinators"    : 1,
@@ -191,7 +191,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// @fn JSF_Cluster_Planner_Constructor
 /// @brief the cluster planner constructor
 ///
-/// @FUN{new require("org/arangodb/cluster/planner").Planner(@FA{userConfig})}
+/// @FUN{new require("org/arangodb/cluster").Planner(@FA{userConfig})}
 ///
 /// This constructor builds a cluster planner object. The one and only
 /// argument is an object that can have the properties described below.
@@ -316,7 +316,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// 
 ///     {
 ///       "agencyPrefix"            : "meier",
-///       "numberOfAgents"          : 3,
+///       "numberOfAgents"          : 1,
 ///       "numberOfDBservers"       : 2,
 ///       "startSecondaries"        : false,
 ///       "numberOfCoordinators"    : 1,

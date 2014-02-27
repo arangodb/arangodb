@@ -6,9 +6,13 @@
 
     defaults: {
       "type": "testPlan"
-    },
+    }
+    /*
+    url: "/_admin/aardvark/cluster/ClusterType";
 
-    url: "/_admin/aardvark/cluster/ClusterType"
-    
+    updateUrl: function() {
+      this.url = window.getNewRoute("ClusterType");
+    }
+    */
   });
 }());

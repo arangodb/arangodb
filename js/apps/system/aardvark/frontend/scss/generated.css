@@ -9,7 +9,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, 
 div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
   float: right; }
 
-ul.tileList:after, div.resizecontainer:after {
+ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after {
   clear: both;
   content: ".";
   display: block;
@@ -934,7 +934,7 @@ select.filterSelect {
 
 #dashboardHttpGroup {
   width: 100%;
-  height: 300px;
+  height: 100%;
   border: 1px solid black; }
 
 #dashboardDetailedChart {
@@ -942,11 +942,20 @@ select.filterSelect {
   height: 300px;
   border: 1px solid black; }
 
+.innerDashboardChart {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px; }
+
 .dashboardChart {
-  width: 33%;
-  height: 300px;
+  position: relative;
+  width: 31%;
+  height: 270px;
   border: 1px solid black;
-  float: left; }
+  float: left;
+  margin: 1%; }
 
 .dashboardDistribution {
   width: 270px;
