@@ -956,7 +956,7 @@ var handlePlanChange = function () {
 
 var dispatcherDisabled = function () {
   return internal.DISABLE_CLUSTER_DISPATCHER;
-}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
