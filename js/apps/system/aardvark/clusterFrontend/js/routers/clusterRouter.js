@@ -11,7 +11,8 @@
       "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
-      "showCluster"            : "showCluster"
+      "showCluster"            : "showCluster",
+      "handleClusterDown"      : "handleClusterDown"
     },
 
     getNewRoute: function(last) {
