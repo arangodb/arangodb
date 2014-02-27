@@ -14,6 +14,7 @@
       return true;
     },
 
+
     getCoordinator: function() {
       if (this._coord) {
         return this._coord;
@@ -36,6 +37,23 @@
           }
         }
       }
+    },
+
+    isAlive : function() {
+      var result = false;
+      $.ajax({
+        cache: false,
+        type: "GET",
+        async: false, // sequential calls!
+        url: "cluster/healthcheck",
+        success: function(data) {
+          result = data;
+        },
+        error: function(data) {
+        }
+      });
+      return result;
+
     }
 
   });

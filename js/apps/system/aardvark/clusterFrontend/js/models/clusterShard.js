@@ -15,12 +15,14 @@
         server: this.get("name"),
         shards: this.get("shards")
       };
-    },
-
-    url: function() {
-      return "/_admin/aardvark/cluster/Shards";
     }
-    
+    /*
+    url: "/_admin/aardvark/cluster/Shards";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("Shards");
+    }
+    */
   });
 }());
 

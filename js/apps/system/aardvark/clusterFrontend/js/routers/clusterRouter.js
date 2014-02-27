@@ -10,24 +10,40 @@
       "planTest"               : "planTest",
       "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
-      "shards"                 : "showShards"
+      "shards"                 : "showShards",
+      "showCluster"            : "showCluster",
+      "dashboard/:server"      : "dashboard",
+      "handleClusterDown"      : "handleClusterDown"
+    },
+
+    getNewRoute: function(last) {
+      if (last === "statistics") {
+        return this.clusterPlan.getCoordinator()
+          + "/_admin/"
+          + last;
+      }
+      return this.clusterPlan.getCoordinator()
+        + "/_admin/aardvark/cluster/"
+        + last;
+    },
+
+    updateAllUrls: function() {
+      _.each(this.toUpdate, function(u) {
+        u.updateUrl();
+      });
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+      o.updateUrl();
     },
 
     initialize: function () {
+      this.toUpdate = [];
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({
         async: false
       });
-
-      //für zum testen
-//      this.clusterPlan.set({"plan": "blub"});
-
-      if(this.clusterPlan.get("plan")) {
-        this.showCluster();
-      } else {
-        this.planScenario();
-      }
-
       this.footerView = new window.FooterView();
       this.footerView.render();
     },
@@ -52,7 +68,9 @@
 
     planTest: function() {
       if (!this.planTestView) {
-        this.planTestView = new window.PlanTestView();
+        this.planTestView = new window.PlanTestView(
+          {model : this.clusterPlan}
+        );
       }
       this.planTestView.render();
     },
@@ -83,6 +101,37 @@
         this.downloadView = new window.DownloadView();
       }
       this.downloadView.render(content);
+    },
+
+    handleClusterDown : function() {
+      if (!this.clusterDownView) {
+        this.clusterDownView = new window.ClusterDownView();
+      }
+      this.clusterDownView.render(content);
+    },
+
+    dashboard: function(server) {
+        console.log(server);
+      if (this.statisticsDescription === undefined) {
+         this.statisticsDescription = new window.StatisticsDescription();
+          this.statisticsDescription.fetch({
+              async:false
+          });
+      }
+      if (this.statistics === undefined) {
+          this.statisticsCollection = new window.StatisticsCollection();
+      }
+        console.log(this.statisticsCollection);
+        console.log(this.statisticsDescription);
+        console.log( window.arangoDocumentsStore);
+      if (this.dashboardView === undefined) {
+          this.dashboardView = new dashboardView({
+              collection: this.statisticsCollection,
+              description: this.statisticsDescription,
+              documentStore: new window.arangoDocumentsStore()
+          });
+      }
+      this.dashboardView.render();
     }
 
   });
