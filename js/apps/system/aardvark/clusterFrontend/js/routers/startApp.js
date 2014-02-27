@@ -6,6 +6,21 @@
   $(document).ready(function() {
     window.App = new window.ClusterRouter();
     Backbone.history.start();
+
+    //für zum testen
+//      this.clusterPlan.set({"plan": "blub"});
+
+    if(window.App.clusterPlan.get("plan")) {
+      if(window.App.clusterPlan.isAlive()) {
+        window.App.showCluster();
+      } else {
+        window.App.handleClusterDown();
+      }
+
+    } else {
+      window.App.planScenario();
+    }
+
     window.App.handleResize();
   });
 
