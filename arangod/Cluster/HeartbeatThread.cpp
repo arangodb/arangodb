@@ -178,10 +178,9 @@ void HeartbeatThread::run () {
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
       if (result.successful()) {
-        result.parse("", false);
-
-        bool changed = false;
         const uint64_t agencyIndex = result.index();
+        result.parse("", false);
+        bool changed = false;
 
         std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 

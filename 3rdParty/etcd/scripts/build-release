@@ -1,0 +1,51 @@
+#!/bin/sh -e
+
+VER=$1
+
+function build {
+	proj=${1}
+	ver=${2}
+
+	if [ ! -d ${proj} ]; then
+		git clone https://github.com/coreos/${proj}
+	fi
+
+	cd ${proj}
+	git checkout master
+	git fetch --all
+	git reset --hard origin/master
+	git checkout $ver
+	./build
+	cd -
+}
+
+function package {
+	proj=${1}
+	target=${2}
+
+	ccdir="${proj}/bin/${GOOS}_${GOARCH}"
+	if [ -d ${ccdir} ]; then
+		cp ${ccdir}/${proj}* ${target}
+	else
+		cp ${proj}/bin/${proj} ${target}
+	fi
+
+	cp ${proj}/README.md ${target}/README-${proj}.md
+}
+
+
+for i in darwin windows linux; do
+	export GOOS=${i}
+	export GOARCH="amd64"
+
+	build etcd ${VER}
+	build etcdctl ${VER}
+
+	TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
+	mkdir ${TARGET}
+
+	package etcd ${TARGET}
+	package etcdctl ${TARGET}
+
+	tar cvvfz ${TARGET}.tar.gz ${TARGET}
+done

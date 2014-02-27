@@ -774,10 +774,14 @@ exports.Communication = function() {
         return diff;
       };
       this.DBServers = function() {
-        return difference(supRoute.DBServers().getList(), infRoute.DBServers().getList(), supRoute.DBServers().getEndpoint); 
+        return difference(supRoute.DBServers().getList(), 
+                          infRoute.DBServers().getList(), 
+                          supRoute.DBServers().getEndpoint); 
       };
       this.Coordinators = function() {
-        return difference(supRoute.Coordinators().getList(), infRoute.Coordinators().getList(), supRoute.Coordinators().getEndpoint); 
+        return difference(supRoute.Coordinators().getList(), 
+                          infRoute.Coordinators().getList(), 
+                          supRoute.Coordinators().getEndpoint); 
       };
     };
 

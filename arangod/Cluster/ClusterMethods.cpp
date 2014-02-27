@@ -475,12 +475,17 @@ int createDocumentOnCoordinator (
   }
 
   // Now perform the above mentioned check:
-  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
+  if (userSpecifiedKey && ! usesDefaultShardingAttributes) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
-  string body = JsonHelper::toString(json);
+  if (userSpecifiedKey && ! collinfo->allowUserKeys()) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+  }
+
+  string const body = JsonHelper::toString(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Send a synchronous request to that shard using ClusterComm:
