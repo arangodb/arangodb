@@ -15,7 +15,11 @@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
+if ENABLE_INTERNAL_GO
+	cd @top_srcdir@/3rdParty/etcd && GOROOT="`pwd`/../go-$(TRI_BITS)/" PATH="`pwd`/../go-$(TRI_BITS)/bin:$$PATH" ./build
+else
 	cd @top_srcdir@/3rdParty/etcd && ./build
+endif
 	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango
 
 	@echo
