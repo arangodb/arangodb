@@ -33,7 +33,7 @@
       console.log(c);
     %>
       <li class="tile">
-        <div class="coordinator <%=statusClass(c.get('status'))%> href="/_db/_system/_admin/aardvark/cluster/dashboard/<%=c.get('address')%>">
+        <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
           <span class="clusterInfoIcon icon_arangodb_compass"></span>
         </div>
         <h5 class="collectionName"><%=c.get("name")%></h5>
@@ -43,7 +43,7 @@
       _.each(s.dbs, function(c) {
     %>
       <li class="tile">
-        <div class="dbserver <%=statusClass(c.get('status'))%>" href="/_db/_system/_admin/aardvark/cluster/dashboard/<%=c.get('address')%>">
+        <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
           <span class="clusterInfoIcon icon_arangodb_database1"></span>
         </div>
         <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
@@ -56,7 +56,7 @@
   %>
       <li class="tile">
         <% _.each(s.coords, function(c) { %>
-          <div class="coordinator <%=statusClass(c.get('status'))%> href="/_db/_system/_admin/aardvark/cluster/dashboard/<%=c.get('address')%>">
+          <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
             <span class="clusterInfoIcon icon_arangodb_compass"></span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
@@ -65,7 +65,7 @@
           _.each(s.dbs, function(c) {
             dbName = c.get("name");
         %>
-          <div class="dbserver <%=statusClass(c.get('status'))%> href="/_db/_system/_admin/aardvark/cluster/dashboard/<%=c.get('address')%>">
+          <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
             <span class="clusterInfoIcon icon_arangodb_database1"></span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>

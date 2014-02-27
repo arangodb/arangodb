@@ -286,7 +286,7 @@
 
 
     initialize: function () {
-      this.arangoReplication = new window.ArangoReplication();
+      console.log();
       this.documentStore = this.options.documentStore;
       this.getStatisticHistory();
       this.description = this.options.description.models[0];
@@ -596,7 +596,6 @@
     },
 
     stopUpdating: function () {
-      console.log("stopupdating");
       this.isUpdating = false;
     },
 
