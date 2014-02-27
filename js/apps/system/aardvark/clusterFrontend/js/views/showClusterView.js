@@ -313,7 +313,7 @@
                   'file': getData(),
                   'labels': createLabels(),
                   'visibility' : getVisibility(),
-                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max],
+                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max]
               } );
               return;
           }
@@ -403,7 +403,14 @@
       },
 
     clusterShutdown : function() {
-      window.App.navigate("", {trigger: true});
+        this.stopUpdating();
+        $.ajax({
+            cache: false,
+            type: "GET",
+            async: false, // sequential calls!
+            url: "cluster/shutdown",
+        });
+        window.App.navigate("handleClusterDown", {trigger: true});
     },
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
