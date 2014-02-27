@@ -12,7 +12,8 @@
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
-      "dashboard/:server"      : "dashboard"
+      "dashboard/:server"      : "dashboard",
+      "handleClusterDown"      : "handleClusterDown"
     },
 
     getNewRoute: function(last) {
