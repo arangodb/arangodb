@@ -414,7 +414,18 @@
       // needs to be big enough for assets
       return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
     });
-    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _cluster_kickstarter_plans
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _routing collection
+    addTask("createKickstarterConfiguration",
+      "setup _cluster_kickstarter_plans collection", function () {
+        //TODO add check if this is the main dispatcher
+      return createSystemCollection("_cluster_kickstarter_plans");
+    });
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insertRedirectionsAll
 ////////////////////////////////////////////////////////////////////////////////
