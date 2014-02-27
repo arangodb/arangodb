@@ -1495,7 +1495,8 @@ static int StoreGeoResult (ReadTransactionType& trx,
 /// @brief looks up edges for given direction
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arguments const& argv) {
+static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, 
+                                         v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_col_t const* col;
@@ -1554,7 +1555,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
-    uint32_t len = vertices->Length();
+    const uint32_t len = vertices->Length();
 
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
@@ -1611,6 +1612,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
     TRI_voc_key_t key = 0;
     TRI_voc_cid_t cid;
+
     res = TRI_ParseVertex(resolver, cid, key, argv[0], true);
 
     if (res != TRI_ERROR_NO_ERROR) {

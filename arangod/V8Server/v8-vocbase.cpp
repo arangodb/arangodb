@@ -263,12 +263,23 @@ static int ParseKeyAndRef (v8::Handle<v8::Value> const& arg,
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a coordinator collection
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
+  TRI_DestroyReadWriteLock(&collection->_lock); 
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
-                                                      CollectionInfo const& ci) {
+static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
+                                                 CollectionInfo const& ci) {
   TRI_vocbase_col_t* c = (TRI_vocbase_col_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
 
   if (c == 0) {
@@ -318,6 +329,22 @@ static TRI_vocbase_col_t* CollectionInfoToVocBaseCol (TRI_vocbase_t* vocbase,
 }
 #endif
 
+#ifdef TRI_ENABLE_CLUSTER
+struct CollectionGuard {
+  CollectionGuard (TRI_vocbase_col_t* collection) 
+    : _collection(collection) {
+  }
+
+  ~CollectionGuard () {
+    if (_collection != 0 && ! _collection->_isLocal) {
+      FreeCoordinatorCollection(_collection);
+    } 
+  }
+
+  TRI_vocbase_col_t* _collection;
+};
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +358,7 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    TRI_vocbase_col_t* c = CollectionInfoToVocBaseCol(vocbase, *(collections[i]));
+    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
 
     if (c != 0) {
       TRI_PushBackVectorPointer(&result, c);
@@ -655,7 +682,8 @@ static bool EqualCollection (CollectionNameResolver const& resolver,
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (CollectionNameResolver const& resolver,
+static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                            CollectionNameResolver const& resolver,
                                                             TRI_vocbase_col_t const*& collection,
                                                             TRI_voc_key_t& key,
                                                             TRI_voc_rid_t& rid,
@@ -701,7 +729,21 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (CollectionNameResolv
   if (collection == 0) {
     // no collection object was passed, now check the user-supplied collection name
     
-    const TRI_vocbase_col_t* col = resolver.getCollectionStruct(collectionName);
+#ifdef TRI_ENABLE_CLUSTER
+    TRI_vocbase_col_t const* col = 0;
+
+    if (ServerState::instance()->isCoordinator()) {
+      ClusterInfo* ci = ClusterInfo::instance();
+      TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
+      col = CoordinatorCollection(vocbase, *c);
+    }
+    else {
+      col = resolver.getCollectionStruct(collectionName);
+    }
+
+#else
+    TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collectionName);
+#endif
 
     if (col == 0) {
       // collection not found
@@ -779,7 +821,7 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
   v8g->JSCollections.erase(collection);
 
   if (! collection->_isLocal) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    FreeCoordinatorCollection(collection);
   }
 
   // dispose and clear the persistent handle
@@ -2000,6 +2042,7 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
   }
   if (generateDocument) {
     v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+
     if (0 != json) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -2054,8 +2097,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
-  
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+
+  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -2064,15 +2109,15 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
+  
+  assert(col != 0);
+  assert(key != 0);
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
 #endif
-
-  assert(col != 0);
-  assert(key != 0);
 
   ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2170,7 +2215,9 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  
+  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2369,7 +2416,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  
+  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2716,7 +2765,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  
+  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2954,7 +3005,9 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  
+  CollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -3019,6 +3072,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
+  bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
   vector<string> shardKeys;
       
@@ -3035,12 +3089,19 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     if (p->Has(TRI_V8_SYMBOL("keyOptions")) && p->Get(TRI_V8_SYMBOL("keyOptions"))->IsObject()) {
       v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(p->Get(TRI_V8_SYMBOL("keyOptions")));
 
-      string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
-      if (type != "" && type != "traditional") {
-        // invalid key generator
-        TRI_V8_EXCEPTION_MESSAGE(scope, 
-                                 TRI_ERROR_CLUSTER_UNSUPPORTED, 
-                                 "non-traditional key generators are not supported for sharded collections");
+      if (o->Has(TRI_V8_SYMBOL("type"))) {
+        string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
+
+        if (type != "" && type != "traditional") {
+          // invalid key generator
+          TRI_V8_EXCEPTION_MESSAGE(scope, 
+                                   TRI_ERROR_CLUSTER_UNSUPPORTED, 
+                                   "non-traditional key generators are not supported for sharded collections");
+        }
+      }
+
+      if (o->Has(TRI_V8_SYMBOL("allowUserKeys"))) {
+        allowUserKeys = TRI_ObjectToBoolean(o->Get(TRI_V8_SYMBOL("allowUserKeys")));
       }
     }
 
@@ -3124,14 +3185,19 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
 
-  if (parameter._keyOptions != 0) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameter._keyOptions));
+  TRI_json_t* keyOptions = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (keyOptions != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
+
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions));
   }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
 
   TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (indexes == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
@@ -3172,9 +3238,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
 
   string errorMsg;
-  int myerrno = ci->createCollectionCoordinator( databaseName, cid, 
-                                                 numberOfShards, json,
-                                                 errorMsg, 240.0 );
+  int myerrno = ci->createCollectionCoordinator(databaseName, 
+                                                cid, 
+                                                numberOfShards, 
+                                                json,
+                                                errorMsg, 
+                                                240.0);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -3183,9 +3252,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   }
   ci->loadPlannedCollections();
 
-  TRI_shared_ptr<CollectionInfo> const& c 
-      = ci->getCollection( databaseName, cid );
-  TRI_vocbase_col_t* newcoll = CollectionInfoToVocBaseCol(vocbase, *c);
+  TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
+  TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
   return scope.Close(TRI_WrapCollection(newcoll));
 }
 
@@ -8228,10 +8296,10 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
       collection = 0;
     }
     else {
-      collection = CollectionInfoToVocBaseCol(vocbase, *ci);
+      collection = CoordinatorCollection(vocbase, *ci);
 
       if (collection != 0 && collection->_cid == 0) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+        FreeCoordinatorCollection(collection);
         return scope.Close(v8::Handle<v8::Value>());
       }
     }
@@ -8350,7 +8418,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
       return scope.Close(v8::Null());
     }
 
-    collection = CollectionInfoToVocBaseCol(vocbase, *ci);
+    collection = CoordinatorCollection(vocbase, *ci);
   }
   else {
     collection = GetCollectionFromArgument(vocbase, val);

@@ -117,6 +117,17 @@ AC_ARG_ENABLE(all-in-one-boost,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_BOOST, test "x$tr_ALL_IN_ONE_BOOST" = xyes)
 
+dnl ----------------------------------------------------------------------------
+dnl ETCD
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-etcd,
+  AS_HELP_STRING([--enable-all-in-one-etcd], [use supplied etcd from 3rdParty directory (default: yes)]),
+  [tr_ALL_IN_ONE_ETCD="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_ETCD=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
 
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS

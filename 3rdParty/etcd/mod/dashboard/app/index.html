@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html class="no-js" ng-app="etcdControlPanel" ng-controller="RootCtrl">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>etcd dashboard</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <link href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,600,700,900" rel="stylesheet" type="text/css">
+    <link href="http://fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600,700" rel="stylesheet" type="text/css">
+    <!-- build:css styles/styles.css -->
+    <link rel="stylesheet" href="styles/bootstrap.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/browser.css">
+    <link rel="stylesheet" href="styles/stats.css">
+    <link rel="stylesheet" href="styles/etcd-widgets.css">
+    <!-- endbuild -->
+  </head>
+
+  <body>
+    <h1>etcd Dashboard</h1>
+
+    <div id="view-container" ng-view></div>
+
+    <div id="footer">
+      <div id="powered-by" class="text-center">Powered by <a href="https://github.com/coreos/etcd" tabindex="-1">etcd</a></div>
+      <div id="coreos-logo">
+        <a href="http://coreos.com" tabindex="-1"><img src="images/logo.svg"/></a>
+      </div>
+    </div>
+
+    <!-- build:js scripts/modules.js -->
+    <script src="bower_components/jquery/jquery.js"></script>
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/angular-resource/angular-resource.js"></script>
+    <script src="bower_components/angular-route/angular-route.js"></script>
+    <script src="bower_components/angular-cookies/angular-cookies.js"></script>
+    <script src="bower_components/angular-sanitize/angular-sanitize.js"></script>
+    <script src="bower_components/d3/d3.js"></script>
+    <script src="bower_components/underscore/underscore.js"></script>
+    <script src="bower_components/underscore.string/lib/underscore.string.js"></script>
+    <script src="bower_components/moment/moment.js"></script>
+    <script src="scripts/vega.js"></script>
+    <script src="scripts/ng-time-relative.min.js"></script>
+    <!-- endbuild -->
+
+    <!-- build:js scripts/app.js -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/controllers/root.js"></script>
+    <script src="scripts/directives.js"></script>
+    <script src="scripts/shims.js"></script>
+    <script src="scripts/controllers/home.js"></script>
+    <script src="scripts/controllers/browser.js"></script>
+    <script src="scripts/common/services/etcd.js"></script>
+    <script src="scripts/common/services/prefix-url.js"></script>
+    <script src="scripts/common/directives/highlight.js"></script>
+    <script src="scripts/common/directives/enter.js"></script>
+    <script src="scripts/common/services/etcd.js"></script>
+    <script src="scripts/controllers/stats.js"></script>
+    <!-- endbuild -->
+
+  </body>
+</html>

@@ -19,9 +19,7 @@
       });
       this.fillModal();
 
-      $('.modalTooltips, .arangoicon').tooltip({
-        placement: "left"
-      });
+      $("[data-toggle=tooltip]").tooltip();
 
       return this;
     },
