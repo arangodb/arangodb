@@ -434,86 +434,6 @@ function CollectionEdgeSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edges query list
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadEdgesList : function () {
-      var d1 = edge.save(v1, v2, { "Hello" : "World" });
-      var d2 = edge.save(v2, v1, { "World" : "Hello" });
-
-      var e = edge.edges([v1]);
-
-      assertEqual(2, e.length);
-
-      if (e[0]._id == d1._id) {
-        assertEqual(v2._id, e[0]._to);
-        assertEqual(v1._id, e[0]._from);
-
-        assertEqual(d2._id, e[1]._id);
-        assertEqual(v1._id, e[1]._to);
-        assertEqual(v2._id, e[1]._from);
-      }
-      else {
-        assertEqual(v1._id, e[0]._to);
-        assertEqual(v2._id, e[0]._from);
-
-        assertEqual(d1._id, e[1]._id);
-        assertEqual(v2._id, e[1]._to);
-        assertEqual(v1._id, e[1]._from);
-      }
-
-      e = edge.edges([v1, v2]);
-
-      assertEqual(4, e.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief in edges query list
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadInEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
-
-      var e = edge.inEdges([v2]);
-
-      assertEqual(1, e.length);
-      assertEqual(d._id, e[0]._id);
-      assertEqual(v2._id, e[0]._to);
-      assertEqual(v1._id, e[0]._from);
-
-      var f = edge.inEdges([v1]);
-
-      assertEqual(0, f.length);
-
-      e = edge.inEdges([v1, v2]);
-
-      assertEqual(1, e.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief out edges query list
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadOutEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
-
-      var e = edge.outEdges([v1]);
-
-      assertEqual(1, e.length);
-      assertEqual(d._id, e[0]._id);
-      assertEqual(v2._id, e[0]._to);
-      assertEqual(v1._id, e[0]._from);
-
-      var f = edge.outEdges([v2]);
-
-      assertEqual(0, f.length);
-
-      e = edge.outEdges([v1, v2]);
-
-      assertEqual(1, e.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edges query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -663,9 +583,10 @@ function CollectionEdgeSuite () {
       
       try {
         var e = c.edges("the fox");
+        fail();
       } 
       catch (err) {
-        assertInstanceOf(TypeError, err);
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
       }
 
       db._drop(dn);

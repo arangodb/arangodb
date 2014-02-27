@@ -302,6 +302,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
+    _disableClusterDispatcher(true),
     _removeOnCompacted(true),
     _removeOnDrop(true),
     _server(0) {
@@ -559,9 +560,8 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
+    ("server.disable-cluster-dispatcher", &_disableClusterDispatcher, "do not act as a cluster dispatcher")
   ;
-
-
 
   bool disableStatistics = false;
 
@@ -622,6 +622,8 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
   }
+
+  _applicationV8->defineBoolean("DISABLE_CLUSTER_DISPATCHER", _disableClusterDispatcher);
 
   // .............................................................................
   // set language of default collator

@@ -211,7 +211,7 @@ noinst_bin =
 sbin_SCRIPTS =
 
 if ENABLE_ALL_IN_ONE_ETCD
-sbin_SCRIPTS += bin/etcd
+sbin_SCRIPTS += bin/etcd-arango
 endif
 
 ################################################################################
@@ -512,7 +512,9 @@ include 3rdParty/Makefile.zlib
 ### @brief etcd
 ################################################################################
 
+if ENABLE_ALL_IN_ONE_ETCD
 include 3rdParty/Makefile.etcd
+endif
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

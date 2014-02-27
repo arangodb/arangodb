@@ -104,13 +104,13 @@ TRI_server_t* TRI_CreateServer (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t* server,
-                    void*,
-                    char const*,
-                    char const*,
-                    char const*,
+                    void* databasePath,
+                    char const* basePath,
+                    char const* appPath,
+                    char const* devappPath,
                     TRI_vocbase_defaults_t const*,
-                    bool,
-                    bool);
+                    bool disableReplicationLogger,
+                    bool disableReplicationApplier);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a server instance

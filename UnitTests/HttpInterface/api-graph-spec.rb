@@ -147,7 +147,7 @@ describe ArangoDB do
         doc1.code.should eq(201)
 
         doc2 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
-        doc2.code.should eq(400)
+        doc2.code.should eq(201)
       end
 
       it "checks (re)create graph different name" do
@@ -709,7 +709,7 @@ describe ArangoDB do
         body = "{\"waitForSync\" : false}"
         doc = ArangoDB.put(cmd, :body => body)        
 
-        body = "{\"_key\":\"egal\", \"optional2\" : null}"
+        body = "{\"optional2\" : null}"
         doc2 = patch_vertex(prefix, graph_name, _key, body, '')
         doc2.code.should eq(202)
         doc2.parsed_response['error'].should eq(false)
@@ -727,7 +727,7 @@ describe ArangoDB do
         doc4.parsed_response['vertex']['optional2'].should be_nil
         doc2.parsed_response['vertex']['_key'].should eq(_key)
 
-        body = "{\"_key\":\"egal\", \"optional2\" : null}"
+        body = "{ \"optional2\" : null}"
         doc5 = patch_vertex(prefix, graph_name, _key, body, 'false')
         doc5.code.should eq(202)
         doc5.parsed_response['error'].should eq(false)

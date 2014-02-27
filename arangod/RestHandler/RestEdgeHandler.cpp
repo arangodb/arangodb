@@ -229,8 +229,7 @@ bool RestEdgeHandler::createDocument () {
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json,
-                                     from, to);
+    return createDocumentCoordinator(collection, waitForSync, json, from, to);
   }
 #endif
 

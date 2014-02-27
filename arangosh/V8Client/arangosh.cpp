@@ -622,7 +622,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>, <database>, [, <username>, <password>])");
   }
 
-  string definition = TRI_ObjectToString(argv[0]);
+  string const definition = TRI_ObjectToString(argv[0]);
   string databaseName = TRI_ObjectToString(argv[1]);
 
   string username;
@@ -652,11 +652,11 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     password = TRI_ObjectToString(argv[3]);
   }
 
-  const string oldDefinition   = BaseClient.endpointString();
-  const string oldDatabaseName = BaseClient.databaseName();
-  const string oldUsername     = BaseClient.username();
-  const string oldPassword     = BaseClient.password();
-  
+  string const oldDefinition   = BaseClient.endpointString();
+  string const oldDatabaseName = BaseClient.databaseName();
+  string const oldUsername     = BaseClient.username();
+  string const oldPassword     = BaseClient.password();
+
   delete connection;
 
   BaseClient.setEndpointString(definition);

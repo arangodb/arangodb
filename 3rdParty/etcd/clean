@@ -8,7 +8,7 @@ fi
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
 
-go clean -i -r github.com/coreos/etcd >/dev/null 2>&1
-go clean -i -r github.com/coreos/etcd/bench >/dev/null 2>&1 
+go clean -i -x github.com/coreos/etcd
+go clean -i -x github.com/coreos/etcd/bench
 
 rm -rf src
