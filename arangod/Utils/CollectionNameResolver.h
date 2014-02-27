@@ -92,7 +92,7 @@ namespace triagens {
 /// @brief look up a collection id for a collection name (local case)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCollectionId (const string& name) const {
+        TRI_voc_cid_t getCollectionId (string const& name) const {
           if (name[0] >= '0' && name[0] <= '9') {
             // name is a numeric id
             return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
@@ -110,7 +110,7 @@ namespace triagens {
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_col_t* getCollectionStruct (const string& name) const {
+        const TRI_vocbase_col_t* getCollectionStruct (string const& name) const {
           if (_resolvedNames.size() > 0) {
             map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
 
@@ -133,7 +133,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-        TRI_voc_cid_t getCollectionIdCluster (const string& name) const {
+        TRI_voc_cid_t getCollectionIdCluster (string const& name) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionId(name);
           }
