@@ -1918,9 +1918,9 @@ def RunSystemTests(flavor):
   arflags_target = 'crs'
   # ar -T enables thin archives on Linux. OS X's ar supports a -T flag, but it
   # does something useless (it limits filenames in the archive to 15 chars).
-  if flavor != 'mac' and gyp.system_test.TestArSupportsT(ar_command=ar_target,
-                                                         cc_command=cc_target):
-    arflags_target = 'crsT'
+  #if flavor != 'mac' and gyp.system_test.TestArSupportsT(ar_command=ar_target,
+  #                                                       cc_command=cc_target):
+  #  arflags_target = 'crsT'
 
   ar_host = os.environ.get('AR_host', 'ar')
   cc_host = os.environ.get('CC_host', 'gcc')
@@ -1929,9 +1929,9 @@ def RunSystemTests(flavor):
   # cross-compiles, but due to quirks of history CC_host defaults to 'gcc'
   # while CC_target defaults to 'cc', so the commands really are different
   # even though they're nearly guaranteed to run the same code underneath.
-  if flavor != 'mac' and gyp.system_test.TestArSupportsT(ar_command=ar_host,
-                                                         cc_command=cc_host):
-    arflags_host = 'crsT'
+  #if flavor != 'mac' and gyp.system_test.TestArSupportsT(ar_command=ar_host,
+  #                                                       cc_command=cc_host):
+  #  arflags_host = 'crsT'
 
   return { 'ARFLAGS.target': arflags_target,
            'ARFLAGS.host': arflags_host }
