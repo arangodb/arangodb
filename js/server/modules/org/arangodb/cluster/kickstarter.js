@@ -128,7 +128,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   console.info("Starting agent...");
 
   // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(), ".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
@@ -173,6 +173,11 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
                                        "..", cmd.agentPath ));
     }
   }
+  if (! fs.exists(agentPath)) {
+    return {"error":true, "isStartAgent": true, 
+            "errorMessage": "agency binary not found at '" + agentPath + "'"};
+  }
+  
   var pid = executeExternal(agentPath, args);
   var res;
   var count = 0;

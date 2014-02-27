@@ -163,7 +163,9 @@ namespace triagens {
 /// @brief extract the "index" attribute from the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      uint64_t index () const;
+      uint64_t index () const {
+        return _index;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the error code from the result
