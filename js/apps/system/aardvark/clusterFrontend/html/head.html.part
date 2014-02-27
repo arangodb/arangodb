@@ -2,7 +2,7 @@
     <meta charset="utf-8">
     <title>ArangoDB Cluster Interface</title>
     <meta name="description" content="ArangoDB Cluster Interface">
-    <meta name="author" content="Florian Bartels, Michael Hackstein">
+    <meta name="author" content="Florian Bartels, Michael Hackstein, gschwab">
     <link href="css/style.css" rel="stylesheet">
     <link href="css/cluster.css" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
