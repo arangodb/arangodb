@@ -8,12 +8,17 @@
 
     model: window.ClusterDatabase,
     
-    url: "cluster/Databases",
+    url: "/_admin/aardvark/cluster/Databases",
+
+    updateUrl: function() {
+      this.url = window.App.getNewRoute("Databases");
+    },
 
     initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
       this.interval = options.interval;
+      window.App.registerForUpdate(this);
     },
 
     getList: function() {

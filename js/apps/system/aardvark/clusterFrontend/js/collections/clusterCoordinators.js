@@ -5,12 +5,17 @@
   window.ClusterCoordinators = Backbone.Collection.extend({
     model: window.ClusterCoordinator,
     
-    url: "cluster/Coordinators",
+    url: "/_admin/aardvark/cluster/Coordinators",
+
+    updateUrl: function() {
+      this.url = window.App.getNewRoute("Coordinators");
+    },
 
     initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
       this.interval = options.interval;
+      window.App.registerForUpdate(this);
     },
 
     byAddress: function (res) {

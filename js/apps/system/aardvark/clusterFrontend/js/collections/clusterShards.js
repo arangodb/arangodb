@@ -8,6 +8,12 @@
 
     model: window.ClusterShard,
     
+    updateUrl: function() {
+      this.url = window.App.getNewRoute(
+        this.dbname + "/" + this.colname + "/Shards"
+      );
+    },
+
     url: function() {
       return "/_admin/aardvark/cluster/"
         + this.dbname + "/"
@@ -19,15 +25,16 @@
       this.isUpdating = false;
       this.timer = null;
       this.interval = 1000;
+      window.App.registerForUpdate(this);
     },
 
     getList: function(dbname, colname) {
       this.dbname = dbname;
       this.colname = colname;
+      this.updateUrl();
       this.fetch({
         async: false
       });
-      console.log(this);
       return this.map(function(m) {
         return m.forList();
       });
@@ -45,6 +52,7 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
+        this.updateUrl();
         self.fetch();
       }, this.interval);
     }

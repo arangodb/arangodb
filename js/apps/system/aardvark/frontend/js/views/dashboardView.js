@@ -59,16 +59,22 @@
   window.dashboardView = Backbone.View.extend({
     el: '#content',
     contentEl: '.contentDiv',
-    interval: 3000,
+    distributionChartDiv : "#distributionChartDiv",
+    interval: 3000, // in milliseconds
     defaultHistoryElements: 1, //in days
-    initialStartWindow :  60,  // in minutes
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
     events: {
-      "dblclick .dashboardChart"      : "showDetail"
+      "dblclick .innerDashboardChart"      : "showDetail",
+      "mousedown .dygraph-rangesel-zoomhandle"      : "stopUpdating",
+      "mouseup .dygraph-rangesel-zoomhandle"      : "startUpdating",
+      "mouseleave .dygraph-rangesel-zoomhandle"      : "startUpdating"
+
     },
+
+    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "residentSize", "requestsTotal"],
 
     chartTypeExceptions : {
         accumulated : {
@@ -102,7 +108,8 @@
             "requestsPatch","requestsDelete",
             "requestsOptions", "requestsOther"
         ],
-        system_systemUserTime: ["systemTime","userTime"]
+        system_systemUserTime: ["systemTime","userTime"],
+        client_totalRequestTime: ["requestTime","queueTime"]
     },
     colors : ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
         "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
@@ -147,23 +154,32 @@
 
     figureDependedOptions : {
         numberOfThreads : {
+            div : "#systemResources"
         },
         residentSize : {
+            div : "#systemResources"
         },
         virtualSize : {
+            div : "#systemResources"
         },
         minorPageFaults : {
+            div : "#systemResources",
             labelsKMG2: false
         },
         majorPageFaults : {
+            div : "#systemResources",
             labelsKMG2: false
         },
         systemUserTime : {
+            div : "#systemResources",
             title : "System and User Time",
             stacked : true
         },
-        httpConnections : {},
+        httpConnections : {
+            div : "#requestStatistics"
+        },
         totalTime : {
+            div : "#requestStatistics",
             title : "Total time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -180,6 +196,7 @@
             }
         },
         requestTime : {
+            div : "#requestStatistics",
             title : "Request time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -196,6 +213,7 @@
             }
         },
         queueTime : {
+            div : "#requestStatistics",
             title : "Queue time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -211,19 +229,42 @@
                 }
             }
         },
+        totalRequestTime : {
+            div : "#requestStatistics",
+            title : "Total time in milliseconds",
+            labelsKMG2: false,
+            axes : {
+                y: {
+                    valueFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    },
+                    axisLabelFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    }
+                }
+            }
+        },
         bytesSent : {
-
+            div : "#requestStatistics"
         },
         bytesReceived : {
-
+            div : "#requestStatistics"
         },
-        requestsTotal : {},
-        requestsAsync : {},
+        requestsTotal : {
+            div : "#requestStatistics"
+        },
+        requestsAsync : {
+            div : "#requestStatistics"
+        },
         requests : {
+            div : "#requestStatistics",
             title : "HTTP Requests",
             stacked : true
         },
         uptime : {
+            div : "#systemResources",
             axes : {
                 y: {
                     labelsKMG2: false,
@@ -245,7 +286,7 @@
 
 
     initialize: function () {
-      this.arangoReplication = new window.ArangoReplication();
+      console.log();
       this.documentStore = this.options.documentStore;
       this.getStatisticHistory();
       this.description = this.options.description.models[0];
@@ -281,18 +322,22 @@
 
     getChartStructure: function (figure) {
         var options = {
-            labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
+            labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
             labelsSeparateLines: true,
-            digitsAfterDecimal: 4,
+            digitsAfterDecimal: 3,
+            drawGapPoints: true,
             fillGraph : true,
-            strokeWidth: 3,
+            showLabelsOnHighlight : false,
+            strokeWidth: 2,
+            interactionModel :  {},
             axisLabelFont: "Open Sans",
-            dateWindow : [new Date().getTime() - this.initialStartWindow * 60 * 1000,
-                new Date().getTime()],
+            dateWindow : [new Date().getTime() - Math.min(20 * 60 * 1000,
+                this.defaultHistoryElements * 86400 * 1000 ),new Date().getTime()],
             colors: [this.colors[0]],
             xAxisLabelWidth : "60",
             rollPeriod: this.defaultRollPeriod,
-            showRangeSelector: true,
+            showRangeSelector: false,
+            rightGap: 15,
             rangeSelectorHeight: 30,
             rangeSelectorPlotStrokeColor: '#617e2b',
             rangeSelectorPlotFillColor: '#414a4c',
@@ -358,13 +403,25 @@
                 = colors.slice(0, label.length-1);
             self.series[fig.group][fig.identifier].current.options.labels = label;
          });
-
     },
 
 
     processSingleStatistic: function (entry) {
         var self = this;
         var time = entry.time * 1000;
+        var newUptime = entry.server.uptime;
+        if (self.uptime && newUptime < self.uptime) {
+            var e = {time : (time-(newUptime+10)* 1000 ) /1000};
+            self.description.get("figures").forEach(function(figure) {
+                if (!e[figure.group]) {
+                    e[figure.group] = {};
+                }
+                e[figure.group][figure.identifier] = null;
+            });
+            self.uptime = newUptime;
+            self.processSingleStatistic(e);
+        }
+        self.uptime = newUptime;
         self.description.get("groups").forEach(function(g) {
             Object.keys(entry[g.group]).forEach(function(figure) {
                 var valueLists = self.series[g.group][figure];
@@ -374,21 +431,35 @@
                         if (!self.LastValues[figure]) {
                             self.LastValues[figure] = {value : val , time: 0};
                         }
-                        val = (val - self.LastValues[figure].value) /
-                            (time - self.LastValues[figure].time);
-                        valueLists[valueList].data.push(
-                            [new Date(time), val]
-                        );
-                        self.LastValues[figure] = {value : val , time: time};
+                        if (!self.LastValues[figure].value) {
+                            self.LastValues[figure].value = val;
+                        }
+                        if (val !== null) {
+                            var graphVal = (val - self.LastValues[figure].value) /
+                                (time - self.LastValues[figure].time);
+                            valueLists[valueList].data.push(
+                                [new Date(time), graphVal]
+                            );
+                            self.LastValues[figure] = {value : val, time: time, graphVal : graphVal};
+                        } else {
+                           valueLists[valueList].data.push(
+                              [new Date(time), null]
+                           );
+                            self.LastValues[figure] = {value : undefined,  time: 0, graphVal : null};
+                        }
 
                     } else if (valueList === "distribution") {
                         valueLists[valueList].data = val;
                     } else if (valueList === "current") {
                         valueLists[valueList].data.push([new Date(time), val]);
                     } else if (valueList === "currentDistribution")  {
+                        if (val !== null) {
+                            val = val.count === 0 ? 0 : val.sum / val.count;
+                        }
+                        self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
                         valueLists[valueList].data.push([
                             new Date(time),
-                            val.count === 0 ? 0 : val.sum / val.count
+                            val
                         ]);
                     }
                 });
@@ -400,7 +471,7 @@
             var val = [new Date(time)];
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 if (self.LastValues[attrib])  {
-                    val.push(self.LastValues[attrib].value);
+                    val.push(self.LastValues[attrib].graphVal);
                 } else {
                     val.push(entry[part[0]][attrib]);
                 }
@@ -429,45 +500,71 @@
 
 
     updateSeries : function(data) {
+        self.uptime = data.system.uptime
         this.processSingleStatistic(data);
+    },
+
+    spliceSeries: function (data, boarderLeft, boarderRight, hideRangeSelector) {
+        var file = [];
+        var i = 0;
+        data.forEach(function(e) {
+            if (e[0].getTime()  >= boarderLeft && e[0].getTime() <= boarderRight) {
+                file.push(e);
+            } else {
+                i ++
+                if (i > 5 && !hideRangeSelector) {
+                    file.push(e);
+                    i = 0;
+                }
+            }
+        });
+        return file;
     },
 
     createLineChart : function (chart, figure, div, createDiv) {
         var self = this;
         var displayOptions = {};
+        var file = [];
         if (!createDiv) {
             displayOptions.height = $('#lineChartDetail').height() - 34 -29;
             displayOptions.width = $('#lineChartDetail').width() -60;
+            chart.options.showRangeSelector = true;
+            chart.options.interactionModel =  null;
+            chart.options.showLabelsOnHighlight = true;
+            if (chart.graph["dateWindow_"]) {
+                var borderLeft = chart.graph["dateWindow_"][0];
+                var borderRight = new Date().getTime()- chart.graph["dateWindow_"][1] - self.interval * 2 > 0 ?
+                    chart.graph["dateWindow_"][1] : new Date().getTime();
+                file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
+            }
+        } else {
+            var borderLeft = chart.options.dateWindow[0] + (new Date().getTime() - chart.options.dateWindow[1]);
+            var borderRight = new Date().getTime();
+
         }
         if (!chart.graphCreated) {
             if (createDiv) {
-            self.renderHttpGroup(figure);
+                self.renderHttpGroup(figure);
             }
             chart.graph = new Dygraph(
                 document.getElementById(div+"LineChart"),
-                chart.data,
+                file.length > 0 ? file : chart.data,
                 mergeObjects(
                     mergeObjects(chart.options,  displayOptions),
                     self.figureDependedOptions[figure],
                     ["axes"])
             );
-            var onclick = function(ev) {
-                if (chart.graph.isSeriesLocked()) {
-                    chart.graph.clearSelection();
-                } else {
-                    chart.graph.setSelection(chart.graph.getSelection(),
-                        chart.graph.getHighlightSeries(), true);
-                }
-            };
             chart.graph.updateOptions({clickCallback: onclick}, true);
             chart.graph.setSelection(false, 'ClusterAverage', true);
             chart.graphCreated = true;
+            if (!createDiv) {
+                console.log("supposed to dfo something");
+                self.delegateEvents();
+            }
         } else {
             chart.graph.updateOptions( {
-                file: chart.data,
-                //rollPeriod : self.initialStartWindow * 60 * 1000 / self.interval,
-                dateWindow : [new Date().getTime() -
-                    self.initialStartWindow * 60 * 1000, new Date().getTime()]
+                file: file.length > 0 ? file : chart.data,
+                dateWindow : [borderLeft, borderRight]
             } );
         }
     },
@@ -478,7 +575,8 @@
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
                     var chart = self.series[group][figure][valueList];
-                    if (chart.type === "current" && chart.showGraph === true) {
+                    if (chart.type === "current" && chart.showGraph === true &&
+                        self.hideGraphs.indexOf(figure) === -1) {
                         self.createLineChart(chart, figure, figure, true);
                     }
                 });
@@ -497,28 +595,34 @@
         this.history = this.documentStore.history;
     },
 
+    stopUpdating: function () {
+      this.isUpdating = false;
+    },
+
     startUpdating: function () {
         var self = this;
-        if (this.isUpdating) {
+        if (self.isUpdating) {
             return;
         }
-        this.isUpdating = true;
-        this.timer = window.setInterval(function() {
+        self.isUpdating = true;
+        self.timer = window.setInterval(function() {
                 self.collection.fetch({
                 success: function() {
+                    if (!self.isUpdating) {
+                        return;
+                    }
                     self.updateSeries({
                         time : new Date().getTime() / 1000,
-
                         client: self.collection.first().get("client"),
                         http: self.collection.first().get("http"),
                         server: self.collection.first().get("server"),
                         system: self.collection.first().get("system")
-
                     });
                     if (Object.keys(self.detailChart).length === 0) {
                         self.createLineCharts();
                         self.createDistributionCharts();
                     } else {
+                        console.log("updating");
                         self.createLineChart(self.detailChart.chart,
                             self.detailChart.figure, self.detailChart.div);
                     }
@@ -543,7 +647,7 @@
     distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
 
     renderHttpGroup: function(id) {
-      $(this.contentEl).append(this.httpTemplate.render({id : id+"LineChart"}));
+       $(this.figureDependedOptions[id].div).append(this.httpTemplate.render({id : id+"LineChart"}));
     },
 
     render: function() {
@@ -632,7 +736,7 @@
     renderDistributionPlaceholder: function () {
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
-        $(self.contentEl).append(self.distributionTemplate.render({elementId: v+"Distribution"}));
+        $(self.distributionChartDiv).append(self.distributionTemplate.render({elementId: v+"Distribution"}));
       });
     }
   });

@@ -10,10 +10,15 @@
     
     url: "/_admin/aardvark/cluster/DBServers",
 
+    updateUrl: function() {
+      this.url = window.App.getNewRoute("DBServers");
+    },
+
     initialize: function(options) {
       this.isUpdating = false;
       this.timer = null;
       this.interval = options.interval;
+      window.App.registerForUpdate(this);
     },
 
     byAddress: function (res) {

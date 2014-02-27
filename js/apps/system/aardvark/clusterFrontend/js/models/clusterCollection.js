@@ -16,12 +16,14 @@
         name: this.get("name"),
         status: this.get("status")
       };
-    },
-
-    url: function() {
-      return "/_admin/aardvark/cluster/Collections";
     }
-    
+    /*
+    url: "/_admin/aardvark/cluster/Collections";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("Collections");
+    }
+    */
   });
 }());
 

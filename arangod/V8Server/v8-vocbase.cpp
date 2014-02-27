@@ -736,6 +736,11 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
       ClusterInfo* ci = ClusterInfo::instance();
       TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
       col = CoordinatorCollection(vocbase, *c);
+
+      if (col != 0 && col->_cid == 0) {
+        FreeCoordinatorCollection(const_cast<TRI_vocbase_col_t*>(col));
+        col = 0;
+      }
     }
     else {
       col = resolver.getCollectionStruct(collectionName);
@@ -2209,7 +2214,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     // called as db._exists()
     vocbase = GetContextVocBase();
   }
-  
+
   if (vocbase == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
@@ -2225,14 +2230,14 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
 
   if (! err.IsEmpty()) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
-
+    
     // check if we got an error object in return
     if (err->IsObject()) {
       // yes
-      v8::Handle<v8::Array> e = v8::Handle<v8::Array>::Cast(err);
+      v8::Handle<v8::Object> e = v8::Handle<v8::Object>::Cast(err);
 
       // get the error object's error code
-      if (e->HasOwnProperty(v8::String::New("errorNum"))) {
+      if (e->Has(v8::String::New("errorNum"))) {
         // if error code is "collection not found", we'll return false
         if ((int) TRI_ObjectToInt64(e->Get(v8::String::New("errorNum"))) == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
           return scope.Close(v8::False());

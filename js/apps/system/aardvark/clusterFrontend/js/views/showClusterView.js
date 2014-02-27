@@ -11,10 +11,13 @@
     template: templateEngine.createTemplate("showCluster.ejs"),
 
       events: {
-        "change #selectDB" : "updateCollections",
-        "change #selectCol" : "updateShards",
-        "mouseover #lineGraph" : "setShowAll",
-        "mouseout #lineGraph" : "resetShowAll"
+        "change #selectDB"        : "updateCollections",
+        "change #selectCol"       : "updateShards",
+        "click .coordinator"      : "dashboard",
+        "click .dbserver"         : "dashboard",
+        "click #clusterShutdown"  : "clusterShutdown",
+        "mouseover #lineGraph"    : "setShowAll",
+        "mouseout #lineGraph"     : "resetShowAll"
       },
 
       updateServerTime: function() {
@@ -72,15 +75,7 @@
           interval: this.interval
         });
         this.cols = new window.ClusterCollections();
-        this.shards = new window.ClusterShards()
-        this.startUpdating();
-
-        var typeModel = new window.ClusterType();
-        typeModel.fetch({
-          async: false
-        });
-        this.type = typeModel.get("type");
-
+        this.shards = new window.ClusterShards();
       this.startUpdating();
     },
 
@@ -318,7 +313,7 @@
                   'file': getData(),
                   'labels': createLabels(),
                   'visibility' : getVisibility(),
-                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max],
+                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max]
               } );
               return;
           }
@@ -405,7 +400,22 @@
           this.timer = window.setInterval(function() {
               self.rerender();
           }, this.interval);
-      }
+      },
+
+    clusterShutdown : function() {
+        this.stopUpdating();
+        $.ajax({
+            cache: false,
+            type: "GET",
+            async: false, // sequential calls!
+            url: "cluster/shutdown",
+        });
+        window.App.navigate("handleClusterDown", {trigger: true});
+    },
+    dashboard: function(e) {
+        var id = $(e.currentTarget).attr("id");
+        window.App.navigate("dashboard/"+id, {trigger: true});
+    }
   });
 
 }());
