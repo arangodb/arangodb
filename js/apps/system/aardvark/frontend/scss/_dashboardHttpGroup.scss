@@ -1,6 +1,6 @@
 #dashboardHttpGroup {
   width: 100%;
-  height: 300px;
+  height: 100%;
   border: 1px solid black;
 }
 
@@ -10,9 +10,21 @@
   border: 1px solid black;
 }
 
+.innerDashboardChart {
+  position: absolute;
+  top : 10px;
+  left : 10px;
+  right : 10px;
+  bottom : 10px;
+
+}
+
 .dashboardChart {
-  width: 33%;
-  height: 300px;
+  position: relative;
+  width: 31%;
+  height: 270px;
   border: 1px solid $c_black;
   float: left;
+  margin : 1%;
+ // padding : 10px;
 }
