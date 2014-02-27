@@ -152,9 +152,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
                                                     : "0.0.0.0:")+cmd.intPort,
               "-peer-addr", getAddrPort(
                           exchangePort(dispatchers[cmd.dispatcher].endpoint,
-                                       cmd.intPort))//,
-              //"-peer-heartbeat-timeout=25",
-              //"-peer-election-timeout=50"
+                                       cmd.intPort))
              ];
   var i;
   if (cmd.peers.length > 0) {
