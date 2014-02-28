@@ -763,8 +763,8 @@ if (MSVC)
        "
    )
 
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.bmp" ARANGO_IMG)
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.ico" ARANGO_ICON)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
 
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
@@ -773,7 +773,7 @@ if (MSVC)
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
 
   install(
-    DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/"
+    DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
     DESTINATION ${TRI_RESOURCEDIR})
 
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
