@@ -661,6 +661,60 @@ actions.defineHttp({
   }
 });
 
+actions.defineHttp({
+  url : "_admin/clusterHistory",
+  context : "admin",
+  prefix : "false",
+  callback : function (req, res) {
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only POST requests are allowed");
+      return;
+    }
+    if (!require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only allowed on coordinator");
+      return;
+    }
+    if (!req.parameters.hasOwnProperty("DBserver")) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "required parameter DBserver was not given");
+      return;
+    }
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    var DBserver = req.parameters.DBserver;
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 }; 
+    var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
+      "/_api/cursor",JSON.stringify(body),{},options);
+    var r = ArangoClusterComm.wait(op);
+    res.contentType = "application/json; charset=utf-8";
+    if (r.status === "RECEIVED") {
+      res.responseCode = actions.HTTP_OK;
+      res.body = r.body;
+    } 
+    else if (r.status === "TIMEOUT") {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify( {"error":true, 
+                                  "errorMessage": "operation timed out"});
+    }
+    else {
+      res.responseCode = actions.HTTP_BAD;
+      var bodyobj;
+      try {
+        bodyobj = JSON.parse(r.body);
+      }
+      catch (err) {
+      }
+      res.body = JSON.stringify( {"error":true,
+        "errorMessage": "error from DBserver, possibly DBserver unknown",
+        "body": bodyobj} );
+    }
+  }
+});
 
 
 ////////////////////////////////////////////////////////////////////////////////

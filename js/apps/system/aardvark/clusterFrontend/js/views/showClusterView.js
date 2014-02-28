@@ -457,8 +457,32 @@
 
     dashboard: function(e) {
         this.stopUpdating();
-        var id = $(e.currentTarget).attr("id");
-        window.App.dashboard(id);
+        var tar = $(e.currentTarget);
+        var serv = {};
+        var cur;
+        var coord;
+        serv.raw = tar.attr("id");
+        serv.isDBServer = tar.hasClass("dbserver");
+        if (serv.isDBServer) {
+          cur = this.dbservers.findWhere({
+            address: serv.raw
+          });
+          coord = this.coordinators.findWhere({
+            status: "ok"
+          });
+          serv.endpoint = coord.get("protocol")
+            + "://"
+            + coord.get("address");
+        } else {
+          cur = this.coordinators.findWhere({
+            address: serv.raw
+          });
+          serv.endpoint = cur.get("protocol")
+            + "://"
+            + cur.get("address");
+        }
+        serv.target = encodeURIComponent(cur.get("name"));
+        window.App.dashboard(serv);
     }
   });
 
