@@ -16,6 +16,17 @@ TOC {#AqlTOC}
     - @ref AqlData
     - @ref AqlOperators
     - @ref AqlFunctions
+      - @ref AqlFunctionsCasting
+      - @ref AqlFunctionsChecking
+      - @ref AqlFunctionsString
+      - @ref AqlFunctionsNumeric
+      - @ref AqlFunctionsList
+      - @ref AqlFunctionsDocument
+      - @ref AqlFunctionsGeo
+      - @ref AqlFunctionsFulltext
+      - @ref AqlFunctionsGraph
+      - @ref AqlFunctionsControl
+      - @ref AqlFunctionsMisc
   - @ref AqlOperations
     - @ref AqlOperationFor
     - @ref AqlOperationReturn
