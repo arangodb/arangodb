@@ -67,7 +67,7 @@ static void LogIndexString (const char* const what,
 
   LOG_TRACE("%s %s index (%s) for '%s'",
             what,
-            idx->typeName(idx),
+            TRI_TypeNameIndex(idx->_type),
             buffer->_buffer,
             collectionName);
 
@@ -318,10 +318,6 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   TRI_vector_pointer_t matches;
   size_t i, n;
   
-  if (context->_isCoordinator) {
-    return NULL;
-  }
-
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   assert(context);
@@ -329,6 +325,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   assert(candidates);
 
   n = availableIndexes->_length;
+
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
     size_t numIndexFields;
@@ -345,7 +342,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
     lastTypeWasExact = true;
     numIndexFields = idx->_fields._length;
-
+    
     // now loop over all index fields, from left to right
     // index field order is important because skiplists can be used with leftmost prefixes as well,
     // but not with rightmost prefixes
@@ -475,7 +472,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && idx->_needsFullCoverage) {
+    if (matches._length < numIndexFields && 
+        TRI_NeedsFullCoverageIndex(idx->_type)) {
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }

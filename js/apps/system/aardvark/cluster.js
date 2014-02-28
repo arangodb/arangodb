@@ -44,7 +44,6 @@
    * given in the body
    */
 
-
   if (!cluster.dispatcherDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
@@ -61,6 +60,80 @@
         k.runInfo = config.runInfo;
         return k;
       },
+      parseUser = function(header) {
+        if (header && header.authorization) {
+          var auth = require("internal").base64Decode(
+            header.authorization.substr(6)
+          );
+          return {
+            username: auth.substr(0, auth.indexOf(":")),
+            passwd: auth.substr(auth.indexOf(":")+1) || ""
+          };
+        }
+        return {
+          username: "root",
+          passwd: ""
+        }
+      },
+      startUp = function(req, res) {
+        cleanUp();
+        var config = {},
+            input = req.body(),
+            result = {},
+            starter,
+            i,
+            tmp,
+            planner,
+            auth,
+            uname,
+            pwd;
+        auth = parseUser(req.headers);
+        uname = auth.username;
+        pwd = auth.passwd;
+
+        if (input.type === "testSetup") {
+          config.dispatchers = {
+            "d1": {
+              "username": uname,
+              "passwd": pwd,
+              "endpoint": "tcp://" + input.dispatcher
+            }
+          };
+          config.numberOfDBservers = input.numberDBServers;
+          config.numberOfCoordinators = input.numberCoordinators;
+        } else {
+          i = 0;
+          config.dispatchers = {};
+          config.numberOfDBservers = 0;
+          config.numberOfCoordinators = 0;
+          _.each(input.dispatcher, function(d) {
+            i++;
+            var inf = {};
+            inf.username = uname;
+            inf.passwd = pwd;
+            inf.endpoint = "tcp://" + d.host;
+            if (d.isCoordinator) {
+              config.numberOfCoordinators++;
+            } else {
+              inf.allowCoordinators = false;
+            }
+            if (d.isDBServer) {
+              config.numberOfDBservers++;
+            } else {
+              inf.allowDBservers = false;
+            }
+            config.dispatchers["d" + i] = inf;
+          });
+        }
+        result.config = config;
+        planner = new cluster.Planner(config);
+        result.plan = planner.getPlan();
+        starter = new cluster.Kickstarter(planner.getPlan());
+        tmp = starter.launch();
+        result.runInfo = tmp.runInfo;
+        plans.storeConfig(result);
+        res.json(result);
+      },
       cleanUp = function() {
         var k = getStarter();
         if (k) {
@@ -68,55 +141,8 @@
         }
       };
     // only make these functions available in dispatcher mode!
-    controller.post("/plan", function(req, res) {
-      cleanUp();
-      var config = {},
-          input = req.body(),
-          result = {},
-          starter,
-          i,
-          tmp,
-          planner;
-
-      if (input.type === "testSetup") {
-        config.dispatchers = {
-          "d1": {
-            "endpoint": "tcp://" + input.dispatcher
-          }
-        };
-        config.numberOfDBservers = input.numberDBServers;
-        config.numberOfCoordinators = input.numberCoordinators;
-      } else {
-        i = 0;
-        config.dispatchers = {};
-        config.numberOfDBservers = 0;
-        config.numberOfCoordinators = 0;
-        _.each(input.dispatcher, function(d) {
-          i++;
-          var inf = {};
-          inf.endpoint = "tcp://" + d.host;
-          if (d.isCoordinator) {
-            config.numberOfCoordinators++;
-          } else {
-            inf.allowCoordinators = false;
-          }
-          if (d.isDBServer) {
-            config.numberOfDBservers++;
-          } else {
-            inf.allowDBservers = false;
-          }
-          config.dispatchers["d" + i] = inf;
-        });
-      }
-      result.config = config;
-      planner = new cluster.Planner(config);
-      result.plan = planner.getPlan();
-      starter = new cluster.Kickstarter(planner.getPlan());
-      tmp = starter.launch();
-      result.runInfo = tmp.runInfo;
-      plans.storeConfig(result);
-      res.json(result);
-    });
+    controller.post("/plan", startUp);
+    controller.put("/plan", startUp);
     
     controller.get("/plan", function(req, res) {
       res.json(plans.loadConfig());
@@ -128,15 +154,20 @@
     });
 
     controller.get("/healthcheck", function(req, res) {
-      res.json(!getStarter().isHealthy().error);
+      var out = getStarter().isHealthy();
+      var stf = JSON.stringify(out);
+      if (out.error || stf.indexOf("NOT-FOUND") !== -1) {
+        res.json(false);
+        return;
+      }
+      res.json(true);
     });
 
     controller.get("/shutdown", function(req, res) {
       var k = getStarter();
       var shutdownInfo = k.shutdown();
       if (shutdownInfo.error) {
-        res.json(shutdownInfo.results);
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
       }
     });
 
@@ -145,8 +176,7 @@
       var shutdownInfo = k.shutdown();
       cleanUp();
       if (shutdownInfo.error) {
-        res.json("Unable to shutdown cluster");
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
         return;
       }
     });

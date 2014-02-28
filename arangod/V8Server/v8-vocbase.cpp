@@ -1520,6 +1520,11 @@ static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* co
   }
 
   if (resultJson == 0) {
+    if (! create) {
+      // did not find a suitable index
+      return scope.Close(v8::Null());
+    }
+
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
@@ -3071,7 +3076,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
                                   TRI_vocbase_t* vocbase) {
   v8::HandleScope scope;
   
-  const string name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(argv[0]);
   
   if (! TRI_IsAllowedNameCollection(parameter._isSystem, name.c_str())) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -3146,10 +3151,10 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   ClusterInfo* ci = ClusterInfo::instance();
 
   // fetch a unique id for the new collection plus one for each shard to create
-  const uint64_t id = ci->uniqid(1 + numberOfShards);
+  uint64_t const id = ci->uniqid(1 + numberOfShards);
 
   // collection id is the first unique id we got
-  const string cid = StringUtils::itoa(id);
+  string const cid = StringUtils::itoa(id);
 
   // fetch list of available servers in cluster, and shuffle them randomly
   vector<string> dbServers = ci->getCurrentDBServers();
@@ -4108,6 +4113,35 @@ static v8::Handle<v8::Value> JS_parseDatetime (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the authentication info, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
+  TRI_json_t* json = 0;
+  bool result;
+
+  int res = usersOnCoordinator(string(vocbase->_name), 
+                               json);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    assert(json != 0);
+
+    result = TRI_PopulateAuthInfo(vocbase, json);
+  }
+  else { 
+    result = false;
+  }
+    
+  if (json != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+
+  return result;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the authentication info from collection _users
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4124,9 +4158,20 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "RELOAD_AUTH()");
   }
 
-  bool result = TRI_ReloadAuthInfo(vocbase);
+  bool result;
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    result = ReloadAuthCoordinator(vocbase);
+  }
+  else {
+    result = TRI_ReloadAuthInfo(vocbase);
+  }
 
-  return scope.Close(result ? v8::True() : v8::False());
+#else
+  result = TRI_ReloadAuthInfo(vocbase);
+#endif
+
+  return scope.Close(v8::Boolean::New(result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,7 @@
     el: "#content",
     template: templateEngine.createTemplate("symmetricPlan.ejs"),
     entryTemplate: templateEngine.createTemplate("serverEntry.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
       "click #startSymmetricPlan": "startPlan",
@@ -16,10 +17,12 @@
     },
 
     startPlan: function() {
+      $('#waitModalLayer').modal('show');
+      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
       var isDBServer;
       var isCoordinator;
       var self = this;
-      var data = {dispatcher : []};
+      var data = {dispatchers: []};
       var foundCoordinator = false;
       var foundDBServer = false;
       $(".dispatcher").each(function(i, dispatcher) {
@@ -36,7 +39,7 @@
           foundCoordinator = foundCoordinator || hostObject.isCoordinator;
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
-          data.dispatcher.push(hostObject);
+          data.dispatchers.push(hostObject);
       })
       if (!self.isSymmetric) {
         if (!foundDBServer) {
@@ -48,7 +51,7 @@
             return;
         }
       } else {
-        if ( data.dispatcher.length === 0) {
+        if ( data.dispatchers.length === 0) {
             alert("Please provide at least one Host");
             return;
         }
@@ -56,12 +59,15 @@
       }
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
-      $.ajax("cluster/plan", {
-        type: "POST",
-        data: JSON.stringify(data)
-      }).done(function(info) {
-        window.App.showDownload(info);
-      });
+      this.model.save(
+        data,
+        {
+          success : function(info) {
+            $('#waitModalLayer').modal('hide');
+            window.App.navigate("showCluster", {trigger: true});
+          }
+        }
+      );
     },
 
     addEntry: function() {
@@ -84,6 +90,8 @@
         isSymmetric: isSymmetric,
         isFirst: true
       }));
+      $(this.el).append(this.modal.render({}));
+
     }
   });
 

@@ -10,10 +10,7 @@
 
     url: "cluster/plan",
 
-    isNew : function() {
-      return true;
-    },
-
+    idAttribute: "config",
 
     getCoordinator: function() {
       if (this._coord) {
@@ -32,7 +29,6 @@
             this._coord = l.endpoints[i]
               .replace("tcp://","http://")
               .replace("ssl://", "https://");
-            console.log(this._coord);
             return this._coord;
           }
         }
@@ -53,7 +49,6 @@
         }
       });
       return result;
-
     }
 
   });

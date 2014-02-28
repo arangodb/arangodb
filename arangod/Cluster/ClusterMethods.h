@@ -47,6 +47,7 @@
 
 extern "C" {
   struct TRI_json_s;
+  struct TRI_vector_pointer_s;
 }
 
 namespace triagens {
@@ -75,6 +76,13 @@ namespace triagens {
                            struct TRI_json_s const* oldJson,
                            struct TRI_json_s const* newJson,
                            bool isPatch);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns users
+////////////////////////////////////////////////////////////////////////////////
+
+    int usersOnCoordinator (std::string const& dbname,
+                            struct TRI_json_s*& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -190,11 +198,14 @@ namespace triagens {
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  map<string, string>& resultHeaders,
                  string& resultBody);
- 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get indexes from coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    struct TRI_vector_pointer_s* getIndexesCoordinator (std::string const&,
+                                                        std::string const&);
+ 
   }  // namespace arango
 }   // namespace triagens
 

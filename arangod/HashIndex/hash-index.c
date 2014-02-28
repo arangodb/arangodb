@@ -435,14 +435,6 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameHashIndex (TRI_index_t const* idx) {
-  return "hash";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -592,8 +584,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   hashIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false);
   idx = &hashIndex->base;
 
-  idx->typeName = TypeNameHashIndex;
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, primary, unique);
   
   idx->json     = JsonHashIndex;
   idx->insert   = InsertHashIndex;
