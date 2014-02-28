@@ -216,8 +216,7 @@ v2.0.0-alpha1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.11 (XXXX-XX-XX)
---------------------
+v1.4.11 (2014-02-27)
 
 * added SHORTEST_PATH AQL function 
 
