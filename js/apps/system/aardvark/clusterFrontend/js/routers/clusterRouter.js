@@ -42,7 +42,6 @@
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-            console.log(trigger, args);
             if (this.currentRoute === "dashboard") {
                 this.dashboardView.stopUpdating();
             }
@@ -87,14 +86,18 @@
 
     planSymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(true);
     },
 
     planAsymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(false);
     },
