@@ -60,7 +60,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 3000, // in milliseconds
+    interval: 10000000, // in milliseconds
     defaultHistoryElements: 1, //in days
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
@@ -70,7 +70,8 @@
       "dblclick .innerDashboardChart"      : "showDetail",
       "mousedown .dygraph-rangesel-zoomhandle"      : "stopUpdating",
       "mouseup .dygraph-rangesel-zoomhandle"      : "startUpdating",
-      "mouseleave .dygraph-rangesel-zoomhandle"      : "startUpdating"
+      "mouseleave .dygraph-rangesel-zoomhandle"      : "startUpdating",
+      "click #backToCluster"    : "returnToClusterView"
 
     },
 
@@ -126,14 +127,49 @@
                 }
             });
         });
+        var figures = [];
+        if (self.combinedCharts[group + "_" + id]) {
+            self.combinedCharts[group + "_" + id].forEach(function(e) {
+               figures.push(group + "." + e);
+            });
+        } else {
+            figures.push(group + "." + id);
+        }
+        self.getStatisticHistory({
+            figures :  figures
+        })
+        var figs = [{identifier : "uptime", group : "server"}];
+        figures.forEach(function(f) {
+            figs.push({
+                identifier : f.split(".")[1],
+                group : f.split(".")[0]
+            });
+        })
+        self.description = {
+            get: function(y) {
+                if (y === "groups") {
+                    return [{
+                        group : group
+                    }, {
+                        group : "server"
+                    }];
+                }
+                if (y === "figures") {
+                    return figs;
+                }
+            }
+        }
 
+        self.uptime = undefined;
         var chart;
         Object.keys(self.series[group][id]).forEach(function(valueList) {
             var c = self.series[group][id][valueList];
             if (c.type === "current" && c.showGraph === true) {
                 chart = c;
+                chart.data = [];
             }
         });
+        self.calculateSeries();
         chart.graphCreated = false;
         self.showDetailFor("dashboardDetailed", id, chart);
         self.createLineChart(chart, id,  "dashboardDetailed");
@@ -148,6 +184,10 @@
     },
 
     hidden: function () {
+        this.options.description.fetch({
+            async:false
+        });
+        this.description = this.options.description.models[0];
         this.detailChart = {};
         window.App.navigate("#", {trigger: true});
     },
@@ -286,9 +326,15 @@
 
 
     initialize: function () {
-      console.log();
       this.documentStore = this.options.documentStore;
-      this.getStatisticHistory();
+      this.getStatisticHistory({
+          startDate :  (new Date().getTime() - Math.min(20 * 60 * 1000,
+              this.defaultHistoryElements * 86400 * 1000 )) / 1000
+      });
+      this.statisticsUrl = "/_admin/statistics";
+      if (this.options.server) {
+          this.statisticsUrl = "http://" + this.options.server + this.statisticsUrl;
+      }
       this.description = this.options.description.models[0];
       this.detailChart = {};
       this.startUpdating();
@@ -472,7 +518,7 @@
             self.combinedCharts[cc].sort().forEach(function(attrib) {
                 if (self.LastValues[attrib])  {
                     val.push(self.LastValues[attrib].graphVal);
-                } else {
+                } else if (entry[part[0]] && entry[part[0]][attrib]) {
                     val.push(entry[part[0]][attrib]);
                 }
             });
@@ -558,7 +604,6 @@
             chart.graph.setSelection(false, 'ClusterAverage', true);
             chart.graphCreated = true;
             if (!createDiv) {
-                console.log("supposed to dfo something");
                 self.delegateEvents();
             }
         } else {
@@ -584,14 +629,8 @@
         });
     },
 
-    getStatisticHistory : function (fetchFullhist) {
-        if (fetchFullhist !== true) {
-            this.documentStore.getStatisticsHistory(
-                (new Date().getTime() - this.defaultHistoryElements * 86400 * 1000) / 1000
-            );
-        } else {
-            this.documentStore.getStatisticsHistory();
-        }
+    getStatisticHistory : function (params) {
+        this.documentStore.getStatisticsHistory(params);
         this.history = this.documentStore.history;
     },
 
@@ -607,6 +646,7 @@
         self.isUpdating = true;
         self.timer = window.setInterval(function() {
                 self.collection.fetch({
+                url: self.statisticsUrl,
                 success: function() {
                     if (!self.isUpdating) {
                         return;
@@ -622,15 +662,11 @@
                         self.createLineCharts();
                         self.createDistributionCharts();
                     } else {
-                        console.log("updating");
                         self.createLineChart(self.detailChart.chart,
                             self.detailChart.figure, self.detailChart.div);
                     }
-                },
-                 error: function() {
-
-                  }
-                });
+                }
+                })
             },
             self.interval
         );
@@ -650,9 +686,22 @@
        $(this.figureDependedOptions[id].div).append(this.httpTemplate.render({id : id+"LineChart"}));
     },
 
+    displayBackButtonForClusterView : function () {
+        if (this.options.server) {
+            $("#dashboardHeader").append(
+                "\<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">\<b>Back to cluster\</b>\</button>"
+            );
+        }
+    },
+
     render: function() {
       var self = this;
-      $(this.el).html(this.template.render({}));
+      var header = "Dashboard";
+      if (this.options.server) {
+          header += " (" +this.options.server+ ")";
+      }
+      $(this.el).html(this.template.render({header : header}));
+      this.displayBackButtonForClusterView();
       this.renderDistributionPlaceholder();
       this.prepareSeries();
       this.calculateSeries();
@@ -738,6 +787,10 @@
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
         $(self.distributionChartDiv).append(self.distributionTemplate.render({elementId: v+"Distribution"}));
       });
+    },
+
+    returnToClusterView : function() {
+        window.App.showCluster();
     }
   });
 }()

@@ -211,7 +211,11 @@
         clearDocuments: function () {
           window.arangoDocumentsStore.reset();
         },
-        getStatisticsHistory: function(startDate, endDate) {
+        getStatisticsHistory: function(params) {
+            var startDate = params.startDate;
+            var endDate = params.endDate;
+            var server = params.server;
+            var figures = params.figures;
             var self = this;
             var filterString = "";
             if (startDate) {
@@ -222,14 +226,35 @@
             if (endDate) {
                 filterString += " filter u.time < " + endDate;
             }
-
-            var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time return u";
+            var returnValue = " return u"
+            if (figures) {
+                var returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ,"
+                var groups = {};
+                figures.forEach(function(f) {
+                    var g = f.split(".")[0];
+                    console.log("ggg", g);
+                    if (!groups[g]) {
+                        groups[g] = [];
+                    }
+                    groups[g].push(f.split(".")[1] + " : u." + f);
+                });
+                Object.keys(groups).forEach(function(key) {
+                   returnValue += key + " : {" + groups[key]  +"}";
+                });
+                returnValue += "}";
+            }
+            var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
             var result = [];
+            if (!server ) {
+                server = "";
+            } else {
+                server = "http://" +  server;
+            }
             $.ajax({
                 cache: false,
                 type: 'POST',
                 async: false,
-                url: '/_api/cursor',
+                url: server + '/_api/cursor',
                 data: JSON.stringify({query: myQueryVal}),
                 contentType: "application/json",
                 success: function(data) {
@@ -246,7 +271,7 @@
                            cache: false,
                            type: 'PUT',
                            async: false,
-                           url: '/_api/cursor/'+data.id,
+                           url: server +'/_api/cursor/'+data.id,
                            contentType: "application/json",
                            success:callback,
                            error:null
