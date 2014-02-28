@@ -262,6 +262,8 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       args = ["--configuration", ArangoServerState.coordinatorConfig()];
     }
     args = args.concat([
+            "--cluster.disable-dispatcher-kickstarter", "true",
+            "--cluster.disable-dispatcher-frontend", "false",
             "--cluster.my-id", id, 
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
