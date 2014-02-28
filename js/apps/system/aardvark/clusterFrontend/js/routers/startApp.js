@@ -3,6 +3,16 @@
 
 (function() {
   "use strict";
+
+  $.get("cluster/amIDispatcher", function(data) {
+    if (!data) {
+      var url = window.location.origin;
+      url += window.location.pathname;
+      url = url.replace("cluster", "index");
+      window.location.replace(url);
+    }
+  });
+
   $(document).ready(function() {
     window.App = new window.ClusterRouter();
 
