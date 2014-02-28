@@ -1115,25 +1115,28 @@ AQL supports the following functions to operate on list values:
   @LIT{UNION_DISTINCT} function or apply the @LIT{UNIQUE} on the result of @LIT{union}.
 
   Example:
-    RETURN UNION(
-      [ 1, 2, 3 ],
-      [ 1, 2 ]
-    )
 
-  will produce:
-    [ [ 1, 2, 3, 1, 2 ] ]
-
-  with duplicate removal:
-
-    RETURN UNIQUE(
-      UNION(
+      RETURN UNION(
         [ 1, 2, 3 ],
         [ 1, 2 ]
       )
-    )
+
+  will produce:
+
+      [ [ 1, 2, 3, 1, 2 ] ]
+
+  with duplicate removal:
+
+      RETURN UNIQUE(
+        UNION(
+          [ 1, 2, 3 ],
+          [ 1, 2 ]
+        )
+      )
   
   will produce:
-    [ [ 1, 2, 3 ] ]
+
+      [ [ 1, 2, 3 ] ]
 
 - @FN{UNION_DISTINCT(@FA{list1, list2, ...})}: returns the union of distinct values of
   all lists specified. The function expects at least two list values as its arguments. 
@@ -1177,11 +1180,12 @@ AQL supports the following functions to operate on document values:
    
   Example usage:
 
-    RETURN MATCHES({ "test" : 1 }, [ 
-      { "test" : 1, "foo" : "bar" }, 
-      { "foo" : 1 }, 
-      { "test : 1 } 
-    ], true)
+      RETURN MATCHES(
+        { "test" : 1 }, [ 
+          { "test" : 1, "foo" : "bar" }, 
+          { "foo" : 1 }, 
+          { "test : 1 } 
+        ], true)
 
   This will return `2`, because the third example matches, and because the 
   `return-index` flag is set to `true`.
@@ -1193,21 +1197,27 @@ AQL supports the following functions to operate on document values:
 
   For example, two documents with distinct attribute names can easily be merged into one: 
 
-    RETURN MERGE(
-      { "user1" : { "name" : "J" } }, 
-      { "user2" : { "name" : "T" } }
-    )
-    [ { "user1" : { "name" : "J" }, 
-	"user2" : { "name" : "T" } } ]
+      RETURN MERGE(
+        { "user1" : { "name" : "J" } }, 
+        { "user2" : { "name" : "T" } }
+      )
+
+      [ 
+        { "user1" : { "name" : "J" }, 
+  	"user2" : { "name" : "T" } } 
+      ]
 
   When merging documents with identical attribute names, the attribute values of the
   latter documents will be used in the end result:
 
-    return MERGE(
-      { "users" : { "name" : "J" } }, 
-      { "users" : { "name" : "T" } }
-    )
-    [ { "users" : { "name" : "T" } } ]
+      RETURN MERGE(
+        { "users" : { "name" : "J" } }, 
+        { "users" : { "name" : "T" } }
+      )
+
+      [ 
+        { "users" : { "name" : "T" } } 
+      ]
 
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using `MERGE_RECURSIVE` instead.
@@ -1219,11 +1229,14 @@ AQL supports the following functions to operate on document values:
 
   For example, two documents with distinct attribute names can easily be merged into one: 
 
-    RETURN MERGE_RECURSIVE(
-      { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
-      { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
-    )
-    [ { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } ]
+      RETURN MERGE_RECURSIVE(
+        { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
+        { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
+      )
+
+      [ 
+        { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
+      ]
 
 
 - @FN{HAS(@FA{document}, @FA{attributename})}: returns `true` if @FA{document} has an
@@ -1240,14 +1253,14 @@ AQL supports the following functions to operate on document values:
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
-    RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+      RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
 
 - @FN{KEEP(@FA{document}, @FA{attributename}, ...)}: keeps only the attributes @FA{attributename}
   (can be one or many) from @FA{document}. All other attributes will be removed from the result.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
-    RETURN KEEP(doc, 'firstname', 'name', 'likes')
+      RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
 - @FN{PARSE_IDENTIFIER(@FA{document-handle})}: parses the document handle specified in 
   @FA{document-handle} and returns a the handle's individual parts a separate attributes.
@@ -1256,11 +1269,17 @@ AQL supports the following functions to operate on document values:
   identifier string (e.g. `_users/1234`). Passing either a non-string or a non-document or a
   document without an `_id` attribute will result in an error.
 
-    RETURN PARSE_IDENTIFIER('_users/my-user')
-    [ { "collection" : "_users", "key" : "my-user" } ]
+      RETURN PARSE_IDENTIFIER('_users/my-user')
 
-    RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
-    [ { "collection" : "mycollection", "key" : "mykey" } ]
+      [ 
+        { "collection" : "_users", "key" : "my-user" } 
+      ]
+
+      RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
+
+      [ 
+        { "collection" : "mycollection", "key" : "mykey" } 
+      ]
 
 @subsubsection AqlFunctionsGeo Geo functions
 
@@ -1369,13 +1388,13 @@ AQL has the following functions to traverse graphs:
   - `source`: start vertex of path
   - `destination`: destination vertex of path
 
-Example calls:
+  Example calls:
 
-    PATHS(friends, friendrelations, "outbound", false)
+      PATHS(friends, friendrelations, "outbound", false)
 
-    FOR p IN PATHS(friends, friendrelations, "outbound") 
-      FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
-      RETURN p.vertices[*].name
+      FOR p IN PATHS(friends, friendrelations, "outbound") 
+        FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
+        RETURN p.vertices[*].name
 
 - @FN{TRAVERSAL(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{options})}: 
   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
@@ -1463,55 +1482,55 @@ Example calls:
     attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
     in the result if the `paths` attribute is set in the @FA{options}. 
 
-Example calls:
+  Example calls:
 
-    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-      strategy: "depthfirst",
-      order: "postorder",
-      itemOrder: "backward",
-      maxDepth: 6,
-      paths: true
-    })
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        strategy: "depthfirst",
+        order: "postorder",
+        itemOrder: "backward",
+        maxDepth: 6,
+        paths: true
+      })
 
-    // filtering on specific edges (by specifying example edges)
-    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-      strategy: "breadthfirst",
-      order: "preorder",
-      itemOrder: "forward",
-      followEdges: [ { type: "knows" }, { state: "FL" } ]
-    })
+      // filtering on specific edges (by specifying example edges)
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        strategy: "breadthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        followEdges: [ { type: "knows" }, { state: "FL" } ]
+      })
 
-    // filtering on specific edges and vertices
-    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-      strategy: "breadthfirst",
-      order: "preorder",
-      itemOrder: "forward",
-      followEdges: [ { type: "knows" }, { state: "FL" } ],
-      filterVertices: [ { isActive: true }, { isDeleted: false } ],
-      vertexFilterMethod: [ "prune", "exclude" ]
-    })
+      // filtering on specific edges and vertices
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        strategy: "breadthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        followEdges: [ { type: "knows" }, { state: "FL" } ],
+        filterVertices: [ { isActive: true }, { isDeleted: false } ],
+        vertexFilterMethod: [ "prune", "exclude" ]
+      })
 
-    // using user-defined AQL functions for edge and vertex filtering
-    TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-      followEdges: "myfunctions::checkedge",
-      filterVertices: "myfunctions::checkvertex"
-    })
+      // using user-defined AQL functions for edge and vertex filtering
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
 
-    // to register the custom AQL functions, execute something in the fashion of the 
-    // following commands in arangosh once: 
-    var aqlfunctions = require("org/arangodb/aql/functions");
+      // to register the custom AQL functions, execute something in the fashion of the 
+      // following commands in arangosh once: 
+      var aqlfunctions = require("org/arangodb/aql/functions");
 
-    // these are the actual filter functions
-    aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
-      return (edge.type !== 'dislikes'); // don't follow these edges
-    }, false);
+      // these are the actual filter functions
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
 
-    aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
-      if (vertex.isDeleted || ! vertex.isActive) {
-        return [ "prune", "exclude" ]; // exclude these and don't follow them
-      }
-      return [ ]; // include everything else
-    }, false);
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
 
 - @FN{TRAVERSAL_TREE(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{connectName}, @FA{options})}: 
   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
@@ -1524,11 +1543,11 @@ Example calls:
   be set up in a way that resembles a depth-first, pre-order visitation result. Thus, the
   `strategy` and `order` attributes of the @FA{options} attribute will be ignored.
 
-Example calls:
+  Example calls:
 
-    TRAVERSAL_TREE(friends, friendrelations, "friends/john", "outbound", "likes", { 
-      itemOrder: "forward"
-    })
+      TRAVERSAL_TREE(friends, friendrelations, "friends/john", "outbound", "likes", { 
+        itemOrder: "forward"
+      })
 
 When using one of AQL's graph functions please make sure that the graph does not contain cycles,
 or that you at least specify some maximum depth or uniqueness criteria for a traversal. 
@@ -1605,37 +1624,37 @@ time and memory for the result set.
     attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
     in the result if the `paths` attribute is set in the @FA{options}. 
 
-Example calls:
+  Example calls:
 
-    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
-      paths: true
-    })
+      SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true
+      })
 
-    // using a user-defined distance function
-    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
-      paths: true,
-      distance: "myfunctions::citydistance"
-    })
+      // using a user-defined distance function
+      SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        distance: "myfunctions::citydistance"
+      })
 
-    // using a user-defined function to filter edges
-    SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
-      paths: true,
-      followEdges: "myfunctions::checkedge"
-    })
+      // using a user-defined function to filter edges
+      SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
+        paths: true,
+        followEdges: "myfunctions::checkedge"
+      })
 
-    // to register a custom AQL distance function, execute something in the fashion of the 
-    // following commands in arangosh once: 
-    var aqlfunctions = require("org/arangodb/aql/functions");
+      // to register a custom AQL distance function, execute something in the fashion of the 
+      // following commands in arangosh once: 
+      var aqlfunctions = require("org/arangodb/aql/functions");
 
-    // this is the actual distance function
-    aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
-      return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
-    }, false);
+      // this is the actual distance function
+      aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 
+        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+      }, false);
 
-    // this is the filter function for the edges
-    aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
-      return (edge.underConstruction === false); // don't follow these edges
-    }, false);
+      // this is the filter function for the edges
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.underConstruction === false); // don't follow these edges
+      }, false);
 
 - @FN{EDGES(@FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
   return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
@@ -1649,10 +1668,10 @@ Example calls:
   To not restrict the result to specific connections, @FA{edgeexamples} should be left
   unspecified. 
 
-Example calls:
-
-    EDGES(friendrelations, "friends/john", "outbound")
-    EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
+  Example calls:
+ 
+      EDGES(friendrelations, "friends/john", "outbound")
+      EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
 - @FN{NEIGHBORS(@FA{vertexcollection}, @FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
   return all neighbors that are directly connected to the vertex @FA{startvertex} as a list. 
@@ -1666,10 +1685,10 @@ Example calls:
   To not restrict the result to specific connections, @FA{edgeexamples} should be left
   unspecified.
 
-Example calls:
+  Example calls:
 
-    NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
-    NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
+      NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
+      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
 
 @subsubsection AqlFunctionsControl Control flow functions
 
