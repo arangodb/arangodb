@@ -46,10 +46,10 @@ var PlannerLocalDefaults = {
                                "Pit", "Pia", "Pablo" ],
   "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
                                "Claas", "Clemens", "Chris" ],
-  "dataPath"                : "",   // means same dir as dispatcher data
-  "logPath"                 : "",   // means same dir as dispatcher data
-  "arangodPath"             : "",   // means same executable as dispatcher
-  "agentPath"               : "",   // means `etcd` in same place as dispatcher
+  "dataPath"                : "",   // means configured in dispatcher
+  "logPath"                 : "",   // means configured in dispatcher
+  "arangodPath"             : "",   // means configured in dispatcher
+  "agentPath"               : "",   // means configured in dispatcher
   "agentExtPorts"           : [4001],
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
@@ -280,40 +280,32 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     the agents, the DBservers and the coordinators store their
 ///     data directories. This can either be an absolute path (in which 
 ///     case all machines in the clusters must use the same path), or
-///     it can be a relative path. In the latter case it describes the
-///     data path relative to a directory "cluster" in the directory in 
-///     which the dispatcher stores
-///     its data. For example, if the data directory
-///     given on the command line of the dispatcher is
-///     `/var/lib/arangod` and the value of the `dataPath` property is an
-///     empty string , then the DBservers started by this dispatcher
-///     will have their data directories in the directory 
-///     `/var/lib/arangod/cluster`.
-///     These directories will be called `data-PREFIX-ID` where `PREFIX`
-///     is replaced with the agency prefix (see above) and `ID` is the
-///     ID of the DBserver or coordinator.
+///     it can be a relative path. In the latter case it is relative
+///     to the directory that is configured in the dispatcher with the
+///     `cluster.data-path` option (command line or configuration file).
+///     The directories created will be called `data-PREFIX-ID` where
+///     `PREFIX` is replaced with the agency prefix (see above) and `ID`
+///     is the ID of the DBserver or coordinator.
 ///   - `logPath`: this is a string and describes the path under which
-///     the DBservers and the coordinators store their log file. The
-///     same mechanism for absolute and relative paths apply as under
-///     `dataPath`.
+///     the DBservers and the coordinators store their log file. This can 
+///     either be an absolute path (in which case all machines in the cluster
+///     must use the same path), or it can be a relative path. In the
+///     latter case it is relative to the directory that is configured
+///     in the dispatcher with the `cluster.log-path` option.
 ///   - `arangodPath`: this is a string and describes the path to the
 ///     actual executable `arangod` that will be started for the
 ///     DBservers and coordinators. If this is an absolute path, it
 ///     obviously has to be the same on all machines in the cluster
 ///     as described for `dataPath`. If it is an empty string, the
-///     dispatcher uses the same executable that was used to start
-///     itself. If it is a non-empty relative path, then this path is
-///     meant relative to the directory in which the actual executable
-///     of the dispatcher resides.
+///     dispatcher uses the executable that is configured with the
+///     `cluster.arangod-path` option, which is by default the same
+///     executable as the dispatcher uses.
 ///   - `agentPath`: this is a string and describes the path to the
 ///     actual executable that will be started for the agents in the
 ///     agency. If this is an absolute path, it obviously has to be
 ///     the same on all machines in the cluster, as described for
-///     `dataPath`. If it is an empty string, the dispatcher uses `etcd-arango`
-///     in the same directory as the executable that was used to start
-///     itself. If it is a non-empty relative path, then this path is
-///     meant relative to the directory in which the executable of the
-///     dispatcher resides.
+///     `arangodPath`. If it is an empty string, the dispatcher 
+///     uses its `cluster.agent-path` option.
 ///   - `agentExtPorts`: a list of port numbers to use for the external
 ///     ports of the agents. When running out of numbers in this list,
 ///     the planner increments the last one used by one for every port
@@ -343,10 +335,10 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///                                    "Pit", "Pia", "Pablo" ],
 ///       "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
 ///                                    "Claas", "Clemens", "Chris" ],
-///       "dataPath"                : "",   // means same dir as dispatcher data
-///       "logPath"                 : "",   // means same dir as dispatcher data
-///       "arangodPath"             : "",   // means same executable as dispatcher
-///       "agentPath"               : "",   // means `etcd` in same place as dispatcher
+///       "dataPath"                : "",   // means configured in dispatcher
+///       "logPath"                 : "",   // means configured in dispatcher
+///       "arangodPath"             : "",   // means configured as dispatcher
+///       "agentPath"               : "",   // means configured in dispatcher
 ///       "agentExtPorts"           : [4001],
 ///       "agentIntPorts"           : [7001],
 ///       "DBserverPorts"           : [8629],
