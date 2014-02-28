@@ -10,10 +10,7 @@
 
     url: "cluster/plan",
 
-    isNew : function() {
-      return true;
-    },
-
+    idAttribute: "config",
 
     getCoordinator: function() {
       if (this._coord) {
@@ -53,7 +50,6 @@
         }
       });
       return result;
-
     }
 
   });

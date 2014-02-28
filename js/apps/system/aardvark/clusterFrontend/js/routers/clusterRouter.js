@@ -106,7 +106,7 @@
       if (!this.clusterDownView) {
         this.clusterDownView = new window.ClusterDownView();
       }
-      this.clusterDownView.render(content);
+      this.clusterDownView.render();
     }
 
   });
