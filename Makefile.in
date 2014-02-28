@@ -180,27 +180,21 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@ENABLE_RELATIVE_TRUE@am__append_1 = \
-@ENABLE_RELATIVE_TRUE@	-D_SYSCONFDIR_='"etc/relative"'
-
-@ENABLE_RELATIVE_FALSE@am__append_2 = \
-@ENABLE_RELATIVE_FALSE@	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
-
 
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_3 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
-@ENABLE_MRUBY_TRUE@am__append_4 = @MRUBY_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
+@ENABLE_MRUBY_TRUE@am__append_1 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
+@ENABLE_MRUBY_TRUE@am__append_2 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_3 = lib/libarango_mruby.a
 bin_PROGRAMS = bin/arangob$(EXEEXT) bin/arangodump$(EXEEXT) \
 	bin/arangorestore$(EXEEXT) bin/arangosh$(EXEEXT) \
 	bin/arangoimp$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_MRUBY_TRUE@am__append_6 = bin/arangoirb
+@ENABLE_MRUBY_TRUE@am__append_4 = bin/arangoirb
 sbin_PROGRAMS = bin/arangod$(EXEEXT)
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_7 = bin/etcd-arango
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_5 = bin/etcd-arango
 noinst_PROGRAMS = $(am__EXEEXT_2)
-@ENABLE_MRUBY_TRUE@am__append_8 = \
+@ENABLE_MRUBY_TRUE@am__append_6 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
@@ -231,18 +225,18 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(top_srcdir)/config/compile $(top_srcdir)/config/config.guess \
 	$(top_srcdir)/config/config.sub \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/missing
-@ENABLE_READLINE_TRUE@am__append_9 = \
+@ENABLE_READLINE_TRUE@am__append_7 = \
 @ENABLE_READLINE_TRUE@	lib/Utilities/LineEditor-readline.cpp
 
-@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@am__append_10 = \
+@ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@am__append_8 = \
 @ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	lib/Utilities/LineEditor-linenoise.cpp \
 @ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/linenoise.c \
 @ENABLE_LINENOISE_TRUE@@ENABLE_READLINE_FALSE@	3rdParty/linenoise/utf8.c
 
-@ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@am__append_11 = \
+@ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@am__append_9 = \
 @ENABLE_LINENOISE_FALSE@@ENABLE_READLINE_FALSE@	lib/Utilities/LineEditor-dummy.cpp
 
-@ENABLE_CLUSTER_TRUE@am__append_12 = \
+@ENABLE_CLUSTER_TRUE@am__append_10 = \
 @ENABLE_CLUSTER_TRUE@        arangod/Cluster/AgencyComm.cpp \
 @ENABLE_CLUSTER_TRUE@	arangod/Cluster/ApplicationCluster.cpp \
 @ENABLE_CLUSTER_TRUE@	arangod/Cluster/ClusterComm.cpp \
@@ -254,19 +248,19 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_CLUSTER_TRUE@	arangod/Cluster/v8-cluster.cpp \
 @ENABLE_CLUSTER_TRUE@	arangod/Cluster/ClusterMethods.cpp
 
-@ENABLE_MRUBY_TRUE@am__append_13 = \
+@ENABLE_MRUBY_TRUE@am__append_11 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
-@ENABLE_MRUBY_TRUE@am__append_14 = \
+@ENABLE_MRUBY_TRUE@am__append_12 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_15 = \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_13 = \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.c
 
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_16 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_14 = UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_MAINTAINER_MODE_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_MAINTAINER_MODE_FALSE@UnitTests_geo_suite_DEPENDENCIES =
 
@@ -285,7 +279,7 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief mimetypes file
 ################################################################################
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_17 = @top_srcdir@/lib/BasicsC/voc-errors.h \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_15 = @top_srcdir@/lib/BasicsC/voc-errors.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/lib/BasicsC/voc-errors.c \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/js/common/bootstrap/errors.js \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/lib/BasicsC/voc-mimetypes.h \
@@ -295,13 +289,13 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_18 = $(MRUBY_HEADER) \
+@ENABLE_MRUBY_TRUE@am__append_16 = $(MRUBY_HEADER) \
 @ENABLE_MRUBY_TRUE@	@builddir@/.setup-mr-directories
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_19 = $(MRUBY_HEADER)
+@ENABLE_MRUBY_TRUE@am__append_17 = $(MRUBY_HEADER)
 
 ################################################################################
 ### @brief documentation
@@ -318,41 +312,41 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief generate readme
 ################################################################################
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_20 = README
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_21 = $(FLEX_FILES) \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_18 = README
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_19 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_22 = @ICU_BUILT@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_20 = @ICU_BUILT@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_23 = clean-icu
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_24 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_21 = clean-icu
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_22 = @LIBEV_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_25 = clean-libev
-@ENABLE_MRUBY_TRUE@am__append_26 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_23 = clean-libev
+@ENABLE_MRUBY_TRUE@am__append_24 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ###
 ### "clean" in mruby is broken
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_27 = clean-mruby
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_28 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_25 = clean-mruby
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_26 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_29 = clean-v8
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_27 = clean-v8
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_30 = clean-etcd
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_28 = clean-etcd
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -607,7 +601,7 @@ am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__EXEEXT_1 = bin/arangoirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
-	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
 @ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_2 =  \
@@ -929,7 +923,7 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-SCRIPTS = $(bin_SCRIPTS) $(sbin_SCRIPTS)
+SCRIPTS = $(bin_SCRIPTS) $(pkglibexec_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -1101,7 +1095,7 @@ LIBOBJS = @LIBOBJS@
 ### @brief libraries
 ################################################################################
 LIBS = @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ @ZLIB_LIBS@ \
-	@READLINE_LIBS@ $(am__append_4)
+	@READLINE_LIBS@ $(am__append_2)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
@@ -1226,11 +1220,11 @@ BUILT_SOURCES = build.h etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangorestore$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangosh$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf \
-	$(am__append_17) Doxygen/.setup-directories \
+	$(am__append_15) Doxygen/.setup-directories \
 	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
-	$(am__append_18) $(am__append_20) $(am__append_21) \
-	$(am__append_22) $(am__append_24) $(am__append_26) \
-	$(am__append_28) @ZLIB_LIBS@
+	$(am__append_16) $(am__append_18) $(am__append_19) \
+	$(am__append_20) $(am__append_22) $(am__append_24) \
+	$(am__append_26) @ZLIB_LIBS@
 
 ################################################################################
 ### @brief man pages to install
@@ -1256,8 +1250,8 @@ dist_man_MANS = Documentation/man/man1/arangob.1 \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_15) Doxygen/.setup-directories Doxygen/* \
-	$(am__append_19)
+CLEANUP = $(am__append_13) Doxygen/.setup-directories Doxygen/* \
+	$(am__append_17)
 
 ################################################################################
 ### @brief targets for cleanup of 3rd party libraries
@@ -1266,8 +1260,8 @@ CLEANUP = $(am__append_15) Doxygen/.setup-directories Doxygen/* \
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-CLEANUP_3RD = $(am__append_23) $(am__append_25) $(am__append_27) \
-	$(am__append_29) clean-zlib $(am__append_30)
+CLEANUP_3RD = $(am__append_21) $(am__append_23) $(am__append_25) \
+	$(am__append_27) clean-zlib $(am__append_28)
 
 ################################################################################
 ### @brief flex files
@@ -1319,6 +1313,10 @@ BISONXX_FILES =
 @ENABLE_RELATIVE_TRUE@TRI_SBINDIR = ${abs_builddir}/bin
 @ENABLE_RELATIVE_FALSE@TRI_BINDIR = ${bindir}
 @ENABLE_RELATIVE_TRUE@TRI_BINDIR = ${abs_builddir}/bin
+@ENABLE_RELATIVE_FALSE@TRI_LIBEXECDIR = ${libexecdir}
+@ENABLE_RELATIVE_TRUE@TRI_LIBEXECDIR = ${abs_builddir}/bin
+@ENABLE_RELATIVE_FALSE@TRI_SYSCONFDIR = ${sysconfdir}/${PACKAGE_TARNAME}
+@ENABLE_RELATIVE_TRUE@TRI_SYSCONFDIR = etc/relative
 
 ################################################################################
 ### @brief m4 directory
@@ -1328,10 +1326,10 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @ICU_CPPFLAGS@ @ZLIB_CPPFLAGS@ \
-	@V8_CPPFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3)
+AM_CPPFLAGS = -D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' -I@top_srcdir@/lib \
+	-I@top_builddir@/lib @BOOST_CPPFLAGS@ @LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
+	@ICU_CPPFLAGS@ @ZLIB_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1)
 
 ################################################################################
 ### @brief linker flags
@@ -1355,7 +1353,7 @@ PROGRAM_SUFFIX = $(shell echo | sed '$(program_transform_name)')
 ### @brief auxiliary libraries
 ################################################################################
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
-	lib/libarango_fe.a lib/libarango_client.a $(am__append_5)
+	lib/libarango_fe.a lib/libarango_client.a $(am__append_3)
 
 ################################################################################
 ### @brief helper programs
@@ -1363,9 +1361,9 @@ noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 noinst_bin = 
 
 ################################################################################
-### @brief /sbin scripts
+### @brief /libexec programs
 ################################################################################
-sbin_SCRIPTS = $(am__append_7)
+pkglibexec_SCRIPTS = $(am__append_5)
 
 ################################################################################
 ### @brief /bin scripts
@@ -1387,7 +1385,7 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	find @srcdir@/js/client -name "*.js" -print) $(shell find \
 	@srcdir@/js/node -type f "(" -name .travis.yml -o -name \
 	.npmignore -o -print ")") $(shell find @srcdir@/js/apps/system \
-	-type f -print) $(am__append_8)
+	-type f -print) $(am__append_6)
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
@@ -1432,8 +1430,8 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Rest/Url.cpp lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Zip/ioapi.c lib/Zip/unzip.c lib/Zip/zip.c $(am__append_9) \
-	$(am__append_10) $(am__append_11)
+	lib/Zip/ioapi.c lib/Zip/unzip.c lib/Zip/zip.c $(am__append_7) \
+	$(am__append_8) $(am__append_9)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1519,7 +1517,7 @@ bin_arangod_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_13)
+	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_11)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
@@ -1596,7 +1594,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/synchroniser.c arangod/VocBase/transaction.c \
 	arangod/VocBase/update-policy.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c arangod/VocBase/vocbase-defaults.c \
-	$(am__append_12) $(am__append_14)
+	$(am__append_10) $(am__append_12)
 bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
@@ -3465,12 +3463,12 @@ uninstall-binSCRIPTS:
 	files=`for p in $$list; do echo "$$p"; done | \
 	       sed -e 's,.*/,,;$(transform)'`; \
 	dir='$(DESTDIR)$(bindir)'; $(am__uninstall_files_from_dir)
-install-sbinSCRIPTS: $(sbin_SCRIPTS)
+install-pkglibexecSCRIPTS: $(pkglibexec_SCRIPTS)
 	@$(NORMAL_INSTALL)
-	@list='$(sbin_SCRIPTS)'; test -n "$(sbindir)" || list=; \
+	@list='$(pkglibexec_SCRIPTS)'; test -n "$(pkglibexecdir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(sbindir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(sbindir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkglibexecdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkglibexecdir)" || exit 1; \
 	fi; \
 	for p in $$list; do \
 	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
@@ -3489,17 +3487,17 @@ install-sbinSCRIPTS: $(sbin_SCRIPTS)
 	while read type dir files; do \
 	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
 	     test -z "$$files" || { \
-	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(sbindir)$$dir'"; \
-	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(sbindir)$$dir" || exit $$?; \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(pkglibexecdir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(pkglibexecdir)$$dir" || exit $$?; \
 	     } \
 	; done
 
-uninstall-sbinSCRIPTS:
+uninstall-pkglibexecSCRIPTS:
 	@$(NORMAL_UNINSTALL)
-	@list='$(sbin_SCRIPTS)'; test -n "$(sbindir)" || exit 0; \
+	@list='$(pkglibexec_SCRIPTS)'; test -n "$(pkglibexecdir)" || exit 0; \
 	files=`for p in $$list; do echo "$$p"; done | \
 	       sed -e 's,.*/,,;$(transform)'`; \
-	dir='$(DESTDIR)$(sbindir)'; $(am__uninstall_files_from_dir)
+	dir='$(DESTDIR)$(pkglibexecdir)'; $(am__uninstall_files_from_dir)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -7420,7 +7418,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -7575,7 +7573,7 @@ install-dvi: install-dvi-am
 install-dvi-am:
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
-	install-sbinPROGRAMS install-sbinSCRIPTS
+	install-pkglibexecSCRIPTS install-sbinPROGRAMS
 	@$(NORMAL_INSTALL)
 	$(MAKE) $(AM_MAKEFLAGS) install-exec-hook
 install-html: install-html-am
@@ -7619,8 +7617,8 @@ ps-am:
 
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man \
-	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS \
-	uninstall-sbinSCRIPTS
+	uninstall-nobase_pkgdataDATA uninstall-pkglibexecSCRIPTS \
+	uninstall-sbinPROGRAMS
 
 uninstall-man: uninstall-man1 uninstall-man8
 
@@ -7640,15 +7638,15 @@ uninstall-man: uninstall-man1 uninstall-man8
 	install-exec install-exec-am install-exec-hook install-html \
 	install-html-am install-info install-info-am install-man \
 	install-man1 install-man8 install-nobase_pkgdataDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinPROGRAMS install-sbinSCRIPTS install-strip \
+	install-pdf install-pdf-am install-pkglibexecSCRIPTS \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
 	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
 	uninstall-man8 uninstall-nobase_pkgdataDATA \
-	uninstall-sbinPROGRAMS uninstall-sbinSCRIPTS
+	uninstall-pkglibexecSCRIPTS uninstall-sbinPROGRAMS
 
 
 emil:
@@ -7696,8 +7694,11 @@ build.h: configure.ac
 etc/arangodb/%$(PROGRAM_SUFFIX).conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
+		-e 's%@LIBEXECDIR@%${TRI_LIBEXECDIR}%g' \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		-e 's%@SYSCONFDIR@%${TRI_SYSCONFDIR}%g' \
 		$< > $@
 
 ################################################################################
