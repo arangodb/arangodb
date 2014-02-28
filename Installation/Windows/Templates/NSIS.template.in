@@ -772,14 +772,17 @@ Function default_installation_directory
   !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_SINGLE_USER "NSIS.InstallOptions.ini" "Field 4" "State"
 
   StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 checkSingleUser
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
     Abort
   checkSingleUser:
-    SetShellVarContext current
     StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+    SetShellVarContext current
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
   all_users:
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
     StrCpy $TRI_INSTALL_AS_SERVICE '1'
 FunctionEnd
@@ -789,26 +792,33 @@ FunctionEnd
 ; determine admin versus local install
 Function un.onInit
 
-  ClearErrors
-  UserInfo::GetName
-  IfErrors noLM
-  Pop $0
-  UserInfo::GetAccountType
-  Pop $1
-  StrCmp $1 "Admin" 0 +3
+;  ClearErrors
+;  UserInfo::GetName
+;  IfErrors noLM
+;  Pop $0
+;  UserInfo::GetAccountType
+;  Pop $1
+;  StrCmp $1 "Admin" 0 +3
+;    SetShellVarContext all
+;    MessageBox MB_OK 'User "$0" is in the Admin group'
+;    Goto done
+;  StrCmp $1 "Power" 0 +3
+;    SetShellVarContext all
+;    MessageBox MB_OK 'User "$0" is in the Power Users group'
+;    Goto done
+;
+;  noLM:
+;    ;Get installation folder from registry if available
+;
+;  done:
+
+    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
+  StrCmp $0 "Service" 0 +3
     SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Admin group'
-    Goto done
-  StrCmp $1 "Power" 0 +3
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Power Users group'
-    Goto done
-
-  noLM:
-    ;Get installation folder from registry if available
-
-  done:
-
+     Goto tri_done
+    SetShellVarContext current
+    tri_done:
+   
 FunctionEnd
 
 ;--- Add/Remove callback functions: ---
@@ -941,6 +951,7 @@ Section "Uninstall"
   secondStartMenuDeleteLoopDone:
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
+  DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
 
   Push $INSTDIR\bin
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
