@@ -127,11 +127,9 @@ function sendToAgency (agencyURL, path, obj) {
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   console.info("Starting agent...");
 
-  // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
 
   var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
@@ -167,16 +165,9 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     }
     args.push(st);
   }
-  var agentPath = fs.makeAbsolute(cmd.agentPath);
-  if (agentPath !== cmd.agentPath) {
-    if (cmd.agentPath === "") {
-      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..", "etcd-arango" ));
-    }
-    else {
-      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..", cmd.agentPath ));
-    }
+  var agentPath = cmd.agentPath;
+  if (agentPath === "") {
+    agentPath = ArangoServerState.agentPath();
   }
   if (! fs.exists(agentPath)) {
     return {"error":true, "isStartAgent": true, 
@@ -215,15 +206,13 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
-  // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
   var logPath = fs.makeAbsolute(cmd.logPath);
   if (logPath !== cmd.logPath) {    // path was relative
-    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+    logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
 
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
@@ -262,10 +251,17 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     body = JSON.parse(res.body);
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
-    args = ["--cluster.my-id", id, 
+    if (roles[i] === "DBserver") {
+      args = ["--configuration", ArangoServerState.DBserverConfig()];
+    }
+    else {
+      args = ["--configuration", ArangoServerState.coordinatorConfig()];
+    }
+    args = args.concat([
+            "--cluster.my-id", id, 
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
-            "--server.endpoint"];
+            "--server.endpoint"]);
     if (cmd.onlyLocalhost) {
       args.push("tcp://127.0.0.1:"+port);
     }
@@ -292,13 +288,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat(dispatchers[cmd.dispatcher].arangodExtraArgs);
     var arangodPath = fs.makeAbsolute(cmd.arangodPath);
     if (arangodPath !== cmd.arangodPath) {
-      if (cmd.arangodPath === "") {
-        arangodPath = ArangoServerState.executablePath();
-      }
-      else {
-        arangodPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                           "..", cmd.arangodPath ));
-      }
+      arangodPath = ArangoServerState.arangodPath();
     }
     pids.push(executeExternal(arangodPath, args));
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
@@ -382,11 +372,9 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 cleanupActions.startAgent = function (dispatchers, cmd) {
   console.info("Cleaning up agent...");
 
-  // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
 
   var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
@@ -399,17 +387,15 @@ cleanupActions.startAgent = function (dispatchers, cmd) {
 cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   console.info("Cleaning up DBservers...");
 
-  // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
   var logPath = fs.makeAbsolute(cmd.logPath);
   if (logPath !== cmd.logPath) {    // path was relative
-    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+    logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
-
+  
   var servers = cmd.DBservers.concat(cmd.Coordinators);
   var i;
   for (i = 0; i < servers.length; i++) {

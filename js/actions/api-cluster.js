@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT */
+/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -278,6 +278,10 @@ actions.defineHttp({
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
+    if (ArangoServerState.disableDispatcherKickstarter() === true) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
       return;
@@ -358,6 +362,10 @@ actions.defineHttp({
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
+    if (ArangoServerState.disableDispatcherKickstarter() === true) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
       return;
@@ -491,6 +499,10 @@ actions.defineHttp({
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
+    if (ArangoServerState.disableDispatcherKickstarter() === true) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN);
+      return;
+    }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
       return;
