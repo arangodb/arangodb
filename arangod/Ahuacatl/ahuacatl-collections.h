@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 struct TRI_aql_context_s;
+struct TRI_vector_pointer_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines
@@ -80,9 +81,10 @@ struct TRI_aql_context_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_collection_s {
-  TRI_vocbase_col_t* _collection;
-  TRI_barrier_t*     _barrier;
-  char*              _name;
+  TRI_vocbase_col_t*           _collection; // this might be NULL !
+  TRI_barrier_t*               _barrier;    // this might be NULL !
+  char*                        _name;
+  struct TRI_vector_pointer_s* _availableIndexes;
 }
 TRI_aql_collection_t;
 
@@ -136,35 +138,49 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void);
 void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeCollectionAql (TRI_aql_collection_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a collection in the internal vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_collection_t* TRI_GetCollectionAql (const struct TRI_aql_context_s* const,
-                                            const char* const);
+TRI_aql_collection_t* TRI_GetCollectionAql (const struct TRI_aql_context_s*,
+                                            const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetupCollectionsAql (struct TRI_aql_context_s* const);
+bool TRI_SetupCollectionsAql (struct TRI_aql_context_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a gc marker for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddBarrierCollectionsAql (struct TRI_aql_context_s* const);
+bool TRI_AddBarrierCollectionsAql (struct TRI_aql_context_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes the gc markers for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveBarrierCollectionsAql (struct TRI_aql_context_s* const);
+void TRI_RemoveBarrierCollectionsAql (struct TRI_aql_context_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection name to the list of collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddCollectionAql (struct TRI_aql_context_s* const, const char* const);
+bool TRI_AddCollectionAql (struct TRI_aql_context_s*, 
+                           const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get available indexes of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_vector_pointer_s* TRI_GetIndexesCollectionAql (struct TRI_aql_context_s*,
+                                                          TRI_aql_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
