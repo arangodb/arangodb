@@ -3,6 +3,9 @@ v2.0.0-alpha1 (2014-02-28)
 
 * added sharding :-)
 
+  more detailed documentation on the sharding and cluster features can be found in the user 
+  manual, section **Sharding**
+
 * INCOMPATIBLE CHANGE: using complex values in AQL filter conditions with operators other
   than equality (e.g. >=, >, <=, <) will disable usage of skiplist indexes for filter 
   evaluation.
@@ -33,7 +36,7 @@ v2.0.0-alpha1 (2014-02-28)
   flag.
   
   Regardless of this setting, sockets on Windows are always acquired using the
-   SO_EXCLUSIVEADDRUSE flag.
+  SO_EXCLUSIVEADDRUSE flag.
 
 * removed undocumented REST API method GET `/_admin/database-name`
 
