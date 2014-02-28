@@ -33,6 +33,7 @@
 // -----------------------------------------------------------------------------
 
 var download = require("internal").download;
+var base64Encode = require("internal").base64Encode;
 
 // Our default configurations:
 
