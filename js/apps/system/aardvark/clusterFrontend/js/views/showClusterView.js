@@ -9,6 +9,7 @@
     el: "#content",
 
     template: templateEngine.createTemplate("showCluster.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
 
       events: {
         "change #selectDB"        : "updateCollections",
@@ -126,6 +127,7 @@
         byAddress: byAddress,
         type: this.type
       }));
+      $(this.el).append(this.modal.render({}));
       this.getServerStatistics();
       var data = this.generatePieData();
       this.renderPieChart(data);
@@ -403,15 +405,21 @@
       },
 
     clusterShutdown : function() {
-        this.stopUpdating();
+      this.stopUpdating();
+      $('#waitModalLayer').modal('show');
+      $('#waitModalMessage').html('Please be patient while your cluster will shutdown');
         $.ajax({
             cache: false,
             type: "GET",
             async: false, // sequential calls!
             url: "cluster/shutdown",
+            success: function(data) {
+              $('#waitModalLayer').modal('hide');
+              window.App.navigate("handleClusterDown", {trigger: true});
+            }
         });
-        window.App.navigate("handleClusterDown", {trigger: true});
     },
+
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
         window.App.navigate("dashboard/"+id, {trigger: true});
