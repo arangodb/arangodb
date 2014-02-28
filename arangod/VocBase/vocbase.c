@@ -1685,7 +1685,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
       continue;
     }
 
-    if (collection->_cid >= maxTick) {
+    if (collection->_cid > maxTick) {
       // collection is too new
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
