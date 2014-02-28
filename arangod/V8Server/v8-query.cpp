@@ -866,7 +866,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
   for (size_t i = 0; i < idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
 
-    if (!example->HasOwnProperty(key)) {
+    if (! example->HasOwnProperty(key)) {
       break;
     }
 
@@ -1049,6 +1049,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   trx.lockRead();
 
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
 
@@ -1077,7 +1078,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
 
   if (skiplistIterator == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_barrier_t* barrier = 0;
@@ -1086,8 +1087,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
 
   while (true) {
-    TRI_skiplist_index_element_t* indexElement = 
-                  skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
       break;

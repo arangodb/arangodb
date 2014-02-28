@@ -108,9 +108,7 @@ typedef struct TRI_index_s {
   TRI_vector_string_t _fields;
   bool _unique;
   bool _ignoreNull;
-  bool _needsFullCoverage;
 
-  const char* (*typeName) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
@@ -286,7 +284,6 @@ void TRI_InitIndex (TRI_index_t*,
                     TRI_idx_iid_t, 
                     TRI_idx_type_e, 
                     struct TRI_primary_collection_s*,
-                    bool,
                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +298,12 @@ void TRI_InitIndex (TRI_index_t*,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not an index needs full coverage
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an index type
@@ -331,7 +334,7 @@ bool TRI_ValidateIndexIdIndex (char const*,
 /// @brief free an index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeIndex (TRI_index_t* const);
+void TRI_FreeIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file
@@ -362,7 +365,7 @@ TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, 
-                           TRI_index_t*);
+                           TRI_index_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a result set returned by a hash index query
