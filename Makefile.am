@@ -205,13 +205,13 @@ sbin_PROGRAMS = \
 noinst_bin =
 
 ################################################################################
-### @brief /sbin scripts
+### @brief /libexec programs
 ################################################################################
 
-sbin_SCRIPTS =
+pkglibexec_SCRIPTS =
 
 if ENABLE_ALL_IN_ONE_ETCD
-sbin_SCRIPTS += bin/etcd-arango
+pkglibexec_SCRIPTS += bin/etcd-arango
 endif
 
 ################################################################################
