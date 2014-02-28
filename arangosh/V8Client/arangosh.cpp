@@ -1315,7 +1315,7 @@ static std::string BuildPrompt (V8ClientConnection* connection) {
         result.push_back(c);
       }
       else if (c == 'd') {
-        result.append(connection->getDatabaseName());
+        result.append(BaseClient.databaseName());
       }
       else if (c == 'e') {
         result.append(BaseClient.endpointString());

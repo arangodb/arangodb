@@ -245,6 +245,14 @@ Command-Line Options for Clusters {#CommandLineCluster}
 @copydetails triagens::arango::ApplicationCluster::_myAddress
 
 @CLEARPAGE
+@anchor CommandLineArangoClusterUsername
+@copydetails triagens::arango::ApplicationCluster::_username
+
+@CLEARPAGE
+@anchor CommandLineArangoClusterPassword
+@copydetails triagens::arango::ApplicationCluster::_password
+
+@CLEARPAGE
 Command-Line Options for Communication {#CommandLineScheduler}
 ==============================================================
 

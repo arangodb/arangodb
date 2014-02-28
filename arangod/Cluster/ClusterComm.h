@@ -244,7 +244,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
       
-        static ClusterComm* instance ( );
+        static ClusterComm* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
@@ -338,7 +338,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                           rest::HttpResponse* responseToSend);
                      
 // -----------------------------------------------------------------------------
-// --SECTION--                                         private methods and data
+// --SECTION--                                          private methods and data
 // -----------------------------------------------------------------------------
 
       private: 

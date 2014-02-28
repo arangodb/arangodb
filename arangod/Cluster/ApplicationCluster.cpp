@@ -88,6 +88,8 @@ ApplicationCluster::~ApplicationCluster () {
     // flat line.....
     delete _heartbeat;
   }
+  
+  ServerState::cleanup();
 }
 
 // -----------------------------------------------------------------------------
@@ -114,6 +116,10 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
+  // initialise ServerState library
+  ServerState::initialise(); 
+ 
+ 
   _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
   if (! enabled()) {
