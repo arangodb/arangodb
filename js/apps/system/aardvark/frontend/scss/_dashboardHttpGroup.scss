@@ -19,6 +19,13 @@
 
 }
 
+#distributionChartDiv  {
+  @extend %clear-float;
+}
+.lineChartDiv   {
+  @extend %clear-float;
+}
+
 .dashboardChart {
   position: relative;
   width: 31%;

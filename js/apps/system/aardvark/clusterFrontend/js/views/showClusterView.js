@@ -13,6 +13,8 @@
       events: {
         "change #selectDB"        : "updateCollections",
         "change #selectCol"       : "updateShards",
+        "click .coordinator"      : "dashboard",
+        "click .dbserver"         : "dashboard",
         "click #clusterShutdown"  : "clusterShutdown",
         "mouseover #lineGraph"    : "setShowAll",
         "mouseout #lineGraph"     : "resetShowAll"
@@ -311,7 +313,7 @@
                   'file': getData(),
                   'labels': createLabels(),
                   'visibility' : getVisibility(),
-                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max],
+                  'valueRange': [self.min -0.1 * self.min, self.max + 0.1 * self.max]
               } );
               return;
           }
@@ -401,20 +403,19 @@
       },
 
     clusterShutdown : function() {
-      this.stopUpdating();
-      $.ajax({
-        cache: false,
-        type: "GET",
-        async: false, // sequential calls!
-        url: "cluster/shutdown",
-        success: function(data) {
-        },
-        error: function(data) {
-        }
-      });
-      window.App.navigate("handleClusterDown", {trigger: true});
+        this.stopUpdating();
+        $.ajax({
+            cache: false,
+            type: "GET",
+            async: false, // sequential calls!
+            url: "cluster/shutdown",
+        });
+        window.App.navigate("handleClusterDown", {trigger: true});
+    },
+    dashboard: function(e) {
+        var id = $(e.currentTarget).attr("id");
+        window.App.navigate("dashboard/"+id, {trigger: true});
     }
-
   });
 
 }());

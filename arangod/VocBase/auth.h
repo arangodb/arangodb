@@ -38,6 +38,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_json_s;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -106,6 +107,13 @@ bool TRI_InsertInitialAuthInfo (struct TRI_vocbase_s*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief populate the authentication info cache
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_PopulateAuthInfo (struct TRI_vocbase_s*,
+                           struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info
