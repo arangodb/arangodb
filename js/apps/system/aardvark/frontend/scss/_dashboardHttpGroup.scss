@@ -1,13 +1,13 @@
 #dashboardHttpGroup {
   width: 100%;
   height: 100%;
-  border: 1px solid black;
+  border: 1px solid $c_black;
 }
 
 #dashboardDetailedChart {
   width: 100%;
   height: 300px;
-  border: 1px solid black;
+  border: 1px solid $c_black;
 }
 
 .innerDashboardChart {
@@ -27,6 +27,7 @@
 }
 
 .dashboardChart {
+  background-color: $c_white;
   position: relative;
   width: 31%;
   height: 270px;
