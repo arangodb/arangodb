@@ -53,6 +53,10 @@ var isHealthyActions = {};
 var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
 var getPort = require("org/arangodb/cluster/planner").getPort;
 
+function makePath (path) {
+  return fs.join.apply(null,path.split("/"));
+}
+
 function encode (st) {
   var st2 = "";
   var i;
@@ -328,7 +332,9 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
-             'return load("js/server/version-check.js");\n';
+             'return load("'+fs.join(ArangoServerState.javaScriptPath(),
+                                     makePath("server/version-check.js"))+
+             '");\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   if (r.code === 200) {
