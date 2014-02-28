@@ -80,6 +80,14 @@ the `cluster.disable-dispatcher-kickstarter` and
 `cluster.disable-dispatcher-interface` options in `arangod.conf` both
 to `false`.
 
+Note that once you switch `cluster.disable-dispatcher-interface` to
+`false`, the usual web frontend is automatically replaced with the
+web frontend for cluster planning. Therefore you can simply point
+your browser to `http://localhost:8529` (if you are running on the
+standard port) and you are guided through the planning and launching of
+a cluster with a graphical user interface. Alternatively, you can follow
+the instructions below to do the same on the command line interface.
+
 We will first plan and launch a cluster, such that all your servers run
 on the local machine.
 
@@ -270,8 +278,8 @@ and work:
   - Creating, dropping and modifying cluster-wide collections all work.
     Since these operations occur seldom, we will only improve their
     performance in a future release, when we will have our own
-    implemenation of the agency as well as a cluster-wide event managing
-    system (see roadmap for release 2.?).
+    implementation of the agency as well as a cluster-wide event managing
+    system (see roadmap for release 2.3).
   - The sharding in a collection can be configured to use hashing
     on arbitrary properties of the documents in the collection.
   - Creating and dropping indices on sharded collections works. Please
@@ -279,12 +287,12 @@ and work:
     but only leads to a local index of the same type on each shard.
   - All SimpleQueries work, again, we will improve the performance in
     future releases, when we revisit the AQL query optimiser 
-    (see roadmap for release 2.?).
+    (see roadmap for release 2.2).
   - AQL queries work but with relatively bad performance. Also, if the
     result of a query on a sharded collection is large, this can lead
     to an out of memory situation on the coordinator handling the
     request. We will improve this situation when we revisit the AQL
-    query optimiser (see roadmap for release 2.?).
+    query optimiser (see roadmap for release 2.2).
   - Authentication on the cluster works with the method known from
     single ArangoDB instances on the coordinators. A new cluster-internal
     authorisation scheme has been created. See below for hints on a
@@ -299,24 +307,24 @@ roadmap):
 
   - Transactions can be run but do not behave like transactions. They
     simply execute but have no atomicity or isolation in version 2.0.
-    See the roadmap for version 2.?.
-  - We plan to revise the AQL optimiser for version 2.?. This is
+    See the roadmap for version 2.X.
+  - We plan to revise the AQL optimiser for version 2.2. This is
     necessary since for efficient queries in cluster mode we have to
     do as much as possible of the filtering and sorting on the
     individual DBservers rather than on the coordinator.
   - Our software architecture is fully prepared for replication, automatic 
     failover and recovery of a cluster, which will be implemented
-    for version 2.? (see our roadmap).
+    for version 2.3 (see our roadmap).
   - This setup will at the same time allow for hot swap and in-service 
     maintenance and scaling of a cluster. However, in version 2.0 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
-  - For version 2.? we envision an extension for AQL to allow writing
+  - For version 2.3 we envision an extension for AQL to allow writing
     queries. This will also allow to run modifying queries in parallel
     on all shards.
   - At this stage the sharding of an edge collection is independent of
     the sharding of the corresponding vertex collection in a graph.
-    For version 2.? we plan to synchronise the two to allow for more
+    For version 2.2 we plan to synchronise the two to allow for more
     efficient graph traversal functions in large, sharded graphs. We
     will also do research on distributed algorithms for graphs and
     implement new algorithms in ArangoDB. However, at this stage, all
@@ -325,13 +333,13 @@ roadmap):
     step leads to a network exchange.
   - In this version 2.0 the import API is broken for sharded collections.
     It will appear to work but will in fact silently fail. Fixing this
-    is on the roadmap for version 2.?.
+    is on the roadmap for version 2.1.
   - The `db.<collection>.rotate()` method for sharded collections is not
-    yet implemented, but will be supported from version 2.? onwards.
+    yet implemented, but will be supported from version 2.1 onwards.
   - The `db.<collection>.rename()` method for sharded collections is not
-    yet implemented, but will be supported from version 2.? onwards.
+    yet implemented, but will be supported from version 2.1 onwards.
   - The `db.<collection>.checksum()` method for sharded collections is
-    not yet implemented, but will be supported from version 2.?
+    not yet implemented, but will be supported from version 2.1
     onwards.
 
 The following restrictions will probably stay for cluster mode, even in
@@ -340,7 +348,7 @@ to implement efficiently:
 
   - Custom key generators with the `keyOptions` property in the
     `_create` method for collections are not supported. We plan
-    to improve this for version 2.? (see roadmap). However, due to the
+    to improve this for version 2.1 (see roadmap). However, due to the
     distributed nature of a sharded collection, not everything that is
     possible in the single instance situation will be possible on a
     cluster. For example the autoincrement feature in a cluster with

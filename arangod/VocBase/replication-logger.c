@@ -440,6 +440,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   int res;
   bool forceSync;
   bool withTid;
+  bool lock;
 
   assert(logger != NULL);
   assert(buffer != NULL);
@@ -506,10 +507,12 @@ static int LogEvent (TRI_replication_logger_t* logger,
             (unsigned long long) tid,
             (int) forceSync,
             TRI_BeginStringBuffer(buffer));
+
+  lock = isStandaloneOperation;
   
   primary = logger->_trxCollection->_collection->_collection;
   zone = primary->_shaper->_memoryZone;
-  shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
+  shaped = TRI_ShapedJsonJson(primary->_shaper, &json, true, ! lock);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
   ReturnBuffer(logger, buffer);
@@ -525,7 +528,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         TRI_DOC_MARKER_KEY_DOCUMENT, 
                         shaped, 
                         NULL, 
-                        isStandaloneOperation, 
+                        lock, 
                         forceSync, 
                         false);
 

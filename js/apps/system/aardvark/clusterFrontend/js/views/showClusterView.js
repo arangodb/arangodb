@@ -53,6 +53,7 @@
         this.coordinators = new window.ClusterCoordinators([], {
           interval: this.interval
         });
+        this.documentStore =  new window.arangoDocuments();
         this.statisticsDescription = new window.StatisticsDescription();
         this.statisticsDescription.fetch({
           async: false
@@ -105,13 +106,14 @@
       this.updateServerStatus();
       this.getServerStatistics();
       this.updateServerTime();
-      var data = this.generatePieData();
-      this.renderPieChart(data);
-      this.transformForLineChart(data);
+      this.data = this.generatePieData();
+      this.renderPieChart(this.data);
+      this.transformForLineChart();
       this.renderLineChart();
     },
 
     render: function() {
+      this.startUpdating();
       var byAddress = this.listByAddress();
       if (Object.keys(byAddress).length === 1) {
         this.type = "testPlan";
@@ -124,10 +126,11 @@
         type: this.type
       }));
       $(this.el).append(this.modal.render({}));
+      this.loadHistory();
       this.getServerStatistics();
-      var data = this.generatePieData();
-      this.renderPieChart(data);
-      this.transformForLineChart(data);
+      this.data = this.generatePieData();
+      this.renderPieChart(this.data);
+      this.transformForLineChart();
       this.renderLineChart();
       this.updateCollections();
     },
@@ -136,15 +139,16 @@
         var pieData = [];
         var self = this;
         this.data.forEach(function(m) {
-            pieData.push({key: m.get("name"), value :m.get("client").totalTime.sum / m.get("http").requestsTotal,
-                time: self.serverTime});
+            pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
+                    time: self.serverTime});
         });
         return pieData;
     },
 
-    transformForLineChart: function(data) {
+    transformForLineChart: function() {
         var c = 0;
         var self = this;
+        var data = this.hist;
         data.forEach(function(entry) {
             c++;
             if (!self.totalTimeChart[entry.time]) {
@@ -157,8 +161,6 @@
             self.totalTimeChart[entry.time]["ClusterAverage"] =
                 self.totalTimeChart[entry.time]["ClusterAverage"] + entry.value;
         })
-        self.totalTimeChart[self.serverTime]["ClusterAverage"] =
-            self.totalTimeChart[self.serverTime]["ClusterAverage"] /c;
         self.knownServers.forEach(function (server) {
             Object.keys(self.totalTimeChart).sort().forEach(function(entry) {
                 if (!self.totalTimeChart[entry][server]) {
@@ -168,8 +170,40 @@
         })
     },
 
+    loadHistory : function() {
+        this.hist = [];
+        var self = this;
+        this.dbservers.forEach(function (dbserver) {
+            if (dbserver.get("status") !== "ok") {return;}
+            if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
+            self.documentStore.getStatisticsHistory({server: dbserver.get("address"), figures : ["client.totalTime"]});
+            self.history = self.documentStore.history;
+            self.history.forEach(function(e) {
+                var h = {};
+                h.key = dbserver.id;
+                h.value = e.client.totalTime.sum / e.client.totalTime.count;
+                h.time = e.time * 1000
+                self.hist.push(h);
+            });
+        });
+        this.coordinators.forEach(function (coordinator) {
+            if (coordinator.get("status") !== "ok") {return;}
+            if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
+            self.documentStore.getStatisticsHistory({server: coordinator.get("address"), figures : ["client.totalTime"]});
+            self.history = self.documentStore.history;
+            self.history.forEach(function(e) {
+                var h = {};
+                h.key = coordinator.id;
+                h.value = e.client.totalTime.sum / e.client.totalTime.count;
+                h.time = e.time * 1000
+                self.hist.push(h);
+            });
+        });
+    },
+
     getServerStatistics: function() {
         var self = this;
+        this.data = undefined;
         var statCollect = new window.ClusterStatisticsCollection();
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
@@ -186,19 +220,22 @@
             statCollect.add(stat);
         });
         statCollect.fetch();
+        statCollect.forEach(function(m) {
+            self.hist.push({key: m.get("name"), value :m.get("client").totalTime.sum / m.get("client").totalTime.count,
+                time: self.serverTime});
+        });
         this.data = statCollect;
     },
 
     renderPieChart: function(dataset) {
-        var w = 620;
-        var h = 480;
+        var w = 500;
+        var h = 250;
         var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
         var color = d3.scale.category20();
 
         var arc = d3.svg.arc() //each datapoint will create one later.
             .outerRadius(radius - 20)
             .innerRadius(0);
-
         var pie = d3.layout.pie()
             .sort(function (d) {
                 return d.value;
@@ -215,8 +252,8 @@
             .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
 
         var arc2 = d3.svg.arc()
-            .outerRadius(radius-4)
-            .innerRadius(radius-4);
+            .outerRadius(radius-2)
+            .innerRadius(radius-2);
 
         var slices = pieChartSvg.selectAll(".arc")
             .data(pie(dataset))
@@ -232,7 +269,9 @@
             .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
             .attr("dy", ".35em")
             .style("text-anchor", "middle")
-            .text(function(d) { return d.data.value.toFixed(2); });
+            .text(function(d) {
+                var v = d.data.value / 1000000000
+                return v.toFixed(2) + "GB"; });
 
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
@@ -322,52 +361,24 @@
                   document.getElementById('lineGraph'),
                   getData(),
                   {   title: 'Average request time in milliseconds',
-                      yLabelWidth: "15",
-                      labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
-                      hideOverlayOnMouseOut: true,
+                      labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
                       labelsSeparateLines: true,
+                      connectSeparatedPoints : true,
+                      digitsAfterDecimal: 3,
+                      fillGraph : true,
+                      strokeWidth: 2,
                       legend: "always",
-                      labelsDivWidth: 150,
-                      labelsShowZeroValues: false,
-                      highlightSeriesBackgroundAlpha: 0.5,
-                      drawPoints: true,
-                      width: 480,
-                      height: 320,
-                      labels: createLabels(),
-                      visibility:getVisibility() ,
-                      valueRange: [self.min -0.1 * self.min, self.max + 0.1 * self.max],
-                      stackedGraph: false,
-                      axes: {
-                          y: {
-                              valueFormatter: function(y) {
-                                  return y.toPrecision(2);
-
-                              },
-                              axisLabelFormatter: function(y) {
-                                  return y.toPrecision(2);
-                              }
-                          },
-                          x: {
-                              valueFormatter: function(d) {
-                                  if (d === -1) {return "";}
-                                  var date = new Date(d);
-                                  return Dygraph.zeropad(date.getHours()) + ":"
-                                      + Dygraph.zeropad(date.getMinutes()) + ":"
-                                      + Dygraph.zeropad(date.getSeconds());
-
-                              }
-                          }
-
-                      },
-                      highlightCircleSize: 2,
-                      strokeWidth: 1,
-                      strokeBorderWidth: null,
-                      highlightSeriesOpts: {
-                          strokeWidth: 3,
-                          strokeBorderWidth: 1,
-                          highlightCircleSize: 5
-                      }
-                  });
+                      axisLabelFont: "Open Sans",
+                      dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
+                      //labels: createLabels(),
+                      //visibility:getVisibility() ,
+                      xAxisLabelWidth : "60",
+                      showRangeSelector: false,
+                      rightGap: 15,
+                      pixelsPerLabel : 60,
+                      labelsKMG2: false,
+                      highlightCircleSize: 2
+                      });
               var onclick = function(ev) {
                   if (self.graph.isSeriesLocked()) {
                       self.graph.clearSelection();
@@ -378,12 +389,13 @@
               self.graph.updateOptions({clickCallback: onclick}, true);
               self.graph.setSelection(false, 'ClusterAverage', true);
           };
-          makeGraph("lineGraph");
+          makeGraph('lineGraph');
 
       },
 
       stopUpdating: function () {
           window.clearTimeout(this.timer);
+          delete this.graph;
           this.isUpdating = false;
       },
 
@@ -415,6 +427,7 @@
     },
 
     dashboard: function(e) {
+        this.stopUpdating();
         var id = $(e.currentTarget).attr("id");
         window.App.dashboard(id);
     }
