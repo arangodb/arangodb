@@ -5,7 +5,10 @@
   "use strict";
   $(document).ready(function() {
     window.App = new window.ClusterRouter();
+
     Backbone.history.start();
+
+    window.App.navigate("", {trigger: true});
 
     if(window.App.clusterPlan.get("plan")) {
       if(window.App.clusterPlan.isAlive()) {
