@@ -39,6 +39,16 @@
     },
 
     initialize: function () {
+      this.bind('all', function(trigger, args) {
+        var routeData = trigger.split(":");
+        if (trigger === "route") {
+            console.log(trigger, args);
+            if (this.currentRoute === "dashboard") {
+                this.dashboardView.stopUpdating();
+            }
+            this.currentRoute = args;
+        }
+      });
       this.toUpdate = [];
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({
@@ -124,7 +134,8 @@
           this.dashboardView = new dashboardView({
               collection: this.statisticsCollection,
               description: this.statisticsDescription,
-              documentStore: new window.arangoDocumentsStore()
+              documentStore: new window.arangoDocuments(),
+              server : server
           });
       }
       this.dashboardView.render();
