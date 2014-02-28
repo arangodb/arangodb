@@ -3203,12 +3203,16 @@ function FULLTEXT (collection, attribute, query) {
   "use strict";
 
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
+
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection).FULLTEXT(idx, query);
-  return result.documents;
+  if (isCoordinator) {
+    return COLLECTION(collection).fulltext(attribute, query, idx).toArray();
+  }
+  
+  return COLLECTION(collection).FULLTEXT(idx, query).documents;
 }
 
 // -----------------------------------------------------------------------------
