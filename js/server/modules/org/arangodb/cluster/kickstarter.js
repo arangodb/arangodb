@@ -272,6 +272,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
     args.push(logfile);
     if (!isRelaunch) {
+      if (!fs.exists(logPath)) {
+        fs.makeDirectoryRecursive(logPath);
+      }
       if (fs.exists(logfile)) {
         fs.remove(logfile);
       }
@@ -280,6 +283,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args.push("--database.directory");
     args.push(datadir);
     if (!isRelaunch) {
+      if (!fs.exists(dataPath)) {
+        fs.makeDirectoryRecursive(dataPath);
+      }
       if (fs.exists(datadir)) {
         fs.removeDirectoryRecursive(datadir,true);
       }
