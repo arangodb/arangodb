@@ -46,11 +46,13 @@ using namespace triagens::basics;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper,
-                                TRI_shape_value_t* dst,
-                                v8::Handle<v8::Value> const& json,
-                                set<int>& seenHashes,
-                                vector< v8::Handle<v8::Object> >& seenObjects);
+static int FillShapeValueJson (TRI_shaper_t* shaper,
+                               TRI_shape_value_t* dst,
+                               v8::Handle<v8::Value> const& json,
+                               set<int>& seenHashes,
+                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               bool create,
+                               bool isLocked);
 
 static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
@@ -83,7 +85,7 @@ shape_cache_t;
 /// @brief converts a null into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueNull (TRI_shaper_t* shaper, 
+static int FillShapeValueNull (TRI_shaper_t* shaper, 
                                 TRI_shape_value_t* dst) {
   dst->_type = TRI_SHAPE_NULL;
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
@@ -91,16 +93,16 @@ static bool FillShapeValueNull (TRI_shaper_t* shaper,
   dst->_size = 0;
   dst->_value = 0;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a boolean into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueBoolean (TRI_shaper_t* shaper,  
-                                   TRI_shape_value_t* dst, 
-                                   v8::Handle<v8::Boolean> const& json) {
+static int FillShapeValueBoolean (TRI_shaper_t* shaper,  
+                                  TRI_shape_value_t* dst, 
+                                  v8::Handle<v8::Boolean> const& json) {
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
@@ -109,22 +111,22 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == NULL) {
-    return false;
+  if (dst->_value == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   *ptr = json->Value() ? 1 : 0;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a boolean into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueBoolean (TRI_shaper_t* shaper, 
-                                   TRI_shape_value_t* dst, 
-                                   v8::Handle<v8::BooleanObject> const& json) {
+static int FillShapeValueBoolean (TRI_shaper_t* shaper, 
+                                  TRI_shape_value_t* dst, 
+                                  v8::Handle<v8::BooleanObject> const& json) {
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
@@ -133,22 +135,22 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == NULL) {
-    return false;
+  if (dst->_value == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   *ptr = json->BooleanValue() ? 1 : 0;
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a number into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueNumber (TRI_shaper_t* shaper, 
-                                  TRI_shape_value_t* dst, 
-                                  v8::Handle<v8::Number> const& json) {
+static int FillShapeValueNumber (TRI_shaper_t* shaper, 
+                                 TRI_shape_value_t* dst, 
+                                 v8::Handle<v8::Number> const& json) {
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
@@ -157,22 +159,22 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == NULL) {
-    return false;
+  if (dst->_value == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   *ptr = json->Value();
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a number into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueNumber (TRI_shaper_t* shaper, 
-                                  TRI_shape_value_t* dst, 
-                                  v8::Handle<v8::NumberObject> const& json) {
+static int FillShapeValueNumber (TRI_shaper_t* shaper, 
+                                 TRI_shape_value_t* dst, 
+                                 v8::Handle<v8::NumberObject> const& json) {
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
@@ -181,22 +183,22 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == NULL) {
-    return false;
+  if (dst->_value == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   *ptr = json->NumberValue();
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a string into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueString (TRI_shaper_t* shaper, 
-                                  TRI_shape_value_t* dst, 
-                                  v8::Handle<v8::String> const& json) {
+static int FillShapeValueString (TRI_shaper_t* shaper, 
+                                 TRI_shape_value_t* dst, 
+                                 v8::Handle<v8::String> const& json) {
   char* ptr;
 
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, json);
@@ -208,8 +210,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper,
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-    if (dst->_value == NULL) {
-      return false;
+    if (dst->_value == 0) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     * ((TRI_shape_length_short_string_t*) ptr) = 1;
@@ -225,8 +227,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper,
       dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-      if (dst->_value == NULL) {
-        return false;
+      if (dst->_value == 0) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
 
       * ((TRI_shape_length_short_string_t*) ptr) = size + 1;
@@ -239,8 +241,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper,
       dst->_size = sizeof(TRI_shape_length_long_string_t) + size + 1;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-      if (dst->_value == NULL) {
-        return false;
+      if (dst->_value == 0) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
 
       * ((TRI_shape_length_long_string_t*) ptr) = size + 1;
@@ -248,18 +250,20 @@ static bool FillShapeValueString (TRI_shaper_t* shaper,
     }
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json list into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueList (TRI_shaper_t* shaper,
-                                TRI_shape_value_t* dst,
-                                v8::Handle<v8::Array> const& json,
-                                set<int>& seenHashes,
-                                vector< v8::Handle<v8::Object> >& seenObjects) {
+static int FillShapeValueList (TRI_shaper_t* shaper,
+                               TRI_shape_value_t* dst,
+                               v8::Handle<v8::Array> const& json,
+                               set<int>& seenHashes,
+                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               bool create,
+                               bool isLocked) {
   size_t i, n;
   size_t total;
 
@@ -292,20 +296,20 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-    if (dst->_value == NULL) {
-      return false;
+    if (dst->_value == 0) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     * (TRI_shape_length_list_t*) ptr = 0;
 
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
   // convert into TRI_shape_value_t array
   p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_value_t) * n, true));
 
-  if (p == NULL) {
-    return false;
+  if (p == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   total = 0;
@@ -313,13 +317,9 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
   for (i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> el = json->Get(i);
-    bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
+    int res = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects, create, isLocked);
 
-    if (! ok) {
-      if (! ok) {
-        LOG_TRACE("failed to convert position '%d'", (int) i);
-      }
-
+    if (res != TRI_ERROR_NO_ERROR) {
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != 0) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -327,7 +327,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      return false;
+      return res;
     }
 
     total += p->_size;
@@ -358,7 +358,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     shape = (TRI_homogeneous_sized_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t), true);
 
-    if (shape == NULL) {
+    if (shape == 0) {
       for (p = values;  p < e;  ++p) {
         if (p->_value != 0) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -366,8 +366,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     shape->base._size = sizeof(TRI_homogeneous_sized_list_shape_t);
@@ -376,7 +375,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
-    found = shaper->findShape(shaper, &shape->base);
+    found = shaper->findShape(shaper, &shape->base, create, isLocked);
 
     if (found == 0) {
       for (p = values;  p < e;  ++p) {
@@ -389,7 +388,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       TRI_Free(shaper->_memoryZone, shape);
 
       LOG_TRACE("shaper failed to find shape of type %d", (int) shape->base._type);
-      return false;
+
+      if (! create) {
+        return TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
+
+      return TRI_ERROR_INTERNAL;
     }
 
     assert(found != 0);
@@ -410,7 +414,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
       TRI_Free(shaper->_memoryZone, values);
 
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     // copy sub-objects into data space
@@ -438,7 +442,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
       TRI_Free(shaper->_memoryZone, values);
 
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     shape->base._size = sizeof(TRI_homogeneous_list_shape_t);
@@ -447,7 +451,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->_sidEntry = s;
 
     // if found returns non-NULL, it will free the shape!!
-    found = shaper->findShape(shaper, &shape->base);
+    found = shaper->findShape(shaper, &shape->base, create, isLocked);
 
     if (found == 0) {
       for (p = values;  p < e;  ++p) {
@@ -460,7 +464,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
-      return false;
+
+      if (! create) {
+        return TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
+
+      return TRI_ERROR_INTERNAL;
     }
 
     assert(found != 0);
@@ -483,7 +492,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
       TRI_Free(shaper->_memoryZone, values);
 
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     // copy sub-objects into data space
@@ -526,7 +535,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     // copy sub-objects into data space
@@ -560,18 +569,20 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   }
 
   TRI_Free(shaper->_memoryZone, values);
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json array into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueArray (TRI_shaper_t* shaper,
-                                 TRI_shape_value_t* dst,
-                                 v8::Handle<v8::Object> const& json,
-                                 set<int>& seenHashes,
-                                 vector< v8::Handle<v8::Object> >& seenObjects) {
+static int FillShapeValueArray (TRI_shaper_t* shaper,
+                                TRI_shape_value_t* dst,
+                                v8::Handle<v8::Object> const& json,
+                                set<int>& seenHashes,
+                                vector< v8::Handle<v8::Object> >& seenObjects,
+                                bool create,
+                                bool isLocked) {
   size_t i, n;
   size_t total;
 
@@ -601,8 +612,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   // convert into TRI_shape_value_t array
   p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t), true));
 
-  if (p == NULL) {
-    return false;
+  if (p == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   total = 0;
@@ -612,7 +623,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   for (i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = json->Get(key);
-    bool ok;
+    int res;
 
     // first find an identifier for the name
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
@@ -627,21 +638,27 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    p->_aid = shaper->findAttributeByName(shaper, *keyStr, true);
+    if (create) {
+      p->_aid = shaper->findOrCreateAttributeByName(shaper, *keyStr, isLocked);
+    }
+    else {
+      p->_aid = shaper->lookupAttributeByName(shaper, *keyStr);
+    }
 
     // convert value
     if (p->_aid == 0) {
-      ok = false;
-    }
-    else {
-      ok = FillShapeValueJson(shaper, p, val, seenHashes, seenObjects);
-
-      if (! ok) {
-        LOG_TRACE("failed to convert attribute '%s'", *keyStr);
+      if (create) {
+        res = TRI_ERROR_INTERNAL;
+      }
+      else {
+        res = TRI_RESULT_ELEMENT_NOT_FOUND;
       }
     }
+    else {
+      res = FillShapeValueJson(shaper, p, val, seenHashes, seenObjects, create, isLocked);
+    }
 
-    if (! ok) {
+    if (res != TRI_ERROR_NO_ERROR) {
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != 0) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -649,7 +666,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      return false;
+      return res;
     }
 
     total += p->_size;
@@ -703,7 +720,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 
     TRI_Free(shaper->_memoryZone, values);
 
-    return false;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   a->base._type = TRI_SHAPE_ARRAY;
@@ -734,11 +751,11 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   dst->_size = total;
   dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-  if (ptr == NULL) {
+  if (ptr == 0) {
     e = values + n;
 
     for (p = values;  p < e;  ++p) {
-      if (p->_value != NULL) {
+      if (p->_value != 0) {
         TRI_Free(shaper->_memoryZone, p->_value);
       }
     }
@@ -746,7 +763,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     TRI_Free(shaper->_memoryZone, values);
     TRI_Free(shaper->_memoryZone, a);
 
-    return false;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // array of offsets for variable part (within the value)
@@ -787,30 +804,35 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, values);
 
   // lookup this shape
-  found = shaper->findShape(shaper, &a->base);
+  found = shaper->findShape(shaper, &a->base, create, isLocked);
 
   if (found == 0) {
     LOG_TRACE("shaper failed to find shape %d", (int) a->base._type);
     TRI_Free(shaper->_memoryZone, a);
-    return false;
+
+    if (! create) {
+      return TRI_RESULT_ELEMENT_NOT_FOUND;
+    }
+
+    return TRI_ERROR_INTERNAL;
   }
 
   // and finally add the sid
   dst->_sid = found->_sid;
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json object into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper,
-                                TRI_shape_value_t* dst,
-                                v8::Handle<v8::Value> const& json,
-                                set<int>& seenHashes,
-                                vector< v8::Handle<v8::Object> >& seenObjects) {
-  bool result = false;
-
+static int FillShapeValueJson (TRI_shaper_t* shaper,
+                               TRI_shape_value_t* dst,
+                               v8::Handle<v8::Value> const& json,
+                               set<int>& seenHashes,
+                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               bool create,
+                               bool isLocked) {
   // check for cycles
   if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
@@ -822,7 +844,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
       for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
         if (json->StrictEquals(*i)) {
           LOG_TRACE("found duplicate for hash %d", hash);
-          return false;
+          return TRI_ERROR_ARANGO_SHAPER_FAILED;
         }
       }
     }
@@ -834,68 +856,70 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
   }
 
   if (json->IsNull()) {
-    result = FillShapeValueNull(shaper, dst);
+    return FillShapeValueNull(shaper, dst);
   }
 
   else if (json->IsBoolean()) {
-    result = FillShapeValueBoolean(shaper, dst, json->ToBoolean());
+    return FillShapeValueBoolean(shaper, dst, json->ToBoolean());
   }
 
   else if (json->IsBooleanObject()) {
-    result = FillShapeValueBoolean(shaper, dst, v8::Handle<v8::BooleanObject>::Cast(json));
+    return FillShapeValueBoolean(shaper, dst, v8::Handle<v8::BooleanObject>::Cast(json));
   }
 
   else if (json->IsNumber()) {
-    result = FillShapeValueNumber(shaper, dst, json->ToNumber());
+    return FillShapeValueNumber(shaper, dst, json->ToNumber());
   }
 
   else if (json->IsNumberObject()) {
-    result = FillShapeValueNumber(shaper, dst, v8::Handle<v8::NumberObject>::Cast(json));
+    return FillShapeValueNumber(shaper, dst, v8::Handle<v8::NumberObject>::Cast(json));
   }
 
   else if (json->IsString()) {
-    result = FillShapeValueString(shaper, dst, json->ToString());
+    return FillShapeValueString(shaper, dst, json->ToString());
   }
 
   else if (json->IsStringObject()) {
-    result = FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->StringValue());
+    return FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->StringValue());
   }
 
   else if (json->IsArray()) {
-    result = FillShapeValueList(shaper, dst, v8::Handle<v8::Array>::Cast(json), seenHashes, seenObjects);
+    return FillShapeValueList(shaper, dst, v8::Handle<v8::Array>::Cast(json), seenHashes, seenObjects, create, isLocked);
   }
-
-  else if (json->IsObject()) {
-    result = FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
+   
+  else if (json->IsObject()) { 
+    int res = FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects, create, isLocked);
     seenObjects.pop_back();
+    return res;
   }
 
   else if (json->IsRegExp()) {
     LOG_TRACE("shaper failed because a regexp cannot be converted");
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   else if (json->IsFunction()) {
     LOG_TRACE("shaper failed because a function cannot be converted");
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   else if (json->IsExternal()) {
     LOG_TRACE("shaper failed because an external cannot be converted");
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   else if (json->IsDate()) {
     LOG_TRACE("shaper failed because a date cannot be converted");
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   // treat undefined as null value
   else if (json->IsUndefined()) {
-    result = FillShapeValueNull(shaper, dst);
+    return FillShapeValueNull(shaper, dst);
   }
 
-  else {
-    LOG_TRACE("shaper failed to convert object");
-  }
-
-  return result;
+  LOG_TRACE("shaper failed to convert object");
+  return TRI_ERROR_BAD_PARAMETER;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1430,14 +1454,22 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const& object, 
-                                           TRI_shaper_t* shaper) {
+                                           TRI_shaper_t* shaper,
+                                           bool create,
+                                           bool isLocked) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
   vector< v8::Handle<v8::Object> > seenObjects;
-  bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
 
-  if (! ok) {
-    TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
+  int res = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects, create, isLocked);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      TRI_set_errno(res);
+    }
+    else {
+      TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
+    }
     return 0;
   }
 
@@ -1460,14 +1492,20 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const& object,
 
 int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const& object,
                                 TRI_shaped_json_t* result,
-                                TRI_shaper_t* shaper) {
+                                TRI_shaper_t* shaper,
+                                bool create,
+                                bool isLocked) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
   vector< v8::Handle<v8::Object> > seenObjects;
-  bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
 
-  if (! ok) {
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  int res = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects, create, isLocked);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
+      res = TRI_ERROR_BAD_PARAMETER;
+    }
+    return TRI_set_errno(res);
   }
 
   result->_sid = dst._sid;

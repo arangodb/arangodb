@@ -776,10 +776,15 @@ testFuncs.arangob = function (options) {
   var results = {};
   var i,r;
   for (i = 0; i < benchTodo.length; i++) {
-    r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
-    results[i] = r;
-    if (r !== 0 && !options.force) {
-      break;
+    // On the cluster we do not yet have working transaction functionality:
+    if (!options.cluster ||
+        (benchTodo[i].indexOf("counttrx") === -1 &&
+         benchTodo[i].indexOf("multitdx") === -1)) {
+      r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
+      results[i] = r;
+      if (r !== 0 && !options.force) {
+        break;
+      }
     }
   }
   print("Shutting down...");
