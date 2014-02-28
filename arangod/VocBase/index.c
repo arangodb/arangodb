@@ -1031,8 +1031,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-
-      logicalOperator = (TRI_logical_index_operator_t*)(slOperator);
+      logicalOperator = (TRI_logical_index_operator_t*) slOperator;
       result = FillLookupSLOperator(logicalOperator->_left, primary);
       if (result == TRI_ERROR_NO_ERROR) {
         result = FillLookupSLOperator(logicalOperator->_right, primary);
@@ -1049,18 +1048,28 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-
-      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
+      relationOperator = (TRI_relation_index_operator_t*) slOperator;
       relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
-
       relationOperator->_fields = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+
       if (relationOperator->_fields != NULL) {
         for (j = 0; j < relationOperator->_numFields; ++j) {
-          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
-          if (shapedObject) {
+          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
+
+          if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) && 
+              slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
+            // non-equality operator used on complex data type, this is disallowed
+            return TRI_ERROR_BAD_PARAMETER;
+          }
+
+          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject, false, false);
+
+          if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
+          }
+          else {
+            return TRI_RESULT_ELEMENT_NOT_FOUND; 
           }
         }
       }
@@ -1069,103 +1078,6 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
       }
       break;
     }
-
-    // .........................................................................
-    // This index operator is special
-    // The parameters are given to us as a list of json objects for EQ(...),
-    // however for the IN(...) operator each parameter in the parameters list
-    // is itself a list. For skiplists, the number of parameters is a
-    // decreasing sequence. That is, for a skiplist with 3 attributes,
-    // the parameters [ ["a","b","c","d"],["x","y"],[0] ] are allowed, whereas
-    // the parameters [ ["a","b","c"], ["x","y"], [0,1,2] ] are not allowed.
-    // .........................................................................
-
-    case TRI_IN_INDEX_OPERATOR: {
-      int maxEntries;
-
-      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
-      relationOperator->_numFields  = 0;
-      relationOperator->_fields     = NULL;
-
-      // .......................................................................
-      // check that the parameters field is not null
-      // .......................................................................
-
-      if (relationOperator->_parameters == NULL) {
-        LOG_WARNING("No parameters given when using Skiplist lookup index");
-        return TRI_ERROR_INTERNAL;
-      }
-
-
-      // .......................................................................
-      // check that the parameters json object is of the type list
-      // .......................................................................
-
-      if (relationOperator->_parameters->_type != TRI_JSON_LIST) {
-        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (a)");
-        return TRI_ERROR_INTERNAL;
-      }
-
-      // .......................................................................
-      // Each entry in the list is itself a list
-      // .......................................................................
-
-      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
-
-      if (relationOperator->_fields == NULL) {
-        relationOperator->_numFields = 0; // out of memory?
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-
-      result     = 0;
-      maxEntries = -1;
-
-      for (j = 0; j < relationOperator->_numFields; ++j) {
-        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-
-        if (jsonObject == NULL) {
-          result = -1;
-          break;
-        }
-
-        if (jsonObject->_type != TRI_JSON_LIST) {
-          result = -2;
-          break;
-        }
-
-        // check and see that entries are non-increasing
-        if ((int) jsonObject->_value._objects._length > maxEntries) {
-          if (maxEntries > 0) {
-            result = -3;
-            break;
-          }
-          maxEntries = (int) jsonObject->_value._objects._length;
-        }
-
-        // convert json to shaped json
-        shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
-        if (shapedObject == NULL) {
-          result = -4;
-          break;
-        }
-
-        // store shaped json list
-        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
-      }
-
-      if (result != 0) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE,relationOperator->_fields);
-        relationOperator->_fields = NULL;
-        relationOperator->_numFields = 0;
-        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (b)");
-        return TRI_ERROR_INTERNAL;
-      }
-
-    }
-
-
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1199,11 +1111,14 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
 
   if (errorResult != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(errorResult);
+
     return NULL;
   }
 
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, 
-                                      &skiplistIndex->_paths, slOperator);
+                                      &skiplistIndex->_paths, 
+                                      slOperator);
 
   // .........................................................................
   // we must deallocate any memory we allocated in FillLookupSLOperator
@@ -1837,7 +1752,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   // look up the attribute
   shaper = primary->_shaper;
-  attribute = shaper->findAttributePathByName(shaper, attributeName);
+  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
     return NULL;
@@ -1991,14 +1906,6 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
 
     }
 
-
-    // .........................................................................
-    // This index operator is special
-    // .........................................................................
-
-    case TRI_IN_INDEX_OPERATOR: {
-      assert(false);
-    }
   }
 
   return TRI_ERROR_NO_ERROR;

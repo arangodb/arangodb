@@ -559,16 +559,6 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts attribute names to sorted lists of pids and names
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const*,
-                                  TRI_shaper_t*,
-                                  TRI_vector_t*,
-                                  TRI_vector_pointer_t*,
-                                  bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
 ///
 /// @note The caller must hold at least a read-lock.

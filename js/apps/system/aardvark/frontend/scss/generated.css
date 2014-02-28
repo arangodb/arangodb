@@ -81,22 +81,22 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   z-index: 1000;
   display: none;
   padding: 5px 0px;
-  margin: 2px 0px 0px;
+  margin: 5px 0px 0px;
   list-style: none;
   background-color: white;
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.2);
   border-width: 1px;
-  -moz-border-radius: 6px;
-  -webkit-border-radius: 6px;
-  border-radius: 6px; }
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px; }
   ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.gv-dropdown-menu li {
     line-height: 20px;
     white-space: nowrap;
     width: 100%; }
   ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
-    font-weight: bold;
-    font-size: 11px;
+    font-weight: 400;
+    font-size: 13px;
     color: #999999;
     padding: 0px 20px;
     text-transform: uppercase; }
@@ -327,7 +327,7 @@ h6.gv_icon_icon {
 h6.gv_button_title {
   bottom: 1px; }
 
-button.graphViewer-icon-button {
+button.graphViewer-icon-button, .clusterDownBtn button.graphViewer-icon-button.green {
   border: medium none;
   width: 20px;
   height: 20px;
@@ -336,24 +336,24 @@ button.graphViewer-icon-button {
   padding: 0px;
   background-color: transparent; }
 
-button.graphViewer-icon-button > img {
+button.graphViewer-icon-button > img, .clusterDownBtn button.graphViewer-icon-button.green > img {
   width: 20px;
   height: 20px;
   padding-bottom: 10px; }
 
-button.gv_dropdown_entry {
+button.gv_dropdown_entry, .clusterDownBtn button.gv_dropdown_entry.green {
   width: 160px;
   height: 30px;
   margin: 4px 4px 4px 30px; }
 
-button.gv_context_button {
+button.gv_context_button, .clusterDownBtn button.gv_context_button.green {
   width: 65px; }
 
 .btn-icon {
   padding: 4px 4px;
   background-color: #383434; }
 
-button.gv-icon-small {
+button.gv-icon-small, .clusterDownBtn button.gv-icon-small.green {
   background-size: 16px 16px;
   width: 16px;
   height: 16px; }
@@ -364,7 +364,7 @@ button.gv-icon-small.delete {
 button.gv-icon-small.add {
   background-image: url("../img/plus_icon.png"); }
 
-button.gv-icon-btn {
+button.gv-icon-btn, .clusterDownBtn button.gv-icon-btn.green {
   width: 36px;
   height: 36px;
   background-size: 36px 36px;
@@ -378,7 +378,7 @@ button.gv-icon-btn.active {
 button.btn-zoom:hover {
   background: inherit; }
 
-button.btn-zoom {
+button.btn-zoom, .clusterDownBtn button.btn-zoom.green {
   width: 16px;
   height: 16px;
   padding: 0px;
@@ -386,23 +386,23 @@ button.btn-zoom {
   position: absolute;
   background: none; }
 
-button.btn-zoom-top {
+button.btn-zoom-top, .clusterDownBtn button.btn-zoom-top.green {
   left: 13px;
   top: 0px; }
 
-button.btn-zoom-left {
+button.btn-zoom-left, .clusterDownBtn button.btn-zoom-left.green {
   left: 0px;
   top: 12px; }
 
-button.btn-zoom-bottom {
+button.btn-zoom-bottom, .clusterDownBtn button.btn-zoom-bottom.green {
   left: 13px;
   top: 24px; }
 
-button.btn-zoom-right {
+button.btn-zoom-right, .clusterDownBtn button.btn-zoom-right.green {
   right: 0px;
   top: 12px; }
 
-button.gv-zoom-btn {
+button.gv-zoom-btn, .clusterDownBtn button.gv-zoom-btn.green {
   width: 14px;
   height: 14px;
   background-size: 14px 14px;
@@ -440,7 +440,7 @@ ul.arangoPagination a {
 .modal-body th.actionCell > button {
   margin-top: -12px; }
 
-button {
+button, .clusterDownBtn button.green {
   font-family: 'Open Sans', sans-serif !important; }
 
 .btn-old-padding {
@@ -451,11 +451,41 @@ button {
   background-color: #736b68; }
 
 /* Cluster View */
-button.btn-overview, button.btn-server {
+button.btn-overview, .clusterDownBtn button.btn-overview.green, button.btn-server, .clusterDownBtn button.btn-server.green {
   margin: 5px; }
 
-button.btn-server {
+button.btn-server, .clusterDownBtn button.btn-server.green {
   width: 120px; }
+
+.clusterDownBtn {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: center; }
+  .clusterDownBtn button, .clusterDownBtn button.green {
+    background-color: #f1f1f1;
+    color: #333333;
+    padding: 12px 18px;
+    margin: 0px;
+    border: 1px solid rgba(0, 0, 0, 0.1875);
+    border-radius: 3px;
+    text-decoration: none !important;
+    font-size: 20px;
+    font-weight: 300;
+    width: 250px;
+    text-align: center;
+    cursor: auto; }
+    .clusterDownBtn button:hover {
+      color: #4a6c30;
+      background-color: #e8e8e8;
+      -webkit-transition-delay: 0s;
+      -webkit-transition-duration: 0.2s;
+      -webkit-transition-property: all;
+      -webkit-transition-timing-function: ease-in; }
+  .clusterDownBtn button.green {
+    color: white;
+    background-color: #617e2b; }
+    .clusterDownBtn button.green:hover {
+      background-color: #8ba142; }
 
 ul.tileList {
   margin-left: -6px;
@@ -816,7 +846,7 @@ select.filterSelect {
   white-space: normal;
   word-wrap: break-word; }
 
-.fixedDropdown button {
+.fixedDropdown button, .fixedDropdown .clusterDownBtn button.green, .clusterDownBtn .fixedDropdown button.green {
   float: right;
   margin-right: 5px; }
 

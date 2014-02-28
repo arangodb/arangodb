@@ -136,14 +136,14 @@
         }
         self.getStatisticHistory({
             figures :  figures
-        })
+        });
         var figs = [{identifier : "uptime", group : "server"}];
         figures.forEach(function(f) {
             figs.push({
                 identifier : f.split(".")[1],
                 group : f.split(".")[0]
             });
-        })
+        });
         self.description = {
             get: function(y) {
                 if (y === "groups") {
@@ -157,7 +157,7 @@
                     return figs;
                 }
             }
-        }
+        };
 
         self.uptime = undefined;
         var chart;
@@ -612,7 +612,6 @@
                     self.figureDependedOptions[figure],
                     ["axes"])
             );
-            chart.graph.updateOptions({clickCallback: onclick}, true);
             chart.graph.setSelection(false, 'ClusterAverage', true);
             chart.graphCreated = true;
             if (!createDiv) {
@@ -681,7 +680,7 @@
                             self.detailChart.figure, self.detailChart.div);
                     }
                 }
-                })
+                });
             },
             self.interval
         );
@@ -706,7 +705,9 @@
     displayBackButtonForClusterView : function () {
         if (this.options.server) {
             $("#dashboardHeader").append(
-                "\<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">\<b>Back to cluster\</b>\</button>"
+                "<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">" +
+                "<b>Back to cluster</b>" +
+                "</button>"
             );
         }
     },

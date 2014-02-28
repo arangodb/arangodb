@@ -86,14 +86,18 @@
 
     planSymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(true);
     },
 
     planAsymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(false);
     },

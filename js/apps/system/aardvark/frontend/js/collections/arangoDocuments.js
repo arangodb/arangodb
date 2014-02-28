@@ -226,9 +226,9 @@
             if (endDate) {
                 filterString += " filter u.time < " + endDate;
             }
-            var returnValue = " return u"
+            var returnValue = " return u";
             if (figures) {
-                var returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ,"
+                returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ,";
                 var groups = {};
                 figures.forEach(function(f) {
                     var g = f.split(".")[0];
