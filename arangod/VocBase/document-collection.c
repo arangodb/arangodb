@@ -4210,11 +4210,12 @@ bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t* document,
 /// freed.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
-                                  TRI_shaper_t* shaper,
-                                  TRI_vector_t* pids,
-                                  TRI_vector_pointer_t* names,
-                                  bool sorted) {
+static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
+                                     TRI_shaper_t* shaper,
+                                     TRI_vector_t* pids,
+                                     TRI_vector_pointer_t* names,
+                                     bool sorted,
+                                     bool create) {
   pid_name_t* pidnames;
   size_t j;
 
@@ -4223,17 +4224,23 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
   // .............................................................................
 
   if (sorted) {
-
     // combine name and pid
     pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+
     if (pidnames == NULL) {
-      LOG_ERROR("out of memory in TRI_PidNamesByAttributeNames");
+      LOG_ERROR("out of memory in PidNamesByAttributeNames");
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     for (j = 0;  j < attributes->_length;  ++j) {
       pidnames[j]._name = attributes->_buffer[j];
-      pidnames[j]._pid = shaper->findAttributePathByName(shaper, pidnames[j]._name);
+
+      if (create) {
+        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
+      }
+      else {
+        pidnames[j]._pid = shaper->lookupAttributePathByName(shaper, pidnames[j]._name);
+      }
 
       if (pidnames[j]._pid == 0) {
         TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
@@ -4270,7 +4277,13 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
       TRI_shape_pid_t pid;
 
       name = attributes->_buffer[j];
-      pid = shaper->findAttributePathByName(shaper, name);
+
+      if (create) {
+        pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
+      }
+      else {
+        pid = shaper->lookupAttributePathByName(shaper, name);
+      }
 
       if (pid == 0) {
         TRI_DestroyVector(pids);
@@ -4550,7 +4563,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   shaper = primary->_shaper;
 
   if (location != NULL) {
-    loc = shaper->findAttributePathByName(shaper, location);
+    loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4559,7 +4572,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (latitude != NULL) {
-    lat = shaper->findAttributePathByName(shaper, latitude);
+    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4568,7 +4581,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (longitude != NULL) {
-    lon = shaper->findAttributePathByName(shaper, longitude);
+    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4817,10 +4830,9 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   shaper = document->base._shaper;
     
-  loc = shaper->findAttributePathByName(shaper, location);
+  loc = shaper->lookupAttributePathByName(shaper, location);
 
   if (loc == 0) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
 
@@ -4863,11 +4875,10 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   
   shaper = document->base._shaper;
   
-  lat = shaper->findAttributePathByName(shaper, latitude);
-  lon = shaper->findAttributePathByName(shaper, longitude);
+  lat = shaper->lookupAttributePathByName(shaper, latitude);
+  lon = shaper->lookupAttributePathByName(shaper, longitude);
 
   if (lat == 0 || lon == 0) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
 
@@ -5030,11 +5041,12 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   idx = NULL;
 
   // determine the sorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     true);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 true,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5142,19 +5154,17 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   int res;
 
-  primary = &document->base;
-
   // determine the sorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     primary->_shaper,
-                                     &paths,
-                                     &fields,
-                                     true);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 true, 
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
@@ -5249,11 +5259,12 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   TRI_vector_t paths;
   int res;
 
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5354,19 +5365,17 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   int res;
 
-  primary = &document->base;
-
   // determine the unsorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     primary->_shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
@@ -5738,11 +5747,12 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   TRI_vector_t paths;
   int res;
 
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5883,7 +5893,12 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // determine the unsorted shape ids for the attributes
   // ...........................................................................
 
-  result = TRI_PidNamesByAttributeNames(attributes, primary->_shaper, &paths, &fields, false);
+  result = PidNamesByAttributeNames(attributes, 
+                                    primary->_shaper, 
+                                    &paths, 
+                                    &fields, 
+                                    false,
+                                    false);
 
   if (result != TRI_ERROR_NO_ERROR) {
     return NULL;

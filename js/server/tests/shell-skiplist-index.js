@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -253,10 +254,22 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(i);
 
-        var res = collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }, 0, null ).toArray();
-        var result = res.map(function(a) { return a._key; });
+        var isValid = ! ((val !== null && typeof val === 'object'));
+        if (isValid) {
+          var res = collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }).toArray();
+          var result = res.map(function(a) { return a._key; });
 
-        assertEqual([i, ">=", expect], [i, ">=", result]);
+          assertEqual([i, ">=", expect], [i, ">=", result]);
+        }
+        else {
+          try {
+            collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }).toArray();
+            fail();
+          }
+          catch (err1) {
+            assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+          }
+        }
       }
 
       // GREATER THAN
@@ -264,10 +277,22 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(i + 1);
 
-        var res = collection.byConditionSkiplist(idx.id, { a: [[">", val]] }, 0, null ).toArray();
-        var result = res.map(function(a) { return a._key; });
+        var isValid = ! ((val !== null && typeof val === 'object'));
+        if (isValid) {
+          var res = collection.byConditionSkiplist(idx.id, { a: [[">", val]] }).toArray();
+          var result = res.map(function(a) { return a._key; });
 
-        assertEqual([i, ">", expect], [i, ">", result]);
+          assertEqual([i, ">", expect], [i, ">", result]);
+        }
+        else {
+          try {
+            collection.byConditionSkiplist(idx.id, { a: [[">", val]] }).toArray();
+            fail();
+          }
+          catch (err2) {
+            assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+          }
+        }
       }
 
       // LESS THAN OR EQUAL
@@ -275,10 +300,22 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(1, i + 1);
 
-        var res = collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }, 0, null ).toArray();
-        var result = res.map(function(a) { return a._key; });
+        var isValid = ! ((val !== null && typeof val === 'object'));
+        if (isValid) {
+          var res = collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }).toArray();
+          var result = res.map(function(a) { return a._key; });
 
-        assertEqual([i, "<=", expect], [i, "<=", result]);
+          assertEqual([i, "<=", expect], [i, "<=", result]);
+        }
+        else {
+          try {
+            collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }).toArray();
+            fail();
+          }
+          catch (err3) {
+            assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
+          }
+        }
       }
 
 
@@ -287,10 +324,22 @@ function SkipListSuite() {
         var val = values[i].a;
         var expect = documents.slice(1, i);
 
-        var res = collection.byConditionSkiplist(idx.id, { a: [["<", val]] }, 0, null ).toArray();
-        var result = res.map(function(a) { return a._key; });
+        var isValid = ! ((val !== null && typeof val === 'object'));
+        if (isValid) {
+          var res = collection.byConditionSkiplist(idx.id, { a: [["<", val]] }).toArray();
+          var result = res.map(function(a) { return a._key; });
 
-        assertEqual([i, "<", expect], [i, "<", result]);
+          assertEqual([i, "<", expect], [i, "<", result]);
+        }
+        else {
+          try {
+            collection.byConditionSkiplist(idx.id, { a: [["<", val]] }).toArray();
+            fail();
+          }
+          catch (err4) {
+            assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err4.errorNum);
+          }
+        }
       }
 
       // BETWEEN
@@ -300,11 +349,27 @@ function SkipListSuite() {
         for (j = 1;  j < documents.length;  ++j) {
           var valj = values[j].a;
           var expect = documents.slice(i, j + 1);
+        
+          var isValid = ! ((vali !== null && typeof vali === 'object'));
+          if (isValid) {
+            isValid &= ! ((valj !== null && typeof valj === 'object'));
+          }
 
-          var res = collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }, 0, null ).toArray();
-          var result = res.map(function(a) { return a._key; });
+          if (isValid) {
+            var res = collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }).toArray();
+            var result = res.map(function(a) { return a._key; });
 
-          assertEqual([i, ">= <=", expect], [i, ">= <=", result]);
+            assertEqual([i, ">= <=", expect], [i, ">= <=", result]);
+          }
+          else {
+            try {
+              collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }).toArray();
+              fail();
+            }
+            catch (err5) {
+              assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err5.errorNum);
+            }
+          }
         }
       }
     }

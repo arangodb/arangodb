@@ -1,0 +1,27 @@
+SimpleSC - NSIS Service Control Plugin - License Agreement 
+
+This plugin is subject to the Mozilla Public License Version 1.1 (the "License"); 
+You may not use this plugin except in compliance with the License. You may 
+obtain a copy of the License at http://www.mozilla.org/MPL. 
+
+Alternatively, you may redistribute this library, use and/or modify it 
+under the terms of the GNU Lesser General Public License as published 
+by the Free Software Foundation; either version 2.1 of the License, 
+or (at your option) any later version. You may obtain a copy 
+of the LGPL at www.gnu.org/copyleft. 
+
+Software distributed under the License is distributed on an "AS IS" basis, 
+WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License 
+for the specific language governing rights and limitations under the License. 
+
+Copyright 
+
+Portions of this software are Copyright (C) 2001 - Peter Windridge, 2003 by 
+Bernhard Mayer, Fixed and formatted by Brett Dever http://editor.nfscheats.com/
+
+The original code is ServiceControl.pas, released April 16, 2007. 
+
+The initial developer of the original code is Rainer Budde (http://www.speed-soft.de). 
+
+SimpleSC - NSIS Service Control Plugin is written, published and maintaned by 
+Rainer Budde (rainer@speed-soft.de).

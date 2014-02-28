@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 140, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
+/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT, ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -584,6 +584,79 @@ actions.defineHttp({
     catch (err2) {
       actions.resultError(req, res, actions.HTTP_BAD,
                           "exception in port test");
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_cluster_statistics_GET
+/// @brief allows to query the statistics of a DBserver in the cluster
+///
+/// @RESTHEADER{GET /_admin/clusterStatistics,queries statistics of a DBserver}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{DBserver,string,required}
+///
+/// @RESTDESCRIPTION Queries the statistics of the given DBserver
+/// 
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} the parameter DBserver was not given or is not the
+/// ID of a DBserver
+///
+/// @RESTRETURNCODE{403} server is not a coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/clusterStatistics",
+  context : "admin",
+  prefix : "false",
+  callback : function (req, res) {
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only GET requests are allowed");
+      return;
+    }
+    if (!require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only allowed on coordinator");
+      return;
+    }
+    if (!req.parameters.hasOwnProperty("DBserver")) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+                          "required parameter DBserver was not given");
+      return;
+    }
+    var DBserver = req.parameters.DBserver;
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 }; 
+    var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
+                                            "/_admin/statistics","",{},options);
+    var r = ArangoClusterComm.wait(op);
+    res.contentType = "application/json; charset=utf-8";
+    if (r.status === "RECEIVED") {
+      res.responseCode = actions.HTTP_OK;
+      res.body = r.body;
+    } 
+    else if (r.status === "TIMEOUT") {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify( {"error":true, 
+                                  "errorMessage": "operation timed out"});
+    }
+    else {
+      res.responseCode = actions.HTTP_BAD;
+      var bodyobj;
+      try {
+        bodyobj = JSON.parse(r.body);
+      }
+      catch (err) {
+      }
+      res.body = JSON.stringify( {"error":true,
+        "errorMessage": "error from DBserver, possibly DBserver unknown",
+        "body": bodyobj} );
     }
   }
 });
