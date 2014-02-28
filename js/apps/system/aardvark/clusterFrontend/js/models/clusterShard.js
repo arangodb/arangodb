@@ -10,7 +10,6 @@
     idAttribute: "name",
 
     forList: function() {
-      console.log(this);
       return {
         server: this.get("name"),
         shards: this.get("shards")

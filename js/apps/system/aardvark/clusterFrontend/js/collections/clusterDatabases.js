@@ -15,9 +15,6 @@
     },
 
     initialize: function(options) {
-      this.isUpdating = false;
-      this.timer = null;
-      this.interval = options.interval;
       window.App.registerForUpdate(this);
     },
 
@@ -28,22 +25,6 @@
       return this.map(function(m) {
         return m.forList();
       });
-    },
-
-    stopUpdating: function () {
-      window.clearTimeout(this.timer);
-      this.isUpdating = false;
-    },
-
-    startUpdating: function () {
-      if (this.isUpdating) {
-        return;
-      }
-      this.isUpdating = true;
-      var self = this;
-      this.timer = window.setInterval(function() {
-        self.fetch();
-      }, this.interval);
     }
 
   });

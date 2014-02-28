@@ -17,8 +17,6 @@
     },
 
     startPlan: function() {
-      $('#waitModalLayer').modal('show');
-      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
       var isDBServer;
       var isCoordinator;
       var self = this;
@@ -33,9 +31,13 @@
           }
           var hostObject = {host :  host + ":" + port};
           if (!self.isSymmetric) {
-              hostObject.isDBServer = !!$(".isDBServer", dispatcher).attr('checked');
-              hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).attr('checked');
+              hostObject.isDBServer = !!$(".isDBServer", dispatcher).prop('checked');
+              hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).prop('checked');
+          } else {
+            hostObject.isDBServer = true;
+            hostObject.isCoordinator = true;
           }
+
           foundCoordinator = foundCoordinator || hostObject.isCoordinator;
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
@@ -59,6 +61,8 @@
       }
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
+      $('#waitModalLayer').modal('show');
+      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
       this.model.save(
         data,
         {

@@ -50,27 +50,13 @@
         this.dbservers = new window.ClusterServers([], {
           interval: this.interval
         });
-        this.dbservers.fetch({
-          async: false
-        });
-        this.dbservers.startUpdating();
         this.coordinators = new window.ClusterCoordinators([], {
           interval: this.interval
         });
-        this.coordinators.fetch({
-          async: false
-        });
-        this.coordinators.startUpdating();
         this.statisticsDescription = new window.StatisticsDescription();
         this.statisticsDescription.fetch({
           async: false
         });
-        this.dbservers.bind("add", this.rerender.bind(this));
-        this.dbservers.bind("change", this.rerender.bind(this));
-        this.dbservers.bind("remove", this.rerender.bind(this));
-        this.coordinators.bind("add", this.rerender.bind(this));
-        this.coordinators.bind("change", this.rerender.bind(this));
-        this.coordinators.bind("remove", this.rerender.bind(this));
 
         this.dbs = new window.ClusterDatabases([], {
           interval: this.interval
@@ -106,13 +92,23 @@
       });
     },
 
+    updateServerStatus: function() {
+      this.dbservers.getStatuses(function(stat, serv) {
+        $("#" + serv.replace(":", "\\:")).attr("class", "dbserver " + stat);
+      });
+      this.coordinators.getStatuses(function(stat, serv) {
+        $("#" + serv.replace(":", "\\:")).attr("class", "coordinator " + stat);
+      });
+    },
+
     rerender : function() {
-        this.getServerStatistics();
-        this.updateServerTime();
-        var data = this.generatePieData();
-        this.renderPieChart(data);
-        this.transformForLineChart(data);
-        this.renderLineChart();
+      this.updateServerStatus();
+      this.getServerStatistics();
+      this.updateServerTime();
+      var data = this.generatePieData();
+      this.renderPieChart(data);
+      this.transformForLineChart(data);
+      this.renderLineChart();
     },
 
     render: function() {
@@ -389,19 +385,17 @@
       stopUpdating: function () {
           window.clearTimeout(this.timer);
           this.isUpdating = false;
-          this.dbservers.stopUpdating();
-          this.coordinators.stopUpdating();
       },
 
       startUpdating: function () {
-          if (this.isUpdating) {
-              return;
-          }
-          this.isUpdating = true;
-          var self = this;
-          this.timer = window.setInterval(function() {
-              self.rerender();
-          }, this.interval);
+        if (this.isUpdating) {
+            return;
+        }
+        this.isUpdating = true;
+        var self = this;
+        this.timer = window.setInterval(function() {
+          self.rerender();
+        }, this.interval);
       },
 
     clusterShutdown : function() {
@@ -422,7 +416,7 @@
 
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
-        window.App.navigate("dashboard/"+id, {trigger: true});
+        window.App.dashboard(id);
     }
   });
 

@@ -604,6 +604,7 @@ bool ApplicationV8::prepare2 () {
   }
 
   _startupLoader.setDirectory(_startupPath);
+  ServerState::instance()->setJavaScriptPath(_startupPath);
 
   // check for development mode
   if (! _devAppPath.empty()) {

@@ -15,10 +15,29 @@
     },
 
     initialize: function(options) {
-      this.isUpdating = false;
-      this.timer = null;
-      this.interval = options.interval;
       window.App.registerForUpdate(this);
+    },
+
+    statusClass: function(s) {
+      switch (s) {
+        case "ok":
+          return "success";
+        case "warning": 
+          return "warning";
+        case "critical":
+          return "danger";
+        case "missing":
+          return "inactive";
+      }
+    },
+  
+    getStatuses: function(cb) {
+      var self = this;
+      this.fetch({async: false}).done(function() {
+        self.forEach(function(m) {
+          cb(self.statusClass(m.get("status")), m.get("address"));
+        });
+      });
     },
 
     byAddress: function (res) {
@@ -27,7 +46,6 @@
       });
       res = res || {};
       this.forEach(function(m) {
-        console.log(m);
         var addr = m.get("address");
         addr = addr.split(":")[0];
         res[addr] = res[addr] || {};
@@ -96,25 +114,7 @@
         }
       });
       return res;
-    },
-
-    stopUpdating: function () {
-      window.clearTimeout(this.timer);
-      this.isUpdating = false;
-    },
-
-    startUpdating: function () {
-      if (this.isUpdating) {
-        return;
-      }
-      this.isUpdating = true;
-      var self = this;
-      this.timer = window.setInterval(function() {
-        self.fetch();
-      }, this.interval);
-
     }
-
   });
 
 }());

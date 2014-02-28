@@ -1079,6 +1079,21 @@ static v8::Handle<v8::Value> JS_ArangodPathServerState (v8::Arguments const& arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the javascript startup path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_JavaScriptPathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "javaScriptPath()");
+  }
+
+  const std::string path = ServerState::instance()->getJavaScriptPath();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the DBserver config
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1806,6 +1821,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "logPath", JS_LogPathServerState);
   TRI_AddMethodVocbase(rt, "agentPath", JS_AgentPathServerState);
   TRI_AddMethodVocbase(rt, "arangodPath", JS_ArangodPathServerState);
+  TRI_AddMethodVocbase(rt, "javaScriptPath", JS_JavaScriptPathServerState);
   TRI_AddMethodVocbase(rt, "dbserverConfig", JS_DBserverConfigServerState);
   TRI_AddMethodVocbase(rt, "coordinatorConfig", JS_CoordinatorConfigServerState);
   TRI_AddMethodVocbase(rt, "disableDispatcherFrontend", JS_DisableDipatcherFrontendServerState);
