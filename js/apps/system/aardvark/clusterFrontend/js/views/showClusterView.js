@@ -94,10 +94,10 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        $("#" + serv).attr("class", "dbserver " + stat);
+        $("#" + serv.replace(":", "\\:")).attr("class", "dbserver " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        $("#" + serv).attr("class", "coordinator " + stat);
+        $("#" + serv.replace(":", "\\:")).attr("class", "coordinator " + stat);
       });
     },
 
@@ -388,14 +388,14 @@
       },
 
       startUpdating: function () {
-          if (this.isUpdating) {
-              return;
-          }
-          this.isUpdating = true;
-          var self = this;
-          this.timer = window.setInterval(function() {
-              self.rerender();
-          }, this.interval);
+        if (this.isUpdating) {
+            return;
+        }
+        this.isUpdating = true;
+        var self = this;
+        this.timer = window.setInterval(function() {
+          self.rerender();
+        }, this.interval);
       },
 
     clusterShutdown : function() {
@@ -416,7 +416,7 @@
 
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
-        window.App.navigate("dashboard/"+id, {trigger: true});
+        window.App.dashboard(id);
     }
   });
 

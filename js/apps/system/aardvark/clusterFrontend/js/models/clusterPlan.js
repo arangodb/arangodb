@@ -29,7 +29,6 @@
             this._coord = l.endpoints[i]
               .replace("tcp://","http://")
               .replace("ssl://", "https://");
-            console.log(this._coord);
             return this._coord;
           }
         }
