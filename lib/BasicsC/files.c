@@ -1981,43 +1981,60 @@ void TRI_SetUserTempPath (char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate the installation directory
-///
+/// @brief locate the installation directory in the given rootKey
+/// @param rootKey should be: either HKEY_CURRENT_USER or HKEY_LOCAL_MASCHINE
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
 #if _WIN32
+char * __LocateInstallDirectory_In(HKEY rootKey) {
+	DWORD dwType;
+	char  szPath[1023];
+	DWORD dwDataSize;
+	HKEY key;
 
+	dwDataSize = sizeof(szPath);
+	memset(szPath, 0, dwDataSize);
+
+	// open the key for reading
+	long lResult = RegOpenKeyEx(
+		rootKey,
+		"SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+		0,
+		KEY_READ,
+		&key);
+
+	if (lResult == ERROR_SUCCESS) {
+
+		// read the version value
+		lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+
+		if (lResult == ERROR_SUCCESS) {
+			return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
+		}
+
+		RegCloseKey(key);
+	}
+
+	return NULL;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the installation directory 
+/// we look for the configuration first in HKEY_CURRENT_USER (arango was installed 
+/// for a single user)
+/// when we don't find  anything when look in HKEY_LOCAL_MACHINE (arango was 
+/// installed as service)
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
 char* TRI_LocateInstallDirectory () {
-  DWORD dwType;
-  char  szPath[1023];
-  DWORD dwDataSize;
-  HKEY key;
+	char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
 
-  dwDataSize = sizeof(szPath);
-  memset(szPath, 0, dwDataSize);
-
-  // open the key for reading
-  long lResult = RegOpenKeyEx(
-        HKEY_LOCAL_MACHINE,
-        "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
-        0,
-        KEY_READ,
-        &key);
-
-  if (lResult == ERROR_SUCCESS) {
-
-    // read the version value
-    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
-
-    if (lResult == ERROR_SUCCESS) {
-      return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
-    }
-
-    RegCloseKey(key);
-  }
-
-  return NULL;
+	if (!directory) {
+		directory = __LocateInstallDirectory_In(HKEY_LOCAL_MACHINE);
+	}
+	return directory;
 }
 
 #else
