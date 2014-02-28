@@ -452,6 +452,31 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             continue;
           }
 
+          if (candidate->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
+            // range type. check if the compare value is a list or an object
+            TRI_json_t* value = candidate->_value._singleRange._value;
+
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+          }
+          else if (candidate->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+            // range type. check if the compare value is a list or an object
+            TRI_json_t* value = candidate->_value._between._lower._value;
+
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+            
+            value = candidate->_value._between._upper._value;
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+          }
+
           lastTypeWasExact = candidateIsExact;
 
           TRI_PushBackVectorPointer(&matches, candidate);

@@ -2465,6 +2465,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
   TRI_doc_mptr_t document;
+  
+  // we must lock here, because below we are
+  // - reading the old document in coordinator case
+  // - creating a shape, which might trigger a write into the collection  
+  trx.lockWrite();
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isDBserver()) {
@@ -2478,7 +2483,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
   
-    trx.lockWrite();
     res = trx.read(&document, key);
 
     if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
@@ -2509,8 +2513,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   }
 #endif
 
-
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true, true);
 
   if (shaped == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -2575,12 +2578,13 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
+
+  trx->lockWrite();
+
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true, true);
 
   if (shaped == 0) {
-    if (key != 0) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    }
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
@@ -2593,9 +2597,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   
   TRI_FreeShapedJson(zone, shaped); 
     
-  if (key != 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-  }
+  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -2695,8 +2697,9 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_primary_collection_t* primary = trx->primaryCollection();
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
+  trx->lockWrite();
   // extract shaped data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true, true);
 
   if (shaped == 0) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -10065,7 +10068,11 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
-  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
+
+  if (pid == 0) {
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
 
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
