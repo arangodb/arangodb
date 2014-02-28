@@ -397,8 +397,15 @@ describe ArangoDB do
         all = doc.parsed_response
         all.should have_key('collections')
         all.should have_key('state')
-
-        all['collections'].should eq([ ])
+        
+        collections = all["collections"]
+        filtered = [ ]
+        collections.each { |collection|
+          if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
+            filtered.push collection
+          end
+        }
+        filtered.should eq([ ])
         state = all['state']
         state['running'].should eq(false)
         state['lastLogTick'].should match(/^\d+$/)
@@ -408,7 +415,7 @@ describe ArangoDB do
       it "checks the inventory after creating collections" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
-        
+       
         cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
         doc.code.should eq(200)
@@ -423,10 +430,16 @@ describe ArangoDB do
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
         collections = all['collections']
-        collections.length.should eq(2)
+        filtered = [ ]
+        collections.each { |collection|
+          if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
+            filtered.push collection
+          end
+        }
+        filtered.length.should eq(2)
         
         # first collection
-        c = collections[0]
+        c = filtered[0]
         c.should have_key("parameters")
         c.should have_key("indexes")
 
@@ -447,7 +460,7 @@ describe ArangoDB do
         c['indexes'].should eq([ ])
 
         # second collection
-        c = collections[1]
+        c = filtered[1]
         c.should have_key("parameters")
         c.should have_key("indexes")
 
@@ -516,10 +529,16 @@ describe ArangoDB do
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
         collections = all['collections']
-        collections.length.should eq(2)
+        filtered = [ ]
+        collections.each { |collection|
+          if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
+            filtered.push collection
+          end
+        }
+        filtered.length.should eq(2)
         
         # first collection
-        c = collections[0]
+        c = filtered[0]
         c.should have_key("parameters")
         c.should have_key("indexes")
 
@@ -559,7 +578,7 @@ describe ArangoDB do
         idx["fields"].should eq([ "c" ])
         
         # second collection
-        c = collections[1]
+        c = filtered[1]
         c.should have_key("parameters")
         c.should have_key("indexes")
 
