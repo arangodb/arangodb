@@ -35,7 +35,11 @@
           if (!self.isSymmetric) {
               hostObject.isDBServer = !!$(".isDBServer", dispatcher).attr('checked');
               hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).attr('checked');
+          } else {
+            hostObject.isDBServer = true;
+            hostObject.isCoordinator = true;
           }
+
           foundCoordinator = foundCoordinator || hostObject.isCoordinator;
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
