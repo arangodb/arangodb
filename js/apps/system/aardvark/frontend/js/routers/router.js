@@ -39,6 +39,15 @@
     },
 
     initialize: function () {
+      this.bind('all', function(trigger, args) {
+          var routeData = trigger.split(":");
+          if (trigger === "route") {
+              if (this.currentRoute === "dashboard") {
+                this.dashboardView.stopUpdating();
+              }
+              this.currentRoute = args;
+          }
+      });
       this.graphs = new window.GraphCollection();
       this.notificationList = new window.NotificationCollection();
 

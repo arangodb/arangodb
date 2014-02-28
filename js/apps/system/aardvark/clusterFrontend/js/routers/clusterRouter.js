@@ -39,6 +39,15 @@
     },
 
     initialize: function () {
+      this.bind('all', function(trigger, args) {
+        var routeData = trigger.split(":");
+        if (trigger === "route") {
+            if (this.currentRoute === "dashboard") {
+                this.dashboardView.stopUpdating();
+            }
+            this.currentRoute = args;
+        }
+      });
       this.toUpdate = [];
       this.clusterPlan = new window.ClusterPlan();
       this.clusterPlan.fetch({
@@ -77,14 +86,18 @@
 
     planSymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(true);
     },
 
     planAsymmetric: function() {
       if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView();
+        this.planSymmetricView = new window.PlanSymmetricView(
+          {model : this.clusterPlan}
+        );
       }
       this.planSymmetricView.render(false);
     },
@@ -124,7 +137,8 @@
           this.dashboardView = new dashboardView({
               collection: this.statisticsCollection,
               description: this.statisticsDescription,
-              documentStore: new window.arangoDocumentsStore()
+              documentStore: new window.arangoDocuments(),
+              server : server
           });
       }
       this.dashboardView.render();

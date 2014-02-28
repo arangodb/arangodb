@@ -36,7 +36,6 @@
         }
       });
     },
-
     editPlan: function() {
       var config = window.App.clusterPlan.get("config");
       if (_.size(config.dispatchers) === 1) {

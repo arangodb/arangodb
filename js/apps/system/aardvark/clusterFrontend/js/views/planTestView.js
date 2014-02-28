@@ -41,7 +41,7 @@
       this.model.save(
         {
           type: "testSetup",
-          dispatcher: h + ":" + p,
+          dispatchers: h + ":" + p,
           numberDBServers: parseInt(d, 10),
           numberCoordinators: parseInt(c, 10)
         },

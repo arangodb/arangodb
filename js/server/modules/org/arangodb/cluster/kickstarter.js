@@ -53,6 +53,10 @@ var isHealthyActions = {};
 var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
 var getPort = require("org/arangodb/cluster/planner").getPort;
 
+function makePath (path) {
+  return fs.join.apply(null,path.split("/"));
+}
+
 function encode (st) {
   var st2 = "";
   var i;
@@ -258,6 +262,8 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       args = ["--configuration", ArangoServerState.coordinatorConfig()];
     }
     args = args.concat([
+            "--cluster.disable-dispatcher-kickstarter", "true",
+            "--cluster.disable-dispatcher-frontend", "true",
             "--cluster.my-id", id, 
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
@@ -328,7 +334,9 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
-             'return load("js/server/version-check.js");\n';
+             'return load("'+fs.join(ArangoServerState.javaScriptPath(),
+                                     makePath("server/version-check.js"))+
+             '");\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   if (r.code === 200) {
@@ -361,7 +369,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     var hdrs = {};
     if (dispatchers[cmd.dispatcher].username !== undefined &&
-        dispatchers[cmd.disptacher].passwd !== undefined) {
+        dispatchers[cmd.dispatcher].passwd !== undefined) {
       hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
     }
     download(url,"",{method:"GET", headers: hdrs});

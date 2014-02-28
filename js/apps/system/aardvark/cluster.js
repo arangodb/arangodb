@@ -44,6 +44,10 @@
    * given in the body
    */
 
+  controller.get("/amIDispatcher", function(req, res) {
+    res.json(!cluster.dispatcherDisabled());
+  });
+
   if (!cluster.dispatcherDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
@@ -96,7 +100,7 @@
             "d1": {
               "username": uname,
               "passwd": pwd,
-              "endpoint": "tcp://" + input.dispatcher
+              "endpoint": "tcp://" + input.dispatchers
             }
           };
           config.numberOfDBservers = input.numberDBServers;
@@ -106,7 +110,7 @@
           config.dispatchers = {};
           config.numberOfDBservers = 0;
           config.numberOfCoordinators = 0;
-          _.each(input.dispatcher, function(d) {
+          _.each(input.dispatchers, function(d) {
             i++;
             var inf = {};
             inf.username = uname;
@@ -167,8 +171,7 @@
       var k = getStarter();
       var shutdownInfo = k.shutdown();
       if (shutdownInfo.error) {
-        res.json(shutdownInfo.results);
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
       }
     });
 
@@ -177,8 +180,7 @@
       var shutdownInfo = k.shutdown();
       cleanUp();
       if (shutdownInfo.error) {
-        res.json("Unable to shutdown cluster");
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
         return;
       }
     });
