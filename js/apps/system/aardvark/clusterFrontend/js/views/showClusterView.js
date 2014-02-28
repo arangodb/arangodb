@@ -202,10 +202,22 @@
     loadHistory : function() {
         this.hist = [];
         var self = this;
+        var coord = this.coordinators.findWhere({
+          status: "ok"
+        });
+        var endpoint = coord.get("protocol")
+          + "://"
+          + coord.get("address");
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
-            self.documentStore.getStatisticsHistory({server: dbserver.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: dbserver.get("address"),
+              isDBServer: true,
+              target: encodeURIComponent(dbserver.get("name")),
+              endpoint: endpoint
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
@@ -218,7 +230,13 @@
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
-            self.documentStore.getStatisticsHistory({server: coordinator.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: coordinator.get("address"),
+              isDBServer: false,
+              target: encodeURIComponent(coordinator.get("name")),
+              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
