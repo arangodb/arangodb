@@ -352,6 +352,7 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Shutting down agent %s", JSON.stringify(run.pid));
   killExternal(run.pid);
+  statusExternal(run.pid);
   return {"error": false, "isStartAgent": true};
 };
 
@@ -379,6 +380,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.pids.length;i++) {
     console.info("Shutting down %s the hard way...", JSON.stringify(run.pids[i]));
     killExternal(run.pids[i]);
+    statusExternal(run.pids[i]);
   }
   return {"error": false, "isStartServers": true};
 };
