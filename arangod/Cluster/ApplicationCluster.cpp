@@ -262,7 +262,7 @@ bool ApplicationCluster::start () {
 
   // the agency about our state 
   AgencyComm comm;
-  comm.sendServerState();
+  comm.sendServerState(0.0);
 
   const std::string version = comm.getVersion();
 
@@ -430,7 +430,7 @@ void ApplicationCluster::close () {
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm;
-  comm.sendServerState();
+  comm.sendServerState(0.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,7 +446,7 @@ void ApplicationCluster::stop () {
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm;
-  comm.sendServerState();
+  comm.sendServerState(0.0);
 
   if (_heartbeat != 0) {
     _heartbeat->stop();

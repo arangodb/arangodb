@@ -919,7 +919,7 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 /// @brief sends the current server state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommResult AgencyComm::sendServerState () {
+AgencyCommResult AgencyComm::sendServerState (double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -933,7 +933,7 @@ AgencyCommResult AgencyComm::sendServerState () {
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
 
-  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, 0.0));
+  AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, ttl));
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;

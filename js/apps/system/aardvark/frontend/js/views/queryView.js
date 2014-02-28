@@ -358,7 +358,7 @@
     },
     changeSize: function (e) {
       if (Storage) {
-//              localStorage.setItem("querySize", parseInt($('#' + e.currentTarget.id).val(), 10));
+        localStorage.setItem("querySize", parseInt($('#' + e.currentTarget.id).val(), 10));
       }
     },
     renderSelectboxes: function (modal) {

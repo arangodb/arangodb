@@ -954,7 +954,8 @@ void TRI_DestroyShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
+void TRI_FreeShapedJson (struct TRI_memory_zone_s*, 
+                         TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -973,19 +974,24 @@ void TRI_FreeShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n);
+void TRI_SortShapeValues (TRI_shape_value_t* values, 
+                          size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*, TRI_json_t const*);
+TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*, 
+                                       TRI_json_t const*,
+                                       bool,
+                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t const*);
+TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*, 
+                                TRI_shaped_json_t const*);
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces
