@@ -251,11 +251,16 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
-
-  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb" 
+  SET(SHARE_DIR "@ROOTDIR@/share/arangodb") 
+  SET(VAR_DIR "@ROOTDIR@/var") 
+  if (MSVC) 
+    SET(SHARE_DIR "@ROOTDIR@/share/arangodb") 
+    SET(VAR_DIR "@ROOTDIR@/var") 
+  endif ()
+  STRING(REPLACE "@PKGDATADIR@" ${SHARE_DIR} 
          FileContent "${FileContent}")
 
-  STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var" 
+  STRING(REPLACE "@LOCALSTATEDIR@" ${VAR_DIR}
          FileContent "${FileContent}")
 
   if (MSVC)
@@ -748,22 +753,32 @@ if (MSVC)
   ##############################################################################
 
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
+  set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
+  set(BITS 64)
 
   IF(CMAKE_CL_64)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
-    SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView 64")
-    # this variable was defined by eld and included in NSIS.template.in
-    SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  "SetRegView 64")
+    SET(BITS 64)
   ELSE()
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
     SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
-    SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView 32")
-    SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  "SetRegView 32")
+    SET(BITS 32)
   ENDIF()
 
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.bmp" ARANGO_IMG)
-  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/arangodb.ico" ARANGO_ICON)
+  SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView ${BITS}")
+  # SetRegView controlls where die regkeys are written to
+  # SetRegView 32 writes the keys into Wow6432
+    # this variable was defined by eld and included in NSIS.template.in
+  SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  
+      "  SetRegView ${BITS}
+         SimpleSC::StopService  'ArangoDB' 0 30
+         SimpleSC::RemoveService  'ArangoDB' 
+       "
+   )
+
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
+  file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
 
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
@@ -772,7 +787,7 @@ if (MSVC)
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
 
   install(
-    DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/"
+    DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
     DESTINATION ${TRI_RESOURCEDIR})
 
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
@@ -783,12 +798,12 @@ if (MSVC)
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
   
   set(CPACK_NSIS_CREATE_ICONS_EXTRA 
-    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\Uninstall.exe'
+    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
      CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
     ")
 
-  # Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-  # they are deleted from '$SMPROGRAMS\$MUI_TEMP
+# Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+# they are deleted from '$SMPROGRAMS\$MUI_TEMP
   set(CPACK_NSIS_DELETE_ICONS_EXTRA 
     "Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Server.lnk'
      Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Shell.lnk'
