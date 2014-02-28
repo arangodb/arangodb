@@ -134,7 +134,7 @@ bool V8PeriodicJob::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicJob::handleError (basics::TriagensError const& ex) {
+void V8PeriodicJob::handleError (TriagensError const& ex) {
 }
 
 // -----------------------------------------------------------------------------
