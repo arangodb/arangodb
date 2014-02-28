@@ -71,6 +71,8 @@ TRI_PKGDATADIR = .
 TRI_LOCALSTATEDIR = .
 TRI_SBINDIR = ${abs_builddir}/bin
 TRI_BINDIR = ${abs_builddir}/bin
+TRI_LIBEXECDIR = ${abs_builddir}/bin
+TRI_SYSCONFDIR = etc/relative
 
 else
 
@@ -78,6 +80,8 @@ TRI_LOCALSTATEDIR = ${localstatedir}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
 TRI_BINDIR = ${bindir}
+TRI_LIBEXECDIR = ${libexecdir}
+TRI_SYSCONFDIR = ${sysconfdir}/${PACKAGE_TARNAME}
 
 endif
 
@@ -96,6 +100,7 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 
 AM_CPPFLAGS = \
+	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
 	@BOOST_CPPFLAGS@ \
@@ -106,20 +111,6 @@ AM_CPPFLAGS = \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
 	@V8_CPPFLAGS@
-
-
-if ENABLE_RELATIVE
-
-AM_CPPFLAGS += \
-	-D_SYSCONFDIR_='"etc/relative"'
-
-
-else
-
-AM_CPPFLAGS += \
-	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
-
-endif
 
 ################################################################################
 ### @brief linker flags
