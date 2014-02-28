@@ -22,8 +22,11 @@ BUILT_SOURCES += \
 etc/arangodb/%$(PROGRAM_SUFFIX).conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
+		-e 's%@LIBEXECDIR@%${TRI_LIBEXECDIR}%g' \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		-e 's%@SYSCONFDIR@%${TRI_SYSCONFDIR}%g' \
 		$< > $@
 
 ## -----------------------------------------------------------------------------

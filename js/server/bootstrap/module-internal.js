@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, DISABLE_CLUSTER_DISPATCHER */
+         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -81,13 +81,6 @@
 
   internal.AQL_EXPLAIN = AHUACATL_EXPLAIN;
   delete AHUACATL_EXPLAIN;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if dispatcher is disabled
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.DISABLE_CLUSTER_DISPATCHER = DISABLE_CLUSTER_DISPATCHER;
-  delete DISABLE_CLUSTER_DISPATCHER;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
