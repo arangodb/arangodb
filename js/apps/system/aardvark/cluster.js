@@ -167,8 +167,7 @@
       var k = getStarter();
       var shutdownInfo = k.shutdown();
       if (shutdownInfo.error) {
-        res.json(shutdownInfo.results);
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
       }
     });
 
@@ -177,8 +176,7 @@
       var shutdownInfo = k.shutdown();
       cleanUp();
       if (shutdownInfo.error) {
-        res.json("Unable to shutdown cluster");
-        res.status(409);
+        require("console").log(JSON.stringify(shutdownInfo.results));
         return;
       }
     });
