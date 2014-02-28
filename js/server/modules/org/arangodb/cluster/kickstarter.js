@@ -128,7 +128,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   console.info("Starting agent...");
 
   // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(), ".."));
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
@@ -216,7 +216,7 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
@@ -335,6 +335,13 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
              'return load("js/server/version-check.js");\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
+  if (r.code === 200) {
+    r = JSON.parse(r.body);
+    r.isCreateSystemColls = true;
+    return r;
+  }
+  r.error = true;
+  r.isCreateSystemColls = true;
   return r;
 };
 
@@ -356,7 +363,12 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
-    download(url);
+    var hdrs = {};
+    if (dispatchers[cmd.dispatcher].username !== undefined &&
+        dispatchers[cmd.disptacher].passwd !== undefined) {
+      hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
+    }
+    download(url,"",{method:"GET", headers: hdrs);
   }
   console.info("Waiting 3 seconds for servers to shutdown gracefully...");
   wait(3);
@@ -371,7 +383,7 @@ cleanupActions.startAgent = function (dispatchers, cmd) {
   console.info("Cleaning up agent...");
 
   // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
@@ -388,7 +400,7 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   console.info("Cleaning up DBservers...");
 
   // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
+  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),"cluster"));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
@@ -511,7 +523,7 @@ Kickstarter.prototype.launch = function () {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -605,7 +617,7 @@ Kickstarter.prototype.relaunch = function () {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -687,7 +699,7 @@ Kickstarter.prototype.shutdown = function() {
         results.push(res);
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -766,7 +778,7 @@ Kickstarter.prototype.cleanup = function() {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -844,7 +856,7 @@ Kickstarter.prototype.isHealthy = function() {
         results.push(res);
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {

@@ -392,12 +392,12 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   map<string, string> resultHeaders;
   string resultBody;
 
-  int error = triagens::arango::createDocumentOnCoordinator(
+  int res = triagens::arango::createDocumentOnCoordinator(
             dbname, collname, waitForSync, json, headers,
             responseCode, resultHeaders, resultBody);
 
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, error);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
     return false;
   }
 

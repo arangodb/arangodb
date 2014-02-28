@@ -102,6 +102,14 @@ function PortFinder (list, dispatcher) {
   this.port = 0;
 }
 
+function getAuthorizationHeader (username, passwd) {
+  return "Basic " + base64Encode(username + ":" + passwd);
+}
+
+function getAuthorization (dispatcher) {
+  return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
+}
+
 PortFinder.prototype.next = function () {
   while (true) {   // will be left by return when port is found
     if (this.pos < this.list.length) {
@@ -125,7 +133,13 @@ PortFinder.prototype.next = function () {
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
                   "/_admin/clusterCheckPort?port="+this.port;
-        var r = download(url, "", {"method": "GET", "timeout": 5});
+        var hdrs = {};
+        if (this.dispatcher.username !== undefined &&
+            this.dispatcher.passwd !== undefined) {
+          hdrs.Authorization = getAuthorization(this.dispatcher);
+        }
+        var r = download(url, "", {"method": "GET", "timeout": 5,
+                                   "headers": hdrs });
         if (r.code === 200) {
           available = JSON.parse(r.body);
         }
@@ -226,6 +240,9 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///       - `allowDBservers`, which is a boolean value indicating
 ///         whether or not DBservers should be started on this dispatcher,
 ///         the default is `true`
+///       - `allowAgents`, which is a boolean value indicating whether or
+///         not agents should be started on this dispatcher, the default is
+///         `true`
 ///       - `username`, which is a string that contains the user name
 ///         for authentication with this dispatcher
 ///       - `passwd`, which is a string that contains the password
@@ -264,12 +281,14 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     data directories. This can either be an absolute path (in which 
 ///     case all machines in the clusters must use the same path), or
 ///     it can be a relative path. In the latter case it describes the
-///     data path relative to the path under which the dispatcher stores
-///     its own data directory. For example, if the data directory
+///     data path relative to a directory "cluster" in the directory in 
+///     which the dispatcher stores
+///     its data. For example, if the data directory
 ///     given on the command line of the dispatcher is
-///     `/etc/arangod/data` and the value of the `dataPath` property is an
+///     `/var/lib/arangod` and the value of the `dataPath` property is an
 ///     empty string , then the DBservers started by this dispatcher
-///     will have their data directories under `/etc/arangod` as well.
+///     will have their data directories in the directory 
+///     `/var/lib/arangod/cluster`.
 ///     These directories will be called `data-PREFIX-ID` where `PREFIX`
 ///     is replaced with the agency prefix (see above) and `ID` is the
 ///     ID of the DBserver or coordinator.
@@ -290,7 +309,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     actual executable that will be started for the agents in the
 ///     agency. If this is an absolute path, it obviously has to be
 ///     the same on all machines in the cluster, as described for
-///     `dataPath`. If it is an empty string, the dispatcher uses `etcd`
+///     `dataPath`. If it is an empty string, the dispatcher uses `etcd-arango`
 ///     in the same directory as the executable that was used to start
 ///     itself. If it is a non-empty relative path, then this path is
 ///     meant relative to the directory in which the executable of the
@@ -374,13 +393,16 @@ Planner.prototype.makePlan = function() {
       if (!dispatchers[id].hasOwnProperty("allowDBservers")) {
         dispatchers[id].allowDBservers = true;
       }
+      if (!dispatchers[id].hasOwnProperty("allowAgents")) {
+        dispatchers[id].allowAgents = true;
+      }
     }
   }
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
     dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
                        "avoidPorts": {}, "allowCoordinators": true,
-                       "allowDBservers": true };
+                       "allowDBservers": true, "allowAgents": true };
     config.onlyLocalhost = true;
   }
   else {
@@ -398,20 +420,29 @@ Planner.prototype.makePlan = function() {
 
   // Distribute agents to dispatchers (round robin, choosing ports)
   var d = 0;
+  var wrap = d;
   var agents = [];
   pf = [];   // will be filled lazily
   pf2 = [];  // will be filled lazily
-  for (i = 0; i < config.numberOfAgents; i++) {
-    // Find two ports:
-    if (!pf.hasOwnProperty(d)) {
-      pf[d] = new PortFinder(config.agentExtPorts, dispatchers[dispList[d]]);
-      pf2[d] = new PortFinder(config.agentIntPorts, dispatchers[dispList[d]]);
+  i = 0;
+  var oldi = i;
+  while (i < config.numberOfAgents) {
+    if (dispatchers[dispList[d]].allowAgents) {
+      // Find two ports:
+      if (!pf.hasOwnProperty(d)) {
+        pf[d] = new PortFinder(config.agentExtPorts, dispatchers[dispList[d]]);
+        pf2[d] = new PortFinder(config.agentIntPorts, dispatchers[dispList[d]]);
+      }
+      agents.push({"dispatcher":dispList[d],
+                   "extPort":pf[d].next(),
+                   "intPort":pf2[d].next()});
+      i++;
     }
-    agents.push({"dispatcher":dispList[d],
-                 "extPort":pf[d].next(),
-                 "intPort":pf2[d].next()});
     if (++d >= dispList.length) {
       d = 0;
+    }
+    if (d === wrap && oldi === i) {
+      break;
     }
   }
 
@@ -420,8 +451,8 @@ Planner.prototype.makePlan = function() {
   pf = [];
   d = 0;
   i = 0;
-  var wrap = d;
-  var oldi = i;
+  wrap = d;
+  oldi = i;
   while (i < config.numberOfCoordinators) {
     if (dispatchers[dispList[d]].allowCoordinators) {
       if (!pf.hasOwnProperty(d)) {
