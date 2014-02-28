@@ -1988,37 +1988,37 @@ void TRI_SetUserTempPath (char* path) {
 
 #if _WIN32
 char * __LocateInstallDirectory_In(HKEY rootKey) {
-	DWORD dwType;
-	char  szPath[1023];
-	DWORD dwDataSize;
-	HKEY key;
+  DWORD dwType;
+  char  szPath[1023];
+  DWORD dwDataSize;
+  HKEY key;
 
-	dwDataSize = sizeof(szPath);
-	memset(szPath, 0, dwDataSize);
+  dwDataSize = sizeof(szPath);
+  memset(szPath, 0, dwDataSize);
 
-	// open the key for reading
-	long lResult = RegOpenKeyEx(
-		rootKey,
-		"SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
-		0,
-		KEY_READ,
-		&key);
+  // open the key for reading
+  long lResult = RegOpenKeyEx(
+                              rootKey,
+                              "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+                               0,
+                               KEY_READ,
+                               &key);
 
-	if (lResult == ERROR_SUCCESS) {
+  if (lResult == ERROR_SUCCESS) {
+      // read the version value
+      lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
 
-		// read the version value
-		lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+      if (lResult == ERROR_SUCCESS) {
+        return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
+      }
 
-		if (lResult == ERROR_SUCCESS) {
-			return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
-		}
+      RegCloseKey(key);
+    }
 
-		RegCloseKey(key);
-	}
-
-	return NULL;
+  return NULL;
 
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory 
@@ -2028,13 +2028,14 @@ char * __LocateInstallDirectory_In(HKEY rootKey) {
 /// installed as service)
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
+#if _WIN32
 char* TRI_LocateInstallDirectory () {
-	char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
+  char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
 
-	if (!directory) {
-		directory = __LocateInstallDirectory_In(HKEY_LOCAL_MACHINE);
-	}
-	return directory;
+  if (!directory) {
+    directory = __LocateInstallDirectory_In(HKEY_LOCAL_MACHINE);
+  }
+  return directory;
 }
 
 #else
