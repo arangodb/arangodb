@@ -322,3 +322,39 @@ button.btn-server {
   width: 120px;
 }
 
+.clusterDownBtn {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: center;
+  button {
+    background-color: #f1f1f1;
+    color: #333333;
+    padding: 12px 18px;
+    margin: 0px;
+    border: 1px solid rgba(0,0,0,0.1875);
+    border-radius: 3px;
+    text-decoration: none !important;
+    font-size: 20px;
+    font-weight: 300;
+    width: 250px;
+    text-align: center;
+    cursor: auto;
+    &:hover{
+      color: #4a6c30;
+      background-color: #e8e8e8;
+      -webkit-transition-delay: 0s;
+      -webkit-transition-duration: 0.2s;
+      -webkit-transition-property: all;
+      -webkit-transition-timing-function: ease-in;
+    }
+  }
+  button.green {
+    @extend button;
+    color: $c_white;
+    background-color: #617e2b;
+    &:hover{
+      background-color: #8ba142;
+    }
+  }
+;
+}
