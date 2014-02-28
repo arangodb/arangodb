@@ -1,14 +1,6 @@
 div.resizecontainer {
+  @extend %clear-float; 
   margin: 0px auto;
-
-  &:after {
-    clear: both;
-    content: ".";
-    display: block;
-    font-size: 0px;
-    height: 0px;
-    visibility: hidden;
-  }
 }
 
 @media (max-width: 798px) {
@@ -25,14 +17,14 @@ div.resizecontainer {
 
 @media (min-width: 799px) and (max-width: 1041px) {
   #arangoCollectionUl a {
-    font-size: 11px;
-    padding: 7px 5px 10px;
+    font-size: 12px;
+    padding: 10px 5px 10px;
   }
 }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
@@ -49,5 +41,63 @@ div.centralRow {
   margin: {
     top: 65px;
     bottom: 65px;
+  }
+}
+
+div.centralContent {
+  padding: 5px;
+  margin-left: -5px;
+  margin-right: -5px;
+  width: 100%;
+  height: 100%;
+  background-color: $c_content_transp;
+  min-height: 80px;
+  float: left;
+}
+
+
+//#databaseDiv => .contentDiv
+.contentDiv {
+  // margin-left:0px;
+  // margin-left: -20px;
+  // padding-bottom: 5px;
+
+  padding: 13px 0px 0px 0px;
+
+  list-style: none;
+  *zoom: 1;
+  li {
+    background-color: rgba(0, 0, 0, 0.05);
+    // #f4f3f3;
+
+    // From Bootstrap thumbnails
+    float: left;
+    // margin-bottom: 20px;
+    // margin-left: 20px;
+  }
+
+  a.add {
+    padding: 40px 0;
+    display: block;
+    font-weight: 400;
+    text-align: left;
+  }
+
+  .icon {
+    @extend %clickable;
+    padding: {
+      right:5px;
+      left: 5px;
+      top: 10px;
+    }
+  }
+
+  &:after {
+    clear: both;
+  }
+  &:after, &:before {
+    display: table;
+    line-height: 0;
+    content: "";
   }
 }

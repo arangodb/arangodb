@@ -18,8 +18,7 @@
     },
 
     changeDatabase: function(e) {
-//        var changeTo = $(".dbSelectionLink > option:selected").attr("id");
-        var changeTo = $(".dbSelectionLink").attr("id");
+      var changeTo = $(e.currentTarget).closest(".dbSelectionLink.tab").attr("id");
       var url = this.collection.createDatabaseURL(changeTo);
       window.location.replace(url);
     },

@@ -1,41 +1,26 @@
+<script id="userBarView.ejs" type="text/template">
 <ul class="navlist" id="userBarUl">
 
-  <div class="navlogo">
-    <a id="stat_hd" class="notificationButton">
-      <img src="img/tmpNotificationCounter.jpg">
-    </a>
-  </div>
-
-  <li class="dropdown">
-    <a href="#" class="tab" id="user" >
-      <img src="<%=img%>" id="userimage" height="23" width="23" /> <b class="caret"></b>
+  <li class="dropdown user-menu userImg">
+    <a href="#" class="tab userImg" id="user" >
+      <img class="userMenuImg" src="<%=img%>" id="userimage" /> <b class="caret"></b>
     </a>
     <ul class="user-dropdown-menu" id="user_dropdown">
-      <li class="dropdown-header"><%=prename%> <%=lastname%></li>
+      <li class="dropdown-header" style="text-transform: none">
+        <%
+        if (name) {%>
+        <%=name%> (<%=username%>)
+        <% } else {%>
+        <%=username%>
+        <% } %>
       <li class="dropdown-item">
-        <a id="user" class="tab" href="#user">User profile</a>
+        <a id="userProfile" class="tab" href="#user">User profile</a>
       </li>
       <li class="dropdown-item">
-        <a id="user" class="tab" href="#user">User management</a>
-      </li>
-      <li class="dropdown-item">
-        <a id="user" class="tab" href="#user">Logout</a>
+        <a id="userLogout" class="tab" href="#user">Logout</a>
       </li>
     </ul>
   </li>
-
-  <li class="dropdown">
-    <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
-      <li class="dropdown-header"><a>Notifications</a></li>
-        <ul class="innerDropdownInnerUL">
-
-        </ul>
-
-      <button id="removeAllNotifications" class="btn btn-danger">Clear</button>
-    </ul>
-  </li>
-
-
-
 
 </ul>
+</script>

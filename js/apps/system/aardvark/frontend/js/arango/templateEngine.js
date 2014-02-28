@@ -1,17 +1,18 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global EJS, window*/
+/*global EJS, window, _, $*/
 (function() {
   "use strict";
-  var TemplateEngine = function(prefix) {
-    prefix = prefix || "";
+  var TemplateEngine = function() {
     var exports = {};
-    exports.createTemplate = function(path) {
-      var param = {
-        url: prefix + path
+    exports.createTemplate = function(id) {
+      var template = $("#" + id.replace(".", "\\.")).html();
+      return {
+        render: function(params) {
+          return _.template(template, params);
+        }
       };
-      return new EJS(param);
     };
     return exports;
   };
-  window.templateEngine = new TemplateEngine("js/templates/"); 
+  window.templateEngine = new TemplateEngine(); 
 }());

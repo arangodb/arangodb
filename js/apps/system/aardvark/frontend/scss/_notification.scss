@@ -1,5 +1,5 @@
 .fixedDropdown {
-  margin: 34px 0 0 0 !important;
+  margin: 37px 0 0 0 !important;
   border-radius: 0 !important;
   width: 210px;
 }
@@ -22,9 +22,12 @@
 }
 
 .fixedDropdown .notificationItemContent {
-  width: 170px;
+  width: 155px;
   float: left;
-  margin-left: 5px;
+  margin-left: 15px;
+  max-width: 155px;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 .fixedDropdown button {
@@ -42,13 +45,15 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
 
+.innerDropdownInnerUL .dropdown-item:hover {
+  background-color: #E1E1E1 !important;
+}
+
 .innerDropdownInnerUL li {
   width: auto !important;
 }
 
 .innerDropdownInnerUL li:last-child {
-  color: red;
-  border-bottom: 0;
 }
 
 .fixedDropdown .notificationItem {
@@ -56,5 +61,43 @@
 }
 
 .notificationItem i {
-  float:left;
+  color: rgba(0, 0, 0, 0.2);
+  float: left;
+  font-size: 20px;
+  position: relative;
+  right: 4px;
+  top: -9px;
+}
+
+.notificationItem i:hover {
+  color: rgba(0, 0, 0, 1);
+  cursor: pointer;
+}
+
+#stat_hd {
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  background-color: #333232;
+  border-radius: 3px;
+  border: 2px solid #8AA051;
+}
+
+.notificationItemContent {
+  font-weight: 300;
+}
+
+.fullNotification:hover {
+  cursor:pointer;
+}
+
+.fullNotification {
+  border: 2px solid red !important;
+  background-color: red !important;
+}
+
+#stat_hd #stat_hd_counter {
+  color: white;
+  margin-left: 8px;
+  line-height: 24px;
 }

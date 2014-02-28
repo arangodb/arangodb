@@ -56,7 +56,7 @@
 
     describe("Check Collection Display Settings", function() {
 
-      it("Check if System Collections shoud not be drawn", function() {
+      it("Check if System Collections should not be drawn", function() {
         myView.render();
         var wasRendered;
 
@@ -67,7 +67,7 @@
         expect(wasRendered).toBeFalsy();
       });
 
-      it("Check if System Collections shoud be drawn", function() {
+      it("Check if System Collections should be drawn", function() {
         myView.render();
         var wasRendered;
         $('#checkSystem').click();
@@ -79,7 +79,7 @@
         expect(wasRendered).toBeTruthy();
       });
 
-      it("Check if Edge Collections shoud not be drawn", function() {
+      it("Check if Edge Collections should not be drawn", function() {
         myView.render();
         var wasRendered;
 
@@ -90,7 +90,7 @@
         expect(wasRendered).toBeFalsy();
       });
 
-      it("Check if Edge Collections shoud be drawn", function() {
+      it("Check if Edge Collections should be drawn", function() {
         myView.render();
         var wasRendered;
         $('#checkEdge').click();
@@ -102,7 +102,7 @@
         expect(wasRendered).toBeTruthy();
       });
       
-      it("Check if Document Collections shoud not be drawn", function() {
+      it("Check if Document Collections should not be drawn", function() {
         myView.render();
         var wasRendered;
 
@@ -113,7 +113,7 @@
         expect(wasRendered).toBeFalsy();
       });
 
-      it("Check if Document Collections shoud be drawn", function() {
+      it("Check if Document Collections should be drawn", function() {
         myView.render();
         var wasRendered;
         $('#checkDocument').click();
@@ -125,7 +125,7 @@
         expect(wasRendered).toBeTruthy();
       });
 
-      it("Check if Loaded Collections shoud not be drawn", function() {
+      it("Check if Loaded Collections should not be drawn", function() {
         myView.render();
         var wasRendered;
 
@@ -136,7 +136,7 @@
         expect(wasRendered).toBeFalsy();
       });
 
-      it("Check if Loaded Collections shoud be drawn", function() {
+      it("Check if Loaded Collections should be drawn", function() {
         myView.render();
         var wasRendered;
         $('#checkLoaded').click();
@@ -148,7 +148,7 @@
         expect(wasRendered).toBeTruthy();
       });
 
-      it("Check if Unloaded Collections shoud not be drawn", function() {
+      it("Check if Unloaded Collections should not be drawn", function() {
         myView.render();
         var wasRendered;
 
@@ -159,7 +159,7 @@
         expect(wasRendered).toBeFalsy();
       });
 
-      it("Check if Unloaded Collections shoud be drawn", function() {
+      it("Check if Unloaded Collections should be drawn", function() {
         myView.render();
         var wasRendered;
         $('#checkUnloaded').click();

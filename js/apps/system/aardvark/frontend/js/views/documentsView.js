@@ -145,14 +145,14 @@
                   return;
                 }
 
-                if (data.errors === 0) {
-                  arangoHelper.arangoNotification("Upload successful. " + 
-                                                  data.created + " document(s) imported.");
+                /*if (data.errors === 0) {
+                  //Heiko: Display information
+                  //"Upload successful. " + data.created + " document(s) imported.");
                 }
                 else if (data.errors !== 0) {
-                  arangoHelper.arangoError("Upload failed." + 
-                                           data.errors + "error(s).");
-                }
+                  //Heiko: Display information
+                  //arangoHelper.arangoError("Upload failed." + data.errors + "error(s).");
+                }*/
                 self.hideSpinner();
                 self.hideImportModal();
                 self.resetView();
@@ -290,7 +290,8 @@
       $('#filterHeader').append(' <div class="queryline querylineAdd">'+
                                 '<input id="attribute_name' + num + 
                                 '" type="text" placeholder="Attribute name">'+
-                                '<select name="operator" id="operator' + num + '">'+
+                                '<select name="operator" id="operator' +
+                                num + '" class="filterSelect">'+
                                 '    <option value="==">==</option>'+
                                 '    <option value="!=">!=</option>'+
                                 '    <option value="&lt;">&lt;</option>'+
@@ -302,8 +303,7 @@
                                 '" type="text" placeholder="Attribute value" ' + 
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus"></i></a>'+
-                                ' <span>AND</span></div>');
+                                '<i class="icon icon-minus"></i></a></div>');
       this.filters[num] = true;
     },
 
@@ -361,11 +361,11 @@
       var from = $('#new-document-from').val();
       var to = $('#new-document-to').val();
       if (from === '') {
-        arangoHelper.arangoNotification('From paramater is missing');
+        //Heiko: Form-Validator - from is missing
         return;
       }
       if (to === '') {
-        arangoHelper.arangoNotification('To parameter is missing');
+        //Heiko: Form-Validator - to is missing
         return;
       }
       var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
@@ -421,11 +421,11 @@
       var result;
       if (this.type === 'document') {
         result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
-        if (result === true) {
+        if (result) {
           //on success
           deleted = true;
         }
-        else if (result === false) {
+        else {
           arangoHelper.arangoError('Doc error');
         }
       }
@@ -435,7 +435,7 @@
           //on success
           deleted = true;
         }
-        else if (result === false) {
+        else {
           arangoHelper.arangoError('Edge error');
         }
       }
@@ -569,7 +569,7 @@
     render: function() {
       this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.getIndex();
       this.initTable();
       this.breadcrumb();
@@ -579,7 +579,6 @@
       if (this.collectionContext.next === null) {
         $('#collectionNext').parent().addClass('disabledPag');
       }
-      $.gritter.removeAll();
 
       this.uploadSetup();
 
@@ -594,13 +593,12 @@
     showLoadingState: function () {
       $('.dataTables_empty').text('Loading...');
     },
-    renderPagination: function (totalPages, filter) {
-
-      var checkFilter = filter;
+    renderPagination: function (totalPages, checkFilter) {
+      $('#documentsToolbarF').html("");
       var self = this;
 
       var currentPage;
-      if (checkFilter === true) {
+      if (checkFilter) {
         currentPage = window.arangoDocumentsStore.currentFilterPage;
       }
       else {
@@ -614,8 +612,7 @@
         lastPage: totalPages,
         click: function(i) {
           options.page = i;
-          if (checkFilter === true) {
-
+          if (checkFilter) {
             var filterArray = self.getFilterContent();
             var filters = filterArray[0];
             var bindValues = filterArray[1];
@@ -757,10 +754,10 @@
       else {
         if (result.responseText) {
           var message = JSON.parse(result.responseText);
-          arangoHelper.arangoNotification(message.errorMessage);
+          arangoHelper.arangoNotification("Document error", message.errorMessage);
         }
         else {
-          arangoHelper.arangoNotification("Could not create index.");
+          arangoHelper.arangoNotification("Document error", "Could not create index.");
         }
       }
     },

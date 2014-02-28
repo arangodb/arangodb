@@ -22,10 +22,9 @@
     render: function() {
       this.addDummyUser();
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       $(this.el2).hide();
       $(this.el3).hide();
-      $.gritter.removeAll();
 
       $('#loginUsername').focus();
 
@@ -56,7 +55,7 @@
       var password = $('#loginPassword').val();
 
       if (username === '' || password === '') {
-        arangoHelper.arangoNotification("Please fill out required fields");
+        //Heiko: Form-Validator - please fill out all req. fields
         return;
       }
       var callback = this.collection.login(username, password);

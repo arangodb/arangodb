@@ -1,11 +1,12 @@
+<script id="databaseView.ejs" type="text/template">
 <ul class="thumbnails2" id="databaseHeader">
   <div class="headerBar">
     <a class="arangoHeader">Databases</a>
   </div>
 </ul>
 
-<div id="databaseDiv" class="thumbnails">
-  <table id="databaseTable" class="arangoDataTable">
+<div class="contentDiv">
+  <table id="databaseTable" class="arangoDataTable contentTables">
     <thead>
       <tr>
         <td class="dbThFirst">Name</td>
@@ -19,7 +20,7 @@
   </table>
 </div>
 
-<div id="createDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+<div id="createDatabaseModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <a class="arangoHeader">Create Database</a>
@@ -46,7 +47,7 @@
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitCreateDatabase" class="btn btn-success pull-right">Create</button>
+    <button id="submitCreateDatabase" class="button-success pull-right">Create</button>
   </div>
 </div>
 
@@ -66,6 +67,7 @@
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitDeleteDatabase" class="btn btn-danger pull-right">Delete</button>
+    <button id="submitDeleteDatabase" class="button-danger pull-right">Delete</button>
   </div>
 </div>
+</script>

@@ -15,7 +15,6 @@
       "login"                               : "login",
       "collection/:colid/documents/:pageid" : "documents",
       "collection/:colid/:docid"            : "document",
-      "collection/:colid/:docid/source"     : "source",
       "shell"                               : "shell",
       "query"                               : "query",
       "logs"                                : "logs",
@@ -23,14 +22,20 @@
       "databases"                           : "databases",
       "application/installed/:key"          : "applicationEdit",
       "application/available/:key"          : "applicationInstall",
-      "applications/installed"              : "applicationsInstalled",
-      "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
       "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph",
       "graphManagement"                     : "graphManagement",
       "graphManagement/add"                 : "graphAddNew",
-      "graphManagement/delete/:name"        : "graphDelete"
+      "graphManagement/delete/:name"        : "graphDelete",
+      "userManagement"                      : "userManagement",
+      "userProfile"                         : "userProfile",
+      "testing"                             : "testview"
+    },
+
+    testview: function() {
+      this.testView = new window.testView();
+      this.testView.render();
     },
 
     initialize: function () {
@@ -42,7 +47,7 @@
         async: false
       });
 
-      window.activeUser = new window.ArangoUsers();
+      window.userCollection = new window.ArangoUsers();
 
       window.arangoDatabase = new window.ArangoDatabase();
 
@@ -55,8 +60,9 @@
       });
       window.arangoCollectionsStore.fetch();
       window.documentsView = new window.DocumentsView();
-      window.documentView = new window.DocumentView();
-      window.documentSourceView = new window.DocumentSourceView();
+      window.documentView = new window.DocumentView({
+        collection: window.arangoDocumentStore
+      });
       window.arangoLogsStore = new window.ArangoLogs();
       window.arangoLogsStore.fetch({
         success: function () {
@@ -70,7 +76,8 @@
 
       this.footerView = new window.FooterView();
       this.naviView = new window.NavigationView({
-        notificationCollection: this.notificationList
+        notificationCollection: this.notificationList,
+        userCollection: window.userCollection
       });
       this.footerView.render();
       this.naviView.render();
@@ -184,7 +191,7 @@
     },
 
     checkUser: function () {
-      if (window.activeUser.models.length === 0) {
+      if (window.userCollection.models.length === 0) {
         this.navigate("login", {trigger: true});
         return false;
       }
@@ -194,7 +201,7 @@
     login: function () {
       if (!this.loginView) {
         this.loginView = new window.loginView({
-          collection: window.activeUser
+          collection: window.userCollection
         });
       }
       this.loginView.render();
@@ -249,24 +256,12 @@
     },
 
     document: function(colid, docid) {
-      if (!window.documentView) {
-        window.documentView.initTable();
-      }
       window.documentView.colid = colid;
       window.documentView.docid = docid;
       window.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
       window.documentView.type = type;
       window.documentView.typeCheck(type);
-    },
-
-    source: function(colid, docid) {
-      window.documentSourceView.render();
-      window.documentSourceView.colid = colid;
-      window.documentSourceView.docid = docid;
-      var type = arangoHelper.collectionApiType(colid);
-      window.documentSourceView.type = type;
-      window.documentSourceView.typeCheck(type);
     },
 
     shell: function() {
@@ -398,26 +393,6 @@
       this.naviView.selectMenuItem('applications-menu');
     },
 
-    applicationsAvailable: function() {
-      if (this.applicationsInstalledView === undefined) {
-        this.applicationsInstalledView = new window.FoxxInstalledListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsInstalledView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationsInstalled: function() {
-      if (this.applicationsActiveView === undefined) {
-        this.applicationsActiveView = new window.FoxxActiveListView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsActiveView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
     applicationEdit: function(appkey) {
       this.foxxList.fetch({
         async: false
@@ -445,7 +420,7 @@
     },
 
     handleSelectDatabase: function () {
-      this.footerView.handleSelectDatabase();
+      this.naviView.handleSelectDatabase();
     },
 
     handleResize: function () {
@@ -467,7 +442,28 @@
       if (newWidth !== oldWidth) {
         this.graphView.handleResize(newWidth);
       }
+    },
+
+    userManagement: function() {
+      if (!this.userManagementView) {
+        this.userManagementView = new window.userManagementView({
+          collection: window.userCollection
+        });
+      }
+      this.userManagementView.render();
+      this.naviView.selectMenuItem('user-menu');
+    },
+
+    userProfile: function() {
+      if (!this.userProfileView) {
+        this.userProfileView = new window.userProfileView({
+          collection: window.userCollection
+        });
+      }
+      this.userProfileView.render();
+      this.naviView.selectMenuItem('user-menu');
     }
+
   });
 
 }());

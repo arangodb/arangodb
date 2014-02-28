@@ -1,39 +1,3 @@
-.writeable .jediTextarea {
-  width: 100%;
-}
-
-#documentTableID tr td:first-child textarea {
-  resize: none !important;
-  height: 20px !important;
-}
-
-#documentTableID tr .jediTextarea .btn-success {
-  margin-right: -13px !important;
-}
-
-.writeable .jediTextarea textarea {
-  width: 100%;
-}
-
-#documentTableID .rightCell textarea {
-  resize: vertical !important;
-}
-
-.sorting_1 textarea {
-  display: inline !important;
-  max-width: 120px !important;
-  max-height: 20px !important;
-  resize: none !important;
-}
-
-.textInline {
-  display:inline !important;
-}
-
-.validateError {
-  border: 2px solid red !important;
-}
-
 .disabledBtn {
   opacity: 0.4 !important;
   cursor: default !important;
@@ -50,12 +14,6 @@
 
 #tableDiv, #logContent, #documentsDiv, #sourceDiv, #graphManagementDiv {
   padding-top: 13px;
-  padding-right: 5px;
-  padding-left: 5px;
-}
-
-#tableDiv, #logContent {
-  padding-bottom: 10px;
 }
 
 #logContent .tab-content {
@@ -93,68 +51,6 @@
   cursor: pointer;
 }
 
-#addRow {
-  color: #8AA050;
-}
-
-.deleteAttribute {
-  color: #B30000;
-  margin-right: -4px;
-}
-
-.deleteAttribute:hover {
-  color: #B30000;
-}
-
-.editSecondAttribute, .editFirstAttribute, .docPreview {
-  text-align: right;
-  float: right;
-}
-.editSecondAttribute, .editFirstAttribute {
-  color: #444444;
-  font-size: 16px;
-  padding-top: 4px;
-}
-
-.editSecondAttribute:hover, .editFirstAttribute:hover {
-  cursor: pointer;
-  color: #444444;
-}
-
-.editFirstAttribute, .docPreview{
-  margin-right: -17px !important;
-}
-
-.editSecondAttribute {
-  margin-right: -30px !important;
-  padding-bottom: 1px;
-}
-
-.addAttribute, .deleteAttribute {
-  font-size: 22px;
-  float:right;
-  padding-top: 2px;
-  cursor: pointer;
-}
-
-.addAttribute:hover {
-  color: #5E7B36;
-}
-
-#documentTableID .icon_arangodb_edit {
-  font-size: 27px;
-  margin-top: -2px;
-}
-
-#documentTableID {
-  font-weight: 300;
-  font-size: 15px !important;
-  border-collapse:separate;
-  border-spacing:0 0px;
-  border-top: 1px solid #888;
-  background-color: #FFFFFF;
-}
-
 table.dataTable thead th {
   font-weight: 400 !important;
 }
@@ -163,37 +59,6 @@ table.dataTable thead th {
   text-align: left;
   padding-top: 6px;
   padding-bottom: 6px;
-}
-
-#documentTableID td {
-  cursor: default;
-}
-
-#documentTableID .writeable {
-  cursor: pointer;
-}
-
-.read_only {
-  cursor: default !important;
-}
-
-#documentTableID .icon-edit {
-  margin-top: 0;
-}
-
-#documentTableID .icon-edit:hover {
-  cursor: pointer;
-}
-
-#documentTableID.dataTable thead tr {
-  background-color: #FFFFFF;
-}
-
-#documentTableID .odd,
-#documentTableID .even {
-    -webkit-box-shadow: none;
-    -moz-box-shadow: none;
-    box-shadow: none;
 }
 
 .arangoTab > li > a,
@@ -230,17 +95,6 @@ table.dataTable thead th {
   height: 21px;
 }
 
-.rightCell{
-  overflow: hidden;
-  text-overflow: ellipsis;
-  -o-text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rightCell form {
-  width: 100% !important;
-}
-
 .arangoTab {
   padding-bottom: 0 !important;
   margin-bottom: -1px !important;
@@ -260,11 +114,48 @@ table.dataTable thead th {
   /*padding: 7px 18px 5px 15px;*/
 }
 
-.tdRoundButton {
-  padding-top: 7px !important;
-  float: right;
-}
-
 #documentTableID.dataTable thead tr th {
   border-bottom: 1px solid #C2C2C2;
+}
+
+#documentEditor {
+  width:100%;
+  height: 500px;
+}
+
+.jsoneditor {
+  background-color: white !important;
+  border: 1px solid rgba(0,0,0,0.2) !important;
+}
+
+.jsoneditor .menu {
+  background-color: #686766 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.2) !important;
+}
+
+.jsoneditor .search .frame {
+  border: 0 !important;
+  margin: 3px !important;
+}
+
+.jsoneditor .search .results {
+  color: white !important;
+  margin-top: 3px !important;
+} 
+
+.jsoneditor .menu button {
+  background-color: white !important;
+  border: 1px solid black !important;
+}
+
+#saveDocumentButton {
+  margin-top: 5px;
+}
+
+#showSaveState {
+  display:none;
+  color: green;
+  float:right;
+  margin-top: 10px;
+  font-weight: 300;
 }

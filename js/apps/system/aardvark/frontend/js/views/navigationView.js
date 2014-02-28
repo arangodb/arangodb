@@ -8,17 +8,20 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
-      "click .internalLink": "navigateByTab",
       "mouseenter .dropdown": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
     initialize: function () {
+      this.userCollection = this.options.userCollection;
       this.dbSelectionView = new window.DBSelectionView({
         collection: window.arangoDatabase,
         current: window.currentDB
       });
       this.userBarView = new window.UserBarView({
+        userCollection: window.userCollection
+      });
+      this.notificationView = new window.NotificationView({
         collection: this.options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({});
@@ -28,7 +31,6 @@
       this.dbSelectionView.render($("#dbSelect"));
     },
 
-
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function () {
@@ -36,7 +38,10 @@
         isSystem: window.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
-      this.userBarView.render($("#userBar"));
+      this.notificationView.render($("#notificationBar"));
+      if (this.userCollection.whoAmI() !== null) {
+        this.userBarView.render();
+      }
       this.statisticBarView.render($("#statisticBar"));
       return this;
     },
@@ -49,15 +54,21 @@
     navigateByTab: function (e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
+      if (navigateTo === "") {
+        navigateTo = $(tab).attr("class");
+      }
       if (navigateTo === "links") {
+        $("#link_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }
       if (navigateTo === "tools") {
+        $("#tools_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }
       if (navigateTo === "dbselection") {
+        $("#dbs_dropdown").slideToggle(200);
         e.preventDefault();
         return;
       }

@@ -1,6 +1,6 @@
 .ui-resizable-s {
   bottom: 0;
-  height: 10px;
+  height: 0px;
   background-color: #F0F0F0 !important;
   border: 1px solid #C0C0C0;
   cursor: ns-resize;
@@ -51,15 +51,6 @@
   margin-bottom: 5px;
 }
 
-#queryDiv {
-  margin-top: 0px !important;
-  padding-top: 6px !important;
-  padding-left: 5px;
-  padding-right: 5px;
-  padding-bottom: 20px !important;
-  background-color: transparent;
-}
-
 #outputToolbar span, #editorToolbar span {
   position: relative;
   margin-right: 5px;
@@ -96,7 +87,14 @@
   background:none;
 }
 
+/*
 #aqlEditor .ui-resizable-handle {
+  border-left: 0 !important;
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+}*/
+
+#aqlEditor {
   border-left: 0 !important;
   border-bottom: 0 !important;
   border-top: 0 !important;
@@ -106,6 +104,7 @@
   width: 100%;
   height: 20px;
   margin-bottom: 15px;
+  padding-top: 5px;
 }
 
 #submitQueryButton, #clearQueryButton {
@@ -199,7 +198,11 @@
   float: left;
   width: auto;
   margin-top: -5px;
+  padding-left: 45px;
+  font-size: 11px;
+  font-weight: 200;
 }
+
 
 #queryDiv > * {
   border: 0 !important;
@@ -208,7 +211,7 @@
 .styled-select select {
   background: white;
   padding: 5px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 300;
   line-height: 1;
   border: 0;

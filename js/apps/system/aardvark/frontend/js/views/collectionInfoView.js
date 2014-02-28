@@ -13,9 +13,13 @@
     template: templateEngine.createTemplate("collectionInfoView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({
+        figuresData :this.data = window.arangoCollectionsStore.getFigures(this.options.colId, true)
+      }));
       $('#show-collection').modal('show');
       this.fillModal();
+
+      $("[data-toggle=tooltip]").tooltip();
 
       $('.modalInfoTooltips').tooltip({
         placement: "left"
@@ -61,7 +65,7 @@
         this.properties = window.arangoCollectionsStore.getProperties(this.options.colId, true);
         //remove 
         this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
-        this.fillLoadedModal(this.data);
+        this.fillLoadedModal();
       }
     },
     roundNumber: function(number, n) {
@@ -69,129 +73,6 @@
       factor = Math.pow(10,n);
       var returnVal = (Math.round(number * factor) / factor);
       return returnVal;
-    },
-    appendFigures: function () {
-      var cssClass = 'modal-text';
-
-      if (this.data) {
-        $('#figures').append(
-          '<table id="figures1">'+
-            '<tr class="figuresHeader">'+
-              '<th class="">Type</th>'+
-              '<th>Count</th>'+
-              '<th>Size (MB)</th>'+
-              '<th>Info</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Datafiles</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.datafiles.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.datafiles.fileSize / 1024 / 1024, 2)+
-              '</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="Number of active datafiles.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Journals</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.journals.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.journals.fileSize / 1024 / 1024, 2)+
-              '</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="Number of journal files.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Compactors</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.compactors.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.compactors.fileSize / 1024 / 1024, 2)+
-              '</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="Number of compactor files.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Shape files</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.shapefiles.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.shapefiles.fileSize / 1024 / 1024, 2)+
-              '</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="Number of shape files.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-
-          '</table>'+
-
-          '<table id="figures2">'+
-            '<tr class="figuresHeader">'+
-              '<th>Type</th>'+
-              '<th>Count</th>'+
-              '<th>Info</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Shapes</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.shapes.count+'</th>'+
-                '<th class="tooltipInfoTh '+cssClass+'">'+
-            '<a class="modalInfoTooltips" title="Total number of shapes used in the collection">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Attributes</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.attributes.count+'</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="' +
-                'Total number of attributes used in the collection">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-          '</table>'+
-
-          '<table id="figures3">'+
-            '<tr class="figuresHeader">'+
-              '<th>Type</th>'+
-              '<th>Count</th>'+
-              '<th>Size (MB)</th>'+
-              '<th>Deletion</th>'+
-              '<th>Info</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Alive</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.alive.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.alive.size/1024/1024, 2)+
-              '</th>'+
-              '<th class="'+cssClass+'"> - </th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="' + 
-                'Total number and size used by all living documents.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-            '<tr>'+
-              '<th class="'+cssClass+'">Dead</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.dead.count+'</th>'+
-              '<th class="'+cssClass+'">'+
-                this.roundNumber(this.data.figures.dead.size/1024/1024, 2)+
-              '</th>'+
-              '<th class="'+cssClass+'">'+this.data.figures.dead.deletion+'</th>'+
-              '<th class="tooltipInfoTh '+cssClass+'">'+
-                '<a class="modalInfoTooltips" title="' +
-                'Total number and size used by all dead documents.">'+
-                '<span class="arangoicon icon_arangodb_info"></span></a>'+
-              '</th>'+
-            '</tr>'+
-          '</table>'
-
-        );
-      }
     },
 
     appendIndex: function () {
@@ -219,22 +100,22 @@
       }
     },
 
-    fillLoadedModal: function (data) {
+    fillLoadedModal: function () {
       $('#collectionSizeBox').show();
       $('#collectionSyncBox').show();
       $('#collectionRevBox').show();
-      if (data.waitForSync === false) {
+      if (this.data.waitForSync === false) {
         $('#show-collection-sync').text('false');
       }
       else {
         $('#show-collection-sync').text('true');
       }
-      var calculatedSize = data.journalSize / 1024 / 1024;
+      var calculatedSize = this.data.journalSize / 1024 / 1024;
       $('#show-collection-size').text(this.roundNumber(calculatedSize, 2));
       $('#show-collection-rev').text(this.revision.revision);
 
       this.appendIndex();
-      this.appendFigures();
+//      this.appendFigures();
 
       $('#show-collection').modal('show');
     },

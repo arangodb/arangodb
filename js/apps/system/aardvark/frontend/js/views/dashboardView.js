@@ -211,7 +211,7 @@
     render: function() {
       var self = this;
       self.updateNOW = true;
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.getReplicationStatus();
       
       arangoHelper.fixTooltips(".icon_arangodb", "top");
