@@ -461,7 +461,8 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState () {
-  const AgencyCommResult result = _agency.sendServerState();
+  const AgencyCommResult result = _agency.sendServerState(
+                 3.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
 
   if (result.successful()) {
     _numFails = 0;
