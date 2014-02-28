@@ -40,6 +40,6 @@ rspec -I . --color --format d \
         api-simple-range-spec.rb \
         api-simple-skiplist-spec.rb \
         api-structures.rb \
-	api-transactions-spec.rb \
-	api-traversal-spec.rb \
+	api-transactions-noncluster-spec.rb \
+	api-traversal-noncluster-spec.rb \
         api-users-spec.rb 

@@ -100,7 +100,7 @@
             "d1": {
               "username": uname,
               "passwd": pwd,
-              "endpoint": "tcp://" + input.dispatcher
+              "endpoint": "tcp://" + input.dispatchers
             }
           };
           config.numberOfDBservers = input.numberDBServers;
@@ -110,7 +110,7 @@
           config.dispatchers = {};
           config.numberOfDBservers = 0;
           config.numberOfCoordinators = 0;
-          _.each(input.dispatcher, function(d) {
+          _.each(input.dispatchers, function(d) {
             i++;
             var inf = {};
             inf.username = uname;
