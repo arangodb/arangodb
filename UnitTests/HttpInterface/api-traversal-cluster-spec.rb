@@ -194,18 +194,6 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1909)
       end
       
-      it "traversal abortion, many iterations" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"startVertex\" : \"#{@cv}/Blackhole\", \"direction\" : \"outbound\", \"uniqueness\" : { \"vertices\" : \"none\", \"edges\" : \"none\" }, \"maxIterations\" : 5000, \"maxDepth\" : 999999, \"visitor\" : \"\" }"
-        doc = ArangoDB.log_post("#{prefix}-visit-traversal-abort2", api, :body => body)
-
-        doc.code.should eq(500)
-
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(1909)
-      end
-
     end
 
 ################################################################################
