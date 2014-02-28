@@ -867,6 +867,8 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 
   if (i == ExternalProcesses._length) {
     TRI_UnlockMutex(&ExternalProcessesLock);
+    // Just in case to get rid of zombies:
+    waitpid(pid.pid, &loc, WNOHAND | WUNTRACED);
     return status;
   }
 
