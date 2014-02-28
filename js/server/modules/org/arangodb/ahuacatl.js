@@ -3137,17 +3137,25 @@ function STDDEV_POPULATION (values) {
 function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   "use strict";
 
-  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
-  if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
   if (limit === null || limit === undefined) {
     // use default value
     limit = 100;
   }
 
+  if (isCoordinator) {
+    var query = COLLECTION(collection).near(latitude, longitude);
+    query._distance = distanceAttribute;
+    return query.limit(limit).toArray();
+  }
+    
+  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
+
+  if (idx === null) {
+    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
   var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
+
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
@@ -3170,16 +3178,24 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
 function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   "use strict";
 
+  if (isCoordinator) {
+    var query = COLLECTION(collection).within(latitude, longitude, radius);
+    query._distance = distanceAttribute;
+    return query.toArray();
+  }
+    
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
+
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
+
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
-
+  
   // inject distances
   var documents = result.documents;
   var distances = result.distances;
