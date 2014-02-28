@@ -1,5 +1,5 @@
 #!/bin/sh
 test -d logs || mkdir logs
 
-rspec --color --format d \
+rspec -I . --color --format d \
 	api-replication-spec.rb 
