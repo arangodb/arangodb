@@ -1,5 +1,6 @@
 ; CPack install script designed for a nmake build
-!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
+;!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
