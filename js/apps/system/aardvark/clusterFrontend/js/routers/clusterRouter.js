@@ -130,7 +130,7 @@
               async:false
           });
       }
-      if (this.statistics === undefined) {
+      if (this.statisticsCollection === undefined) {
           this.statisticsCollection = new window.StatisticsCollection();
       }
       if (this.dashboardView === undefined) {
