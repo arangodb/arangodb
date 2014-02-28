@@ -9,7 +9,7 @@
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
-  SYS_SHA256, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
+  SYS_SHA256, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
@@ -18,8 +18,9 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
-  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL */
+  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
+  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
+  SYS_DEFINE_PERIODIC */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -124,6 +125,23 @@
   if (exports.developmentMode && exports.threadNumber === 0) {
     SYS_LOG("warning", "################################################################################");
     SYS_LOG("warning", "development mode is active, never use this in production");
+    SYS_LOG("warning", "################################################################################");
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frontendDevelopmentMode
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.frontendDevelopmentMode = false;
+
+  if (typeof FE_DEVELOPMENT_MODE !== "undefined") {
+    exports.frontendDevelopmentMode = FE_DEVELOPMENT_MODE;
+    delete FE_DEVELOPMENT_MODE;
+  }
+
+  if (exports.frontendDevelopmentMode && exports.threadNumber === 0) {
+    SYS_LOG("warning", "################################################################################");
+    SYS_LOG("warning", "frontend development mode is active, never use this in production");
     SYS_LOG("warning", "################################################################################");
   }
 
@@ -590,6 +608,15 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SLEEP !== "undefined") {
+    exports.sleep = SYS_SLEEP;
+    delete SYS_SLEEP;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief time
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -686,6 +713,15 @@
   if (typeof SYS_STATUS_EXTERNAL !== "undefined") {
     exports.statusExternal = SYS_STATUS_EXTERNAL;
     delete SYS_STATUS_EXTERNAL;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a period timer
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEFINE_PERIODIC !== "undefined") {
+    exports.definePeriodic = SYS_DEFINE_PERIODIC;
+    delete SYS_DEFINE_PERIODIC;
   }
 
 // -----------------------------------------------------------------------------

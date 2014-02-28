@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
@@ -35,11 +35,15 @@
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/ApplicationScheduler.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
+#include "V8Server/V8PeriodicTask.h"
 #include "V8Server/v8-vocbase.h"
 
 using namespace std;
@@ -62,9 +66,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
+/// @brief global VocBase
 ////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* GlobalVocbase = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -73,8 +78,16 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 ApplicationV8* GlobalV8Dealer = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief global scheduler
 ////////////////////////////////////////////////////////////////////////////////
+
+Scheduler* GlobalScheduler = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+Dispatcher* GlobalDispatcher = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -83,11 +96,6 @@ ApplicationV8* GlobalV8Dealer = 0;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class v8_action_t
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -109,7 +117,7 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    void createCallback (v8::Isolate* isolate, 
+    void createCallback (v8::Isolate* isolate,
                          v8::Handle<v8::Function> callback) {
       WRITE_LOCKER(_callbacksLock);
 
@@ -126,7 +134,7 @@ class v8_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, 
+    HttpResponse* execute (TRI_vocbase_t* vocbase,
                            HttpRequest* request) {
 
       // determine whether we should force a re-initialistion of the engine in development mode
@@ -139,7 +147,7 @@ class v8_action_t : public TRI_action_t {
         // only URLs starting with /dev will trigger an engine reset
         allowEngineReset = true;
       }
-      
+
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, ! allowEngineReset, false);
 
       // note: the context might be 0 in case of shut-down
@@ -182,18 +190,9 @@ class v8_action_t : public TRI_action_t {
     ReadWriteLock _callbacksLock;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the action options "parameters" field of type string
@@ -288,10 +287,10 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 /// @brief add cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddCookie (TRI_v8_global_t* v8g, 
-                       HttpResponse* response, 
+static void AddCookie (TRI_v8_global_t* v8g,
+                       HttpResponse* response,
                        v8::Handle<v8::Object> data) {
-  
+
   string name;
   string value;
   int lifeTimeSeconds = 0;
@@ -299,10 +298,10 @@ static void AddCookie (TRI_v8_global_t* v8g,
   string domain = "";
   bool secure = false;
   bool httpOnly = false;
-  
+
   if (data->Has(v8g->NameKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->NameKey);
-    name = TRI_ObjectToString(v);    
+    name = TRI_ObjectToString(v);
   }
   else {
     // something is wrong here
@@ -310,7 +309,7 @@ static void AddCookie (TRI_v8_global_t* v8g,
   }
   if (data->Has(v8g->ValueKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->ValueKey);
-    value = TRI_ObjectToString(v);    
+    value = TRI_ObjectToString(v);
   }
   else {
     // something is wrong here
@@ -319,25 +318,25 @@ static void AddCookie (TRI_v8_global_t* v8g,
   if (data->Has(v8g->LifeTimeKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->LifeTimeKey);
     lifeTimeSeconds = TRI_ObjectToInt64(v);
-  }  
+  }
   if (data->Has(v8g->PathKey) && ! data->Get(v8g->PathKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(v8g->PathKey);
-    path = TRI_ObjectToString(v);    
+    path = TRI_ObjectToString(v);
   }
   if (data->Has(v8g->DomainKey) && ! data->Get(v8g->DomainKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(v8g->DomainKey);
-    domain = TRI_ObjectToString(v);    
+    domain = TRI_ObjectToString(v);
   }
   if (data->Has(v8g->SecureKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->SecureKey);
-    secure = TRI_ObjectToBoolean(v);    
+    secure = TRI_ObjectToBoolean(v);
   }
   if (data->Has(v8g->HttpOnlyKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->HttpOnlyKey);
-    httpOnly = TRI_ObjectToBoolean(v);    
+    httpOnly = TRI_ObjectToBoolean(v);
   }
 
-  response->setCookie(name, value, lifeTimeSeconds, path, domain, secure, httpOnly);    
+  response->setCookie(name, value, lifeTimeSeconds, path, domain, secure, httpOnly);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +398,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   else {
     req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
-  
+
   // create database attribute
   string const& database = request->databaseName();
   assert(! database.empty());
@@ -458,7 +457,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   map<string, string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
-    headerFields->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
+    headerFields->Set(v8::String::New(iter->first.c_str(), iter->first.size()),
                       v8::String::New(iter->second.c_str(), iter->second.size()));
   }
 
@@ -510,7 +509,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
 
     if (p == action->_parameters.end()) {
-      valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+      valuesObject->Set(v8::String::New(k.c_str(), k.size()),
                         v8::String::New(v.c_str(), v.size()));
     }
     else {
@@ -549,7 +548,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
           if (collection != 0) {
             v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
-            
+
             if (c.IsEmpty()) {
               // TODO: raise exception here
             }
@@ -568,7 +567,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
           if (collection != 0) {
             v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
-            
+
             if (c.IsEmpty()) {
               // TODO: raise exception here
             }
@@ -581,12 +580,12 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         }
 
         case TRI_ACT_NUMBER:
-          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+          valuesObject->Set(v8::String::New(k.c_str(), k.size()),
                             v8::Number::New(TRI_DoubleString(v.c_str())));
           break;
 
         case TRI_ACT_STRING: {
-          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+          valuesObject->Set(v8::String::New(k.c_str(), k.size()),
                             v8::String::New(v.c_str()));
           break;
         }
@@ -619,17 +618,17 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   iter = cookies.begin();
 
   for (; iter != cookies.end(); ++iter) {
-    cookiesObject->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
+    cookiesObject->Set(v8::String::New(iter->first.c_str(), iter->first.size()),
                        v8::String::New(iter->second.c_str(), iter->second.size()));
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
 
-  
+
   // determine API compatibility version
   int32_t compatibility = request->compatibility();
   req->Set(v8g->CompatibilityKey, v8::Integer::New(compatibility));
-  
+
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
@@ -750,9 +749,9 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
       if (v8Cookies->IsArray()) {
         v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
-        
+
         for (uint32_t i = 0; i < v8Array->Length(); i++) {
-          v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
+          v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
           if (v8Cookie->IsObject()) {
             AddCookie(v8g, response, v8Cookie.As<v8::Object>());
           }
@@ -760,26 +759,17 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       }
       else if (v8Cookies->IsObject()) {
         // one cookie
-        AddCookie(v8g, response, v8Cookies);               
+        AddCookie(v8g, response, v8Cookies);
       }
     }
-    
+
     return response;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
@@ -897,25 +887,90 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief defines a new periodic action
+///
+/// @FUN{internal.definePeriodic(@FA{offset}, @FA{period}, @FA{module}, @FA{funcname})}
 ////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 5) {
+    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<offset>, <period>, <module>, <funcname>, <string-parameter>)");
+  }
+
+  // offset in seconds into period
+  double offset = TRI_ObjectToDouble(argv[0]);
+
+  // period in seconds
+  double period = TRI_ObjectToDouble(argv[1]);
+
+  if (period <= 0.0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<period> must be positive");
+  }
+
+  // extract the module name
+  TRI_Utf8ValueNFC moduleName(TRI_UNKNOWN_MEM_ZONE, argv[2]);
+
+  if (*moduleName == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<module> must be an UTF-8 string");
+  }
+
+  string module = *moduleName;
+
+  // extract the function name
+  TRI_Utf8ValueNFC funcName(TRI_UNKNOWN_MEM_ZONE, argv[3]);
+
+  if (*funcName == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<funcname> must be an UTF-8 string");
+  }
+
+  string func = *funcName;
+
+  // extract the parameter
+  TRI_Utf8ValueNFC parameterString(TRI_UNKNOWN_MEM_ZONE, argv[4]);
+
+  if (*parameterString == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<parameter> must be an UTF-8 string");
+  }
+
+  string parameter = *parameterString;
+
+  // create a new periodic task
+  if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
+    V8PeriodicTask* task = new V8PeriodicTask(
+      GlobalVocbase,
+      GlobalV8Dealer,
+      GlobalScheduler,
+      GlobalDispatcher,
+      offset,
+      period,
+      module,
+      func,
+      parameter);
+
+    GlobalScheduler->registerTask(task);
+  }
+
+  return scope.Close(v8::Undefined());
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicationV8) {
+void TRI_InitV8Actions (v8::Handle<v8::Context> context,
+                        TRI_vocbase_t* vocbase,
+                        ApplicationScheduler* scheduler,
+                        ApplicationDispatcher* dispatcher,
+                        ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
+  GlobalVocbase = vocbase;
   GlobalV8Dealer = applicationV8;
 
   // check the isolate
@@ -928,11 +983,22 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
+
+  // we need a scheduler and a dispatcher to define periodic tasks
+  GlobalScheduler = scheduler->scheduler();
+  GlobalDispatcher = dispatcher->dispatcher();
+
+  if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
+    TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_PERIODIC", JS_DefinePeriodic);
+  }
+  else {
+    LOG_ERROR("cannot initialise definePeriodic, scheduler or dispatcher unknown");
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

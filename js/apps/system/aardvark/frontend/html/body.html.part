@@ -1,3 +1,4 @@
+</head>
 <body>
   <nav class="navbar">
     <div class="resizecontainer">
@@ -8,13 +9,15 @@
         </div>
         <div class="usermenu" id="userBar" style="float:right;">
         </div>
+        <div class="notificationmenu" id="notificationBar" style="float:right;">
+        </div>
         <div class="navmenu" id="navigationBar">
         </div>
     </div>
   </nav>
 
   <div class="centralRow resizecontainer">
-    <div id="content" class="span12"></div>
+    <div id="content" class="centralContent"></div>
   </div>
 
   <div id="modalPlaceholder">

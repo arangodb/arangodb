@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, Backbone, $, window */
+/*global window, Backbone, $,_, window */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -13,6 +13,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   url: "/_api/user",
 
+  comparator : function(obj) {
+    return obj.get("user").toLowerCase();
+  },
+
   initialize: function() {
     //check cookies / local storage
   },
@@ -25,6 +29,12 @@ window.ArangoUsers = Backbone.Collection.extend({
   logout: function () {
     this.activeUser = undefined;
     this.reset();
+    $.ajax("unauthorized", {async:false}).error(
+      function () {
+        window.App.navigate("");
+        window.location.reload();
+      }
+    );
   },
 
   setUserSettings: function (identifier, content) {
@@ -63,8 +73,29 @@ window.ArangoUsers = Backbone.Collection.extend({
       error: function(data) {
       }
     });
-  }
+  },
 
+  parse: function(response)  {
+    var result = [];
+    _.each(response.result, function(object) {
+      result.push(object);
+    });
+    return result;
+  },
+
+  whoAmI: function() {
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+    var result;
+    $.ajax("whoAmI", {async:false}).done(
+      function(data) {
+        result = data.name;
+      }
+    );
+    this.currentUser = result;
+    return this.currentUser;
+  }
 
 
 });

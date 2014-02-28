@@ -1,4 +1,5 @@
-<a href="#" class="tab" id="dbselection">DB: <%=current%> <b class="caret"></b></a>
+<script id="dbSelectionView.ejs" type="text/template">
+<a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
 <ul class="link-dropdown-menu" id="dbs_dropdown">
 <%
 if (list.length > 1) {
@@ -12,7 +13,7 @@ if (list.length > 1) {
       }
   %>
     <li class="dropdown-item">
-        <a id=<%=i%> class="dbSelectionLink" href="#"><%=i%></a>
+        <a id=<%=i%> class="dbSelectionLink tab" href="#"><%=i%></a>
     </li>
   <%
     });
@@ -22,6 +23,9 @@ if (list.length > 1) {
 %>
     <% if (current === "_system") { %>
     <li class="dropdown-header">Manager</li>
-    <li id="databaseNavi" class="dropdown-item"><a id="databases" class="" href="#databases">Manage DBs</a></li>
+    <li id="databaseNavi" class="dropdown-item">
+      <a id="databases" class="tab" href="#databases">Manage DBs</a>
+    </li>
     <% } %>
 </ul>
+</script>

@@ -1,3 +1,4 @@
+<script id="collectionView.ejs" type="text/template">
 <div id="change-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -20,7 +21,13 @@
           <tr id="collectionSizeBox" style="display:none">
             <th class="collectionTh">Journal size:</th>
             <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
-            <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="arangoicon icon_arangodb_info" style="color:black"></span></a></th>
+            <th>
+              <div>
+              <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
+                <span rel="tooltip" class="arangoicon icon_arangodb_info" style="color:black"></span>
+              </a>
+                </div>
+            </th>
           </tr>
           <tr id="collectionSyncBox" style="display:none">
             <th class="collectionTh">Wait for sync:</th>
@@ -30,7 +37,13 @@
                 <option value="true">Yes</option>
               </select> 
             </th> 
-            <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="arangoicon icon_arangodb_info" style="color:black"></span></a></th>
+            <th>
+              <div>
+              <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
+                <span class="arangoicon icon_arangodb_info" style="color:black"></span>
+              </a>
+              </div>
+            </th>
           </tr> 
 
           <tr>
@@ -63,14 +76,14 @@
 
   </div>
   <div id="colFooter" class="modal-footer">
-    <button id="delete-modified-collection" class="btn btn-danger">Delete</button>
-    <button id="save-modified-collection" class="btn btn-success" style="margin-right:8px">Save</button>
+    <button id="delete-modified-collection" class="button-danger">Delete</button>
+    <button id="save-modified-collection" class="button-success" style="margin-right:8px">Save</button>
     <button class="btn btn-close btn-margin" data-dismiss="modal" aria-hidden="true">Close</button>
   </div>
   <div class="alert alert-error" style="display:none" id="reallyDeleteColDiv">
     <strong>Really delete Collection?</strong>
-    <button id="confirmDeleteCollection" class="btn btn-danger pull-right" style="margin-top: -4px; margin-right: -18px !important;">Yes</button>
-    <button id="abortDeleteCollection" class="btn pull-right" style="margin-top: -4px; margin-right:10px;">No</button>
+    <button id="confirmDeleteCollection" class="button-danger pull-right" style="margin-top: -4px; margin-right: -18px !important;">Yes</button>
+    <button id="abortDeleteCollection" class="button-neutral pull-right" style="margin-top: -4px; margin-right:10px;">No</button>
   </div>
 </div>
-
+</script>

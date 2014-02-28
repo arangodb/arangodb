@@ -1,3 +1,4 @@
+<script id="documentsView.ejs" type="text/template">
 <ul class="thumbnails2">
   <div id="transparentHeader" class="headerBar">
     <div id="documentsToolbar" class="headerButtonBar pull-right">
@@ -37,9 +38,9 @@
 </ul>
 
 <div class="arangoDropdown">
-  <div id="filterHeader" style="display:none">
+  <div id="filterHeader" class="headerDropdown">
     <div class="queryline">
-       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
            <option value="==">==</option>
            <option value="!=">!=</option>
            <option value="&lt;">&lt;</option>
@@ -48,21 +49,21 @@
            <option value="&gt;=">&gt;=</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
         <a id="addFilterItem"><i class="icon-plus"></i></a>
-        <button id="resetView" class="btn btn-primary btn-success btn-old-padding">Reset</button>
-        <button id="filterSend" class="btn btn-primary btn-success btn-old-padding">Filter</button>
+        <button id="resetView" class="button-warning btn-old-padding">Reset</button>
+        <button id="filterSend" class="button-success btn-old-padding">Filter</button>
     </div>
   </div>
 
-  <div id="importHeader" class="dropdownImport" style="display:none">
+  <div id="importHeader" class="dropdownImport">
     <div class="queryline">
       <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
-      <button id="confirmDocImport" class="btn btn-success btn-old-padding" style="float:right">
+      <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
         <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import JSON
       </button>
     </div>
   </div>
 
-  <div id="indexHeader"class="dropdownIn" style="display:none">
+  <div id="indexHeader" class="headerDropdown">
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
           <a>Indexes:</a>
@@ -75,7 +76,7 @@
               <th class="collectionInfoTh">Action</th>
             </tr>
           </table>
-          <button id="addIndex" class="btn btn-primary btn-success">Add Index</button>
+          <button id="addIndex" class="button-success">Add Index</button>
       </div>
 
         <div id="newIndexView" style="display:none">
@@ -193,8 +194,8 @@
             </table>
           </div>
 
-          <button id="createIndex" class="btn btn-success">Save</button>
-          <button id="cancelIndex" class="btn btn-danger">Cancel</button>
+          <button id="createIndex" class="button-success">Save</button>
+          <button id="cancelIndex" class="button-danger">Cancel</button>
 
     </div>
   </div>
@@ -233,7 +234,7 @@
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="confirmDeleteBtn" class="btn btn-danger" style="float:right" disabled="true">Delete</button>
+    <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
   </div>
 </div>
 
@@ -248,7 +249,7 @@
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="confirmDeleteIndexBtn" class="btn btn-danger" style="float:right">Delete</button>
+    <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
   </div>
 </div>
 
@@ -275,6 +276,7 @@
   </div>
   <div class="modal-footer">
     <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="confirmCreateEdge" class="btn btn-success" style="float:right">Create</button>
+    <button id="confirmCreateEdge" class="button-success" style="float:right">Create</button>
   </div>
 </div>
+</script>

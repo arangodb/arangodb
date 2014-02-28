@@ -6,20 +6,18 @@
   window.UserBarView = Backbone.View.extend({
 
     events: {
-      "change #userBarSelect": "navigateBySelect",
-      "click .tab": "navigateByTab",
-      "mouseenter .dropdown": "showDropdown",
-      "mouseleave .dropdown": "hideDropdown",
-      "click .navlogo #stat_hd" : "toggleNotification",
-      "click .notificationItem .fa" : "removeNotification"
+      "change #userBarSelect"         : "navigateBySelect",
+      "click .tab"                    : "navigateByTab",
+      "mouseenter .dropdown"          : "showDropdown",
+      "mouseleave .dropdown"          : "hideDropdown",
+      "click #userLogout"             : "userLogout"
     },
 
     initialize: function () {
-      this.collection.bind("add", this.renderNotifications.bind(this));
-      this.collection.bind("remove", this.renderNotifications.bind(this));
+      this.userCollection = this.options.userCollection;
+      this.userCollection.fetch({async:false});
+      this.userCollection.bind("change:extra", this.render.bind(this));
     },
-
-    notificationItem: templateEngine.createTemplate("notificationItem.ejs"),
 
     template: templateEngine.createTemplate("userBarView.ejs"),
 
@@ -41,10 +39,6 @@
       e.preventDefault();
     },
 
-    toggleNotification: function (e) {
-      $('#notification_menu').toggle();
-    },
-
     showDropdown: function (e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
@@ -55,52 +49,46 @@
     },
 
     hideDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === "") {
-        tab = $(tab).closest(".user-dropdown-menu");
-        navigateTo = tab.attr("id");
-      }
-      if (navigateTo === "user" || navigateTo === "user_dropdown" || navigateTo === "userimage" ) {
-        $("#user_dropdown").hide();
-        return;
-      }
-    },
-
-    updateNotifications: function() {
-      this.renderNotifications();
-    },
-
-    removeNotification: function(e) {
-      var cid = e.target.id;
-      this.collection.get(cid).destroy();
-    },
-
-    renderNotifications: function() {
-      $('.innerDropdownInnerUL').html(this.notificationItem.render({
-        notifications : this.collection
-      }));
+      $("#user_dropdown").hide();
     },
 
     render: function (el) {
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
-      this.collection.add({content:"title", title:"test"});
+      var username = this.userCollection.whoAmI(),
+        img = null,
+        name = null,
+        active = false,
+        currentUser = null;
+      if (username !== null) {
+        currentUser = this.userCollection.findWhere({user: username});
+        currentUser.set({loggedIn : true});
+        name = currentUser.get("extra").name;
+        img = currentUser.get("extra").img;
+        active = currentUser.get("active");
+      }
+      if (!img) {
+        img = "img/arangodblogoAvatar_24.png";
+      } else {
+        img = "https://s.gravatar.com/avatar/" + img + "?s=24";
+      }
+      if (!name) {
+        name = "";
+      }
 
-      this.$el = el;
+      this.$el = $("#userBar");
       this.$el.html(this.template.render({
-        img : "https://s.gravatar.com/avatar/9c53a795affc3c3c03801ffae90e2e11?s=80",
-        prename : "Floyd",
-        lastname : "Pepper",
-        notifications : this.collection
+        img : img,
+        name : name,
+        username : username,
+        active : active
       }));
 
-      this.renderNotifications();
-
       this.delegateEvents();
-      this.updateNotifications();
       return this.$el;
+    },
+
+    userLogout : function() {
+      this.userCollection.whoAmI();
+      this.userCollection.logout();
     }
   });
 }());

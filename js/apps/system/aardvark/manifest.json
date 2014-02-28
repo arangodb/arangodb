@@ -14,6 +14,7 @@
       "files": [
         "frontend/html/start.html.part",
         "frontend/html/headadmin.html.part",
+        "frontend/js/templates/**",
         "frontend/html/body.html.part",
         "frontend/html/scriptsadmin.html.part",
         "frontend/html/end.html.part"
@@ -65,27 +66,21 @@
 
     "libs.js": {
       "files": [
-        "frontend/js/lib/jquery-1.8.3.js",
+        "frontend/js/lib/jquery-2.1.0.min.js",
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
         "frontend/js/lib/jquery.dataTables.js",
-        "frontend/js/lib/jquery.autogrow.js",
-        "frontend/js/lib/jquery.jeditable.js",
-        "frontend/js/lib/jquery.jeditable.autogrow.js",
         "frontend/js/lib/jquery.snippet.js",
-        "frontend/js/lib/jquery.gritter.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
-        "frontend/js/lib/jquery.ba-bbq.min.js",
         "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
+        "frontend/js/lib/jsoneditor-min.js",
         "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/nv.d3.js",
         "frontend/js/lib/d3.fisheye.js",
         "frontend/js/lib/ColVis.js",
-        "frontend/js/lib/ejs_fulljslint.js",
-        "frontend/js/lib/ejs_0.9_alpha_1_production.js",
         "frontend/js/lib/bootstrap.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
@@ -124,15 +119,12 @@
         "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
-        "frontend/css/databaseView.css",
-        "frontend/css/documentSourceView.css",
         "frontend/css/swaggerView.css",
         "frontend/css/foxxView.css",
         "frontend/css/graphView.css",
         "frontend/css/loginView.css",
         "frontend/css/dbSelectionView.css",
         "frontend/css/jquery.snippet.css",
-        "frontend/css/jquery.gritter.css",
         "frontend/css/modal.css",
         "frontend/css/ansi.css",
         "frontend/css/graphlayout.css",
@@ -140,9 +132,8 @@
         "frontend/css/api.css",
         "frontend/css/general.css",
         "frontend/css/headerBar.css",
-        "frontend/css/buttons.css",
-        "frontend/css/dropdowns.css",
         "frontend/css/screenSizes.css",
+        "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]
     }
@@ -154,7 +145,6 @@
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
-    "/js/templates" : "frontend/js/templates",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/" : "frontend/src"
   },

@@ -15,14 +15,13 @@
     template: templateEngine.createTemplate("shellView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
 
       this.replShell();
 
       $("#shell_workspace").trigger("resize", [ 150 ]);
 
       this.resize();
-      $.gritter.removeAll();
 
       // evil: the resize event is globally bound to window, but there is
       // no elegant alternative... (is there?)

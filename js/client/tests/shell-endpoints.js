@@ -28,8 +28,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var arango = arangodb.arango;
@@ -46,7 +44,6 @@ var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function EndpointsSuite () {
-
   var cleanupEndpoints = function () {
     db._useDatabase("_system");
 
@@ -95,7 +92,8 @@ function EndpointsSuite () {
         }
       }
 
-      arango.reconnect(originalEndpoint, "", "root", "");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
+      db._useDatabase("_system");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +385,6 @@ function EndpointsSuite () {
 jsunity.run(EndpointsSuite);
 
 return jsunity.done();
-}());
 
 // Local Variables:
 // mode: outline-minor

@@ -5,7 +5,6 @@
   "use strict";
   window.CollectionsView = Backbone.View.extend({
     el: '#content',
-    /*el2: '.thumbnails',*/
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
@@ -21,7 +20,7 @@
         dropdownVisible = true;
       }
 
-      $(this.el).html(this.template.text);
+      $(this.el).html(this.template.render({}));
       this.setFilterValues();
 
       if (dropdownVisible === true) {
@@ -63,6 +62,7 @@
 
       return this;
     },
+
     events: {
       "keydown #searchInput" : "restrictToSearchPhraseKey",
       "change #searchInput"   : "restrictToSearchPhrase",
@@ -75,11 +75,18 @@
       "click #sortName"       : "sortName",
       "click #sortType"       : "sortType",
       "click #sortOrder"      : "sortOrder",
-      "click #collectionsToggle"     : "toggleView"
+      "click #collectionsToggle"     : "toggleView",
+      "click .css-label" : "checkBoxes"
     },
 
     toggleView: function() {
       $('#collectionsDropdown2').slideToggle(200);
+    },
+
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
     },
 
     checkSystem: function () {

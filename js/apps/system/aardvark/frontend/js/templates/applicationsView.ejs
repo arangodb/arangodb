@@ -1,8 +1,7 @@
+<script id="applicationsView.ejs" type="text/template">
 <ul class="thumbnails2">
   <div class="headerBar">
-    <div class="pull-left">
-      <a class="arangoHeader">Applications</a>
-    </div>
+    <a class="arangoHeader">Applications</a>
 
     <div class="headerButtonBar pull-right">
       <ul class="headerButtonList">
@@ -52,10 +51,10 @@
     </div>
   </div>
 
-  <div id="foxxDropdownImport" class="headerDropdown">
-    <div id="foxxDropdownImportInner" class="dropdownImport">
+  <div id="foxxDropdownImport" class="dropdownImport">
+    <div class="queryline">
       <input id="importFoxx" name="importFoxx" type="file" accept="application/zip" />
-      <button id="confirmFoxxImport" class="btn btn-success btn-old-padding" style="float:right">
+      <button id="confirmFoxxImport" class="button-success btn-old-padding" style="float:right">
         <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import Foxx
       </button>
     </div>
@@ -63,19 +62,20 @@
 </ul>
 
 
-<ul class="thumbnails foxxList">
-  <li id="installed" class="span12 applicationList">
-    <div class="boxHeader applicationListHeader">
-      <i id="toggleInstalled" class="pull-right icon-minus icon-white toggle-icon"></i>
-      <h5>Active or Installed</h5>
+<div class="contentDiv">
+  <div id="installed">
+    <div class="headerBar">
+      <!-- <i id="toggleInstalled" class="pull-right icon-minus icon-white toggle-icon"></i> -->
+      <a class="arangoHeader">Active</a>
     </div>
-    <div id="installedList"></div>
-  </li>
-  <li id="available" class="span12 applicationList">
-    <div class="boxHeader applicationListHeader">
-      <i id="toggleAvailable" class="pull-right icon-minus icon-white toggle-icon"></i>
-      <h5>Available</h5>
+    <ul id="installedList" class="tileList"></ul>
+  </div>
+  <div id="available">
+    <div class="headerBar">
+      <!-- <i id="toggleAvailable" class="pull-right icon-minus icon-white toggle-icon"></i> -->
+      <a class="arangoHeader">Available</a>
     </div>
-    <div id="availableList"></div>
-  </li>
-</ul>
+    <ul id="availableList" class="tileList"></ul>
+  </div>
+</div>
+</script>

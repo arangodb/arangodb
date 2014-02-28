@@ -98,7 +98,10 @@ nbproject/
 
 test.cpp.txt
 
+.sass-cache
+
 js/apps/*
 !js/apps/system
 !js/apps/system/*
 
+.sass-cache/
