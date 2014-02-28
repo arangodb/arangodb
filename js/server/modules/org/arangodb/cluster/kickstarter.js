@@ -252,7 +252,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
     if (roles[i] === "DBserver") {
-      args = ["--configuration", ArangoServerState.DBserverConfig()];
+      args = ["--configuration", ArangoServerState.dbserverConfig()];
     }
     else {
       args = ["--configuration", ArangoServerState.coordinatorConfig()];
