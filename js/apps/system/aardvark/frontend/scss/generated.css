@@ -81,22 +81,22 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   z-index: 1000;
   display: none;
   padding: 5px 0px;
-  margin: 2px 0px 0px;
+  margin: 5px 0px 0px;
   list-style: none;
   background-color: white;
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.2);
   border-width: 1px;
-  -moz-border-radius: 6px;
-  -webkit-border-radius: 6px;
-  border-radius: 6px; }
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px; }
   ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.gv-dropdown-menu li {
     line-height: 20px;
     white-space: nowrap;
     width: 100%; }
   ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
-    font-weight: bold;
-    font-size: 11px;
+    font-weight: 400;
+    font-size: 13px;
     color: #999999;
     padding: 0px 20px;
     text-transform: uppercase; }
