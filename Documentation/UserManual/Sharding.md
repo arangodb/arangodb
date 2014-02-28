@@ -24,7 +24,8 @@ right DBservers.
 
 As a central highly available service to hold the cluster configuration
 and to synchronise reconfiguration and failover operations we currently
-use a an external program called `etcd`. It provides a hierarchical
+use a an external program called `etcd` (see [github
+page](https://github.com/coreos/etcd)). It provides a hierarchical
 key value store with strong consistency and reliability promises.
 This is called the "agency" and its processes are called "agents".
 
@@ -44,7 +45,11 @@ This latter phase uses so-called "dispatchers". A dispatcher is yet another
 ArangoDB instance and you have to install exactly one such instance on
 every machine that will take part in your cluster. No special
 configuration whatsoever is needed and you can organise authentication
-exactly as you would in a normal ArangoDB instance.
+exactly as you would in a normal ArangoDB instance. You only have
+to activate the dispatcher functionality in the configuration file
+(see options `cluster.disable-dispatcher-kickstarter` and
+`cluster.disable-dispatcher-interface`, which are both initially
+set to `true` in the standard setup we ship).
 
 However, you can use any of these dispatchers to plan and start your
 cluster. In the planning phase, you have tell the planner about all
@@ -67,9 +72,13 @@ How to try it out {#ShardingTryItOut}
 
 In this text we assume that you are working with a standard installation
 of ArangoDB with version at least 2.0. This means that everything
-is compiled for cluster operation and that `etcd` is compiled and
-the executable is installed in the same place as your `arangod`
-executable.
+is compiled for cluster operation, that `etcd` is compiled and
+the executable is installed in the location mentioned in the
+configuration file. The first step is to switch on the dispatcher
+functionality in your configuration of `arangod`. For this change
+the `cluster.disable-dispatcher-kickstarter` and
+`cluster.disable-dispatcher-interface` options in `arangod.conf` both
+to `false`.
 
 We will first plan and launch a cluster, such that all your servers run
 on the local machine.
@@ -204,7 +213,8 @@ is two different dispatchers. We start from scratch using two machines,
 running on the network addresses `tcp://192.168.173.78:8529` and
 `tcp://192.168.173.13:6789`, say. Both need to have a regular ArangoDB
 instance installed and running, please make sure that both bind to
-all network devices, such that they can talk to each other.
+all network devices, such that they can talk to each other. Also enable
+the dispatcher functionality on both of them as described above.
 
     arangodb> var Planner = require("org/arangodb/cluster").Planner;
     arangodb> var p = new Planner({
@@ -235,8 +245,13 @@ of the sharding extensions. However, not all planned features are
 included in this release. In particular, automatic failover is fully
 prepared in the architecture but is not yet implemented. If you use
 Version 2.0 in cluster mode in a production system, you have to
-organise failure recovery manually. This section provides an overview
-over the implemented and future features.
+organise failure recovery manually. This is, why at this stage with
+Version 2.0 we do not yet recommend to use the cluster mode in
+production systems. If you really need this feature now, please contact
+us.
+
+This section provides an overview over the implemented and future
+features.
 
 In normal single instance mode, ArangoDB works completely as usual
 with the same performance and functionality as in previous releases.

@@ -302,7 +302,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
-    _disableClusterDispatcher(true),
     _removeOnCompacted(true),
     _removeOnDrop(true),
     _server(0) {
@@ -534,7 +533,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
 #ifdef TRI_ENABLE_CLUSTER
-  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8, _argv[0]);
+  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
 
   if (_applicationCluster == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
@@ -560,7 +559,6 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
-    ("server.disable-cluster-dispatcher", &_disableClusterDispatcher, "do not act as a cluster dispatcher")
   ;
 
   bool disableStatistics = false;
@@ -622,8 +620,6 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
   }
-
-  _applicationV8->defineBoolean("DISABLE_CLUSTER_DISPATCHER", _disableClusterDispatcher);
 
   // .............................................................................
   // set language of default collator
