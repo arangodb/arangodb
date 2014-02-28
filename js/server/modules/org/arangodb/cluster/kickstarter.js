@@ -367,7 +367,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
     var hdrs = {};
     if (dispatchers[cmd.dispatcher].username !== undefined &&
-        dispatchers[cmd.disptacher].passwd !== undefined) {
+        dispatchers[cmd.dispatcher].passwd !== undefined) {
       hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
     }
     download(url,"",{method:"GET", headers: hdrs});
