@@ -44,6 +44,10 @@
    * given in the body
    */
 
+  controller.get("/amIDispatcher", function(req, res) {
+    res.json(!cluster.dispatcherDisabled());
+  });
+
   if (!cluster.dispatcherDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
