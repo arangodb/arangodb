@@ -27,6 +27,7 @@ etc/arangodb/%$(PROGRAM_SUFFIX).conf: etc/arangodb/%.conf.in Makefile
 		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		-e 's%@SYSCONFDIR@%${TRI_SYSCONFDIR}%g' \
+		-e 's%@PROGRAM_SUFFIX@%${PROGRAM_SUFFIX}%g' \
 		$< > $@
 
 ## -----------------------------------------------------------------------------

@@ -20,11 +20,11 @@ if ENABLE_INTERNAL_GO
 else
 	cd @top_srcdir@/3rdParty/etcd && ./build
 endif
-	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango
+	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX)
 
 if ENABLE_DARWIN
 else
-	strip @top_srcdir@/bin/etcd-arango
+	strip @top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX)
 endif
 
 	@echo
