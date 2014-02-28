@@ -159,8 +159,7 @@ v1.5.0 (XXXX-XX-XX)
   currently only implemented for hash indices and skiplist indices.
 
 
-v1.4.11 (XXXX-XX-XX)
---------------------
+v1.4.11 (2014-02-27)
 
 * added SHORTEST_PATH AQL function 
 
