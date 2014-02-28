@@ -807,6 +807,8 @@ SimpleQueryByExample.prototype.clone = function () {
   query = new SimpleQueryByExample(this._collection, this._example);
   query._skip = this._skip;
   query._limit = this._limit;
+  query._type = this._type;
+  query._index = this._index;
 
   return query;
 };
@@ -883,6 +885,8 @@ SimpleQueryByCondition.prototype.clone = function () {
   query = new SimpleQueryByCondition(this._collection, this._condition);
   query._skip = this._skip;
   query._limit = this._limit;
+  query._type = this._type;
+  query._index = this._index;
 
   return query;
 };

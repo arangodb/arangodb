@@ -175,14 +175,6 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameCapConstraint (TRI_index_t const* idx) {
-  return "cap";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -299,8 +291,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
 
   idx = &cap->base;
 
-  idx->typeName = TypeNameCapConstraint;
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->json        = JsonCapConstraint;

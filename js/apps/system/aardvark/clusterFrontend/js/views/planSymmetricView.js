@@ -8,6 +8,7 @@
     el: "#content",
     template: templateEngine.createTemplate("symmetricPlan.ejs"),
     entryTemplate: templateEngine.createTemplate("serverEntry.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
       "click #startSymmetricPlan": "startPlan",
@@ -16,6 +17,8 @@
     },
 
     startPlan: function() {
+      $('#waitModalLayer').modal('show');
+      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
       var isDBServer;
       var isCoordinator;
       var self = this;
@@ -32,7 +35,11 @@
           if (!self.isSymmetric) {
               hostObject.isDBServer = !!$(".isDBServer", dispatcher).attr('checked');
               hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).attr('checked');
+          } else {
+            hostObject.isDBServer = true;
+            hostObject.isCoordinator = true;
           }
+
           foundCoordinator = foundCoordinator || hostObject.isCoordinator;
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
@@ -60,6 +67,7 @@
         data,
         {
           success : function(info) {
+            $('#waitModalLayer').modal('hide');
             window.App.navigate("showCluster", {trigger: true});
           }
         }
@@ -86,6 +94,8 @@
         isSymmetric: isSymmetric,
         isFirst: true
       }));
+      $(this.el).append(this.modal.render({}));
+
     }
   });
 

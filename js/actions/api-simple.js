@@ -333,8 +333,8 @@ function setupIndexQuery (name, func, isExampleQuery) {
               actions.badParameter(req, res, "condition");
               return;
             }
-            
-            result = collection[func](index, body.condition, skip, limit);
+         
+            result = collection[func](index, body.condition);
           }
             
           if (skip > 0) {
