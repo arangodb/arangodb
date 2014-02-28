@@ -77,7 +77,11 @@
     addEntry: function() {
       $("#server_list").append(this.entryTemplate.render({
         isSymmetric: this.isSymmetric,
-        isFirst: false
+        isFirst: false,
+        isCoordinator: true,
+        isDBServer: true,
+        host: '',
+        port: ''
       }));
     },
 
@@ -88,12 +92,53 @@
     render: function(isSymmetric) {
       this.isSymmetric = isSymmetric;
       $(this.el).html(this.template.render({
-        isSymmetric : isSymmetric
+        isSymmetric : isSymmetric,
+        params      : params
       }));
-      $("#server_list").append(this.entryTemplate.render({
-        isSymmetric: isSymmetric,
-        isFirst: true
-      }));
+      var params = {},
+        isFirst = true,
+        config = this.model.get("config");
+      if (config) {
+        var self = this,
+        isCoordinator = false,
+        isDBServer = false;
+        _.each(config.dispatchers, function(dispatcher, key) {
+          if (dispatcher.allowDBservers === undefined) {
+            isDBServer = true;
+          } else {
+            isDBServer = dispatcher.allowDBservers;
+          }
+          if (dispatcher.allowCoordinators === undefined) {
+            isCoordinator = true;
+          } else {
+            isCoordinator = dispatcher.allowCoordinators;
+          }
+          var host = dispatcher.endpoint,
+            ip,
+            port;
+          host = host.split("//")[1];
+          host = host.split(":");
+          var template = self.entryTemplate.render({
+            isSymmetric: isSymmetric,
+            isFirst: isFirst,
+            host: host[0],
+            port: host[1],
+            isCoordinator: isCoordinator,
+            isDBServer: isDBServer
+          });
+          $("#server_list").append(template);
+          isFirst = false;
+        });
+      } else {
+        $("#server_list").append(this.entryTemplate.render({
+          isSymmetric: isSymmetric,
+          isFirst: true,
+          isCoordinator: true,
+          isDBServer: true,
+          host: '',
+          port: ''
+        }));
+      }
       $(this.el).append(this.modal.render({}));
 
     }
