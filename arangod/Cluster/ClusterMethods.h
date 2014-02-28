@@ -47,6 +47,7 @@
 
 extern "C" {
   struct TRI_json_s;
+  struct TRI_vector_pointer_s;
 }
 
 namespace triagens {
@@ -197,11 +198,14 @@ namespace triagens {
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  map<string, string>& resultHeaders,
                  string& resultBody);
- 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get indexes from coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    struct TRI_vector_pointer_s* getIndexesCoordinator (std::string const&,
+                                                        std::string const&);
+ 
   }  // namespace arango
 }   // namespace triagens
 

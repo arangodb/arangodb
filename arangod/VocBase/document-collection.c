@@ -1403,7 +1403,7 @@ static int AddIndex (TRI_document_collection_t* document,
   assert(idx != NULL);
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
-            idx->typeName(idx),
+            TRI_TypeNameIndex(idx->_type),
             document->base.base._info._name);
 
   res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);

@@ -238,14 +238,6 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
-  return "geo1";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -291,14 +283,6 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
-  return "geo2";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -515,8 +499,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  idx->typeName = TypeNameGeo1Index;
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, primary, unique);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -571,8 +554,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  idx->typeName = TypeNameGeo2Index;
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, primary, unique);
 
   idx->_ignoreNull = ignoreNull;
   

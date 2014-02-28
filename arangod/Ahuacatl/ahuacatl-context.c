@@ -83,8 +83,9 @@ static void FreeCollections (TRI_aql_context_t* const context) {
 
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    if (collection) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+
+    if (collection != NULL) {
+      TRI_FreeCollectionAql(collection);
     }
   }
   TRI_DestroyVectorPointer(&context->_collections);
