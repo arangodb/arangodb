@@ -42,7 +42,6 @@
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-            console.log(trigger, args);
             if (this.currentRoute === "dashboard") {
                 this.dashboardView.stopUpdating();
             }
@@ -127,7 +126,7 @@
               async:false
           });
       }
-      if (this.statistics === undefined) {
+      if (this.statisticsCollection === undefined) {
           this.statisticsCollection = new window.StatisticsCollection();
       }
       if (this.dashboardView === undefined) {

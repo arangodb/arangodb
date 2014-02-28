@@ -232,7 +232,6 @@
                 var groups = {};
                 figures.forEach(function(f) {
                     var g = f.split(".")[0];
-                    console.log("ggg", g);
                     if (!groups[g]) {
                         groups[g] = [];
                     }

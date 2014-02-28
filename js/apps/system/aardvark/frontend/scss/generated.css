@@ -939,9 +939,6 @@ select.filterSelect {
   float: left;
   margin-right: 3px; }
 
-.contentDiv {
-  background-color: white; }
-
 #dashboardHttpGroup {
   width: 100%;
   height: 100%;
@@ -960,6 +957,7 @@ select.filterSelect {
   bottom: 10px; }
 
 .dashboardChart {
+  background-color: white;
   position: relative;
   width: 31%;
   height: 270px;
