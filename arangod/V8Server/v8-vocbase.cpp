@@ -1520,6 +1520,11 @@ static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* co
   }
 
   if (resultJson == 0) {
+    if (! create) {
+      // did not find a suitable index
+      return scope.Close(v8::Null());
+    }
+
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
