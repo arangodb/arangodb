@@ -9,12 +9,15 @@
     el: "#content",
 
     template: templateEngine.createTemplate("testPlan.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
       "click #startTestPlan": "startPlan"
     },
 
     startPlan: function() {
+      $('#waitModalLayer').modal('show');
+      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
       var h = $("#host").val(),
         p = $("#port").val(),
         c = $("#coordinators").val(),
@@ -44,6 +47,7 @@
         },
         {
           success : function(info) {
+            $('#waitModalLayer').modal('hide');
             window.App.navigate("showCluster", {trigger: true});
           }
         }
@@ -68,6 +72,7 @@
         param.port = window.location.port; 
       }
       $(this.el).html(this.template.render(param));
+      $(this.el).append(this.modal.render({}));
     }
   });
 
