@@ -102,6 +102,14 @@ function PortFinder (list, dispatcher) {
   this.port = 0;
 }
 
+function getAuthorizationHeader (username, passwd) {
+  return "Basic " + base64Encode(username + ":" + passwd);
+}
+
+function getAuthorization (dispatcher) {
+  return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
+}
+
 PortFinder.prototype.next = function () {
   while (true) {   // will be left by return when port is found
     if (this.pos < this.list.length) {
@@ -125,7 +133,13 @@ PortFinder.prototype.next = function () {
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
                   "/_admin/clusterCheckPort?port="+this.port;
-        var r = download(url, "", {"method": "GET", "timeout": 5});
+        var hdrs = {};
+        if (this.dispatcher.username !== undefined &&
+            this.dispatcher.passwd !== undefined) {
+          hdrs.Authorization = getAuthorization(this.dispatcher);
+        }
+        var r = download(url, "", {"method": "GET", "timeout": 5,
+                                   "headers": hdrs });
         if (r.code === 200) {
           available = JSON.parse(r.body);
         }

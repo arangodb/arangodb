@@ -363,7 +363,12 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
-    download(url);
+    var hdrs = {};
+    if (dispatchers[cmd.dispatcher].username !== undefined &&
+        dispatchers[cmd.disptacher].passwd !== undefined) {
+      hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
+    }
+    download(url,"",{method:"GET", headers: hdrs);
   }
   console.info("Waiting 3 seconds for servers to shutdown gracefully...");
   wait(3);
