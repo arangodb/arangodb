@@ -187,42 +187,6 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1203)
       end
       
-      it "returns an error when using a non-declared collection" do
-        cmd = api
-        body = "{ \"collections\" : { \"write\": \"#{@cn1}\" }, \"action\" : \"function () { require(\\\"internal\\\").db.#{@cn2}.save({ }); }\" }"
-        doc = ArangoDB.log_post("#{prefix}-non-declared-collection", cmd, :body => body)
-        
-        doc.code.should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(1652)
-      end
-
-      it "returns an error when using a collection in invalid mode" do
-        cmd = api
-        body = "{ \"collections\" : { \"read\": \"#{@cn1}\" }, \"action\" : \"function () { require(\\\"internal\\\").db.#{@cn1}.save({ }); }\" }"
-        doc = ArangoDB.log_post("#{prefix}-invalid-mode1", cmd, :body => body)
-        
-        doc.code.should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(1652)
-      end
-
-      it "returns an error when using a collection in invalid mode" do
-        cmd = api
-        body = "{ \"collections\" : { \"read\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"function () { require(\\\"internal\\\").db.#{@cn1}.save({ }); }\" }"
-        doc = ArangoDB.log_post("#{prefix}-invalid-mode2", cmd, :body => body)
-        
-        doc.code.should eq(400)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(1652)
-      end
-
       it "returns an error when using a disallowed operation" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function () { require(\\\"internal\\\").db._create(\\\"abc\\\"); }\" }"
@@ -441,20 +405,6 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(2);
       end
 
-      it "aborting" do
-        cmd = api
-        body = "{ \"collections\" : { \"write\": \"#{@cn}\" }, \"action\" : \"function () { var c = require(\\\"internal\\\").db.UnitTestsTransactions; c.save({ }); c.save({ }); throw \\\"doh!\\\"; }\" }"
-        doc = ArangoDB.log_post("#{prefix}-single-abort", cmd, :body => body)
-        
-        doc.code.should eq(500)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(500)
-
-        ArangoDB.size_collection(@cn).should eq(0);
-      end
-
     end
 
 ################################################################################
@@ -538,21 +488,6 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn1).should eq(2);
         ArangoDB.size_collection(@cn2).should eq(1);
-      end
-
-      it "aborting" do
-        cmd = api
-        body = "{ \"collections\" : { \"write\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"function () { var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; c1.save({ }); c1.save({ }); c2.save({ }); throw \\\"doh!\\\"; }\" }"
-        doc = ArangoDB.log_post("#{prefix}-multi-abort", cmd, :body => body)
-        
-        doc.code.should eq(500)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(500)
-
-        ArangoDB.size_collection(@cn1).should eq(0);
-        ArangoDB.size_collection(@cn2).should eq(0);
       end
 
     end
