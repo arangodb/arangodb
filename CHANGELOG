@@ -1,6 +1,24 @@
 v2.0.0-alpha1 (2014-02-28)
 --------------------------
 
+* added sharding :-)
+
+* INCOMPATIBLE CHANGE: using complex values in AQL filter conditions with operators other
+  than equality (e.g. >=, >, <=, <) will disable usage of skiplist indexes for filter 
+  evaluation.
+  
+  For example, the following queries will be affected by change:
+
+      FOR doc IN docs FILTER doc.value < { foo: "bar" } RETURN doc
+      FOR doc IN docs FILTER doc.value >= [ 1, 2, 3 ] RETURN doc
+
+  The following queries will not be affected by the change:
+      
+      FOR doc IN docs FILTER doc.value == 1 RETURN doc
+      FOR doc IN docs FILTER doc.value == "foo" RETURN doc
+      FOR doc IN docs FILTER doc.value == [ 1, 2, 3 ] RETURN doc
+      FOR doc IN docs FILTER doc.value == { foo: "bar" } RETURN doc
+
 * added explicit startup parameter `--server.reuse-address`
 
 * removed undocumented REST API method GET `/_admin/database-name`

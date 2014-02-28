@@ -118,7 +118,11 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
   bool ok;
   char* result;
 
-  pid = shaper->findAttributePathByName(shaper, path);
+  pid = shaper->lookupAttributePathByName(shaper, path);
+
+  if (pid == 0) {
+    return NULL;
+  }
 
   ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
@@ -165,7 +169,12 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
     *found = false;
   }
 
-  pid = shaper->findAttributePathByName(shaper, path);
+  pid = shaper->lookupAttributePathByName(shaper, path);
+
+  if (pid == 0) {
+    return false;
+  }
+
   ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
   if (! ok || shape == NULL) {

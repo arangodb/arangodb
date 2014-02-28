@@ -60,8 +60,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 10000000, // in milliseconds
-    defaultHistoryElements: 1, //in days
+    interval: 8000, // in milliseconds
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
@@ -137,14 +136,14 @@
         }
         self.getStatisticHistory({
             figures :  figures
-        })
+        });
         var figs = [{identifier : "uptime", group : "server"}];
         figures.forEach(function(f) {
             figs.push({
                 identifier : f.split(".")[1],
                 group : f.split(".")[0]
             });
-        })
+        });
         self.description = {
             get: function(y) {
                 if (y === "groups") {
@@ -158,7 +157,7 @@
                     return figs;
                 }
             }
-        }
+        };
 
         self.uptime = undefined;
         var chart;
@@ -187,6 +186,12 @@
         this.options.description.fetch({
             async:false
         });
+        if (this.options.server) {
+            this.getStatisticHistory({
+                startDate :  (new Date().getTime() - 20 * 60 * 1000) / 1000
+            });
+            this.calculateSeries();
+        }
         this.description = this.options.description.models[0];
         this.detailChart = {};
         window.App.navigate("#", {trigger: true});
@@ -328,8 +333,7 @@
     initialize: function () {
       this.documentStore = this.options.documentStore;
       this.getStatisticHistory({
-          startDate :  (new Date().getTime() - Math.min(20 * 60 * 1000,
-              this.defaultHistoryElements * 86400 * 1000 )) / 1000
+          startDate :  (new Date().getTime() - 20 * 60 * 1000) / 1000
       });
       this.statisticsUrl = "/_admin/statistics";
       if (this.options.server) {
@@ -377,8 +381,7 @@
             strokeWidth: 2,
             interactionModel :  {},
             axisLabelFont: "Open Sans",
-            dateWindow : [new Date().getTime() - Math.min(20 * 60 * 1000,
-                this.defaultHistoryElements * 86400 * 1000 ),new Date().getTime()],
+            dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
             colors: [this.colors[0]],
             xAxisLabelWidth : "60",
             rollPeriod: this.defaultRollPeriod,
@@ -566,7 +569,7 @@
                 file.push(e);
             } else {
                 i++;
-                if (i > 5 && !hideRangeSelector) {
+                if (i > 3 && !hideRangeSelector) {
                     file.push(e);
                     i = 0;
                 }
@@ -589,7 +592,7 @@
             chart.options.showLabelsOnHighlight = true;
             if (chart.graph.dateWindow_) {
                 borderLeft = chart.graph.dateWindow_[0];
-                borderRight = t - chart.graph.dateWindow_[1] - self.interval * 2 > 0 ?
+                borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
                     chart.graph.dateWindow_[1] : t;
                 file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
             }
@@ -609,7 +612,6 @@
                     self.figureDependedOptions[figure],
                     ["axes"])
             );
-            chart.graph.updateOptions({clickCallback: onclick}, true);
             chart.graph.setSelection(false, 'ClusterAverage', true);
             chart.graphCreated = true;
             if (!createDiv) {
@@ -639,6 +641,9 @@
     },
 
     getStatisticHistory : function (params) {
+        if (this.options.server) {
+            params.server  = this.options.server;
+        }
         this.documentStore.getStatisticsHistory(params);
         this.history = this.documentStore.history;
     },
@@ -675,7 +680,7 @@
                             self.detailChart.figure, self.detailChart.div);
                     }
                 }
-                })
+                });
             },
             self.interval
         );
@@ -700,7 +705,9 @@
     displayBackButtonForClusterView : function () {
         if (this.options.server) {
             $("#dashboardHeader").append(
-                "\<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">\<b>Back to cluster\</b>\</button>"
+                "<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">" +
+                "<b>Back to cluster</b>" +
+                "</button>"
             );
         }
     },

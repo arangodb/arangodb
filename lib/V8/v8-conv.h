@@ -67,15 +67,19 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const&, 
-                                           TRI_shaper_t*);
+                                           TRI_shaper_t*,
+                                           bool,
+                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const& object,
-                                TRI_shaped_json_t* result,
-                                TRI_shaper_t*);
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const&,
+                                TRI_shaped_json_t*,
+                                TRI_shaper_t*,
+                                bool,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a json_t value

@@ -1214,21 +1214,23 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     // check _tick value of marker and set min/max tick values for datafile
     if (tick <= datafile->_tickMin || tick <= (TRI_voc_tick_t) datafile->_fid) {
-      LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
           "expected tick value > tickMin %llu",
           (unsigned long long) tick,
           (int) marker->_type,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMin);
+      assert(false);
     }
 
     if (tick <= datafile->_tickMax) {
-      LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
           "expected tick value > tickMax %llu",
           (unsigned long long) tick,
           (int) marker->_type,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMax);
+      assert(false);
     }
 #endif
 
