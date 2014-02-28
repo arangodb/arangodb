@@ -42,17 +42,32 @@
           numberDBServers: parseInt(d, 10),
           numberCoordinators: parseInt(c, 10)
         },
-        {success : function(info) {
-          console.log("planTestView.js");
-          window.App.navigate("showCluster", {trigger: true});
-        }}
+        {
+          success : function(info) {
+            window.App.navigate("showCluster", {trigger: true});
+          }
+        }
       );
     },
 
     render: function() {
-      $(this.el).html(this.template.render({
-      config : this.model.get("config")
-    }));
+      var param = {};
+      var config = this.model.get("config");
+      if (config) {
+        param.dbs = config.numberOfDBservers;
+        param.coords = config.numberOfCoordinators;
+        var host = config.dispatchers.d1.endpoint;
+        host = host.split("://")[1];
+        host = host.split(":");
+        param.hostname = host[0];
+        param.port = host[1];
+      } else {
+        param.dbs = 3;
+        param.coords = 2;
+        param.hostname = window.location.hostname;
+        param.port = window.location.port; 
+      }
+      $(this.el).html(this.template.render(param));
     }
   });
 

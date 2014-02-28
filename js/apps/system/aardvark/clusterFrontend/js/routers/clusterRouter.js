@@ -107,11 +107,10 @@
       if (!this.clusterDownView) {
         this.clusterDownView = new window.ClusterDownView();
       }
-      this.clusterDownView.render(content);
+      this.clusterDownView.render();
     },
 
     dashboard: function(server) {
-        console.log(server);
       if (this.statisticsDescription === undefined) {
          this.statisticsDescription = new window.StatisticsDescription();
           this.statisticsDescription.fetch({
@@ -121,9 +120,6 @@
       if (this.statistics === undefined) {
           this.statisticsCollection = new window.StatisticsCollection();
       }
-        console.log(this.statisticsCollection);
-        console.log(this.statisticsDescription);
-        console.log( window.arangoDocumentsStore);
       if (this.dashboardView === undefined) {
           this.dashboardView = new dashboardView({
               collection: this.statisticsCollection,
