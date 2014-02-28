@@ -33,7 +33,7 @@
                             "dataType": "Number",
                             "paramType": "query",
                             "name": "start",
-                            "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value)  is greater or equal to <em>start</em>. "
+                            "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value) is greater or equal to <em>start</em>. "
                         },
                         {
                             "dataType": "Number",
@@ -57,7 +57,7 @@
                             "dataType": "String",
                             "paramType": "query",
                             "name": "sort",
-                            "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending  (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. "
+                            "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. "
                         }
                     ],
                     "notes": "Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes: <br><br>- <em>lid</em>: a list of log entry identifiers. Each log message is uniquely  identified by its <b>lid</b> and the identifiers are in ascending   order. <br><br>- <em>level</em>: a list of the log-levels for all log entries.<br><br>- <em>timestamp</em>: a list of the timestamps as seconds since 1970-01-01 for all log  entries. <br><br>- <em>text</em> a list of the texts of all log entries<br><br>- <em>totalAmount</em>: the total amount of log entries before pagination.<br><br>",

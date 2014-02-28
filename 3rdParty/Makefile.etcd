@@ -22,6 +22,11 @@ else
 endif
 	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango
 
+if ENABLE_DARWIN
+else
+	strip @top_srcdir@/bin/etcd-arango
+endif
+
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILD etcd FINISHED"

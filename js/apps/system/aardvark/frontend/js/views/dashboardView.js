@@ -58,21 +58,23 @@
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
-    contentElDistrubtion: '#contentDiv',
-    contentEl: '#contentDiv',
-    interval: 10000, // in milliseconds
+    contentEl: '.contentDiv',
+    distributionChartDiv : "#distributionChartDiv",
+    interval: 3000, // in milliseconds
     defaultHistoryElements: 1, //in days
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
     events: {
-      "dblclick .dashboardChart"      : "showDetail",
+      "dblclick .innerDashboardChart"      : "showDetail",
       "mousedown .dygraph-rangesel-zoomhandle"      : "stopUpdating",
       "mouseup .dygraph-rangesel-zoomhandle"      : "startUpdating",
       "mouseleave .dygraph-rangesel-zoomhandle"      : "startUpdating"
 
     },
+
+    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "residentSize", "requestsTotal"],
 
     chartTypeExceptions : {
         accumulated : {
@@ -106,7 +108,8 @@
             "requestsPatch","requestsDelete",
             "requestsOptions", "requestsOther"
         ],
-        system_systemUserTime: ["systemTime","userTime"]
+        system_systemUserTime: ["systemTime","userTime"],
+        client_totalRequestTime: ["requestTime","queueTime"]
     },
     colors : ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
         "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
@@ -151,23 +154,32 @@
 
     figureDependedOptions : {
         numberOfThreads : {
+            div : "#systemResources"
         },
         residentSize : {
+            div : "#systemResources"
         },
         virtualSize : {
+            div : "#systemResources"
         },
         minorPageFaults : {
+            div : "#systemResources",
             labelsKMG2: false
         },
         majorPageFaults : {
+            div : "#systemResources",
             labelsKMG2: false
         },
         systemUserTime : {
+            div : "#systemResources",
             title : "System and User Time",
             stacked : true
         },
-        httpConnections : {},
+        httpConnections : {
+            div : "#requestStatistics"
+        },
         totalTime : {
+            div : "#requestStatistics",
             title : "Total time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -184,6 +196,7 @@
             }
         },
         requestTime : {
+            div : "#requestStatistics",
             title : "Request time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -200,6 +213,7 @@
             }
         },
         queueTime : {
+            div : "#requestStatistics",
             title : "Queue time in milliseconds",
             labelsKMG2: false,
             axes : {
@@ -215,19 +229,42 @@
                 }
             }
         },
+        totalRequestTime : {
+            div : "#requestStatistics",
+            title : "Total time in milliseconds",
+            labelsKMG2: false,
+            axes : {
+                y: {
+                    valueFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    },
+                    axisLabelFormatter: function(y) {
+                        y = y * 1000;
+                        return y.toPrecision(3);
+                    }
+                }
+            }
+        },
         bytesSent : {
-
+            div : "#requestStatistics"
         },
         bytesReceived : {
-
+            div : "#requestStatistics"
         },
-        requestsTotal : {},
-        requestsAsync : {},
+        requestsTotal : {
+            div : "#requestStatistics"
+        },
+        requestsAsync : {
+            div : "#requestStatistics"
+        },
         requests : {
+            div : "#requestStatistics",
             title : "HTTP Requests",
             stacked : true
         },
         uptime : {
+            div : "#systemResources",
             axes : {
                 y: {
                     labelsKMG2: false,
@@ -249,7 +286,6 @@
 
 
     initialize: function () {
-      this.arangoReplication = new window.ArangoReplication();
       this.documentStore = this.options.documentStore;
       this.getStatisticHistory();
       this.description = this.options.description.models[0];
@@ -285,11 +321,12 @@
 
     getChartStructure: function (figure) {
         var options = {
-            labelsDivStyles: { 'backgroundColor': 'transparent','textAlign': 'right' },
+            labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
             labelsSeparateLines: true,
-            digitsAfterDecimal: 4,
+            digitsAfterDecimal: 3,
             drawGapPoints: true,
             fillGraph : true,
+            showLabelsOnHighlight : false,
             strokeWidth: 2,
             interactionModel :  {},
             axisLabelFont: "Open Sans",
@@ -365,7 +402,6 @@
                 = colors.slice(0, label.length-1);
             self.series[fig.group][fig.identifier].current.options.labels = label;
          });
-
     },
 
 
@@ -403,12 +439,20 @@
                             valueLists[valueList].data.push(
                                 [new Date(time), graphVal]
                             );
-                            self.LastValues[figure] = {value : val, time: time, graphVal : graphVal};
+                            self.LastValues[figure] = {
+                              value : val, 
+                              time: time, 
+                              graphVal : graphVal
+                            };
                         } else {
                            valueLists[valueList].data.push(
                               [new Date(time), null]
                            );
-                            self.LastValues[figure] = {value : undefined,  time: 0, graphVal : null};
+                            self.LastValues[figure] = {
+                              value : undefined, 
+                              time: 0, 
+                              graphVal : null
+                            };
                         }
 
                     } else if (valueList === "distribution") {
@@ -419,6 +463,7 @@
                         if (val !== null) {
                             val = val.count === 0 ? 0 : val.sum / val.count;
                         }
+                        self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
                         valueLists[valueList].data.push([
                             new Date(time),
                             val
@@ -462,7 +507,7 @@
 
 
     updateSeries : function(data) {
-        self.uptime = data.system.uptime
+        this.uptime = data.system.uptime;
         this.processSingleStatistic(data);
     },
 
@@ -473,8 +518,8 @@
             if (e[0].getTime()  >= boarderLeft && e[0].getTime() <= boarderRight) {
                 file.push(e);
             } else {
-                i ++
-                if (i > data.length / 1000 * i && !hideRangeSelector) {
+                i++;
+                if (i > 5 && !hideRangeSelector) {
                     file.push(e);
                     i = 0;
                 }
@@ -487,28 +532,27 @@
         var self = this;
         var displayOptions = {};
         var file = [];
+        var t = new Date().getTime();
+        var borderLeft, borderRight;
         if (!createDiv) {
             displayOptions.height = $('#lineChartDetail').height() - 34 -29;
             displayOptions.width = $('#lineChartDetail').width() -60;
             chart.options.showRangeSelector = true;
-            chart.options.interactionModel =  null;
-            console.log("before", chart.data.length);
-            if (chart.graph["dateWindow_"]) {
-                var boarderLeft = chart.graph["dateWindow_"][0];
-                var boarderRight = new Date().getTime()- chart.graph["dateWindow_"][1] - self.interval * 2 > 0 ?
-                    chart.graph["dateWindow_"][1] : new Date().getTime();
-                file = self.spliceSeries(chart.data, boarderLeft, boarderRight, false);
+            chart.options.interactionModel = null;
+            chart.options.showLabelsOnHighlight = true;
+            if (chart.graph.dateWindow_) {
+                borderLeft = chart.graph.dateWindow_[0];
+                borderRight = t - chart.graph.dateWindow_[1] - self.interval * 2 > 0 ?
+                    chart.graph.dateWindow_[1] : t;
+                file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
             }
-            console.log(file);
-            console.log("after", file.length);
         } else {
-            var boarderLeft = chart.options.dateWindow[0] + (new Date().getTime() - chart.options.dateWindow[1]);
-            var boarderRight = new Date().getTime();
-
+            borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
+            borderRight = t;
         }
         if (!chart.graphCreated) {
             if (createDiv) {
-            self.renderHttpGroup(figure);
+                self.renderHttpGroup(figure);
             }
             chart.graph = new Dygraph(
                 document.getElementById(div+"LineChart"),
@@ -521,10 +565,13 @@
             chart.graph.updateOptions({clickCallback: onclick}, true);
             chart.graph.setSelection(false, 'ClusterAverage', true);
             chart.graphCreated = true;
+            if (!createDiv) {
+                self.delegateEvents();
+            }
         } else {
             chart.graph.updateOptions( {
                 file: file.length > 0 ? file : chart.data,
-                dateWindow : [boarderLeft, boarderRight]
+                dateWindow : [borderLeft, borderRight]
             } );
         }
     },
@@ -535,7 +582,8 @@
             Object.keys(self.series[group]).forEach(function(figure) {
                 Object.keys(self.series[group][figure]).forEach(function(valueList) {
                     var chart = self.series[group][figure][valueList];
-                    if (chart.type === "current" && chart.showGraph === true) {
+                    if (chart.type === "current" && chart.showGraph === true &&
+                        self.hideGraphs.indexOf(figure) === -1) {
                         self.createLineChart(chart, figure, figure, true);
                     }
                 });
@@ -570,7 +618,6 @@
                     if (!self.isUpdating) {
                         return;
                     }
-                    console.log("updating");
                     self.updateSeries({
                         time : new Date().getTime() / 1000,
                         client: self.collection.first().get("client"),
@@ -606,7 +653,9 @@
     distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
 
     renderHttpGroup: function(id) {
-      $(this.contentEl).append(this.httpTemplate.render({id : id+"LineChart"}));
+       $(this.figureDependedOptions[id].div).append(this.httpTemplate.render({
+         id : id + "LineChart"
+       }));
     },
 
     render: function() {
@@ -695,7 +744,9 @@
     renderDistributionPlaceholder: function () {
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
-        $(self.contentEl).append(self.distributionTemplate.render({elementId: v+"Distribution"}));
+        $(self.distributionChartDiv).append(self.distributionTemplate.render({
+          elementId: v + "Distribution"
+        }));
       });
     }
   });
