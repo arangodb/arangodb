@@ -45,16 +45,16 @@
       })
       if (!self.isSymmetric) {
         if (!foundDBServer) {
-            alert("Please provide at least one DBServer");
+            alert("Please provide at least one database server");
             return;
         }
         if (!foundCoordinator) {
-            alert("Please provide at least one Coordinator");
+            alert("Please provide at least one coordinator");
             return;
         }
       } else {
         if ( data.dispatchers.length === 0) {
-            alert("Please provide at least one Host");
+            alert("Please provide at least one host");
             return;
         }
 
@@ -62,7 +62,7 @@
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
       $('#waitModalLayer').modal('show');
-      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
+      $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       this.model.save(
         data,
         {
