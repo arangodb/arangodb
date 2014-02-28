@@ -108,6 +108,7 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
     if (key != "x-arango-async" && 
         key != "content-length" && 
         key != "connection" && 
+        key != "authorization" && 
         key != "host" &&
         key != "origin" && 
         key.substr(0, 14) != "access-control") {
