@@ -49,6 +49,8 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoClusterAgencyPrefix "cluster.agency-prefix"
     - @ref CommandLineArangoClusterMyId "cluster.my-id"
     - @ref CommandLineArangoClusterMyAddress "cluster.my-address"
+    - @ref CommandLineArangoClusterUsername "cluster.username"
+    - @ref CommandLineArangoClusterPassword "cluster.password"
   - @ref CommandLineLogging
     - @ref CommandLineLoggingGeneral
       - @ref CommandLineLoggingLogFile "log.file"

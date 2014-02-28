@@ -36,16 +36,6 @@
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server state instance
-////////////////////////////////////////////////////////////////////////////////
-
-static ServerState* Instance = 0;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                       ServerState
 // -----------------------------------------------------------------------------
 
@@ -75,14 +65,27 @@ ServerState::~ServerState () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual singleton instance
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState* ServerState::_theinstance = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState* ServerState::instance () {
-  if (Instance == 0) {
-    Instance = new ServerState();
-  }
-  return Instance;
+  assert(_theinstance != 0);
+  return _theinstance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the server state singleton object
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::initialise () {
+  assert(_theinstance == 0);
+  _theinstance = new ServerState();  // this now happens exactly once
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +365,7 @@ std::string ServerState::getAddress () {
   }
 
   // fetch and set the address
-  const std::string address = ClusterInfo::instance()->getTargetServerEndpoint(id);
+  std::string const address = ClusterInfo::instance()->getTargetServerEndpoint(id);
 
   {
     WRITE_LOCKER(_lock);
