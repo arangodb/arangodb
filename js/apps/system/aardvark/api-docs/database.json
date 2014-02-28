@@ -74,7 +74,7 @@
                     "notes": "Retrieves information about the current database <br><br>The response is a JSON object with the following attributes: <br><br>- <em>name</em>: the name of the current database<br><br>- <em>id</em>: the id of the current database<br><br>- <em>path</em>: the filesystem path of the current database<br><br>- <em>isSystem</em>: whether or not the current database is the <em>_system</em> database<br><br>",
                     "summary": "retrieves information about the current database",
                     "httpMethod": "GET",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/database/current\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"82343\", \n    \"path\" : \"/tmp/vocdir.97531/databases/database-82343\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/database/current\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"82343\", \n    \"path\" : \"/tmp/vocdir.90895/databases/database-82343\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "retrievesInformationAboutTheCurrentDatabase"
                 }
             ],
