@@ -19,7 +19,7 @@
       var isDBServer;
       var isCoordinator;
       var self = this;
-      var data = {dispatcher : []};
+      var data = {dispatchers: []};
       var foundCoordinator = false;
       var foundDBServer = false;
       $(".dispatcher").each(function(i, dispatcher) {
@@ -36,7 +36,7 @@
           foundCoordinator = foundCoordinator || hostObject.isCoordinator;
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
-          data.dispatcher.push(hostObject);
+          data.dispatchers.push(hostObject);
       })
       if (!self.isSymmetric) {
         if (!foundDBServer) {
@@ -48,7 +48,7 @@
             return;
         }
       } else {
-        if ( data.dispatcher.length === 0) {
+        if ( data.dispatchers.length === 0) {
             alert("Please provide at least one Host");
             return;
         }
@@ -56,12 +56,14 @@
       }
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
-      $.ajax("cluster/plan", {
-        type: "POST",
-        data: JSON.stringify(data)
-      }).done(function(info) {
-        window.App.showDownload(info);
-      });
+      this.model.save(
+        data,
+        {
+          success : function(info) {
+            window.App.navigate("showCluster", {trigger: true});
+          }
+        }
+      );
     },
 
     addEntry: function() {
