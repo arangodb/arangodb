@@ -34,7 +34,9 @@
     %>
       <li class="tile">
         <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-          <span class="clusterInfoIcon icon_arangodb_compass"></span>
+          <span class="clusterInfoIcon">
+            <img src="img/icon_compass-24.png" />
+          </span>
         </div>
         <h5 class="collectionName"><%=c.get("name")%></h5>
       </li>
@@ -44,7 +46,9 @@
     %>
       <li class="tile">
         <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-          <span class="clusterInfoIcon icon_arangodb_database1"></span>
+          <span class="clusterInfoIcon">
+            <img src="img/icon_database-24.png" />
+          </span>
         </div>
         <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
       </li>
@@ -57,7 +61,9 @@
       <li class="tile">
         <% _.each(s.coords, function(c) { %>
           <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-            <span class="clusterInfoIcon icon_arangodb_compass"></span>
+            <span class="clusterInfoIcon">
+              <img src="img/icon_compass-24.png" />
+            </span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
         <% });
@@ -66,7 +72,9 @@
             dbName = c.get("name");
         %>
           <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-            <span class="clusterInfoIcon icon_arangodb_database1"></span>
+            <span class="clusterInfoIcon">
+              <img src="img/icon_database-24.png" />
+            </span>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
         <% }); %>

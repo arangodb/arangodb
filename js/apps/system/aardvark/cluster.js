@@ -44,7 +44,6 @@
    * given in the body
    */
 
-
   if (!cluster.dispatcherDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
@@ -61,6 +60,21 @@
         k.runInfo = config.runInfo;
         return k;
       },
+      parseUser = function(header) {
+        if (header && header.authorization) {
+          var auth = require("internal").base64Decode(
+            header.authorization.substr(6)
+          );
+          return {
+            username: auth.substr(0, auth.indexOf(":")),
+            passwd: auth.substr(auth.indexOf(":")+1) || ""
+          };
+        }
+        return {
+          username: "root",
+          passwd: ""
+        }
+      },
       startUp = function(req, res) {
         cleanUp();
         var config = {},
@@ -69,11 +83,19 @@
             starter,
             i,
             tmp,
-            planner;
+            planner,
+            auth,
+            uname,
+            pwd;
+        auth = parseUser(req.headers);
+        uname = auth.username;
+        pwd = auth.passwd;
 
         if (input.type === "testSetup") {
           config.dispatchers = {
             "d1": {
+              "username": uname,
+              "passwd": pwd,
               "endpoint": "tcp://" + input.dispatcher
             }
           };
@@ -87,6 +109,8 @@
           _.each(input.dispatcher, function(d) {
             i++;
             var inf = {};
+            inf.username = uname;
+            inf.passwd = pwd;
             inf.endpoint = "tcp://" + d.host;
             if (d.isCoordinator) {
               config.numberOfCoordinators++;
@@ -101,7 +125,6 @@
             config.dispatchers["d" + i] = inf;
           });
         }
-        require("console").log(JSON.stringify(config));
         result.config = config;
         planner = new cluster.Planner(config);
         result.plan = planner.getPlan();
