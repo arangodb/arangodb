@@ -127,16 +127,16 @@ exports.Communication = function() {
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
     addLevel(target, "db", "Databases", ["list"]);
-    addLevel(target, "coordinators", "Coordinators", ["list", "set", "remove", "checkVersion"]);
+    addLevel(target, "coordinators", "Coordinators", ["list", "get", "set", "remove", "checkVersion"]);
     addLevel(target, "endpoints", "MapIDToEndpoint", ["getValue"]);
     var plan = addLevel(this, "plan", "Plan");
     addLevel(plan, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(plan, "db", "Databases", ["list"]);
-    addLevel(plan, "coordinators", "Coordinators", ["list", "checkVersion"]);
+    addLevel(plan, "coordinators", "Coordinators", ["list", "get", "checkVersion"]);
     var current = addLevel(this, "current", "Current");
     addLevel(current, "dbServers", "DBServers", ["get", "checkVersion"]);
     addLevel(current, "db", "Databases", ["list"]);
-    addLevel(current, "coordinators", "Coordinators", ["list", "checkVersion"]);
+    addLevel(current, "coordinators", "Coordinators", ["list", "get", "checkVersion"]);
     addLevel(current, "registered", "ServersRegistered", ["get", "checkVersion"]);
 
     var sync = addLevel(this, "sync", "Sync");
@@ -235,6 +235,10 @@ exports.Communication = function() {
     this.getEndpoint = function(name) {
       return endpoints.getValue(name).split("://")[1];
     };
+    this.getProtocol = function(name) {
+      return endpoints.getValue(name).split("://")[0]
+        .replace("tcp", "http").replace("ssl","https");
+    };
     if (writeAccess) {
       this.addPrimary = function(name) {
         return route.set(name, "none");
@@ -280,11 +284,26 @@ exports.Communication = function() {
 /// and remove servers are allowed.
 ////////////////////////////////////////////////////////////////////////////////
   var CoordinatorsObject = function(route, endpoints, writeAccess) {
+    var cache = {};
+    var servers;
+    var getList = function() {
+      if (!route.checkVersion()) {
+        cache = {};
+        servers = route.get(true);
+        storeServersInCache(cache, servers);
+      }
+      return cache;
+    };
     this.getList = function() {
-      return route.list();
+      return getList();
+      //return route.list();
     };
     this.getEndpoint = function(name) {
       return endpoints.getValue(name).split("://")[1];
+    };
+    this.getProtocol = function(name) {
+      return endpoints.getValue(name).split("://")[0]
+        .replace("tcp", "http").replace("ssl","https");
     };
     if (writeAccess) {
       this.add = function(name) {
@@ -322,7 +341,6 @@ exports.Communication = function() {
       var list = this.getShards();
       var res = {};
       _.each(list, function(v, k) {
-        require("internal").print(v);
         res[v] = res[v] || {
           shards: [],
           name: v
@@ -531,6 +549,8 @@ exports.Communication = function() {
             var pName = splitServerName(k);
             if (cache[pName]) {
               cache[pName].address = v.endpoint.split("://")[1];
+              cache[pName].protocol = v.endpoint.split("://")[0]
+                .replace("tcp", "http").replace("ssl","https");
             }
           });
         }
@@ -549,12 +569,18 @@ exports.Communication = function() {
             || !agency.current.registered.checkVersion()
            ) {
           cache = {};
-          servers = agency.current.coordinators.list();
+          servers = agency.current.coordinators.get(true);
+          _.each(servers, function(v, k) {
+            var pName = splitServerName(k);
+            cache[pName] = {};
+          });
           var addresses = agency.current.registered.get(true);
           _.each(addresses, function(v, k) {
             var pName = splitServerName(k);
-            if (_.contains(servers, pName)) {
-              cache[pName] = v.endpoint.split("://")[1];
+            if (cache[pName]) {
+              cache[pName].address = v.endpoint.split("://")[1];
+              cache[pName].protocol = v.endpoint.split("://")[0]
+                .replace("tcp", "http").replace("ssl","https");
             }
           });
         }
@@ -728,7 +754,7 @@ exports.Communication = function() {
         default:
           throw "Sorry please give a correct superior name";
       }
-      var difference = function(superior, inferior, getEndpoint) {
+      var difference = function(superior, inferior, getEndpoint, getProtocol) {
         var diff = {
           missing: [],
           difference: {}
@@ -745,7 +771,8 @@ exports.Communication = function() {
             if (!_.contains(comp, v)) {
               var toAdd = {
                 name: v,
-                address: getEndpoint(v)
+                address: getEndpoint(v),
+                protocol: getProtocol(v)
               };
               diff.missing.push(toAdd);
             }
@@ -758,7 +785,8 @@ exports.Communication = function() {
             var toAdd = {
               name: k,
               role: v.role,
-              address: getEndpoint(k)
+              address: getEndpoint(k),
+              protocol: getProtocol(k)
             };
             diff.missing.push(toAdd);
             return;
@@ -776,12 +804,14 @@ exports.Communication = function() {
       this.DBServers = function() {
         return difference(supRoute.DBServers().getList(), 
                           infRoute.DBServers().getList(), 
-                          supRoute.DBServers().getEndpoint); 
+                          supRoute.DBServers().getEndpoint,
+                          supRoute.DBServers().getProtocol); 
       };
       this.Coordinators = function() {
         return difference(supRoute.Coordinators().getList(), 
                           infRoute.Coordinators().getList(), 
-                          supRoute.Coordinators().getEndpoint); 
+                          supRoute.Coordinators().getEndpoint,
+                          supRoute.Coordinators().getProtocol); 
       };
     };
 

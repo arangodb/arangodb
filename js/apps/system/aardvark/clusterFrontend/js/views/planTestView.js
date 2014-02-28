@@ -17,25 +17,25 @@
 
     startPlan: function() {
       $('#waitModalLayer').modal('show');
-      $('#waitModalMessage').html('Please be patient while your cluster will be launched');
+      $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       var h = $("#host").val(),
         p = $("#port").val(),
         c = $("#coordinators").val(),
         d = $("#dbs").val();
       if (!h) {
-        alert("Please define a Host");
+        alert("Please define a host");
         return;
       }
       if (!p) {
-        alert("Please define a Port");
+        alert("Please define a port");
         return;
       }
-      if (!c) {
-        alert("Please define a number of Coordinators");
+      if (!c || c < 0) {
+        alert("Please define a number of coordinators");
         return;
       }
-      if (!d) {
-        alert("Please define a number of DBServers");
+      if (!d || d < 0) {
+        alert("Please define a number of database servers");
         return;
       }
       this.model.save(
