@@ -66,8 +66,7 @@ namespace triagens {
 
         ApplicationCluster (struct TRI_server_s*,
                             triagens::rest::ApplicationDispatcher*,
-                            triagens::arango::ApplicationV8*,
-                            char* executablePath);
+                            triagens::arango::ApplicationV8*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -266,12 +265,6 @@ namespace triagens {
          std::string _myAddress;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our own executable name
-////////////////////////////////////////////////////////////////////////////////
-
-         std::string _myExecutablePath;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief username used for cluster-internal communication
 ///
 /// @CMDOPT{\--cluster.username @CA{username}}
@@ -293,7 +286,7 @@ namespace triagens {
          std::string _username;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief username used for cluster-internal communication
+/// @brief password used for cluster-internal communication
 ///
 /// @CMDOPT{\--cluster.password @CA{password}}
 ///
@@ -314,6 +307,96 @@ namespace triagens {
          std::string _password;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief data path for the cluster
+///
+/// @CMDOPT{\--cluster.data-path @CA{path}}
+///
+/// The default directory where the databases for the cluster processes are
+/// stored. 
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _dataPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log path for the cluster
+///
+/// @CMDOPT{\--cluster.log-path @CA{path}}
+///
+/// The default directory where the log files for the cluster processes are
+/// stored. 
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _logPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief agent path for the cluster
+///
+/// @CMDOPT{\--cluster.agent-path @CA{path}}
+///
+/// The path to agent executable.
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _agentPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arangod path for the cluster
+///
+/// @CMDOPT{\--cluster.arangod-path @CA{path}}
+///
+/// The path to arangod executable.
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _arangodPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DBserver config for the cluster
+///
+/// @CMDOPT{\--cluster.dbserver-config @CA{path}}
+///
+/// The configuration file for the DBserver.
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _dbserverConfig;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief coordinator config for the cluster
+///
+/// @CMDOPT{\--cluster.coordinator-config @CA{path}}
+///
+/// The configuration file for the coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+         std::string _coordinatorConfig;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the dispatcher frontend
+///
+/// @CMDOPT{\--server.disable-dispatcher-interface @CA{flag}}
+///
+/// If @LIT{true} the server can be used as dispatcher for a cluster. If you
+/// enable this option, you should secure access to the dispatcher with a
+/// password.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableDispatcherFrontend;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the dispatcher kickstarter
+///
+/// @CMDOPT{\--server.disable-dispatcher-kickstarter @CA{flag}}
+///
+/// If @LIT{true} the server can be used as kickstarter to start processes for a
+/// cluster. If you enable this option, you should secure access to the
+/// dispatcher with a password.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableDispatcherKickstarter;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the cluster feature is enabled
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -330,6 +413,10 @@ namespace triagens {
 }
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

@@ -108,6 +108,7 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
     if (key != "x-arango-async" && 
         key != "content-length" && 
         key != "connection" && 
+        key != "authorization" && 
         key != "host" &&
         key != "origin" && 
         key.substr(0, 14) != "access-control") {
@@ -172,6 +173,96 @@ bool shardKeysChanged (std::string const& dbname,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns users
+////////////////////////////////////////////////////////////////////////////////
+
+int usersOnCoordinator (std::string const& dbname,
+                        TRI_json_t*& result) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  
+  // First determine the collection ID from the name:
+  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, TRI_COL_NAME_USERS);
+
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (result == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // If we get here, the sharding attributes are not only _key, therefore
+  // we have to contact everybody:
+  ClusterCommResult* res;
+  map<ShardID, ServerID> shards = collinfo->shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+  
+    // set collection name (shard id)
+    string* body = new string;
+    body->append("{\"collection\":\"");
+    body->append((*it).first);
+    body->append("\"}");
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all",
+                           body,
+                           true,
+                           headers, NULL, 300.0);
+    delete res;
+  }
+
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  for (count = shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_RECEIVED) {
+      if (res->answer_code == triagens::rest::HttpResponse::OK ||
+          res->answer_code == triagens::rest::HttpResponse::CREATED) {
+        TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
+
+        if (JsonHelper::isArray(json)) {
+          TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
+
+          if (TRI_IsListJson(r)) {
+            for (size_t i = 0; i < r->_value._objects._length; ++i) {
+              TRI_json_t const* p = TRI_LookupListJson(r, i);
+
+              if (TRI_IsArrayJson(p)) {
+                TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, result, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, p));
+              }
+            }
+          }
+          nrok++;
+        }
+
+        if (json != 0) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+      }
+    }
+    delete res;
+  }
+
+  if (nrok != (int) shards.size()) {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
+                               // the DBserver could have reported an error.
 }
 
 ////////////////////////////////////////////////////////////////////////////////

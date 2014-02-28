@@ -188,8 +188,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
+
   // look up the info in the cache first
   char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth);
+
 
   if (cached != 0) {
     // found a cached entry, access must be granted
