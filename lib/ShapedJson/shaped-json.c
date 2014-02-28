@@ -42,7 +42,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json);
+static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json, bool, bool);
 static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper, TRI_shape_t const* shape, char const* data, uint64_t size);
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* buffer, TRI_shape_t const* shape, char const* data, uint64_t size);
 
@@ -463,7 +463,11 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 /// @brief converts a json list into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
+static bool FillShapeValueList (TRI_shaper_t* shaper, 
+                                TRI_shape_value_t* dst, 
+                                TRI_json_t const* json,
+                                bool create,
+                                bool isLocked) {
   size_t i, n;
   uint64_t total;
 
@@ -520,7 +524,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
   for (i = 0;  i < n;  ++i, ++p) {
     TRI_json_t const* el = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-    bool ok = FillShapeValueJson(shaper, p, el);
+    bool ok = FillShapeValueJson(shaper, p, el, create, isLocked);
 
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
@@ -580,7 +584,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
-    found = shaper->findShape(shaper, &shape->base);
+    found = shaper->findShape(shaper, &shape->base, create, isLocked);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -649,7 +653,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
-    found = shaper->findShape(shaper, &shape->base);
+    found = shaper->findShape(shaper, &shape->base, create, isLocked);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -770,7 +774,9 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
 
 static bool FillShapeValueArray (TRI_shaper_t* shaper, 
                                  TRI_shape_value_t* dst, 
-                                 TRI_json_t const* json) { 
+                                 TRI_json_t const* json,
+                                 bool create,
+                                 bool isLocked) { 
   size_t i, n;
   uint64_t total;
 
@@ -831,14 +837,14 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     // first find an identifier for the name
-    p->_aid = shaper->findAttributeByName(shaper, key->_value._string.data, true);
+    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data, isLocked);
 
     // convert value
     if (p->_aid == 0) {
       ok = false;
     }
     else {
-      ok = FillShapeValueJson(shaper, p, val);
+      ok = FillShapeValueJson(shaper, p, val, create, isLocked);
     }
 
     if (! ok) {
@@ -987,7 +993,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, values);
 
   // lookup this shape
-  found = shaper->findShape(shaper, &a->base);
+  found = shaper->findShape(shaper, &a->base, create, isLocked);
 
   if (found == NULL) {
     TRI_Free(shaper->_memoryZone, a);
@@ -1003,7 +1009,11 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 /// @brief converts a json object into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
+static bool FillShapeValueJson (TRI_shaper_t* shaper, 
+                                TRI_shape_value_t* dst, 
+                                TRI_json_t const* json,
+                                bool create,
+                                bool isLocked) {
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return false;
@@ -1022,10 +1032,10 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       return FillShapeValueString(shaper, dst, json);
 
     case TRI_JSON_ARRAY:
-      return FillShapeValueArray(shaper, dst, json);
+      return FillShapeValueArray(shaper, dst, json, create, isLocked);
 
     case TRI_JSON_LIST:
-      return FillShapeValueList(shaper, dst, json);
+      return FillShapeValueList(shaper, dst, json, create, isLocked);
   }
 
   return false;
@@ -2259,13 +2269,15 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, 
-                                       TRI_json_t const* json) {
+                                       TRI_json_t const* json,
+                                       bool create,
+                                       bool isLocked) {
   TRI_shaped_json_t* shaped;
   TRI_shape_value_t dst;
   bool ok;
 
   dst._value = 0;
-  ok = FillShapeValueJson(shaper, &dst, json);
+  ok = FillShapeValueJson(shaper, &dst, json, create, isLocked);
 
   if (! ok) {
     return NULL;
@@ -2296,7 +2308,8 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t const* shaped) {
+TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper, 
+                                TRI_shaped_json_t const* shaped) {
   TRI_shape_t const* shape;
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);

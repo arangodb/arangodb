@@ -426,7 +426,7 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  shaped = TRI_ShapedJsonJson(primary->_shaper, coordinator->_json);
+  shaped = TRI_ShapedJsonJson(primary->_shaper, coordinator->_json, true, true);
 
   if (shaped == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;

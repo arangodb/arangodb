@@ -268,7 +268,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json, true, true);
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
