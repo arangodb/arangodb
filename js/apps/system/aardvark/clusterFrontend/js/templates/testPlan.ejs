@@ -4,66 +4,32 @@
     <a class="arangoHeader">Plan a single server test configuration</a>
   </div>
 </ul>
-<%
-if (config) {
-dispatcher = config.dispatcher;
-hostname = dispatcher.split(':')[0];
-port = dispatcher.split(':')[1];
-numberDBServers = config.numberDBServers;
-numberCoordinators = config.numberCoordinators;
-}
-%>
 <form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
   <fieldset>
     <div class="control-group">
       <label for="host" class="control-label">Server:</label>
       <div class="controls">
-        <input type="text" id="host" placeholder="Server" class="input-xlarge"
-        <%if (config) {%>
-        value="<%=hostname%>"
-        <%} else {%>
-        value="<%=window.location.hostname%>"
-        <%}%>
-        ></input>
-        <span class="searchEqualsLabel">:</span>
-        <input type="text" maxlength="5" class="input-small" id="port" placeholder="port"
-        <%if (config) {%>
-        console.log("blub);
-        value="<%=port%>"
-        <%} else {%>
-        value="<%=window.location.port%>"
-        <%}%>
-        ></input>
+        <input type="text" id="host" placeholder="Server" class="input-xlarge" value="<%=hostname%>"></input>
+          <span class="searchEqualsLabel">:</span>
+          <input type="text" maxlength="5" class="input-small" id="port" placeholder="port" value="<%=port%>" ></input>
       </div>
     </div>
     <div class="control-group">
       <label for="coordinators" class="control-label">Coordinators:</label>
       <div class="controls">
-        <input type="text" id="coordinators" placeholder="Number of Coordinators" class="input-xlarge"
-        <%if (config) {%>
-        value="<%=numberCoordinators%>"
-        <%} else {%>
-        value="1"
-        <%}%>
-            ></input>
+        <input type="text" id="coordinators" placeholder="Number of Coordinators" class="input-xlarge" value="<%=coords%>" ></input>
       </div>
     </div>
     <div class="control-group">
       <label for="dbs" class="control-label">DB Servers:</label>
       <div class="controls">
-        <input type="text" id="dbs" placeholder="Number of DBServers" class="input-xlarge"
-        <%if (config) {%>
-        value="<%=numberDBServers%>"
-        <%} else {%>
-        value="2"
-        <%}%>
-            ></input>
+        <input type="text" id="dbs" placeholder="Number of DBServers" class="input-xlarge" value="<%=dbs%>"></input>
       </div>
     </div>
   </fieldset>
   <div class="control-group">
     <div class="controls">
-      <button class="button-success" id="startTestPlan">Create Cluster</button>    
+      <button class="button-success" id="startTestPlan">Launch Cluster</button>
     </div>
   </div>
 </form>

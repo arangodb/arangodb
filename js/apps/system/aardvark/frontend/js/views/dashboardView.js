@@ -486,12 +486,20 @@
                             valueLists[valueList].data.push(
                                 [new Date(time), graphVal]
                             );
-                            self.LastValues[figure] = {value : val, time: time, graphVal : graphVal};
+                            self.LastValues[figure] = {
+                              value : val, 
+                              time: time, 
+                              graphVal : graphVal
+                            };
                         } else {
                            valueLists[valueList].data.push(
                               [new Date(time), null]
                            );
-                            self.LastValues[figure] = {value : undefined,  time: 0, graphVal : null};
+                            self.LastValues[figure] = {
+                              value : undefined, 
+                              time: 0, 
+                              graphVal : null
+                            };
                         }
 
                     } else if (valueList === "distribution") {
@@ -546,7 +554,7 @@
 
 
     updateSeries : function(data) {
-        self.uptime = data.system.uptime
+        this.uptime = data.system.uptime;
         this.processSingleStatistic(data);
     },
 
@@ -557,7 +565,7 @@
             if (e[0].getTime()  >= boarderLeft && e[0].getTime() <= boarderRight) {
                 file.push(e);
             } else {
-                i ++
+                i++;
                 if (i > 5 && !hideRangeSelector) {
                     file.push(e);
                     i = 0;
@@ -571,22 +579,23 @@
         var self = this;
         var displayOptions = {};
         var file = [];
+        var t = new Date().getTime();
+        var borderLeft, borderRight;
         if (!createDiv) {
             displayOptions.height = $('#lineChartDetail').height() - 34 -29;
             displayOptions.width = $('#lineChartDetail').width() -60;
             chart.options.showRangeSelector = true;
-            chart.options.interactionModel =  null;
+            chart.options.interactionModel = null;
             chart.options.showLabelsOnHighlight = true;
-            if (chart.graph["dateWindow_"]) {
-                var borderLeft = chart.graph["dateWindow_"][0];
-                var borderRight = new Date().getTime()- chart.graph["dateWindow_"][1] - self.interval * 2 > 0 ?
-                    chart.graph["dateWindow_"][1] : new Date().getTime();
+            if (chart.graph.dateWindow_) {
+                borderLeft = chart.graph.dateWindow_[0];
+                borderRight = t - chart.graph.dateWindow_[1] - self.interval * 2 > 0 ?
+                    chart.graph.dateWindow_[1] : t;
                 file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
             }
         } else {
-            var borderLeft = chart.options.dateWindow[0] + (new Date().getTime() - chart.options.dateWindow[1]);
-            var borderRight = new Date().getTime();
-
+            borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
+            borderRight = t;
         }
         if (!chart.graphCreated) {
             if (createDiv) {
@@ -683,7 +692,9 @@
     distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
 
     renderHttpGroup: function(id) {
-       $(this.figureDependedOptions[id].div).append(this.httpTemplate.render({id : id+"LineChart"}));
+       $(this.figureDependedOptions[id].div).append(this.httpTemplate.render({
+         id : id + "LineChart"
+       }));
     },
 
     displayBackButtonForClusterView : function () {
@@ -785,7 +796,9 @@
     renderDistributionPlaceholder: function () {
       var self = this;
       _.each(this.chartTypeExceptions.distribution, function(k, v) {
-        $(self.distributionChartDiv).append(self.distributionTemplate.render({elementId: v+"Distribution"}));
+        $(self.distributionChartDiv).append(self.distributionTemplate.render({
+          elementId: v + "Distribution"
+        }));
       });
     },
 

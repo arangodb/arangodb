@@ -29,11 +29,19 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/vector.h"
 #include "VocBase/index.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h"
+
+
+#ifdef TRI_ENABLE_CLUSTER
+struct TRI_vector_pointer_s;
+struct TRI_vector_pointer_s* TRI_GetCoordinatorIndexes (char const*, char const*);
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -43,6 +51,30 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeIndexes (TRI_aql_collection_t* collection) {
+  size_t i;
+
+  if (collection->_availableIndexes == NULL) {
+    return;
+  }
+    
+  for (i = 0; i < collection->_availableIndexes->_length; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) TRI_AtVectorPointer(collection->_availableIndexes, i);
+
+    if (idx != NULL) {
+      TRI_DestroyVectorString(&idx->_fields);
+      TRI_Free(TRI_CORE_MEM_ZONE, idx);
+    }
+  }
+
+  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, collection->_availableIndexes);
+  collection->_availableIndexes = NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get collection/index id as a string
@@ -55,7 +87,8 @@ static char* GetIndexIdString (TRI_aql_collection_hint_t* const hint) {
   char* result;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  TRI_AppendUInt64StringBuffer(&buffer, hint->_collection->_collection->_cid);
+//  TRI_AppendUInt64StringBuffer(&buffer, hint->_collection->_name); // cid);
+  TRI_AppendStringStringBuffer(&buffer, hint->_collection->_name); 
   TRI_AppendCharStringBuffer(&buffer, '/');
   TRI_AppendUInt64StringBuffer(&buffer, hint->_index->_idx->_iid);
 
@@ -80,7 +113,7 @@ static int CollectionNameComparator (const void* l, const void* r) {
 /// @brief create a collection container
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) {
+static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
   TRI_aql_collection_t* collection;
 
   assert(name);
@@ -91,9 +124,10 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
     return NULL;
   }
 
-  collection->_name = (char*) name;
-  collection->_collection = NULL;
-  collection->_barrier = NULL;
+  collection->_name             = (char*) name;
+  collection->_collection       = NULL;
+  collection->_barrier          = NULL;
+  collection->_availableIndexes = NULL;
 
   return collection;
 }
@@ -207,7 +241,7 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            indexDescription,
                            "type",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idx->typeName(idx)));
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(idx->_type)));
 
       // index attributes
       buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
@@ -296,14 +330,23 @@ void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const hint) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeCollectionAql (TRI_aql_collection_t* collection) {
+  FreeIndexes(collection);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a collection in the internal vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const context,
-                                            const char* const collectionName) {
+TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* context,
+                                            const char* collectionName) {
   size_t i, n;
 
-  assert(context);
+  assert(context != NULL);
 
   n = context->_collections._length;
   for (i = 0; i < n; ++i) {
@@ -321,7 +364,7 @@ TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const conte
 /// @brief init all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetupCollectionsAql (TRI_aql_context_t* const context) {
+bool TRI_SetupCollectionsAql (TRI_aql_context_t* context) {
   if (! SetupCollections(context)) {
     return false;
   }
@@ -333,7 +376,7 @@ bool TRI_SetupCollectionsAql (TRI_aql_context_t* const context) {
 /// @brief adds a gc marker for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
+bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
   size_t i;
   size_t n;
   bool result = true;
@@ -351,18 +394,19 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
     TRI_primary_collection_t* primaryCollection;
 
-    assert(collection);
-    assert(collection->_name);
-    assert(collection->_collection);
-    assert(collection->_collection->_collection);
-    assert(! collection->_barrier);
+    assert(collection != NULL);
+    assert(collection->_name != NULL);
+    assert(collection->_collection != NULL);
+    assert(collection->_collection->_collection != NULL);
+    assert(collection->_barrier == NULL);
 
     primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
     LOG_TRACE("adding barrier for collection '%s'", collection->_name);
 
     ce = TRI_CreateBarrierElement(&primaryCollection->_barrierList);
-    if (! ce) {
+
+    if (ce == NULL) {      
       // couldn't create the barrier
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -380,7 +424,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
 /// @brief removes the gc markers for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
+void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* context) {
   size_t i;
   
   if (context->_isCoordinator) {
@@ -393,16 +437,16 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
 
-    assert(collection);
-    assert(collection->_name);
+    assert(collection != NULL);
+    assert(collection->_name != NULL);
 
-    if (! collection->_collection || ! collection->_barrier) {
+    if (collection->_collection == NULL || collection->_barrier == NULL) {
       // don't process collections we weren't able to lock at all
       continue;
     }
 
-    assert(collection->_barrier);
-    assert(collection->_collection->_collection);
+    assert(collection->_barrier != NULL);
+    assert(collection->_collection->_collection != NULL);
 
     LOG_TRACE("removing barrier for collection '%s'", collection->_name);
 
@@ -415,9 +459,10 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
 /// @brief add a collection name to the list of collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const name) {
-  assert(context);
-  assert(name);
+bool TRI_AddCollectionAql (TRI_aql_context_t* context, 
+                           const char* name) {
+  assert(context != NULL);
+  assert(name != NULL);
 
   // duplicates are not a problem here, we simply ignore them
   TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
@@ -429,6 +474,35 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const n
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get available indexes of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
+                                                   TRI_aql_collection_t* collection) {
+#ifdef TRI_ENABLE_CLUSTER
+  if (context->_isCoordinator) {
+    if (collection->_availableIndexes == NULL) {
+      collection->_availableIndexes = TRI_GetCoordinatorIndexes(context->_vocbase->_name, collection->_name);
+    }
+
+    return collection->_availableIndexes;
+  }
+  else {
+#endif    
+    TRI_primary_collection_t* primary;
+
+    if (collection->_collection == NULL) {
+      return NULL;
+    }
+
+    primary = collection->_collection->_collection;
+    return &(((TRI_document_collection_t*) primary)->_allIndexes);
+#ifdef TRI_ENABLE_CLUSTER
+  }
+#endif    
 }
 
 ////////////////////////////////////////////////////////////////////////////////

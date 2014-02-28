@@ -24,40 +24,25 @@
   <ul class="thumbnails2">
     <div class="headerBar">
       <a class="arangoHeader">Cluster Management</a>
-      <div class="headerButtonBar pull-right">
-        <ul class="headerButtonList">
-          <li class="enabled">
-          <a id="importConnectInfo" class="headerButton">
-            <span class="icon_arangodb_youtube" title="Connect to Cluster"></span>
-          </a>
-          <a id="importRunInfo" class="headerButton">
-            <span class="icon_arangodb_export" title="Upload Cluster Information"></span>
-          </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div id="runinfoDropdownImport" class="dropdownImport">
-      <div class="queryline">
-        <input id="importRunInfoFile" name="importRunInfo" type="file" accept="application/json" />
-        <button id="confirmRunInfoImport" class="button-success btn-old-padding" style="float:right">
-          <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import Plan
-        </button>
-      </div>
-    </div>
-    <div id="connectDropdownImport" class="dropdownImport">
-      <div class="queryline">
-        <input id="connectInfoFile" name="connectionInfo" type="file" accept="application/json" />
-        <button id="confirmConnectImport" class="button-success btn-old-padding" style="float:right">
-          <img id="connectIndicator" style="display: none;" src="img/ajax-loader.gif"/>Connect to Cluster
-        </button>
-      </div>
     </div>
   </ul>
 
   <div class="tileList">
     <legend class="gv_inner">Please select a cluster scenario:</legend>
 
+    <li class="bigtile"  id="singleServer">
+      <div id="singleMachine" class="machineClass">
+        <div class="scenarioSingleMachine">
+          <div class="scenarioBoxHeader">...</div>
+            <%
+              row(true, true, true);
+              row(true, true, true);
+              row(false, true, true);
+            %>
+        </div>
+      </div>
+      <h5 class="collectionName">Single Machine</h5>
+    </li>
     <li class="bigtile" id="multiServerSymmetrical">
       <div id="multiMachineSym" class="machineClass">
         <%
@@ -65,31 +50,18 @@
           row(true, true);
           row(true, true);
         %>
-      </div>    
+      </div>
     <h5 class="collectionName">Multi Machine Symmetrical</h5>
     </li>
     <li class="bigtile" id="multiServerAsymmetrical">
       <div id="multiMachineAsym" class="machineClass">
         <%
-          row(true, true);
           row(false, true);
           row(true, false);
+          row(false, true);
         %>
-      </div>    
+      </div>
     <h5 class="collectionName">Multi Machine Asymmetrical</h5>
-    </li>
-    <li class="bigtile"  id="singleServer">
-      <div id="singleMachine" class="machineClass">
-        <div class="scenarioSingleMachine">
-          <div class="scenarioBoxHeader">...</div>
-            <% 
-              row(true, true, true);
-              row(true, true, true);
-              row(true, false, true);
-            %>
-        </div>
-      </div>    
-    <h5 class="collectionName">Single Machine</h5>
     </li>
   </div>
 </script>
