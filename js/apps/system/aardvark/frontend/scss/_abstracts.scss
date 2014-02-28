@@ -138,7 +138,7 @@
   z-index: 1000;
   display: none;
   padding: 5px 0px;
-  margin: 2px 0px 0px;
+  margin: 5px 0px 0px;
   list-style: none;
   background-color: $c_white;
   border: {
@@ -146,7 +146,7 @@
     color: $c_semi_transp;
     width: 1px;
   }
-  @include border-radius(6px);
+  @include border-radius(3px);
 
   li {
     line-height: 20px;
@@ -156,8 +156,8 @@
 
   li.dropdown-header {
     font: {
-      weight: bold;
-      size: 11px;
+      weight: 400;
+      size: 13px;
     }
     color: $c_dark_grey;
     padding: 0px 20px;
