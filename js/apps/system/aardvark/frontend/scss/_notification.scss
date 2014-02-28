@@ -81,6 +81,7 @@
   background-color: #333232;
   border-radius: 3px;
   border: 2px solid #8AA051;
+  text-align: center;
 }
 
 .notificationItemContent {
@@ -92,12 +93,12 @@
 }
 
 .fullNotification {
-  border: 2px solid red !important;
-  background-color: red !important;
+  border: 2px solid $c_notification_red !important;
+  background-color: $c_notification_red !important;
 }
 
 #stat_hd #stat_hd_counter {
   color: white;
-  margin-left: 8px;
+  margin-left: 0px;
   line-height: 24px;
 }

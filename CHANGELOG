@@ -3,6 +3,9 @@ v2.0.0-alpha1 (2014-02-28)
 
 * added sharding :-)
 
+  more detailed documentation on the sharding and cluster features can be found in the user 
+  manual, section **Sharding**
+
 * INCOMPATIBLE CHANGE: using complex values in AQL filter conditions with operators other
   than equality (e.g. >=, >, <=, <) will disable usage of skiplist indexes for filter 
   evaluation.
@@ -19,7 +22,21 @@ v2.0.0-alpha1 (2014-02-28)
       FOR doc IN docs FILTER doc.value == [ 1, 2, 3 ] RETURN doc
       FOR doc IN docs FILTER doc.value == { foo: "bar" } RETURN doc
 
+* INCOMPATIBLE CHANGE: removed undocumented method `collection.saveOrReplace`
+  
+  this feature was never advertised nor documented nor tested.
+
+* INCOMPATIBLE CHANGE: removed undocumented REST API method `/_api/simple/BY-EXAMPLE-HASH`
+
+  this feature was never advertised nor documented nor tested.
+
 * added explicit startup parameter `--server.reuse-address`
+
+  This flag can be used to control whether sockets should be acquired with the SO_REUSEADDR 
+  flag.
+  
+  Regardless of this setting, sockets on Windows are always acquired using the
+  SO_EXCLUSIVEADDRUSE flag.
 
 * removed undocumented REST API method GET `/_admin/database-name`
 
@@ -152,7 +169,7 @@ v2.0.0-alpha1 (2014-02-28)
 
 * database selection is moved to the bottom right corner of the web interface
 
-* removed priority queues
+* removed priority queue index type
 
   this feature was never advertised nor documented nor tested.
 
@@ -202,8 +219,7 @@ v2.0.0-alpha1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.11 (XXXX-XX-XX)
---------------------
+v1.4.11 (2014-02-27)
 
 * added SHORTEST_PATH AQL function 
 
