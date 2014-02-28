@@ -202,8 +202,7 @@ function startInstance (protocol, options, addArgs) {
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
-    instanceInfo.pid = executeExternal(ArangoServerState.executablePath(), 
-                                       args);
+    instanceInfo.pid = executeExternal(fs.join("bin","arangod"), args);
   }
 
   // Wait until the server/coordinator is up:
@@ -345,8 +344,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = args.concat(addArgs);
   }
-  var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                      "..","arangosh"));
+  var arangosh = fs.join("bin","arangosh");
   return executeAndWait(arangosh, args);
 }
 
@@ -355,8 +353,7 @@ function runArangoshCmd (options, instanceInfo, cmds) {
   args.push("--server.endpoint");
   args.push(instanceInfo.endpoint);
   args = args.concat(cmds);
-  var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                      "..","arangosh"));
+  var arangosh = fs.join("bin","arangosh");
   return executeAndWait(arangosh, args);
 }
 
@@ -493,8 +490,7 @@ testFuncs.single = function (options) {
       args.push("--javascript.unit-tests");
       args.push(fs.join(topDir,te));
       print("\nTrying",te,"on client...");
-      var arangosh = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                          "..","arangosh"));
+      var arangosh = fs.join("bin","arangosh");
       result.client = executeAndWait(arangosh, args);
     }
   }
@@ -586,8 +582,7 @@ function runArangoImp (options, instanceInfo, what) {
     args.push("--create-collection");
     args.push(what.create);
   }
-  var arangoimp = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..","arangoimp"));
+  var arangoimp = fs.join("bin","arangoimp");
   return executeAndWait(arangoimp, args);
 }
 
@@ -601,14 +596,12 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
   if (which === "dump") {
     args.push("--output-directory");
     args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
-    exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                               "..","arangodump"));
+    exe = fs.join("bin","arangodump");
   }
   else {
     args.push("--input-directory");
     args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
-    exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                               "..","arangorestore"));
+    exe = fs.join("bin","arangorestore");
   }
   return executeAndWait(exe, args);
 }
@@ -620,8 +613,7 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
               "--server.password",             options.password,
               "--server.endpoint",             instanceInfo.endpoint];
   args = args.concat(cmds);
-  var exe = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                 "..","arangob"));
+  var exe = fs.join("bin","arangob");
   return executeAndWait(exe, args);
 }
 
@@ -704,12 +696,12 @@ testFuncs.upgrade = function (options) {
   args.push(fs.join(tmpDataDir,"data"));
   fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
   args.push("--upgrade");
-  result.first = executeAndWait(ArangoServerState.executablePath(), args);
+  result.first = executeAndWait(fs.join("bin","arangod"), args);
 
   if (result.first !== 0 && !options.force) {
     return result;
   }
-  result.second = executeAndWait(ArangoServerState.executablePath(), args);
+  result.second = executeAndWait(fs.join("bin","arangod"), args);
 
   fs.removeDirectoryRecursive(tmpDataDir);
 
