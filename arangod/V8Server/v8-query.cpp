@@ -123,6 +123,21 @@ query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return an empty result set
+////////////////////////////////////////////////////////////////////////////////
+  
+static v8::Handle<v8::Value> EmptyResult () {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("documents"), v8::Array::New());
+  result->Set(v8::String::New("total"), v8::Number::New(0));
+  result->Set(v8::String::New("count"), v8::Number::New(0));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -212,7 +227,7 @@ static void CleanupExampleObject (TRI_memory_zone_t* zone,
 /// @brief sets up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupExampleObject (v8::Handle<v8::Object> example,
+static int SetupExampleObject (v8::Handle<v8::Object> const& example,
                                TRI_shaper_t* shaper,
                                size_t& n,
                                TRI_shape_pid_t*& pids,
@@ -250,8 +265,15 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
-      pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
-      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+      pids[i] = shaper->lookupAttributePathByName(shaper, *keyStr);
+
+      if (pids[i] == 0) {
+        // no attribute path found. this means the result will be empty 
+        CleanupExampleObject(shaper->_memoryZone, i, pids, values);
+        return TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
+
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
     }
 
     if (*keyStr == 0 || pids[i] == 0 || values[i] == 0) {
@@ -951,6 +973,8 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   // convert
   for (size_t i = 0;  i < n;  ++i) {
     TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
+
+    assert(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
@@ -965,15 +989,18 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper);
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false, false); 
     }
     else {
-      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper);
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false, false); 
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       DestroySearchValue(shaper->_memoryZone, result);
-      *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+
+      if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
+        *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+      }
       return res;
     }
   }
@@ -1078,6 +1105,11 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
 
   if (skiplistIterator == 0) {
+    int res = TRI_errno();
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return scope.Close(EmptyResult());
+    }
+     
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1953,6 +1985,11 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Object> err;
   res = SetupExampleObject(example, shaper, n, pids, values, &err);
 
+  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+    // empty result
+    return scope.Close(EmptyResult());
+  }
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(err));
   }
@@ -2085,6 +2122,10 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return scope.Close(EmptyResult());
+    }
+
     return scope.Close(v8::ThrowException(*err));
   }
 
