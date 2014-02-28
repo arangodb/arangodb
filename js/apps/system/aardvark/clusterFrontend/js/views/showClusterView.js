@@ -75,7 +75,6 @@
 
     updateCollections: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
-      var list = this.cols.getList(dbName);
       $("#selectCol").html("");
       _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
         $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");
@@ -102,6 +101,35 @@
       });
     },
 
+    updateDBDetailList: function() {
+      console.log("Updated");
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      
+      var selDB = $("#selectDB");
+      selDB.html("");
+      _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
+        selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var dbToSel = $("#" + dbName, selDB);
+      if (!dbToSel.length) {
+        dbName = $("#selectDB").find(":selected").attr("id");
+      } else {
+        dbToSel.prop("selected", true);
+      }
+
+      var selCol = $("#selectCol");
+      selCol.html("");
+      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
+        selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var colToSel = $("#" + colName, selCol);
+      colToSel.prop("selected", true);
+      if (!colToSel.length || !dbToSel.length) {
+        this.updateShards();
+      }
+    },
+
     rerender : function() {
       this.updateServerStatus();
       this.getServerStatistics();
@@ -110,6 +138,7 @@
       this.renderPieChart(this.data);
       this.transformForLineChart();
       this.renderLineChart();
+      this.updateDBDetailList();
     },
 
     render: function() {
@@ -428,8 +457,32 @@
 
     dashboard: function(e) {
         this.stopUpdating();
-        var id = $(e.currentTarget).attr("id");
-        window.App.dashboard(id);
+        var tar = $(e.currentTarget);
+        var serv = {};
+        var cur;
+        var coord;
+        serv.raw = tar.attr("id");
+        serv.isDBServer = tar.hasClass("dbserver");
+        if (serv.isDBServer) {
+          cur = this.dbservers.findWhere({
+            address: serv.raw
+          });
+          coord = this.coordinators.findWhere({
+            status: "ok"
+          });
+          serv.endpoint = coord.get("protocol")
+            + "://"
+            + coord.get("address");
+        } else {
+          cur = this.coordinators.findWhere({
+            address: serv.raw
+          });
+          serv.endpoint = cur.get("protocol")
+            + "://"
+            + cur.get("address");
+        }
+        serv.target = encodeURIComponent(cur.get("name"));
+        window.App.dashboard(serv);
     }
   });
 
