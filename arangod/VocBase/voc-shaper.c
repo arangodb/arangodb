@@ -343,9 +343,30 @@ static void FullSetAttributeWeight (voc_shaper_t* shaper) {
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, 
-                                            char const* name, 
-                                            bool create) {
+static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, 
+                                              char const* name) {
+  voc_shaper_t* s;
+  void const* p;
+
+  assert(name != NULL);
+
+  s = (voc_shaper_t*) shaper;
+  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+
+  if (p != NULL) {
+    return ((TRI_df_attribute_marker_t const*) p)->_aid;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper, 
+                                                    char const* name,
+                                                    bool isLocked) { 
   char* mem;
   TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
@@ -370,10 +391,6 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper,
 
   if (p != NULL) {
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
-  }
-
-  if (! create) {
-    return 0;
   }
 
   // create a new attribute name
@@ -415,9 +432,18 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper,
   // get next attribute id and write into marker
   aid = s->_nextAid++;
   marker->_aid = aid;
- 
+  
+  if (! isLocked) {
+    // write-lock
+    s->_collection->base.beginWrite(&s->_collection->base);
+  }
+
   // write attribute into the collection
   res = TRI_WriteMarkerDocumentCollection(s->_collection, &marker->base, totalSize, &fid, &result, false);
+  
+  if (! isLocked) {
+    s->_collection->base.endWrite(&s->_collection->base);
+  }
  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
@@ -548,7 +574,6 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper, TRI_shape_aid_t aid)
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute weight by identifier
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,7 +642,9 @@ static bool EqualElementShape (TRI_associative_synced_t* array, void const* left
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, 
-                                     TRI_shape_t* shape) {
+                                     TRI_shape_t* shape,
+                                     bool create,
+                                     bool isLocked) {
   char* mem;
   TRI_df_marker_t* result;
   TRI_df_shape_marker_t* marker;
@@ -643,6 +670,11 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
     return found;
+  }
+
+  // not found
+  if (! create) {
+    return 0;
   }
 
   // initialise a new shape marker
@@ -681,8 +713,18 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // get next shape number and write into marker
   ((TRI_shape_t*) (mem + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
 
+  if (! isLocked) {
+    // write-lock
+    s->_collection->base.beginWrite(&s->_collection->base);
+  }
+
   // write shape into the collection
   res = TRI_WriteMarkerDocumentCollection(s->_collection, &marker->base, totalSize, &fid, &result, false);
+
+  if (! isLocked) {
+    // write-unlock
+    s->_collection->base.endWrite(&s->_collection->base);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
@@ -953,10 +995,11 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
 static int InitStep1VocShaper (voc_shaper_t* shaper) {
   int res;
 
-  shaper->base.findAttributeByName   = FindAttributeByName;
-  shaper->base.lookupAttributeId     = LookupAttributeId;
-  shaper->base.findShape             = FindShape;
-  shaper->base.lookupShapeId         = LookupShapeId;
+  shaper->base.findOrCreateAttributeByName = FindOrCreateAttributeByName;
+  shaper->base.lookupAttributeByName       = LookupAttributeByName;
+  shaper->base.lookupAttributeId           = LookupAttributeId;
+  shaper->base.findShape                   = FindShape;
+  shaper->base.lookupShapeId               = LookupShapeId;
 
   res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
                                   TRI_UNKNOWN_MEM_ZONE,
