@@ -392,6 +392,7 @@
       },
 
       startUpdating: function () {
+          return false;
           if (this.isUpdating) {
               return;
           }
@@ -408,13 +409,13 @@
             cache: false,
             type: "GET",
             async: false, // sequential calls!
-            url: "cluster/shutdown",
+            url: "cluster/shutdown"
         });
         window.App.navigate("handleClusterDown", {trigger: true});
     },
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
-        window.App.navigate("dashboard/"+id, {trigger: true});
+        window.App.dashboard(id);
     }
   });
 
