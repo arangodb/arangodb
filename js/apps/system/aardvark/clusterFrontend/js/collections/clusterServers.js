@@ -33,7 +33,9 @@
   
     getStatuses: function(cb) {
       var self = this;
+      console.log("tock");
       this.fetch({async: false}).done(function() {
+        console.log("Done");
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
