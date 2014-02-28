@@ -416,7 +416,7 @@
 
     dashboard: function(e) {
         var id = $(e.currentTarget).attr("id");
-        window.App.navigate("dashboard/"+id, {trigger: true});
+        window.App.dashboard(id);
     }
   });
 
