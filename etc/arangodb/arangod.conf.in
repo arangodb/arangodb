@@ -29,9 +29,13 @@ directory = @LOCALSTATEDIR@/lib/arangodb
 #
 endpoint = tcp://0.0.0.0:8529
 
+# resuse a port on restart or wait until it is freed by the operating system
 # reuse-address = false
 
+# disable authentication for the admin frontend
 disable-authentication = yes
+
+# number of worker threads for V8
 threads = 5
 
 # the user and group are normally set in the start script
@@ -54,3 +58,13 @@ modules-path = @PKGDATADIR@/mr/server/modules;@PKGDATADIR@/mr/common/modules
 level = info
 severity = human
 file = @LOCALSTATEDIR@/log/arangodb/arangod.log
+
+[cluster]
+disable-dispatcher-kickstarter = false
+disable-dispatcher-frontend = false
+data-path = @LOCALSTATEDIR@/lib/arangodb/cluster
+log-path = @LOCALSTATEDIR@/log/arangodb/cluster
+agent-path = @LIBEXECDIR@/arangodb/etcd-arango
+arangod-path = @SBINDIR@/arangod
+dbserver-config = @SYSCONFDIR@/arangod.conf
+coordinator-config = @SYSCONFDIR@/arangod.conf

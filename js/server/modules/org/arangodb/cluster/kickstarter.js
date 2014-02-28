@@ -127,11 +127,9 @@ function sendToAgency (agencyURL, path, obj) {
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   console.info("Starting agent...");
 
-  // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(), ".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
 
   var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
@@ -167,16 +165,9 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     }
     args.push(st);
   }
-  var agentPath = fs.makeAbsolute(cmd.agentPath);
-  if (agentPath !== cmd.agentPath) {
-    if (cmd.agentPath === "") {
-      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..", "etcd-arango" ));
-    }
-    else {
-      agentPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                       "..", cmd.agentPath ));
-    }
+  var agentPath = cmd.agentPath;
+  if (agentPath === "") {
+    agentPath = ArangoServerState.agentPath();
   }
   if (! fs.exists(agentPath)) {
     return {"error":true, "isStartAgent": true, 
@@ -215,15 +206,13 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
-  // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
   var logPath = fs.makeAbsolute(cmd.logPath);
   if (logPath !== cmd.logPath) {    // path was relative
-    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+    logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
 
   var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
@@ -262,10 +251,17 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     body = JSON.parse(res.body);
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
-    args = ["--cluster.my-id", id, 
+    if (roles[i] === "DBserver") {
+      args = ["--configuration", ArangoServerState.dbserverConfig()];
+    }
+    else {
+      args = ["--configuration", ArangoServerState.coordinatorConfig()];
+    }
+    args = args.concat([
+            "--cluster.my-id", id, 
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
-            "--server.endpoint"];
+            "--server.endpoint"]);
     if (cmd.onlyLocalhost) {
       args.push("tcp://127.0.0.1:"+port);
     }
@@ -276,6 +272,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
     args.push(logfile);
     if (!isRelaunch) {
+      if (!fs.exists(logPath)) {
+        fs.makeDirectoryRecursive(logPath);
+      }
       if (fs.exists(logfile)) {
         fs.remove(logfile);
       }
@@ -284,6 +283,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args.push("--database.directory");
     args.push(datadir);
     if (!isRelaunch) {
+      if (!fs.exists(dataPath)) {
+        fs.makeDirectoryRecursive(dataPath);
+      }
       if (fs.exists(datadir)) {
         fs.removeDirectoryRecursive(datadir,true);
       }
@@ -292,13 +294,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat(dispatchers[cmd.dispatcher].arangodExtraArgs);
     var arangodPath = fs.makeAbsolute(cmd.arangodPath);
     if (arangodPath !== cmd.arangodPath) {
-      if (cmd.arangodPath === "") {
-        arangodPath = ArangoServerState.executablePath();
-      }
-      else {
-        arangodPath = fs.normalize(fs.join(ArangoServerState.executablePath(),
-                                           "..", cmd.arangodPath ));
-      }
+      arangodPath = ArangoServerState.arangodPath();
     }
     pids.push(executeExternal(arangodPath, args));
     endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
@@ -335,6 +331,13 @@ launchActions.createSystemColls = function (dispatchers, cmd) {
              'return load("js/server/version-check.js");\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
+  if (r.code === 200) {
+    r = JSON.parse(r.body);
+    r.isCreateSystemColls = true;
+    return r;
+  }
+  r.error = true;
+  r.isCreateSystemColls = true;
   return r;
 };
 
@@ -356,7 +359,12 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
-    download(url);
+    var hdrs = {};
+    if (dispatchers[cmd.dispatcher].username !== undefined &&
+        dispatchers[cmd.disptacher].passwd !== undefined) {
+      hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
+    }
+    download(url,"",{method:"GET", headers: hdrs});
   }
   console.info("Waiting 3 seconds for servers to shutdown gracefully...");
   wait(3);
@@ -370,11 +378,9 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 cleanupActions.startAgent = function (dispatchers, cmd) {
   console.info("Cleaning up agent...");
 
-  // First find out our own data directory:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir,cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
 
   var agentDataDir = fs.join(dataPath, "agent"+cmd.agencyPrefix+cmd.extPort);
@@ -387,17 +393,15 @@ cleanupActions.startAgent = function (dispatchers, cmd) {
 cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   console.info("Cleaning up DBservers...");
 
-  // First find out our own data directory to setup base for relative paths:
-  var myDataDir = fs.normalize(fs.join(ArangoServerState.basePath(),".."));
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
-    dataPath = fs.normalize(fs.join(myDataDir, cmd.dataPath));
+    dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
   }
   var logPath = fs.makeAbsolute(cmd.logPath);
   if (logPath !== cmd.logPath) {    // path was relative
-    logPath = fs.normalize(fs.join(myDataDir, cmd.logPath));
+    logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
-
+  
   var servers = cmd.DBservers.concat(cmd.Coordinators);
   var i;
   for (i = 0; i < servers.length; i++) {
@@ -511,7 +515,7 @@ Kickstarter.prototype.launch = function () {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -605,7 +609,7 @@ Kickstarter.prototype.relaunch = function () {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -687,7 +691,7 @@ Kickstarter.prototype.shutdown = function() {
         results.push(res);
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -766,7 +770,7 @@ Kickstarter.prototype.cleanup = function() {
         }
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
@@ -844,7 +848,7 @@ Kickstarter.prototype.isHealthy = function() {
         results.push(res);
       }
       else {
-        results.push({ error: false });
+        results.push({ error: false, action: cmd.action });
       }
     }
     else {
