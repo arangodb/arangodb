@@ -74,7 +74,6 @@
 
     updateCollections: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
-      var list = this.cols.getList(dbName);
       $("#selectCol").html("");
       _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
         $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");
@@ -101,6 +100,35 @@
       });
     },
 
+    updateDBDetailList: function() {
+      console.log("Updated");
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      
+      var selDB = $("#selectDB");
+      selDB.html("");
+      _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
+        selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var dbToSel = $("#" + dbName, selDB);
+      if (!dbToSel.length) {
+        dbName = $("#selectDB").find(":selected").attr("id");
+      } else {
+        dbToSel.prop("selected", true);
+      }
+
+      var selCol = $("#selectCol");
+      selCol.html("");
+      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
+        selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var colToSel = $("#" + colName, selCol);
+      colToSel.prop("selected", true);
+      if (!colToSel.length || !dbToSel.length) {
+        this.updateShards();
+      }
+    },
+
     rerender : function() {
       this.updateServerStatus();
       this.getServerStatistics();
@@ -109,6 +137,7 @@
       this.renderPieChart(data);
       this.transformForLineChart(data);
       this.renderLineChart();
+      this.updateDBDetailList();
     },
 
     render: function() {
