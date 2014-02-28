@@ -62,8 +62,8 @@
         param.hostname = host[0];
         param.port = host[1];
       } else {
-        param.dbs = 2;
-        param.coords = 1;
+        param.dbs = 3;
+        param.coords = 2;
         param.hostname = window.location.hostname;
         param.port = window.location.port; 
       }
