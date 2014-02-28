@@ -58,8 +58,7 @@ using namespace triagens::arango;
 
 ApplicationCluster::ApplicationCluster (TRI_server_t* server,
                                         triagens::rest::ApplicationDispatcher* dispatcher,
-                                        ApplicationV8* applicationV8,
-                                        char* executablePath) 
+                                        ApplicationV8* applicationV8) 
   : ApplicationFeature("Sharding"),
     _server(server),
     _dispatcher(dispatcher),
@@ -70,9 +69,16 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _agencyPrefix(),
     _myId(),
     _myAddress(),
-    _myExecutablePath(executablePath),
     _username("root"),
     _password(),
+    _dataPath(),
+    _logPath(),
+    _agentPath(),
+    _arangodPath(),
+    _dbserverConfig(),
+    _coordinatorConfig(),
+    _disableDispatcherFrontend(true),
+    _disableDispatcherKickstarter(true),
     _enableCluster(false),
     _disableHeartbeat(false) {
 
@@ -108,17 +114,24 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
     ("cluster.my-address", &_myAddress, "this server's endpoint")
     ("cluster.username", &_username, "username used for cluster-internal communication")
     ("cluster.password", &_password, "password used for cluster-internal communication")
+    ("cluster.data-path", &_dataPath, "path to cluster database directory")
+    ("cluster.log-path", &_logPath, "path to log directory for the cluster")
+    ("cluster.agent-path", &_agentPath, "path to the agent for the cluster")
+    ("cluster.arangod-path", &_arangodPath, "path to the arangod for the cluster")
+    ("cluster.dbserver-config", &_dbserverConfig, "path to the DBserver configuration")
+    ("cluster.coordinator-config", &_coordinatorConfig, "path to the coordinator configuration")
+    ("cluster.disable-dispatcher-frontend", &_disableDispatcherFrontend, "do not show the dispatcher interface")
+    ("cluster.disable-dispatcher-kickstarter", &_disableDispatcherKickstarter, "disable the kickstarter functionality")
   ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare validate the startup options
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
   // initialise ServerState library
   ServerState::initialise(); 
- 
  
   _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
@@ -135,7 +148,6 @@ bool ApplicationCluster::prepare () {
 
   // register the prefix with the communicator
   AgencyComm::setPrefix(_agencyPrefix);
-
   
   // validate --cluster.agency-endpoint
   if (_agencyEndpoints.empty()) {
@@ -179,32 +191,22 @@ bool ApplicationCluster::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::start () {
+
   // set authentication data
   ServerState::instance()->setAuthentication(_username, _password);
+
   // overwrite memory area
   _username = _password = "someotherusername";
 
-  // Some information about ourselves eventually used by dispatcher in cluster:
-  int err = 0;
-  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
-  if (0 == err) {
-    char *abs = TRI_GetAbsolutePath(_myExecutablePath.c_str(), cwd.c_str());
-    if (abs != 0) {
-      ServerState::instance()->setExecutablePath(string(abs));
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
-    }
+  ServerState::instance()->setDataPath(_dataPath);
+  ServerState::instance()->setLogPath(_logPath);
+  ServerState::instance()->setAgentPath(_agentPath);
+  ServerState::instance()->setArangodPath(_arangodPath);
+  ServerState::instance()->setDBserverConfig(_dbserverConfig);
+  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
+  ServerState::instance()->setDisableDispatcherFrontend(_disableDispatcherFrontend);
+  ServerState::instance()->setDisableDispatcherKickstarter(_disableDispatcherKickstarter);
 
-    abs = TRI_GetAbsolutePath (_server->_basePath, cwd.c_str());
-    if (abs != 0) {
-      ServerState::instance()->setBasePath(string(abs));
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
-    }
-  }
-  else {
-    ServerState::instance()->setExecutablePath(_myExecutablePath);
-    ServerState::instance()->setBasePath(_server->_basePath);
-  }
- 
   if (! enabled()) {
     return true;
   }

@@ -1019,33 +1019,121 @@ static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the servers executable path
+/// @brief returns the data path
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ExecutablePathServerState (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DataPathServerState (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "executablePath()");
+    TRI_V8_EXCEPTION_USAGE(scope, "dataPath()");
   }
 
-  const std::string exePath = ServerState::instance()->getExecutablePath();
-  return scope.Close(v8::String::New(exePath.c_str(), exePath.size()));
+  const std::string path = ServerState::instance()->getDataPath();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the servers base path
+/// @brief returns the log path
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_BasePathServerState (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_LogPathServerState (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "basePath()");
+    TRI_V8_EXCEPTION_USAGE(scope, "logPath()");
   }
 
-  const std::string basePath = ServerState::instance()->getBasePath();
-  return scope.Close(v8::String::New(basePath.c_str(), basePath.size()));
+  const std::string path = ServerState::instance()->getLogPath();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the agent path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AgentPathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "agentPath()");
+  }
+
+  const std::string path = ServerState::instance()->getAgentPath();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the arangod path
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ArangodPathServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "arangodPath()");
+  }
+
+  const std::string path = ServerState::instance()->getArangodPath();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the DBserver config
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DBserverConfigServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "dbserverConfig()");
+  }
+
+  const std::string path = ServerState::instance()->getDBserverConfig();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the coordinator config
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CoordinatorConfigServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "coordinatorConfig()");
+  }
+
+  const std::string path = ServerState::instance()->getCoordinatorConfig();
+  return scope.Close(v8::String::New(path.c_str(), path.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true, if the dispatcher frontend should be disabled
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DisableDipatcherFrontendServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "disableDispatcherFrontend()");
+  }
+
+  return scope.Close(v8::Boolean::New(ServerState::instance()->getDisableDispatcherFrontend()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true, if the dispatcher kickstarter should be disabled
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DisableDipatcherKickstarterServerState (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "disableDispatcherKickstarter()");
+  }
+
+  return scope.Close(v8::Boolean::New(ServerState::instance()->getDisableDispatcherKickstarter()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1714,8 +1802,14 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "address", JS_AddressServerState);
   TRI_AddMethodVocbase(rt, "flush", JS_FlushServerState, true);
   TRI_AddMethodVocbase(rt, "id", JS_IdServerState);
-  TRI_AddMethodVocbase(rt, "executablePath", JS_ExecutablePathServerState);
-  TRI_AddMethodVocbase(rt, "basePath", JS_BasePathServerState);
+  TRI_AddMethodVocbase(rt, "dataPath", JS_DataPathServerState);
+  TRI_AddMethodVocbase(rt, "logPath", JS_LogPathServerState);
+  TRI_AddMethodVocbase(rt, "agentPath", JS_AgentPathServerState);
+  TRI_AddMethodVocbase(rt, "arangodPath", JS_ArangodPathServerState);
+  TRI_AddMethodVocbase(rt, "dbserverConfig", JS_DBserverConfigServerState);
+  TRI_AddMethodVocbase(rt, "coordinatorConfig", JS_CoordinatorConfigServerState);
+  TRI_AddMethodVocbase(rt, "disableDispatcherFrontend", JS_DisableDipatcherFrontendServerState);
+  TRI_AddMethodVocbase(rt, "disableDispatcherKickstarter", JS_DisableDipatcherKickstarterServerState);
   TRI_AddMethodVocbase(rt, "initialised", JS_InitialisedServerState);
   TRI_AddMethodVocbase(rt, "isCoordinator", JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(rt, "role", JS_RoleServerState);
