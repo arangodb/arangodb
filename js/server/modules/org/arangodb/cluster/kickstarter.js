@@ -358,7 +358,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
         dispatchers[cmd.disptacher].passwd !== undefined) {
       hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
     }
-    download(url,"",{method:"GET", headers: hdrs);
+    download(url,"",{method:"GET", headers: hdrs});
   }
   console.info("Waiting 3 seconds for servers to shutdown gracefully...");
   wait(3);
