@@ -263,7 +263,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     }
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
-            "--cluster.disable-dispatcher-frontend", "false",
+            "--cluster.disable-dispatcher-frontend", "true",
             "--cluster.my-id", id, 
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
