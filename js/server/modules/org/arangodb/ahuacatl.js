@@ -913,6 +913,10 @@ function GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
 function GET_DOCUMENTS_HASH (collection, idx, example) {
   "use strict";
 
+  if (isCoordinator) {
+    return COLLECTION(collection).byExampleHash(idx, example).toArray();
+  }
+
   return COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
 }
 
@@ -933,9 +937,18 @@ function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 
     example[attribute] = value;
 
-    c.BY_EXAMPLE_HASH(idx, example).documents.forEach(function (doc) {
+    var list;
+    if (isCoordinator) {
+      list = c.byExampleHash(idx, example).toArray();
+    }
+    else {
+      list = c.BY_EXAMPLE_HASH(idx, example).documents;
+    }
+
+    list.forEach(function (doc) {
       result.push(doc);
     });
+
   });
 
   return result;
@@ -1012,6 +1025,10 @@ function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
 function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
   "use strict";
 
+  if (isCoordinator) {
+    return COLLECTION(collection).byConditionBitarray(idx, example).toArray();
+  }
+
   return COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
 }
 
@@ -1032,7 +1049,13 @@ function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
 
     example[attribute] = value;
 
-    documents = c.BY_EXAMPLE_BITARRAY(idx, example).documents;
+    if (isCoordinator) {
+      documents = c.byExampleBitarray(idx, example).toArray();
+    }
+    else {
+      documents = c.BY_EXAMPLE_BITARRAY(idx, example).documents;
+    }
+
     documents.forEach(function (doc) {
       result.push(doc);
     });
@@ -1047,6 +1070,10 @@ function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
 
 function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
   "use strict";
+
+  if (isCoordinator) {
+    return COLLECTION(collection).byConditionSkiplist(idx, example).toArray();
+  }
 
   return COLLECTION(collection).BY_CONDITION_SKIPLIST(idx, example).documents;
 }
@@ -1065,7 +1092,14 @@ function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
     var example = { }, documents;
 
     example[attribute] = value;
-    documents = c.BY_EXAMPLE_SKIPLIST(idx, example).documents;
+
+    if (isCoordinator) {
+      documents = c.byExampleSkiplist(idx, example).toArray();
+    }
+    else {
+      documents = c.BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    }
+
     documents.forEach(function (doc) {
       result.push(doc);
     });
@@ -3359,6 +3393,7 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
   }
     
   var c = COLLECTION(collection);
+
   if (c === null) {
     THROW(INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, collection);
   }
@@ -3378,6 +3413,10 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
   }
  
   try {
+    if (isCoordinator) {
+      return c.byConditionSkiplist(idx.id, condition).skip(skip).limit(limit).toArray();
+    }
+      
     return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents; 
   }
   catch (err) {
