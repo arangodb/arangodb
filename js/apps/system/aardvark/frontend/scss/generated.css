@@ -709,6 +709,14 @@ div.centralContent {
   padding-top: 2px;
   padding-left: 5px; }
 
+.waitModal {
+  text-align: center; }
+  .waitModal.icon {
+    font-size: 100px;
+    height: 120px; }
+  .waitModal.message {
+    font-size: 20px; }
+
 div.headerDropdown {
   background-color: white;
   position: relative;
