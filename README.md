@@ -14,13 +14,13 @@ Key features include:
 * Use ArangoDB as an **application server** and fuse your application and database together for maximal throughput
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
 * ArangoDB is **multi-threaded** - exploit the power of all your cores
-* **Flexible data modeling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
+* **Flexible data modelling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
 * Free **index choice**: use the correct index for your problem, be it a skip list or a fulltext search
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
 * **Powerful query language** (AQL) to retrieve data 
 * **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
-* **Replication**: set up the database in a master-slave configuration
+* **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
 * It is **open source** (Apache Licence 2.0)
 
 For more in-depth information
@@ -56,12 +56,12 @@ If the package manager has not already started the ArangoDB server, use
 
 and select the tab `Shell`. You can now use the Arango shell from within your browser. Alternative, it is available as command-line tool _arangosh_.
 
-    arangosh> db._create("hallo");
-    arangosh> db.hallo.save({ world: "earth" });
+    arangosh> db._create("hello");
+    arangosh> db.hello.save({ world: "earth" });
 
-Congratulations! You have created your first collection called `hallo` and your first document. To verify your achievements
+Congratulations! You have created your first collection called `hello` and your first document. To verify your achievements, type:
 
-    arangosh> db.hallo.toArray();
+    arangosh> db.hello.toArray();
 
 
 More Information
