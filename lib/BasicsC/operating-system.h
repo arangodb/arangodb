@@ -547,6 +547,8 @@
 #define TRI_HAVE_STRTOI64                   1
 #define TRI_HAVE_STRTOUI64                  1
 
+#define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
+
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
 #define snprintf                        _snprintf
