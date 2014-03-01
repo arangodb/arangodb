@@ -534,6 +534,15 @@ actions.defineHttp({
 
           {
             group: "system",
+            identifier: "residentSizePercent",
+            name: "Resident Set Size",
+            description: "The percentage of physical memory used as resident set size",
+            type: "current",
+            units: "percent"
+          },
+
+          {
+            group: "system",
             identifier: "virtualSize",
             name: "Virtual Memory Size",
             description: "The size of the virtual memory the process is using.",
