@@ -179,9 +179,14 @@
   top: 3px;
 }
 
+.modal-header a {
+  top: 2px !important;
+}
+
 .modal-header .close {
   color: #FFFFFF;
   opacity: 0.5;
+  font-weight: 300;
 }
 
 .modal-header .close:hover {
