@@ -1,0 +1,31 @@
+.navlogo .stat_cpu {
+  margin-top: 1px;
+  width: 26px;
+  height: 26px;
+}
+
+.navlogo .stat_ram {
+  width: 26px;
+  height: 26px;
+}
+
+.navlogo .stat_req {
+  width: 22px;
+  height: 22px;
+}
+
+.navlogo .stat_cpu path {
+  fill: #770000;
+}
+
+.navlogo .stat_ram path {
+  fill: #007700;
+}
+
+.navlogo .stat_req path {
+  fill: #aaaa00;
+}
+
+.statisticbar {
+  display: none;
+}

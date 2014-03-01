@@ -29,11 +29,11 @@
   background-color: $c_white;
   position: relative;
   width: 31%;
-  height: 220px;
-  border: 1px solid rgba(0, 0, 0, 0.125);
+  height: 210px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   float: left;
-  margin : 1.04%;
- // padding : 10px;
+  margin: 1.05%;
+  // padding: 0px;
 }
 
 .dygraph-label.dygraph-title {
@@ -53,7 +53,7 @@
 }
 
 .dygraph-axis-label.dygraph-axis-label-y {
-  width: 35px;
+  // width: 35px;
   font-size: 12px;
   font-weight: 400;
   font-family: 'Open Sans', sans-serif;
