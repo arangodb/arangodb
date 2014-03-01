@@ -708,16 +708,6 @@
     }));
   },
 
-  displayBackButtonForClusterView : function () {
-    if (this.options.server) {
-      $("#dashboardHeader").append(
-        "<button id=\"backToCluster\" class=\"pull-right\" style=\"margin: 5px;\">" +
-        "<b>Back to cluster</b>" +
-        "</button>"
-      );
-    }
-  },
-
   render: function() {
     var self = this;
     var header = "Dashboard";
@@ -725,7 +715,6 @@
       header += " (" + this.options.server.raw + ")";
     }
     $(this.el).html(this.template.render({header : header}));
-    this.displayBackButtonForClusterView();
     this.renderDistributionPlaceholder();
     this.prepareSeries();
     this.calculateSeries();
