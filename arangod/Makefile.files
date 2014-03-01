@@ -68,6 +68,7 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
@@ -109,7 +110,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
 	arangod/VocBase/vocbase-defaults.c
-	
+
 if ENABLE_CLUSTER
 
 bin_arangod_SOURCES += \

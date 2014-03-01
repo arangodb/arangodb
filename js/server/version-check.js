@@ -40,6 +40,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function(args) {
+  delete UPGRADE_ARGS;
+
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
@@ -708,7 +710,6 @@
     return true;
   }
 
-
   var lastVersion = null;
   var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
 
@@ -777,9 +778,17 @@
     logger.error("Database directory version (" + lastVersion
                   + ") is lower than server version (" + currentVersion + ").");
 
-    logger.error("It seems like you have upgraded the ArangoDB binary. If this is"
-                  +" what you wanted to do, please restart with the --upgrade option"
-                  +" to upgrade the data in the database directory.");
+    logger.error("----------------------------------------------------------------------");
+    logger.error("It seems like you have upgraded the ArangoDB binary.");
+    logger.error("If this is what you wanted to do, please restart with the");
+    logger.error("  --upgrade");
+    logger.error("option to upgrade the data in the database directory.");
+
+    logger.error("Normally you can use the control script to upgrade your database")
+    logger.error("  /etc/init.d/arangodb stop")
+    logger.error("  /etc/init.d/arangodb upgrade")
+    logger.error("  /etc/init.d/arangodb start")
+    logger.error("----------------------------------------------------------------------");
 
     // do not start unless started with --upgrade
     return false;
@@ -788,8 +797,6 @@
   // we should never get here
   return true;
 }(UPGRADE_ARGS));
-
-delete UPGRADE_ARGS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
