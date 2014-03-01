@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief please upgrade handler
 ///
 /// @file
 ///
@@ -21,29 +21,27 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Dr. Frank Celler
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_REST_VERSION_HANDLER_H
-#define TRIAGENS_ADMIN_REST_VERSION_HANDLER_H 1
+#ifndef TRIAGENS_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
+#define TRIAGENS_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
-#include "Admin/RestBaseHandler.h"
+#include "HttpServer/HttpHandler.h"
 
-#include "Rest/HttpResponse.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class RestDocumentHandler
+// -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace admin {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class RestVersionHandler
-// -----------------------------------------------------------------------------
+  namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestVersionHandler : public RestBaseHandler {
+    class RestPleaseUpgradeHandler : public rest::HttpHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -55,7 +53,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVersionHandler (rest::HttpRequest*);
+        RestPleaseUpgradeHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -73,26 +71,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version number
-////////////////////////////////////////////////////////////////////////////////
-
         status_t execute ();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const std::string QUEUE_NAME;
-
+        void handleError (basics::TriagensError const&);
     };
   }
 }
