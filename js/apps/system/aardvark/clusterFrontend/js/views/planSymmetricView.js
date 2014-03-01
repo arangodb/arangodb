@@ -13,7 +13,12 @@
     events: {
       "click #startSymmetricPlan": "startPlan",
       "click .add": "addEntry",
-      "click .delete": "removeEntry"
+      "click .delete": "removeEntry",
+      "click #cancel": "cancel"
+    },
+
+    cancel: function() {
+      window.App.navigate("", {trigger: true});
     },
 
     startPlan: function() {
