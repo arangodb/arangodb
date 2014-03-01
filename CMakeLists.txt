@@ -138,6 +138,16 @@ if (USE_MRUBY)
 endif ()
 
 ################################################################################
+### @brief VISTA LOCKS
+################################################################################
+
+option(USE_VISTA_LOCKS "Do you want to use Windows Vista R/W locks" OFF)
+
+if (USE_VISTA_LOCKS)
+  add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
+endif ()
+
+################################################################################
 ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
 ################################################################################
 

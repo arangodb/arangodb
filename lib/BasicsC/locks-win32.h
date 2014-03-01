@@ -65,7 +65,7 @@ TRI_mutex_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_read_write_lock_s {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   HANDLE _writerEvent;
   HANDLE _readersEvent;
 

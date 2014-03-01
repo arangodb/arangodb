@@ -166,7 +166,7 @@ void TRI_UnlockSpin (TRI_spin_t* spin) {
 /// @brief increments readers
 ////////////////////////////////////////////////////////////////////////////////
 
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
 static void IncrementReaders (TRI_read_write_lock_t* lock) {
   // ...........................................................................
   // increment the number of readers we have on the read_write lock
@@ -186,7 +186,7 @@ static void IncrementReaders (TRI_read_write_lock_t* lock) {
 /// @brief decrements readers
 ////////////////////////////////////////////////////////////////////////////////
 
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
 static void DecrementReaders (TRI_read_write_lock_t* lock) {
   // ...........................................................................
   // reduce the number of readers using the read_write lock by 1
@@ -217,7 +217,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // set the number of readers reading on the read_write lock to 0
   // ...........................................................................
@@ -260,7 +260,7 @@ void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   DeleteCriticalSection(&lock->_lockWriter);
   DeleteCriticalSection(&lock->_lockReaders);
 
@@ -282,7 +282,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   WaitForSingleObject(lock->_writerEvent, 10); // 10 millis timeout
 
   EnterCriticalSection(&lock->_lockReaders);
@@ -307,7 +307,7 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   while (true) {
     // ........................................................................
     // Waits for a writer to finish if there is one. This function only
@@ -351,7 +351,7 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   EnterCriticalSection(&lock->_lockReaders);
 
   /* this is wrong since it is possible for the write locker to block this event
@@ -393,7 +393,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   BOOL result;
   // ...........................................................................
   // Here we use TryEnterCriticalSection instead of EnterCriticalSection
@@ -452,7 +452,7 @@ bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // Lock so no other thread can access this
   // EnterCriticalSection(&lock->_lockWriter) will block this thread until
@@ -495,7 +495,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-#if OLD_WINDOWS_LOCKS
+#if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // Write lock this _lockReader so no other threads can access this
   // This will block this thread until it is released by the other thread
