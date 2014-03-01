@@ -736,6 +736,15 @@ actions.defineHttp({
             description: "Number of seconds elapsed since server start.",
             type: "current",
             units: "seconds"
+          },
+
+          {
+            group: "server",
+            identifier: "physicalMemory",
+            name: "Physical Memory",
+            description: "Physical memory in bytes.",
+            type: "current",
+            units: "bytes"
           }
 
         ]

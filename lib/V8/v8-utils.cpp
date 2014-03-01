@@ -2034,6 +2034,7 @@ static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
+  result->Set(v8::String::New("physicalMemory"), v8::Number::New((double) TRI_GetPhysicalMemory()));
 
   return scope.Close(result);
 }
