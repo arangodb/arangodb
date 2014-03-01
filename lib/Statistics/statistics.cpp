@@ -294,11 +294,22 @@ uint64_t TRI_GetPhysicalMemory () {
 }
 
 #else
+#ifdef TRI_HAVE_SC_PHYS_PAGES
+
+uint64_t TRI_GetPhysicalMemory () {
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+
+  return (uint64_t)(pages * page_size);
+}
+
+#else
 
 uint64_t TRI_GetPhysicalMemory () {
   return 0;
 }
 
+#endif
 #endif
 
 // -----------------------------------------------------------------------------

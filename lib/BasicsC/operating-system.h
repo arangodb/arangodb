@@ -420,6 +420,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_SC_PHYS_PAGES              1
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
