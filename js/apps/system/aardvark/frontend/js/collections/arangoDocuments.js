@@ -215,6 +215,7 @@
             var startDate = params.startDate;
             var endDate = params.endDate;
             var server = params.server;
+            var url = "";
             var figures = params.figures;
             var self = this;
             var filterString = "";
@@ -243,40 +244,22 @@
                 returnValue += "}";
             }
             var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
-            var result = [];
-            if (!server ) {
-                server = "";
+            if (server) {
+              url = server.endpoint;
+              url += "/_admin/clusterHistory";
+              url += "?DBserver=" + server.target;
             } else {
-                server = "http://" +  server;
+              url = "/_api/cursor";
             }
             $.ajax({
                 cache: false,
                 type: 'POST',
                 async: false,
-                url: server + '/_api/cursor',
-                data: JSON.stringify({query: myQueryVal}),
+                url: url,
+                data: JSON.stringify({query: myQueryVal, batchSize: 10000}),
                 contentType: "application/json",
                 success: function(data) {
-
-                  result = result.concat(data.result);
-                  var callback = function(cursor) {
-                          if (cursor.hasMore === false) {
-                              data.hasMore = false;
-                          }
-                          result = result.concat(cursor.result);
-                      };
-                  while(data.hasMore === true) {
-                       $.ajax({
-                           cache: false,
-                           type: 'PUT',
-                           async: false,
-                           url: server +'/_api/cursor/'+data.id,
-                           contentType: "application/json",
-                           success:callback,
-                           error:null
-                       });
-                   }
-                   self.history =  result;
+                  self.history =  data.result;
                 },
                 error: function(data) {
                 }

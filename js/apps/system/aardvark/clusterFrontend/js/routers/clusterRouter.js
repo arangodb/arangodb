@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper,dashboardView,arangoDatabase*/
+/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase*/
 
 (function() {
   "use strict";
@@ -42,10 +42,10 @@
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-            if (this.currentRoute === "dashboard") {
-                this.dashboardView.stopUpdating();
-            }
-            this.currentRoute = args;
+          if (this.currentRoute === "dashboard") {
+            this.dashboardView.stopUpdating();
+          }
+          this.currentRoute = args;
         }
       });
       this.toUpdate = [];
@@ -109,13 +109,6 @@
       this.planScenarioSelector.render();
     },
 
-    showDownload: function(content) {
-      if (!this.downloadView) {
-        this.downloadView = new window.DownloadView();
-      }
-      this.downloadView.render(content);
-    },
-
     handleClusterDown : function() {
       if (!this.clusterDownView) {
         this.clusterDownView = new window.ClusterDownView();
@@ -124,23 +117,22 @@
     },
 
     dashboard: function(server) {
-      if (this.statisticsDescription === undefined) {
-         this.statisticsDescription = new window.StatisticsDescription();
-          this.statisticsDescription.fetch({
-              async:false
-          });
+      var statisticsDescription = new window.StatisticsDescription();
+      statisticsDescription.fetch({
+        async:false
+      });
+      var statisticsCollection = new window.StatisticsCollection();
+      if (this.dashboardView) {
+        this.dashboardView.stopUpdating();
       }
-      if (this.statisticsCollection === undefined) {
-          this.statisticsCollection = new window.StatisticsCollection();
-      }
-      if (this.dashboardView === undefined) {
-          this.dashboardView = new dashboardView({
-              collection: this.statisticsCollection,
-              description: this.statisticsDescription,
-              documentStore: new window.arangoDocuments(),
-              server : server
-          });
-      }
+      console.log(server);
+      this.dashboardView = null;
+      this.dashboardView = new window.dashboardView({
+        collection: statisticsCollection,
+        description: statisticsDescription,
+        documentStore: new window.arangoDocuments(),
+        server : server
+      });
       this.dashboardView.render();
     }
 

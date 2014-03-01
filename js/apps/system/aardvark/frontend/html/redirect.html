@@ -1,0 +1,19 @@
+<html>
+  <head>
+    <script src="sharedLibs.js"></script>
+  </head>
+  <body>
+    <script>
+      $.get("cluster/amIDispatcher", function(data) {
+        var url = window.location.origin;
+        url += window.location.pathname;
+        if (data) {
+          url = url.replace("index", "cluster");
+        } else {
+          url = url.replace("index", "standalone");
+        }
+        window.location.replace(url);
+      });
+    </script>
+  </body>
+</html>

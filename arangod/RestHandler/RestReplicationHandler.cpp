@@ -101,12 +101,21 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
       handleCommandLoggerStart();
     }
     else if (command == "logger-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandLoggerStop();
     }
     else if (command == "logger-state") {
@@ -133,42 +142,76 @@ Handler::status_t RestReplicationHandler::execute() {
       handleCommandLoggerFollow();
     }
     else if (command == "batch") {
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandBatch();
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandInventory();
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandDump();
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandRestoreCollection();
     }
     else if (command == "restore-indexes") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandRestoreIndexes();
     }
     else if (command == "restore-data") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandRestoreData();
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandSync();
     }
     else if (command == "server-id") {
@@ -192,12 +235,22 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandApplierStart();
     }
     else if (command == "applier-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
+      
+      if (isCoordinatorError()) {
+        return status_t(Handler::HANDLER_DONE);
+      }
+
       handleCommandApplierStop();
     }
     else if (command == "applier-state") {
@@ -304,6 +357,23 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error if called on a coordinator server
+////////////////////////////////////////////////////////////////////////////////
+  
+bool RestReplicationHandler::isCoordinatorError () {
+#ifdef TRI_ENABLE_CLUSTER
+  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    generateError(HttpResponse::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "replication API is not supported on a coordinator");
+    return true;
+  }
+#endif
+    
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -360,6 +430,8 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 /// - `running`: will contain `true`
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -370,6 +442,9 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if the logger could not be started.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -419,6 +494,8 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ///
 /// - `running`: will contain `false`
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -430,6 +507,9 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if the logger could not be stopped.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -796,6 +876,8 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// - `id`: the id of the batch
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -806,6 +888,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -831,6 +916,8 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// If the batch's ttl can be extended successully, the response is empty.
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -841,6 +928,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,6 +946,8 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{204}
@@ -866,6 +958,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandBatch () {
@@ -1064,6 +1159,8 @@ void RestReplicationHandler::handleCommandBatch () {
 ///   If there isn't any more log data to fetch, the client might decide to go
 ///   to sleep for a while before calling the logger again.
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1084,6 +1181,9 @@ void RestReplicationHandler::handleCommandBatch () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -1316,6 +1416,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1326,6 +1428,9 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -2418,7 +2523,6 @@ void RestReplicationHandler::handleCommandDump () {
     return;
   }
 
-
   // initialise the dump container
   TRI_replication_dump_t dump;
   if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
@@ -2513,6 +2617,8 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// Use with caution!
 ///
+/// Note: this method is not supported on a coordinator in a cluster.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -2526,6 +2632,9 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred during sychronisation.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync () {

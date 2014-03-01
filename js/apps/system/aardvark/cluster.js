@@ -266,10 +266,8 @@
         diffList = diff.Coordinators(),
         noBeat = beats.noBeat();
       
-      _.each(list, function(url, k) {
-        var v = {};
+      _.each(list, function(v, k) {
         v.name = k;
-        v.address = url;
         resList.push(v);
         if (_.contains(noBeat, k)) {
           v.status = "critical";
