@@ -111,6 +111,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_MACOS_MEM_STATS            1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACH                       1
 #define TRI_HAVE_MACOS_SPIN                 1
