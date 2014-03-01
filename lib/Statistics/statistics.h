@@ -34,10 +34,6 @@
 #include "Statistics/figures.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -174,12 +170,6 @@ void TRI_FillConnectionStatistics (triagens::basics::StatisticsCounter& httpConn
 
 TRI_server_statistics_t TRI_GetServerStatistics ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the physical memory
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_GetPhysicalMemory ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -194,91 +184,97 @@ extern bool TRI_ENABLE_STATISTICS;
 /// @brief number of http connections
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsCounter HttpConnections;
+extern triagens::basics::StatisticsCounter TRI_HttpConnectionsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of requests
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsCounter TotalRequests;
+extern triagens::basics::StatisticsCounter TRI_TotalRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of requests by HTTP method
 ////////////////////////////////////////////////////////////////////////////////
 
-extern std::vector<triagens::basics::StatisticsCounter> MethodRequests;
+extern std::vector<triagens::basics::StatisticsCounter> TRI_MethodRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of async requests
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsCounter AsyncRequests;
+extern triagens::basics::StatisticsCounter TRI_AsyncRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection time distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsVector ConnectionTimeDistributionVector;
+extern triagens::basics::StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* ConnectionTimeDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_ConnectionTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request time distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsVector RequestTimeDistributionVector;
+extern triagens::basics::StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* TotalTimeDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_TotalTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* RequestTimeDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_RequestTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queue time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* QueueTimeDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsVector BytesSentDistributionVector;
+extern triagens::basics::StatisticsVector TRI_BytesSentDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* BytesSentDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_BytesSentDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes received distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsVector BytesReceivedDistributionVector;
+extern triagens::basics::StatisticsVector TRI_BytesReceivedDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes received distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-extern triagens::basics::StatisticsDistribution* BytesReceivedDistribution;
+extern triagens::basics::StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global server statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-extern TRI_server_statistics_t ServerStatistics;
+extern TRI_server_statistics_t TRI_ServerStatistics;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief physical memeory
+////////////////////////////////////////////////////////////////////////////////
+
+extern uint64_t TRI_PhysicalMemory;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -289,6 +285,10 @@ extern TRI_server_statistics_t ServerStatistics;
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_StatisticsTime (void);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             module initialisation
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
