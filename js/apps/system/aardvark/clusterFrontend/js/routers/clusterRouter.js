@@ -7,6 +7,7 @@
   window.ClusterRouter = Backbone.Router.extend({
 
     routes: {
+      ""                       : "initialRoute",
       "planTest"               : "planTest",
       "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
@@ -27,6 +28,10 @@
         + last;
     },
 
+    initialRoute: function() {
+      this.initial();
+    },
+
     updateAllUrls: function() {
       _.each(this.toUpdate, function(u) {
         u.updateUrl();
@@ -39,13 +44,21 @@
     },
 
     initialize: function () {
+      var self = this;
+      this.initial = this.planScenario;
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-          if (this.currentRoute === "dashboard") {
-            this.dashboardView.stopUpdating();
+          console.log(args);
+          if (args !== "showCluster") {
+            if (self.showClusterView) {
+              self.showClusterView.stopUpdating();
+              self.shutdownView.unrender();
+            }
+            if (self.dashboardView) {
+              self.dashboardView.stopUpdating();
+            }
           }
-          this.currentRoute = args;
         }
       });
       this.toUpdate = [];
@@ -61,6 +74,12 @@
       if (!this.showClusterView) {
         this.showClusterView = new window.ShowClusterView();
       }
+      if (!this.shutdownView) {
+        this.shutdownView = new window.ShutdownButtonView({
+          overview: this.showClusterView
+        });
+      }
+      this.shutdownView.render();
       this.showClusterView.render();
     },
 
@@ -125,9 +144,8 @@
       if (this.dashboardView) {
         this.dashboardView.stopUpdating();
       }
-      console.log(server);
       this.dashboardView = null;
-      this.dashboardView = new window.dashboardView({
+      this.dashboardView = new window.ServerDashboardView({
         collection: statisticsCollection,
         description: statisticsDescription,
         documentStore: new window.arangoDocuments(),
