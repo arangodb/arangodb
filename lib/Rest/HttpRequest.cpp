@@ -685,6 +685,14 @@ void HttpRequest::setUser (string const& user) {
   _user = user;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the path of the request
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setRequestPath (char const* path) {
+  _requestPath = path;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -898,7 +906,9 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           if (pathEnd - pathBegin >= 5) {
             char* q = pathBegin;
 
+            // check if the prefix is "_db"
             if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+
               // request contains database name
               q += 5;
               pathBegin = q;
@@ -1095,14 +1105,6 @@ void HttpRequest::setFullUrl (char const* begin, char const* end) {
   assert(begin <= end);
 
   _fullUrl = string(begin, end - begin);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setRequestPath (char const* path) {
-  _requestPath = path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
