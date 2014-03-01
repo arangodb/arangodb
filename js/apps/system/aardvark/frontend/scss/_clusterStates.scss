@@ -15,30 +15,28 @@
   }
 
   &.success {
-    @extend %positive
+    @extend %icon-positive
   }
 
   &.danger {
-    @extend %negative
+    @extend %icon-negative
   }
 
   &.warning {
-    @extend %warning
+    @extend %icon-warning
   }
 
   &.inactive {
-    @extend %inactive
+    @extend %icon-inactive
   }
 }
 
-div.coordinator {
+a.coordinator {
   @extend %clusterStateIcon;
   left: 15px;
-
-  
 }
 
-div.dbserver {
+a.dbserver {
   @extend %clusterStateIcon;
   right: 15px;
 }
