@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -280,7 +280,8 @@ ul.headerButtonList {
     margin-right: 2px; }
 
 button.shutdown, .clusterDownBtn button.shutdown.green {
-  margin-top: 4px; }
+  margin-top: 6px;
+  padding: 3px 14px; }
 
 a.headerButton {
   float: left;
@@ -522,6 +523,9 @@ li.tile, li.bigtile {
     margin-right: 10px; }
   li.tile a span.icon, li.bigtile a span.icon {
     font-size: 50px; }
+  li.tile a svg.icon, li.bigtile a svg.icon {
+    height: 50px;
+    width: 50px; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;

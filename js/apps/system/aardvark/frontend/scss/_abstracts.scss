@@ -45,6 +45,13 @@
   }
 }
 
+%svg-negative {
+  fill: $c_negative;
+  &:hover {
+    fill: $c_negative_hover;
+  }
+}
+
 %positive {
   background-color: $c_positive;
   &:hover {
@@ -56,6 +63,13 @@
   color: $c_positive;
   &:hover {
     color: $c_positive_hover;
+  }
+}
+
+%svg-positive {
+  fill: $c_positive;
+  &:hover {
+    fill: $c_positive_hover;
   }
 }
 
@@ -73,6 +87,13 @@
   }
 }
 
+%svg-warning {
+  fill: $c_warning;
+  &:hover {
+    fill: $c_warning_hover;
+  }
+}
+
 %neutral {
   background-color: $c_neutral;
   &:hover {
@@ -84,6 +105,13 @@
   color: $c_neutral;
   &:hover {
     color: $c_neutral_hover;
+  }
+}
+
+%svg-neutral {
+  fill: $c_neutral;
+  &:hover {
+    fill: $c_neutral_hover;
   }
 }
 
@@ -137,6 +165,13 @@
   color: $c_inactive;
   &:hover {
     color: $c_inactive_hover;
+  }
+}
+
+%svg-inactive {
+  fill: $c_inactive;
+  &:hover {
+    fill: $c_inactive_hover;
   }
 }
 

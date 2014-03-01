@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSing
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -39,6 +39,11 @@ nav.navbar, footer.footer {
   .deleteButton:hover, a.danger.coordinator:hover, a.danger.dbserver:hover {
     color: #be342e; }
 
+a.danger.coordinator, a.danger.dbserver {
+  fill: #da4f49; }
+  a.danger.coordinator:hover, a.danger.dbserver:hover {
+    fill: #be342e; }
+
 .button-success {
   background-color: #8aa051; }
   .button-success:hover {
@@ -49,6 +54,11 @@ nav.navbar, footer.footer {
   .addButton:hover, a.success.coordinator:hover, a.success.dbserver:hover {
     color: #788f3d; }
 
+a.success.coordinator, a.success.dbserver {
+  fill: #8aa051; }
+  a.success.coordinator:hover, a.success.dbserver:hover {
+    fill: #788f3d; }
+
 .button-warning {
   background-color: #faa732; }
   .button-warning:hover {
@@ -58,6 +68,11 @@ a.warning.coordinator, a.warning.dbserver {
   color: #faa732; }
   a.warning.coordinator:hover, a.warning.dbserver:hover {
     color: #f89406; }
+
+a.warning.coordinator, a.warning.dbserver {
+  fill: #faa732; }
+  a.warning.coordinator:hover, a.warning.dbserver:hover {
+    fill: #f89406; }
 
 .button-neutral {
   background-color: #8f8d8c; }
@@ -91,6 +106,11 @@ a.inactive.coordinator, a.inactive.dbserver {
   color: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover {
     color: grey; }
+
+a.inactive.coordinator, a.inactive.dbserver {
+  fill: lightgrey; }
+  a.inactive.coordinator:hover, a.inactive.dbserver:hover {
+    fill: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   position: absolute;
@@ -290,7 +310,8 @@ ul.headerButtonList {
     margin-right: 2px; }
 
 button.shutdown, .clusterDownBtn button.shutdown.green {
-  margin-top: 4px; }
+  margin-top: 6px;
+  padding: 3px 14px; }
 
 a.headerButton {
   float: left;
@@ -532,6 +553,9 @@ li.tile, li.bigtile {
     margin-right: 10px; }
   li.tile a span.icon, li.bigtile a span.icon {
     font-size: 50px; }
+  li.tile a svg.icon, li.bigtile a svg.icon {
+    height: 50px;
+    width: 50px; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
@@ -858,7 +882,7 @@ svg.clusterChart {
   display: inline; }
 
 a.coordinator, a.dbserver {
-  width: 90px;
+  width: 50px;
   height: 50px;
   position: absolute;
   top: 10px;
@@ -871,11 +895,15 @@ a.coordinator, a.dbserver {
     left: 0px;
     right: 0px; }
 
-a.coordinator {
-  left: 15px; }
+a.coordinator.single {
+  left: 90px; }
+a.coordinator.double {
+  left: 60px; }
 
-a.dbserver {
-  right: 15px; }
+a.dbserver.single {
+  right: 90px; }
+a.dbserver.double {
+  right: 60px; }
 
 .machineClass {
   padding: 10px;
