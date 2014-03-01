@@ -51,6 +51,16 @@
         }
       });
       return result;
+    },
+
+    isSymmetricSetup: function() {
+      var count = _.size(this.get("config").dispatchers);
+      return count === config.numberOfCoordinators
+        && count === config.numberOfDBservers;
+    },
+
+    isTestSetup: function() {
+      return _.size(this.get("config").dispatchers);
     }
 
   });
