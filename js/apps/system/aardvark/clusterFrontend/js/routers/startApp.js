@@ -20,14 +20,14 @@
 
     if(window.App.clusterPlan.get("plan")) {
       if(window.App.clusterPlan.isAlive()) {
-        window.App.showCluster();
+        window.App.initial = window.App.showCluster;
       } else {
-        window.App.handleClusterDown();
+        window.App.initial = window.App.handleClusterDown;
       }
     } else {
-      window.App.planScenario();
+      window.App.initial = window.App.planScenario;
     }
-
+    window.App.initialRoute();
     window.App.handleResize();
   });
 
