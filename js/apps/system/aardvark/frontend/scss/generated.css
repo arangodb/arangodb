@@ -95,11 +95,11 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     white-space: nowrap;
     width: 100%; }
   ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
-    font-weight: 400;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 15px;
     color: #999999;
     padding: 0px 20px;
-    text-transform: uppercase; }
+    font-variant: small-caps; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
@@ -886,7 +886,8 @@ select.filterSelect {
   margin-top: 2px;
   background-color: #333232;
   border-radius: 3px;
-  border: 2px solid #8AA051; }
+  border: 2px solid #8AA051;
+  text-align: center; }
 
 .notificationItemContent {
   font-weight: 300; }
@@ -895,12 +896,12 @@ select.filterSelect {
   cursor: pointer; }
 
 .fullNotification {
-  border: 2px solid red !important;
-  background-color: red !important; }
+  border: 2px solid #cc0000 !important;
+  background-color: #cc0000 !important; }
 
 #stat_hd #stat_hd_counter {
   color: white;
-  margin-left: 8px;
+  margin-left: 0px;
   line-height: 24px; }
 
 .contentButtons {
@@ -981,19 +982,51 @@ select.filterSelect {
 
 .innerDashboardChart {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px; }
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px; }
 
 .dashboardChart {
   background-color: white;
   position: relative;
   width: 31%;
-  height: 270px;
-  border: 1px solid black;
+  height: 220px;
+  border: 1px solid rgba(0, 0, 0, 0.125);
   float: left;
-  margin: 1%; }
+  margin: 1.08%; }
+
+.dygraph-label.dygraph-title {
+  font-size: 15px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  text-align: left;
+  font-variant: small-caps;
+  color: black; }
+
+.dygraph-axis-label.dygraph-axis-label-x {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: #666666; }
+
+.dygraph-axis-label.dygraph-axis-label-y {
+  width: 35px;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: #666666; }
+
+.dygraph-legend {
+  background-color: #fafafa !important;
+  text-align: right !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  font-family: 'Open Sans', sans-serif !important;
+  color: #666666 !important; }
+
+#dashboardDetailedLineChart {
+  padding-top: 10px; }
 
 .dashboardDistribution {
   width: 270px;

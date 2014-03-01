@@ -14,7 +14,6 @@
       events: {
         "change #selectDB"        : "updateCollections",
         "change #selectCol"       : "updateShards",
-        "click .coordinator"      : "dashboard",
         "click .dbserver"         : "dashboard",
         "click #clusterShutdown"  : "clusterShutdown",
         "mouseover #lineGraph"    : "setShowAll",
@@ -102,7 +101,6 @@
     },
 
     updateDBDetailList: function() {
-      console.log("Updated");
       var dbName = $("#selectDB").find(":selected").attr("id");
       var colName = $("#selectCol").find(":selected").attr("id");
       

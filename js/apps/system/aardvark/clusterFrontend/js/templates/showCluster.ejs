@@ -30,14 +30,16 @@
   <% if(type === "testPlan") { 
     _.each(byAddress, function(s, a) { 
       _.each(s.coords, function(c) {
-      console.log(c);
+        var url = c.get("protocol")
+          + "://"
+          + c.get("address");
     %>
       <li class="tile">
-        <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
+        <a class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank">
           <span class="clusterInfoIcon">
             <img src="img/icon_compass-24.png" />
           </span>
-        </div>
+        </a>
         <h5 class="collectionName"><%=c.get("name")%></h5>
       </li>
     <%

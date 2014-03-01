@@ -237,13 +237,13 @@
       var resList = [],
         list = servers.getList(),
         diffList = diff.DBServers(),
-        noBeat = beats.noBeat(),
+        didBeat = beats.didBeat(),
         serving = beats.getServing();
 
       _.each(list, function(v, k) {
         v.name = k;
         resList.push(v);
-        if (_.contains(noBeat, k)) {
+        if (!_.contains(didBeat, k)) {
           v.status = "critical";
           return;
         }
@@ -264,12 +264,12 @@
       var resList = [],
         list = coords.getList(),
         diffList = diff.Coordinators(),
-        noBeat = beats.noBeat();
+        didBeat = beats.didBeat();
       
       _.each(list, function(v, k) {
         v.name = k;
         resList.push(v);
-        if (_.contains(noBeat, k)) {
+        if (!_.contains(didBeat, k)) {
           v.status = "critical";
           return;
         }
