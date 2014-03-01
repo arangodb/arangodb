@@ -820,6 +820,31 @@ select.filterSelect {
   margin-top: 1px;
   margin-left: 10px !important; }
 
+.navlogo .stat_cpu {
+  margin-top: 1px;
+  width: 26px;
+  height: 26px; }
+
+.navlogo .stat_ram {
+  width: 26px;
+  height: 26px; }
+
+.navlogo .stat_req {
+  width: 22px;
+  height: 22px; }
+
+.navlogo .stat_cpu path {
+  fill: #770000; }
+
+.navlogo .stat_ram path {
+  fill: #007700; }
+
+.navlogo .stat_req path {
+  fill: #aaaa00; }
+
+.statisticbar {
+  display: none; }
+
 .fixedDropdown {
   margin: 37px 0 0 0 !important;
   border-radius: 0 !important;
@@ -1004,10 +1029,10 @@ select.filterSelect {
   background-color: white;
   position: relative;
   width: 31%;
-  height: 220px;
-  border: 1px solid rgba(0, 0, 0, 0.125);
+  height: 210px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   float: left;
-  margin: 1.04%; }
+  margin: 1.05%; }
 
 .dygraph-label.dygraph-title {
   font-size: 15px;
@@ -1023,7 +1048,6 @@ select.filterSelect {
   color: #666666; }
 
 .dygraph-axis-label.dygraph-axis-label-y {
-  width: 35px;
   font-size: 12px;
   font-weight: 400;
   font-family: 'Open Sans', sans-serif;

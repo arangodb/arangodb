@@ -13,7 +13,7 @@
       y = y / 100000;
       return y.toPrecision(3) + "MB";
     }
-    if (y > 100) {
+    if (y > 1000) {
       y = y / 1000;
       return y.toPrecision(3) + "KB";
     }
@@ -66,14 +66,14 @@
     detailEl: '#modalPlaceholder',
 
     events: {
-      "dblclick .innerDashboardChart"      : "showDetail",
-      "mousedown .dygraph-rangesel-zoomhandle"      : "stopUpdating",
-      "mouseup .dygraph-rangesel-zoomhandle"      : "startUpdating",
-      "mouseleave .dygraph-rangesel-zoomhandle"      : "startUpdating",
-      "click #backToCluster"    : "returnToClusterView"
+      "click .innerDashboardChart" : "showDetail",
+      "mousedown .dygraph-rangesel-zoomhandle" : "stopUpdating",
+      "mouseup .dygraph-rangesel-zoomhandle" : "startUpdating",
+      "mouseleave .dygraph-rangesel-zoomhandle" : "startUpdating",
+      "click #backToCluster" : "returnToClusterView"
     },
-
-    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "requestsTotal"],
+    
+    hideGraphs : ["totalTime", "uptime", "residentSize", "physicalMemory", "minorPageFaults", "requestsTotal"],
 
     chartTypeExceptions : {
       accumulated : {
@@ -110,6 +110,7 @@
       system_systemUserTime: ["systemTime","userTime"],
       client_totalRequestTime: ["requestTime","queueTime"]
     },
+    
     colors : ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
       "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
@@ -201,6 +202,20 @@
         div : "#systemResources"
       },
       residentSize : {
+        div : "#systemResources"
+      },
+      residentSizePercent : {
+        div : "#systemResources",
+        axes : {
+          y: {
+            labelsKMG2: false,
+            axisLabelFormatter: function(y) {
+              return y.toPrecision(2) + "%";
+            }
+          }
+        }
+      },
+      physicalMemory : {
         div : "#systemResources"
       },
       virtualSize : {
