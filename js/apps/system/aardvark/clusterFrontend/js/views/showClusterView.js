@@ -182,7 +182,7 @@
         var pieData = [];
         var self = this;
         this.data.forEach(function(m) {
-            pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
+            pieData.push({key: m.get("name"), value :m.get("system").residentSize,
                     time: self.serverTime});
         });
         return pieData;
@@ -289,8 +289,8 @@
     },
 
     renderPieChart: function(dataset) {
-        var w = 500;
-        var h = 250;
+        var w = 150;
+        var h = 150;
         var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
         var color = d3.scale.category20();
 
