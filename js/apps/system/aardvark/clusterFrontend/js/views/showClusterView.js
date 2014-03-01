@@ -75,7 +75,6 @@
 
     updateCollections: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
-      var list = this.cols.getList(dbName);
       $("#selectCol").html("");
       _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
         $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");
@@ -102,6 +101,35 @@
       });
     },
 
+    updateDBDetailList: function() {
+      console.log("Updated");
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      
+      var selDB = $("#selectDB");
+      selDB.html("");
+      _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
+        selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var dbToSel = $("#" + dbName, selDB);
+      if (!dbToSel.length) {
+        dbName = $("#selectDB").find(":selected").attr("id");
+      } else {
+        dbToSel.prop("selected", true);
+      }
+
+      var selCol = $("#selectCol");
+      selCol.html("");
+      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
+        selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+      });
+      var colToSel = $("#" + colName, selCol);
+      colToSel.prop("selected", true);
+      if (!colToSel.length || !dbToSel.length) {
+        this.updateShards();
+      }
+    },
+
     rerender : function() {
       this.updateServerStatus();
       this.getServerStatistics();
@@ -110,6 +138,7 @@
       this.renderPieChart(this.data);
       this.transformForLineChart();
       this.renderLineChart();
+      this.updateDBDetailList();
     },
 
     render: function() {
@@ -173,10 +202,22 @@
     loadHistory : function() {
         this.hist = [];
         var self = this;
+        var coord = this.coordinators.findWhere({
+          status: "ok"
+        });
+        var endpoint = coord.get("protocol")
+          + "://"
+          + coord.get("address");
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
-            self.documentStore.getStatisticsHistory({server: dbserver.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: dbserver.get("address"),
+              isDBServer: true,
+              target: encodeURIComponent(dbserver.get("name")),
+              endpoint: endpoint
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
@@ -189,7 +230,13 @@
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
-            self.documentStore.getStatisticsHistory({server: coordinator.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: coordinator.get("address"),
+              isDBServer: false,
+              target: encodeURIComponent(coordinator.get("name")),
+              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
@@ -428,8 +475,32 @@
 
     dashboard: function(e) {
         this.stopUpdating();
-        var id = $(e.currentTarget).attr("id");
-        window.App.dashboard(id);
+        var tar = $(e.currentTarget);
+        var serv = {};
+        var cur;
+        var coord;
+        serv.raw = tar.attr("id");
+        serv.isDBServer = tar.hasClass("dbserver");
+        if (serv.isDBServer) {
+          cur = this.dbservers.findWhere({
+            address: serv.raw
+          });
+          coord = this.coordinators.findWhere({
+            status: "ok"
+          });
+          serv.endpoint = coord.get("protocol")
+            + "://"
+            + coord.get("address");
+        } else {
+          cur = this.coordinators.findWhere({
+            address: serv.raw
+          });
+          serv.endpoint = cur.get("protocol")
+            + "://"
+            + cur.get("address");
+        }
+        serv.target = encodeURIComponent(cur.get("name"));
+        window.App.dashboard(serv);
     }
   });
 
