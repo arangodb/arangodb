@@ -1,3 +1,13 @@
-.contentDiv {
-   //background-color: white;
+.dashboardModal {
+  $width: 90%;
+  @extend %pull-left;
+  min-width: 780px;
+  width: $width;
+  margin-left: -$width/2;
+  overflow: auto;
+  height: 80%;
+  top: 10%;
+  @include border-radius(8px !important); //.modal has it
+  padding: 10px;
+  padding-top: 0px;
 }
