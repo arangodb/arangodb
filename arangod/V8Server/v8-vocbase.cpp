@@ -9541,10 +9541,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     // version check ok
     TRI_V8InitialiseFoxx(database, v8::Context::GetCurrent());
   }
-  else {
-    // version check failed
-    // TODO: report an error
-  }
 
   // populate the authentication cache. otherwise no one can access the new database
   TRI_ReloadAuthInfo(database);
@@ -10395,10 +10391,15 @@ bool TRI_V8RunVersionCheck (void* vocbase,
   v8g->_vocbase = vocbase;      
       
   v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/version-check.js");
+  bool ok = TRI_ObjectToBoolean(result);
+
+  if (! ok) {
+    ((TRI_vocbase_t*) vocbase)->_state = (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION;
+  }
  
   v8g->_vocbase = orig;
   
-  return TRI_ObjectToBoolean(result);
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1410,14 +1410,13 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     return NULL;
   }
 
-
   TRI_ReloadAuthInfo(vocbase);
 
   // .............................................................................
   // vocbase is now active
   // .............................................................................
 
-  vocbase->_state = 1;
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   // .............................................................................
   // start helper threads
@@ -1516,7 +1515,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&collections);
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
-  vocbase->_state = 2;
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
 
   // wait until synchroniser and compactor are finished
@@ -1537,7 +1536,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   // this will signal the cleanup thread to do one last iteration
-  vocbase->_state = 3;
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP;
 
   TRI_LockCondition(&vocbase->_cleanupCondition);
   TRI_SignalCondition(&vocbase->_cleanupCondition);

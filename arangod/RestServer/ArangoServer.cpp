@@ -67,6 +67,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/ConsoleThread.h"
@@ -116,6 +117,10 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+
+  // add a upgrade warning
+  factory->addPrefixHandler("/_msg/please-upgrade",
+                            RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
@@ -246,6 +251,12 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   // invalid database name specified, database not found etc.
   if (vocbase == 0) {
+    return false;
+  }
+
+  // database needs upgrade
+  if (vocbase->_state == (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION) {
+    request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
 
