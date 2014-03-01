@@ -1,5 +1,10 @@
 <script id="dashboardView.ejs" type="text/template">
-
+<div class="headerBar">
+  <a class="arangoHeader"><%= header %></a>
+  <% if (backButton) { %>
+    <button id="backToCluster" class="button-header pull-right">Back to Cluster</button>
+  <% } %>
+</div>
 <div class="contentDiv">
 	<!--
   <div id="dashboardHeader" class="headerBar">
@@ -7,14 +12,10 @@
    </div>
 	<div id="distributionChartDiv"></div>
 	-->
-  <div class="headerBar">
-      <a class="arangoHeader">Request Statistics</a>
-  </div>
 	<div class="lineChartDiv" id="requestStatistics"></div>
 	<div class="headerBar">
       <a class="arangoHeader">System Resources</a>
   </div>
   <div class="lineChartDiv" id="systemResources"></div>
 </div>
-
 </script>

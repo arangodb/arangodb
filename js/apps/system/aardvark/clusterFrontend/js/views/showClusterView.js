@@ -10,12 +10,12 @@
 
     template: templateEngine.createTemplate("showCluster.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
+    modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
 
       events: {
         "change #selectDB"        : "updateCollections",
         "change #selectCol"       : "updateShards",
         "click .dbserver"         : "dashboard",
-        "click #clusterShutdown"  : "clusterShutdown",
         "mouseover #lineGraph"    : "setShowAll",
         "mouseout #lineGraph"     : "resetShowAll"
       },
@@ -455,21 +455,6 @@
         }, this.interval);
       },
 
-    clusterShutdown : function() {
-      this.stopUpdating();
-      $('#waitModalLayer').modal('show');
-      $('#waitModalMessage').html('Please be patient while your cluster will shutdown');
-        $.ajax({
-            cache: false,
-            type: "GET",
-            async: false, // sequential calls!
-            url: "cluster/shutdown",
-            success: function(data) {
-              $('#waitModalLayer').modal('hide');
-              window.App.navigate("handleClusterDown", {trigger: true});
-            }
-        });
-    },
 
     dashboard: function(e) {
         this.stopUpdating();
@@ -477,6 +462,7 @@
         var serv = {};
         var cur;
         var coord;
+        $("#modalPlaceholder").html(this.modalDummy.render({}));
         serv.raw = tar.attr("id");
         serv.isDBServer = tar.hasClass("dbserver");
         if (serv.isDBServer) {
@@ -498,7 +484,8 @@
             + cur.get("address");
         }
         serv.target = encodeURIComponent(cur.get("name"));
-        window.App.dashboard(serv);
+        window.App.serverToShow = serv;
+        window.App.navigate("dashboard", {trigger: true});
     }
   });
 
