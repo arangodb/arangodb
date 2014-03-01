@@ -73,7 +73,7 @@
       "click #backToCluster"    : "returnToClusterView"
     },
 
-    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "residentSize", "requestsTotal"],
+    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "requestsTotal"],
 
     chartTypeExceptions : {
       accumulated : {
@@ -373,38 +373,40 @@
     },
 
     getChartStructure: function (figure) {
-      var options = {
-        labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
-        labelsSeparateLines: true,
-        digitsAfterDecimal: 3,
-        drawGapPoints: true,
-        fillGraph : true,
-        showLabelsOnHighlight : false,
-        strokeWidth: 2,
-        interactionModel :  {},
-        axisLabelFont: "Open Sans",
-        dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
-        colors: [this.colors[0]],
-        xAxisLabelWidth : "60",
-        rollPeriod: this.defaultRollPeriod,
-        showRangeSelector: false,
-        rightGap: 15,
-        rangeSelectorHeight: 30,
-        rangeSelectorPlotStrokeColor: '#617e2b',
-        rangeSelectorPlotFillColor: '#414a4c',
-        pixelsPerLabel : 60,
-        labelsKMG2: true,
-        axes : {
-          x: {
-            valueFormatter: function(d) {
-              return xAxisFormat(d);
+        var options = {
+          // labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right', 'border' },
+          // labelsSeparateLines: false,
+          digitsAfterDecimal: 2,
+          drawGapPoints: true,
+          fillGraph : true,
+          showLabelsOnHighlight : false,
+          strokeWidth: 2,
+          strokeBorderWidth: 1,
+          highlightCircleSize: 0,
+          strokeBorderColor: '#ffffff',
+          interactionModel :  {},
+          dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
+          colors: [this.colors[0]],
+          xAxisLabelWidth : "60",
+          rollPeriod: this.defaultRollPeriod,
+          rightGap: 10,
+          showRangeSelector: false,
+          rangeSelectorHeight: 40,
+          rangeSelectorPlotStrokeColor: '#365300',
+          rangeSelectorPlotFillColor: '#414a4c',
+          pixelsPerLabel : 60,
+          labelsKMG2: true,
+          axes : {
+              x: {
+                  valueFormatter: function(d) {
+                      return xAxisFormat(d);
+                  }
+              },
+              y: {
+                  ticker: Dygraph.numericLinearTicks
+              }
             }
-          },
-          y: {
-            ticker: Dygraph.numericLinearTicks
-          }
-        }
-      };
+          };
       if (figure.name) {
         options.title =  figure.name;
       }
@@ -587,20 +589,22 @@
       var t = new Date().getTime();
       var borderLeft, borderRight;
       if (!createDiv) {
-        displayOptions.height = $('#lineChartDetail').height() - 34 -29;
-        displayOptions.width = $('#lineChartDetail').width() -60;
-        chart.options.showRangeSelector = true;
-        chart.options.interactionModel = null;
-        chart.options.showLabelsOnHighlight = true;
-        if (chart.graph.dateWindow_) {
-          borderLeft = chart.graph.dateWindow_[0];
-          borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
-          chart.graph.dateWindow_[1] : t;
-          file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
-        }
+          displayOptions.height = $('#lineChartDetail').height() - 34 -29;
+          displayOptions.width = $('#lineChartDetail').width() -10;
+          chart.options.showRangeSelector = true;
+          chart.options.title = "";
+          chart.options.interactionModel = null;
+          chart.options.showLabelsOnHighlight = true;
+          chart.options.highlightCircleSize = 3;
+          if (chart.graph.dateWindow_) {
+              borderLeft = chart.graph.dateWindow_[0];
+              borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
+                  chart.graph.dateWindow_[1] : t;
+              file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
+          }
       } else {
-        borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
-        borderRight = t;
+          borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
+          borderRight = t;
       }
       if (!chart.graphCreated) {
         if (createDiv) {
