@@ -304,11 +304,23 @@ uint64_t TRI_GetPhysicalMemory () {
 }
 
 #else
+#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
+
+uint64_t getTotalSystemMemory() {
+  MEMORYSTATUSEX status;
+  status.dwLength = sizeof(status);
+  GlobalMemoryStatusEx(&status);
+
+  return (uint64_t) status.ullTotalPhys;
+}
+
+#else
 
 uint64_t TRI_GetPhysicalMemory () {
   return 0;
 }
 
+#endif
 #endif
 #endif
 
