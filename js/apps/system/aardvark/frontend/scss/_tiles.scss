@@ -33,6 +33,13 @@ li.tile {
         font-size: 50px;
       }
     }
+    svg {
+      @extend %clickable;
+      &.icon {
+        height: 50px;
+        width: 50px;
+      }
+    }
   }
 
   h5 {

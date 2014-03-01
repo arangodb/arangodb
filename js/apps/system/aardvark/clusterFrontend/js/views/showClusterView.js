@@ -20,6 +20,21 @@
         "mouseout #lineGraph"     : "resetShowAll"
       },
 
+      replaceSVGs: function() {
+        $(".svgToReplace").each(function() {
+          var img = $(this);
+          var id = img.attr("id");
+          var src = img.attr("src");
+          $.get(src, function(d) {
+            var svg = $(d).find("svg");
+            svg.attr("id", id)
+              .attr("class", "icon")
+              .removeAttr("xmlns:a");
+            img.replaceWith(svg);
+          }, "xml");
+        });
+      },
+
       updateServerTime: function() {
           this.serverTime = new Date().getTime();
       },
@@ -153,6 +168,7 @@
         type: this.type
       }));
       $(this.el).append(this.modal.render({}));
+      this.replaceSVGs();
       this.loadHistory();
       this.getServerStatistics();
       this.data = this.generatePieData();
