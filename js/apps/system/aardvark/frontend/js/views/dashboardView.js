@@ -725,11 +725,18 @@
 
   render: function() {
     var self = this;
-    var header = "Dashboard";
+    var header = "Request Statistics";
+    var addBackbutton = false;
     if (this.options.server) {
-      header += " (" + this.options.server.raw + ")";
+      header += " for Server ";
+      header += this.options.server.raw + " (";
+      header += decodeURIComponent(this.options.server.target) + ")";
+      addBackbutton = true;
     }
-    $(this.el).html(this.template.render({header : header}));
+    $(this.el).html(this.template.render({
+      header : header,
+      backButton: addBackbutton
+    }));
     this.renderDistributionPlaceholder();
     this.prepareSeries();
     this.calculateSeries();
@@ -820,7 +827,7 @@
   },
 
   returnToClusterView : function() {
-    window.App.showCluster();
+    window.history.back();
   }
 });
 }());
