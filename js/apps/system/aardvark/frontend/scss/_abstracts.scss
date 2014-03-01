@@ -101,6 +101,16 @@
   }
 }
 
+%header {
+  background-color: $c_header_btn_bg;
+  color: $c_header_btn_fg;
+  border: 1px solid $c_header_btn_border;
+  &:hover {
+    background-color: $c_white;
+    color: $c_black;
+  }
+}
+
 %notification {
   background-color: $c_notification;
   &:hover {

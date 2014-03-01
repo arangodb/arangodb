@@ -12,7 +12,12 @@
     modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
-      "click #startTestPlan": "startPlan"
+      "click #startTestPlan": "startPlan",
+      "click #cancel": "cancel"
+    },
+
+    cancel: function() {
+      window.App.navigate("", {trigger: true});
     },
 
     startPlan: function() {

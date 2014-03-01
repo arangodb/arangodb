@@ -36,9 +36,7 @@
     %>
       <li class="tile">
         <a class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank">
-          <span class="clusterInfoIcon">
-            <img src="img/icon_compass-24.png" />
-          </span>
+          <img src="img/icon_compass-24.png" class="icon" width="50px" height="50px"/>
         </a>
         <h5 class="collectionName"><%=c.get("name")%></h5>
       </li>
@@ -48,9 +46,7 @@
     %>
       <li class="tile">
         <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-          <span class="clusterInfoIcon">
-            <img src="img/icon_database-24.png" />
-          </span>
+          <img src="img/icon_database-24.png" class="icon" width="50px" height="50px"/>
         </div>
         <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
       </li>
@@ -63,9 +59,7 @@
       <li class="tile">
         <% _.each(s.coords, function(c) { %>
           <div class="coordinator <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-            <span class="clusterInfoIcon">
-              <img src="img/icon_compass-24.png" />
-            </span>
+            <img src="img/icon_compass-24.png" class="icon" width="50px" height="50px"/>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
         <% });
@@ -74,9 +68,7 @@
             dbName = c.get("name");
         %>
           <div class="dbserver <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
-            <span class="clusterInfoIcon">
-              <img src="img/icon_database-24.png" />
-            </span>
+            <img src="img/icon_database-24.png" class="icon" width="50px" height="50px"/>
             <h6 class="serverName"><%=c.get("name")%></h6>
           </div>
         <% }); %>
@@ -86,7 +78,6 @@
     });
   }
   %>
-  <li><button id="clusterShutdown" class="button-danger pull-right">Shutdown Cluster</button></li>
 </ul>
 
 <div class="headerBar">

@@ -64,6 +64,14 @@ nav.navbar, footer.footer {
   .button-primary:hover {
     background-color: #3a322e; }
 
+.button-header, a.headerButton {
+  background-color: #dddddd;
+  color: #555555;
+  border: 1px solid #222222; }
+  .button-header:hover, a.headerButton:hover {
+    background-color: white;
+    color: black; }
+
 .button-notification {
   background-color: #faa020; }
   .button-notification:hover {
@@ -227,19 +235,24 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-header {
   -moz-border-radius: 4px;
   -webkit-border-radius: 4px;
   border-radius: 4px;
   -webkit-box-shadow: 0;
   -moz-box-shadow: 0;
   box-shadow: 0;
+  font-weight: 300 !important;
+  font-size: 14px; }
+
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive {
   border: none;
   color: white;
   margin-left: 10px;
-  padding: 5px 16px;
-  font-weight: 300 !important;
-  font-size: 14px; }
+  padding: 5px 16px; }
+
+.button-header {
+  margin-top: 5px; }
 
 .button-notification {
   margin-right: 5px; }
@@ -278,15 +291,9 @@ a.headerButton {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
-  background-color: #dddddd;
-  color: #555555;
   height: 17px;
   width: 9px;
-  padding: 4px 9px 2px 9px;
-  border: 1px solid #222222; }
-  a.headerButton:hover {
-    background-color: white;
-    color: black; }
+  padding: 4px 9px 2px 9px; }
   a.headerButton .icon_arangodb_filter {
     top: 3px !important; }
   a.headerButton .icon_arangodb_import {
