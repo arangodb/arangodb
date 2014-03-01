@@ -54,13 +54,14 @@
     },
 
     isSymmetricSetup: function() {
-      var count = _.size(this.get("config").dispatchers);
+      var config = this.get("config");
+      var count = _.size(config.dispatchers);
       return count === config.numberOfCoordinators
         && count === config.numberOfDBservers;
     },
 
     isTestSetup: function() {
-      return _.size(this.get("config").dispatchers);
+      return _.size(this.get("config").dispatchers) === 1;
     }
 
   });
