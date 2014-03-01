@@ -279,6 +279,9 @@ ul.headerButtonList {
     display: inline;
     margin-right: 2px; }
 
+button.shutdown, .clusterDownBtn button.shutdown.green {
+  margin-top: 4px; }
+
 a.headerButton {
   float: left;
   margin-top: 2px;
@@ -517,6 +520,8 @@ li.tile, li.bigtile {
     font-size: 22px;
     margin-top: -5px;
     margin-right: 10px; }
+  li.tile a span.icon, li.bigtile a span.icon {
+    font-size: 50px; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;

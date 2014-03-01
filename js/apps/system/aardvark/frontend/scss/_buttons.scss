@@ -86,6 +86,10 @@ ul.headerButtonList {
   }
 }
 
+button.shutdown {
+  margin-top: 4px;
+}
+
 a.headerButton {
   @extend %clickable;
   @extend %header;
