@@ -13,7 +13,7 @@
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
-      "dashboard/:server"      : "dashboard",
+      "dashboard"              : "dashboard",
       "handleClusterDown"      : "handleClusterDown"
     },
 
@@ -135,7 +135,11 @@
       this.clusterDownView.render();
     },
 
-    dashboard: function(server) {
+    dashboard: function() {
+      var server = this.serverToShow;
+      if (!server) {
+        this.navigate("", {trigger: true});
+      }
       var statisticsDescription = new window.StatisticsDescription();
       statisticsDescription.fetch({
         async:false
@@ -145,7 +149,8 @@
         this.dashboardView.stopUpdating();
       }
       this.dashboardView = null;
-      this.dashboardView = new window.ServerDashboardView({
+      // this.dashboardView = new window.ServerDashboardView({
+      this.dashboardView = new window.dashboardView({
         collection: statisticsCollection,
         description: statisticsDescription,
         documentStore: new window.arangoDocuments(),

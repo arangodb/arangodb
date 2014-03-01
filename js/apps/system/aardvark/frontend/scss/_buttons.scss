@@ -1,17 +1,27 @@
 // Bootstrap Buttons
-%btn {
+%bare-btn {
   @include border-radius(4px);
   @include box-shadow(0);
+  font-weight: 300 !important;
+  font-size: 14px;
+}
+
+%btn {
+  @extend %bare-btn;
   border: none;
   color: $c_white;
   margin-left: 10px;
   padding: 5px 16px;
-  font-weight: 300 !important;
-  font-size: 14px;
 }
 .button-neutral {
   @extend %btn;
   @extend %neutral;
+}
+
+.button-header {
+  @extend %bare-btn;
+  @extend %header;
+  margin-top: 5px;
 }
 
 .button-primary {
@@ -78,6 +88,7 @@ ul.headerButtonList {
 
 a.headerButton {
   @extend %clickable;
+  @extend %header;
   float: left;
   margin-top: 2px; 
   margin-left: 5px;
@@ -85,17 +96,9 @@ a.headerButton {
   position: relative;
   @include border-radius(3px);
   @include box-shadow(none);
-  background-color: $c_header_btn_bg;
-  color: $c_header_btn_fg;
   height: 17px;
   width: 9px;
   padding: 4px 9px 2px 9px;
-  border: 1px solid $c_header_btn_border;
-
-  &:hover {
-    background-color: $c_white;
-    color: $c_black;
-  }
 
   .icon_arangodb_filter {
     top: 3px !important;
