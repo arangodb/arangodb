@@ -1718,14 +1718,20 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   TRI_process_info_t info = TRI_ProcessInfoSelf();
+  double rss = (double) info._residentSize;
+  double rssp = 0;
+
+  if (TRI_PhysicalMemory != 0) {
+    rssp = 100.0 * rss / TRI_PhysicalMemory;
+  }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
   result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
   result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
   result->Set(v8::String::New("numberOfThreads"), v8::Number::New((double) info._numberThreads));
-  result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
-  result->Set(v8::String::New("residentSizePercent"), v8::Number::New(((double) info._residentSize) / TRI_PhysicalMemory * 100));
+  result->Set(v8::String::New("residentSize"), v8::Number::New(rss));
+  result->Set(v8::String::New("residentSizePercent"), v8::Number::New(rssp));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
