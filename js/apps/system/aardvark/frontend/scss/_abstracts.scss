@@ -156,12 +156,12 @@
 
   li.dropdown-header {
     font: {
-      weight: 400;
-      size: 13px;
+      weight: 600;
+      size: 15px;
     }
     color: $c_dark_grey;
     padding: 0px 20px;
-    text-transform: uppercase;
+    font-variant: small-caps;
   }
 
   li.divider {

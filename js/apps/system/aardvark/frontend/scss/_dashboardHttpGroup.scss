@@ -12,11 +12,10 @@
 
 .innerDashboardChart {
   position: absolute;
-  top : 10px;
-  left : 10px;
-  right : 10px;
-  bottom : 10px;
-
+  top : 5px;
+  left : 5px;
+  right : 5px;
+  bottom : 5px;
 }
 
 #distributionChartDiv  {
@@ -30,9 +29,46 @@
   background-color: $c_white;
   position: relative;
   width: 31%;
-  height: 270px;
-  border: 1px solid $c_black;
+  height: 220px;
+  border: 1px solid rgba(0, 0, 0, 0.125);
   float: left;
-  margin : 1%;
+  margin : 1.08%;
  // padding : 10px;
 }
+
+.dygraph-label.dygraph-title {
+  font-size: 15px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  text-align: left;
+  font-variant: small-caps;
+  color: $c_black;
+}
+
+.dygraph-axis-label.dygraph-axis-label-x {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: $c_darker_grey;  
+}
+
+.dygraph-axis-label.dygraph-axis-label-y {
+  width: 35px;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: $c_darker_grey;
+}
+
+.dygraph-legend {
+  background-color: #fafafa !important;
+  text-align: right !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  font-family: 'Open Sans', sans-serif !important;
+  color: $c_darker_grey !important;
+}
+
+#dashboardDetailedLineChart {
+  padding-top: 10px
+;}

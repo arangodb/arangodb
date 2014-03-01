@@ -74,7 +74,7 @@
 
     },
 
-    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "residentSize", "requestsTotal"],
+    hideGraphs : ["totalTime", "uptime", "minorPageFaults", "requestsTotal"],
 
     chartTypeExceptions : {
         accumulated : {
@@ -372,23 +372,25 @@
 
     getChartStructure: function (figure) {
         var options = {
-            labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
-            labelsSeparateLines: true,
-            digitsAfterDecimal: 3,
+            // labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right', 'border' },
+            // labelsSeparateLines: false,
+            digitsAfterDecimal: 2,
             drawGapPoints: true,
             fillGraph : true,
             showLabelsOnHighlight : false,
             strokeWidth: 2,
+            strokeBorderWidth: 1,
+            highlightCircleSize: 0,
+            strokeBorderColor: '#ffffff',
             interactionModel :  {},
-            axisLabelFont: "Open Sans",
             dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
             colors: [this.colors[0]],
             xAxisLabelWidth : "60",
             rollPeriod: this.defaultRollPeriod,
+            rightGap: 10,
             showRangeSelector: false,
-            rightGap: 15,
-            rangeSelectorHeight: 30,
-            rangeSelectorPlotStrokeColor: '#617e2b',
+            rangeSelectorHeight: 40,
+            rangeSelectorPlotStrokeColor: '#365300',
             rangeSelectorPlotFillColor: '#414a4c',
             pixelsPerLabel : 60,
             labelsKMG2: true,
@@ -586,10 +588,12 @@
         var borderLeft, borderRight;
         if (!createDiv) {
             displayOptions.height = $('#lineChartDetail').height() - 34 -29;
-            displayOptions.width = $('#lineChartDetail').width() -60;
+            displayOptions.width = $('#lineChartDetail').width() -10;
             chart.options.showRangeSelector = true;
+            chart.options.title = "";
             chart.options.interactionModel = null;
             chart.options.showLabelsOnHighlight = true;
+            chart.options.highlightCircleSize = 3;
             if (chart.graph.dateWindow_) {
                 borderLeft = chart.graph.dateWindow_[0];
                 borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
