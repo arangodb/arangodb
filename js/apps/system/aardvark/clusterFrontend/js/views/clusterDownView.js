@@ -37,18 +37,21 @@
       });
     },
     editPlan: function() {
-      var config = window.App.clusterPlan.get("config");
-      if (_.size(config.dispatchers) === 1) {
+      var plan = window.App.clusterPlan;
+      if (plan.isTestSetup()) {
         window.App.navigate("planTest", {trigger : true});
         return;
       }
-      //TODO
-//    window.App.navigate("planSymmetrical", {trigger : true});
+      if (plan.isSymmetricSetup()) {
+        window.App.navigate("planSymmetrical", {trigger : true});
+        return;
+      }
       window.App.navigate("planAsymmetrical", {trigger : true});
     },
 
     deletePlan: function() {
       window.App.clusterPlan.destroy();
+      window.App.clusterPlan = new window.ClusterPlan();
       window.App.planScenario();
     }
 
