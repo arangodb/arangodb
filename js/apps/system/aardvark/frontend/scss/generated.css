@@ -3,7 +3,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon, .dashboardModal {
   float: left; }
 
 div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span {
@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -64,6 +64,14 @@ nav.navbar, footer.footer {
   .button-primary:hover {
     background-color: #3a322e; }
 
+.button-header, a.headerButton {
+  background-color: #dddddd;
+  color: #555555;
+  border: 1px solid #222222; }
+  .button-header:hover, a.headerButton:hover {
+    background-color: white;
+    color: black; }
+
 .button-notification {
   background-color: #faa020; }
   .button-notification:hover {
@@ -95,11 +103,11 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     white-space: nowrap;
     width: 100%; }
   ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
-    font-weight: 400;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 15px;
     color: #999999;
     padding: 0px 20px;
-    text-transform: uppercase; }
+    font-variant: small-caps; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
@@ -227,19 +235,24 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-header {
   -moz-border-radius: 4px;
   -webkit-border-radius: 4px;
   border-radius: 4px;
   -webkit-box-shadow: 0;
   -moz-box-shadow: 0;
   box-shadow: 0;
+  font-weight: 300 !important;
+  font-size: 14px; }
+
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive {
   border: none;
   color: white;
   margin-left: 10px;
-  padding: 5px 16px;
-  font-weight: 300 !important;
-  font-size: 14px; }
+  padding: 5px 16px; }
+
+.button-header {
+  margin-top: 5px; }
 
 .button-notification {
   margin-right: 5px; }
@@ -266,6 +279,10 @@ ul.headerButtonList {
     display: inline;
     margin-right: 2px; }
 
+button.shutdown, .clusterDownBtn button.shutdown.green {
+  margin-top: 6px;
+  padding: 3px 14px; }
+
 a.headerButton {
   float: left;
   margin-top: 2px;
@@ -278,15 +295,9 @@ a.headerButton {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
-  background-color: #dddddd;
-  color: #555555;
   height: 17px;
   width: 9px;
-  padding: 4px 9px 2px 9px;
-  border: 1px solid #222222; }
-  a.headerButton:hover {
-    background-color: white;
-    color: black; }
+  padding: 4px 9px 2px 9px; }
   a.headerButton .icon_arangodb_filter {
     top: 3px !important; }
   a.headerButton .icon_arangodb_import {
@@ -510,6 +521,11 @@ li.tile, li.bigtile {
     font-size: 22px;
     margin-top: -5px;
     margin-right: 10px; }
+  li.tile a span.icon, li.bigtile a span.icon {
+    font-size: 50px; }
+  li.tile a svg.icon, li.bigtile a svg.icon {
+    height: 50px;
+    width: 50px; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
@@ -820,6 +836,31 @@ select.filterSelect {
   margin-top: 1px;
   margin-left: 10px !important; }
 
+.navlogo .stat_cpu {
+  margin-top: 1px;
+  width: 26px;
+  height: 26px; }
+
+.navlogo .stat_ram {
+  width: 26px;
+  height: 26px; }
+
+.navlogo .stat_req {
+  width: 22px;
+  height: 22px; }
+
+.navlogo .stat_cpu path {
+  fill: #770000; }
+
+.navlogo .stat_ram path {
+  fill: #007700; }
+
+.navlogo .stat_req path {
+  fill: #aaaa00; }
+
+.statisticbar {
+  display: none; }
+
 .fixedDropdown {
   margin: 37px 0 0 0 !important;
   border-radius: 0 !important;
@@ -886,7 +927,8 @@ select.filterSelect {
   margin-top: 2px;
   background-color: #333232;
   border-radius: 3px;
-  border: 2px solid #8AA051; }
+  border: 2px solid #8AA051;
+  text-align: center; }
 
 .notificationItemContent {
   font-weight: 300; }
@@ -895,12 +937,12 @@ select.filterSelect {
   cursor: pointer; }
 
 .fullNotification {
-  border: 2px solid red !important;
-  background-color: red !important; }
+  border: 2px solid #cc0000 !important;
+  background-color: #cc0000 !important; }
 
 #stat_hd #stat_hd_counter {
   color: white;
-  margin-left: 8px;
+  margin-left: 0px;
   line-height: 24px; }
 
 .contentButtons {
@@ -969,6 +1011,19 @@ select.filterSelect {
   float: left;
   margin-right: 3px; }
 
+.dashboardModal {
+  min-width: 780px;
+  width: 90%;
+  margin-left: -45%;
+  overflow: auto;
+  height: 80%;
+  top: 10%;
+  -moz-border-radius: 8px !important;
+  -webkit-border-radius: 8px !important;
+  border-radius: 8px !important;
+  padding: 10px;
+  padding-top: 0px; }
+
 #dashboardHttpGroup {
   width: 100%;
   height: 100%;
@@ -981,19 +1036,49 @@ select.filterSelect {
 
 .innerDashboardChart {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px; }
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px; }
 
 .dashboardChart {
   background-color: white;
   position: relative;
   width: 31%;
-  height: 270px;
-  border: 1px solid black;
+  height: 210px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   float: left;
-  margin: 1%; }
+  margin: 1.05%; }
+
+.dygraph-label.dygraph-title {
+  font-size: 15px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  text-align: left;
+  color: black; }
+
+.dygraph-axis-label.dygraph-axis-label-x {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: #666666; }
+
+.dygraph-axis-label.dygraph-axis-label-y {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  color: #666666; }
+
+.dygraph-legend {
+  background-color: #fafafa !important;
+  text-align: right !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  font-family: 'Open Sans', sans-serif !important;
+  color: #666666 !important; }
+
+#dashboardDetailedLineChart {
+  padding-top: 10px; }
 
 .dashboardDistribution {
   width: 270px;

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,12 +22,17 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
 
 #include "BasicsC/locks.h"
+
+#ifdef TRI_HAVE_MACOS_MEM_STATS
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
 
 using namespace triagens::basics;
 using namespace std;
@@ -51,11 +56,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for lists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -67,18 +67,9 @@ static STATISTICS_TYPE RequestListLock;
 
 static TRI_statistics_list_t RequestFreeList;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                               public request statistics functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -106,28 +97,29 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   STATISTICS_LOCK(&RequestListLock);
 
-  TotalRequests.incCounter();
+  TRI_TotalRequestsStatistics.incCounter();
+
   if (statistics->_async) {
-    AsyncRequests.incCounter();
+    TRI_AsyncRequestsStatistics.incCounter();
   }
 
-  MethodRequests[(int) statistics->_requestType].incCounter();
+  TRI_MethodRequestsStatistics[(int) statistics->_requestType].incCounter();
 
   // check the request was completely received and transmitted
   if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
     double totalTime = statistics->_writeEnd - statistics->_readStart;
-    TotalTimeDistribution->addFigure(totalTime);
+    TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
 
     double requestTime = statistics->_requestEnd - statistics->_requestStart;
-    RequestTimeDistribution->addFigure(requestTime);
+    TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
 
     if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
       double queueTime = statistics->_queueEnd - statistics->_queueStart;
-      QueueTimeDistribution->addFigure(queueTime);
+      TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
     }
 
-    BytesSentDistribution->addFigure(statistics->_sentBytes);
-    BytesReceivedDistribution->addFigure(statistics->_receivedBytes);
+    TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
+    TRI_BytesReceivedDistributionStatistics->addFigure(statistics->_receivedBytes);
   }
 
   // clear statistics and put back an the free list
@@ -159,27 +151,18 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
                                 StatisticsDistribution& bytesReceived) {
   STATISTICS_LOCK(&RequestListLock);
 
-  totalTime = *TotalTimeDistribution;
-  requestTime = *RequestTimeDistribution;
-  queueTime = *QueueTimeDistribution;
-  bytesSent = *BytesSentDistribution;
-  bytesReceived = *BytesReceivedDistribution;
+  totalTime = *TRI_TotalTimeDistributionStatistics;
+  requestTime = *TRI_RequestTimeDistributionStatistics;
+  queueTime = *TRI_QueueTimeDistributionStatistics;
+  bytesSent = *TRI_BytesSentDistributionStatistics;
+  bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 
   STATISTICS_UNLOCK(&RequestListLock);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                           private connection statistics variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for lists
@@ -193,18 +176,9 @@ static STATISTICS_TYPE ConnectionListLock;
 
 static TRI_statistics_list_t ConnectionFreeList;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                            public connection statistics functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -235,13 +209,13 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   if (statistics->_http) {
     if (statistics->_connStart != 0) {
       if (statistics->_connEnd == 0) {
-        HttpConnections.incCounter();
+        TRI_HttpConnectionsStatistics.incCounter();
       }
       else {
-        HttpConnections.decCounter();
+        TRI_HttpConnectionsStatistics.decCounter();
 
         double totalTime = statistics->_connEnd - statistics->_connStart;
-        ConnectionTimeDistribution->addFigure(totalTime);
+        TRI_ConnectionTimeDistributionStatistics->addFigure(totalTime);
       }
     }
   }
@@ -274,27 +248,18 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
                                    StatisticsDistribution& connectionTime) {
   STATISTICS_LOCK(&ConnectionListLock);
 
-  httpConnections = HttpConnections;
-  totalRequests   = TotalRequests;
-  methodRequests  = MethodRequests;
-  asyncRequests   = AsyncRequests;
-  connectionTime  = *ConnectionTimeDistribution;
+  httpConnections = TRI_HttpConnectionsStatistics;
+  totalRequests   = TRI_TotalRequestsStatistics;
+  methodRequests  = TRI_MethodRequestsStatistics;
+  asyncRequests   = TRI_AsyncRequestsStatistics;
+  connectionTime  = *TRI_ConnectionTimeDistributionStatistics;
 
   STATISTICS_UNLOCK(&ConnectionListLock);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                public server statistics functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the global server statistics
@@ -303,24 +268,15 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
 TRI_server_statistics_t TRI_GetServerStatistics () {
   TRI_server_statistics_t server;
 
-  server._startTime = ServerStatistics._startTime;
+  server._startTime = TRI_ServerStatistics._startTime;
   server._uptime    = TRI_microtime() - server._startTime;
 
   return server;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills a linked list
@@ -347,7 +303,7 @@ static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, siz
 /// @brief destroys a linked list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyStatisticsList (TRI_statistics_list_t* list) {
+static void DestroyStatisticsList (TRI_statistics_list_t* list) {
   TRI_statistics_entry_t* entry = list->_first;
   while (entry != NULL) {
     TRI_statistics_entry_t* next = entry->_next;
@@ -359,17 +315,59 @@ void TRI_DestroyStatisticsList (TRI_statistics_list_t* list) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief gets the physical memory
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_MACOS_MEM_STATS
+
+static uint64_t GetPhysicalMemory () {
+  int mib[2];
+  int64_t physicalMemory;
+  size_t length;
+
+  // Get the Physical memory size
+  mib[0] = CTL_HW;
+  mib[1] = HW_MEMSIZE;
+  length = sizeof(int64_t);
+  sysctl(mib, 2, &physicalMemory, &length, NULL, 0);
+
+  return (uint64_t) physicalMemory;
+}
+
+#else
+#ifdef TRI_HAVE_SC_PHYS_PAGES
+
+static uint64_t GetPhysicalMemory () {
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+
+  return (uint64_t)(pages * page_size);
+}
+
+#else
+#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
+
+static uint64_t GetPhysicalMemory () {
+  MEMORYSTATUSEX status;
+  status.dwLength = sizeof(status);
+  GlobalMemoryStatusEx(&status);
+
+  return (uint64_t) status.ullTotalPhys;
+}
+
+#else
+
+static uint64_t TRI_GetPhysicalMemory () {
+  return 0;
+}
+
+#endif
+#endif
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public variable
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics enabled flags
@@ -381,104 +379,101 @@ bool TRI_ENABLE_STATISTICS = true;
 /// @brief number of http connections
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsCounter HttpConnections;
+StatisticsCounter TRI_HttpConnectionsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of requests
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsCounter TotalRequests;
+StatisticsCounter TRI_TotalRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of requests by HTTP method
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<StatisticsCounter> MethodRequests;
+std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of async requests
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsCounter AsyncRequests;
+StatisticsCounter TRI_AsyncRequestsStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection time distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsVector ConnectionTimeDistributionVector;
+StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* ConnectionTimeDistribution;
+StatisticsDistribution* TRI_ConnectionTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request time distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsVector RequestTimeDistributionVector;
+StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* TotalTimeDistribution;
+StatisticsDistribution* TRI_TotalTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* RequestTimeDistribution;
+StatisticsDistribution* TRI_RequestTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queue time distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* QueueTimeDistribution;
+StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsVector BytesSentDistributionVector;
+StatisticsVector TRI_BytesSentDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* BytesSentDistribution;
+StatisticsDistribution* TRI_BytesSentDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes received distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsVector BytesReceivedDistributionVector;
+StatisticsVector TRI_BytesReceivedDistributionVectorStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes received distribution
 ////////////////////////////////////////////////////////////////////////////////
 
-StatisticsDistribution* BytesReceivedDistribution;
+StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global server statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_server_statistics_t ServerStatistics;
+TRI_server_statistics_t TRI_ServerStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief physical memeory
 ////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_PhysicalMemory;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Statistics
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the current wallclock time
@@ -497,17 +492,22 @@ double TRI_StatisticsTime () {
 #else
 
 double TRI_StatisticsTime () {
-  return TRI_microtime(); 
+  return TRI_microtime();
 }
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             module initialisation
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseStatistics () {
-  ServerStatistics._startTime = TRI_microtime();
+  TRI_ServerStatistics._startTime = TRI_microtime();
+  TRI_PhysicalMemory = GetPhysicalMemory();
 
 #if TRI_ENABLE_FIGURES
 
@@ -517,30 +517,30 @@ void TRI_InitialiseStatistics () {
   // sets up the statistics
   // .............................................................................
 
-  ConnectionTimeDistributionVector << (0.1) << (1.0) << (60.0);
+  TRI_ConnectionTimeDistributionVectorStatistics << (0.1) << (1.0) << (60.0);
 
-  BytesSentDistributionVector << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
-  BytesReceivedDistributionVector << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
+  TRI_BytesSentDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
+  TRI_BytesReceivedDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
 
 #ifdef TRI_ENABLE_HIRES_FIGURES
-  RequestTimeDistributionVector << (0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
+  TRI_RequestTimeDistributionVectorStatistics << (0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
 #else
-  RequestTimeDistributionVector << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
+  TRI_RequestTimeDistributionVectorStatistics << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
 #endif
 
-  ConnectionTimeDistribution = new StatisticsDistribution(ConnectionTimeDistributionVector);
-  TotalTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
-  RequestTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
-  QueueTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
-  BytesSentDistribution = new StatisticsDistribution(BytesSentDistributionVector);
-  BytesReceivedDistribution = new StatisticsDistribution(BytesReceivedDistributionVector);
+  TRI_ConnectionTimeDistributionStatistics = new StatisticsDistribution(TRI_ConnectionTimeDistributionVectorStatistics);
+  TRI_TotalTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_RequestTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_QueueTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_BytesSentDistributionStatistics = new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
+  TRI_BytesReceivedDistributionStatistics = new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
 
   // initialise counters for all HTTP request types
-  MethodRequests.clear();
+  TRI_MethodRequestsStatistics.clear();
 
   for (int i = 0; i < ((int) triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
     StatisticsCounter c;
-    MethodRequests.push_back(c);
+    TRI_MethodRequestsStatistics.push_back(c);
   }
 
   // .............................................................................
@@ -571,21 +571,17 @@ void TRI_InitialiseStatistics () {
 
 void TRI_ShutdownStatistics (void) {
 #if TRI_ENABLE_FIGURES
-  delete ConnectionTimeDistribution;
-  delete TotalTimeDistribution;
-  delete RequestTimeDistribution;
-  delete QueueTimeDistribution;
-  delete BytesSentDistribution;
-  delete BytesReceivedDistribution;
+  delete TRI_ConnectionTimeDistributionStatistics;
+  delete TRI_TotalTimeDistributionStatistics;
+  delete TRI_RequestTimeDistributionStatistics;
+  delete TRI_QueueTimeDistributionStatistics;
+  delete TRI_BytesSentDistributionStatistics;
+  delete TRI_BytesReceivedDistributionStatistics;
 
-  TRI_DestroyStatisticsList(&RequestFreeList);
-  TRI_DestroyStatisticsList(&ConnectionFreeList);
+  DestroyStatisticsList(&RequestFreeList);
+  DestroyStatisticsList(&ConnectionFreeList);
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

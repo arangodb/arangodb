@@ -10,15 +10,29 @@
 
     template: templateEngine.createTemplate("showCluster.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
+    modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
 
       events: {
         "change #selectDB"        : "updateCollections",
         "change #selectCol"       : "updateShards",
-        "click .coordinator"      : "dashboard",
         "click .dbserver"         : "dashboard",
-        "click #clusterShutdown"  : "clusterShutdown",
         "mouseover #lineGraph"    : "setShowAll",
         "mouseout #lineGraph"     : "resetShowAll"
+      },
+
+      replaceSVGs: function() {
+        $(".svgToReplace").each(function() {
+          var img = $(this);
+          var id = img.attr("id");
+          var src = img.attr("src");
+          $.get(src, function(d) {
+            var svg = $(d).find("svg");
+            svg.attr("id", id)
+              .attr("class", "icon")
+              .removeAttr("xmlns:a");
+            img.replaceWith(svg);
+          }, "xml");
+        });
       },
 
       updateServerTime: function() {
@@ -102,7 +116,6 @@
     },
 
     updateDBDetailList: function() {
-      console.log("Updated");
       var dbName = $("#selectDB").find(":selected").attr("id");
       var colName = $("#selectCol").find(":selected").attr("id");
       
@@ -155,6 +168,7 @@
         type: this.type
       }));
       $(this.el).append(this.modal.render({}));
+      this.replaceSVGs();
       this.loadHistory();
       this.getServerStatistics();
       this.data = this.generatePieData();
@@ -168,7 +182,7 @@
         var pieData = [];
         var self = this;
         this.data.forEach(function(m) {
-            pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
+            pieData.push({key: m.get("name"), value :m.get("system").residentSize,
                     time: self.serverTime});
         });
         return pieData;
@@ -202,10 +216,22 @@
     loadHistory : function() {
         this.hist = [];
         var self = this;
+        var coord = this.coordinators.findWhere({
+          status: "ok"
+        });
+        var endpoint = coord.get("protocol")
+          + "://"
+          + coord.get("address");
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
-            self.documentStore.getStatisticsHistory({server: dbserver.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: dbserver.get("address"),
+              isDBServer: true,
+              target: encodeURIComponent(dbserver.get("name")),
+              endpoint: endpoint
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
@@ -218,7 +244,13 @@
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
-            self.documentStore.getStatisticsHistory({server: coordinator.get("address"), figures : ["client.totalTime"]});
+            var server = {
+              raw: coordinator.get("address"),
+              isDBServer: false,
+              target: encodeURIComponent(coordinator.get("name")),
+              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
+            };
+            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
             self.history.forEach(function(e) {
                 var h = {};
@@ -257,8 +289,8 @@
     },
 
     renderPieChart: function(dataset) {
-        var w = 500;
-        var h = 250;
+        var w = 150;
+        var h = 150;
         var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
         var color = d3.scale.category20();
 
@@ -439,21 +471,6 @@
         }, this.interval);
       },
 
-    clusterShutdown : function() {
-      this.stopUpdating();
-      $('#waitModalLayer').modal('show');
-      $('#waitModalMessage').html('Please be patient while your cluster will shutdown');
-        $.ajax({
-            cache: false,
-            type: "GET",
-            async: false, // sequential calls!
-            url: "cluster/shutdown",
-            success: function(data) {
-              $('#waitModalLayer').modal('hide');
-              window.App.navigate("handleClusterDown", {trigger: true});
-            }
-        });
-    },
 
     dashboard: function(e) {
         this.stopUpdating();
@@ -461,6 +478,7 @@
         var serv = {};
         var cur;
         var coord;
+        $("#modalPlaceholder").html(this.modalDummy.render({}));
         serv.raw = tar.attr("id");
         serv.isDBServer = tar.hasClass("dbserver");
         if (serv.isDBServer) {
@@ -482,7 +500,8 @@
             + cur.get("address");
         }
         serv.target = encodeURIComponent(cur.get("name"));
-        window.App.dashboard(serv);
+        window.App.serverToShow = serv;
+        window.App.navigate("dashboard", {trigger: true});
     }
   });
 

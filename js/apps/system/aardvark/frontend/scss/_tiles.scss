@@ -29,6 +29,16 @@ li.tile {
         margin-top: -5px;
         margin-right: 10px;
       }
+      &.icon {
+        font-size: 50px;
+      }
+    }
+    svg {
+      @extend %clickable;
+      &.icon {
+        height: 50px;
+        width: 50px;
+      }
     }
   }
 
