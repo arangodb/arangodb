@@ -6,7 +6,7 @@ ArangoDB
 Master: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=master)](http://travis-ci.org/triAGENS/ArangoDB)
 Devel: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=devel)](http://travis-ci.org/triAGENS/ArangoDB)
 
-ArangoDB is a multi-purpose open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript/Ruby extensions. 
+ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID transaction if you require them. Scale horizontally and vertically with a few mouse clicks.
 
 Key features include:
 
@@ -33,28 +33,24 @@ For more in-depth information
 For the Impatient
 -----------------
 
-For Mac OSX execute
+For Mac OSX users: execute
 
     brew install arangodb
 
-For Linux use the distribution dependend package manager, see 
-[Installation Manual](http://www.arangodb.org/manuals/current/Installing.html)
-for details.
-
-For Windows users: We provide an installer script on our 
-[download page](http://www.arangodb.org/download).
+For Windows and Linux users: use the installer script or distribution package
+from our [download page](http://www.arangodb.org/download).
 
 If the package manager has not already started the ArangoDB server, use
 
     unix> /path/to/sbin/arangod
-    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for business
+    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 2.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
 `/path/to/sbin` is OS dependent. It will normally by either `/usr/sbin` or `/user/local/sbin`. Point your browser to
 
     http://localhost:8529/
 
-and select the tab `Shell`. You can now use the Arango shell from within your browser. Alternative, it is available as command-line tool _arangosh_.
+and select `Tools / JS Shell`. You can now use the Arango shell from within your browser. Alternative, it is available as command-line tool _arangosh_.
 
     arangosh> db._create("hello");
     arangosh> db.hello.save({ world: "earth" });
@@ -86,11 +82,11 @@ Stay in Contact
 Please note that there will be bugs and we'd really appreciate it if
 you report them:
 
-    https://github.com/triAGENS/ArangoDB/issues
+[https://github.com/triAGENS/ArangoDB/issues](https://github.com/triAGENS/ArangoDB/issues)
 
 You can use the Google group for improvements, feature requests, comments 
 
-    http://www.arangodb.org/connect
+[http://www.arangodb.org/connect](http://www.arangodb.org/connect)
 
 
 Citing ArangoDB
