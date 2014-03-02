@@ -1,8 +1,10 @@
 ArangoDB
 
-ArangoDB is a multi-purpose open-source database with flexible data models for
+ArangoDB is a multi-purpose, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
-convenient SQL-like query language or JavaScript/Ruby extensions.
+convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID
+transaction if you require them. Scale horizontally and vertically with a few
+mouse clicks.
 Key features include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the
@@ -37,17 +39,16 @@ For more in-depth information
 
 For the Impatient
 
-For Mac OSX execute
+For Mac OSX users: execute
 
   brew install arangodb
 
-For Linux use the distribution dependend package manager, see Installation
-Manual for details.
-For Windows users: We provide an installer script on our download_page.
+For Windows and Linux users: use the installer script or distribution package
+from our download_page.
 If the package manager has not already started the ArangoDB server, use
 
   unix> /path/to/sbin/arangod
-  2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for
+  2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 2.x.y) is ready for
   business
   2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
@@ -56,7 +57,7 @@ local/sbin. Point your browser to
 
   http://localhost:8529/
 
-and select the tab Shell. You can now use the Arango shell from within your
+and select Tools / JS Shell. You can now use the Arango shell from within your
 browser. Alternative, it is available as command-line tool arangosh.
 
   arangosh> db._create("hello");
@@ -81,13 +82,9 @@ Stay in Contact
 
 Please note that there will be bugs and we'd really appreciate it if you report
 them:
-
-  https://github.com/triAGENS/ArangoDB/issues
-
+https://github.com/triAGENS/ArangoDB/issues
 You can use the Google group for improvements, feature requests, comments
-
-  http://www.arangodb.org/connect
-
+http://www.arangodb.org/community
 
 Citing ArangoDB
 
