@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief please upgrade handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,83 +21,68 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_REST_VERSION_HANDLER_H
-#define TRIAGENS_ADMIN_REST_VERSION_HANDLER_H 1
+#include "RestPleaseUpgradeHandler.h"
 
-#include "Admin/RestBaseHandler.h"
-
-#include "Rest/HttpResponse.h"
-
-namespace triagens {
-  namespace admin {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class RestVersionHandler
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
-////////////////////////////////////////////////////////////////////////////////
-
-    class RestVersionHandler : public RestBaseHandler {
+using namespace triagens::basics;
+using namespace triagens::rest;
+using namespace triagens::arango;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVersionHandler (rest::HttpRequest*);
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
+  : HttpHandler(request) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        string const& queue () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server version number
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-        static const std::string QUEUE_NAME;
-
-    };
-  }
+bool RestPleaseUpgradeHandler::isDirect () {
+  return true;
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
+  _response = createResponse(HttpResponse::OK);
+  _response->setContentType("text/plain; charset=utf-8");
+
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Database: ");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), _request->databaseName().c_str());
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "\r\n\r\n");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "It appears that your database must be upgrade. ");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Normally this can be done using\r\n\r\n");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb stop\r\n");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb upgrade\r\n");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb start\r\n\r\n");
+  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Please check the log file for details.\r\n");
+
+  return status_t(HANDLER_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void RestPleaseUpgradeHandler::handleError (basics::TriagensError const&) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

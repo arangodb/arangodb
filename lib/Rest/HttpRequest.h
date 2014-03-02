@@ -236,6 +236,15 @@ namespace triagens {
 
         void setUser (std::string const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the path of the request
+///
+/// @note The @FA{path} must exists as long as the instance is alive and it
+///       must be garbage collected by the caller.
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRequestPath (char const* path);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      public prefix/suffix methods
 // -----------------------------------------------------------------------------
@@ -521,15 +530,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void setFullUrl (char const* begin, char const* end);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
-///
-/// @note The @FA{path} must exists as long as the instance is alive and it
-///       must be garbage collected by the caller.
-////////////////////////////////////////////////////////////////////////////////
-
-        void setRequestPath (char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a key/value pair

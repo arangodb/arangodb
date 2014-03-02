@@ -1704,6 +1704,9 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 ///   The resident set size is reported in bytes.
 ///
+/// - residentSizePercent: resident size as percent of the total physical
+///   memory size.
+///
 /// - virtualSize: Virtual memory size in bytes.
 ///
 /// @verbinclude system1
@@ -1715,13 +1718,20 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   TRI_process_info_t info = TRI_ProcessInfoSelf();
+  double rss = (double) info._residentSize;
+  double rssp = 0;
+
+  if (TRI_PhysicalMemory != 0) {
+    rssp = 100.0 * rss / TRI_PhysicalMemory;
+  }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
   result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
   result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
   result->Set(v8::String::New("numberOfThreads"), v8::Number::New((double) info._numberThreads));
-  result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
+  result->Set(v8::String::New("residentSize"), v8::Number::New(rss));
+  result->Set(v8::String::New("residentSizePercent"), v8::Number::New(rssp));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
@@ -2034,6 +2044,7 @@ static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
+  result->Set(v8::String::New("physicalMemory"), v8::Number::New((double) TRI_PhysicalMemory));
 
   return scope.Close(result);
 }
@@ -3350,10 +3361,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
   TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRI_VERSION));
 
-  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(TRI_ConnectionTimeDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(TRI_RequestTimeDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(TRI_BytesSentDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(TRI_BytesReceivedDistributionVectorStatistics));
 
   TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(TRI_PLATFORM));
 }

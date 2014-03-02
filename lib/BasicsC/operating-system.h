@@ -111,6 +111,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_MACOS_MEM_STATS            1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACH                       1
 #define TRI_HAVE_MACOS_SPIN                 1
@@ -419,6 +420,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_SC_PHYS_PAGES              1
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
@@ -544,6 +546,8 @@
 #define TRI_HAVE_GMTIME_S                   1
 #define TRI_HAVE_STRTOI64                   1
 #define TRI_HAVE_STRTOUI64                  1
+
+#define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp

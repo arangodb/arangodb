@@ -45,6 +45,13 @@
   }
 }
 
+%svg-negative {
+  fill: $c_negative;
+  &:hover {
+    fill: $c_negative_hover;
+  }
+}
+
 %positive {
   background-color: $c_positive;
   &:hover {
@@ -56,6 +63,13 @@
   color: $c_positive;
   &:hover {
     color: $c_positive_hover;
+  }
+}
+
+%svg-positive {
+  fill: $c_positive;
+  &:hover {
+    fill: $c_positive_hover;
   }
 }
 
@@ -73,6 +87,13 @@
   }
 }
 
+%svg-warning {
+  fill: $c_warning;
+  &:hover {
+    fill: $c_warning_hover;
+  }
+}
+
 %neutral {
   background-color: $c_neutral;
   &:hover {
@@ -87,6 +108,13 @@
   }
 }
 
+%svg-neutral {
+  fill: $c_neutral;
+  &:hover {
+    fill: $c_neutral_hover;
+  }
+}
+
 %primary {
   background-color: $c_primary;
   &:hover {
@@ -98,6 +126,16 @@
   color: $c_primary;
   &:hover {
     color: $c_primary_hover;
+  }
+}
+
+%header {
+  background-color: $c_header_btn_bg;
+  color: $c_header_btn_fg;
+  border: 1px solid $c_header_btn_border;
+  &:hover {
+    background-color: $c_white;
+    color: $c_black;
   }
 }
 
@@ -130,6 +168,13 @@
   }
 }
 
+%svg-inactive {
+  fill: $c_inactive;
+  &:hover {
+    fill: $c_inactive_hover;
+  }
+}
+
 %dropdown-menu {
   @extend %pull-left;
   position: absolute;
@@ -156,12 +201,12 @@
 
   li.dropdown-header {
     font: {
-      weight: 400;
-      size: 13px;
+      weight: 600;
+      size: 15px;
     }
     color: $c_dark_grey;
     padding: 0px 20px;
-    text-transform: uppercase;
+    font-variant: small-caps;
   }
 
   li.divider {

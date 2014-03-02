@@ -701,6 +701,7 @@ exports.Communication = function() {
         return res.sort();
       };
       this.noBeat = function() {
+        // Do not use, will only work in highly synced clocks
         var lastAccepted = new Date((new Date()).getTime() - (2 * interval));
         var res = [];
         var list = this.list();
@@ -710,6 +711,9 @@ exports.Communication = function() {
           }
         });
         return res.sort();
+      };
+      this.didBeat = function() {
+        return _.keys(this.list());
       };
 
     };

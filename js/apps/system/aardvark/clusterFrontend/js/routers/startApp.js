@@ -12,24 +12,22 @@
       window.location.replace(url);
     }
   });
-
+  window.location.hash = "";
   $(document).ready(function() {
     window.App = new window.ClusterRouter();
 
     Backbone.history.start();
 
-    window.App.navigate("", {trigger: true});
-
     if(window.App.clusterPlan.get("plan")) {
       if(window.App.clusterPlan.isAlive()) {
-        window.App.showCluster();
+        window.App.initial = window.App.showCluster;
       } else {
-        window.App.handleClusterDown();
+        window.App.initial = window.App.handleClusterDown;
       }
     } else {
-      window.App.planScenario();
+      window.App.initial = window.App.planScenario;
     }
-
+    window.App.initialRoute();
     window.App.handleResize();
   });
 

@@ -1,5 +1,5 @@
 %clusterStateIcon {
-  width: 90px;
+  width: 50px;
   height: 50px;
   position: absolute;
   top: 10px;
@@ -15,30 +15,42 @@
   }
 
   &.success {
-    @extend %positive
+    @extend %icon-positive;
+    @extend %svg-positive;
   }
 
   &.danger {
-    @extend %negative
+    @extend %icon-negative;
+    @extend %svg-negative;
   }
 
   &.warning {
-    @extend %warning
+    @extend %icon-warning;
+    @extend %svg-warning;
   }
 
   &.inactive {
-    @extend %inactive
+    @extend %icon-inactive;
+    @extend %svg-inactive;
   }
 }
 
-div.coordinator {
+a.coordinator {
   @extend %clusterStateIcon;
-  left: 15px;
-
-  
+  &.single {
+    left: 90px;
+  }
+  &.double {
+    left: 60px;
+  }
 }
 
-div.dbserver {
+a.dbserver {
   @extend %clusterStateIcon;
-  right: 15px;
+  &.single {
+    right: 90px;
+  }
+  &.double {
+    right: 60px;
+  }
 }
