@@ -86,7 +86,7 @@ you report them:
 
 You can use the Google group for improvements, feature requests, comments 
 
-[http://www.arangodb.org/connect](http://www.arangodb.org/connect)
+[http://www.arangodb.org/community](http://www.arangodb.org/community)
 
 
 Citing ArangoDB
