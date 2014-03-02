@@ -22,11 +22,11 @@ for various languages including the Big-P (PHP, Python, Perl) and Ruby.
 Please contact @S_EXTREF_S{http://www.arangodb.org/connect,us} if you have any
 questions.
 
-Upgrading to ArangoDB 1.4 {#ArangoDBUpgrading14}
+Upgrading to ArangoDB 2.0 {#ArangoDBUpgrading20}
 ================================================
 
-- @BOOK_REF{NewFeatures14}
-- @BOOK_REF{Upgrading14}
+- @BOOK_REF{NewFeatures20}
+- @BOOK_REF{Upgrading20}
 
 See @ref Upgrading from older releases.
 
