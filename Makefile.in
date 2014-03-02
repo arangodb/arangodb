@@ -708,6 +708,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
@@ -810,6 +811,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/RestHandler/bin_arangod-RestDocumentHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT) \
+	arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestReplicationHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestUploadHandler.$(OBJEXT) \
 	arangod/RestHandler/bin_arangod-RestVocbaseBaseHandler.$(OBJEXT) \
@@ -1568,6 +1570,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
@@ -3150,6 +3153,9 @@ arangod/RestHandler/bin_arangod-RestEdgeHandler.$(OBJEXT):  \
 arangod/RestHandler/bin_arangod-RestImportHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/bin_arangod-RestReplicationHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
@@ -3636,6 +3642,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestDocumentHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestImportHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestReplicationHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestUploadHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/bin_arangod-RestVocbaseBaseHandler.Po@am__quote@
@@ -6494,6 +6501,20 @@ arangod/RestHandler/bin_arangod-RestImportHandler.obj: arangod/RestHandler/RestI
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestImportHandler.cpp' object='arangod/RestHandler/bin_arangod-RestImportHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestImportHandler.obj `if test -f 'arangod/RestHandler/RestImportHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestImportHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestImportHandler.cpp'; fi`
+
+arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.o: arangod/RestHandler/RestPleaseUpgradeHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.o `test -f 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestPleaseUpgradeHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestPleaseUpgradeHandler.cpp' object='arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.o `test -f 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestPleaseUpgradeHandler.cpp
+
+arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.obj: arangod/RestHandler/RestPleaseUpgradeHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.obj `if test -f 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Tpo arangod/RestHandler/$(DEPDIR)/bin_arangod-RestPleaseUpgradeHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestPleaseUpgradeHandler.cpp' object='arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/bin_arangod-RestPleaseUpgradeHandler.obj `if test -f 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; fi`
 
 arangod/RestHandler/bin_arangod-RestReplicationHandler.o: arangod/RestHandler/RestReplicationHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/bin_arangod-RestReplicationHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/bin_arangod-RestReplicationHandler.Tpo -c -o arangod/RestHandler/bin_arangod-RestReplicationHandler.o `test -f 'arangod/RestHandler/RestReplicationHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestReplicationHandler.cpp
