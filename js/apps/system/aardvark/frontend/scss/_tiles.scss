@@ -5,7 +5,10 @@ ul.tileList {
 }
 
 li.tile {
+  $iconSize: 50px;
   @extend %pull-left;
+  @include box-shadow(none);
+
   position:relative;
   text-align:center;
   height:100px;
@@ -17,7 +20,13 @@ li.tile {
     right: 6px;
     bottom: 13px;
   }
-  @include box-shadow(none);
+
+  img {
+    &.icon {
+      height: $iconSize;
+      width: $iconSize;
+    }
+  }
 
   a {
     span {
@@ -30,14 +39,14 @@ li.tile {
         margin-right: 10px;
       }
       &.icon {
-        font-size: 50px;
+        font-size: $iconSize;
       }
     }
     svg {
       @extend %clickable;
       &.icon {
-        height: 50px;
-        width: 50px;
+        height: $iconSize;
+        width: $iconSize;
       }
     }
   }
