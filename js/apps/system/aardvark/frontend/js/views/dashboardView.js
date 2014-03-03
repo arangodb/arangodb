@@ -60,7 +60,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 8000, // in milliseconds
+    interval: 12000, // in milliseconds
     defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
@@ -327,7 +327,7 @@
       },
       requests : {
         div : "#requestStatistics",
-        title : "HTTP Requests",
+        title : "HTTP Requests per second",
         stacked : true
       },
       uptime : {
@@ -411,7 +411,7 @@
           dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
           colors: [this.colors[0]],
           xAxisLabelWidth : "60",
-          rollPeriod: this.defaultRollPeriod,
+          rollPeriod: 3,
           rightGap: 10,
           showRangeSelector: false,
           rangeSelectorHeight: 40,
@@ -537,7 +537,10 @@
             } else if (valueList === "current") {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === "currentDistribution")  {
-              if (val !== null) {
+                if (figure === "totalRequestTime") {
+                    console.log(valueList);
+                }
+                if (val !== null) {
                 val = val.count === 0 ? 0 : val.sum / val.count;
               }
               self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
@@ -547,7 +550,6 @@
               ]);
             }
           });
-
         });
       });
       Object.keys(self.combinedCharts).forEach(function (cc) {

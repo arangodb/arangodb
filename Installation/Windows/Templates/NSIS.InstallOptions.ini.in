@@ -20,7 +20,7 @@ State=1
 
 [Field 3]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ as into  configurable directory
+Text=Install @CPACK_PACKAGE_NAME@ as into configurable directory
 Left=0
 Right=-1
 Top=40

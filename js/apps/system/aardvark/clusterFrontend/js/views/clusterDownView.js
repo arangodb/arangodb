@@ -14,7 +14,9 @@
     events: {
       "click #relaunchCluster"  : "relaunchCluster",
       "click #editPlan"         : "editPlan",
-      "click #deletePlan"       : "deletePlan"
+      "click #submitEditPlan"   : "submitEditPlan",
+      "click #deletePlan"       : "deletePlan",
+      "click #submitDeletePlan" : "submitDeletePlan"
     },
 
     render: function() {
@@ -24,6 +26,7 @@
 
     relaunchCluster: function() {
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster will be relaunched');
       var result = false;
       $.ajax({
@@ -31,12 +34,20 @@
         type: "GET",
         url: "cluster/relaunch",
         success: function(data) {
+          $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
           $('#waitModalLayer').modal('hide');
           window.App.navigate("showCluster", {trigger: true});
         }
       });
     },
+
     editPlan: function() {
+      $('#deletePlanModal').modal('hide');
+      $('#editPlanModal').modal('show');
+    },
+
+    submitEditPlan : function() {
+      $('#editPlanModal').modal('hide');
       var plan = window.App.clusterPlan;
       if (plan.isTestSetup()) {
         window.App.navigate("planTest", {trigger : true});
@@ -50,10 +61,17 @@
     },
 
     deletePlan: function() {
+      $('#editPlanModal').modal('hide');
+      $('#deletePlanModal').modal('show');
+    },
+
+    submitDeletePlan : function() {
+      $('#deletePlanModal').modal('hide');
       window.App.clusterPlan.destroy();
       window.App.clusterPlan = new window.ClusterPlan();
       window.App.planScenario();
     }
+
 
   });
 

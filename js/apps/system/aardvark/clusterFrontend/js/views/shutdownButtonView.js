@@ -18,12 +18,14 @@
     clusterShutdown : function() {
       this.overview.stopUpdating();
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is shutting down');
       $.ajax({
         cache: false,
         type: "GET",
         url: "cluster/shutdown",
         success: function(data) {
+          $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
           $('#waitModalLayer').modal('hide');
           window.App.navigate("handleClusterDown", {trigger: true});
         }
