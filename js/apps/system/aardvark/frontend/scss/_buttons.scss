@@ -128,6 +128,15 @@ a.headerButton {
     font-weight: bold;
   }
 
+  &.activated {
+    background-color: $c_positive_hover;
+    color: $c_white;
+    &:hover {
+      background-color: $c_white;
+      color: $c_positive_hover;
+    }
+  }
+
 }
 /* Graph Viewer */
 
