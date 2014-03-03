@@ -7,7 +7,7 @@
 
   window.ServerDashboardView = window.dashboardView.extend({
     el: "#dbServerModal",
-
+    modal : true,
     events: {
       
     },
