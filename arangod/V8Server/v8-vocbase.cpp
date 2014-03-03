@@ -6912,7 +6912,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
     string const databaseName(collection->_dbName);
     string const cid = StringUtils::itoa(collection->_cid);
     
-    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(vocbase->_name, cid, TRI_VOC_COL_STATUS_LOADED);
+    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
