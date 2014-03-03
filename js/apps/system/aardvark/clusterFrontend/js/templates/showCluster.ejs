@@ -78,7 +78,7 @@
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\"/>)":""%></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%></h5>
       </li>
     <%
     });
@@ -90,14 +90,14 @@
   <a class="arangoHeader">Cluster Statistics</a>
 </div>
 <div class="resizecontainer">
-	<div class="dashboardChart">
-		<div id="clusterGraphs" class="innerDashboardChart">
+  <div class="dashboardChart">
+    <div id="clusterGraphs" class="innerDashboardChart">
       <div>Virtual Memory Size</div>
-	  </div>
+    </div>
   </div>
-	<div class="dashboardChart">
-		<div id="lineGraph" class="innerDashboardChart">
-	  </div>
+  <div class="dashboardChart">
+    <div id="lineGraph" class="innerDashboardChart">
+    </div>
   </div>
 </div>
 </script>
