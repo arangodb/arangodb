@@ -234,9 +234,7 @@
               target: encodeURIComponent(coordinator.get("name")),
               endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
             };
-            console.log(server, coordinator.id);
             self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
-            console.log(self.documentStore.history);
             self.history = self.documentStore.history;
             self.hist[coordinator.id] = {};
             self.history.forEach(function(e) {
@@ -436,7 +434,6 @@
 
           var makeGraph = function(className) {
             getData(),
-                console.log(self.chartData);
             self.graph = new Dygraph(
                   document.getElementById('lineGraph'),
                   self.chartData.data,
@@ -449,14 +446,18 @@
                       strokeWidth: 2,
                       legend: "always",
                       axisLabelFont: "Open Sans",
-                      //dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
+                      dateWindow : [new Date().getTime() -
+                          Math.min(
+                              20 * 60 * 1000,
+                              self.chartData.data.length * 10 * 1000)
+                      ,new Date().getTime()],
                       labels: self.chartData.labelsNormal,
                       visibility: self.chartData.visibilityNormal ,
-                      //xAxisLabelWidth : "60",
+                      xAxisLabelWidth : "60",
                       showRangeSelector: false,
                       rightGap: 15,
                       pixelsPerLabel : 60,
-                      //labelsKMG2: false,
+                      labelsKMG2: false,
                       highlightCircleSize: 2
                       });
               var onclick = function(ev) {
