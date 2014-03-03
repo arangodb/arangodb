@@ -22,6 +22,7 @@
 
     startPlan: function() {
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       var h = $("#host").val(),
         p = $("#port").val(),
@@ -52,6 +53,7 @@
         },
         {
           success : function(info) {
+            $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
             window.App.navigate("showCluster", {trigger: true});
           }
