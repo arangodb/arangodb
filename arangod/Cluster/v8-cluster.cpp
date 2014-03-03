@@ -722,7 +722,7 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   v8::Handle<v8::Array> a = v8::Array::New(res.size());
   vector<DatabaseID>::iterator it;
   int count = 0;
-  for (it = res.begin(); it != res.end(); it++) {
+  for (it = res.begin(); it != res.end(); ++it) {
     a->Set(count++, v8::String::New(it->c_str(), it->size()));
   }
   return scope.Close(a);

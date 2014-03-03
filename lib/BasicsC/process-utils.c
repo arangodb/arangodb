@@ -219,9 +219,10 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
   int processPid;
-  bool ok;
 
   if (usePipes) {
+    bool ok;
+
     ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
 
     if (! ok) {
@@ -909,8 +910,6 @@ TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess,
                                                 bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
-  int loc;
-  int opts;
   size_t i;
 
   TRI_LockMutex(&ExternalProcessesLock);
@@ -1004,32 +1003,32 @@ void TRI_KillExternalProcess (TRI_external_id_t pid) {
 #else
 
 void TRI_KillExternalProcess (TRI_external_id_t *pid) {
-      UINT uExitCode = 0;
-      DWORD exitCode;
+  UINT uExitCode = 0;
+  DWORD exitCode;
 
-      // kill worker process
-      if (TerminateProcess(pid->_hProcess, uExitCode)) {
-        LOG_TRACE("kill of worker process succeeded");
-        CloseHandle(pid->_hProcess);
-      }
-      else {
-        DWORD e1 = GetLastError();
-        BOOL ok = GetExitCodeProcess(pid->_hProcess, &exitCode);
+  // kill worker process
+  if (TerminateProcess(pid->_hProcess, uExitCode)) {
+    LOG_TRACE("kill of worker process succeeded");
+    CloseHandle(pid->_hProcess);
+  }
+  else {
+    DWORD e1 = GetLastError();
+    BOOL ok = GetExitCodeProcess(pid->_hProcess, &exitCode);
 
-        if (ok) {
-          LOG_DEBUG("worker process already dead: %d", exitCode);
-        }
-        else {
-          LOG_WARNING("kill of worker process failed: %d", exitCode);
-        }
-      }
+    if (ok) {
+      LOG_DEBUG("worker process already dead: %d", exitCode);
+    }
+    else {
+      LOG_WARNING("kill of worker process failed: %d", exitCode);
+    }
+  }
 
-      if(pid->_hChildStdoutRd) { 
-        CloseHandle(pid->_hChildStdoutRd);
-      }
-      if(pid->_hChildStdinWr) {
-        CloseHandle(pid->_hChildStdinWr);
-      }
+  if(pid->_hChildStdoutRd) { 
+    CloseHandle(pid->_hChildStdoutRd);
+  }
+  if(pid->_hChildStdinWr) {
+    CloseHandle(pid->_hChildStdinWr);
+  }
 
 }
 #endif

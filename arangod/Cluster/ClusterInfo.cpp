@@ -1943,7 +1943,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
 
   while (it != _DBServers.end()) {
     result.push_back((*it).first);
-    it++;
+    ++it;
   }
 
   return result;
