@@ -14,7 +14,9 @@
     events: {
       "click #relaunchCluster"  : "relaunchCluster",
       "click #editPlan"         : "editPlan",
-      "click #deletePlan"       : "deletePlan"
+      "click #submitEditPlan"   : "submitEditPlan",
+      "click #deletePlan"       : "deletePlan",
+      "click #submitDeletePlan" : "submitDeletePlan"
     },
 
     render: function() {
@@ -38,7 +40,14 @@
         }
       });
     },
+
     editPlan: function() {
+      $('#deletePlanModal').modal('hide');
+      $('#editPlanModal').modal('show');
+    },
+
+    submitEditPlan : function() {
+      $('#editPlanModal').modal('hide');
       var plan = window.App.clusterPlan;
       if (plan.isTestSetup()) {
         window.App.navigate("planTest", {trigger : true});
@@ -52,10 +61,17 @@
     },
 
     deletePlan: function() {
+      $('#editPlanModal').modal('hide');
+      $('#deletePlanModal').modal('show');
+    },
+
+    submitDeletePlan : function() {
+      $('#deletePlanModal').modal('hide');
       window.App.clusterPlan.destroy();
       window.App.clusterPlan = new window.ClusterPlan();
       window.App.planScenario();
     }
+
 
   });
 
