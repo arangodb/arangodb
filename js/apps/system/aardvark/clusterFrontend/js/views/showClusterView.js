@@ -107,6 +107,7 @@
     },
 
     updateServerStatus: function() {
+      console.log(this.dbservers.url);
       this.dbservers.getStatuses(function(stat, serv) {
         $("#" + serv.replace(":", "\\:")).attr("class", "dbserver " + stat);
       });

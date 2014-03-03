@@ -340,6 +340,7 @@ button.btn-server {
   padding-bottom: 10px;
   text-align: center;
   button {
+    @extend %clickable;
     background-color: #f1f1f1;
     color: #333333;
     padding: 12px 18px;
@@ -351,7 +352,6 @@ button.btn-server {
     font-weight: 300;
     width: 250px;
     text-align: center;
-    cursor: auto;
     &:hover{
       color: #4a6c30;
       background-color: #e8e8e8;
@@ -369,5 +369,4 @@ button.btn-server {
       background-color: #8ba142;
     }
   }
-;
 }
