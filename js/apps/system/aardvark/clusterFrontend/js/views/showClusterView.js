@@ -107,7 +107,6 @@
     },
 
     updateServerStatus: function() {
-      console.log(this.dbservers.url);
       this.dbservers.getStatuses(function(stat, serv) {
         var id = serv.replace(":", "\\:"),
           type;
