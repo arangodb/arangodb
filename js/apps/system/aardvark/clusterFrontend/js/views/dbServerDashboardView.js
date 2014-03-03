@@ -9,10 +9,10 @@
     el: "#dbServerModal",
     modal : true,
     events: {
-      "hidden": "hidden"      
+      "hidden": "hide"
     },
 
-    hidden: function() {
+    hide: function() {
       window.App.showClusterView.startUpdating();
       this.stopUpdating();
     },
