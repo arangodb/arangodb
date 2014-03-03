@@ -44,6 +44,7 @@
         alert("Please define a number of database servers");
         return;
       }
+      delete this.model._coord;
       this.model.save(
         {
           type: "testSetup",
@@ -52,10 +53,16 @@
           numberCoordinators: parseInt(c, 10)
         },
         {
-          success : function(info) {
+          success: function(info) {
             $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
+            window.App.updateAllUrls();
             window.App.navigate("showCluster", {trigger: true});
+          },
+          error: function(obj, err) {
+            $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
+            $('#waitModalLayer').modal('hide');
+            alert("Error while starting the cluster: " + err.statusText);
           }
         }
       );
