@@ -312,13 +312,21 @@
         return false;
       }
 
+      var foundUser = false;
+
       if (args && args.users) {
         args.users.forEach(function(user) {
-          userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          foundUser = true;
+          try {
+            userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          }
+          catch (err) {
+            logger.error("could not add database user '" + user.username + "': " + String(err.stack || err));
+          }
         });
       }
 
-      if (users.count() === 0) {
+      if (! foundUser && users.count() === 0) {
         // only add account if user has not created his/her own accounts already
         userManager.save("root", "", true);
       }
