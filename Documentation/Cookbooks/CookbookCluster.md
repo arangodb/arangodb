@@ -34,7 +34,7 @@ runs in standalone mode.
 
 ###Step 2: Enable the Cluster mode
 
-In order to enable the cluster mode, edit as root the configuration file
+In order to enable the cluster mode, edit the configuration file as root
 
     vi /etc/arangodb/arangod.conf
 
@@ -50,7 +50,7 @@ to
     disable-dispatcher-kickstarter = no
     disable-dispatcher-frontend = no
 
-save and restarted
+Save and restart
 
     /etc/init.d/arangodb restart
 
