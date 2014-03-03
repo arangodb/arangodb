@@ -22,7 +22,6 @@
       $.ajax({
         cache: false,
         type: "GET",
-        async: false, // sequential calls!
         url: "cluster/shutdown",
         success: function(data) {
           $('#waitModalLayer').modal('hide');
