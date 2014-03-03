@@ -13,7 +13,6 @@
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
-      "dashboard"              : "dashboard",
       "handleClusterDown"      : "handleClusterDown"
     },
 
@@ -155,7 +154,6 @@
       }
       this.dashboardView = null;
       this.dashboardView = new window.ServerDashboardView({
-      //this.dashboardView = new window.dashboardView({
         collection: statisticsCollection,
         description: statisticsDescription,
         documentStore: new window.arangoDocuments(),
