@@ -1101,6 +1101,9 @@ select.filterSelect {
   box-shadow: none;
   border: none; }
 
+.waitModalBackdrop {
+  opacity: 0.7 !important; }
+
 div img.searchSubmitIcon {
   height: 14px;
   margin-left: -18px;

@@ -24,6 +24,7 @@
 
     relaunchCluster: function() {
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster will be relaunched');
       var result = false;
       $.ajax({
@@ -31,6 +32,7 @@
         type: "GET",
         url: "cluster/relaunch",
         success: function(data) {
+          $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
           $('#waitModalLayer').modal('hide');
           window.App.navigate("showCluster", {trigger: true});
         }

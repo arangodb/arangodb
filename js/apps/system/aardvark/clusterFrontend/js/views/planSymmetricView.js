@@ -67,11 +67,13 @@
 
       data.type = this.isSymmetric ? "symmetricalSetup" : "asymmetricalSetup";
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       this.model.save(
         data,
         {
           success : function(info) {
+            $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
             window.App.navigate("showCluster", {trigger: true});
           }
