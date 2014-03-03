@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSing
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -513,8 +513,7 @@ button.btn-server, .clusterDownBtn button.btn-server.green {
     font-size: 20px;
     font-weight: 300;
     width: 250px;
-    text-align: center;
-    cursor: auto; }
+    text-align: center; }
     .clusterDownBtn button:hover {
       color: #4a6c30;
       background-color: #e8e8e8;
@@ -533,6 +532,9 @@ ul.tileList {
   margin-right: -6px; }
 
 li.tile, li.bigtile {
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
   position: relative;
   text-align: center;
   height: 100px;
@@ -541,10 +543,10 @@ li.tile, li.bigtile {
   background-color: rgba(0, 0, 0, 0.05);
   margin-left: 6px;
   margin-right: 6px;
-  margin-bottom: 13px;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  box-shadow: none; }
+  margin-bottom: 13px; }
+  li.tile img.icon, li.bigtile img.icon {
+    height: 50px;
+    width: 50px; }
   li.tile a span.add-Icon, li.bigtile a span.add-Icon {
     position: relative;
     margin-left: 22px;

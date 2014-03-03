@@ -668,11 +668,6 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
                 username,
                 auth->_password + 12,
                 hex);
-      LOG_INFO("found active user '%s', expecting password '%s', got '%s'",
-                username,
-                auth->_password + 12,
-                hex);
-
 
       res = TRI_EqualString(auth->_password + 12, hex);
       TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
