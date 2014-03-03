@@ -2691,7 +2691,7 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
   }
   v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
-  string pid, hChildStdoutRd, hChildStdinWr;
+  string pid; //, hChildStdoutRd, hChildStdinWr;
   if(obj->Has(v8::String::New("pid"))) {
     pid = TRI_ObjectToString(obj->Get(v8::String::New("pid")));
   }

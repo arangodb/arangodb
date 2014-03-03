@@ -910,7 +910,6 @@ int getAllDocumentsOnCoordinator (
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
 
   ClusterCommResult* res;
 

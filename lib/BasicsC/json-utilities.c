@@ -871,8 +871,6 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    int nrAttributes,
                                    bool docComplete,
                                    int* error) {
-  int i;
-  TRI_json_t const* subjson;
   uint64_t hash;
 
   if (NULL != error) {
@@ -880,8 +878,11 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
   }
   hash = TRI_FnvHashBlockInitial();
   if (TRI_IsArrayJson(json)) {
+    int i;
+
     for (i = 0; i < nrAttributes; i++) {
-      subjson = TRI_LookupArrayJson(json, attributes[i]);
+      TRI_json_t const* subjson = TRI_LookupArrayJson(json, attributes[i]);
+
       if (NULL == subjson && !docComplete && NULL != error) {
         *error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
       }
