@@ -108,10 +108,16 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        $("#" + serv.replace(":", "\\:")).attr("class", "dbserver " + stat);
+        var id = serv.replace(":", "\\:"),
+          type;
+        type = $("#" + id).attr("class").split(/\s+/)[1];
+        $("#" + id).attr("class", "dbserver " + type + " " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        $("#" + serv.replace(":", "\\:")).attr("class", "coordinator " + stat);
+        var id = serv.replace(":", "\\:"),
+          type;
+        type = $("#" + id).attr("class").split(/\s+/)[1];
+        $("#" + id).attr("class", "coordinator " + type + " " + stat);
       });
     },
 
