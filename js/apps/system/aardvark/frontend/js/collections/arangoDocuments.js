@@ -229,7 +229,7 @@
             }
             var returnValue = " return u";
             if (figures) {
-                returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ,";
+                returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ";
                 var groups = {};
                 figures.forEach(function(f) {
                     var g = f.split(".")[0];
@@ -239,11 +239,12 @@
                     groups[g].push(f.split(".")[1] + " : u." + f);
                 });
                 Object.keys(groups).forEach(function(key) {
-                   returnValue += key + " : {" + groups[key]  +"}";
+                   returnValue +=  ", " + key + " : {" + groups[key]  +"}";
                 });
                 returnValue += "}";
             }
             var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
+            console.log(myQueryVal);
             if (server) {
               url = server.endpoint;
               url += "/_admin/clusterHistory";

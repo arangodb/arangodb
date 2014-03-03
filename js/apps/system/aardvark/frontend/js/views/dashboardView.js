@@ -327,7 +327,7 @@
       },
       requests : {
         div : "#requestStatistics",
-        title : "HTTP Requests",
+        title : "HTTP Requests per second",
         stacked : true
       },
       uptime : {
