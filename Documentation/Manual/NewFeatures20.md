@@ -10,7 +10,7 @@ Features and Improvements {#NewFeatures20Introduction}
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.0.  ArangoDB 2.0 also contains several bugfixes that are not listed
 here - see the
-@EXTREF{https://github.com/triAGENS/ArangoDB/blob/2.0/CHANGELOG,CHANGELOG} 
+@EXTREF_S{https://github.com/triAGENS/ArangoDB/blob/2.0/CHANGELOG,CHANGELOG} 
 for details.
 
 @BNAVIGATE_NewFeatures20
