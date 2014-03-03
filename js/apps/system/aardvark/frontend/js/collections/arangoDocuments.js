@@ -244,7 +244,6 @@
                 returnValue += "}";
             }
             var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
-            console.log(myQueryVal);
             if (server) {
               url = server.endpoint;
               url += "/_admin/clusterHistory";
