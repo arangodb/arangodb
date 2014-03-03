@@ -190,6 +190,7 @@
     },
 
     hidden: function () {
+      delete self.currentChart;
       this.options.description.fetch({
         async:false
       });
@@ -628,6 +629,10 @@
           borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
           borderRight = t;
       }
+      if (self.modal) {
+          displayOptions.height = $('.innerDashboardChart').height() - 34;
+          displayOptions.width = $('.innerDashboardChart').width() -45;
+      }
       if (!chart.graphCreated) {
         if (createDiv) {
           self.renderHttpGroup(figure);
@@ -643,14 +648,39 @@
         chart.graph.setSelection(false, 'ClusterAverage', true);
         chart.graphCreated = true;
         if (!createDiv) {
+          self.currentChart = chart.graph;
           self.delegateEvents();
         }
       } else {
-        chart.graph.updateOptions( {
-          file: file.length > 0 ? file : chart.data,
-          dateWindow : [borderLeft, borderRight]
-        } );
+        var opts = {
+            file: file.length > 0 ? file : chart.data,
+            dateWindow : [borderLeft, borderRight]
+        };
+        chart.graph.updateOptions(opts);
       }
+    },
+
+    resize: function() {
+        var self = this;
+        if (this.modal) {
+            Object.keys(self.series).forEach(function(group) {
+                Object.keys(self.series[group]).forEach(function(figure) {
+                    Object.keys(self.series[group][figure]).forEach(function(valueList) {
+                        var chart = self.series[group][figure][valueList];
+                        if (chart.type === "current" && chart.showGraph === true &&
+                            self.hideGraphs.indexOf(figure) === -1) {
+                            var height = $('.innerDashboardChart').height() - 34;
+                            var width = $('.innerDashboardChart').width() -45;
+                            chart.graph.resize(width , height)
+                        }
+                    });
+                });
+            });
+        } else if (self.currentChart) {
+            var height = $('#lineChartDetail').height() - 34 -29;
+            var width = $('#lineChartDetail').width() -10;
+            self.currentChart.resize(width , height)
+        }
     },
 
     createLineCharts: function() {
