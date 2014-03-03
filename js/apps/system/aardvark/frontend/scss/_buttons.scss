@@ -55,6 +55,11 @@
   @extend %inactive;
 }
 
+.button-close {
+  @extend %btn;
+  @extend %neutral;
+}
+
 .addButton {
   @extend %clickable;
   @extend %icon-positive;
