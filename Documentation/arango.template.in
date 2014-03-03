@@ -724,7 +724,8 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = @srcdir@/Documentation/DbaManual \
+INPUT                  = @srcdir@/Documentation/Cookbooks \
+                         @srcdir@/Documentation/DbaManual \
                          @srcdir@/Documentation/ImplementorManual \
                          @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \

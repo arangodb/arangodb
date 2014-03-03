@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -308,6 +308,12 @@ a.headerButton {
   a.headerButton .icon_arangodb_arrowleft,
   a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
+  a.headerButton.activated {
+    background-color: #788f3d;
+    color: white; }
+    a.headerButton.activated:hover {
+      background-color: white;
+      color: #788f3d; }
 
 /* Graph Viewer */
 div.toolbox > div.gv_action_button {
@@ -483,8 +489,7 @@ button.btn-server, .clusterDownBtn button.btn-server.green {
     font-size: 20px;
     font-weight: 300;
     width: 250px;
-    text-align: center;
-    cursor: auto; }
+    text-align: center; }
     .clusterDownBtn button:hover {
       color: #4a6c30;
       background-color: #e8e8e8;
@@ -1100,6 +1105,9 @@ select.filterSelect {
   color: white;
   box-shadow: none;
   border: none; }
+
+.waitModalBackdrop {
+  opacity: 0.7 !important; }
 
 div img.searchSubmitIcon {
   height: 14px;
