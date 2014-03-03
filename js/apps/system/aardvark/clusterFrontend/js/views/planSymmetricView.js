@@ -18,13 +18,11 @@
     },
 
     cancel: function() {
-      cancel: function() {
-        if(window.App.clusterPlan.get("plan")) {
-          window.App.navigate("handleClusterDown", {trigger: true});
-        } else {
-          window.App.navigate("planScenario", {trigger: true});
-        }
-      },
+      if(window.App.clusterPlan.get("plan")) {
+        window.App.navigate("handleClusterDown", {trigger: true});
+      } else {
+        window.App.navigate("planScenario", {trigger: true});
+      }
     },
 
     startPlan: function() {
