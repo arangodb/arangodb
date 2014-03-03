@@ -12,71 +12,69 @@
     modal: templateEngine.createTemplate("waitModal.ejs"),
     modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
 
-      events: {
-        "change #selectDB"        : "updateCollections",
-        "change #selectCol"       : "updateShards",
-        "click .dbserver"         : "dashboard",
-        "mouseover #lineGraph"    : "setShowAll",
-        "mouseout #lineGraph"     : "resetShowAll"
-      },
+    events: {
+      "change #selectDB"        : "updateCollections",
+      "change #selectCol"       : "updateShards",
+      "click .dbserver"         : "dashboard",
+      "mouseover #lineGraph"    : "setShowAll",
+      "mouseout #lineGraph"     : "resetShowAll"
+    },
 
-      replaceSVGs: function() {
-        $(".svgToReplace").each(function() {
-          var img = $(this);
-          var id = img.attr("id");
-          var src = img.attr("src");
-          $.get(src, function(d) {
-            var svg = $(d).find("svg");
-            svg.attr("id", id)
-              .attr("class", "icon")
-              .removeAttr("xmlns:a");
-            img.replaceWith(svg);
-          }, "xml");
-        });
-      },
+    replaceSVGs: function() {
+      $(".svgToReplace").each(function() {
+        var img = $(this);
+        var id = img.attr("id");
+        var src = img.attr("src");
+        $.get(src, function(d) {
+          var svg = $(d).find("svg");
+          svg.attr("id", id)
+          .attr("class", "icon")
+          .removeAttr("xmlns:a");
+          img.replaceWith(svg);
+        }, "xml");
+      });
+    },
 
-      updateServerTime: function() {
-          this.serverTime = new Date().getTime();
-      },
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    },
 
-      setShowAll: function() {
-          this.graphShowAll = true;
-          this.renderLineChart();
-      },
+    setShowAll: function() {
+      this.graphShowAll = true;
+      this.renderLineChart();
+    },
 
-      resetShowAll: function() {
-          this.graphShowAll = false;
-          this.renderLineChart();
-      },
+    resetShowAll: function() {
+      this.graphShowAll = false;
+      this.renderLineChart();
+    },
 
 
-      initialize: function() {
-        this.interval = 1000000;
+    initialize: function() {
+        this.interval = 10000;
         this.isUpdating = false;
         this.timer = null;
         this.knownServers = [];
         this.graph = undefined;
         this.graphShowAll = false;
         this.updateServerTime();
+      this.dbservers = new window.ClusterServers([], {
+        interval: this.interval
+      });
+      this.coordinators = new window.ClusterCoordinators([], {
+        interval: this.interval
+      });
+      this.documentStore =  new window.arangoDocuments();
+      this.statisticsDescription = new window.StatisticsDescription();
+      this.statisticsDescription.fetch({
+        async: false
+      });
 
-
-        this.dbservers = new window.ClusterServers([], {
-          interval: this.interval
-        });
-        this.coordinators = new window.ClusterCoordinators([], {
-          interval: this.interval
-        });
-        this.documentStore =  new window.arangoDocuments();
-        this.statisticsDescription = new window.StatisticsDescription();
-        this.statisticsDescription.fetch({
-          async: false
-        });
-
-        this.dbs = new window.ClusterDatabases([], {
-          interval: this.interval
-        });
-        this.cols = new window.ClusterCollections();
-        this.shards = new window.ClusterShards();
+      this.dbs = new window.ClusterDatabases([], {
+        interval: this.interval
+      });
+      this.cols = new window.ClusterCollections();
+      this.shards = new window.ClusterShards();
       this.startUpdating();
     },
 
@@ -107,17 +105,23 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        $("#" + serv.replace(":", "\\:")).attr("class", "dbserver " + stat);
+        var id = serv.replace(":", "\\:"),
+          type;
+        type = $("#" + id).attr("class").split(/\s+/)[1];
+        $("#" + id).attr("class", "dbserver " + type + " " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        $("#" + serv.replace(":", "\\:")).attr("class", "coordinator " + stat);
+        var id = serv.replace(":", "\\:"),
+          type;
+        type = $("#" + id).attr("class").split(/\s+/)[1];
+        $("#" + id).attr("class", "coordinator " + type + " " + stat);
       });
     },
 
     updateDBDetailList: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
       var colName = $("#selectCol").find(":selected").attr("id");
-      
+
       var selDB = $("#selectDB");
       selDB.html("");
       _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
@@ -176,13 +180,13 @@
     },
 
     generatePieData: function() {
-        var pieData = [];
-        var self = this;
-        this.data.forEach(function(m) {
-            pieData.push({key: m.get("name"), value :m.get("system").residentSize,
-                    time: self.serverTime});
-        });
-        return pieData;
+      var pieData = [];
+      var self = this;
+      this.data.forEach(function(m) {
+        pieData.push({key: m.get("name"), value :m.get("system").residentSize,
+          time: self.serverTime});
+      });
+      return pieData;
     },
 
     loadHistory : function() {
@@ -462,22 +466,22 @@
                       self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
                   }
               };
-              self.graph.updateOptions({clickCallback: onclick}, true);
-              self.graph.setSelection(false, 'ClusterAverage', true);
-          };
-          makeGraph('lineGraph');
+          self.graph.updateOptions({clickCallback: onclick}, true);
+          self.graph.setSelection(false, 'ClusterAverage', true);
+        };
+        makeGraph('lineGraph');
 
       },
 
       stopUpdating: function () {
-          window.clearTimeout(this.timer);
-          delete this.graph;
-          this.isUpdating = false;
+        window.clearTimeout(this.timer);
+        delete this.graph;
+        this.isUpdating = false;
       },
 
       startUpdating: function () {
         if (this.isUpdating) {
-            return;
+          return;
         }
         this.isUpdating = true;
         var self = this;
@@ -487,7 +491,7 @@
       },
 
 
-    dashboard: function(e) {
+      dashboard: function(e) {
         this.stopUpdating();
         var tar = $(e.currentTarget);
         var serv = {};
@@ -504,20 +508,20 @@
             status: "ok"
           });
           serv.endpoint = coord.get("protocol")
-            + "://"
-            + coord.get("address");
+          + "://"
+          + coord.get("address");
         } else {
           cur = this.coordinators.findWhere({
             address: serv.raw
           });
           serv.endpoint = cur.get("protocol")
-            + "://"
-            + cur.get("address");
+          + "://"
+          + cur.get("address");
         }
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
-        window.App.navigate("dashboard", {trigger: true});
-    }
-  });
+        window.App.dashboard();
+      }
+    });
 
-}());
+  }());

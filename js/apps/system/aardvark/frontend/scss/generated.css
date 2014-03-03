@@ -503,6 +503,9 @@ ul.tileList {
   margin-right: -6px; }
 
 li.tile, li.bigtile {
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
   position: relative;
   text-align: center;
   height: 100px;
@@ -511,10 +514,10 @@ li.tile, li.bigtile {
   background-color: rgba(0, 0, 0, 0.05);
   margin-left: 6px;
   margin-right: 6px;
-  margin-bottom: 13px;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  box-shadow: none; }
+  margin-bottom: 13px; }
+  li.tile img.icon, li.bigtile img.icon {
+    height: 50px;
+    width: 50px; }
   li.tile a span.add-Icon, li.bigtile a span.add-Icon {
     position: relative;
     margin-left: 22px;
@@ -1021,8 +1024,7 @@ select.filterSelect {
   -moz-border-radius: 8px !important;
   -webkit-border-radius: 8px !important;
   border-radius: 8px !important;
-  padding: 10px;
-  padding-top: 0px; }
+  padding: 10px; }
 
 #dashboardHttpGroup {
   width: 100%;
@@ -1092,6 +1094,15 @@ select.filterSelect {
   height: 70%;
   width: 70%;
   margin-left: 0px; }
+
+.waitModal {
+  background: transparent;
+  color: white;
+  box-shadow: none;
+  border: none; }
+
+.waitModalBackdrop {
+  opacity: 0.7 !important; }
 
 div img.searchSubmitIcon {
   height: 14px;
