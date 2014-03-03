@@ -239,6 +239,18 @@ function parseBodyForCreateCollection (req, res) {
 ///   - `2`: document collection
 ///   - `3`: edges collection
 ///
+/// - `numberOfShards` (optional, default is `1`): in a cluster, this value
+///   determines the number of shards to create for the collection. In a single
+///   server setup, this option is meaningless.
+///
+/// - `shardKeys` (optional, default is `[ "_key" ]`): in a cluster, this
+///   attribute determines which document attributes are used to determine the
+///   target shard for documents. Documents are sent to shards based on the
+///   values of their shard key attributes. The values of all shard
+///   key attributes in a document are hashed, and the hash value is used to 
+///   determine the target shard. Note that values of shard key attributes cannot
+///   be changed once set.
+///   This option is meaningless in a single server setup.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
@@ -327,7 +339,6 @@ function post_api_collection (req, res) {
     result.keyOptions = collection.keyOptions;
 
     if (cluster.isCoordinator()) {
-      // TODO:
       result.shardKeys = collection.shardKeys;
       result.numberOfShards = collection.numberOfShards;
     }
@@ -460,7 +471,7 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
-/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` properties. 
+/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` attributes.
 /// This is achieved by forcing a load of the underlying collection.
 ///
 /// - `waitForSync`: If `true` then creating or changing a
@@ -474,6 +485,11 @@ function get_api_collections (req, res) {
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
+/// In a cluster setup, the result will also contain the following attributes:
+/// - `numberOfShards`: the number of shards of the collection.
+///
+/// - `shardKeys`: contains the names of document attributes that are used to 
+///   determine the target shard for documents. 
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
@@ -1170,8 +1186,9 @@ function put_api_collection_truncate (req, res, collection) {
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// Note: some other collection properties, such as `type` or `isVolatile` 
-/// cannot be changed once the collection is created.
+/// Note: some other collection properties, such as `type`, `isVolatile`,
+/// `numberOfShards` or `shardKeys` cannot be changed once a collection is 
+/// created.
 ///
 /// @EXAMPLES
 ///
