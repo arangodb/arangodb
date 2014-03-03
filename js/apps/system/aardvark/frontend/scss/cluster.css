@@ -872,14 +872,17 @@ select.filterSelect {
 
 svg.clusterChart {
   width: auto;
-  height: auto; }
+  height: auto;
+  margin: auto; }
 
-.lineGraph .few .dygraph-legend > span.highlight {
-  border: 1px solid grey; }
-.lineGraph .many .dygraph-legend > span {
-  display: none; }
-.lineGraph .many .dygraph-legend > span.highlight {
-  display: inline; }
+.lineGraph {
+  position: absolute; }
+  .lineGraph .few .dygraph-legend > span.highlight {
+    border: 1px solid grey; }
+  .lineGraph .many .dygraph-legend > span {
+    display: none; }
+  .lineGraph .many .dygraph-legend > span.highlight {
+    display: inline; }
 
 a.coordinator, a.dbserver {
   width: 50px;
