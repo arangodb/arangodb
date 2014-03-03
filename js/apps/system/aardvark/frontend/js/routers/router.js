@@ -95,7 +95,7 @@
         collection: window.arangoCollectionsStore
       });
 
-      // this.initVersionCheck();
+      this.initVersionCheck();
 
       var self = this;
       $(window).resize(function() {
@@ -104,7 +104,6 @@
       this.handleResize();
     },
 
-/*
     initVersionCheck: function () {
       // this checks for version updates
 
@@ -139,7 +138,7 @@
             var update;
 
             if (latestMainLine !== undefined &&
-                Object.keys(latestMainLine.versions.length > 0) {
+                Object.keys(latestMainLine.versions.length > 0)) {
               var mainLineVersions = Object.keys(latestMainLine.versions);
               mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
               var latest = mainLineVersions[mainLineVersions.length - 1];
@@ -193,7 +192,6 @@
 
       window.setTimeout(versionCheck, 5000);
     },
-*/
 
     logsAllowed: function () {
       return (window.databaseName === '_system');
