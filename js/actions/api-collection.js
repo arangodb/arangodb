@@ -239,6 +239,18 @@ function parseBodyForCreateCollection (req, res) {
 ///   - `2`: document collection
 ///   - `3`: edges collection
 ///
+/// - `numberOfShards` (optional, default is `1`): in a cluster, this value
+///   determines the number of shards to create for the collection. In a single
+///   server setup, this option is meaningless.
+///
+/// - `shardKeys` (optional, default is `[ "_key" ]`): in a cluster, this
+///   attribute determines which document attributes are used to determine the
+///   target shard for documents. Documents are sent to shards based on the
+///   values they have in their shard key attributes. The values of all shard
+///   key attributes in a document are hashed, and the hash value is used to 
+///   determine the target shard. Note that values of shard key attributes cannot
+///   be changed once set.
+///   This option is meaningless in a single server setup.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
@@ -327,7 +339,6 @@ function post_api_collection (req, res) {
     result.keyOptions = collection.keyOptions;
 
     if (cluster.isCoordinator()) {
-      // TODO:
       result.shardKeys = collection.shardKeys;
       result.numberOfShards = collection.numberOfShards;
     }
