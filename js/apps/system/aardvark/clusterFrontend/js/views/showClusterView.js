@@ -501,7 +501,7 @@
         }
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
-        window.App.navigate("dashboard", {trigger: true});
+        window.App.dashboard();
       }
     });
 
