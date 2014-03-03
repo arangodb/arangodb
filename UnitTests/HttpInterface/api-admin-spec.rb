@@ -117,9 +117,24 @@ describe ArangoDB do
 ################################################################################
   
     context "dealing with the admin interface:" do
-  
       it "checks whether the admin interface is available at /_admin/aardvark/index.html" do
         cmd = "/_admin/aardvark/index.html"
+        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
+
+        # check response code
+        doc.code.should eq(200)
+      end
+      
+      it "checks whether the admin interface is available at /_admin/aardvark/cluster.html" do
+        cmd = "/_admin/aardvark/cluster.html"
+        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
+
+        # check response code
+        doc.code.should eq(200)
+      end
+      
+      it "checks whether the admin interface is available at /_admin/aardvark/standalone.html" do
+        cmd = "/_admin/aardvark/standalone.html"
         doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
 
         # check response code
@@ -127,7 +142,7 @@ describe ArangoDB do
         # check whether HTML result contains expected title
         doc.response.body.should include("<!-- ArangoDB web interface -->")
       end
-      
+  
       it "checks whether the admin interface is available at /" do
         cmd = "/"
         begin
