@@ -101,7 +101,7 @@
       $(window).resize(function() {
         self.handleResize();
       });
-      this.handleResize();
+      //this.handleResize();
     },
 
     initVersionCheck: function () {
@@ -432,6 +432,9 @@
     },
 
     handleResize: function () {
+      if (this.dashboardView) {
+          this.dashboardView.resize();
+      }
       var oldWidth = $('#content').width();
       var containerWidth = $(window).width() - 70;
       /*var spanWidth = 242;*/
