@@ -784,10 +784,10 @@
     logger.error("  --upgrade");
     logger.error("option to upgrade the data in the database directory.");
 
-    logger.error("Normally you can use the control script to upgrade your database")
-    logger.error("  /etc/init.d/arangodb stop")
-    logger.error("  /etc/init.d/arangodb upgrade")
-    logger.error("  /etc/init.d/arangodb start")
+    logger.error("Normally you can use the control script to upgrade your database");
+    logger.error("  /etc/init.d/arangodb stop");
+    logger.error("  /etc/init.d/arangodb upgrade");
+    logger.error("  /etc/init.d/arangodb start");
     logger.error("----------------------------------------------------------------------");
 
     // do not start unless started with --upgrade
