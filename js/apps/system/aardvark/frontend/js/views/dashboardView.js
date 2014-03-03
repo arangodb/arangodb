@@ -768,11 +768,9 @@
       header += " for Server ";
       header += this.options.server.raw + " (";
       header += decodeURIComponent(this.options.server.target) + ")";
-      addBackbutton = true;
     }
     $(this.el).html(this.template.render({
-      header : header,
-      backButton: addBackbutton
+      header : header
     }));
     this.renderDistributionPlaceholder();
     this.prepareSeries();
