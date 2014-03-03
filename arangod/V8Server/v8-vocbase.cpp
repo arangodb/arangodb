@@ -7018,6 +7018,12 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
 ///     Not used for other key generator types.
 ///
+/// In a cluster setup, the result will also contain the following attributes:
+/// - `numberOfShards`: the number of shards of the collection.
+///
+/// - `shardKeys`: contains the names of document attributes that are used to 
+///   determine the target shard for documents. 
+///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
 /// Changes the collection properties. @FA{properties} must be a object with
