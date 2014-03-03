@@ -73,7 +73,14 @@
       "click #backToCluster" : "returnToClusterView"
     },
     
-    hideGraphs : ["totalTime", "uptime", "residentSize", "physicalMemory", "minorPageFaults", "requestsTotal"],
+    hideGraphs : [
+      "totalTime", 
+      "uptime", 
+      "residentSize", 
+      "physicalMemory", 
+      "minorPageFaults", 
+      "requestsTotal"
+    ],
 
     chartTypeExceptions : {
       accumulated : {

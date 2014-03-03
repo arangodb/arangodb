@@ -668,7 +668,6 @@ char* TRI_Dirname (char const* path) {
 
 char* TRI_Basename (char const* path) {
   size_t n;
-  char const* p;
 
   n = strlen(path);
 
@@ -690,6 +689,8 @@ char* TRI_Basename (char const* path) {
     }
   }
   else {
+    char const* p;
+
     for (p = path + (n - 2);  path < p;  --p) {
       if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
         break;
