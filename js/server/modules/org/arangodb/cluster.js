@@ -958,10 +958,22 @@ var dispatcherDisabled = function () {
   return ArangoServerState.disableDispatcherFrontend();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief coordinatorId
+////////////////////////////////////////////////////////////////////////////////
+
+var coordinatorId= function () {
+  if (! isCoordinator()) {
+    console.error("not a coordinator");
+  }  
+  return ArangoServerState.id();
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
+exports.coordinatorId        = coordinatorId;
 exports.dispatcherDisabled   = dispatcherDisabled;
 exports.handlePlanChange     = handlePlanChange;
 exports.isCluster            = isCluster;
