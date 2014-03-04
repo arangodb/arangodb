@@ -38,7 +38,7 @@
         <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
           <span class="fa fa-compass icon"></span>
         </a>
-        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="gui-button">GUI</a></h5>
+        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui">GUI</a></h5>
       </li>
     <%
       });
@@ -79,7 +79,7 @@
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="gui-button" href="<%=url%>" target="_blank">GUI</a></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui" href="<%=url%>" target="_blank">GUI</a></h5>
       </li>
     <%
     });
