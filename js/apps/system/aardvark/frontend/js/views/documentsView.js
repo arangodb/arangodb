@@ -591,6 +591,8 @@
 
       this.uploadSetup();
 
+      $("[data-toggle=tooltip]").tooltip();
+
       $('.modalImportTooltips').tooltip({
         placement: "left"
       });

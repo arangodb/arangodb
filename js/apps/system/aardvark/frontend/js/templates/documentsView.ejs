@@ -4,7 +4,7 @@
     <div id="documentsToolbar" class="headerButtonBar pull-right">
 
 
-    <!-- remove marker for docupdiv--!>
+    <!-- remove marker for docupdiv-->
     <ul class="headerButtonList">
       <li class="enabled">
         <a id="indexCollection" class="headerButton">
@@ -102,12 +102,24 @@
               <tr>
                 <th class="collectionTh">Size:</th>
                 <th><input type="text" id="newCapSize" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal number of documents for the collection."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Bytesize:</th>
                 <th><input type="text" id="newCapByteSize" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal size of the active document data in the collection."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
           </div>
