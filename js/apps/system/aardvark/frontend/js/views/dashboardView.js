@@ -61,7 +61,6 @@
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
     interval: 12000, // in milliseconds
-    defaultRollPeriod : 1,
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
@@ -411,7 +410,6 @@
           dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
           colors: [this.colors[0]],
           xAxisLabelWidth : "60",
-          rollPeriod: 3,
           rightGap: 10,
           showRangeSelector: false,
           rangeSelectorHeight: 40,
@@ -487,6 +485,7 @@
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
       if (self.uptime && newUptime < self.uptime) {
+
         var e = {time : (time-(newUptime+10)* 1000 ) /1000};
         self.description.get("figures").forEach(function(figure) {
           if (!e[figure.group]) {
@@ -583,7 +582,7 @@
 
 
     updateSeries : function(data) {
-      this.uptime = data.system.uptime;
+      this.uptime = data.server.uptime;
       this.processSingleStatistic(data);
     },
 

@@ -920,26 +920,25 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       external->_exitStatus = 0;
     }
 #else
-    HANDLE hProcess = OpenProcess(SYNCHRONIZE | 
-                                  PROCESS_QUERY_LIMITED_INFORMATION, 
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS,
                                   FALSE, external->_pid);
     if (hProcess == NULL) {
-      LOG_WARNING("could not do OpenProcess for subprocess with PID '%ud'",
-                  external->_pid);
+      LOG_WARNING("could not do OpenProcess for subprocess with PID '%u' error '%u'",
+                  external->_pid, GetLastError());
     }
     else {
       if (wait) {
         DWORD result;
         result = WaitForSingleObject(hProcess, INFINITE);
         if (result == WAIT_FAILED) {
-          LOG_WARNING("could not wait for subprocess with PID '%ud'",
-                      external->_pid);
+          LOG_WARNING("could not wait for subprocess with PID '%u' error '%u'",
+                      external->_pid, GetLastError());
         }
       }
       DWORD exitCode = STILL_ACTIVE;
       if (!GetExitCodeProcess(hProcess , &exitCode)) {
-        LOG_WARNING("exit status could not be determined for PID '%ud'", 
-                    external->_pid);
+        LOG_WARNING("exit status could not be determined for PID '%u' error '%u'", 
+                    external->_pid, GetLastError());
       }
       else {
         if (exitCode == STILL_ACTIVE) {
