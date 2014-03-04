@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, eqeq: true */
-/*global require, exports */
+/*global require, exports, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics handler
