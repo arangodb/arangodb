@@ -29,11 +29,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var cluster = require("org/arangodb/cluster");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                  module "org/arangodb/statistics"
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster id or undefined for standalone
+////////////////////////////////////////////////////////////////////////////////
+
+var clusterId;
+
+if (cluster.isCluster()) {
+  clusterId = ArangoServerState.id();
+}
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -53,6 +68,10 @@ exports.historian = function (param) {
     result.client = internal.clientStatistics();
     result.http = internal.httpStatistics();
     result.server = internal.serverStatistics();
+
+    if (clusterId !== undefined) {
+      result.clusterId = clusterId;
+    }
 
     internal.db._statistics.save(result);
   }
