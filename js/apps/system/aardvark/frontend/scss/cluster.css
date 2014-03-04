@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSing
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -338,6 +338,12 @@ a.headerButton {
   a.headerButton .icon_arangodb_arrowleft,
   a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
+  a.headerButton.activated {
+    background-color: #788f3d;
+    color: white; }
+    a.headerButton.activated:hover {
+      background-color: white;
+      color: #788f3d; }
 
 /* Graph Viewer */
 div.toolbox > div.gv_action_button {
