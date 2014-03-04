@@ -264,21 +264,24 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       checkCollectionName: function (name) {
       },
-      newCollection: function (collName, wfs, isSystem, journalSize, collType) {
+      newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
         var returnobj = {};
+        var data = {};
+        data.name = collName;
+        data.waitForSync = wfs;
+        data.isSystem = isSystem;
+        data.type = collType;
+        if (shards) {
+          data.numberOfShards = shards,
+          data.shardKeys = keys;
+        }
         returnobj.status = false;
+        console.log(data);
         $.ajax({
           cache: false,
           type: "POST",
           url: "/_api/collection",
-          data:
-            '{"name":' + JSON.stringify(collName) +
-            ',"waitForSync":'+
-            JSON.stringify(wfs)+
-            ',"isSystem":'+
-            JSON.stringify(isSystem)+
-            ',"type":'+
-            collType + '}',
+          data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,
           async: false,

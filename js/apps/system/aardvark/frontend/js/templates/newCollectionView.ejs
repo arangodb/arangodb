@@ -1,31 +1,41 @@
 <script id="newCollectionView.ejs" type="text/template">
-<div id="add-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+<div id="add-collection" class="modal hide fade addCollection" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
 
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <a class="arangoHeader">New Collection</a>
   </div>
-
   <div class="modal-body">
     <table>
       <tr>
         <th class="collectionTh">Name:</th>
-        <th class="collectionThSec"><input type="text" id="new-collection-name" name="name" value=""/></th>
+        <th class="collectionThSec"><input type="text" id="new-collection-name" name="name" value="" class="modalInput"/></th>
       </tr>
       <tr>
         <th class="collectionTh">Type:</th>
         <th class="collectionThSec">
-          <select id="new-collection-type">
+          <select id="new-collection-type" class="modalSelect">
             <option value="2">Document</option>
             <option value="3">Edge</option>
           </select>
         </th>
-        <th><a class="modalTooltips" title="The type of the collection to create."><span class="arangoicon icon_arangodb_info" style="color:black"></a></th>
+        <th><a class="modalTooltips" title="The type of the collection to create."><span class="arangoicon icon_arangodb_info"></a></th>
       </tr>
+      <% if (isCoordinator) { %>
+        <tr>
+          <th class="collectionTh">Shards:</th>
+          <th class="collectionThSec"><input type="text" id="new-collection-shards" name="shards" value="" class="modalInput" /></th>
+          <th><a class="modalTooltips" title="The number of shards to create. You cannot change this afterwards. Recommended: DBServers squared"><span class="arangoicon icon_arangodb_info"></a></th>
+        </tr>
+        <tr>
+          <th class="collectionTh">Shard by:</th>
+          <th class="collectionThSec"><input type="hidden" id="new-collection-shardBy" name="shardBy" placeholder="_key" class="modalInput"></input></th>
+          <th><a class="modalTooltips" title="The keys used to distribute documents on shards. Type the key and press return to add it."><span class="arangoicon icon_arangodb_info"></a></th>
+        </tr>
+      <% } %>
     </table>
 
     <div class="accordion" id="accordion2">
-
       <div class="accordion-group">
         <div class="accordion-heading">
           <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
@@ -38,8 +48,8 @@
             <table>
               <tr>
                 <th class="collectionTh">Journal size:</th>
-                <th class="collectionThSec"><input type="text" id="new-collection-size" name="size" value=""/></th>
-                <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="arangoicon icon_arangodb_info" style="color:black"></span></a></th>
+                <th class="collectionThSec"><input class="modalInput" type="text" id="new-collection-size" name="size" value=""/></th>
+                <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="arangoicon icon_arangodb_info"></span></a></th>
               </tr>
               <tr>
                 <th class="collectionTh">Sync:</th>
@@ -49,7 +59,7 @@
                     <option value="true">Yes</option>
                   </select>
                 </th>
-                <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="arangoicon icon_arangodb_info" style="color:black"></span></a></th>
+                <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="arangoicon icon_arangodb_info"></span></a></th>
               </tr>
             </table>
           </div>
