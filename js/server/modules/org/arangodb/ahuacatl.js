@@ -624,16 +624,17 @@ function GET_INDEX (value, index) {
   
   var result = null;
   if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
-    result = value[index];
+    result = value[String(index)];
   }
   else if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
-    if (index < 0) {
+    var i = parseInt(index, 10);
+    if (i < 0) {
       // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1];
-      index = value.length + index;
+      i = value.length + i;
     }
 
-    if (index >= 0) {
-      result = value[index];
+    if (i >= 0 && i <= value.length - 1) {
+      result = value[i];
     }
   }
   else {
