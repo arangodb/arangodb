@@ -212,9 +212,11 @@ function get_api_index (req, res) {
 ///
 /// - `type`: must be equal to `"cap"`.
 ///
-/// - `size`: The maximal number of documents for the collection.
+/// - `size`: The maximal number of documents for the collection. If specified,
+///   the value must be greater than zero.
 /// 
-/// - `byteSize`: The maximal size of the active document data in the collection.
+/// - `byteSize`: The maximal size of the active document data in the collection
+///   (in bytes). If specified, the value must be at least 16384.
 ///
 /// Note that the cap constraint does not index particular attributes of the
 /// documents in a collection, but limits the number of documents in the
@@ -229,10 +231,14 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is returned.
+/// If the index already exists, then an `HTTP 200` is returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then an `HTTP 201`
+/// is returned.
+///
+/// @RESTRETURNCODE{400}
+/// If either `size` or `byteSize` contain invalid values, then an `HTTP 400`
 /// is returned.
 ///
 /// @RESTRETURNCODE{404}

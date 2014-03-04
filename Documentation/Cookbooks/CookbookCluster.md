@@ -6,15 +6,19 @@ firewalls, ports, different types of machines, and the like. ArangoDB
 is prepared to deal with all kinds of different setups and
 requirements.
 
-However, in the following sections we concentrate on a standard setup
+However, in the following section we concentrate on a standard setup
 and show you, how to build a ArangoDB cluster within minutes. If you
 want to dive deeper into the nasty details, you should read LINK.
 
-Single Machine Cluster
-----------------------
+Development Scenario
+--------------------
 
 While not really relevant for a prodution environment, a common setup
-for development is to create a cluster on a single maschine.
+for development is to create a cluster on a single maschine. This is
+the easiest of all setups and you should be ready to play with a
+ArangoDB cluster in less than a minute. Even when developing it is
+convenient to create a cluster on a single machine instead of having
+to deal with a lot of servers.
 
 ###Step 1: Install ArangoDB
 
@@ -34,7 +38,7 @@ runs in standalone mode.
 
 ###Step 2: Enable the Cluster mode
 
-In order to enable the cluster mode, edit as root the configuration file
+In order to enable the cluster mode, edit the configuration file as root
 
     vi /etc/arangodb/arangod.conf
 
@@ -50,7 +54,7 @@ to
     disable-dispatcher-kickstarter = no
     disable-dispatcher-frontend = no
 
-save and restarted
+Save and restart
 
     /etc/init.d/arangodb restart
 
@@ -69,13 +73,15 @@ Use your favorite web browser and go to
 
     http://localhost:8529/
 
-You will see the cluster management frontend.
+You will now see the cluster management frontend.
 
 Select `Single Machine` scenario. The next page allows you to enter
-the number of coordinators and database servers. Press `Launch Cluster`
-to fire up the cluster.
+the number of coordinators and database servers.
 
-That's it. Your cluster is up and running.
+![Single Server Dialog](cluster-single-server-dialog.png)
+
+Press `Launch Cluster` to fire up the cluster. That's it. Your cluster
+is up and running.
 
 ###Step 4: Test your Cluster
 
