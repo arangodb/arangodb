@@ -414,7 +414,7 @@ var modalDialogHelper = modalDialogHelper || {};
     footerDiv.className = "modal-footer";
 
     buttonCancel.id = idprefix + "cancel";
-    buttonCancel.className = "btn btn-close btn-margin";
+    buttonCancel.className = "button-close btn-margin";
     buttonCancel.appendChild(document.createTextNode("Close"));
     
     buttonSubmit.id = idprefix + "submit";
@@ -478,7 +478,7 @@ var modalDialogHelper = modalDialogHelper || {};
     footerDiv.className = "modal-footer";
 
     buttonCancel.id = idprefix + "cancel";
-    buttonCancel.className = "btn btn-close btn-margin";
+    buttonCancel.className = "button-close btn-margin";
     buttonCancel.appendChild(document.createTextNode("Close"));
     
     buttonSubmit.id = idprefix + "submit";

@@ -15,7 +15,6 @@
   opacity: 0.7 !important;
 }
 
-
 .addCollection {
   $inputWidth: 320px;
   table tr {
@@ -50,5 +49,13 @@
 
   .accordion-toggle {
     width: $inputWidth + 137px !important;
+  }
+}
+
+.modalTooltips span {
+  font-size: 20px;
+  color: $c_btn_inverse;
+  &:hover {
+    color: $c_black;
   }
 }
