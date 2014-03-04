@@ -43,6 +43,9 @@
    * This will plan a new cluster with the information
    * given in the body
    */
+  controller.get("/amICoordinator", function(req, res) {
+    res.json(cluster.isCoordinator());
+  });
 
   controller.get("/amIDispatcher", function(req, res) {
     res.json(!cluster.dispatcherDisabled());
