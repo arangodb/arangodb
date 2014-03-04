@@ -189,6 +189,10 @@
     },
 
     hidden: function () {
+      if (this.modal) {
+          $(".modal-backdrop.fade.in").click();
+          this.hide();
+      }
       delete this.currentChart;
       this.options.description.fetch({
         async:false
@@ -627,7 +631,7 @@
           borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
           borderRight = t;
       }
-      if (self.modal) {
+      if (self.modal && createDiv) {
           displayOptions.height = $('.innerDashboardChart').height() - 34;
           displayOptions.width = $('.innerDashboardChart').width() -45;
       }
