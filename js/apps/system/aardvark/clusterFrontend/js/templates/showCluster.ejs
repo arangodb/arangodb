@@ -32,7 +32,9 @@
       _.each(s.coords, function(c) {
         var url = c.get("protocol")
           + "://"
-          + c.get("address");
+          + c.get("address")
+          + "/_db/_system/_admin/aardvark/standalone.html"
+          + "#collections";
     %>
       <li class="tile">
         <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
@@ -65,7 +67,9 @@
         <% _.each(s.coords, function(c) {
           url = c.get("protocol")
             + "://"
-            + c.get("address");
+            + c.get("address")
+            + "_db/_system/_admin/aardvark/standalone.html"
+            + "#collections";
         %>
           <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">
             <span class="fa fa-compass icon"></span>

@@ -314,7 +314,7 @@ function runThere (options, instanceInfo, file) {
   var r;
   try {
     var t = 'var runTest = require("jsunity").runTest; '+
-            'return runTest("'+file+'");';
+            'return runTest('+JSON.stringify(file)+');';
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
     o.timeout = 24*3600;
