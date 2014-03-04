@@ -84,7 +84,8 @@
           shards = parseInt(shards);
         }
         shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
-        if (shardBy === []) {
+        console.log(shardBy);
+        if (shardBy.length === 0) {
           shardBy.push("_key");
         }
       }
