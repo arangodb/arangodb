@@ -1036,7 +1036,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
     // Kill just in case:
     return (0 != kill(pid._pid, SIGTERM));
 #else
-    return OurKillProcessPID(pid._pid);
+    return ourKillProcessPID(pid._pid);
 #endif
   }
 
