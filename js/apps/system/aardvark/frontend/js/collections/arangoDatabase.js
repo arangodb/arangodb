@@ -66,7 +66,7 @@
         + port
         + "/_db/"
         + encodeURIComponent(name)
-        + "/_admin/aardvark/index.html";
+        + "/_admin/aardvark/standalone.html";
       if (hash) {
         var base = hash.split("/")[0];
         if (base.indexOf("#collection") === 0) {
