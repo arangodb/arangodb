@@ -883,7 +883,7 @@ function ahuacatlQuerySimpleTestSuite () {
 /// @brief comments
 ////////////////////////////////////////////////////////////////////////////////
 
-    testComments2: function () {
+    testComments3: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("/* for u in [1,2,3] */ return 1");
