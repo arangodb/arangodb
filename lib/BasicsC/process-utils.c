@@ -896,13 +896,14 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   if (external->_status == TRI_EXT_RUNNING || 
       external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
+    TRI_pid_t res;
     if (wait) {
       opts = WUNTRACED;
     }
     else {
       opts = WNOHANG | WUNTRACED;
     }
-    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
+    res = waitpid(external->_pid, &loc, opts);
     if (res == 0) {
       external->_exitStatus = 0;
     }

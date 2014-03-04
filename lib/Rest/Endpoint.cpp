@@ -384,7 +384,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   }
 
   // set close-on-exec flag, executed for both client and server endpoints
-  ok = TRI_SetCloseOnExitSocket(s);
+  ok = TRI_SetCloseOnExecSocket(s);
 
   if (! ok) {
     LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));
