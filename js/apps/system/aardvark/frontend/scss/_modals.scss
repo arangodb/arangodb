@@ -14,3 +14,41 @@
 .waitModalBackdrop {
   opacity: 0.7 !important;
 }
+
+
+.addCollection {
+  $inputWidth: 320px;
+  table tr {
+    height: 53px;
+    border-bottom: 0 !important;
+  }
+  .icon_arangodb_info {
+    top: 2px !important;
+    position: relative;
+    margin-left: 20px !important;
+  }
+
+  .accordion {
+    margin-top: 10px;
+  }
+
+  .collectionThSec {
+    width: $inputWidth !important;
+  }
+
+  .collectionTh {
+    width: 96px;
+  }
+
+  .modalInput {
+    width: $inputWidth;
+  }
+
+  .modalSelect {
+    width: $inputWidth + 14px;
+  }
+
+  .accordion-toggle {
+    width: $inputWidth + 137px !important;
+  }
+}

@@ -6,13 +6,30 @@
   window.newCollectionView = Backbone.View.extend({
     el: '#modalPlaceholder',
     initialize: function () {
+      var self = this;
+      $.ajax("cluster/amICoordinator", {
+       async: false  
+     }).done(function(d) {
+        self.isCoordinator = d;
+      });
     },
 
     template: templateEngine.createTemplate("newCollectionView.ejs"),
 
     render: function() {
       var self = this;
-      $(this.el).html(this.template.render({}));
+      $(this.el).html(this.template.render({
+        isCoordinator: this.isCoordinator
+      }));
+      if (this.isCoordinator) {
+        $("#new-collection-shardBy").select2({
+          tags: [],
+          showSearchBox: false,
+          minimumResultsForSearch: -1,
+          width: "336px",
+          maximumSelectionSize: 8
+        });
+      }
       $('#add-collection').modal('show');
       $('#add-collection').on('hidden', function () {
         self.hidden();
@@ -47,16 +64,30 @@
     },
 
     saveNewCollection: function(a) {
-      if (window.location.hash !== '#new') {
-        return;
-      }
-
       var self = this;
 
       var collName = $('#new-collection-name').val();
       var collSize = $('#new-collection-size').val();
       var collType = $('#new-collection-type').val();
       var collSync = $('#new-collection-sync').val();
+      var shards = 1;
+      var shardBy = [];
+      if (this.isCoordinator) {
+        shards = $('#new-collection-shards').val();
+        if (shards === "") {
+          shards = 1;
+        }
+        if (!typeof shards === 'number' && shards % 1 === 0 && shards > 0) {
+          arangoHelper.arangoError("Number of shards has to be an integer value greater or equal 1");
+          return 0;
+        } else {
+          shards = parseInt(shards);
+        }
+        shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
+        if (shardBy === []) {
+          shardBy.push("_key");
+        }
+      }
       var isSystem = (collName.substr(0, 1) === '_');
       var wfs = (collSync === "true");
       var journalSizeString;
@@ -80,7 +111,7 @@
       }
 
       var returnobj = window.arangoCollectionsStore.newCollection(
-        collName, wfs, isSystem, journalSizeString, collType
+        collName, wfs, isSystem, journalSizeString, collType, shards, shardBy
       );
       if (returnobj.status === true) {
         self.hidden();
