@@ -5,20 +5,22 @@
   "use strict";
 
   window.ShowClusterView = Backbone.View.extend({
-
+    detailEl: '#modalPlaceholder',
     el: "#content",
 
     template: templateEngine.createTemplate("showCluster.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
     modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
+    detailTemplate: templateEngine.createTemplate("detailView.ejs"),
 
     events: {
       "change #selectDB"        : "updateCollections",
       "change #selectCol"       : "updateShards",
       "click .dbserver"         : "dashboard",
       "click .coordinator"      : "dashboard",
-      "mouseover #lineGraph"    : "setShowAll",
-      "mouseout #lineGraph"     : "resetShowAll"
+      "click #lineGraph"        : "showDetail"
+      //"mouseover #lineGraph"    : "setShowAll",
+      //"mouseout #lineGraph"     : "resetShowAll"
     },
 
     replaceSVGs: function() {
@@ -42,7 +44,6 @@
 
     setShowAll: function() {
       this.graphShowAll = true;
-      this.renderLineChart();
     },
 
     resetShowAll: function() {
@@ -341,7 +342,7 @@
             .text(function(d) { return d.data.key; });
       },
 
-      renderLineChart: function() {
+      renderLineChart: function(remake) {
           var self = this;
           self.chartData = {
               labelsNormal : ['datetime'],
@@ -418,8 +419,7 @@
                   i++
               });
           };
-
-          if (this.graph !== undefined) {
+          if (this.graph !== undefined && !remake) {
               getData();
               var opts = {file : this.chartData.data};
               if (this.graphShowAll ) {
@@ -433,19 +433,35 @@
               return;
           }
 
-          var makeGraph = function(className) {
-            getData(),
+          var makeGraph = function(remake) {
+            getData();
+            if (remake) {
+                var displayOptions = {
+                    showRangeSelector : true,
+                    title : "",
+                    interactionModel : null,
+                    showLabelsOnHighlight : true,
+                    highlightCircleSize : 3,
+                    visibility: self.chartData.visibilityShowAll 
+                }
+                displayOptions.height = $('#lineChartDetail').height() - 34 -29;
+                displayOptions.width = $('#lineChartDetail').width() -10;
+                displayOptions.title = "";
+            }
             self.graph = new Dygraph(
-                  document.getElementById('lineGraph'),
+                  document.getElementById(remake ? 'detailGraph' : 'lineGraph'),
                   self.chartData.data,
-                  {   title: 'Average request time in milliseconds',
+                _.extend({   title: 'Average request time in milliseconds',
                       labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
-                      //labelsSeparateLines: true,
-                      connectSeparatedPoints : false,
-                      digitsAfterDecimal: 3,
+                      digitsAfterDecimal: 2,
+                      drawGapPoints: true,
                       fillGraph : true,
+                      showLabelsOnHighlight : true,
                       strokeWidth: 2,
-                      legend: "always",
+                      strokeBorderWidth: 1,
+                      highlightCircleSize: 0,
+                      strokeBorderColor: '#ffffff',
+                      interactionModel :  {},
                       axisLabelFont: "Open Sans",
                       dateWindow : [new Date().getTime() -
                           Math.min(
@@ -455,23 +471,19 @@
                       labels: self.chartData.labelsNormal,
                       visibility: self.chartData.visibilityNormal ,
                       xAxisLabelWidth : "60",
+                      rightGap: 10,
                       showRangeSelector: false,
-                      rightGap: 15,
+                      rangeSelectorHeight: 40,
+                      rangeSelectorPlotStrokeColor: '#365300',
+                      rangeSelectorPlotFillColor: '#414a4c',
                       pixelsPerLabel : 60,
-                      labelsKMG2: false,
-                      highlightCircleSize: 2
-                      });
-              var onclick = function(ev) {
-                  if (self.graph.isSeriesLocked()) {
-                      self.graph.clearSelection();
-                  } else {
-                      self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
-                  }
-              };
+                      labelsKMG2: true
+                  },displayOptions));
+
           self.graph.updateOptions({clickCallback: onclick}, true);
           self.graph.setSelection(false, 'ClusterAverage', true);
         };
-        makeGraph('lineGraph');
+        makeGraph(remake);
 
       },
 
@@ -523,7 +535,26 @@
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
         window.App.dashboard();
+      },
+
+      showDetail : function(e) {
+          var self = this;
+          delete self.graph;
+          $(self.detailEl).html(this.detailTemplate.render({figure: "Average request time in milliseconds"}));
+          self.setShowAll();
+          self.renderLineChart(true);
+          $('#lineChartDetail').modal('show');
+          $('#lineChartDetail').on('hidden', function () {
+              delete self.graph;
+              self.resetShowAll();
+          });
+          $('.modalTooltips').tooltip({
+              placement: "left"
+          });
+          return self;
       }
     });
+
+
 
   }());
