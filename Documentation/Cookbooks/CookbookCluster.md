@@ -75,6 +75,8 @@ Use your favorite web browser and go to
 
 You will now see the cluster management frontend.
 
+![Create Cluster Dialog](cluster-create-dialog.png)
+
 Select `Single Machine` scenario. The next page allows you to enter
 the number of coordinators and database servers.
 
