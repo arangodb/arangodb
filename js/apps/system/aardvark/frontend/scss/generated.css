@@ -1024,6 +1024,13 @@ select.filterSelect {
   word-wrap: break-word !important;
   white-space: normal !important; }
 
+.indexTooltip {
+  color: #736b68; }
+  .indexTooltip:hover {
+    color: black; }
+  .indexTooltip span.arangoicon {
+    font-size: 18px !important; }
+
 .dbselection {
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1141,6 +1148,12 @@ select.filterSelect {
   width: 334px; }
 .addCollection .accordion-toggle {
   width: 457px !important; }
+
+.modalTooltips span {
+  font-size: 20px;
+  color: #736b68; }
+  .modalTooltips span:hover {
+    color: black; }
 
 div img.searchSubmitIcon {
   height: 14px;
