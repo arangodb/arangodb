@@ -119,6 +119,7 @@ typedef struct TRI_external_s {
   int _writePipe;
 #else
   DWORD _pid;
+  HANDLE _process;
   HANDLE _readPipe;
   HANDLE _writePipe;
 #endif
