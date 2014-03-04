@@ -730,7 +730,6 @@ actions.defineHttp({
         res.responseCode = actions.HTTP_OK;
         res.body =  JSON.stringify({result : cursor.docs});
     } else {
-        var DBserver = req.parameters.DBserver;
         var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
         var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
         var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
