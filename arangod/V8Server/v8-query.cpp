@@ -268,14 +268,13 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
 
     if (*keyStr != 0) {
       pids[i] = shaper->lookupAttributePathByName(shaper, *keyStr);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
 
-      if (pids[i] == 0) {
+      if (pids[i] == 0 || values[i] == 0) {
         // no attribute path found. this means the result will be empty 
         CleanupExampleObject(shaper->_memoryZone, i, pids, values);
         return TRI_RESULT_ELEMENT_NOT_FOUND;
       }
-
-      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
     }
 
     if (*keyStr == 0 || pids[i] == 0 || values[i] == 0) {
