@@ -3,41 +3,40 @@
   padding: 10px;
   float: left;
   background-color: #E1E1E1;
-  width: 311px;
-  height: 175px;
-  margin-left: 8px;
+  margin-left: 31px;
+  margin-right: 31px;
 }
 
 .scenarioBox {
   position: absolute;
-  margin-top: 10px;
+  margin-top: 30px;
   width: auto;
   height: 65px;
   left: 10px;
   right: 10px;
-  @include border-radius(3px 3px 0 0);
+  @include border-radius(3px 3px 3px 3px);
   border: 1px solid rgba(0, 0, 0, 0.19);
-  background-color: white;
+  background-color: rgba(0, 0, 0, 0.075);
 
   &.bottomBox {
-    bottom: 10px;
+    bottom: 30px;
   }
 }
 
 .scenarioBoxHeader {
   width: auto;
-  height: 5px;
-  line-height: 5px;
-  text-align: right;
-  margin-top: -5px;
-  padding-bottom: 5px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  margin-top: 0px;
+  padding-bottom: 0px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.19);
 }
 
 .scenarioBoxText {
   width: auto;
-  font-size: 30px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 400;
   text-align: center;
   margin-top: 17px;
 }
@@ -46,8 +45,8 @@
   @extend %pull-left;
   position: relative;
   margin-right: 20px;
-  height: 177px;
-  width: 87px;
+  height: 257px;
+  width: 110px;
   @include border-radius(3px 3px 0 0);
   border: 1px solid rgba(0, 0, 0, 0.19);
   background-color: white;
@@ -65,6 +64,18 @@
 
   .scenarioMachine {
     border: 1px solid transparent;
+    height: 238px;
   }
 }
 
+.bigtile.informationtile {
+  cursor: auto;
+}
+
+.informationText {
+  font-size: 12px;
+  text-align: left;
+  margin: 10px;
+  padding: 5px;
+  background: $c_white;
+}
