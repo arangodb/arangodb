@@ -73,8 +73,8 @@
       $('#waitModalLayer').modal('show');
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
-      delete this.model._coord;
-      this.model.save(
+      delete window.App.clusterPlan._coord;
+      window.App.clusterPlan.save(
         data,
         {
           success : function(info) {
@@ -115,7 +115,7 @@
       }));
       var params = {},
         isFirst = true,
-        config = this.model.get("config");
+        config = window.App.clusterPlan.get("config");
       if (config) {
         var self = this,
         isCoordinator = false,

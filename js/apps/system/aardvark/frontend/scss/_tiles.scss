@@ -152,6 +152,7 @@ li.tile {
 }
 
 li.bigtile {
+  @extend %clickable;
   @extend li.tile;
   height:250px;
   width: 345px;

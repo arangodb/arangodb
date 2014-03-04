@@ -2577,7 +2577,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
                 v8::String::New(readPipe, readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
-  if (0 != external._hChildStdinWr) {
+  if (0 != external._writePipe) {
     writePipe = TRI_EncodeHexString((const char *)external._writePipe, 
                                     sizeof(HANDLE), &writePipe_len);
     result->Set(v8::String::New("writePipe"), 
