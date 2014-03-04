@@ -39,6 +39,7 @@ li.tile {
         margin-right: 10px;
       }
       &.icon {
+        @extend %clickable;
         font-size: $iconSize;
       }
     }
