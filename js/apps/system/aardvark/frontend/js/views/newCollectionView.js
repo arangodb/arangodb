@@ -77,14 +77,12 @@
         if (shards === "") {
           shards = 1;
         }
-        if (!typeof shards === 'number' && shards % 1 === 0 && shards > 0) {
+        shards = parseInt(shards, 10);
+        if (shards < 1) {
           arangoHelper.arangoError("Number of shards has to be an integer value greater or equal 1");
           return 0;
-        } else {
-          shards = parseInt(shards);
         }
         shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
-        console.log(shardBy);
         if (shardBy.length === 0) {
           shardBy.push("_key");
         }

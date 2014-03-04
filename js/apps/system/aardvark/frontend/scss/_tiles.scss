@@ -155,8 +155,8 @@ li.tile {
 li.bigtile {
   @extend %clickable;
   @extend li.tile;
-  height:250px;
-  width: 345px;
+  height: 309px;
+  width: 460px;
 
   div.shardContainer {
     font-size: 30px;
