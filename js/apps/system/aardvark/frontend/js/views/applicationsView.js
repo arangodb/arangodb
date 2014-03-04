@@ -7,14 +7,14 @@ window.ApplicationsView = Backbone.View.extend({
   template: templateEngine.createTemplate("applicationsView.ejs"),
 
   events: {
-    "click .toggle-icon": "toggleView",
-    "click #checkDevel": "toggleDevel",
-    "click #checkActive": "toggleActive",
-    "click #checkInactive": "toggleInactive",
-    "click #foxxToggle": "slideToggle",
-    "click #importFoxxToggle": "slideToggleImport",
-    "change #importFoxx": "uploadSetup",
-    "click #confirmFoxxImport": "importFoxx"
+    "click .toggle-icon"        : "toggleView",
+    "click #checkDevel"         : "toggleDevel",
+    "click #checkActive"        : "toggleActive",
+    "click #checkInactive"      : "toggleInactive",
+    "click #foxxToggle"         : "slideToggle",
+    "click #importFoxxToggle"   : "slideToggleImport",
+    "change #importFoxx"        : "uploadSetup",
+    "click #confirmFoxxImport"  : "importFoxx"
   },
 
   uploadSetup: function (e) {
@@ -122,11 +122,15 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   slideToggleImport: function() {
+    $('#foxxToggle').removeClass('activated');
+    $('#importFoxxToggle').toggleClass('activated');
     $('#foxxDropdownImport').slideToggle(200);
     this.hideSettingsModal();
   },
 
   slideToggle: function() {
+    $('#importFoxxToggle').removeClass('activated');
+    $('#foxxToggle').toggleClass('activated');
     $('#foxxDropdownOut').slideToggle(200);
     this.hideImportModal();
   },

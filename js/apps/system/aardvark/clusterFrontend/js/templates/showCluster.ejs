@@ -35,10 +35,10 @@
           + c.get("address");
     %>
       <li class="tile">
-        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank">
+        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
           <span class="fa fa-compass icon"></span>
         </a>
-        <h5 class="collectionName"><%=c.get("name")%></h5>
+        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui">GUI</a></h5>
       </li>
     <%
       });
@@ -55,6 +55,7 @@
       });
     } else { 
       _.each(byAddress, function(s, a) { 
+        var url;
         var type = "single";
         if (s.coords && s.dbs) {
           type = "double";
@@ -62,11 +63,11 @@
   %>
       <li class="tile">
         <% _.each(s.coords, function(c) {
-          var url = c.get("protocol")
+          url = c.get("protocol")
             + "://"
             + c.get("address");
         %>
-          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank" title="<%=c.get('name')%>">
+          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">
             <span class="fa fa-compass icon"></span>
           </a>
         <% });
@@ -78,7 +79,7 @@
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui" href="<%=url%>" target="_blank">GUI</a></h5>
       </li>
     <%
     });

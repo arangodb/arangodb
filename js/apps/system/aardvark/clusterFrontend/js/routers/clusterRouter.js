@@ -8,8 +8,8 @@
 
     routes: {
       ""                       : "initialRoute",
+      "planScenario"           : "planScenario",
       "planTest"               : "planTest",
-      "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
