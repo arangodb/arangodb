@@ -269,10 +269,12 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
 ################################################################################
