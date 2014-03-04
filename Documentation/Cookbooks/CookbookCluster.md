@@ -1,5 +1,5 @@
-Stir up your ArangoDB Cluster{#CookbookCluster}
-=============================
+Set up your ArangoDB Cluster{#CookbookCluster}
+============================
 
 Setting up a cluster can be intimidating task. You have to deal with
 firewalls, ports, different types of machines, and the like. ArangoDB
