@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
