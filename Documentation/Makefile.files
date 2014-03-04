@@ -401,6 +401,7 @@ publish-html:
 	mkdir -p $(OUTPUT_FOLDER)/images
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
 	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
+	@for i in `ls Doxygen/website/*.png`; do cp $$i $(OUTPUT_FOLDER)/; done
 	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
 	@cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
 
