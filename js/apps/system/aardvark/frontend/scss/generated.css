@@ -1122,6 +1122,26 @@ select.filterSelect {
 .waitModalBackdrop {
   opacity: 0.7 !important; }
 
+.addCollection table tr {
+  height: 53px;
+  border-bottom: 0 !important; }
+.addCollection .icon_arangodb_info {
+  top: 2px !important;
+  position: relative;
+  margin-left: 20px !important; }
+.addCollection .accordion {
+  margin-top: 10px; }
+.addCollection .collectionThSec {
+  width: 320px !important; }
+.addCollection .collectionTh {
+  width: 96px; }
+.addCollection .modalInput {
+  width: 320px; }
+.addCollection .modalSelect {
+  width: 334px; }
+.addCollection .accordion-toggle {
+  width: 457px !important; }
+
 div img.searchSubmitIcon {
   height: 14px;
   margin-left: -18px;
