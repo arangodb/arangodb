@@ -51,20 +51,21 @@
 
 int TRI_closesocket(TRI_socket_t s) {
   int res = 0;
-  // if this is the last file descriptor associated with the open file
-  // I really hope the resources are released under both windows and linux
   #ifdef _WIN32
-/*
-    if (s.fileHandle > 0) {
-      res = shutdown(s.fileHandle,2);
-      res = closesocket(s.fileHandle);
-    }
-*/
-    if (s.fileDescriptor > 0) {
+    if (s.fileDescriptor != INVALID_SOCKET) {
       res = _close(s.fileDescriptor);
     }
+    if (s.fileHandle != INVALID_SOCKET) {
+      res = shutdown(s.fileHandle,SD_SEND);
+      char buf[256];
+      int len;
+      do {
+        len = recv(s.fileHandle, buf, 256, 0);
+      } while (len > 0);
+      res = closesocket(s.fileHandle);
+    }
   #else
-    if (s.fileDescriptor > 0) {
+    if (s.fileDescriptor != INVALID_SOCKET) {
       res = close(s.fileDescriptor);
     }
   #endif
@@ -99,13 +100,13 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, 
 
 #ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
 
-bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
+bool TRI_SetCloseOnExecSocket (TRI_socket_t s) {
   return true;
 }
 
 #else
 
-bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
+bool TRI_SetCloseOnExecSocket (TRI_socket_t s) {
   long flags = fcntl(s.fileDescriptor, F_GETFD, 0);
 
   if (flags < 0) {
