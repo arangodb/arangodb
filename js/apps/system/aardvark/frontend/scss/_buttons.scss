@@ -344,6 +344,20 @@ button.btn-server {
   width: 120px;
 }
 
+a.button-gui {
+  @extend a.headerButton;
+  position:absolute;
+  right: 2px;
+  top:2px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  width: auto;
+  height: auto;
+  text-decoration: none !important;
+}
+
 .clusterDownBtn {
   padding-top: 10px;
   padding-bottom: 10px;

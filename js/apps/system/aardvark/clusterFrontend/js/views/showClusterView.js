@@ -16,6 +16,7 @@
       "change #selectDB"        : "updateCollections",
       "change #selectCol"       : "updateShards",
       "click .dbserver"         : "dashboard",
+      "click .coordinator"      : "dashboard",
       "mouseover #lineGraph"    : "setShowAll",
       "mouseout #lineGraph"     : "resetShowAll"
     },
