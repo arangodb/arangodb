@@ -14,3 +14,11 @@
 .waitModalBackdrop {
   opacity: 0.7 !important;
 }
+
+.modalTooltips span {
+  font-size: 20px;
+  color: $c_btn_inverse;
+  &:hover {
+    color: $c_black;
+  }
+}

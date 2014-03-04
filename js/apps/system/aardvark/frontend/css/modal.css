@@ -114,15 +114,6 @@
   border-radius: 0 !important;
 }
 
-.modalTooltips span {
-  font-size: 20px;
-  opacity: 0.5;
-}
-
-.modalTooltips span:hover {
-  opacity: 0.8;
-}
-
 #infoTab, #collectionTab{
   padding-right: 10px;
   border-bottom: 0;
