@@ -11,18 +11,12 @@
 
 
         events: {
-            "click #multiServerSymmetrical": "multiServerSymmetrical",
             "click #multiServerAsymmetrical": "multiServerAsymmetrical",
             "click #singleServer": "singleServer"
         },
 
         render: function() {
           $(this.el).html(this.template.render({}));
-        },
-        multiServerSymmetrical: function() {
-          window.App.navigate(
-            "planSymmetrical", {trigger: true}
-          );
         },
         multiServerAsymmetrical: function() {
           window.App.navigate(
