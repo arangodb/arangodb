@@ -48,8 +48,8 @@
         alert("Please define a number of database servers");
         return;
       }
-      delete this.model._coord;
-      this.model.save(
+      delete window.App.clusterPlan._coord;
+      window.App.clusterPlan.save(
         {
           type: "testSetup",
           dispatchers: h + ":" + p,
@@ -74,7 +74,7 @@
 
     render: function() {
       var param = {};
-      var config = this.model.get("config");
+      var config = window.App.clusterPlan.get("config");
       if (config) {
         param.dbs = config.numberOfDBservers;
         param.coords = config.numberOfCoordinators;
