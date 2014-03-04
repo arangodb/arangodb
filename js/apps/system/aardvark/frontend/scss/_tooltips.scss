@@ -4,4 +4,12 @@
   white-space: normal !important;
 }
 
-
+.indexTooltip {
+  color: $c_btn_inverse;
+  &:hover {
+    color: $c_black;
+  }
+  span.arangoicon {
+    font-size: 18px !important;
+  }
+}
