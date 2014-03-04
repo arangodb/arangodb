@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSing
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a span.icon, li.bigtile a span.icon, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -515,7 +515,7 @@ a.button-gui {
   padding-bottom: 1px;
   width: auto;
   height: auto;
-  text-decoration: none; }
+  text-decoration: none !important; }
 
 .clusterDownBtn {
   padding-top: 10px;
