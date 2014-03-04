@@ -473,7 +473,7 @@
       $("#result").removeClass("active");
       $("#tabContentQuery").show();
       $("#tabContentResult").hide();
-      /*      console.log("BLUBBBBBER2");
+      /*
        this.resetState();
        this.table = "logTableID";
        this.clearTable();
