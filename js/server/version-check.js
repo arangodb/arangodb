@@ -321,7 +321,8 @@
             userManager.save(user.username, user.passwd, user.active, user.extra || { });
           }
           catch (err) {
-            logger.error("could not add database user '" + user.username + "': " + String(err.stack || err));
+            logger.error("could not add database user '" + user.username + "': " + 
+                         String(err.stack || err));
           }
         });
       }

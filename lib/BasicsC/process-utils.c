@@ -873,7 +873,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   TRI_external_t* external;
   int loc;
   int opts;
-  pid_t res;
   size_t i;
 
   TRI_LockMutex(&ExternalProcessesLock);
@@ -903,7 +902,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     else {
       opts = WNOHANG | WUNTRACED;
     }
-    res = waitpid(external->_pid, &loc, opts);
+    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
     if (res == 0) {
       external->_exitStatus = 0;
     }
@@ -1015,6 +1014,7 @@ static bool ourKillProcess(DWORD pid) {
 bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
+  bool ok = true;
 
   TRI_LockMutex(&ExternalProcessesLock);
 
@@ -1032,7 +1032,6 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
     return ourKillProcess(pid._pid);
   }
 
-  bool ok = true;
   if (external->_status == TRI_EXT_RUNNING || 
       external->_status == TRI_EXT_STOPPED) {
     ok = ourKillProcess(external->_pid);
