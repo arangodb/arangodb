@@ -190,7 +190,7 @@
     },
 
     hidden: function () {
-      delete self.currentChart;
+      delete this.currentChart;
       this.options.description.fetch({
         async:false
       });
@@ -537,9 +537,6 @@
             } else if (valueList === "current") {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === "currentDistribution")  {
-                if (figure === "totalRequestTime") {
-                    console.log(valueList);
-                }
                 if (val !== null) {
                 val = val.count === 0 ? 0 : val.sum / val.count;
               }
@@ -673,15 +670,15 @@
                             self.hideGraphs.indexOf(figure) === -1) {
                             var height = $('.innerDashboardChart').height() - 34;
                             var width = $('.innerDashboardChart').width() -45;
-                            chart.graph.resize(width , height)
+                            chart.graph.resize(width , height);
                         }
                     });
                 });
             });
         } else if (self.currentChart) {
-            var height = $('#lineChartDetail').height() - 34 -29;
-            var width = $('#lineChartDetail').width() -10;
-            self.currentChart.resize(width , height)
+            var height = $('#lineChartDetail').height() - 34 - 29;
+            var width = $('#lineChartDetail').width() - 10;
+            self.currentChart.resize(width , height);
         }
     },
 
