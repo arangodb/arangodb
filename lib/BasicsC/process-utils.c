@@ -458,7 +458,7 @@ static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
   }
   else {
     external->_pid = piProcInfo.dwProcessId;
-    CloseHandle(piProcInfo.hProcess);
+    external->_process = piProcInfo.hProcess;
     CloseHandle(piProcInfo.hThread);
     return true;
   }
@@ -483,10 +483,18 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     if (! fSuccess) {
       external->_status = TRI_EXT_FORK_FAILED;
 
-      CloseHandle(hChildStdoutRd);
-      CloseHandle(hChildStdoutWr);
-      CloseHandle(hChildStdinRd);
-      CloseHandle(hChildStdinWr);
+      if (hChildStdoutRd != NULL) {
+        CloseHandle(hChildStdoutRd);
+      }
+      if (hChildStdoutWr != NULL) {
+        CloseHandle(hChildStdoutWr);
+      }
+      if (hChildStdinRd != NULL) {
+        CloseHandle(hChildStdinRd);
+      }
+      if (hChildStdinWr != NULL) {
+        CloseHandle(hChildStdinWr);
+      }
 
       return;
     }
@@ -805,6 +813,7 @@ static void FreeExternal(TRI_external_t* ext) {
     close(ext->_writePipe);
   }
 #else
+  CloseHandle(ext->_process);
   if (ext->_readPipe != NULL) {
     CloseHandle(ext->_readPipe);
   }
@@ -920,37 +929,27 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       external->_exitStatus = 0;
     }
 #else
-    HANDLE hProcess = OpenProcess(SYNCHRONIZE | 
-                                  PROCESS_QUERY_LIMITED_INFORMATION, 
-                                  FALSE, external->_pid);
-    if (hProcess == NULL) {
-      LOG_WARNING("could not do OpenProcess for subprocess with PID '%ud'",
+    if (wait) {
+      DWORD result;
+      result = WaitForSingleObject(external->_process, INFINITE);
+      if (result == WAIT_FAILED) {
+        LOG_WARNING("could not wait for subprocess with PID '%ud'",
+                    external->_pid);
+      }
+    }
+    DWORD exitCode = STILL_ACTIVE;
+    if (!GetExitCodeProcess(external->_process , &exitCode)) {
+      LOG_WARNING("exit status could not be determined for PID '%ud'", 
                   external->_pid);
     }
     else {
-      if (wait) {
-        DWORD result;
-        result = WaitForSingleObject(hProcess, INFINITE);
-        if (result == WAIT_FAILED) {
-          LOG_WARNING("could not wait for subprocess with PID '%ud'",
-                      external->_pid);
-        }
-      }
-      DWORD exitCode = STILL_ACTIVE;
-      if (!GetExitCodeProcess(hProcess , &exitCode)) {
-        LOG_WARNING("exit status could not be determined for PID '%ud'", 
-                    external->_pid);
+      if (exitCode == STILL_ACTIVE) {
+        external->_exitStatus = 0;
       }
       else {
-        if (exitCode == STILL_ACTIVE) {
-          external->_exitStatus = 0;
-        }
-        else {
-          external->_status = TRI_EXT_TERMINATED;
-          external->_exitStatus = exitCode;
-        }
+        external->_status = TRI_EXT_TERMINATED;
+        external->_exitStatus = exitCode;
       }
-      CloseHandle(hProcess);
     }
 #endif
   }
@@ -970,41 +969,45 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 }
 
 #ifndef _WIN32
-static bool ourKillProcess(TRI_pid_t pid) {
-  return (0 != kill(pid, SIGTERM));
+static bool ourKillProcess(TRI_external_t* pid) {
+  return (0 != kill(pid->_pid, SIGTERM));
 }
 #else
-static bool ourKillProcess(DWORD pid) {
+static bool ourKillProcess(TRI_external_t* pid) {
   bool ok = true;
-  HANDLE hProcess = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, 
-                                FALSE, pid);
-  if (hProcess == NULL) {
-    LOG_WARNING("could not do OpenProcess for subprocess with PID '%ud'", pid);
-    ok = false;
+  UINT uExitCode = 0;
+  DWORD exitCode;
+
+  // kill worker process
+  if (0 != TerminateProcess(pid->_process, uExitCode)) {
+    LOG_TRACE("kill of worker process succeeded");
   }
   else {
-    UINT uExitCode = 0;
-    DWORD exitCode;
+    DWORD e1 = GetLastError();
+    BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
 
-    // kill worker process
-    if (0 != TerminateProcess(hProcess, uExitCode)) {
-      LOG_TRACE("kill of worker process succeeded");
-      CloseHandle(hProcess);
+    if (ok) {
+      LOG_DEBUG("worker process already dead: %d", exitCode);
     }
     else {
-      DWORD e1 = GetLastError();
-      BOOL ok = GetExitCodeProcess(hProcess, &exitCode);
-
-      if (ok) {
-        LOG_DEBUG("worker process already dead: %d", exitCode);
-      }
-      else {
-        LOG_WARNING("kill of worker process failed: %d", exitCode);
-        ok = false;
-      }
+      LOG_WARNING("kill of worker process failed: %d", exitCode);
+      ok = false;
     }
   }
   return ok;
+}
+
+static bool ourKillProcessPID(DWORD pid) {
+  HANDLE hProcess;
+  UINT uExitCode = 0;
+
+  hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+  if (hProcess != NULL) {
+    TerminateProcess(hProcess, uExitCode);
+    CloseHandle(hProcess);
+    return true;
+  }
+  return false;
 }
 #endif
 
@@ -1029,13 +1032,17 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 
   if (i == ExternalProcesses._length) {
     TRI_UnlockMutex(&ExternalProcessesLock);
+#ifndef _WIN32
     // Kill just in case:
-    return ourKillProcess(pid._pid);
+    return (0 != kill(pid._pid, SIGTERM));
+#else
+    return OurKillProcessPID(pid._pid);
+#endif
   }
 
   if (external->_status == TRI_EXT_RUNNING || 
       external->_status == TRI_EXT_STOPPED) {
-    ok = ourKillProcess(external->_pid);
+    ok = ourKillProcess(external);
   }
   TRI_RemoveVectorPointer(&ExternalProcesses, i);
   TRI_UnlockMutex(&ExternalProcessesLock);

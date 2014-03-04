@@ -204,7 +204,7 @@ func (l *Log) close() {
 
 // sync to disk
 func (l *Log) sync() error {
-	return l.file.Sync()
+	return nil   // l.file.Sync()
 }
 
 //--------------------------------------
