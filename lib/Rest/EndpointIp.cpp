@@ -122,7 +122,19 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   }
 
   if (_type == ENDPOINT_SERVER) {
-    // try to reuse address
+
+#ifdef _WIN32
+	  int excl = 1;
+	  if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+		  reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+		  LOG_ERROR("setsockopt() failed with %d", WSAGetLastError());
+
+		  TRI_CLOSE_SOCKET(listenSocket);
+		  TRI_invalidatesocket(&listenSocket);
+		  return listenSocket;
+	  }
+#else
+	// try to reuse address
     if (_reuseAddress) {
       int opt = 1;
       if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
@@ -133,17 +145,6 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
         return listenSocket;
       }
     }
-
-#ifdef _WIN32
-    int excl = 1;
-    if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, 
-        reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
-      LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
-
-      TRI_CLOSE_SOCKET(listenSocket);
-      TRI_invalidatesocket(&listenSocket);
-      return listenSocket;
-    }
 #endif
 
     // server needs to bind to socket
@@ -151,8 +152,11 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 
     if (result != 0) {
       // error
+#ifndef _WIN32
       LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
-
+#else
+      LOG_ERROR("bind() failed with %d", WSAGetLastError());
+#endif
       TRI_CLOSE_SOCKET(listenSocket);
 
       TRI_invalidatesocket(&listenSocket);
