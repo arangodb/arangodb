@@ -1,5 +1,5 @@
-Stir up your ArangoDB Cluster{#CookbookCluster}
-=============================
+Set up your ArangoDB Cluster{#CookbookCluster}
+============================
 
 Setting up a cluster can be intimidating task. You have to deal with
 firewalls, ports, different types of machines, and the like. ArangoDB
@@ -74,6 +74,8 @@ Use your favorite web browser and go to
     http://localhost:8529/
 
 You will now see the cluster management frontend.
+
+![Create Cluster Dialog](cluster-create-dialog.png)
 
 Select `Single Machine` scenario. The next page allows you to enter
 the number of coordinators and database servers.
