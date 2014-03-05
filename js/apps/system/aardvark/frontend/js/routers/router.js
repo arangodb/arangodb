@@ -350,7 +350,7 @@
           collection: this.statisticsCollection,
           description: this.statisticsDescription,
           documentStore: window.arangoDocumentsStore,
-          dygrpahConfig : window.dygraphConfig
+          dygraphConfig : window.dygraphConfig
         });
       }
       this.dashboardView.render();
