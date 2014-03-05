@@ -432,10 +432,12 @@ namespace triagens {
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
         int32_t random (int32_t left, int32_t right) {
-          const int32_t range = right - left + 1;
+          const int64_t range = (int64_t) right - (int64_t) left + 1LL;
           int32_t result = (int32_t) TRI_Int32MersenneTwister();
 
-          result = (int32_t) abs(result % range) + left;
+          assert(range > 0);
+
+          result = (int32_t) (abs((int64_t) result % range) + (int64_t) left);
 
           return result;
         }
@@ -654,7 +656,7 @@ namespace triagens {
 
         int32_t l = left + INT32_MIN;
         int32_t r = right + INT32_MIN;
-
+        
         return uniformInteger->random(l, r) - INT32_MIN;
       }
     }

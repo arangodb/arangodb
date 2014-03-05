@@ -81,20 +81,21 @@
 
       this.message = this.toString();
     };
+  
+    exports.ArangoError.prototype = new Error(); //Error.prototype;
+    
+    exports.ArangoError.prototype._PRINT = function (context) {
+      context.output += this.toString();
+    };
 
-    exports.ArangoError.prototype = Error.prototype;
+    exports.ArangoError.prototype.toString = function() {
+      var errorNum = this.errorNum;
+      var errorMessage = this.errorMessage || this.message;
+
+      return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+    };
+
   }
-
-  exports.ArangoError.prototype._PRINT = function (context) {
-    context.output += this.toString();
-  };
-
-  exports.ArangoError.prototype.toString = function() {
-    var errorNum = this.errorNum;
-    var errorMessage = this.errorMessage;
-
-    return "[ArangoError " + errorNum + ": " + errorMessage + "]";
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SleepAndRequeue
