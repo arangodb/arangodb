@@ -883,6 +883,15 @@ ArangoDatabase.prototype._listDatabases = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._useDatabase = function (name) {
+  if (internal.printBrowser) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+      errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+      errorMessage: "_useDatabase() is not supported in the web interface"
+    });
+  }
+
   var old = this._connection.getDatabaseName();
 
   // no change
