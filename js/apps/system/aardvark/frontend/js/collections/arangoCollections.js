@@ -1,7 +1,9 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
 /*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+(function() {
+  "use strict";
 
-window.arangoCollections = Backbone.Collection.extend({
+  window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
       model: arangoCollection,
@@ -272,11 +274,10 @@ window.arangoCollections = Backbone.Collection.extend({
         data.isSystem = isSystem;
         data.type = collType;
         if (shards) {
-          data.numberOfShards = shards,
+          data.numberOfShards = shards;
           data.shardKeys = keys;
         }
         returnobj.status = false;
-        console.log(data);
         $.ajax({
           cache: false,
           type: "POST",
@@ -409,4 +410,5 @@ window.arangoCollections = Backbone.Collection.extend({
           }
         });
       }
-});
+  });
+}());
