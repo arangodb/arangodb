@@ -461,7 +461,7 @@
         });
       }
       this.userManagementView.render();
-      this.naviView.selectMenuItem('user-menu');
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     userProfile: function() {
