@@ -3,6 +3,8 @@ v2.0.0-rc1 (2014-02-28)
 
 * added sharding :-)
 
+* added collection._dbName attribute to query the name of the database from a collection
+
   more detailed documentation on the sharding and cluster features can be found in the user 
   manual, section **Sharding**
 
@@ -47,7 +49,7 @@ v2.0.0-rc1 (2014-02-28)
   Previously, when creating a new user via HTTP POST, the username needed to be 
   passed in an attribute `username`. When users were returned via this API,
   the usernames were returned in an attribute named `user`. This was slightly
-  confusing and was changed in 1.5 as follows:
+  confusing and was changed in 2.0 as follows:
 
   - when adding a user via HTTP POST, the username can be specified in an attribute 
   `user`. If this attribute is not used, the API will look into the attribute `username`
@@ -173,7 +175,7 @@ v2.0.0-rc1 (2014-02-28)
 
 * removed separate shape collections
 
-  When upgrading to ArangoDB 1.5, existing collections will be converted to include
+  When upgrading to ArangoDB 2.0, existing collections will be converted to include
   shapes and attribute markers in the datafiles instead of using separate files for
   shapes.
 
@@ -213,6 +215,20 @@ v2.0.0-rc1 (2014-02-28)
   macros are gone.
 
 * added collection status "loading"
+
+
+v1.4.12 (XXXX-XX-XX)
+--------------------
+
+* fixed display bug in web interface which caused the following problems:
+  - documents were displayed in web interface as being empty
+  - document attributes view displayed many attributes with content "undefined"
+  - document source view displayed many attributes with name "TYPEOF" and value "undefined"
+  - an alert popping up in the browser with message "Datatables warning..."
+  
+* re-introduced old-style read-write locks to supports Windows versions older than
+  Windows 2008R2 and Windows 7. This should re-enable support for Windows Vista and
+  Windows 2008.
 
 
 v1.4.11 (2014-02-27)
@@ -617,7 +633,7 @@ v1.4.1-rc1 (2013-11-07)
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
   header. Previously, the batch API expected the client to send a Content-Type header
   of`multipart/form-data; boundary=<some boundary value>`. This is still supported in
-  ArangoDB 1.5, but clients can now also omit this header. If the header is not 
+  ArangoDB 2.0, but clients can now also omit this header. If the header is not 
   present in a client request, ArangoDB will ignore the request content type and
   read the MIME boundary from the beginning of the request body.
 
