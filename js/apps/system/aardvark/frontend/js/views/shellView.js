@@ -54,7 +54,12 @@
         }
         internal.browserOutputBuffer = "";
       } catch (e) {
-        jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
+        if (e instanceof internal.ArangoError) {
+          jqconsole.Write(e.message + '\n', 'jserror');
+        }
+        else {
+          jqconsole.Write(e.name + ': ' + e.message + '\n', 'jserror');
+        }
       }
     },
 
