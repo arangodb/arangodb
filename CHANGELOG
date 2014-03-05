@@ -59,8 +59,6 @@ v2.0.0-rc1 (2014-02-28)
 
 * added AQL SLICE function to extract slices from lists
 
-* removed check-server binary
-
 * made module loader more node compatible
 
 * the startup option `--javascript.package-path` for arangosh is now deprecated and does
@@ -132,9 +130,7 @@ v2.0.0-rc1 (2014-02-28)
 
 * fixed issue #695: arangosh server.password error
 
-* use pretty-printing in `--console` mode by defaul
-
-* added `check-server` binary for testing
+* use pretty-printing in `--console` mode by default
 
 * simplified ArangoDB startup options
 
@@ -220,6 +216,7 @@ v2.0.0-rc1 (2014-02-28)
 
 
 v1.4.11 (2014-02-27)
+--------------------
 
 * added SHORTEST_PATH AQL function 
 

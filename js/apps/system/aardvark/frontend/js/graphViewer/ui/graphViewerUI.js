@@ -225,11 +225,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
       aConf.onclick = function () {
+        $('#filterdropdown').removeClass('activated');
+        $('#configuredropdown').toggleClass('activated');
         $(lists.configure).slideToggle(200);
         $(lists.filter).hide();
       };
 
       aFilter.onclick = function () {
+        $('#configuredropdown').removeClass('activated');
+        $('#filterdropdown').toggleClass('activated');
         $(lists.filter).slideToggle(200);
         $(lists.configure).hide();
       };

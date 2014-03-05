@@ -60,8 +60,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 8000, // in milliseconds
-    defaultRollPeriod : 1,
+    interval: 12000, // in milliseconds
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
@@ -190,7 +189,11 @@
     },
 
     hidden: function () {
-      delete self.currentChart;
+      if (this.modal) {
+          $(".modal-backdrop.fade.in").click();
+          this.hide();
+      }
+      delete this.currentChart;
       this.options.description.fetch({
         async:false
       });
@@ -327,7 +330,7 @@
       },
       requests : {
         div : "#requestStatistics",
-        title : "HTTP Requests",
+        title : "HTTP Requests per second",
         stacked : true
       },
       uptime : {
@@ -411,7 +414,6 @@
           dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
           colors: [this.colors[0]],
           xAxisLabelWidth : "60",
-          rollPeriod: this.defaultRollPeriod,
           rightGap: 10,
           showRangeSelector: false,
           rangeSelectorHeight: 40,
@@ -487,6 +489,7 @@
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
       if (self.uptime && newUptime < self.uptime) {
+
         var e = {time : (time-(newUptime+10)* 1000 ) /1000};
         self.description.get("figures").forEach(function(figure) {
           if (!e[figure.group]) {
@@ -537,7 +540,7 @@
             } else if (valueList === "current") {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === "currentDistribution")  {
-              if (val !== null) {
+                if (val !== null) {
                 val = val.count === 0 ? 0 : val.sum / val.count;
               }
               self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
@@ -547,7 +550,6 @@
               ]);
             }
           });
-
         });
       });
       Object.keys(self.combinedCharts).forEach(function (cc) {
@@ -584,7 +586,7 @@
 
 
     updateSeries : function(data) {
-      this.uptime = data.system.uptime;
+      this.uptime = data.server.uptime;
       this.processSingleStatistic(data);
     },
 
@@ -629,7 +631,7 @@
           borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
           borderRight = t;
       }
-      if (self.modal) {
+      if (self.modal && createDiv) {
           displayOptions.height = $('.innerDashboardChart').height() - 34;
           displayOptions.width = $('.innerDashboardChart').width() -45;
       }
@@ -671,15 +673,15 @@
                             self.hideGraphs.indexOf(figure) === -1) {
                             var height = $('.innerDashboardChart').height() - 34;
                             var width = $('.innerDashboardChart').width() -45;
-                            chart.graph.resize(width , height)
+                            chart.graph.resize(width , height);
                         }
                     });
                 });
             });
         } else if (self.currentChart) {
-            var height = $('#lineChartDetail').height() - 34 -29;
-            var width = $('#lineChartDetail').width() -10;
-            self.currentChart.resize(width , height)
+            var height = $('#lineChartDetail').height() - 34 - 29;
+            var width = $('#lineChartDetail').width() - 10;
+            self.currentChart.resize(width , height);
         }
     },
 

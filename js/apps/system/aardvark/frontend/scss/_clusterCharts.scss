@@ -6,10 +6,12 @@
 
 svg.clusterChart{
   width: auto;
-  height: auto
+  height: auto;
+  margin : auto
 }
 
 .lineGraph{
+  position: absolute;
   .few .dygraph-legend > span.highlight {
     border: 1px solid grey;
   }
