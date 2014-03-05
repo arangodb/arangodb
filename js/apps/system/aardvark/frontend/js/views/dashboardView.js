@@ -262,10 +262,13 @@
       Object.keys(self.dygraphConfig.combinedCharts).forEach(function (cc) {
         var part = cc.split("_");
         var val = [new Date(time)];
+
         self.dygraphConfig.combinedCharts[cc].sort().forEach(function(attrib) {
           if (self.LastValues[attrib])  {
             val.push(self.LastValues[attrib].graphVal);
-          } else if (entry[part[0]] && entry[part[0]][attrib]) {
+          } 
+          else if (typeof entry[part[0]] === 'object' && 
+                   entry[part[0]].hasOwnProperty(attrib)) {
             val.push(entry[part[0]][attrib]);
           }
         });
@@ -557,7 +560,6 @@
 
   renderDistributionPlaceholder: function () {
     var self = this;
-      console.log(this);
     _.each(this.dygraphConfig.chartTypeExceptions.distribution, function(k, v) {
       $(self.distributionChartDiv).append(self.distributionTemplate.render({
         elementId: v + "Distribution"
