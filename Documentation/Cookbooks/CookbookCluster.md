@@ -1,6 +1,8 @@
 Set up your ArangoDB Cluster{#CookbookCluster}
 ============================
 
+@NAVIGATE_NewFeatures20
+
 Setting up a cluster can be intimidating task. You have to deal with
 firewalls, ports, different types of machines, and the like. ArangoDB
 is prepared to deal with all kinds of different setups and
@@ -8,7 +10,8 @@ requirements.
 
 However, in the following section we concentrate on a standard setup
 and show you, how to build a ArangoDB cluster within minutes. If you
-want to dive deeper into the nasty details, you should read LINK.
+want to dive deeper into the nasty details, you should read about
+@ref Sharding "Sharding".
 
 Development Scenario
 --------------------
@@ -97,4 +100,4 @@ Shell` and execute
 Congratulations! You have created your first sharded collection and
 stored a document in it.
 
-
+@BNAVIGATE_NewFeatures20
