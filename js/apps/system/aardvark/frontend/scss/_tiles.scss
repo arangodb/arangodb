@@ -5,7 +5,10 @@ ul.tileList {
 }
 
 li.tile {
+  $iconSize: 50px;
   @extend %pull-left;
+  @include box-shadow(none);
+
   position:relative;
   text-align:center;
   height:100px;
@@ -17,7 +20,13 @@ li.tile {
     right: 6px;
     bottom: 13px;
   }
-  @include box-shadow(none);
+
+  img {
+    &.icon {
+      height: $iconSize;
+      width: $iconSize;
+    }
+  }
 
   a {
     span {
@@ -30,14 +39,15 @@ li.tile {
         margin-right: 10px;
       }
       &.icon {
-        font-size: 50px;
+        @extend %clickable;
+        font-size: $iconSize;
       }
     }
     svg {
       @extend %clickable;
       &.icon {
-        height: 50px;
-        width: 50px;
+        height: $iconSize;
+        width: $iconSize;
       }
     }
   }
@@ -143,9 +153,10 @@ li.tile {
 }
 
 li.bigtile {
+  @extend %clickable;
   @extend li.tile;
-  height:250px;
-  width: 345px;
+  height: 309px;
+  width: 460px;
 
   div.shardContainer {
     font-size: 30px;

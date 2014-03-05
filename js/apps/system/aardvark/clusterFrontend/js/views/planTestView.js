@@ -17,11 +17,16 @@
     },
 
     cancel: function() {
-      window.App.navigate("", {trigger: true});
+      if(window.App.clusterPlan.get("plan")) {
+        window.App.navigate("handleClusterDown", {trigger: true});
+      } else {
+        window.App.navigate("planScenario", {trigger: true});
+      }
     },
 
     startPlan: function() {
       $('#waitModalLayer').modal('show');
+      $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       var h = $("#host").val(),
         p = $("#port").val(),
@@ -43,7 +48,8 @@
         alert("Please define a number of database servers");
         return;
       }
-      this.model.save(
+      delete window.App.clusterPlan._coord;
+      window.App.clusterPlan.save(
         {
           type: "testSetup",
           dispatchers: h + ":" + p,
@@ -51,9 +57,16 @@
           numberCoordinators: parseInt(c, 10)
         },
         {
-          success : function(info) {
+          success: function(info) {
+            $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
+            window.App.updateAllUrls();
             window.App.navigate("showCluster", {trigger: true});
+          },
+          error: function(obj, err) {
+            $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
+            $('#waitModalLayer').modal('hide');
+            alert("Error while starting the cluster: " + err.statusText);
           }
         }
       );
@@ -61,7 +74,7 @@
 
     render: function() {
       var param = {};
-      var config = this.model.get("config");
+      var config = window.App.clusterPlan.get("config");
       if (config) {
         param.dbs = config.numberOfDBservers;
         param.coords = config.numberOfCoordinators;

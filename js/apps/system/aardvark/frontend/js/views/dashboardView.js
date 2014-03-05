@@ -60,8 +60,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 8000, // in milliseconds
-    defaultRollPeriod : 1,
+    interval: 12000, // in milliseconds
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
@@ -73,7 +72,14 @@
       "click #backToCluster" : "returnToClusterView"
     },
     
-    hideGraphs : ["totalTime", "uptime", "residentSize", "physicalMemory", "minorPageFaults", "requestsTotal"],
+    hideGraphs : [
+      "totalTime", 
+      "uptime", 
+      "residentSize", 
+      "physicalMemory", 
+      "minorPageFaults", 
+      "requestsTotal"
+    ],
 
     chartTypeExceptions : {
       accumulated : {
@@ -183,6 +189,7 @@
     },
 
     hidden: function () {
+      delete this.currentChart;
       this.options.description.fetch({
         async:false
       });
@@ -319,7 +326,7 @@
       },
       requests : {
         div : "#requestStatistics",
-        title : "HTTP Requests",
+        title : "HTTP Requests per second",
         stacked : true
       },
       uptime : {
@@ -403,7 +410,6 @@
           dateWindow : [new Date().getTime() - 20 * 60 * 1000,new Date().getTime()],
           colors: [this.colors[0]],
           xAxisLabelWidth : "60",
-          rollPeriod: this.defaultRollPeriod,
           rightGap: 10,
           showRangeSelector: false,
           rangeSelectorHeight: 40,
@@ -479,6 +485,7 @@
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
       if (self.uptime && newUptime < self.uptime) {
+
         var e = {time : (time-(newUptime+10)* 1000 ) /1000};
         self.description.get("figures").forEach(function(figure) {
           if (!e[figure.group]) {
@@ -529,7 +536,7 @@
             } else if (valueList === "current") {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === "currentDistribution")  {
-              if (val !== null) {
+                if (val !== null) {
                 val = val.count === 0 ? 0 : val.sum / val.count;
               }
               self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
@@ -539,7 +546,6 @@
               ]);
             }
           });
-
         });
       });
       Object.keys(self.combinedCharts).forEach(function (cc) {
@@ -576,7 +582,7 @@
 
 
     updateSeries : function(data) {
-      this.uptime = data.system.uptime;
+      this.uptime = data.server.uptime;
       this.processSingleStatistic(data);
     },
 
@@ -621,6 +627,10 @@
           borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
           borderRight = t;
       }
+      if (self.modal) {
+          displayOptions.height = $('.innerDashboardChart').height() - 34;
+          displayOptions.width = $('.innerDashboardChart').width() -45;
+      }
       if (!chart.graphCreated) {
         if (createDiv) {
           self.renderHttpGroup(figure);
@@ -636,14 +646,39 @@
         chart.graph.setSelection(false, 'ClusterAverage', true);
         chart.graphCreated = true;
         if (!createDiv) {
+          self.currentChart = chart.graph;
           self.delegateEvents();
         }
       } else {
-        chart.graph.updateOptions( {
-          file: file.length > 0 ? file : chart.data,
-          dateWindow : [borderLeft, borderRight]
-        } );
+        var opts = {
+            file: file.length > 0 ? file : chart.data,
+            dateWindow : [borderLeft, borderRight]
+        };
+        chart.graph.updateOptions(opts);
       }
+    },
+
+    resize: function() {
+        var self = this;
+        if (this.modal) {
+            Object.keys(self.series).forEach(function(group) {
+                Object.keys(self.series[group]).forEach(function(figure) {
+                    Object.keys(self.series[group][figure]).forEach(function(valueList) {
+                        var chart = self.series[group][figure][valueList];
+                        if (chart.type === "current" && chart.showGraph === true &&
+                            self.hideGraphs.indexOf(figure) === -1) {
+                            var height = $('.innerDashboardChart').height() - 34;
+                            var width = $('.innerDashboardChart').width() -45;
+                            chart.graph.resize(width , height);
+                        }
+                    });
+                });
+            });
+        } else if (self.currentChart) {
+            var height = $('#lineChartDetail').height() - 34 - 29;
+            var width = $('#lineChartDetail').width() - 10;
+            self.currentChart.resize(width , height);
+        }
     },
 
     createLineCharts: function() {
@@ -731,11 +766,9 @@
       header += " for Server ";
       header += this.options.server.raw + " (";
       header += decodeURIComponent(this.options.server.target) + ")";
-      addBackbutton = true;
     }
     $(this.el).html(this.template.render({
-      header : header,
-      backButton: addBackbutton
+      header : header
     }));
     this.renderDistributionPlaceholder();
     this.prepareSeries();

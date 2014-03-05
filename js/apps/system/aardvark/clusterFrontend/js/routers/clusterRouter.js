@@ -8,12 +8,11 @@
 
     routes: {
       ""                       : "initialRoute",
+      "planScenario"           : "planScenario",
       "planTest"               : "planTest",
-      "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
-      "dashboard"              : "dashboard",
       "handleClusterDown"      : "handleClusterDown"
     },
 
@@ -49,7 +48,6 @@
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-          console.log(args);
           if (args !== "showCluster") {
             if (self.showClusterView) {
               self.showClusterView.stopUpdating();
@@ -68,6 +66,10 @@
       });
       this.footerView = new window.FooterView();
       this.footerView.render();
+      var self = this;
+      $(window).resize(function() {
+        self.handleResize();
+      });
     },
 
     showCluster: function() {
@@ -91,7 +93,9 @@
     },
 
     handleResize: function() {
-     // Not needed here
+        if (this.dashboardView) {
+            this.dashboardView.resize();
+        }
     },
 
     planTest: function() {
@@ -149,8 +153,7 @@
         this.dashboardView.stopUpdating();
       }
       this.dashboardView = null;
-      // this.dashboardView = new window.ServerDashboardView({
-      this.dashboardView = new window.dashboardView({
+      this.dashboardView = new window.ServerDashboardView({
         collection: statisticsCollection,
         description: statisticsDescription,
         documentStore: new window.arangoDocuments(),

@@ -18,6 +18,10 @@
       }
       var i,j,r;
       r = this.get("runInfo");
+      if (!r) {
+        console.log(this);
+        return;
+      }
       j = r.length-1;
       while (j > 0) {
         if(r[j].isStartServers) {
