@@ -10,7 +10,8 @@ requirements.
 
 However, in the following section we concentrate on a standard setup
 and show you, how to build a ArangoDB cluster within minutes. If you
-want to dive deeper into the nasty details, you should read LINK.
+want to dive deeper into the nasty details, you should read about
+@ref Sharding "Sharding".
 
 Development Scenario
 --------------------

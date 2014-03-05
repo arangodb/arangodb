@@ -69,6 +69,7 @@ WIKI = \
 	InstallManual \
 	Installing \
 	JSModuleActions \
+	JSModuleCluster \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
