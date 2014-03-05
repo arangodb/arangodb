@@ -554,7 +554,9 @@
         self.combinedCharts[cc].sort().forEach(function(attrib) {
           if (self.LastValues[attrib])  {
             val.push(self.LastValues[attrib].graphVal);
-          } else if (entry[part[0]] && entry[part[0]][attrib]) {
+          } 
+          else if (typeof entry[part[0]] === 'object' && 
+                   entry[part[0]].hasOwnProperty(attrib)) {
             val.push(entry[part[0]][attrib]);
           }
         });
