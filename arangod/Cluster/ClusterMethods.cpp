@@ -110,9 +110,10 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
 
     // ignore the following headers
     if (key != "x-arango-async" && 
+        key != "authorization" && 
         key != "content-length" && 
         key != "connection" && 
-        key != "authorization" && 
+        key != "expect" && 
         key != "host" &&
         key != "origin" && 
         key.substr(0, 14) != "access-control") {
@@ -910,7 +911,6 @@ int getAllDocumentsOnCoordinator (
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
 
   ClusterCommResult* res;
 

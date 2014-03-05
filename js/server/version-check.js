@@ -312,13 +312,22 @@
         return false;
       }
 
+      var foundUser = false;
+
       if (args && args.users) {
         args.users.forEach(function(user) {
-          userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          foundUser = true;
+          try {
+            userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          }
+          catch (err) {
+            logger.error("could not add database user '" + user.username + "': " + 
+                         String(err.stack || err));
+          }
         });
       }
 
-      if (users.count() === 0) {
+      if (! foundUser && users.count() === 0) {
         // only add account if user has not created his/her own accounts already
         userManager.save("root", "", true);
       }
@@ -784,10 +793,10 @@
     logger.error("  --upgrade");
     logger.error("option to upgrade the data in the database directory.");
 
-    logger.error("Normally you can use the control script to upgrade your database")
-    logger.error("  /etc/init.d/arangodb stop")
-    logger.error("  /etc/init.d/arangodb upgrade")
-    logger.error("  /etc/init.d/arangodb start")
+    logger.error("Normally you can use the control script to upgrade your database");
+    logger.error("  /etc/init.d/arangodb stop");
+    logger.error("  /etc/init.d/arangodb upgrade");
+    logger.error("  /etc/init.d/arangodb start");
     logger.error("----------------------------------------------------------------------");
 
     // do not start unless started with --upgrade

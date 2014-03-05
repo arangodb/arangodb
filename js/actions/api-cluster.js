@@ -29,6 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
+var cluster = require("org/arangodb/cluster");
+var internal = require("internal");
+var console = require("console");
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -60,8 +64,8 @@ var actions = require("org/arangodb/actions");
 ///
 ///   - `X-Shard-ID`: This specifies the ID of the shard to which the
 ///     cluster request is sent and thus tells the system to which DB server
-///     to send the cluster request. Note that the mapping from the 
-///     shard ID to the responsible server has to be defined in the 
+///     to send the cluster request. Note that the mapping from the
+///     shard ID to the responsible server has to be defined in the
 ///     agency under `Current/ShardLocation/<shardID>`. One has to give
 ///     this header, otherwise the system does not know where to send
 ///     the request.
@@ -75,7 +79,7 @@ var actions = require("org/arangodb/actions");
 ///     synchronous mode, otherwise the default asynchronous operation
 ///     mode is used. This is mainly for debugging purposes.
 ///   - `Host`: This header is ignored and not forwarded to the DB server.
-///   - `User-Agent`: This header is ignored and not forwarded to the DB 
+///   - `User-Agent`: This header is ignored and not forwarded to the DB
 ///     server.
 ///
 /// All other HTTP headers and the body of the request (if present, see
@@ -94,10 +98,10 @@ var actions = require("org/arangodb/actions");
 /// is returned when everything went well, or if a timeout occurred. In the
 /// latter case a body of type application/json indicating the timeout
 /// is returned.
-/// 
+///
 /// @RESTRETURNCODE{403}
 /// is returned if ArangoDB is not running in cluster mode.
-/// 
+///
 /// @RESTRETURNCODE{404}
 /// is returned if ArangoDB was not compiled for cluster operation.
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +214,7 @@ actions.defineHttp({
         }
         else if (p === "x-shard-id") {
           shard = req.headers[p];
-        } 
+        }
         else {
           headers[p] = req.headers[p];
         }
@@ -224,7 +228,7 @@ actions.defineHttp({
     else {
       body = req.requestBody;
     }
-    
+
     var r;
     if (typeof SYS_CLUSTER_TEST === "undefined") {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
@@ -232,7 +236,7 @@ actions.defineHttp({
     }
     else {
       try {
-        r = SYS_CLUSTER_TEST(req, res, shard, path, transID, 
+        r = SYS_CLUSTER_TEST(req, res, shard, path, transID,
                               headers, body, timeout, asyncMode);
         if (r.timeout || typeof r.errorMessage === 'string') {
           res.responseCode = actions.HTTP_OK;
@@ -278,9 +282,9 @@ function parseAuthorization (authorization) {
 /// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION Given a description of a cluster, this plans the details
-/// of a cluster and returns a JSON description of a plan to start up this 
+/// of a cluster and returns a JSON description of a plan to start up this
 /// cluster. See @ref JSF_Cluster_Planner_Constructor for details.
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200} is returned when everything went well.
@@ -319,7 +323,7 @@ actions.defineHttp({
         for (d in userconfig.dispatchers) {
           if (userconfig.dispatchers.hasOwnProperty(d)) {
             var dd = userconfig.dispatchers[d];
-            if (!dd.hasOwnProperty("username") || 
+            if (!dd.hasOwnProperty("username") ||
                 !dd.hasOwnProperty("passwd")) {
               dd.username = userpwd.username;
               dd.passwd = userpwd.passwd;
@@ -356,8 +360,8 @@ actions.defineHttp({
 /// @RESTBODYPARAM{body,json,required}
 ///
 /// @RESTDESCRIPTION The body must be an object with the following properties:
-/// 
-///   - `clusterPlan`: is a cluster plan (see JSF_cluster_planner_POST), 
+///
+///   - `clusterPlan`: is a cluster plan (see JSF_cluster_planner_POST),
 ///   - `myname`: is the ID of this dispatcher, this is used to decide
 ///     which commands are executed locally and which are forwarded
 ///     to other dispatchers
@@ -375,13 +379,13 @@ actions.defineHttp({
 ///         in the cluster are running or not. The additional property
 ///         `runInfo` (see above) must be bound as well
 ///
-///   - `runInfo": this is needed for the "shutdown" and "isHealthy" actions 
+///   - `runInfo": this is needed for the "shutdown" and "isHealthy" actions
 ///     only and should be the structure that "launch" or "relaunch"
 ///     returned. It contains runtime information like process IDs.
 ///
 /// This call executes the plan by either doing the work personally
 /// or by delegating to other dispatchers.
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200} is returned when everything went well.
@@ -431,7 +435,7 @@ actions.defineHttp({
         for (d in input.clusterPlan.dispatchers) {
           if (input.clusterPlan.dispatchers.hasOwnProperty(d)) {
             var dd = input.clusterPlan.dispatchers[d];
-            if (!dd.hasOwnProperty("username") || 
+            if (!dd.hasOwnProperty("username") ||
                 !dd.hasOwnProperty("passwd")) {
               dd.username = userpwd.username;
               dd.passwd = userpwd.passwd;
@@ -525,7 +529,7 @@ actions.defineHttp({
     }
   }
 });
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_cluster_check_port_GET
 /// @brief allows to check whether a given port is usable
@@ -537,7 +541,7 @@ actions.defineHttp({
 /// @RESTQUERYPARAM{port,integer,required}
 ///
 /// @RESTDESCRIPTION Checks whether the requested port is usable.
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200} is returned when everything went well.
@@ -599,7 +603,7 @@ actions.defineHttp({
 /// @RESTQUERYPARAM{DBserver,string,required}
 ///
 /// @RESTDESCRIPTION Queries the statistics of the given DBserver
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200} is returned when everything went well.
@@ -632,7 +636,7 @@ actions.defineHttp({
     }
     var DBserver = req.parameters.DBserver;
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 }; 
+    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
     var op = ArangoClusterComm.asyncRequest("GET","server:"+DBserver,"_system",
                                             "/_admin/statistics","",{},options);
     var r = ArangoClusterComm.wait(op);
@@ -640,10 +644,10 @@ actions.defineHttp({
     if (r.status === "RECEIVED") {
       res.responseCode = actions.HTTP_OK;
       res.body = r.body;
-    } 
+    }
     else if (r.status === "TIMEOUT") {
       res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify( {"error":true, 
+      res.body = JSON.stringify( {"error":true,
                                   "errorMessage": "operation timed out"});
     }
     else {
@@ -662,7 +666,7 @@ actions.defineHttp({
 });
 
 actions.defineHttp({
-  url : "_admin/clusterHistory",
+  url : "_admin/history",
   context : "admin",
   prefix : "false",
   callback : function (req, res) {
@@ -670,48 +674,89 @@ actions.defineHttp({
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                           "only POST requests are allowed");
       return;
-    }
-    if (!require("org/arangodb/cluster").isCoordinator()) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-                          "only allowed on coordinator");
-      return;
-    }
-    if (!req.parameters.hasOwnProperty("DBserver")) {
-      actions.resultError(req, res, actions.HTTP_BAD,
-                          "required parameter DBserver was not given");
-      return;
+
     }
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
-      return;
+        return;
     }
     var DBserver = req.parameters.DBserver;
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout:10 }; 
-    var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
-      "/_api/cursor",JSON.stringify(body),{},options);
-    var r = ArangoClusterComm.wait(op);
-    res.contentType = "application/json; charset=utf-8";
-    if (r.status === "RECEIVED") {
-      res.responseCode = actions.HTTP_OK;
-      res.body = r.body;
-    } 
-    else if (r.status === "TIMEOUT") {
-      res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify( {"error":true, 
-                                  "errorMessage": "operation timed out"});
+
+    //build query
+    var startDate = body.startDate;
+    var endDate = body.endDate;
+    var figures = body.figures;
+    var filterString = "";
+    if (startDate) {
+      filterString += " filter u.time > " + startDate;
+    } else {
+      endDate = startDate;
     }
-    else {
-      res.responseCode = actions.HTTP_BAD;
-      var bodyobj;
-      try {
-        bodyobj = JSON.parse(r.body);
-      }
-      catch (err) {
-      }
-      res.body = JSON.stringify( {"error":true,
-        "errorMessage": "error from DBserver, possibly DBserver unknown",
-        "body": bodyobj} );
+    if (endDate) {
+      filterString += " filter u.time < " + endDate;
+    }
+    if (cluster.isCoordinator() && !req.parameters.hasOwnProperty("DBserver")) {
+      filterString += " filter u.clusterId == '" + cluster.coordinatorId() +"'";
+    }
+    var returnValue = " return u";
+    if (figures) {
+      returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ";
+      var groups = {};
+      figures.forEach(function(f) {
+          var g = f.split(".")[0];
+          if (!groups[g]) {
+              groups[g] = [];
+          }
+          groups[g].push(f.split(".")[1] + " : u." + f);
+      });
+      Object.keys(groups).forEach(function(key) {
+          returnValue +=  ", " + key + " : {" + groups[key]  +"}";
+      });
+      returnValue += "}";
+    }
+    var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
+
+    if (!req.parameters.hasOwnProperty("DBserver")) {
+        var cursor = internal.AQL_QUERY(myQueryVal,
+            {},
+            {batchSize: 100000}
+        );
+        res.contentType = "application/json; charset=utf-8";
+        if (cursor instanceof Error) {
+            res.responseCode = actions.HTTP_BAD;
+            res.body = JSON.stringify( {"error":true,
+                "errorMessage": "an error occured"});
+        }
+        res.responseCode = actions.HTTP_OK;
+        res.body =  JSON.stringify({result : cursor.docs});
+    } else {
+        var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+        var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+        var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
+            "/_api/cursor",JSON.stringify({query: myQueryVal, batchSize: 100000}),{},options);
+        var r = ArangoClusterComm.wait(op);
+        res.contentType = "application/json; charset=utf-8";
+        if (r.status === "RECEIVED") {
+            res.responseCode = actions.HTTP_OK;
+            res.body = r.body;
+        }
+        else if (r.status === "TIMEOUT") {
+            res.responseCode = actions.HTTP_BAD;
+            res.body = JSON.stringify( {"error":true,
+                "errorMessage": "operation timed out"});
+        }
+        else {
+            res.responseCode = actions.HTTP_BAD;
+            var bodyobj;
+            try {
+                bodyobj = JSON.parse(r.body);
+            }
+            catch (err) {
+            }
+            res.body = JSON.stringify( {"error":true,
+                "errorMessage": "error from DBserver, possibly DBserver unknown",
+                "body": bodyobj} );
+        }
     }
   }
 });

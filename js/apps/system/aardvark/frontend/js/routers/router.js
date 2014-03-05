@@ -95,16 +95,15 @@
         collection: window.arangoCollectionsStore
       });
 
-      // this.initVersionCheck();
+      this.initVersionCheck();
 
       var self = this;
       $(window).resize(function() {
         self.handleResize();
       });
-      this.handleResize();
+      //this.handleResize();
     },
 
-/*
     initVersionCheck: function () {
       // this checks for version updates
 
@@ -137,12 +136,13 @@
             });
             
             var update;
-
+            var mainLineVersions;
+            var latest;
             if (latestMainLine !== undefined &&
-                Object.keys(latestMainLine.versions.length > 0) {
-              var mainLineVersions = Object.keys(latestMainLine.versions);
+                Object.keys(latestMainLine.versions.length > 0)) {
+              mainLineVersions = Object.keys(latestMainLine.versions);
               mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
-              var latest = mainLineVersions[mainLineVersions.length - 1];
+              latest = mainLineVersions[mainLineVersions.length - 1];
 
               update = {
                 type: "major", 
@@ -158,9 +158,9 @@
                 json[mainLine].hasOwnProperty("versions") &&
                 Object.keys(json[mainLine].versions).length > 0) {
               // sort by version numbers
-              var mainLineVersions = Object.keys(json[mainLine].versions);
+              mainLineVersions = Object.keys(json[mainLine].versions);
               mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
-              var latest = mainLineVersions[mainLineVersions.length - 1];
+              latest = mainLineVersions[mainLineVersions.length - 1];
 
               var result = window.versionHelper.compareVersions(
                 currentVersion, 
@@ -193,7 +193,6 @@
 
       window.setTimeout(versionCheck, 5000);
     },
-*/
 
     logsAllowed: function () {
       return (window.databaseName === '_system');
@@ -434,6 +433,9 @@
     },
 
     handleResize: function () {
+      if (this.dashboardView) {
+          this.dashboardView.resize();
+      }
       var oldWidth = $('#content').width();
       var containerWidth = $(window).width() - 70;
       /*var spanWidth = 242;*/

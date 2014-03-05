@@ -6912,7 +6912,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
     string const databaseName(collection->_dbName);
     string const cid = StringUtils::itoa(collection->_cid);
     
-    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(vocbase->_name, cid, TRI_VOC_COL_STATUS_LOADED);
+    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
@@ -7017,6 +7017,12 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///     Not used for other key generator types.
 ///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
 ///     Not used for other key generator types.
+///
+/// In a cluster setup, the result will also contain the following attributes:
+/// - `numberOfShards`: the number of shards of the collection.
+///
+/// - `shardKeys`: contains the names of document attributes that are used to 
+///   determine the target shard for documents. 
 ///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
@@ -8680,7 +8686,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   enforce any synchronisation to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles).
 ///
-/// - @LIT{keyOptions} (optional) additional options for key generation. If
+/// - @LIT{keyOptions} (optional): additional options for key generation. If
 ///   specified, then @LIT{keyOptions} should be a JSON array containing the
 ///   following attributes (note: some of them are optional):
 ///   - @LIT{type}: specifies the type of the key generator. The currently
@@ -8694,6 +8700,19 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///     Not used for other key generator types.
 ///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
 ///     Not used for other key generator types.
+///
+/// - @LIT{numberOfShards} (optional, default is @LIT{1}): in a cluster, this value
+///   determines the number of shards to create for the collection. In a single
+///   server setup, this option is meaningless.
+///
+/// - @LIT{shardKeys} (optional, default is @LIT{[ "_key" ]}): in a cluster, this
+///   attribute determines which document attributes are used to determine the
+///   target shard for documents. Documents are sent to shards based on the
+///   values they have in their shard key attributes. The values of all shard
+///   key attributes in a document are hashed, and the hash value is used to 
+///   determine the target shard. Note that values of shard key attributes cannot
+///   be changed once set.
+///   This option is meaningless in a single server setup.
 ///
 /// @EXAMPLES
 ///

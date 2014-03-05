@@ -240,6 +240,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
 
   // setup storage
   pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
+
   if (pids == 0) {
     // out of memory
     *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
@@ -248,6 +249,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
   }
 
   values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
+
   if (values == 0) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
@@ -1979,7 +1981,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   // extract sub-documents
   TRI_shape_pid_t* pids;
-  TRI_shaped_json_t** values;
+  TRI_shaped_json_t** values = 0;
   size_t n;
 
   v8::Handle<v8::Object> err;

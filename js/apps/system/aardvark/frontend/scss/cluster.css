@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, .machineClass:after, .scenarioSing
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a span.icon, li.bigtile a span.icon, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -74,9 +74,9 @@ a.warning.coordinator, a.warning.dbserver {
   a.warning.coordinator:hover, a.warning.dbserver:hover {
     fill: #f89406; }
 
-.button-neutral {
+.button-neutral, .button-close {
   background-color: #8f8d8c; }
-  .button-neutral:hover {
+  .button-neutral:hover, .button-close:hover {
     background-color: #736b68; }
 
 .button-primary {
@@ -84,11 +84,11 @@ a.warning.coordinator, a.warning.dbserver {
   .button-primary:hover {
     background-color: #3a322e; }
 
-.button-header, a.headerButton {
+.button-header, a.headerButton, a.button-gui {
   background-color: #dddddd;
   color: #555555;
   border: 1px solid #222222; }
-  .button-header:hover, a.headerButton:hover {
+  .button-header:hover, a.headerButton:hover, a.button-gui:hover {
     background-color: white;
     color: black; }
 
@@ -265,7 +265,7 @@ footer.footer {
     padding-bottom: 10px;
     margin-bottom: 0; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-header {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
   -moz-border-radius: 4px;
   -webkit-border-radius: 4px;
   border-radius: 4px;
@@ -275,7 +275,7 @@ footer.footer {
   font-weight: 300 !important;
   font-size: 14px; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close {
   border: none;
   color: white;
   margin-left: 10px;
@@ -313,7 +313,7 @@ button.shutdown, .clusterDownBtn button.shutdown.green {
   margin-top: 6px;
   padding: 3px 14px; }
 
-a.headerButton {
+a.headerButton, a.button-gui {
   float: left;
   margin-top: 2px;
   margin-left: 5px;
@@ -328,16 +328,23 @@ a.headerButton {
   height: 17px;
   width: 9px;
   padding: 4px 9px 2px 9px; }
-  a.headerButton .icon_arangodb_filter {
+  a.headerButton .icon_arangodb_filter, a.button-gui .icon_arangodb_filter {
     top: 3px !important; }
-  a.headerButton .icon_arangodb_import {
+  a.headerButton .icon_arangodb_import, a.button-gui .icon_arangodb_import {
     top: 1px !important; }
-  a.headerButton .icon_arangodb_checklist {
+  a.headerButton .icon_arangodb_checklist, a.button-gui .icon_arangodb_checklist {
     top: 3px !important;
     right: 5px; }
-  a.headerButton .icon_arangodb_arrowleft,
-  a.headerButton .icon_arangodb_arrowright {
+  a.headerButton .icon_arangodb_arrowleft, a.button-gui .icon_arangodb_arrowleft,
+  a.headerButton .icon_arangodb_arrowright,
+  a.button-gui .icon_arangodb_arrowright {
     font-weight: bold; }
+  a.headerButton.activated, a.activated.button-gui {
+    background-color: #788f3d;
+    color: white; }
+    a.headerButton.activated:hover, a.activated.button-gui:hover {
+      background-color: white;
+      color: #788f3d; }
 
 /* Graph Viewer */
 div.toolbox > div.gv_action_button {
@@ -498,6 +505,18 @@ button.btn-overview, .clusterDownBtn button.btn-overview.green, button.btn-serve
 button.btn-server, .clusterDownBtn button.btn-server.green {
   width: 120px; }
 
+a.button-gui {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  width: auto;
+  height: auto;
+  text-decoration: none !important; }
+
 .clusterDownBtn {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -513,8 +532,7 @@ button.btn-server, .clusterDownBtn button.btn-server.green {
     font-size: 20px;
     font-weight: 300;
     width: 250px;
-    text-align: center;
-    cursor: auto; }
+    text-align: center; }
     .clusterDownBtn button:hover {
       color: #4a6c30;
       background-color: #e8e8e8;
@@ -533,6 +551,9 @@ ul.tileList {
   margin-right: -6px; }
 
 li.tile, li.bigtile {
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
   position: relative;
   text-align: center;
   height: 100px;
@@ -541,10 +562,10 @@ li.tile, li.bigtile {
   background-color: rgba(0, 0, 0, 0.05);
   margin-left: 6px;
   margin-right: 6px;
-  margin-bottom: 13px;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  box-shadow: none; }
+  margin-bottom: 13px; }
+  li.tile img.icon, li.bigtile img.icon {
+    height: 50px;
+    width: 50px; }
   li.tile a span.add-Icon, li.bigtile a span.add-Icon {
     position: relative;
     margin-left: 22px;
@@ -621,8 +642,8 @@ li.tile, li.bigtile {
   right: 0px; }
 
 li.bigtile {
-  height: 250px;
-  width: 345px; }
+  height: 309px;
+  width: 460px; }
   li.bigtile div.shardContainer {
     font-size: 30px; }
     li.bigtile div.shardContainer span {
@@ -872,14 +893,17 @@ select.filterSelect {
 
 svg.clusterChart {
   width: auto;
-  height: auto; }
+  height: auto;
+  margin: auto; }
 
-.lineGraph .few .dygraph-legend > span.highlight {
-  border: 1px solid grey; }
-.lineGraph .many .dygraph-legend > span {
-  display: none; }
-.lineGraph .many .dygraph-legend > span.highlight {
-  display: inline; }
+.lineGraph {
+  position: absolute; }
+  .lineGraph .few .dygraph-legend > span.highlight {
+    border: 1px solid grey; }
+  .lineGraph .many .dygraph-legend > span {
+    display: none; }
+  .lineGraph .many .dygraph-legend > span.highlight {
+    display: inline; }
 
 a.coordinator, a.dbserver {
   width: 50px;
@@ -909,46 +933,45 @@ a.dbserver.double {
   padding: 10px;
   float: left;
   background-color: #E1E1E1;
-  width: 311px;
-  height: 175px;
-  margin-left: 8px; }
+  margin-left: 31px;
+  margin-right: 31px; }
 
 .scenarioBox {
   position: absolute;
-  margin-top: 10px;
+  margin-top: 30px;
   width: auto;
   height: 65px;
   left: 10px;
   right: 10px;
-  -moz-border-radius: 3px 3px 0 0;
-  -webkit-border-radius: 3px 3px 0 0;
-  border-radius: 3px 3px 0 0;
+  -moz-border-radius: 3px 3px 3px 3px;
+  -webkit-border-radius: 3px 3px 3px 3px;
+  border-radius: 3px 3px 3px 3px;
   border: 1px solid rgba(0, 0, 0, 0.19);
-  background-color: white; }
+  background-color: rgba(0, 0, 0, 0.075); }
   .scenarioBox.bottomBox {
-    bottom: 10px; }
+    bottom: 30px; }
 
 .scenarioBoxHeader {
   width: auto;
-  height: 5px;
-  line-height: 5px;
-  text-align: right;
-  margin-top: -5px;
-  padding-bottom: 5px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  margin-top: 0px;
+  padding-bottom: 0px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.19); }
 
 .scenarioBoxText {
   width: auto;
-  font-size: 30px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 400;
   text-align: center;
   margin-top: 17px; }
 
 .scenarioMachine {
   position: relative;
   margin-right: 20px;
-  height: 177px;
-  width: 87px;
+  height: 257px;
+  width: 110px;
   -moz-border-radius: 3px 3px 0 0;
   -webkit-border-radius: 3px 3px 0 0;
   border-radius: 3px 3px 0 0;
@@ -962,4 +985,15 @@ a.dbserver.double {
   border: 1px solid rgba(0, 0, 0, 0.19);
   background-color: white; }
   .scenarioSingleMachine .scenarioMachine {
-    border: 1px solid transparent; }
+    border: 1px solid transparent;
+    height: 238px; }
+
+.bigtile.informationtile {
+  cursor: auto; }
+
+.informationText {
+  font-size: 12px;
+  text-align: left;
+  margin: 10px;
+  padding: 5px;
+  background: white; }

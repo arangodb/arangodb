@@ -80,6 +80,7 @@
     },
 
     toggleView: function() {
+      $('#collectionsToggle').toggleClass('activated');
       $('#collectionsDropdown2').slideToggle(200);
     },
 
