@@ -1565,7 +1565,7 @@ static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "createNonce()");
   }
 
-  string str =  Nonce::createNonce();
+  string str = Nonce::createNonce();
 
   return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
