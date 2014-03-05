@@ -42,8 +42,10 @@
       this.bind('all', function(trigger, args) {
           var routeData = trigger.split(":");
           if (trigger === "route") {
-              if (this.currentRoute === "dashboard") {
+              if (this.currentRoute === "dashboard" && this.dashboardView) {
                 this.dashboardView.stopUpdating();
+              } else if (args === "dashboard") {
+                delete this.dashboardView;
               }
               this.currentRoute = args;
           }
@@ -347,7 +349,8 @@
         this.dashboardView = new dashboardView({
           collection: this.statisticsCollection,
           description: this.statisticsDescription,
-          documentStore: window.arangoDocumentsStore
+          documentStore: window.arangoDocumentsStore,
+          dygrpahConfig : window.dygraphConfig
         });
       }
       this.dashboardView.render();
@@ -463,7 +466,7 @@
         });
       }
       this.userManagementView.render();
-      this.naviView.selectMenuItem('user-menu');
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     userProfile: function() {
