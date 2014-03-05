@@ -23,6 +23,13 @@ sharding feature can be found in the @ref Sharding "Sharding manual".
 
 ArangoDB can still be used as a single server database.
 
+New Web Interface {#NewFeatures20WebInterface}
+----------------------------------------------
+
+The web interface has been refurbished in ArangoDB 2.0. 
+It now also allows planning and managing clusters visually, and comes with built-in
+user management, available from via the "Tools" menu item.
+
 Changed shape storage {#NewFeatures20Shapes}
 --------------------------------------------
 
