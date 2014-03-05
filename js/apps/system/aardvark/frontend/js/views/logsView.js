@@ -148,14 +148,13 @@
         lastPage: totalPages,
         click: function(i) {
           var doSomething = false;
-          if (i === currentPage) {
-          } else if (i === 1 && i !== currentPage) {
+          if (i === 1 && i !== currentPage) {
             self.firstTable();
           }
           else if (i === totalPages && i !== currentPage) {
             self.lastTable();
           }
-          else {
+          else if (i !== currentPage) {
             self.jumpToTable(i);
           }
           options.page = i;
