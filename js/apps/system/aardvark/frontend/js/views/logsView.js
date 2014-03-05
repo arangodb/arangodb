@@ -28,6 +28,7 @@
       "click #logTableID_prev"  : "prevTable",
       "click #logTableID_next"  : "nextTable"
     },
+
     firstTable: function () {
       if (this.offset !== 0) {
         this.offset = 0;
@@ -36,6 +37,7 @@
         this.collection.fillLocalStorage(this.table, this.offset, this.size);
       }
     },
+
     lastTable: function () {
       if (this.page !== this.totalPages) {
         this.totalPages = Math.ceil(this.totalAmount / this.size);
@@ -45,6 +47,7 @@
         this.collection.fillLocalStorage(this.table, this.offset, this.size);
       }
     },
+
     prevTable: function () {
       if (this.offset !== 0) {
         this.offset = this.offset - this.size;
@@ -139,12 +142,14 @@
       var self = this;
       var target = $('#logPaginationDiv'),
       options = {
-        left: 2,
-        right: 2,
+//        left: 2,
+//        right: 2,
         page: currentPage,
         lastPage: totalPages,
         click: function(i) {
-          if (i === 1 && i !== currentPage) {
+          var doSomething = false;
+          if (i === currentPage) {
+          } else if (i === 1 && i !== currentPage) {
             self.firstTable();
           }
           else if (i === totalPages && i !== currentPage) {
@@ -154,9 +159,10 @@
             self.jumpToTable(i);
           }
           options.page = i;
-          target.pagination(options);
+//          target.pagination(options);
         }
       };
+      target.html("");
       target.pagination(options);
       $('#logPaginationDiv').prepend(
         '<ul class="prePagi"><li><a id="logTableID_first" class="paginationButton">'+
@@ -167,6 +173,7 @@
         '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>'
       );
     },
+
     drawTable: function () {
       var self = this;
 
