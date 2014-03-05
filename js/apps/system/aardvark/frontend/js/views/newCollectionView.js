@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine*/
+/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine, _*/
 
 (function (){
   "use strict";
@@ -79,7 +79,9 @@
         }
         shards = parseInt(shards, 10);
         if (shards < 1) {
-          arangoHelper.arangoError("Number of shards has to be an integer value greater or equal 1");
+          arangoHelper.arangoError(
+            "Number of shards has to be an integer value greater or equal 1"
+          );
           return 0;
         }
         shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
