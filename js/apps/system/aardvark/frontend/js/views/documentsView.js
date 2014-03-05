@@ -526,7 +526,7 @@
                 tempObj[k] = value.attributes.content[k];
               }
             }
-          };
+          }
 
           $(self.table).dataTable().fnAddData(
             [
