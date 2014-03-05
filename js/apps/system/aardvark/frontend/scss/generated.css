@@ -17,7 +17,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0px;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, div.toolbox > div.gv_action_button, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, .clusterDownBtn button.green, li.tile a span.icon, li.bigtile a span.icon, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -64,11 +64,11 @@ nav.navbar, footer.footer {
   .button-primary:hover {
     background-color: #3a322e; }
 
-.button-header, a.headerButton {
+.button-header, a.headerButton, a.button-gui {
   background-color: #dddddd;
   color: #555555;
   border: 1px solid #222222; }
-  .button-header:hover, a.headerButton:hover {
+  .button-header:hover, a.headerButton:hover, a.button-gui:hover {
     background-color: white;
     color: black; }
 
@@ -283,7 +283,7 @@ button.shutdown, .clusterDownBtn button.shutdown.green {
   margin-top: 6px;
   padding: 3px 14px; }
 
-a.headerButton {
+a.headerButton, a.button-gui {
   float: left;
   margin-top: 2px;
   margin-left: 5px;
@@ -298,16 +298,23 @@ a.headerButton {
   height: 17px;
   width: 9px;
   padding: 4px 9px 2px 9px; }
-  a.headerButton .icon_arangodb_filter {
+  a.headerButton .icon_arangodb_filter, a.button-gui .icon_arangodb_filter {
     top: 3px !important; }
-  a.headerButton .icon_arangodb_import {
+  a.headerButton .icon_arangodb_import, a.button-gui .icon_arangodb_import {
     top: 1px !important; }
-  a.headerButton .icon_arangodb_checklist {
+  a.headerButton .icon_arangodb_checklist, a.button-gui .icon_arangodb_checklist {
     top: 3px !important;
     right: 5px; }
-  a.headerButton .icon_arangodb_arrowleft,
-  a.headerButton .icon_arangodb_arrowright {
+  a.headerButton .icon_arangodb_arrowleft, a.button-gui .icon_arangodb_arrowleft,
+  a.headerButton .icon_arangodb_arrowright,
+  a.button-gui .icon_arangodb_arrowright {
     font-weight: bold; }
+  a.headerButton.activated, a.activated.button-gui {
+    background-color: #788f3d;
+    color: white; }
+    a.headerButton.activated:hover, a.activated.button-gui:hover {
+      background-color: white;
+      color: #788f3d; }
 
 /* Graph Viewer */
 div.toolbox > div.gv_action_button {
@@ -468,6 +475,18 @@ button.btn-overview, .clusterDownBtn button.btn-overview.green, button.btn-serve
 button.btn-server, .clusterDownBtn button.btn-server.green {
   width: 120px; }
 
+a.button-gui {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  width: auto;
+  height: auto;
+  text-decoration: none !important; }
+
 .clusterDownBtn {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -483,8 +502,7 @@ button.btn-server, .clusterDownBtn button.btn-server.green {
     font-size: 20px;
     font-weight: 300;
     width: 250px;
-    text-align: center;
-    cursor: auto; }
+    text-align: center; }
     .clusterDownBtn button:hover {
       color: #4a6c30;
       background-color: #e8e8e8;
@@ -594,8 +612,8 @@ li.tile, li.bigtile {
   right: 0px; }
 
 li.bigtile {
-  height: 250px;
-  width: 345px; }
+  height: 309px;
+  width: 460px; }
   li.bigtile div.shardContainer {
     font-size: 30px; }
     li.bigtile div.shardContainer span {
@@ -1006,6 +1024,13 @@ select.filterSelect {
   word-wrap: break-word !important;
   white-space: normal !important; }
 
+.indexTooltip {
+  color: #736b68; }
+  .indexTooltip:hover {
+    color: black; }
+  .indexTooltip span.arangoicon {
+    font-size: 18px !important; }
+
 .dbselection {
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1103,6 +1128,32 @@ select.filterSelect {
 
 .waitModalBackdrop {
   opacity: 0.7 !important; }
+
+.addCollection table tr {
+  height: 53px;
+  border-bottom: 0 !important; }
+.addCollection .icon_arangodb_info {
+  top: 2px !important;
+  position: relative;
+  margin-left: 20px !important; }
+.addCollection .accordion {
+  margin-top: 10px; }
+.addCollection .collectionThSec {
+  width: 320px !important; }
+.addCollection .collectionTh {
+  width: 96px; }
+.addCollection .modalInput {
+  width: 320px; }
+.addCollection .modalSelect {
+  width: 334px; }
+.addCollection .accordion-toggle {
+  width: 457px !important; }
+
+.modalTooltips span {
+  font-size: 20px;
+  color: #736b68; }
+  .modalTooltips span:hover {
+    color: black; }
 
 div img.searchSubmitIcon {
   height: 14px;
