@@ -41,6 +41,7 @@
         figures.push(group + "." + id);
       }
       self.getStatisticHistory({
+        startDate :  (new Date().getTime() - 14 * 24 * 60 * 60 * 1000) / 1000,
         figures :  figures
       });
       var figs = [{identifier : "uptime", group : "server"}];
@@ -341,6 +342,7 @@
         if (createDiv) {
           self.renderHttpGroup(figure);
         }
+
         chart.updateDateWindow();
         chart.graph = new Dygraph(
           document.getElementById(div+"LineChart"),
