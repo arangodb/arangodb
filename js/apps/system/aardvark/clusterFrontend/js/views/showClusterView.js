@@ -53,13 +53,14 @@
 
 
     initialize: function() {
-        this.interval = 10000;
-        this.isUpdating = false;
-        this.timer = null;
-        this.knownServers = [];
-        this.graph = undefined;
-        this.graphShowAll = false;
-        this.updateServerTime();
+      this.interval = 10000;
+      this.isUpdating = false;
+      this.timer = null;
+      this.knownServers = [];
+      this.graph = undefined;
+      this.graphShowAll = false;
+      this.updateServerTime();
+      this.dygraphConfig = this.options.dygraphConfig;
       this.dbservers = new window.ClusterServers([], {
         interval: this.interval
       });
@@ -429,60 +430,32 @@
                 opts.labels = this.chartData.labelsNormal;
                 opts.visibility = this.chartData.visibilityNormal;
               }
-              this.graph.updateOptions(opts);
+              this.graph.graph.updateOptions(opts);
               return;
           }
 
           var makeGraph = function(remake) {
+            self.graph = new self.dygraphConfig.Chart("clusterAverageRequestTime", "current", true, 'Average request time in milliseconds');
             getData();
+            self.graph.data = self.chartData.data;
+            self.graph.updateDateWindow();
+            self.graph.options.visibility = self.chartData.visibilityNormal;
+            self.graph.updateLabels(self.chartData.labelsNormal);
             if (remake) {
-                var displayOptions = {
-                    showRangeSelector : true,
-                    title : "",
-                    interactionModel : null,
-                    showLabelsOnHighlight : true,
-                    highlightCircleSize : 3,
-                    visibility: self.chartData.visibilityShowAll 
-                }
-                displayOptions.height = $('#lineChartDetail').height() - 34 -29;
-                displayOptions.width = $('#lineChartDetail').width() -10;
-                displayOptions.title = "";
+                self.graph.detailChartConfig();
+                self.graph.updateLabels(self.chartData.labelsShowAll);
+                self.graph.options.visibility = self.chartData.visibilityShowAll;
+                self.graph.options.height = $('#lineChartDetail').height() - 34 -29;
+                self.graph.options.width = $('#lineChartDetail').width() -10;
+                self.graph.options.title = "";
             }
-            self.graph = new Dygraph(
+            self.graph.graph = new Dygraph(
                   document.getElementById(remake ? 'detailGraph' : 'lineGraph'),
-                  self.chartData.data,
-                _.extend({   title: 'Average request time in milliseconds',
-                      labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
-                      digitsAfterDecimal: 2,
-                      drawGapPoints: true,
-                      fillGraph : true,
-                      showLabelsOnHighlight : true,
-                      strokeWidth: 2,
-                      strokeBorderWidth: 1,
-                      highlightCircleSize: 0,
-                      strokeBorderColor: '#ffffff',
-                      interactionModel :  {},
-                      axisLabelFont: "Open Sans",
-                      dateWindow : [new Date().getTime() -
-                          Math.min(
-                              20 * 60 * 1000,
-                              self.chartData.data.length * 10 * 1000)
-                      ,new Date().getTime()],
-                      labels: self.chartData.labelsNormal,
-                      visibility: self.chartData.visibilityNormal ,
-                      xAxisLabelWidth : "60",
-                      rightGap: 10,
-                      showRangeSelector: false,
-                      rangeSelectorHeight: 40,
-                      rangeSelectorPlotStrokeColor: '#365300',
-                      rangeSelectorPlotFillColor: '#414a4c',
-                      pixelsPerLabel : 60,
-                      labelsKMG2: true
-                  },displayOptions));
-
-          self.graph.updateOptions({clickCallback: onclick}, true);
-          self.graph.setSelection(false, 'ClusterAverage', true);
-        };
+                self.graph.data,
+                self.graph.options
+            );
+            self.graph.graph.setSelection(false, 'ClusterAverage', true);
+          };
         makeGraph(remake);
 
       },
