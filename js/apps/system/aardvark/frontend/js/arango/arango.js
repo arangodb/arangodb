@@ -158,75 +158,8 @@
       return type;
     },
 
-    FormatJSON: function (oData, sIndent) {
-      var self = this;
-      var sHTML, iCount;
-      if (sIndent === undefined) {
-        sIndent = "";
-      }
-      var sIndentStyle = " ";
-      var sDataType = self.RealTypeOf(oData);
-
-      if (sDataType === "array") {
-        if (oData.length === 0) {
-          return "[]";
-        }
-        sHTML = "[";
-      } else {
-        iCount = 0;
-        $.each(oData, function() {
-          iCount++;
-          return;
-        });
-        if (iCount === 0) { // object is empty
-          return "{}";
-        }
-        sHTML = "{";
-      }
-
-      iCount = 0;
-      $.each(oData, function(sKey, vValue) {
-        if (iCount > 0) {
-          sHTML += ",";
-        }
-        if (sDataType === "array") {
-          sHTML += ("\n" + sIndent + sIndentStyle);
-        } else {
-          sHTML += ("\n" + sIndent + sIndentStyle + JSON.stringify(sKey) + ": ");
-        }
-
-        // display relevant data type
-        switch (self.RealTypeOf(vValue)) {
-          case "array":
-            case "object":
-            sHTML += self.FormatJSON(vValue, (sIndent + sIndentStyle));
-          break;
-          case "boolean":
-            case "number":
-            sHTML += vValue.toString();
-          break;
-          case "null":
-            sHTML += "null";
-          break;
-          case "string":
-            sHTML += "\"" + vValue.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
-          break;
-          default:
-            sHTML += ("TYPEOF: " + typeof vValue);
-        }
-        // loop
-        iCount++;
-      });
-
-      // close object
-      if (sDataType === "array") {
-        sHTML += ("\n" + sIndent + "]");
-      } else {
-        sHTML += ("\n" + sIndent + "}");
-      }
-
-      // return
-      return sHTML;
+    FormatJSON: function (oData) {
+      return JSON.stringify(oData, undefined, 2);
     },
 
     RealTypeOf: function (v) {

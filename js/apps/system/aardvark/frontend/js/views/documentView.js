@@ -173,53 +173,56 @@
     },
 
     drawTable: function () {
-      var self = this;
-      $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
-        if (arangoHelper.isSystemAttribute(key)) {
-          var preview = "";
-          var html;
+      var doc = window.arangoDocumentStore.models[0].attributes, key;
+      for (key in doc) {
+        if (doc.hasOwnProperty(key)) {
+          var value = doc[key];
+          if (arangoHelper.isSystemAttribute(key)) {
+            var preview = "";
+            var html;
 
-          if (key === "_from" || key === "_to") {
-            var linkedDoc = self.getLinkedDoc(value);
+            if (key === "_from" || key === "_to") {
+              var linkedDoc = this.getLinkedDoc(value);
 
-            if (linkedDoc !== null && linkedDoc !== undefined) {
-              preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' + 
-                        self.escaped(JSON.stringify(linkedDoc)) + '"></span>';
-            
-              html = '<a href="#collection/' + value + 
-                     '" class="docLink" title="Go to document">' + self.escaped(value) + 
-                     '</a>';
+              if (linkedDoc !== null && linkedDoc !== undefined) {
+                preview = '<span class="docPreview arangoicon icon_arangodb_info" title="' + 
+                          this.escaped(JSON.stringify(linkedDoc)) + '"></span>';
+              
+                html = '<a href="#collection/' + value + 
+                       '" class="docLink" title="Go to document">' + this.escaped(value) + 
+                       '</a>';
+              }
+              else {
+                html = this.escaped(value);
+              }
+
             }
             else {
-              html = self.escaped(value);
+              html = this.value2html(value, true);
             }
 
+            $(this.table).dataTable().fnAddData([
+              key,
+              preview,
+              html,
+              JSON.stringify(value, null, 4),
+              "",
+              ""
+            ]);
           }
           else {
-            html = self.value2html(value, true);
+            $(this.table).dataTable().fnAddData([
+              key,
+              '<a class="editFirstAttribute"><span class="icon_arangodb_edit"></span></a>',
+              this.value2html(value),
+              JSON.stringify(value, null, 4),
+              '<a class="editSecondAttribute"><span class="icon_arangodb_edit"></span></a>',
+              '<a class="deleteAttribute"><span class="icon_arangodb_roundminus" ' +
+              'title="Delete attribute"></span></a>'
+            ]);
           }
-
-          $(self.table).dataTable().fnAddData([
-            key,
-            preview,
-            html,
-            JSON.stringify(value, null, 4),
-            "",
-            ""
-          ]);
         }
-        else {
-          $(self.table).dataTable().fnAddData([
-            key,
-            '<a class="editFirstAttribute"><span class="icon_arangodb_edit"></span></a>',
-            self.value2html(value),
-            JSON.stringify(value, null, 4),
-            '<a class="editSecondAttribute"><span class="icon_arangodb_edit"></span></a>',
-            '<a class="deleteAttribute"><span class="icon_arangodb_roundminus" ' +
-            'title="Delete attribute"></span></a>'
-          ]);
-        }
-      });
+      }
       this.makeEditable();
       $(this.table).dataTable().fnSort([ [0, 'asc'] ]);
     },

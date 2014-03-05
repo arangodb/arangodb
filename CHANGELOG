@@ -1,3 +1,17 @@
+v1.4.12 (XXXX-XX-XX)
+--------------------
+
+* fixed display bug in web interface which caused the following problems:
+  - documents were displayed in web interface as being empty
+  - document attributes view displayed many attributes with content "undefined"
+  - document source view displayed many attributes with name "TYPEOF" and value "undefined"
+  - an alert popping up in the browser with message "Datatables warning..."
+  
+* re-introduced old-style read-write locks to supports Windows versions older than
+  Windows 2008R2 and Windows 7. This should re-enable support for Windows Vista and
+  Windows 2008.
+
+
 v1.4.11 (2014-02-27)
 --------------------
 

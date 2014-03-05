@@ -518,13 +518,15 @@
       else {
 
         $.each(window.arangoDocumentsStore.models, function(key, value) {
+          var tempObj = {}, k;
 
-          var tempObj = {};
-          $.each(value.attributes.content, function(k, v) {
-            if (! (k === '_id' || k === '_rev' || k === '_key')) {
-              tempObj[k] = v;
+          for (k in value.attributes.content) {
+            if (value.attributes.content.hasOwnProperty(k)) { 
+              if (! (k === '_id' || k === '_rev' || k === '_key')) {
+                tempObj[k] = value.attributes.content[k];
+              }
             }
-          });
+          };
 
           $(self.table).dataTable().fnAddData(
             [
