@@ -175,7 +175,6 @@ double MR_float (mrb_state* mrb, mrb_value val) {
 
     case MRB_TT_FLOAT:
       return mrb_float(val);
-      break;
 
     default:
       return 0;

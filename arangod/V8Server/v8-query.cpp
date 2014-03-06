@@ -852,11 +852,6 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
       break;
     }
 
-
-    default: {
-      return 0;
-    }
-
   } // end of switch (operatorType)
 
   return indexOperator;

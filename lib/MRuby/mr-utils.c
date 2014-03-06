@@ -187,8 +187,6 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       return a;
     }
   }
-
-  return mrb_nil_value();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

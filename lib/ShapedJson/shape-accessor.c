@@ -510,10 +510,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         printf("  OP: variable offset at position %lu\n",
                (unsigned long) pos);
         break;
-
-      default:
-        printf("  OP: unknown op code\n");
-        return;
     }
   }
 }

@@ -3243,8 +3243,6 @@ namespace triagens {
 
           offSet = delPos + delLength;
         }
-
-        return sourceStr;
       }
 
 
