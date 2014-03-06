@@ -113,11 +113,12 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
     return false;
   }
 
-  _listenSocket.fileDescriptor = _open_osfhandle (_listenSocket.fileHandle, 0);
-  if (_listenSocket.fileDescriptor == INVALID_SOCKET) {
+  int res = _open_osfhandle (_listenSocket.fileHandle, 0);
+
+  if (res == - 1) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
 
-    int res = closesocket(_listenSocket.fileHandle);
+    res = TRI_CLOSE_SOCKET(_listenSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
@@ -126,6 +127,8 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
     TRI_invalidatesocket(&_listenSocket);
     return false;
   }
+  
+  _listenSocket.fileDescriptor = res; 
 
 #endif
 
