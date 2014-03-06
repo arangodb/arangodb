@@ -4,6 +4,10 @@ Sharding {#Sharding}
 @NAVIGATE_Sharding
 @EMBEDTOC{ShardingTOC}
 
+The following sections will give you all the technical details of the
+sharding setup. If you just want to set up a cluster, follow the 
+instructions given in @ref CookbookCluster.
+
 Introduction {#ShardingIntroduction}
 ====================================
 
