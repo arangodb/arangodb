@@ -1615,10 +1615,16 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true);
+  params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true);
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false);
-  params._isSystem =    (name[0] == '_');
+  params._isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false);
+  params._isSystem    = (name[0] == '_');
+  params._planId      = 0;
+
+  TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
+  if (planId > 0) {
+    params._planId = planId;
+  }
 
   if (cid > 0) {
     // wait for "old" collection to be dropped
@@ -1758,7 +1764,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collection,
+int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collection,
                                                       bool dropExisting,
                                                       bool reuseId,
                                                       bool force,
@@ -1883,7 +1889,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t* const collecti
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreIndexes (TRI_json_t* const collection,
+int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
                                                    bool force,
                                                    TRI_server_id_t remoteServerId,
                                                    string& errorMsg) {

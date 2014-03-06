@@ -68,6 +68,7 @@
 
     initialize: function () {
       var self = this;
+      this.dygraphConfig = window.dygraphConfig;
       this.initial = this.planScenario;
       this.isCheckingUser = false;
       this.bind('all', function(trigger, args) {
@@ -99,7 +100,9 @@
 
     showCluster: function() {
       if (!this.showClusterView) {
-        this.showClusterView = new window.ShowClusterView();
+        this.showClusterView = new window.ShowClusterView(
+            {dygraphConfig : this.dygraphConfig}
+      );
       }
       if (!this.shutdownView) {
         this.shutdownView = new window.ShutdownButtonView({
@@ -184,7 +187,8 @@
         collection: statisticsCollection,
         description: statisticsDescription,
         documentStore: new window.arangoDocuments(),
-        server : server
+        server : server,
+        dygraphConfig : this.dygraphConfig
       });
       this.dashboardView.render();
     }

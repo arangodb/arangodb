@@ -1,13 +1,11 @@
 <script id="symmetricPlan.ejs" type="text/template">
-<ul class="thumbnails2">
-  <div class="headerBar">
-    <% if (isSymmetric) { %>
-      <a class="arangoHeader">Plan a symmetric cluster</a>
-    <% } else { %>
-      <a class="arangoHeader">Plan a asymmetric cluster</a>
-    <% } %>
-  </div>
-</ul>
+<div class="headerBar">
+  <% if (isSymmetric) { %>
+    <a class="arangoHeader">Plan a symmetric cluster</a>
+  <% } else { %>
+    <a class="arangoHeader">Plan a asymmetric cluster</a>
+  <% } %>
+</div>
 
 <form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
   <fieldset id="server_list">
