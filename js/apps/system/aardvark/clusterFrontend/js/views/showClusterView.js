@@ -72,7 +72,6 @@
       this.statisticsDescription.fetch({
         async: false
       });
-
       this.dbs = new window.ClusterDatabases([], {
         interval: this.interval
       });
@@ -208,7 +207,8 @@
               raw: dbserver.get("address"),
               isDBServer: true,
               target: encodeURIComponent(dbserver.get("name")),
-              endpoint: endpoint
+              endpoint: endpoint,
+              addAuth: window.App.addAuth.bind(window.App)
             };
             self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
@@ -235,7 +235,8 @@
               raw: coordinator.get("address"),
               isDBServer: false,
               target: encodeURIComponent(coordinator.get("name")),
-              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
+              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+              addAuth: window.App.addAuth.bind(window.App)
             };
             self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
@@ -261,21 +262,29 @@
         var self = this;
         this.data = undefined;
         var statCollect = new window.ClusterStatisticsCollection();
+        var coord = this.coordinators.first();
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
             var stat = new window.Statistics({name: dbserver.id});
-            stat.url = "http://" + dbserver.get("address") + "/_admin/statistics";
+            stat.url = coord.get("protocol") + "://"
+              + coord.get("address")
+              + "/_admin/clusterStatistics?DBserver="
+              + dbserver.get("name");
             statCollect.add(stat);
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
             var stat = new window.Statistics({name: coordinator.id});
-            stat.url = "http://" + coordinator.get("address") + "/_admin/statistics";
+            stat.url = coordinator.get("protocol") + "://"
+              + coordinator.get("address")
+              + "/_admin/statistics";
             statCollect.add(stat);
         });
-        statCollect.fetch();
+        statCollect.fetch({
+          beforeSend: window.App.addAuth.bind(window.App)
+        });
         statCollect.forEach(function(m) {
             var uptime = m.get("server").uptime * 1000
             var time = self.serverTime;

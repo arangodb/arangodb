@@ -219,6 +219,7 @@
                 figures   : params.figures
             };
             var server = params.server;
+            var addAuth = function(){};
             var url = "";
             if (server) {
               url = server.endpoint;
@@ -226,6 +227,7 @@
               if (server.isDBServer) {
                 url += "?DBserver=" + server.target;
               }
+              addAuth = server.addAuth;
             } else {
               url = "/_admin/history";
             }
@@ -236,6 +238,7 @@
                 url: url,
                 data: JSON.stringify(body),
                 contentType: "application/json",
+                beforeSend: addAuth,
                 success: function(data) {
                   self.history =  data.result;
                 },
