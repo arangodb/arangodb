@@ -54,15 +54,28 @@ int TRI_closesocket(TRI_socket_t s) {
   #ifdef _WIN32
     if (s.fileDescriptor != INVALID_SOCKET) {
       res = _close(s.fileDescriptor);
+      /*
+      To close a file opened with _open_osfhandle, call _close.
+      The underlying handle is also closed by a call to _close,
+      so it is not necessary to call the Win32 function CloseHandle on the original handle.
+      */
     }
-    if (s.fileHandle != INVALID_SOCKET) {
-      res = shutdown(s.fileHandle,SD_SEND);
-      char buf[256];
-      int len;
-      do {
-        len = recv(s.fileHandle, buf, 256, 0);
-      } while (len > 0);
-      res = closesocket(s.fileHandle);
+    else if (s.fileHandle != INVALID_SOCKET) {
+      res = shutdown(s.fileHandle, SD_SEND);
+      if (res != 0) {
+        LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
+      }
+      else {
+        char buf[256];
+        int len;
+        do {
+          len = TRI_readsocket(s, buf, sizeof(buf), 0);
+        } while (len > 0);
+        res = closesocket(s.fileHandle);
+        if (res != 0) {
+          LOG_WARNING("socket close error: %d", WSAGetLastError());
+        }
+      }
     }
   #else
     if (s.fileDescriptor != INVALID_SOCKET) {
