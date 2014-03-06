@@ -65,6 +65,18 @@
       return true;
     },
 
+    saveCredentials: function(user, passwd) {
+      var config = {
+        user: {
+          name: user,
+          passwd: passwd
+        }
+      }
+      var old = this.loadConfig();
+      this.collection.update(old._id, config);
+      return true;
+    },
+
     storeConfig: function(config) {
       this.collection.truncate();
       this.collection.save(config);

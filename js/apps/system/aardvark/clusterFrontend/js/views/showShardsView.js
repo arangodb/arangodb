@@ -20,7 +20,8 @@
         interval: 10000
       });
       this.dbservers.fetch({
-        async : false
+        async : false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       this.dbs = new window.ClusterDatabases([], {
         interval: this.interval

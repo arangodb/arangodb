@@ -195,7 +195,8 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
 
 #ifdef TRI_ENABLE_CLUSTER
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
-                                           TRI_voc_tick_t);
+                                           TRI_voc_tick_t, 
+                                           bool);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
