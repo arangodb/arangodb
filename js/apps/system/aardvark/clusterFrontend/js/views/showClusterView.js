@@ -435,7 +435,12 @@
           }
 
           var makeGraph = function(remake) {
-            self.graph = new self.dygraphConfig.Chart("clusterAverageRequestTime", "current", true, 'Average request time in milliseconds');
+            self.graph = new self.dygraphConfig.Chart(
+                "clusterAverageRequestTime",
+                self.dygraphConfig.regularLineChartType,
+                true,
+                'Average request time in milliseconds'
+            );
             getData();
             self.graph.data = self.chartData.data;
             self.graph.updateDateWindow();

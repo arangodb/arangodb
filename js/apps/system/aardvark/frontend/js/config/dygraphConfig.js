@@ -63,31 +63,36 @@
         return result;
     };
 
+
+    var differenceBasedLineChartType = "lineChartDiffBased";
+    var regularLineChartType = "current";
+    var distributionChartType = "distribution";
+    var accumulatedChartType = "accumulated";
+    var distributionBasedLineChartType = "currentDistribution";
+
     // different time series types for charts
-    var chartTypeExceptions = {
-        accumulated : {
-            minorPageFaults : "lineChartDiffBased",
-                majorPageFaults : "lineChartDiffBased",
-                requestsTotal : "lineChartDiffBased",
-                requestsAsync: "lineChartDiffBased",
-                requestsGet: "lineChartDiffBased",
-                requestsHead: "lineChartDiffBased",
-                requestsPost: "lineChartDiffBased",
-                requestsPut: "lineChartDiffBased",
-                requestsPatch: "lineChartDiffBased",
-                requestsDelete: "lineChartDiffBased",
-                requestsOptions: "lineChartDiffBased",
-                requestsOther: "lineChartDiffBased"
+    var chartTypeExceptions = {};
+    chartTypeExceptions[accumulatedChartType] = {
+            minorPageFaults : differenceBasedLineChartType,
+            majorPageFaults : differenceBasedLineChartType,
+            requestsTotal : differenceBasedLineChartType,
+            requestsAsync: differenceBasedLineChartType,
+            requestsGet: differenceBasedLineChartType,
+            requestsHead: differenceBasedLineChartType,
+            requestsPost: differenceBasedLineChartType,
+            requestsPut: differenceBasedLineChartType,
+            requestsPatch: differenceBasedLineChartType,
+            requestsDelete: differenceBasedLineChartType,
+            requestsOptions: differenceBasedLineChartType,
+            requestsOther: differenceBasedLineChartType
 
-        },
-
-        distribution : {
-            totalTime : "currentDistribution",
-                requestTime: "currentDistribution",
-                queueTime: "currentDistribution",
-                bytesSent: "currentDistribution",
-                bytesReceived: "currentDistribution"
-        }
+    };
+    chartTypeExceptions[distributionChartType] = {
+            totalTime : distributionBasedLineChartType,
+            requestTime: distributionBasedLineChartType,
+            queueTime: distributionBasedLineChartType,
+            bytesSent: distributionBasedLineChartType,
+            bytesReceived: distributionBasedLineChartType
     };
     // figures supposed to be dispalyed in one chart
     var combinedCharts = {
@@ -326,7 +331,7 @@
         Chart : function (figure, type, showGraph, title) {
                 this.type = type;
                 this.showGraph = showGraph;
-                this.data = type === "distribution" ? undefined  : [];
+                this.data = type === distributionChartType ? undefined  : [];
                 this.figure =  figure;
                 this.options =  {};
                 this.defaultConfig = function() {
@@ -362,7 +367,7 @@
                         self.options.colors = [colors[0]];
                     }
                 };
-            if (type !== "distribution") {
+            if (type !== distributionChartType) {
                 this.defaultConfig();
                 this.updateLabels();
                 if (!this.options.title) {
@@ -371,13 +376,52 @@
             }
         },
 
+        getChartsForFigure : function (figure, type, title) {
+            var result = {};
+            if (chartTypeExceptions[type] &&
+                chartTypeExceptions[type][figure]) {
+                result[chartTypeExceptions[type][figure]] =
+                    this.getChartStructure(
+                        figure,
+                        chartTypeExceptions[type][figure],
+                        title
+                    );
+                if (type === distributionChartType) {
+                    result[type] = this.getChartStructure(figure, type, title);
+                }
+            } else {
+                result[type] = this.getChartStructure(figure, type, title);
+            }
+            return result;
+        },
+
+        getChartStructure: function (figure, type, title) {
+            var showGraph = true;
+            if (type === differenceBasedLineChartType) {
+                title +=  " per seconds";
+                type = regularLineChartType;
+            } else if (type === accumulatedChartType) {
+                showGraph = false;
+            } else if (type === distributionBasedLineChartType)  {
+                type = regularLineChartType;
+            }
+            return new this.Chart(figure, type, showGraph, title);
+        },
+
+
         chartTypeExceptions : chartTypeExceptions,
 
         combinedCharts : combinedCharts,
 
         hideGraphs: hideGraphs,
 
-        figureDependedOptions: figureDependedOptions
+        figureDependedOptions: figureDependedOptions,
+
+        differenceBasedLineChartType : differenceBasedLineChartType,
+        regularLineChartType : regularLineChartType,
+        distributionChartType : distributionChartType,
+        accumulatedChartType : accumulatedChartType,
+        distributionBasedLineChartType : distributionBasedLineChartType
 
     };
 }());
