@@ -4,6 +4,10 @@ Sharding {#Sharding}
 @NAVIGATE_Sharding
 @EMBEDTOC{ShardingTOC}
 
+The following sections will give you all the technical details of the
+sharding setup. If you just want to set up a cluster, follow the 
+instructions given in @ref CookbookCluster.
+
 Introduction {#ShardingIntroduction}
 ====================================
 
@@ -52,7 +56,7 @@ to activate the dispatcher functionality in the configuration file
 set to `true` in the standard setup we ship).
 
 However, you can use any of these dispatchers to plan and start your
-cluster. In the planning phase, you have tell the planner about all
+cluster. In the planning phase, you have to tell the planner about all
 dispatchers in your cluster and it will automatically distribute your
 agency, DBserver and coordinator processes amongst the dispatchers. The
 result is the cluster plan which you feed into the kickstarter. The
@@ -60,7 +64,7 @@ kickstarter is a program that actually uses the dispatchers to
 manipulate the processes in your cluster. It runs on one of the
 dispatchers, which analyses the cluster plan and executes those actions,
 for which it is personally responsible, and forwards all other actions
-to the corresponding dispatcher. This is possible, because the cluster
+to the corresponding dispatchers. This is possible, because the cluster
 plan incorporates the information about all dispatchers.
 
 We also offer a graphical user interface to the cluster planner and
@@ -71,11 +75,11 @@ How to try it out {#ShardingTryItOut}
 =====================================
 
 In this text we assume that you are working with a standard installation
-of ArangoDB with version at least 2.0. This means that everything
+of ArangoDB with at least a version number of 2.0. This means that everything
 is compiled for cluster operation, that `etcd` is compiled and
 the executable is installed in the location mentioned in the
 configuration file. The first step is to switch on the dispatcher
-functionality in your configuration of `arangod`. For this change
+functionality in your configuration of `arangod`. In order to do this, change
 the `cluster.disable-dispatcher-kickstarter` and
 `cluster.disable-dispatcher-interface` options in `arangod.conf` both
 to `false`.
@@ -103,7 +107,7 @@ If you are curious you can look at the plan of your cluster:
 
     arangodb> p.getPlan();
 
-will show you a huge JSON document. More interestingly, some further
+This will show you a huge JSON document. More interestingly, some further
 components tell you more about the layout of your cluster:
 
     arangodb> p.DBservers;
@@ -124,6 +128,7 @@ components tell you more about the layout of your cluster:
         "port" : 8631 
       } 
     ]
+    
     arangodb> p.coordinators;
     [ 
       { 
@@ -153,10 +158,10 @@ described below instead in that case.
     arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 
-is all you have to do to fire up your first cluster. You will see some
+That is all you have to do, to fire up your first cluster. You will see some
 output, which you can safely ignore (as long as no error happens). 
 
-From then on you can contact one of the coordinators and use the cluster
+From that point on, you can contact one of the coordinators and use the cluster
 as if it were a single ArangoDB instance (use the port number from above
 instead of 8530, if you get a different one) (probably from another
 shell window):
@@ -168,10 +173,11 @@ shell window):
       "_system" 
     ]
 
-This for example lists the cluster wide databases. Now let us create a
-sharded collection, we only have to specify the number of shards to use
-in addition to the usual command. The shards are automatically
-distributed amongst your DBservers:
+This for example, lists the cluster wide databases. 
+
+Now, let us create a sharded collection. Note, that we only have to specify 
+the number of shards to use in addition to the usual command. 
+The shards are automatically distributed among your DBservers:
 
     arangosh [_system]> example = db._create("example",{numberOfShards:6});
     [ArangoCollection 1000001, "example" (type document, status loaded)]
@@ -192,23 +198,23 @@ distributed amongst your DBservers:
     }
 
 You can shut down your cluster by using the following Kickstarter
-method (in the original ArangoDB console):
+method (in the ArangoDB console):
 
     arangodb> k.shutdown();
 
-If you want to start your cluster again without losing the data you have
+If you want to start your cluster again without losing data you have
 previously stored in it, you can use the `relaunch` method in exactly the
 same way as you previously used the `launch` method:
 
     arangodb> k.relaunch();
 
-You can now check whether or not all your cluster processes are still
-running by issuing:
+You can now check, whether or not, all your cluster processes are still
+running, by issuing:
 
     arangodb> k.isHealthy();
 
-which will show you the status of all the processes in the cluster. You
-should see "RUNNING" there in all relevant places.
+This will show you the status of all processes in the cluster. You
+should see "RUNNING" there, in all the relevant places.
 
 Finally, to clean up the whole cluster (losing all the data stored in
 it), do:
@@ -216,13 +222,13 @@ it), do:
     arangodb> k.shutdown();
     arangodb> k.cleanup();
 
-We conclude this section with another example using two machines, that
-is two different dispatchers. We start from scratch using two machines,
+We conclude this section with another example using two machines, which 
+will act as two dispatchers. We start from scratch using two machines,
 running on the network addresses `tcp://192.168.173.78:8529` and
-`tcp://192.168.173.13:6789`, say. Both need to have a regular ArangoDB
-instance installed and running, please make sure that both bind to
-all network devices, such that they can talk to each other. Also enable
-the dispatcher functionality on both of them as described above.
+`tcp://192.168.173.13:6789`. Both need to have a regular ArangoDB
+instance installed and running. Please make sure, that both bind to
+all network devices, so that they can talk to each other. Also enable
+the dispatcher functionality on both of them, as described above.
 
     arangodb> var Planner = require("org/arangodb/cluster").Planner;
     arangodb> var p = new Planner({
@@ -230,9 +236,9 @@ the dispatcher functionality on both of them as described above.
                        "theother":{"endpoint":"tcp://192.168.173.13:6789"}}, 
          "numberOfCoordinators":2, "numberOfDBservers": 2});
 
-With this you create a cluster plan involving two machines. The planner
-will put one DBserver and one coordinator on each machine. You can now
-launch this cluster exactly as above:
+With these commands, you create a cluster plan involving two machines. 
+The planner will put one DBserver and one Coordinator on each machine. 
+You can now launch this cluster exactly as explained earlier:
 
     arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
     arangodb> k = new Kickstarter(p.getPlan());
@@ -253,7 +259,7 @@ of the sharding extensions. However, not all planned features are
 included in this release. In particular, automatic fail-over is fully
 prepared in the architecture but is not yet implemented. If you use
 Version 2.0 in cluster mode in a production system, you have to
-organise failure recovery manually. This is, why at this stage with
+organise failure recovery manually. This is why, at this stage with
 Version 2.0 we do not yet recommend to use the cluster mode in
 production systems. If you really need this feature now, please contact
 us.
@@ -261,7 +267,7 @@ us.
 This section provides an overview over the implemented and future
 features.
 
-In normal single instance mode, ArangoDB works completely as usual
+In normal single instance mode, ArangoDB works as usual
 with the same performance and functionality as in previous releases.
 
 In cluster mode, the following things are implemented in version 2.0 
@@ -274,38 +280,38 @@ and work:
     can have fully sharded collections as well as cluster-wide available
     collections with only a single shard. After creation, these
     differences are transparent to the client.
-  - Creating and dropping cluster-wide databases works.
-  - Creating, dropping and modifying cluster-wide collections all work.
+  - Creating and dropping cluster-wide databases, works.
+  - Creating, dropping and modifying cluster-wide collections, all work.
     Since these operations occur seldom, we will only improve their
     performance in a future release, when we will have our own
     implementation of the agency as well as a cluster-wide event managing
     system (see road map for release 2.3).
-  - The sharding in a collection can be configured to use hashing
+  - Sharding in a collection, can be configured to use hashing
     on arbitrary properties of the documents in the collection.
-  - Creating and dropping indices on sharded collections works. Please
+  - Creating and dropping indices on sharded collections, works. Please
     note that an index on a sharded collection is not a global index 
     but only leads to a local index of the same type on each shard.
-  - All SimpleQueries work, again, we will improve the performance in
+  - All SimpleQueries work. Again, we will improve the performance in
     future releases, when we revisit the AQL query optimiser 
     (see road map for release 2.2).
-  - AQL queries work but with relatively bad performance. Also, if the
+  - AQL queries work, but with relatively bad performance. Also, if the
     result of a query on a sharded collection is large, this can lead
     to an out of memory situation on the coordinator handling the
     request. We will improve this situation when we revisit the AQL
     query optimiser (see road map for release 2.2).
-  - Authentication on the cluster works with the method known from
+  - Authentication on the cluster, works, with the method known from
     single ArangoDB instances on the coordinators. A new cluster-internal
     authorisation scheme has been created. See below for hints on a
     sensible firewall and authorisation setup.
   - Most standard API calls of the REST interface work on the cluster
-    as usual, with a few exceptions which do no longer make sense on
+    as usual, with a few exceptions, which do no longer make sense on
     a cluster or are harder to implement. See below for details.
 
 
-The following does not yet work but is planned for future releases (see
+The following does not yet work, but is planned for future releases (see
 road map):
 
-  - Transactions can be run but do not behave like transactions. They
+  - Transactions can be run, but do not behave like transactions. They
     simply execute but have no atomicity or isolation in version 2.0.
     See the road map for version 2.X.
   - We plan to revise the AQL optimiser for version 2.2. This is
@@ -315,7 +321,7 @@ road map):
   - Our software architecture is fully prepared for replication, automatic 
     fail-over and recovery of a cluster, which will be implemented
     for version 2.3 (see our road map).
-  - This setup will at the same time allow for hot swap and in-service 
+  - This setup will at the same time, allow for hot swap and in-service 
     maintenance and scaling of a cluster. However, in version 2.0 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
@@ -324,17 +330,17 @@ road map):
     on all shards.
   - At this stage the sharding of an edge collection is independent of
     the sharding of the corresponding vertex collection in a graph.
-    For version 2.2 we plan to synchronise the two to allow for more
+    For version 2.2 we plan to synchronise the two, to allow for more
     efficient graph traversal functions in large, sharded graphs. We
     will also do research on distributed algorithms for graphs and
     implement new algorithms in ArangoDB. However, at this stage, all
     graph traversal algorithms are executed on the coordinator and
     this means relatively poor performance since every single edge
     step leads to a network exchange.
-  - In this version 2.0 the import API is broken for sharded collections.
+  - In version 2.0 the import API is broken for sharded collections.
     It will appear to work but will in fact silently fail. Fixing this
     is on the road map for version 2.1.
-  - In this version 2.0 the `arangodump` and `arangorestore` programs
+  - In version 2.0 the `arangodump` and `arangorestore` programs
     can not be used talking to a coordinator to directly backup
     sharded collections. At this stage, one has to backup the
     DBservers individually using `arangodump` and `arangorestore`
@@ -343,7 +349,7 @@ road map):
     data stored in the agency because this is essential to access
     the sharded collections. These limitations will be fixed in
     version 2.1.
-  - In this version 2.0 the replication API (`/_api/replication`)
+  - In version 2.0 the replication API (`/_api/replication`)
     does not work on coordinators. This is intentional, since the 
     plan is to organise replication with automatic fail-over directly
     on the DBservers, which is planned for version 2.3.
@@ -355,8 +361,8 @@ road map):
     not yet implemented, but will be supported from version 2.1
     onwards.
 
-The following restrictions will probably stay for cluster mode, even in
-future versions. This is because they are difficult or even impossible
+The following restrictions will probably stay, for cluster mode, even in
+future versions. This is, because they are difficult or even impossible
 to implement efficiently:
 
   - Custom key generators with the `keyOptions` property in the
@@ -383,7 +389,7 @@ to implement efficiently:
     difficult to maintain efficiently.
   - The methods `db.<collection>.first()` and `db.<collection>.last()` are 
     unsupported for collections with more than one shard. The reason for
-    this is that temporal order in a highly parallelised environment
+    this, is that temporal order in a highly parallelised environment
     like a cluster is difficult or even impossible to achieve
     efficiently. In a cluster it is entirely possible that two
     different coordinators add two different documents to two
@@ -407,13 +413,13 @@ to implement efficiently:
 Authentication in a cluster {#ShardingAuthentication}
 =====================================================
 
-In this section we describe how authentication in a cluster is done
+In this section we describe, how authentication in a cluster is done
 properly. For experiments it is possible to run the cluster completely
 unauthorised by using the option `--server.disable-authentication true`
 on the command line or the corresponding entry in the configuration
-file. However, for production use this is not desirable.
+file. However, for production use, this is not desirable.
 
-You switch on authentication in the cluster by switching it on in the
+You can turn on authentication in the cluster by switching it on in the
 configuration of your dispatchers. When you now use the planner and
 kickstarter to create and launch a cluster, the `arangod` processes in
 your cluster will automatically run with authentication, exactly as the
@@ -436,7 +442,7 @@ or restart the coordinators.
 
 The DBservers will have their authentication switched on as well.
 However, they do not use the cluster-wide `_users` collection for
-authentication, because the idea is that the outside clients do not talk
+authentication, because the idea is, that the outside clients do not talk
 to the DBservers directly, but always go via the coordinators. For the
 cluster-internal communication between coordinators and DBservers (in
 both directions), we use a simpler setup: There are two new
@@ -449,7 +455,7 @@ configuration files `arangod.conf` in all dispatchers, since the
 coordinators and DBservers will simply inherit this configuration file
 from the dispatcher that has launched them.
 
-We summarise what you have to do to enable authentication in a cluster:
+Let's summarise what you have to do, to enable authentication in a cluster:
 
   1. Set `server.disable-authentication` to `false` in all configuration
      files of all dispatchers (this is already the default).
@@ -464,11 +470,10 @@ We summarise what you have to do to enable authentication in a cluster:
 
      on all coordinators.
 
-Note that in Version 2.0 of ArangoDB you can already configure the endpoints
-of the coordinators to use SSL, however, this is not yet conveniently
-supported in the planner and kickstarter, and this not yet in the
-graphical cluster management tools. We will fix this in the next
-version.
+PLease note, that in Version 2.0 of ArangoDB you can already configure the 
+endpoints of the coordinators to use SSL. However, this is not yet conveniently
+supported in the planner, kickstarter and in the graphical cluster 
+management tools. We will fix this in the next version.
 
 Please also consider the comments in the following section about
 firewall setup.
@@ -487,33 +492,33 @@ Therefore, in a production environment, one has to put the whole cluster
 behind a firewall and only open the ports to the coordinators to the
 client processes. 
 
-Note however that for the asynchronous cluster-internal communication 
+Note however that for the asynchronous cluster-internal communication, 
 the DBservers perform HTTP requests to the coordinators, which means
 that the coordinators must also be reachable from within the cluster.
 
 Furthermore, it is of the utmost importance to hide the agent processes of
 the agency behind the firewall, since, at least at this stage, requests
 to them are completely unauthorised. Leaving their ports exposed to
-the outside world endangers all data in the cluster, because everybody
-on the internet could make the cluster believe that you wanted your
-databases dropped! This weakness will be alleviated in future versions,
+the outside world, endangers all data in the cluster, because everybody
+on the internet could make the cluster believe that, for example, you wanted 
+your databases dropped! This weakness will be alleviated in future versions,
 because we will replace `etcd` by our own specialised agency
 implementation, which will allow for authentication.
 
 A further comment applies to the dispatchers. Usually you will open the
-HTTP endpoints of your dispatchers to the outside and switch on
+HTTP endpoints of your dispatchers to the outside world and switch on
 authentication for them. This is necessary to contact them from the
-outside in the cluster launch phase. However, in actual fact you only
+outside, in the cluster launch phase. However, actually you only
 need to contact one of them, who will then in turn contact the others
 using cluster-internal communication. You can even get away with closing
 access to all dispatchers to the outside world, provided the machine
 running your browser is within the cluster network and does not have to
-go through the firewall to contact the dispatchers. Note that anybody
-who can reach a dispatcher and can authorise himself to it can launch
-arbitrary processes on the machine on which the dispatcher runs!
+go through the firewall to contact the dispatchers. It's important to be aware,
+that anybody who can reach a dispatcher and can authorise himself to it,
+can launch arbitrary processes on the machine on which the dispatcher runs!
 
 Therefore we recommend to use SSL endpoints with user/password 
-authentication on the dispatchers *and* to shut down access to them in
+authentication on the dispatchers *and* to block access to them in
 the firewall. You then have to launch the cluster using an `arangosh`
 or browser running within the cluster.
 
