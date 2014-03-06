@@ -138,6 +138,10 @@
         starter = new cluster.Kickstarter(planner.getPlan());
         tmp = starter.launch();
         result.runInfo = tmp.runInfo;
+        result.user = {
+          name: "root",
+          passwd: ""
+        };
         plans.storeConfig(result);
         res.json(result);
       },
@@ -151,6 +155,12 @@
     controller.post("/plan", startUp);
     controller.put("/plan", startUp);
     
+    controller.put("/plan/credentials", function(req, res) {
+      var body = req.body(),
+        u = body.user,
+        p = body.passwd;
+      plans.saveCredentials(u, p);
+    });
     controller.get("/plan", function(req, res) {
       res.json(plans.loadConfig());
     });
@@ -164,6 +174,8 @@
       var out = getStarter().isHealthy();
       var stf = JSON.stringify(out);
       if (out.error || stf.indexOf("NOT-FOUND") !== -1) {
+        require("console").log("Cluster HealthCheck Error:", out.error);
+        require("console").log("Cluster HealthCheck Result:", stf);
         res.json(false);
         return;
       }

@@ -16,6 +16,30 @@
       "handleClusterDown"      : "handleClusterDown"
     },
 
+    // Quick fix for server authentication
+    addAuth: function (xhr) {
+      var u = this.clusterPlan.get("user");
+      if (!u) {
+        xhr.abort();
+        if (!this.isCheckingUser) {
+          this.requestAuth();
+        }
+        return;
+      }
+      var user = u.name;
+      var pass = u.passwd;
+      var token = user.concat(":", pass);
+      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
+    },
+
+    requestAuth: function() {
+      this.isCheckingUser = true;
+      this.clusterPlan.set({"user": null});
+      var self = this;
+      var modalLogin = new window.LoginModalView();
+      modalLogin.render();
+    },
+
     getNewRoute: function(last) {
       if (last === "statistics") {
         return this.clusterPlan.getCoordinator()
@@ -45,6 +69,7 @@
     initialize: function () {
       var self = this;
       this.initial = this.planScenario;
+      this.isCheckingUser = false;
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
@@ -146,13 +171,15 @@
       }
       var statisticsDescription = new window.StatisticsDescription();
       statisticsDescription.fetch({
-        async:false
+        async: false,
+        beforeSend: this.addAuth.bind(this)
       });
       var statisticsCollection = new window.StatisticsCollection();
       if (this.dashboardView) {
         this.dashboardView.stopUpdating();
       }
       this.dashboardView = null;
+      server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
         collection: statisticsCollection,
         description: statisticsDescription,
