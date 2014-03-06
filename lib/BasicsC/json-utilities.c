@@ -343,6 +343,9 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
       return 0;
     }
+
+    default:
+      return 0;
   }
 }
 
@@ -833,6 +836,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
       return hash;
     }
   }
+  return hash;   // never reached
 }
 
 ////////////////////////////////////////////////////////////////////////////////

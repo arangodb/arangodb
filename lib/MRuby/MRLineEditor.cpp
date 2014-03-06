@@ -158,6 +158,10 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
   case EXPR_MAX_STATE:
     /* don't know what to do with this token */
     break;
+
+  default:
+    /* this state is unexpected! */
+    break;
   }
 
   return code_block_open;

@@ -93,6 +93,8 @@ static const char* TypeName (const TRI_aql_access_e type) {
     case TRI_AQL_ACCESS_ALL:
       return "all";
   }
+
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +112,8 @@ static const char* RangeName (const TRI_aql_range_e type) {
     case TRI_AQL_RANGE_UPPER_INCLUDED:
       return "upper (inc)";
   }
+
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
