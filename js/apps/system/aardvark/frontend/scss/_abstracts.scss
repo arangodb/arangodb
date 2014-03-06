@@ -9,10 +9,10 @@
 %clear-float {
   &:after {
     clear: both;
-    content: ".";
+    content: '.';
     display: block;
-    font-size: 0px;
-    height: 0px;
+    font-size: 0;
+    height: 0;
     visibility: hidden;
   }
 }
@@ -22,215 +22,238 @@
 }
 
 %fixedbar {
+  background-color: $c-nav-bg;
+  color: $c-white;
+  left: 0;
   position: fixed;
-  left: 0px;
-  right: 0px;
+  right: 0;
   width: 100%;
-  background-color: $c_nav_bg;
-  color: $c_white;
   z-index: 1000;
 }
 
 %negative {
-  background-color: $c_negative;
+  background-color: $c-negative;
+
   &:hover {
-    background-color: $c_negative_hover;
+    background-color: $c-negative-hover;
   }
 }
 
 %icon-negative {
-  color: $c_negative;
+  color: $c-negative;
+
   &:hover {
-    color: $c_negative_hover;
+    color: $c-negative-hover;
   }
 }
 
 %svg-negative {
-  fill: $c_negative;
+  fill: $c-negative;
+
   &:hover {
-    fill: $c_negative_hover;
+    fill: $c-negative-hover;
   }
 }
 
 %positive {
-  background-color: $c_positive;
+  background-color: $c-positive;
+
   &:hover {
-    background-color: $c_positive_hover;
+    background-color: $c-positive-hover;
   }
 }
 
 %icon-positive {
-  color: $c_positive;
+  color: $c-positive;
+
   &:hover {
-    color: $c_positive_hover;
+    color: $c-positive-hover;
   }
 }
 
 %svg-positive {
-  fill: $c_positive;
+  fill: $c-positive;
+
   &:hover {
-    fill: $c_positive_hover;
+    fill: $c-positive-hover;
   }
 }
 
 %warning {
-  background-color: $c_warning;
+  background-color: $c-warning;
+
   &:hover {
-    background-color: $c_warning_hover;
+    background-color: $c-warning-hover;
   }
 }
 
 %icon-warning {
-  color: $c_warning;
+  color: $c-warning;
+
   &:hover {
-    color: $c_warning_hover;
+    color: $c-warning-hover;
   }
 }
 
 %svg-warning {
-  fill: $c_warning;
+  fill: $c-warning;
+
   &:hover {
-    fill: $c_warning_hover;
+    fill: $c-warning-hover;
   }
 }
 
 %neutral {
-  background-color: $c_neutral;
+  background-color: $c-neutral;
+
   &:hover {
-    background-color: $c_neutral_hover;
+    background-color: $c-neutral-hover;
   }
 }
 
 %icon-neutral {
-  color: $c_neutral;
+  color: $c-neutral;
+
   &:hover {
-    color: $c_neutral_hover;
+    color: $c-neutral-hover;
   }
 }
 
 %svg-neutral {
-  fill: $c_neutral;
+  fill: $c-neutral;
+
   &:hover {
-    fill: $c_neutral_hover;
+    fill: $c-neutral-hover;
   }
 }
 
 %primary {
-  background-color: $c_primary;
+  background-color: $c-primary;
+
   &:hover {
-    background-color: $c_primary_hover;
+    background-color: $c-primary-hover;
   }
 }
 
 %icon-primary {
-  color: $c_primary;
+  color: $c-primary;
+
   &:hover {
-    color: $c_primary_hover;
+    color: $c-primary-hover;
   }
 }
 
 %header {
-  background-color: $c_header_btn_bg;
-  color: $c_header_btn_fg;
-  border: 1px solid $c_header_btn_border;
+  background-color: $c-header-btn-bg;
+  border: 1px solid $c-header-btn-border;
+  color: $c-header-btn-fg;
+
   &:hover {
-    background-color: $c_white;
-    color: $c_black;
+    background-color: $c-white;
+    color: $c-black;
   }
 }
 
 %notification {
-  background-color: $c_notification;
+  background-color: $c-notification;
+
   &:hover {
-    background-color: $c_notification_hover;
+    background-color: $c-notification-hover;
   }
 }
 
 %icon-notification {
-  color: $c_notification;
+  color: $c-notification;
+
   &:hover {
-    color: $c_notification_hover;
+    color: $c-notification-hover;
   }
 }
 
 
 %inactive {
-  background-color: $c_inactive;
+  background-color: $c-inactive;
+
   &:hover {
-    background-color: $c_inactive_hover;
+    background-color: $c-inactive-hover;
   }
 }
 
 %icon-inactive {
-  color: $c_inactive;
+  color: $c-inactive;
+
   &:hover {
-    color: $c_inactive_hover;
+    color: $c-inactive-hover;
   }
 }
 
 %svg-inactive {
-  fill: $c_inactive;
+  fill: $c-inactive;
+
   &:hover {
-    fill: $c_inactive_hover;
+    fill: $c-inactive-hover;
   }
 }
 
 %dropdown-menu {
   @extend %pull-left;
-  position: absolute;
-  top: 80%;
-  right: 0px;
-  z-index: 1000;
-  display: none;
-  padding: 5px 0px;
-  margin: 5px 0px 0px;
-  list-style: none;
-  background-color: $c_white;
-  border: {
-    style: solid;
-    color: $c_semi_transp;
-    width: 1px;
-  }
   @include border-radius(3px);
 
+  background-color: $c-white;
+  border: {
+    color: $c-semi-transp;
+    style: solid;
+    width: 1px;
+  }
+  display: none;
+  list-style: none;
+  margin: 5px 0 0;
+  padding: 5px 0;
+  position: absolute;
+  right: 0;
+  top: 80%;
+  z-index: 1000;
+
   li {
-    line-height: 20px;
+    line-height: 20;
     white-space: nowrap;
     width: 100%;
   }
 
   li.dropdown-header {
+    color: $c-dark-grey;
     font: {
-      weight: 600;
       size: 15px;
+      weight: 600;
     }
-    color: $c_dark_grey;
-    padding: 0px 20px;
     font-variant: small-caps;
+    padding: 0 20;
   }
 
   li.divider {
-    background-color: $c_grey;
+    background-color: $c-grey;
     height: 1px;
-    margin: 10px 1px;
+    margin: 10 1px;
   }
 
   a {
-    color: $c_nav_bg;
-    padding: 0px 20px;
+    color: $c-nav-bg;
+    padding: 0 20;
   }
 
   &:before {
+    @include border-triangle(7px, $c-semi-transp);
+
     position: absolute;
-    top: -7px;
     right: 7px;
-    @include border-triangle(7px, $c_semi_transp);
+    top: -7px;
   }
 
   &:after {
-    top: -6px;
+    @include border-triangle(7px, $c-white);
+
     right: 8px;
-    @include border-triangle(7px, $c_white);
+    top: -6px;
   }
 
 }
