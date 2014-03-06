@@ -2271,7 +2271,8 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
 
 #ifdef TRI_ENABLE_CLUSTER
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
-                                           TRI_voc_tick_t id) {
+                                           TRI_voc_tick_t id,
+                                           bool force) {
   size_t i, n;
   int res;
   
@@ -2292,7 +2293,7 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
     if (vocbase != NULL && 
         vocbase->_id == id &&
-        ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+        (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
       TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name);
     
       if (TRI_DropVocBase(vocbase)) {

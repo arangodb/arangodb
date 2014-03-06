@@ -10,6 +10,11 @@ LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev"
 LIBEV_LDFLAGS=""
 LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
 
+CMAKE_LIBEV_INCLUDE="${srcdir}/3rdParty/libev"
+CMAKE_LIBEV_LIB_PATH="${srcdir}/3rdParty/libev/BUILD/.libs/"
+CMAKE_LIBEV_LIBS="ev"
+CMAKE_LIBEV_VERSION="${TRI_LIBEV_VERSION}"
+
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
 dnl ----------------------------------------------------------------------------
@@ -17,6 +22,11 @@ dnl ----------------------------------------------------------------------------
 AC_SUBST(LIBEV_CPPFLAGS)
 AC_SUBST(LIBEV_LDFLAGS)
 AC_SUBST(LIBEV_LIBS)
+
+AC_SUBST(CMAKE_LIBEV_INCLUDE)
+AC_SUBST(CMAKE_LIBEV_LIB_PATH)
+AC_SUBST(CMAKE_LIBEV_LIBS)
+AC_SUBST(CMAKE_LIBEV_VERSION)
 
 LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS} -DTRI_LIBEV_VERSION='\"${TRI_LIBEV_VERSION}\"'"
 

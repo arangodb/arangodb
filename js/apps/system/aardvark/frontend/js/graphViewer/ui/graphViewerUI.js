@@ -369,8 +369,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       );
       
       menubar.id = "menubar";
-      menubar.className = "thumbnails2";
-      
+
       transparentHeader.className = "headerBar";
       
       buttons.id = "modifiers";
