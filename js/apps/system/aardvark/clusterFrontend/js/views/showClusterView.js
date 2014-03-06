@@ -69,10 +69,8 @@
       this.documentStore =  new window.arangoDocuments();
       this.statisticsDescription = new window.StatisticsDescription();
       this.statisticsDescription.fetch({
-        async: false, 
-        beforeSend: window.App.addAuth.bind(window.App)
+        async: false
       });
-
       this.dbs = new window.ClusterDatabases([], {
         interval: this.interval
       });
