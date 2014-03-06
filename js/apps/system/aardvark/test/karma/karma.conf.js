@@ -16,12 +16,11 @@ module.exports = function(karma) {
 
     // list of files / patterns to load in the browser
     files: [
-      /*
       'test/lib/jasmine-1.3.1/jasmine-html.js',
       'test/lib/jslint.js',
 
       //Templates
-      {pattern: 'frontend/js/templates/*.ejs', served: true, included: true, watched: true},
+      {pattern: 'frontend/js/templates/*.ejs', served: true, included: false, watched: true},
 
       'frontend/js/lib/jquery-2.1.0.min.js',
       'frontend/js/lib/jquery-ui-1.9.2.custom.js',
@@ -49,9 +48,12 @@ module.exports = function(karma) {
       'frontend/js/lib/swagger-ui.js',
       'frontend/js/lib/highlight.7.3.pack.js',
       
+      // Template Engine Mock
+      'test/mocks/disableEJS.js',
+
+      
       // arangodb
       'frontend/js/arango/arango.js',
-      'frontend/js/arango/templateEngine.js',
       'frontend/js/shell/browser.js',
       'frontend/js/modules/org/arangodb/arango-collection-common.js',
       'frontend/js/modules/org/arangodb/arango-collection.js',
@@ -210,7 +212,6 @@ module.exports = function(karma) {
 
       // Specs
       // GraphViewer
-      
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
@@ -239,7 +240,6 @@ module.exports = function(karma) {
 //      'test/specs/graphViewer/specNodeReducer/modularityJoinerSpec.js',
 //      'test/specs/graphViewer/specWindowObjects/workerWrapperSpec.js',
       'test/specs/graphViewer/specContextMenu/contextMenuSpec.js', 
-
       // Arango
       'test/specs/arango/arangoSpec.js',
 
@@ -273,10 +273,8 @@ module.exports = function(karma) {
       'test/specs/views/clusterShardsViewSpec.js',
       // Router
       'test/specs/router/routerSpec.js',
-      'test/specJSLint/jsLintSpec.js',
 
       //Planner
-
       //Router
       'test/specs/planner/router/routerSpec.js',
       //View
@@ -284,15 +282,7 @@ module.exports = function(karma) {
       'test/specs/planner/views/planTestViewSpec.js',
       'test/specs/planner/views/planScenarioSelectorViewSpec.js',
 
-
-      //Cluster
-
-      //Router
-      'test/specs/cluster/router/routerSpec.js'
-      //View
-      
       'test/specJSLint/jsLintSpec.js'
-      */
     ],
 
 
@@ -333,7 +323,7 @@ module.exports = function(karma) {
     // - Safari (only Mac)
     // - PhantomJS
     // - IE (only Windows)
-    browsers: ["PhantomJS", "Firefox"],
+    browsers: ["PhantomJS"],
 
     // If browser does not capture in given timeout [ms], kill it
     captureTimeout: 60000,
