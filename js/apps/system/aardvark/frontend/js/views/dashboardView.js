@@ -130,51 +130,6 @@
       this.graphs = {};
     },
 
-
-
-    getChartsForFigure : function (figure) {
-      this.series[figure.group][figure.identifier] = {};
-      var result = {};
-      if (this.dygraphConfig.chartTypeExceptions[figure.type] &&
-        this.dygraphConfig.chartTypeExceptions[figure.type][figure.identifier]) {
-        var d = {
-          type: this.dygraphConfig.chartTypeExceptions[figure.type][figure.identifier],
-          identifier: figure.identifier,
-          group: figure.group,
-          name : figure.name
-        };
-
-        result[this.dygraphConfig.chartTypeExceptions[figure.type][figure.identifier]] =
-        this.getChartStructure(d);
-        if (figure.type === "distribution") {
-          result[figure.type] = this.getChartStructure(figure);
-        }
-      } else {
-        result[figure.type] = this.getChartStructure(figure);
-      }
-      this.series[figure.group][figure.identifier] =  result;
-    },
-
-    getChartStructure: function (figure) {
-      var title = "";
-      if (figure.name) {
-        title =  figure.name;
-      }
-      var type = figure.type;
-      var showGraph = true;
-      if (type === "lineChartDiffBased") {
-        title +=  " per seconds";
-        type = "current";
-      } else if (type === "distribution") {
-        type = "distribution";
-      } else if (type === "accumulated") {
-        showGraph = false;
-      } else if (type === "currentDistribution")  {
-        type = "current";
-      }
-      return new this.dygraphConfig.Chart(figure.identifier, type, showGraph, title);
-    },
-
     prepareSeries: function () {
       var self = this;
       self.series = {};
@@ -182,12 +137,13 @@
         self.series[group.group] = {};
       });
       self.description.get("figures").forEach(function(figure) {
-        self.getChartsForFigure(figure);
+        self.series[figure.group][figure.identifier] =
+            self.dygraphConfig.getChartsForFigure(figure.identifier, figure.type, figure.name);
       });
       Object.keys(self.dygraphConfig.combinedCharts).forEach(function (cc) {
         var part = cc.split("_");
-        var fig = {identifier : part[1], group : part[0], type : "current"};
-        self.getChartsForFigure(fig);
+        self.series[part[0]][part[1]] =
+            self.dygraphConfig.getChartsForFigure(part[1], self.dygraphConfig.regularLineChartType);
       });
     },
 
@@ -214,7 +170,7 @@
           var valueLists = self.series[g.group][figure];
           Object.keys(valueLists).forEach(function (valueList) {
             var val = entry[g.group][figure];
-            if (valueList === "lineChartDiffBased") {
+            if (valueList === self.dygraphConfig.differenceBasedLineChartType) {
               if (!self.LastValues[figure]) {
                 self.LastValues[figure] = {value : val , time: 0};
               }
@@ -243,11 +199,11 @@
                 };
               }
 
-            } else if (valueList === "distribution") {
+            } else if (valueList === self.dygraphConfig.distributionChartType) {
               valueLists[valueList].data = val;
-            } else if (valueList === "current") {
+            } else if (valueList === self.dygraphConfig.regularLineChartType) {
               valueLists[valueList].data.push([new Date(time), val]);
-            } else if (valueList === "currentDistribution")  {
+            } else if (valueList === self.dygraphConfig.distributionBasedLineChartType)  {
                 if (val !== null) {
                 val = val.count === 0 ? 0 : val.sum / val.count;
               }
