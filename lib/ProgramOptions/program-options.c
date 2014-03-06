@@ -780,10 +780,6 @@ static void VisitProgramOptions (TRI_PO_desc_t * ptr,
     case TRI_PO_VECTOR_STRING:
       functions->visitVectorStringNode((TRI_PO_vector_string_t *) ptr, input, output);
       break;
-
-    default:
-      printf("type unknown");
-      break;
   }
 }
 

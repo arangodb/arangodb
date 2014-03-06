@@ -247,8 +247,6 @@ const char* TRI_TypeNameScopeAql (const TRI_aql_scope_e type) {
     case TRI_AQL_SCOPE_FUNCTION:
       return "function";
   }
-
-  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

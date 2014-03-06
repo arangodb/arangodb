@@ -958,8 +958,6 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

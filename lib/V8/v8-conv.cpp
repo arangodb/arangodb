@@ -1434,8 +1434,6 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
     case TRI_JSON_LIST:
       return scope.Close(ObjectJsonList(json));
   }
-
-  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
