@@ -14,8 +14,11 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
   },
 
   fetch: function() {
-     this.forEach(function (m) {
-         m.fetch({async: false});
-     })
+    this.forEach(function (m) {
+      m.fetch({
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
+      });
+    })
   }
 });
