@@ -429,18 +429,22 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
     return false;
   }
 
-  _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
-  if (_commSocket.fileDescriptor == -1) {
+  int res = _open_osfhandle(_commSocket.fileHandle, 0);
+
+  if (res == -1) {
     LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
-    int res = closesocket(_commSocket.fileHandle);
+    res = TRI_CLOSE_SOCKET(_commSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
       LOG_ERROR("In SocketTask::setup closesocket(...) failed with error code: %d", (int) res);
     }
+
     TRI_invalidatesocket(&_commSocket);
     return false;
   }
+  
+  _commSocket.fileDescriptor = res;
 
 #endif
 

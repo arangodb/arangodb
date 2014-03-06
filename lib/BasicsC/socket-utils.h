@@ -59,15 +59,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid socket
-////////////////////////////////////////////////////////////////////////////////
-
-#ifndef INVALID_SOCKET
-#define INVALID_SOCKET (-1)
-#endif
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,8 +94,8 @@ extern "C" {
 static inline TRI_socket_t TRI_socket (int domain, int type, int protocol) {
   TRI_socket_t res;
 #ifdef _WIN32
-  res.fileHandle = socket(domain, type, protocol);
-  res.fileDescriptor = INVALID_SOCKET;
+  res.fileHandle     = socket(domain, type, protocol);
+  res.fileDescriptor = -1;
 #else
   res.fileDescriptor = socket(domain, type, protocol);
 #endif
@@ -131,8 +122,8 @@ static inline TRI_socket_t TRI_accept (TRI_socket_t s, struct sockaddr* address,
                                 socklen_t* address_len) {
   TRI_socket_t res;
 #ifdef _WIN32
-  res.fileHandle = accept(s.fileHandle, address, address_len);
-  res.fileDescriptor = INVALID_SOCKET;
+  res.fileHandle     = accept(s.fileHandle, address, address_len);
+  res.fileDescriptor = -1;
 #else
   res.fileDescriptor = accept(s.fileDescriptor, address, address_len);
 #endif
@@ -231,9 +222,9 @@ static inline int TRI_setsockopt (TRI_socket_t s, int level, int optname,
 
 static inline bool TRI_isvalidsocket (TRI_socket_t s) {
 #ifdef _WIN32
-  return s.fileHandle != INVALID_SOCKET;
+  return s.fileHandle != TRI_INVALID_SOCKET;
 #else
-  return s.fileDescriptor != INVALID_SOCKET;
+  return s.fileDescriptor != TRI_INVALID_SOCKET;
 #endif
 }
 
@@ -243,10 +234,10 @@ static inline bool TRI_isvalidsocket (TRI_socket_t s) {
 
 static inline void TRI_invalidatesocket (TRI_socket_t* s) {
 #ifdef _WIN32
-  s->fileHandle = INVALID_SOCKET;
-  s->fileDescriptor = INVALID_SOCKET;
+  s->fileHandle     = TRI_INVALID_SOCKET;
+  s->fileDescriptor = -1; 
 #else
-  s->fileDescriptor = INVALID_SOCKET;
+  s->fileDescriptor = TRI_INVALID_SOCKET;
 #endif
 }
 
@@ -257,13 +248,15 @@ static inline void TRI_invalidatesocket (TRI_socket_t* s) {
 /// the right thing we need in all but one places.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
 #ifdef _WIN32
-  return (int)(s.fileHandle);
-#else
-  return s.fileDescriptor;
-#endif
+static inline SOCKET TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
+  return s.fileHandle;
 }
+#else
+static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
+  return s.fileDescriptor;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open socket
