@@ -38,7 +38,7 @@ var base64Encode = require("internal").base64Encode;
 // Our default configurations:
 
 var PlannerLocalDefaults = {
-  "agencyPrefix"            : "meier",
+  "agencyPrefix"            : "arango",
   "numberOfAgents"          : 1,
   "numberOfDBservers"       : 2,
   "startSecondaries"        : false,
@@ -327,7 +327,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 /// default values:
 /// 
 ///     {
-///       "agencyPrefix"            : "meier",
+///       "agencyPrefix"            : "arango",
 ///       "numberOfAgents"          : 1,
 ///       "numberOfDBservers"       : 2,
 ///       "startSecondaries"        : false,
