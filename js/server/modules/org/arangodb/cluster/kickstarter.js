@@ -313,7 +313,11 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
-launchActions.createSystemColls = function (dispatchers, cmd) {
+launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
+  if (isRelaunch) {
+    return {"error":false, "isCreateSystemColls":true};
+  }
+
   console.info("Waiting for coordinator to come up...");
   
   var hdrs = {
