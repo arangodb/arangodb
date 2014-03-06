@@ -1,18 +1,16 @@
 <script id="showShards.ejs" type="text/template">
-<ul class="thumbnails2">
-  <div class="headerBar">
-    <a class="arangoHeader">Shard Overview</a>
-    <div class="headerButtonBar pull-right">
-      <select id="selectDB">
-        <% _.each(dbs, function(d) { %>
-          <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
-        <% }); %>
-      </select>
-      <select id="selectCol">
-      </select>
-    </div>
+<div class="headerBar">
+  <a class="arangoHeader">Shard Overview</a>
+  <div class="headerButtonBar pull-right">
+    <select id="selectDB">
+      <% _.each(dbs, function(d) { %>
+        <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
+      <% }); %>
+    </select>
+    <select id="selectCol">
+    </select>
   </div>
-</ul>
+</div>
 <ul id="clusterServers" class="tileList">
   <% 
     _.each(names, function(n) { 

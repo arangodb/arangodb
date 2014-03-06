@@ -211,7 +211,7 @@ namespace triagens {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollection (struct TRI_json_s* const,
+        int processRestoreCollection (struct TRI_json_s const*,
                                       bool,
                                       bool,
                                       bool,
@@ -222,7 +222,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexes (struct TRI_json_s* const,
+        int processRestoreIndexes (struct TRI_json_s const*,
                                    bool,
                                    TRI_server_id_t,
                                    std::string&);

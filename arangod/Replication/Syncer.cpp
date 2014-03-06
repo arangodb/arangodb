@@ -418,9 +418,16 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
+  params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  params._isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  params._isSystem    = (name[0] == '_');
+  params._planId      = 0;
+
+  TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
+  if (planId > 0) {
+    params._planId = planId;
+  }
   
   // wait for "old" collection to be dropped
   char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
