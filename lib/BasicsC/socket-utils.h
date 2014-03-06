@@ -127,14 +127,14 @@ static inline int TRI_listen (TRI_socket_t socket, int backlog) {
 /// @brief accept abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_socket_t TRI_accept (TRI_socket_t socket, struct sockaddr* address,
+static inline TRI_socket_t TRI_accept (TRI_socket_t s, struct sockaddr* address,
                                 socklen_t* address_len) {
   TRI_socket_t res;
 #ifdef _WIN32
-  res.fileHandle = accept(socket.fileHandle, address, address_len);
+  res.fileHandle = accept(s.fileHandle, address, address_len);
   res.fileDescriptor = INVALID_SOCKET;
 #else
-  res.fileDescriptor = accept(socket.fileDescriptor, address, address_len);
+  res.fileDescriptor = accept(s.fileDescriptor, address, address_len);
 #endif
   return res;
 }
@@ -143,12 +143,12 @@ static inline TRI_socket_t TRI_accept (TRI_socket_t socket, struct sockaddr* add
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind (TRI_socket_t socket, const struct sockaddr* address, 
+static inline int TRI_bind (TRI_socket_t s, const struct sockaddr* address, 
               int addr_len) {
 #ifdef _WIN32
-  return bind(socket.fileHandle, address, addr_len);
+  return bind(s.fileHandle, address, addr_len);
 #else
-  return bind(socket.fileDescriptor, address, addr_len);
+  return bind(s.fileDescriptor, address, addr_len);
 #endif
 }
 
@@ -156,11 +156,11 @@ static inline int TRI_bind (TRI_socket_t socket, const struct sockaddr* address,
 /// @brief connect abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_connect (TRI_socket_t socket, const struct sockaddr *address, int addr_len) {
+static inline int TRI_connect (TRI_socket_t s, const struct sockaddr *address, int addr_len) {
 #ifdef _WIN32
-  return connect(socket.fileHandle, address, addr_len);
+  return connect(s.fileHandle, address, addr_len);
 #else
-  return connect(socket.fileDescriptor, address, addr_len);
+  return connect(s.fileDescriptor, address, addr_len);
 #endif
 }
 
@@ -168,12 +168,12 @@ static inline int TRI_connect (TRI_socket_t socket, const struct sockaddr *addre
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_send (TRI_socket_t socket, const void* buffer, size_t length,
+static inline int TRI_send (TRI_socket_t s, const void* buffer, size_t length,
                      int flags) {
 #ifdef _WIN32
-  return send(socket.fileHandle, (char*) buffer, (int) length, flags);
+  return send(s.fileHandle, (char*) buffer, (int) length, flags);
 #else
-  return send(socket.fileDescriptor, buffer, length, flags);
+  return send(s.fileDescriptor, buffer, length, flags);
 #endif
 }
 
@@ -182,14 +182,14 @@ static inline int TRI_send (TRI_socket_t socket, const void* buffer, size_t leng
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockname (TRI_socket_t socket, struct sockaddr* addr, 
+static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr, 
                             int* len) {
-  return getsockname(socket.fileHandle, addr, len);
+  return getsockname(s.fileHandle, addr, len);
 }
 #else
-static inline int TRI_getsockname (TRI_socket_t socket, struct sockaddr* addr, 
+static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr, 
                             socklen_t* len) {
-  return getsockname(socket.fileDescriptor, addr, len);
+  return getsockname(s.fileDescriptor, addr, len);
 }
 #endif
 
@@ -198,14 +198,14 @@ static inline int TRI_getsockname (TRI_socket_t socket, struct sockaddr* addr,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockopt (TRI_socket_t socket, int level, int optname,
+static inline int TRI_getsockopt (TRI_socket_t s, int level, int optname,
                            void* optval, socklen_t* optlen) {
-  return getsockopt(socket.fileHandle, level, optname, (char*) optval, optlen);
+  return getsockopt(s.fileHandle, level, optname, (char*) optval, optlen);
 }
 #else
-static inline int TRI_getsockopt (TRI_socket_t socket, int level, int optname,
+static inline int TRI_getsockopt (TRI_socket_t s, int level, int optname,
                            void* optval, socklen_t* optlen) {
-  return getsockopt(socket.fileDescriptor, level, optname, optval, optlen);
+  return getsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
 #endif
 
@@ -214,14 +214,14 @@ static inline int TRI_getsockopt (TRI_socket_t socket, int level, int optname,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_setsockopt (TRI_socket_t socket, int level, int optname,
+static inline int TRI_setsockopt (TRI_socket_t s, int level, int optname,
                            const void* optval, int optlen) {
-  return setsockopt(socket.fileHandle, level, optname, (const char*) optval, optlen);
+  return setsockopt(s.fileHandle, level, optname, (const char*) optval, optlen);
 }
 #else
-static inline int TRI_setsockopt (TRI_socket_t socket, int level, int optname,
+static inline int TRI_setsockopt (TRI_socket_t s, int level, int optname,
                            const void* optval, socklen_t optlen) {
-  return setsockopt(socket.fileDescriptor, level, optname, optval, optlen);
+  return setsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
 #endif
 
@@ -229,11 +229,11 @@ static inline int TRI_setsockopt (TRI_socket_t socket, int level, int optname,
 /// @brief checks whether or not a socket is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_isvalidsocket (TRI_socket_t socket) {
+static inline bool TRI_isvalidsocket (TRI_socket_t s) {
 #ifdef _WIN32
-  return socket.fileHandle != INVALID_SOCKET;
+  return s.fileHandle != INVALID_SOCKET;
 #else
-  return socket.fileDescriptor != INVALID_SOCKET;
+  return s.fileDescriptor != INVALID_SOCKET;
 #endif
 }
 
@@ -241,12 +241,12 @@ static inline bool TRI_isvalidsocket (TRI_socket_t socket) {
 /// @brief invalidates a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void TRI_invalidatesocket (TRI_socket_t* socket) {
+static inline void TRI_invalidatesocket (TRI_socket_t* s) {
 #ifdef _WIN32
-  socket->fileHandle = INVALID_SOCKET;
-  socket->fileDescriptor = INVALID_SOCKET;
+  s->fileHandle = INVALID_SOCKET;
+  s->fileDescriptor = INVALID_SOCKET;
 #else
-  socket->fileDescriptor = INVALID_SOCKET;
+  s->fileDescriptor = INVALID_SOCKET;
 #endif
 }
 
@@ -257,11 +257,11 @@ static inline void TRI_invalidatesocket (TRI_socket_t* socket) {
 /// the right thing we need in all but one places.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t socket) {
+static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
 #ifdef _WIN32
-  return (int)(socket.fileHandle);
+  return (int)(s.fileHandle);
 #else
-  return socket.fileDescriptor;
+  return s.fileDescriptor;
 #endif
 }
 
