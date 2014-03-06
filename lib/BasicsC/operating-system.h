@@ -175,7 +175,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -313,7 +313,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -469,7 +469,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -678,6 +678,8 @@ typedef unsigned char bool;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
+
+#define TRI_INVALID_SOCKET              INVALID_SOCKET
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
