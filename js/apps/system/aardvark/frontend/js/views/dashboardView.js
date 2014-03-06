@@ -9,7 +9,7 @@
     el: '#content',
     contentEl: '.contentDiv',
     distributionChartDiv : "#distributionChartDiv",
-    interval: 3000, // in milliseconds
+    interval: 5000, // in milliseconds
     detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
     detailEl: '#modalPlaceholder',
 
@@ -78,7 +78,7 @@
       $(self.detailEl).html(this.detailTemplate.render({figure: chart.options.title}));
       self.calculateSeries();
       chart.graphCreated = false;
-      self.showDetailFor("dashboardDetailed", id, chart);
+      self.showDetailFor("dashboardDetailed", id, chart, chart.options.title);
       self.createLineChart(chart, id,  "dashboardDetailed");
       $('#lineChartDetail').modal('show');
       $('#lineChartDetail').on('hidden', function () {
@@ -106,6 +106,7 @@
         this.calculateSeries();
       }
       this.description = this.options.description.models[0];
+      this.detailChart.chart.options.title = this.detailChart.title;
       this.detailChart = {};
       window.App.navigate("#", {trigger: true});
     },
@@ -450,8 +451,12 @@
     );
   },
 
-  showDetailFor : function (div, figure, chart) {
-    this.detailChart = {div: div, chart : chart, figure: figure, graphCreated : false };
+  showDetailFor : function (div, figure, chart, title) {
+    this.detailChart = {
+        div: div, chart : chart,
+        figure: figure, graphCreated : false,
+        title : title
+    };
   },
 
   template: templateEngine.createTemplate("dashboardView.ejs"),
