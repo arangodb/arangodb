@@ -44,6 +44,8 @@ if test "x$tr_ICU" = xyes;  then
   ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
 fi
 
+CMAKE_ICU_VERSION="${TRI_ICU_VERSION}"
+
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
 dnl ----------------------------------------------------------------------------
@@ -51,6 +53,11 @@ dnl ----------------------------------------------------------------------------
 AC_SUBST(ICU_CPPFLAGS)
 AC_SUBST(ICU_LDFLAGS)
 AC_SUBST(ICU_LIBS)
+
+AC_SUBST(CMAKE_ICU_INCLUDE)
+AC_SUBST(CMAKE_ICU_LIB_PATH)
+AC_SUBST(CMAKE_ICU_LIBS)
+AC_SUBST(CMAKE_ICU_VERSION)
 
 dnl ----------------------------------------------------------------------------
 dnl informational output
