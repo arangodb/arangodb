@@ -1,5 +1,4 @@
 <script id="collectionsView.ejs" type="text/template">
-<ul class="thumbnails2">
   <div class="headerBar">
     <div class="headerButtonBar pull-right">
       <ul class="headerButtonList">
@@ -15,20 +14,23 @@
       <a class="arangoHeader">Collections</a>
     </div>
     <div class="searchField pull-left">
-      <input type="text" id="searchInput" class="searchInput" placeholder="Search..."/><img id="searchSubmit" width="16" height="16" src="img/enter_icon.png" class="searchSubmitIcon" />
+      <input type="text" id="searchInput" class="searchInput" placeholder="Search..."/><img id="searchSubmit" width="16"
+                                                                                            height="16"
+                                                                                            src="img/enter_icon.png"
+                                                                                            class="searchSubmitIcon"/>
     </div>
+  </div>
 
 
+  <div id="collectionsDropdown2" class="headerDropdown">
 
-    <div id="collectionsDropdown2" class="headerDropdown">
+    <div id="collectionsDropdown" class="dropdownInner">
 
-      <div id="collectionsDropdown" class="dropdownInner">
-
-        <ul>
+      <ul>
         <li class="nav-header">Type</li>
         <li><a>
-            <label class="checkbox checkboxLabel">
-              <input class="css-checkbox" type="checkbox" id="checkSystem">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkSystem">
             <label class="css-label" id="checkSystem"></label>System
           </label>
         </a></li>
@@ -48,7 +50,7 @@
         </a></li>
       </ul>
 
-        <ul>
+      <ul>
         <li class="nav-header">Status</li>
 
         <li><a href="#">
@@ -66,7 +68,7 @@
         </a></li>
 
       </ul>
-        <ul>
+      <ul>
         <li class="nav-header">Sorting</li>
 
         <li><a href="#">
@@ -92,14 +94,10 @@
       </ul>
     </div>
 
-    </div>
+  </div>
 
-
-
-
-</ul>
-<div class="contentDiv" id="arangoCollectionsContainer">
+  <div class="contentDiv" id="arangoCollectionsContainer">
     <div class="containerdivNewLine"/>
-    <ul id="collectionsThumbnailsIn" class="tileList" />
-</div>
+    <ul id="collectionsThumbnailsIn" class="tileList"/>
+  </div>
 </script>
