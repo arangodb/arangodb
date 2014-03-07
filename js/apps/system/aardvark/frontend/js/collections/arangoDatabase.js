@@ -8,7 +8,7 @@
 
     model: window.Database,
 
-    comparator: "name",
+    comparator: function(item) { return item.get('name').toLowerCase(); },
 
     sync: function(method, model, options) {
       if (method === "read") {
