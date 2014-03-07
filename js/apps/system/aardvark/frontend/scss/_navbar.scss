@@ -66,9 +66,9 @@ a.tab {
   display: block;
   padding: {
     top: 9px;
-    left: 10;
-    bottom: 10;
-    right: 10;
+    left: 10px;
+    bottom: 10px;
+    right: 10px;
   }
 
   &.userImg {
@@ -90,7 +90,7 @@ ul.gv-dropdown-menu {
 
   background-color: $c-low-transp;
   border: solid 1px $c-bar-bg;
-  margin-right: -20;
+  margin-right: -20px;
   margin-top: 6px;
 
   &:after {
