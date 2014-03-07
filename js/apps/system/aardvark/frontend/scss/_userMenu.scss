@@ -1,8 +1,6 @@
 .userMenuImg {
-//  height : 26px;
-//  width : 26px;
-  background-color: $c_inactive;
-  border-radius: 3px;
-  border: 2px solid #8AA051;
+  background-color: $c-inactive;
+  @include border-radius(3px);
+  border: 2px solid $c-positive;
   margin-top: -4px;
 }

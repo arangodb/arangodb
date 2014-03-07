@@ -96,21 +96,32 @@ button.shutdown {
   padding: 3px 14px;
 }
 
-a.headerButton {
+%header-button {
   @extend %clickable;
   @extend %header;
+  @extend %pull-left;
   @include border-radius(3px);
   @include box-shadow(none);
 
-  float: left;
-  height: 17px;
   margin: {
     left: 5px;
     right: 3px;
-    top: 2px; 
   }
+  padding: {
+    left: 9px;
+    right: 9px;
+  }
+}
 
-  padding: 4px 9px 2px;
+a.headerButton {
+  @extend %header-button;
+
+  height: 17px;
+  margin-top: 2px; 
+  padding: {
+    top: 4px;
+    bottom: 2px;
+  }
   position: relative;
   width: 9px;
 
@@ -352,12 +363,16 @@ button.btn-server {
 }
 
 a.button-gui {
-  @extend a.headerButton;
+  @extend %header-button;
   height: auto;
-  margin-bottom: 0;
-  margin-top: 0;
-  padding-bottom: 1px;
-  padding-top: 1px;
+  margin: {
+    bottom: 0;
+    top: 0;
+  }
+  padding: {
+    top: 1px;
+    bottom: 1px;
+  }
   position: absolute;
   right: 2px;
   text-decoration: none !important;
