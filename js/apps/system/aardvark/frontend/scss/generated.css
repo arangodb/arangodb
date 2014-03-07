@@ -6,10 +6,10 @@ textarea,
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, li li.tile, li li.bigtile, li li.tile a span.add-Icon, li li.bigtile a span.add-Icon, div.centralContent, .contentDiv li, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon, div.centralContent, .contentDiv li, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, li li.tile div.iconSet span, li li.bigtile div.iconSet span, .fixedDropdown button {
+div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span, .fixedDropdown button {
   float: right; }
 
 ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after {
@@ -20,7 +20,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, li li.tile a span.icon, li li.bigtile a span.icon, li li.tile a svg, li li.bigtile a svg, li li.tile div.iconSet span, li li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, li.tile a span.icon, li.bigtile a span.icon, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -83,7 +83,7 @@ nav.navbar, footer.footer {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -102,7 +102,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   top: 80%;
   z-index: 1000; }
   ul.link-dropdown-menu li, ul.user-dropdown-menu li, ul.gv-dropdown-menu li {
-    line-height: 20;
+    line-height: 20px;
     white-space: nowrap;
     width: 100%; }
   ul.link-dropdown-menu li.dropdown-header, ul.user-dropdown-menu li.dropdown-header, ul.gv-dropdown-menu li.dropdown-header {
@@ -110,14 +110,14 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
-    padding: 0 20; }
+    padding: 0 20px; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
-    margin: 10 1px; }
+    margin: 10px 1px; }
   ul.link-dropdown-menu a, ul.user-dropdown-menu a, ul.gv-dropdown-menu a {
     color: #333232;
-    padding: 0 20; }
+    padding: 0 20px; }
   ul.link-dropdown-menu:before, ul.user-dropdown-menu:before, ul.gv-dropdown-menu:before {
     position: absolute;
     border-width: 7px;
@@ -185,9 +185,9 @@ a.tab {
   color: white;
   display: block;
   padding-top: 9px;
-  padding-left: 10;
-  padding-bottom: 10;
-  padding-right: 10; }
+  padding-left: 10px;
+  padding-bottom: 10px;
+  padding-right: 10px; }
   a.tab.userImg {
     padding-bottom: 5px; }
 
@@ -197,7 +197,7 @@ ul.gv-dropdown-menu {
   border-radius: 0;
   background-color: rgba(0, 0, 0, 0.7);
   border: solid 1px #686766;
-  margin-right: -20;
+  margin-right: -20px;
   margin-top: 6px; }
   ul.gv-dropdown-menu:after {
     border-bottom-color: #333232; }
@@ -251,7 +251,7 @@ footer.footer {
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close {
   border: 0;
   color: white;
-  margin-left: 10;
+  margin-left: 10px;
   padding: 5px 16px; }
 
 .button-header {
@@ -324,12 +324,12 @@ a.headerButton {
 div.toolbox > div.gv_action_button {
   background-color: #333232;
   color: white;
-  height: 50;
+  height: 50px;
   margin-bottom: 2px;
   margin-top: 2px;
   position: relative;
   text-align: center;
-  width: 50; }
+  width: 50px; }
   div.toolbox > div.gv_action_button.active {
     background-color: #8aa051; }
   div.toolbox > div.gv_action_button:first-child {
@@ -352,21 +352,21 @@ h6.gv_button_title {
 button.graphViewer-icon-button {
   background-color: transparent;
   border: 0;
-  height: 20;
+  height: 20px;
   margin-left: 5px;
   margin-top: -2px;
   padding: 0;
-  width: 20; }
+  width: 20px; }
 
 button.graphViewer-icon-button > img {
-  height: 20;
-  padding-bottom: 10;
-  width: 20; }
+  height: 20px;
+  padding-bottom: 10px;
+  width: 20px; }
 
 button.gv_dropdown_entry {
-  height: 30;
+  height: 30px;
   margin: 4px 4px 4px 30px;
-  width: 160; }
+  width: 160px; }
 
 button.gv_context_button {
   width: 65px; }
@@ -476,7 +476,7 @@ button.btn-server {
   margin: 5px; }
 
 button.btn-server {
-  width: 120; }
+  width: 120px; }
 
 a.button-gui {
   height: auto;
@@ -491,8 +491,8 @@ a.button-gui {
   width: auto; }
 
 .clusterDownBtn {
-  padding-bottom: 10;
-  padding-top: 10;
+  padding-bottom: 10px;
+  padding-top: 10px;
   text-align: center; }
   .clusterDownBtn button {
     -moz-border-radius: 3px;
@@ -501,13 +501,13 @@ a.button-gui {
     background-color: #f1f1f1;
     border: 1px solid rgba(0, 0, 0, 0.1875);
     color: #333333;
-    font-size: 20;
+    font-size: 20px;
     font-weight: 300;
     margin: 0;
     padding: 12px 18px;
     text-align: center;
     text-decoration: none !important;
-    width: 250; }
+    width: 250px; }
     .clusterDownBtn button:hover {
       background-color: #e8e8e8;
       color: #4a6c30;
@@ -525,7 +525,7 @@ ul.tileList {
   margin-left: -6px;
   margin-right: -6px; }
 
-li li.tile, li li.bigtile {
+li.tile, li.bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -536,30 +536,30 @@ li li.tile, li li.bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
-  li li.tile img.icon, li li.bigtile img.icon {
+  li.tile img.icon, li.bigtile img.icon {
     height: 50px;
     width: 50px; }
-  li li.tile a span.add-Icon, li li.bigtile a span.add-Icon {
+  li.tile a span.add-Icon, li.bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
     margin-right: 10px;
     margin-top: -5px;
     position: relative; }
-  li li.tile a span.icon, li li.bigtile a span.icon {
+  li.tile a span.icon, li.bigtile a span.icon {
     font-size: 50px; }
-  li li.tile a svg.icon, li li.bigtile a svg.icon {
+  li.tile a svg.icon, li.bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  li li.tile svg.tile-icon-svg, li li.bigtile svg.tile-icon-svg {
+  li.tile svg.tile-icon-svg, li.bigtile svg.tile-icon-svg {
     fill: #686766;
     height: 50px;
-    margin-top: 10px;
+    margin: 110px;
     width: 50px; }
-  li li.tile span.tile-icon, li li.bigtile span.tile-icon {
+  li.tile span.tile-icon, li.bigtile span.tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  li li.tile h5, li li.bigtile h5 {
+  li.tile h5, li.bigtile h5 {
     background: #686766;
     color: white;
     font-size: 12px;
@@ -568,48 +568,49 @@ li li.tile, li li.bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  li li.tile div.iconSet, li li.bigtile div.iconSet {
+  li.tile div.iconSet, li.bigtile div.iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    li li.tile div.iconSet span, li li.bigtile div.iconSet span {
+    li.tile div.iconSet span, li.bigtile div.iconSet span {
       font-size: 18px;
       opacity: .5;
       padding-left: 7px; }
-      li li.tile div.iconSet span:hover, li li.bigtile div.iconSet span:hover {
+      li.tile div.iconSet span:hover, li.bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      li li.tile div.iconSet span.disabled, li li.bigtile div.iconSet span.disabled {
+      li.tile div.iconSet span.disabled, li.bigtile div.iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-  li li.tile .badge-success, li li.bigtile .badge-success {
+  li.tile .badge-success, li.bigtile .badge-success {
     font-weight: 300; }
-  li li.tile .unloaded div, li li.bigtile .unloaded div {
+  li.tile .unloaded div, li.bigtile .unloaded div {
     border-bottom: 16px solid #ff8f35; }
-  li li.tile .deleted div, li li.bigtile .deleted div {
+  li.tile .deleted div, li.bigtile .deleted div {
     border-bottom: 16px solid #770000; }
-  li li.tile div.tileBadge, li li.bigtile div.tileBadge {
+  li.tile div.tileBadge, li.bigtile div.tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    li li.tile div.tileBadge button, li li.bigtile div.tileBadge button {
+    li.tile div.tileBadge button, li.bigtile div.tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    li li.tile div.tileBadge span, li li.bigtile div.tileBadge span {
+    li.tile div.tileBadge span, li.bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      li li.tile div.tileBadge span div.corneredBadge, li li.bigtile div.tileBadge span div.corneredBadge {
+      li.tile div.tileBadge span div.corneredBadge, li.bigtile div.tileBadge span div.corneredBadge {
         border-left: 17px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
         height: 0;
         padding-left: 4px;
         padding-right: 9px; }
-        li li.tile div.tileBadge span div.corneredBadge.loaded, li li.bigtile div.tileBadge span div.corneredBadge.loaded {
+        li.tile div.tileBadge span div.corneredBadge.loaded, li.bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        li li.tile div.tileBadge span div.corneredBadge.unloaded, li li.bigtile div.tileBadge span div.corneredBadge.unloaded {
+        li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
+
 li.tile {
   height: 100px;
   width: 230px; }
@@ -753,7 +754,7 @@ div.centralContent {
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;
-  min-height: 80;
+  min-height: 80px;
   padding: 5px;
   width: 100%; }
 
@@ -765,12 +766,12 @@ div.centralContent {
   .contentDiv a.add {
     display: block;
     font-weight: 400;
-    padding: 40 0;
+    padding: 40px 0;
     text-align: left; }
   .contentDiv .icon {
     padding-left: 5px;
     padding-right: 5px;
-    padding-top: 10; }
+    padding-top: 10px; }
   .contentDiv:after {
     clear: both; }
   .contentDiv:after, .contentDiv:before {
@@ -1121,17 +1122,17 @@ select.filterSelect {
   border-bottom: 0 !important;
   height: 53px; }
 .addCollection .icon_arangodb_info {
-  margin-left: 20 !important;
+  margin-left: 20px !important;
   position: relative;
   top: 2px !important; }
 .addCollection .accordion {
-  margin-top: 10; }
+  margin-top: 10px; }
 .addCollection .collectionThSec {
-  width: 320 !important; }
+  width: 320px !important; }
 .addCollection .collectionTh {
   width: 96px; }
 .addCollection .modalInput {
-  width: 320; }
+  width: 320px; }
 .addCollection .modalSelect {
   width: 334px; }
 .addCollection .accordion-toggle {
@@ -1139,7 +1140,7 @@ select.filterSelect {
 
 .modalTooltips span {
   color: #736b68;
-  font-size: 20; }
+  font-size: 20px; }
   .modalTooltips span:hover {
     color: black; }
 
