@@ -1151,3 +1151,6 @@ div img.searchSubmitIcon {
   opacity: .2;
   position: absolute;
   width: 14px; }
+
+.searchField {
+  margin-left: 15px; }
