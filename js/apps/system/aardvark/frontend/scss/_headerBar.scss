@@ -1,30 +1,30 @@
 // The bar on top of each page
 div.headerBar {
-  position: relative;
-  margin-bottom: 5px;
-  background-color: $c_bar_bg;
-  color: $c_white;
-  height: 36px;
+  background-color: $c-bar-bg;
+  color: $c-white;
   font-size: 16px;
+  height: 36px;
+  margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
+  position: relative;
 }
 
 // The title of the page
 
 div.headerBar a.arangoHeader,
 .modal-header .arangoHeader {
-  color: $c_white;
+  color: $c-white;
+  font-size: 16px;
+  left: 5px;
   position: relative;
   top: 7px;
-  left: 5px;
-  font-size: 16px;
 }
 
 // The buttons on the right side
 
 div.headerBar > div.headerButtonBar {
-  margin: 4px 0px;
+  margin: 4px 0;
   margin-bottom: 0 !important;
 }
 
@@ -36,7 +36,7 @@ div.headerBar > div.breadcrumb {
 
 // Disabled breadcrumb
 div.breadcrumb a.disabledBread {
-  color: $c_white;
+  color: $c-white;
 }
 
 // arangoHeader
