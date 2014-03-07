@@ -10093,6 +10093,14 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
+  if (sid == 0) {
+    // invalid shape
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_WARNING("invalid shape id '%llu' found for key '%s'", (unsigned long long) sid, key.c_str());
+#endif
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
+
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
