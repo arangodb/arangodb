@@ -62,16 +62,22 @@ int TRI_closesocket (TRI_socket_t s) {
     }
     else if (s.fileHandle != TRI_INVALID_SOCKET) {
       res = shutdown(s.fileHandle, SD_SEND);
+
       if (res != 0) {
-        LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
+        // Windows complains about shutting down a socket that was not bound
+        // so we will not print out the error here
+        // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
       }
       else {
         char buf[256];
         int len;
         do {
           len = TRI_readsocket(s, buf, sizeof(buf), 0);
-        } while (len > 0);
+        } 
+        while (len > 0);
+
         res = closesocket(s.fileHandle);
+
         if (res != 0) {
           LOG_WARNING("socket close error: %d", WSAGetLastError());
         }

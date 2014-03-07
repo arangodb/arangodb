@@ -56,6 +56,19 @@ li {
       }
     }
 
+    svg.tile-icon-svg {
+      fill: $c-icon-grey;
+      height: $iconsize;
+      margin-top: 10px;
+      width: $iconsize;
+    }
+
+    span.tile-icon {
+      color: $c-icon-grey;
+      font-size: $iconsize;
+      line-height: 1.2;
+    }
+
     h5 {
       background: $c-bar-bg;
       color: $c-white;

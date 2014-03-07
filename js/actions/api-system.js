@@ -32,6 +32,7 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
 var console = require("console");
+var users = require("org/arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -155,7 +156,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.reloadAuth();
+    users.reload();
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
