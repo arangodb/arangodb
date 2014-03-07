@@ -83,30 +83,9 @@ div.mousepointer {
   padding: 5px;  
 }
 
-button.graphViewer-icon-button {
-  border: medium none;
-  width: 20px;
-  height: 20px;
-  margin-top: -2px;
-  margin-left: 5px;
-  padding: 0px;
-  background-color: transparent;
-}
-
-button.graphViewer-icon-button > img {
-  width:20px;
-  height:20px;
-  padding-bottom: 10px;
-}
-
-
 .modal-body th.actionCell {
   width: 30px;
   text-align: center;
-}
-
-.modal-body th.actionCell > button {
-  margin-top: -12px;
 }
 
 .modal-body th.keyCell {
@@ -127,61 +106,6 @@ button.graphViewer-icon-button > img {
   width: 290px;
 }
 
-button.gv-icon-small {
-  background-size: 16px 16px;
-  width:16px;
-  height:16px;
-}
-
-button.gv-icon-small.delete {
-  background-image:url("../img/icon_delete.png");
-}
-
-button.gv-icon-small.add {
-  background-image:url("../img/plus_icon.png");
-}
-
-
-button.gv-icon-btn {
-  width:36px;
-  height:36px;
-  background-size: 36px 36px;
-  border-radius: 0px !important;  
-  -webkit-border-radius: 0px !important;
-  -moz-border-radius: 0px !important;
-}
-
-button.gv-icon-btn.active {
-  background-color: #8AA051
-}
-
-button.gv-icon-btn.edit{
-  background-image:url("../img/gv_edit.png");
-}
-
-button.gv-icon-btn.view{
-  background-image:url("../img/gv_view.png");
-}
-
-button.gv-icon-btn.add{
-  background-image:url("../img/gv_add.png");
-}
-
-button.gv-icon-btn.expand{
-  background-image:url("../img/gv_expand.png");
-}
-
-button.gv-icon-btn.drag{
-  background-image:url("../img/gv_drag.png");
-}
-
-button.gv-icon-btn.connect{
-  background-image:url("../img/gv_connect.png");
-}
-
-button.gv-icon-btn.trash{
-  background-image:url("../img/gv_trash.png");
-}
 div.gv_zoom_widget {
   position: absolute;
   z-index: 1;
@@ -208,61 +132,6 @@ div.gv_zoom_buttons_bg {
   background-image: url("../img/gv_button_bg_reverse.png");
   background-size: contain;
 }
-
-
-button.btn-zoom:hover {
-  background: inherit;
-}
-
-button.btn-zoom {
-  width: 16px;
-  height: 16px;
-  padding: 0px;
-  margin: 0px;
-  position: absolute;
-  background: none;
-}
-
-button.btn-zoom-top {
-  left: 13px;
-  top: 0px;
-}
-
-button.btn-zoom-left {
-  left: 0px;
-  top: 12px;
-}
-
-button.btn-zoom-bottom {
-  left: 13px;
-  top: 24px;
-}
-
-button.btn-zoom-right {
-  right: 0px;
-  top: 12px;
-}
-
-button.gv-zoom-btn {
-  width: 14px;
-  height: 14px;
-  background-size: 14px 14px;
-  vertical-align: baseline;
-}
-
-button.gv-zoom-btn.pan-right{
-  background-image:url("../img/gv_arrow_right.png");
-}
-button.gv-zoom-btn.pan-left{
-  background-image:url("../img/gv_arrow_left.png");
-}
-button.gv-zoom-btn.pan-top{
-  background-image:url("../img/gv_arrow_top.png");
-}
-button.gv-zoom-btn.pan-bottom{
-  background-image:url("../img/gv_arrow_bottom.png");
-}
-
 
 img.gv-throbber {
   background-image:url("../img/swagger/throbber.gif");
@@ -337,16 +206,6 @@ ul.gv_configure_menu {
   left: auto;
   right: 24px;
   top: 18px;
-}
-
-button.gv_dropdown_entry {
-  width: 160px;
-  height: 30px;
-  margin: 4px 4px 4px 30px;
-}
-
-button.gv_context_button {
-  width: 65px;
 }
 
 span.gv_caret {

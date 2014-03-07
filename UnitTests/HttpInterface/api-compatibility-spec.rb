@@ -1,7 +1,7 @@
 # coding: utf-8
 
 require 'rspec'
-require './arangodb.rb'
+require 'arangodb.rb'
 
 describe ArangoDB do
 
@@ -17,7 +17,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(10500)
+      compatibility.should eq(20000)
     end
     
     it "tests the compatibility value when a broken header is set" do
@@ -29,7 +29,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         compatibility = doc.parsed_response['compatibility']
         compatibility.should be_kind_of(Integer)
-        compatibility.should eq(10500)
+        compatibility.should eq(20000)
       end
     end
     
@@ -71,6 +71,19 @@ describe ArangoDB do
         compatibility.should eq(10500)
       end
     end
+    
+    it "tests the compatibility value when a valid header is set" do
+      versions = [ "2.0.0", "2.0.0-devel", "2.0.0-alpha", "2.0", "   2.0", "2.0  ", " 2.0.0", "  2.0.0  ", "20000", "20000", "20099" ]
+
+      versions.each do|value|
+        doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => value })
+
+        doc.code.should eq(200)
+        compatibility = doc.parsed_response['compatibility']
+        compatibility.should be_kind_of(Integer)
+        compatibility.should eq(20000)
+      end
+    end
 
     it "tests the compatibility value when a too low version is set" do
       versions = [ "0.0", "0.1", "0.2", "0.9", "1.0", "1.1", "1.2" ]
@@ -86,21 +99,12 @@ describe ArangoDB do
     end
     
     it "tests the compatibility value when a too high version is set" do
-      doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => "1.5" })
+      doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => "2.1" })
 
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(10500)
-    end
-    
-    it "tests the compatibility value when a too high version is set" do
-      doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => "2.0" })
-
-      doc.code.should eq(200)
-      compatibility = doc.parsed_response['compatibility']
-      compatibility.should be_kind_of(Integer)
-      compatibility.should eq(20000)
+      compatibility.should eq(20100)
     end
 
   end

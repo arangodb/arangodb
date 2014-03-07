@@ -41,10 +41,14 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid process
+/// @brief invalid process id
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INVALID_PROCESS (0)
+#ifdef _WIN32
+#define TRI_INVALID_PROCESS_ID (0)
+#else
+#define TRI_INVALID_PROCESS_ID (-1)
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -79,7 +83,6 @@ typedef enum {
   TRI_EXT_TERMINATED = 5,	// process has terminated normally
   TRI_EXT_ABORTED = 6,		// process has terminated abnormally
   TRI_EXT_STOPPED = 7,		// process has been stopped
-  TRI_EXT_KILL_FAILED = 8,	// kill failed
 }
 TRI_external_status_e;
 
@@ -88,12 +91,16 @@ TRI_external_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-typedef TRI_pid_t TRI_external_id_t;
+typedef struct TRI_external_id_s {
+  TRI_pid_t _pid;
+  int _readPipe;
+  int _writePipe;
+} TRI_external_id_t;
 #else
 typedef struct TRI_external_id_s {
- HANDLE _hProcess;
- HANDLE _hChildStdoutRd;
- HANDLE _hChildStdinWr;
+ DWORD _pid;
+ HANDLE _readPipe;
+ HANDLE _writePipe;
 } TRI_external_id_t;
 #endif
 
@@ -107,11 +114,12 @@ typedef struct TRI_external_s {
   char** _arguments;
 
 #ifndef _WIN32
-  TRI_external_id_t _pid;
+  TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
 #else
-  HANDLE _pid;
+  DWORD _pid;
+  HANDLE _process;
   HANDLE _readPipe;
   HANDLE _writePipe;
 #endif
@@ -177,36 +185,24 @@ void TRI_SetProcessTitle (char const* title);
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 void TRI_CreateExternalProcess (const char* executable,
-                                             const char** arguments,
-                                             size_t n,
+                                const char** arguments,
+                                size_t n,
+                                bool usePipes,
                                 TRI_external_id_t * pid);
 
-#ifndef _WIN32
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (pid_t pid);
+TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid, 
+                                                bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_KillExternalProcess (pid_t pid);
+bool TRI_KillExternalProcess (TRI_external_id_t pid);
 
-#else
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the status of an external process
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_external_status_t TRI_CheckExternalProcess (HANDLE hProcess);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kills an external process
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_KillExternalProcess (TRI_external_id_t *pid);
-#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------

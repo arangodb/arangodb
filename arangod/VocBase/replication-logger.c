@@ -346,6 +346,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
   }
 
   idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) primary,
+                                                  0,
                                                   maxEvents,
                                                   maxEventsSize,
                                                   NULL,
@@ -439,6 +440,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   int res;
   bool forceSync;
   bool withTid;
+  bool lock;
 
   assert(logger != NULL);
   assert(buffer != NULL);
@@ -505,10 +507,12 @@ static int LogEvent (TRI_replication_logger_t* logger,
             (unsigned long long) tid,
             (int) forceSync,
             TRI_BeginStringBuffer(buffer));
+
+  lock = isStandaloneOperation;
   
   primary = logger->_trxCollection->_collection->_collection;
   zone = primary->_shaper->_memoryZone;
-  shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
+  shaped = TRI_ShapedJsonJson(primary->_shaper, &json, true, ! lock);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
   ReturnBuffer(logger, buffer);
@@ -524,7 +528,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         TRI_DOC_MARKER_KEY_DOCUMENT, 
                         shaped, 
                         NULL, 
-                        isStandaloneOperation, 
+                        lock, 
                         forceSync, 
                         false);
 
@@ -1088,6 +1092,12 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
   TRI_primary_collection_t* primary;
 
   vocbase = logger->_vocbase;
+
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    dst->_lastLogTick  = 0;
+    dst->_active       = false;
+    return TRI_ERROR_NO_ERROR;
+  }
  
   col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
 
@@ -1558,6 +1568,10 @@ int TRI_ConfigureReplicationLogger (TRI_replication_logger_t* logger,
   uint64_t oldMaxEventsSize;
   char* filename;
   int res;
+  
+  if (logger->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   res = TRI_ERROR_NO_ERROR;
 
@@ -1720,6 +1734,10 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
 int TRI_StartReplicationLogger (TRI_replication_logger_t* logger) {
   int res;
   
+  if (logger->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
+  
   res = TRI_ERROR_NO_ERROR;
 
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
@@ -1739,6 +1757,10 @@ int TRI_StartReplicationLogger (TRI_replication_logger_t* logger) {
 
 int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
   int res;
+  
+  if (logger->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
 
   res = TRI_ERROR_NO_ERROR;
   
@@ -1878,9 +1900,13 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
                                    TRI_server_id_t generatingServer) {
   TRI_replication_logger_t* logger;
   int res;
-   
+  
   assert(trx->_replicate);
   assert(trx->_hasOperations);
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   res = TRI_ERROR_NO_ERROR;
 
@@ -1925,6 +1951,10 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
   if (TRI_ExcludeCollectionReplication(name)) {
     return TRI_ERROR_NO_ERROR;
   }
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   logger = vocbase->_replicationLogger;
   
@@ -1960,6 +1990,10 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
   int res;
 
   if (TRI_ExcludeCollectionReplication(name)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -2001,6 +2035,10 @@ int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
   
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
   logger = vocbase->_replicationLogger;
 
   if (! CheckAndLock(logger, generatingServer)) {
@@ -2036,6 +2074,10 @@ int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
   int res;
   
   if (TRI_ExcludeCollectionReplication(name)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -2078,6 +2120,10 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
   
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
   logger = vocbase->_replicationLogger;
   
   if (! CheckAndLock(logger, generatingServer)) {
@@ -2113,6 +2159,10 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
   int res;
   
   if (TRI_ExcludeCollectionReplication(name)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -2156,6 +2206,10 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   name = document->base.base._info._name;
   
   if (TRI_ExcludeCollectionReplication(name)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_NO_ERROR;
   }
 

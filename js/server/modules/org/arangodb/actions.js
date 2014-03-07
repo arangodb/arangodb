@@ -932,17 +932,6 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ///
 /// You can use the functions @FN{ResultOk} and @FN{ResultError} to easily
 /// generate a response.
-///
-/// @FA{options.parameters}
-///
-/// Normally the parameters are passed to the callback as strings. You can
-/// use the @FA{options}, to force a converstion of the parameter to
-///
-/// - @c "collection"
-/// - @c "collection-identifier"
-/// - @c "collection-name"
-/// - @c "number"
-/// - @c "string"
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
@@ -951,7 +940,6 @@ function defineHttp (options) {
   var url = options.url;
   var context = options.context;
   var callback = options.callback;
-  var parameters = options.parameters;
   var prefix = true;
 
   if (typeof context === "undefined") {
@@ -968,7 +956,6 @@ function defineHttp (options) {
   }
 
   var parameter = {
-    parameters : parameters,
     prefix : prefix
   };
 
@@ -1492,6 +1479,10 @@ function handleRedirect (req, res, options, headers) {
 
     if (req.headers.hasOwnProperty('host')) {
       url += req.headers.host;
+      if (req.headers.host.indexOf(':') === -1) {
+        // append port number if not present in "host" header
+        url += ":" + req.server.port;
+      }
     }
     else {
       url += req.server.address + ":" + req.server.port;
@@ -1674,9 +1665,9 @@ function collectionNotFound (req, res, collection, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unknown index
+/// @brief generates an error for an unknown index
 ///
-/// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
+/// @FUN{actions.indexNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
 ///
 /// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1755,6 +1746,8 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
       case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND: 
       case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_NO_INDEX: 
+      case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND: 
       case arangodb.ERROR_CURSOR_NOT_FOUND: 
       case arangodb.ERROR_USER_NOT_FOUND: 
         code = exports.HTTP_NOT_FOUND;
@@ -1764,6 +1757,10 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
         code = exports.HTTP_CONFLICT; 
         break;
+
+      case arangodb.ERROR_CLUSTER_UNSUPPORTED: 
+        code = exports.HTTP_NOT_IMPLEMENTED;
+        break; 
     }
   }
   else if (err instanceof TypeError) {
@@ -2010,11 +2007,6 @@ exports.redirectRequest          = redirectRequest;
 exports.pathHandler              = pathHandler;
 
 // some useful constants
-exports.COLLECTION               = "collection";
-exports.COLLECTION_IDENTIFIER    = "collection-identifier";
-exports.COLLECTION_NAME          = "collection-name";
-exports.NUMBER                   = "number";
-
 exports.DELETE                   = "DELETE";
 exports.GET                      = "GET";
 exports.HEAD                     = "HEAD";

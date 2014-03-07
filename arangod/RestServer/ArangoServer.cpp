@@ -43,6 +43,7 @@
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
 #include "Admin/RestHandlerCreator.h"
+#include "Admin/RestShutdownHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
@@ -66,8 +67,10 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Statistics/statistics.h"
@@ -77,6 +80,12 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
+
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ApplicationCluster.h"
+#include "Cluster/RestShardHandler.h"
+#include "Cluster/ClusterComm.h"
+#endif
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -91,6 +100,8 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
+bool allowUseDatabaseInRESTActions;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -101,10 +112,15 @@ using namespace triagens::arango;
 
 static void DefineApiHandlers (HttpHandlerFactory* factory,
                                ApplicationAdminServer* admin,
+                               ApplicationDispatcher* dispatcher,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+
+  // add a upgrade warning
+  factory->addPrefixHandler("/_msg/please-upgrade",
+                            RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
@@ -129,6 +145,13 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
+
+#ifdef TRI_ENABLE_CLUSTER
+  // add "/shard-comm" handler
+  factory->addPrefixHandler("/_api/shard-comm",
+                            RestHandlerCreator<RestShardHandler>::createData<void*>,
+                            (void*) dispatcher->dispatcher());
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,13 +160,21 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
-                                 AsyncJobManager* jobManager) {
+                                 ApplicationDispatcher* dispatcher,
+                                 AsyncJobManager* jobManager,
+                                 ApplicationServer* applicationServer) {
 
   // add "/version" handler
   admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
 
+  // add "/_admin/shutdown" handler
+  factory->addPrefixHandler("/_admin/shutdown",
+                   RestHandlerCreator<RestShutdownHandler>::createData<void*>,
+                   static_cast<void*>(applicationServer));
+
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +230,11 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
+  }
+#endif
 
   return TRI_UseDatabaseServer(server, dbName.c_str());
 }
@@ -215,6 +251,12 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   // invalid database name specified, database not found etc.
   if (vocbase == 0) {
+    return false;
+  }
+
+  // database needs upgrade
+  if (vocbase->_state == (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION) {
+    request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
 
@@ -251,6 +293,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+#ifdef TRI_ENABLE_CLUSTER
+    _applicationCluster(0),
+#endif
     _jobManager(0),
 #ifdef TRI_ENABLE_MRUBY
     _applicationMR(0),
@@ -342,6 +387,18 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // .............................................................................
+  // dispatcher
+  // .............................................................................
+
+  _applicationDispatcher = new ApplicationDispatcher();
+
+  if (_applicationDispatcher == 0) {
+    LOG_FATAL_AND_EXIT("out of memory");
+  }
+
+  _applicationServer->addFeature(_applicationDispatcher);
+
+  // .............................................................................
   // multi-threading scheduler
   // .............................................................................
 
@@ -350,20 +407,11 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationScheduler == 0) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
+
   _applicationScheduler->allowMultiScheduler(true);
+  _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
-
-  // .............................................................................
-  // dispatcher
-  // .............................................................................
-
-  _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
-
-  if (_applicationDispatcher == 0) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-  _applicationServer->addFeature(_applicationDispatcher);
 
   // .............................................................................
   // V8 engine
@@ -434,12 +482,6 @@ void ArangoServer::buildApplicationServer () {
     ("start-service", "used to start as windows service")
   ;
 
-#ifdef TRI_ENABLE_MRUBY
-  additional[ApplicationServer::OPTIONS_CMDLINE]
-    ("ruby-console", "do not start as server, start a Ruby emergency console instead")
-  ;
-#endif
-
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
@@ -469,7 +511,6 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   additional["JAVASCRIPT Options:help-devel"]
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
@@ -497,6 +538,21 @@ void ArangoServer::buildApplicationServer () {
     ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
   ;
 
+
+  // .............................................................................
+  // cluster options
+  // .............................................................................
+
+#ifdef TRI_ENABLE_CLUSTER
+  _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
+
+  if (_applicationCluster == 0) {
+    LOG_FATAL_AND_EXIT("out of memory");
+  }
+
+  _applicationServer->addFeature(_applicationCluster);
+#endif
+
   // .............................................................................
   // server options
   // .............................................................................
@@ -513,8 +569,8 @@ void ArangoServer::buildApplicationServer () {
 #endif
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
+    ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
   ;
-
 
   bool disableStatistics = false;
 
@@ -536,7 +592,12 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer);
+#ifdef TRI_ENABLE_CLUSTER
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer,
+                                    ClusterCommRestCallback);
+#else
+  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 0);
+#endif
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
@@ -566,7 +627,7 @@ void ArangoServer::buildApplicationServer () {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
-  // configure v8
+  // configure v8 w/ development-mode
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
   }
@@ -642,25 +703,6 @@ void ArangoServer::buildApplicationServer () {
   LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
 
   LOG_INFO("using default language '%s'", languageName.c_str());
-
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
-
-  if (mode == OperationMode::MODE_CONSOLE ||
-      mode == OperationMode::MODE_UNITTESTS ||
-      mode == OperationMode::MODE_JSLINT ||
-      mode == OperationMode::MODE_SCRIPT) {
-    int res = executeConsole(mode);
-
-    TRI_EXIT_FUNCTION(res, NULL);
-  }
-
-#ifdef TRI_ENABLE_MRUBY
-  else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
-    int res = executeRubyConsole();
-
-    TRI_EXIT_FUNCTION(res, NULL);
-  }
-#endif
 
   // if we got here, then we are in server mode
 
@@ -763,8 +805,8 @@ int ArangoServer::startupServer () {
 
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, _jobManager);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _jobManager);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
 
   // add action handler
   handlerFactory->addPrefixHandler(
@@ -793,15 +835,28 @@ int ArangoServer::startupServer () {
 
   LOG_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
-  _applicationServer->wait();
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
-  // .............................................................................
-  // and cleanup
-  // .............................................................................
+  if (mode == OperationMode::MODE_CONSOLE) {
+    runConsole(vocbase);
+  }
+  else if (mode == OperationMode::MODE_UNITTESTS) {
+    runUnitTests(vocbase);
+  }
+  else if (mode == OperationMode::MODE_SCRIPT) {
+    runScript(vocbase);
+  }
+  else {
+    runServer(vocbase);
+  }
 
   _applicationServer->stop();
 
   closeDatabases();
+
+  if (mode == OperationMode::MODE_CONSOLE) {
+    cout << endl << TRI_BYE_MESSAGE << endl;
+  }
 
   return 0;
 }
@@ -811,432 +866,145 @@ int ArangoServer::startupServer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the server
+////////////////////////////////////////////////////////////////////////////////
+
+int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
+
+  // just wait until we are signalled
+  _applicationServer->wait();
+
+  return EXIT_SUCCESS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
-  // open all databases
-  openDatabases();
+int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
+  ConsoleThread console(_applicationServer, _applicationV8, vocbase);
+  console.start();
 
-  // fetch the system database
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-
-  if (vocbase == 0) {
-    LOG_FATAL_AND_EXIT("cannot start server");
-  }
-
-  // load authentication
-  TRI_LoadAuthInfoVocBase(vocbase);
-
-  // set-up V8 context
-  _applicationV8->setVocbase(vocbase);
-  _applicationV8->setConcurrency(1);
-  _applicationV8->disableActions();
-
-  if (_applicationServer->programOptions().has("upgrade")) {
-    _applicationV8->performUpgrade();
-  }
-
-  // skip an upgrade even if VERSION is missing
-  if (_applicationServer->programOptions().has("no-upgrade")) {
-    _applicationV8->skipUpgrade();
-  }
-
-  bool ok = _applicationV8->prepare2();
-
-  if (! ok) {
-    LOG_FATAL_AND_EXIT("cannot initialize V8 enigne");
-  }
-
-  _applicationV8->start();
-
-  // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true, true);
+  _applicationServer->wait();
 
   // .............................................................................
-  // execute everything with a global scope
+  // and cleanup
   // .............................................................................
 
+  console.userAbort();
+  console.stop();
+
+  int iterations = 0;
+
+  while (! console.done() && ++iterations < 30) {
+    usleep(100000); // spin while console is still needed
+  }
+
+  return EXIT_SUCCESS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs unit tests
+////////////////////////////////////////////////////////////////////////////////
+
+int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
+
+  v8::HandleScope globalScope;
+
+  v8::Local<v8::String> name(v8::String::New("(arango)"));
+  v8::Context::Scope contextScope(context->_context);
+
+  bool ok = false;
   {
-    v8::HandleScope globalScope;
+    v8::HandleScope scope;
+    v8::TryCatch tryCatch;
 
-    // run the shell
-    if (mode != OperationMode::MODE_SCRIPT) {
-      cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
+    // set-up unit tests array
+    v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
+
+    for (size_t i = 0;  i < _unitTests.size();  ++i) {
+      sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
+    }
+
+    context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+    context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+
+    // run tests
+    char const* input = "require(\"jsunity\").runCommandLineTests();";
+    TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
+
+    if (tryCatch.HasCaught()) {
+      cout << TRI_StringifyV8Exception(&tryCatch);
     }
     else {
-      LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
-    }
-
-    v8::Local<v8::String> name(v8::String::New("(arango)"));
-    v8::Context::Scope contextScope(context->_context);
-
-    ok = true;
-
-    switch (mode) {
-
-      // .............................................................................
-      // run all unit tests
-      // .............................................................................
-
-      case OperationMode::MODE_UNITTESTS: {
-        v8::HandleScope scope;
-        v8::TryCatch tryCatch;
-
-        // set-up unit tests array
-        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-        for (size_t i = 0;  i < _unitTests.size();  ++i) {
-          sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
-        }
-
-        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-        // run tests
-        char const* input = "require(\"jsunity\").runCommandLineTests();";
-        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
-
-        if (tryCatch.HasCaught()) {
-          cout << TRI_StringifyV8Exception(&tryCatch);
-          ok = false;
-        }
-        else {
-          ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-        }
-
-        break;
-      }
-
-      // .............................................................................
-      // run jslint
-      // .............................................................................
-
-      case OperationMode::MODE_JSLINT: {
-        v8::HandleScope scope;
-        v8::TryCatch tryCatch;
-
-        // set-up tests files array
-        v8::Handle<v8::Array> sysTestFiles = v8::Array::New();
-
-        for (size_t i = 0;  i < _jslint.size();  ++i) {
-          sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
-        }
-
-        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-        context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
-
-        char const* input = "require(\"jslint\").runCommandLineTests({ });";
-        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
-
-        if (tryCatch.HasCaught()) {
-          cout << TRI_StringifyV8Exception(&tryCatch);
-          ok = false;
-        }
-        else {
-          ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
-        }
-
-        break;
-      }
-
-      // .............................................................................
-      // run script
-      // .............................................................................
-
-      case OperationMode::MODE_SCRIPT: {
-        v8::TryCatch tryCatch;
-
-        for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-          bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
-
-          if (! r) {
-            LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
-          }
-        }
-
-        v8::V8::LowMemoryNotification();
-        while(! v8::V8::IdleNotification()) {
-        }
-
-        if (ok) {
-
-          // parameter array
-          v8::Handle<v8::Array> params = v8::Array::New();
-
-          params->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
-
-          for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
-            params->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
-          }
-
-          // call main
-          v8::Handle<v8::String> mainFuncName = v8::String::New("main");
-          v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
-
-          if (main.IsEmpty() || main->IsUndefined()) {
-            LOG_FATAL_AND_EXIT("no main function defined, giving up");
-          }
-          else {
-            v8::Handle<v8::Value> args[] = { params };
-
-            v8::Handle<v8::Value> result = main->Call(main, 1, args);
-
-            if (tryCatch.HasCaught()) {
-              TRI_LogV8Exception(&tryCatch);
-              ok = false;
-            }
-            else {
-              ok = TRI_ObjectToDouble(result) == 0;
-            }
-          }
-        }
-
-        break;
-      }
-
-      // .............................................................................
-      // run console
-      // .............................................................................
-
-      case OperationMode::MODE_CONSOLE: {
-
-        const string pretty = "start_pretty_print();";
-        TRI_ExecuteJavaScriptString(context->_context, v8::String::New(pretty.c_str(), pretty.size()), v8::String::New("(internal)"), false);
-
-        V8LineEditor console(context->_context, ".arangod.history");
-
-        console.open(true);
-
-        while (true) {
-          v8::V8::LowMemoryNotification();
-          while(! v8::V8::IdleNotification()) {
-          }
-
-          char* input = console.prompt("arangod> ");
-
-          if (input == 0) {
-            printf("<ctrl-D>\n%s\n", TRI_BYE_MESSAGE);
-            break;
-          }
-
-          if (*input == '\0') {
-            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-            continue;
-          }
-
-          console.addHistory(input);
-
-          v8::HandleScope scope;
-          v8::TryCatch tryCatch;
-
-          TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-
-          if (tryCatch.HasCaught()) {
-            cout << TRI_StringifyV8Exception(&tryCatch);
-          }
-        }
-
-        break;
-      }
-
-      default: {
-        assert(false);
-      }
+      ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
     }
   }
-
-  // .............................................................................
-  // and return from the context and isolate
-  // .............................................................................
 
   _applicationV8->exitContext(context);
 
-  _applicationV8->close();
-  _applicationV8->stop();
-
-
-  closeDatabases();
-  Random::shutdown();
-
-  if (! ok) {
-    return EXIT_FAILURE;
-  }
-
-  return EXIT_SUCCESS;
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the MRuby emergency shell
+/// @brief runs a script
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MRUBY
+int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
 
-struct RClass* ArangoDatabaseClass;
-struct RClass* ArangoCollectionClass;
+  v8::HandleScope globalScope;
 
-mrb_value MR_ArangoDatabase_Initialize (mrb_state* mrb, mrb_value exc) {
-  printf("initializer of ArangoDatabase called\n");
-  return exc;
-}
+  v8::Context::Scope contextScope(context->_context);
+  v8::TryCatch tryCatch;
 
-static void MR_ArangoDatabase_Free (mrb_state* mrb, void* p) {
-  printf("free of ArangoDatabase called\n");
-}
+  for (size_t i = 0;  i < _scriptFile.size();  ++i) {
+    bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
-static const struct mrb_data_type MR_ArangoDatabase_Type = {
-  "ArangoDatabase", MR_ArangoDatabase_Free
-};
-
-static void MR_ArangoCollection_Free (mrb_state* mrb, void* p) {
-  printf("free of ArangoCollection called\n");
-}
-
-static const struct mrb_data_type MR_ArangoCollection_Type = {
-  "ArangoDatabase", MR_ArangoCollection_Free
-};
-
-mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
-  char* name;
-  TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t* collection;
-  struct RData* rdata;
-
-  // check "class.c" to see how to specify the arguments
-  mrb_get_args(mrb, "s", &name);
-
-  if (name == 0) {
-    return self;
-  }
-
-  // check
-
-  printf("using collection '%s'\n", name);
-
-  // looking at "mruby.h" I assume that is the way to unwrap the pointer
-  rdata = (struct RData*) mrb_object(self);
-  vocbase = (TRI_vocbase_t*) rdata->data;
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, name);
-
-  if (collection == NULL) {
-    printf("unknown collection (TODO raise error)\n");
-    return self;
-  }
-
-  return mrb_obj_value(Data_Wrap_Struct(mrb, ArangoCollectionClass, &MR_ArangoCollection_Type, (void*) collection));
-}
-
-  // setup the classes
-#if 0
-  struct RClass* ArangoDatabaseClass = mrb_define_class(mrb, "ArangoDatabase", mrb->object_class);
-  struct RClass* ArangoCollectionClass = mrb_define_class(mrb, "ArangoCollection", mrb->object_class);
-
-  // add an initializer (for TESTING only)
-  mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Initialize, ARGS_ANY());
-
-  // add a method to extract the collection
-  mrb_define_method(mrb, ArangoDatabaseClass, "_collection", MR_ArangoDatabase_Collection, ARGS_ANY());
-
-  // create the database variable
-  mrb_value db = mrb_obj_value(Data_Wrap_Struct(mrb, ArangoDatabaseClass, &MR_ArangoDatabase_Type, (void*) _vocbase));
-
-  mrb_gv_set(mrb, mrb_intern(mrb, "$db"), db);
-
-  // read-eval-print loop
-  mrb_define_const(mrb, "$db", db);
-#endif
-
-
-int ArangoServer::executeRubyConsole () {
-  // open all databases
-  openDatabases();
-
-  // fetch the system database
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-  assert(vocbase != 0);
-
-  // load authentication
-  TRI_LoadAuthInfoVocBase(vocbase);
-
-  // set-up MRuby context
-  _applicationMR->setVocbase(vocbase);
-  _applicationMR->setConcurrency(1);
-  _applicationMR->disableActions();
-
-  bool ok = _applicationMR->prepare();
-
-  if (! ok) {
-    LOG_FATAL_AND_EXIT("cannot initialize MRuby enigne");
-  }
-
-  _applicationMR->start();
-
-  // enter MR context
-  ApplicationMR::MRContext* context = _applicationMR->enterContext();
-
-  // create a line editor
-  cout << "ArangoDB MRuby emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
-
-  MRLineEditor console(context->_mrb, ".arangod-ruby.history");
-
-  console.open(false);
-
-  while (true) {
-    char* input = console.prompt("arangod (ruby)> ");
-
-    if (input == 0) {
-      printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
-      break;
-    }
-
-    if (*input == '\0') {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      continue;
-    }
-
-    console.addHistory(input);
-
-    struct mrb_parser_state* p = mrb_parse_string(context->_mrb, input, NULL);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-
-    if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-      LOG_ERROR("failed to compile input");
-      continue;
-    }
-
-    int n = mrb_generate_code(context->_mrb, p);
-
-    if (n < 0) {
-      LOG_ERROR("failed to execute Ruby bytecode");
-      continue;
-    }
-
-    mrb_value result = mrb_run(context->_mrb,
-                               mrb_proc_new(context->_mrb, context->_mrb->irep[n]),
-                               mrb_top_self(context->_mrb));
-
-    if (context->_mrb->exc != 0) {
-      LOG_ERROR("caught Ruby exception");
-      mrb_p(context->_mrb, mrb_obj_value(context->_mrb->exc));
-      context->_mrb->exc = 0;
-    }
-    else if (! mrb_nil_p(result)) {
-      mrb_p(context->_mrb, result);
+    if (! r) {
+      LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
     }
   }
 
-  // close the console
-  console.close();
+  v8::V8::LowMemoryNotification();
+  while(! v8::V8::IdleNotification()) {
+  }
 
-  // close the database
-  closeDatabases();
-  Random::shutdown();
+  // parameter array
+  v8::Handle<v8::Array> params = v8::Array::New();
 
-  return EXIT_SUCCESS;
+  params->Set(0, v8::String::New(_scriptFile[_scriptFile.size() - 1].c_str()));
+
+  for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+    params->Set((uint32_t) (i + 1), v8::String::New(_scriptParameters[i].c_str()));
+  }
+
+  // call main
+  v8::Handle<v8::String> mainFuncName = v8::String::New("main");
+  v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
+
+  bool ok = false;
+
+  if (main.IsEmpty() || main->IsUndefined()) {
+    LOG_FATAL_AND_EXIT("no main function defined, giving up");
+  }
+  else {
+    v8::Handle<v8::Value> args[] = { params };
+    v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+    if (tryCatch.HasCaught()) {
+      TRI_LogV8Exception(&tryCatch);
+    }
+    else {
+      ok = TRI_ObjectToDouble(result) == 0;
+    }
+  }
+
+  _applicationV8->exitContext(context);
+
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database

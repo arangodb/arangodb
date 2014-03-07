@@ -133,6 +133,7 @@ add_library(
     STATIC
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp
+    SimpleHttpClient/ConnectionManager.cpp
     SimpleHttpClient/SslClientConnection.cpp
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
@@ -150,6 +151,7 @@ add_library(
     Admin/RestAdminLogHandler.cpp
     Admin/RestBaseHandler.cpp
     Admin/RestJobHandler.cpp
+    Admin/RestShutdownHandler.cpp
     Admin/RestVersionHandler.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
@@ -158,6 +160,7 @@ add_library(
     Dispatcher/DispatcherQueue.cpp
     Dispatcher/DispatcherThread.cpp
     Dispatcher/Job.cpp
+    Dispatcher/RequeueTask.cpp
     HttpServer/ApplicationEndpointServer.cpp
     HttpServer/HttpHandler.cpp
     HttpServer/HttpHandlerFactory.cpp
@@ -195,6 +198,7 @@ add_library(
     V8/v8-utils.cpp
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp
+    SimpleHttpClient/ConnectionManager.cpp
     SimpleHttpClient/SslClientConnection.cpp
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp

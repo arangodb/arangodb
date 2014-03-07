@@ -249,58 +249,36 @@ pack-winXX-cmake:
 	cd Build$(BITS) && cpack -G NSIS
 
 ################################################################################
-### @brief cmake build
+### @brief Windows Vista 64-bit bundle
 ################################################################################
 
-.PHONY: cmake-setpup
+.PHONY: pack-vista32 pack-vistaXX pack-vistaXX-cmake
 
-cmake-setup:
-	test -d Build || mkdir Build
+pack-vista32:
+	$(MAKE) pack-vistaXX BITS=32 TARGET="Visual Studio 12"
 
-	cd Build && cmake \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
-		\
-		-D ARANGODB_VERSION=${VERSION} \
-		-D USE_MRUBY=${tr_MRUBY} \
-		\
-		-D ICU_INCLUDE= \
-		-D ICU_LIB_PATH= \
-		-D ICU_LIBS= \
-		-D ICU_VERSION= \
-		\
-		-D LIBEV_INCLUDE= \
-		-D LIBEV_LIB_PATH= \
-		-D LIBEV_LIBS= \
-		-D LIBEV_VERSION= \
-		\
-		-D MRUBY_INCLUDE= \
-		-D MRUBY_LIB_PATH= \
-		-D MRUBY_LIBS= \
-		-D MRUBY_VERSION= \
-		\
-		-D OPENSSL_INCLUDE= \
-		-D OPENSSL_LIB_PATH= \
-		-D OPENSSL_LIBS= \
-		-D OPENSSL_VERSION= \
-		\
-		-D READLINE_INCLUDE= \
-		-D READLINE_LIB_PATH= \
-		-D READLINE_LIBS= \
-		-D READLINE_VERSION= \
-		\
-		-D V8_INCLUDE= \
-		-D V8_LIB_PATH= \
-		-D V8_LIBS= \
-		-D V8_VERSION= \
-		\
-		-D ZLIB_INCLUDE= \
-		-D ZLIB_LIB_PATH= \
-		-D ZLIB_LIBS= \
-		-D ZLIB_VERSION= \
-		\
+pack-vista64:
+	$(MAKE) pack-vistaXX BITS=64 TARGET="Visual Studio 12 Win64"
+
+pack-vistaXX:
+	rm -rf Build$(BITS) && mkdir Build$(BITS)
+
+	${MAKE} pack-vistaXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+
+pack-vistaXX-cmake:
+	cd Build$(BITS) && cmake \
+		-G "$(TARGET)" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_VISTA_LOCKS=ON" \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		..
+
+	cd Build$(BITS) && cmake --build . --config Release
+
+	cd Build$(BITS) && cpack -G NSIS
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

@@ -74,7 +74,14 @@ RestImportHandler::RestImportHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_e RestImportHandler::execute () {
+HttpHandler::status_t RestImportHandler::execute () {
+  if (ServerState::instance()->isCoordinator()) {
+    generateError(HttpResponse::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "'/_api/import' is not yet supported in a cluster");
+    return status_t(HANDLER_DONE);
+  }
+
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -82,7 +89,7 @@ HttpHandler::status_e RestImportHandler::execute () {
     case HttpRequest::HTTP_REQUEST_POST: {
       // extract the import type
       bool found;
-      string documentType = _request->value("type", found);
+      string const documentType = _request->value("type", found);
 
       if (found && 
           (documentType == "documents" ||
@@ -104,7 +111,7 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   // this handler is done
-  return HANDLER_DONE;
+  return status_t(HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +200,8 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
     edge._fromKey = 0;
     edge._toKey   = 0;
 
+    // Note that in a DBserver in a cluster the following two calls will
+    // parse the first part as a cluster-wide collection name:
     int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
     int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 

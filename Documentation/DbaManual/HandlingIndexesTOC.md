@@ -10,6 +10,7 @@ TOC {#HandlingIndexesTOC}
       - @ref HandlingIndexesRead "collection.index"
       - @ref HandlingIndexesReadAll "collection.getIndexes"
       - @ref HandlingIndexesDelete "collection.dropIndex"
+      - @ref HandlingIndexesEnsure "collection.ensureIndex"
     - @ref HandlingIndexesDatabaseMethods
       - @ref HandlingIndexesDbRead "db._index"
       - @ref HandlingIndexesDbDelete "db._dropIndex"

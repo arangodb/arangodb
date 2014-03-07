@@ -1,8 +1,8 @@
 # coding: utf-8
 
 require 'rspec'
-require './arangodb.rb'
-require './arangomultipartbody.rb'
+require 'arangodb.rb'
+require 'arangomultipartbody.rb'
 
 describe ArangoDB do
   prefix = "api-batch"

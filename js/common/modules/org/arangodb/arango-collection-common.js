@@ -40,6 +40,7 @@ var simple = require("org/arangodb/simple-query");
 
 var SimpleQueryAll = simple.SimpleQueryAll;
 var SimpleQueryByExample = simple.SimpleQueryByExample;
+var SimpleQueryByCondition = simple.SimpleQueryByCondition;
 var SimpleQueryRange = simple.SimpleQueryRange;
 var SimpleQueryGeo = simple.SimpleQueryGeo;
 var SimpleQueryNear = simple.SimpleQueryNear;
@@ -227,7 +228,7 @@ ArangoCollection.prototype.all = function () {
 /// @LIT{{ a : { c : 1 } }} 
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. E.g., the document
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
 ///
 /// @LIT{{ a : { c : 1 }\, b : 1 }} 
 ///
@@ -242,7 +243,7 @@ ArangoCollection.prototype.all = function () {
 /// @LIT{{ a.c : 1 }}, 
 ///
 /// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. E.g., both documents 
+/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
 ///
 /// @LIT{{ a : { c : 1 }\, b : 1 }} and 
 ///
@@ -285,6 +286,186 @@ ArangoCollection.prototype.byExample = function (example) {
   }
 
   return new SimpleQueryByExample(this, e);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example using a hash index
+///
+/// @FUN{@FA{collection}.byExampleHash(@FA{index, example})}
+///
+/// Selects all documents from the specified hash index that match the 
+/// specified example example and returns a cursor. 
+///
+/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
+/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
+///
+/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// not as attribute. If you use 
+/// 
+/// @LIT{{ a : { c : 1 } }} 
+///
+/// as example, then you will find all documents, such that the attribute
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+///
+/// will match, but the document 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will not.
+///
+/// However, if you use 
+///
+/// @LIT{{ a.c : 1 }}, 
+///
+/// then you will find all documents, which contain a sub-document in @LIT{a}
+/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will match.
+///
+/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byExampleHash = function (index, example) {
+  var sq = this.byExample(example);
+  sq._index = index;
+  sq._type = "hash";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example using a skiplist index
+///
+/// @FUN{@FA{collection}.byExampleSkiplist(@FA{index, example})}
+///
+/// Selects all documents from the specified skiplist index that match the 
+/// specified example example and returns a cursor. 
+///
+/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
+/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
+///
+/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// not as attribute. If you use 
+/// 
+/// @LIT{{ a : { c : 1 } }} 
+///
+/// as example, then you will find all documents, such that the attribute
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+///
+/// will match, but the document 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will not.
+///
+/// However, if you use 
+///
+/// @LIT{{ a.c : 1 }}, 
+///
+/// then you will find all documents, which contain a sub-document in @LIT{a}
+/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will match.
+///
+/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
+  var sq = this.byExample(example);
+  sq._index = index;
+  sq._type = "skiplist";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example using a bitarray index
+///
+/// @FUN{@FA{collection}.byExampleBitarray(@FA{index, example})}
+///
+/// Selects all documents from the specified bitarray index that match the 
+/// specified example example and returns a cursor. 
+///
+/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
+/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// operator.
+///
+/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// not as attribute. If you use 
+/// 
+/// @LIT{{ a : { c : 1 } }} 
+///
+/// as example, then you will find all documents, such that the attribute
+/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+///
+/// will match, but the document 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will not.
+///
+/// However, if you use 
+///
+/// @LIT{{ a.c : 1 }}, 
+///
+/// then you will find all documents, which contain a sub-document in @LIT{a}
+/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+///
+/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+///
+/// @LIT{{ a : { c : 1\, b : 1 } }}
+///
+/// will match.
+///
+/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byExampleBitarray = function (index, example) {
+  var sq = this.byExample(example);
+  sq._index = index;
+  sq._type = "bitarray";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-condition using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
+  var sq = new SimpleQueryByCondition(this, condition);
+  sq._index = index;
+  sq._type = "skiplist";
+
+  return sq;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-condition using a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
+  var sq = new SimpleQueryByCondition(this, condition);
+  sq._index = index;
+  sq._type = "bitarray";
+
+  return sq;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -179,7 +179,8 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
 
 static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
                                                     char const* name,
-                                                    bool create) {
+                                                    bool create,
+                                                    bool isLocked) {
   TRI_shape_aid_t* aids;
   TRI_shape_path_t* result;
   size_t count;
@@ -242,10 +243,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findAttributeByName(shaper, prev, true);
+          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev, isLocked);
         }
         else {
-          aids[count] = shaper->findAttributeByName(shaper, prev, false);
+          aids[count] = shaper->lookupAttributeByName(shaper, prev);
 
           if (aids[count] == 0) {
             TRI_FreeString(shaper->_memoryZone, buffer);
@@ -299,8 +300,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 /// @brief finds an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_pid_t FindAttributePathByName (TRI_shaper_t* shaper, char const* name) {
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true);
+static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper, 
+                                                        char const* name,
+                                                        bool isLocked) {
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked);
 
   return path == NULL ? 0 : path->_pid;
 }
@@ -309,8 +312,9 @@ static TRI_shape_pid_t FindAttributePathByName (TRI_shaper_t* shaper, char const
 /// @brief looks up an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, char const* name) {
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false);
+static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, 
+                                                  char const* name) {
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true);
 
   return path == NULL ? 0 : path->_pid;
 }
@@ -327,7 +331,8 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, char con
 /// @brief creates the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
+char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, 
+                                       TRI_shape_pid_t pid) {
   TRI_shape_path_t const* path;
   char const* e;
 
@@ -379,7 +384,7 @@ int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
   shaper->_nextPid = 1;
 
   shaper->lookupAttributePathByPid = LookupPidAttributePath;
-  shaper->findAttributePathByName = FindAttributePathByName;
+  shaper->findOrCreateAttributePathByName = FindOrCreateAttributePathByName;
   shaper->lookupAttributePathByName = LookupAttributePathByName;
 
   return TRI_ERROR_NO_ERROR;

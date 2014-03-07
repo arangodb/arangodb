@@ -49,22 +49,41 @@
 /// @brief closes a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_closesocket(TRI_socket_t s) {
+int TRI_closesocket (TRI_socket_t s) {
   int res = 0;
-  // if this is the last file descriptor associated with the open file
-  // I really hope the resources are released under both windows and linux
   #ifdef _WIN32
-/*
-    if (s.fileHandle > 0) {
-      res = shutdown(s.fileHandle,2);
-      res = closesocket(s.fileHandle);
+  if (s.fileHandle != TRI_INVALID_SOCKET) {
+    res = shutdown(s.fileHandle, SD_SEND);
+
+    if (res != 0) {
+      // Windows complains about shutting down a socket that was not bound
+      // so we will not print out the error here
+      // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
     }
-*/
-    if (s.fileDescriptor > 0) {
+    else {
+      char buf[256];
+      int len;
+      do {
+        len = TRI_readsocket(s, buf, sizeof(buf), 0);
+      } while (len > 0);
+
+    }
+    res = closesocket(s.fileHandle);
+
+    if (res != 0) {
+      LOG_WARNING("socket close error: %d", WSAGetLastError());
+    }
+    if (s.fileDescriptor != -1) {
       res = _close(s.fileDescriptor);
+      /*
+      To close a file opened with _open_osfhandle, call _close.
+      The underlying handle is also closed by a call to _close,
+      so it is not necessary to call the Win32 function CloseHandle on the original handle.
+      */
     }
-  #else
-    if (s.fileDescriptor > 0) {
+  }
+#else
+    if (s.fileDescriptor != TRI_INVALID_SOCKET) {
       res = close(s.fileDescriptor);
     }
   #endif
@@ -72,7 +91,7 @@ int TRI_closesocket(TRI_socket_t s) {
 }
 
 
-int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
+int TRI_readsocket (TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
   int res;
   #ifdef _WIN32
     res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
@@ -83,12 +102,12 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flag
 }
 
 
-int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
+int TRI_writesocket (TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
   int res;
   #ifdef _WIN32
     res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
   #else
-    res = (int)(write(s.fileHandle, buffer, numBytesToWrite));
+    res = (int)(write(s.fileDescriptor, buffer, numBytesToWrite));
   #endif
   return res;
 }
@@ -99,13 +118,13 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, 
 
 #ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
 
-bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
+bool TRI_SetCloseOnExecSocket (TRI_socket_t s) {
   return true;
 }
 
 #else
 
-bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
+bool TRI_SetCloseOnExecSocket (TRI_socket_t s) {
   long flags = fcntl(s.fileDescriptor, F_GETFD, 0);
 
   if (flags < 0) {
@@ -133,7 +152,7 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
   int res;
   DWORD ul = 1;
   res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
-  return (res != INVALID_SOCKET);
+  return (res == 0);
 }
 
 #else

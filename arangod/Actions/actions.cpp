@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "actions.h"
@@ -43,11 +43,6 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief actions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,18 +60,9 @@ static map<string, TRI_action_t*> PrefixActions;
 
 static ReadWriteLock ActionsLock;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
@@ -125,7 +111,7 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR("trying to define two incompatible actions of type '%s' and type '%s' for url '%s'", 
+        LOG_ERROR("trying to define two incompatible actions of type '%s' and type '%s' for url '%s'",
                   oldAction->_type.c_str(),
                   action->_type.c_str(),
                   action->_url.c_str());
@@ -140,8 +126,8 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   }
 
   // some debug output
-  LOG_DEBUG("created %s %saction '%s'", 
-            action->_type.c_str(), 
+  LOG_DEBUG("created %s %saction '%s'",
+            action->_type.c_str(),
             (action->_isPrefix ? "prefix " : ""),
             url.c_str());
 
@@ -198,10 +184,6 @@ void TRI_CleanupActions () {
   for_each(PrefixActions.begin(), PrefixActions.end(), DeleteObjectValue());
   PrefixActions.clear();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

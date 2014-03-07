@@ -1297,7 +1297,7 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
 /// @brief dynamically replace %d, %e, %u in the prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string BuildPrompt () {
+static std::string BuildPrompt (V8ClientConnection* connection) {
   string result;
 
   char const* p = Prompt.c_str();
@@ -1353,7 +1353,7 @@ static std::string BuildPrompt () {
 
 static void SignalHandler (int signal) {
   if (_console != 0) {
-    _console->writeHistory();
+    _console->close();
     _console = 0;
   }
   printf("\n");
@@ -1396,7 +1396,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     // set up prompts
     string dynamicPrompt;
     if (ClientConnection != 0) {
-      dynamicPrompt = BuildPrompt();
+      dynamicPrompt = BuildPrompt(ClientConnection);
     }
     else {
       dynamicPrompt = "-";
@@ -1489,7 +1489,17 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     // assume the command succeeds
     promptError = false;
-    TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+
+    // execute command and register its result in __LAST__
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
+
+    if (v.IsEmpty()) {
+      context->Global()->Set(TRI_V8_SYMBOL("_last"), v8::Undefined());
+    }
+    else {
+      context->Global()->Set(TRI_V8_SYMBOL("_last"), v);
+    }
+
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
@@ -1537,7 +1547,6 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   }
 
   TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
-  
   // do not use TRI_AddGlobalVariableVocBase because it creates read-only variables!!
   context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 

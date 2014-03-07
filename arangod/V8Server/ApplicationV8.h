@@ -50,6 +50,7 @@ namespace triagens {
   }
 
   namespace rest {
+    class HttpRequest;
     class ApplicationDispatcher;
     class ApplicationScheduler;
   }
@@ -215,6 +216,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8Context* enterContext (TRI_vocbase_s*,
+                                 triagens::rest::HttpRequest*, 
                                  bool,
                                  bool);
 
@@ -247,6 +249,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void enableDevelopmentMode ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a boolean variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void defineBoolean (const std::string& name, bool value) {
+          _definedBooleans[name] = value;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -560,6 +570,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::ApplicationDispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief boolean to be defined
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, bool> _definedBooleans;
     };
   }
 }

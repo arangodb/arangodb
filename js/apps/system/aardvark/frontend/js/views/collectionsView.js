@@ -64,22 +64,23 @@
     },
 
     events: {
-      "keydown #searchInput" : "restrictToSearchPhraseKey",
-      "change #searchInput"   : "restrictToSearchPhrase",
-      "click #searchSubmit"   : "restrictToSearchPhrase",
-      "click #checkSystem"    : "checkSystem",
-      "click #checkLoaded"    : "checkLoaded",
-      "click #checkUnloaded"  : "checkUnloaded",
-      "click #checkDocument"  : "checkDocument",
-      "click #checkEdge"      : "checkEdge",
-      "click #sortName"       : "sortName",
-      "click #sortType"       : "sortType",
-      "click #sortOrder"      : "sortOrder",
-      "click #collectionsToggle"     : "toggleView",
-      "click .css-label" : "checkBoxes"
+      "keydown #searchInput"      : "restrictToSearchPhraseKey",
+      "change #searchInput"       : "restrictToSearchPhrase",
+      "click #searchSubmit"       : "restrictToSearchPhrase",
+      "click #checkSystem"        : "checkSystem",
+      "click #checkLoaded"        : "checkLoaded",
+      "click #checkUnloaded"      : "checkUnloaded",
+      "click #checkDocument"      : "checkDocument",
+      "click #checkEdge"          : "checkEdge",
+      "click #sortName"           : "sortName",
+      "click #sortType"           : "sortType",
+      "click #sortOrder"          : "sortOrder",
+      "click #collectionsToggle"  : "toggleView",
+      "click .css-label"          : "checkBoxes"
     },
 
     toggleView: function() {
+      $('#collectionsToggle').toggleClass('activated');
       $('#collectionsDropdown2').slideToggle(200);
     },
 

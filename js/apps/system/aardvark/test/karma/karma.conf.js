@@ -16,12 +16,11 @@ module.exports = function(karma) {
 
     // list of files / patterns to load in the browser
     files: [
-      /*
       'test/lib/jasmine-1.3.1/jasmine-html.js',
       'test/lib/jslint.js',
 
       //Templates
-      {pattern: 'frontend/js/templates/*.ejs', served: true, included: true, watched: true},
+      {pattern: 'frontend/js/templates/*.ejs', served: true, included: false, watched: true},
 
       'frontend/js/lib/jquery-2.1.0.min.js',
       'frontend/js/lib/jquery-ui-1.9.2.custom.js',
@@ -49,9 +48,12 @@ module.exports = function(karma) {
       'frontend/js/lib/swagger-ui.js',
       'frontend/js/lib/highlight.7.3.pack.js',
       
+      // Template Engine Mock
+      'test/mocks/disableEJS.js',
+
+      
       // arangodb
       'frontend/js/arango/arango.js',
-      'frontend/js/arango/templateEngine.js',
       'frontend/js/shell/browser.js',
       'frontend/js/modules/org/arangodb/arango-collection-common.js',
       'frontend/js/modules/org/arangodb/arango-collection.js',
@@ -127,6 +129,11 @@ module.exports = function(karma) {
       'frontend/js/models/foxx.js',
       'frontend/js/models/notification.js',
       'frontend/js/models/graph.js',
+      'frontend/js/models/clusterServer.js',
+      'frontend/js/models/clusterCoordinator.js',
+      'frontend/js/models/clusterDatabase.js',
+      'frontend/js/models/clusterCollection.js',
+      'frontend/js/models/clusterShard.js',
 
       // Collections
       'frontend/js/collections/arangoCollections.js',
@@ -139,6 +146,11 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
       'frontend/js/collections/graphCollection.js',
+      'frontend/js/collections/clusterServers.js',
+      'frontend/js/collections/clusterCoordinators.js',
+      'frontend/js/collections/clusterDatabases.js',
+      'frontend/js/collections/clusterCollections.js',
+      'frontend/js/collections/clusterShards.js',
       'frontend/js/collections/notificationCollection.js',
 
       // Views
@@ -171,15 +183,35 @@ module.exports = function(karma) {
       'frontend/js/views/dbSelectionView.js',
       'frontend/js/views/editListEntryView.js',
       'frontend/js/views/loginView.js',
+      'frontend/js/views/clusterDashboardView.js',
+      'frontend/js/views/clusterOverviewView.js',
+      'frontend/js/views/clusterServerView.js',
+      'frontend/js/views/clusterCoordinatorView.js',
+      'frontend/js/views/clusterDatabaseView.js',
+      'frontend/js/views/clusterCollectionView.js',
+      'frontend/js/views/clusterShardsView.js',
+
       'frontend/js/views/statisticBarView.js',
       'frontend/js/views/userBarView.js',
 
+      //Views Planner
+      'plannerFrontend/js/views/planScenarioSelectorView.js',
+      'plannerFrontend/js/views/planSymmetricView.js',
+      'plannerFrontend/js/views/planTestView.js',
+
       // Router
       'frontend/js/routers/router.js',
+      'plannerFrontend/js/routers/clusterRouter.js',
+
+      //Views cluster
+      'clusterFrontend/js/views/showClusterView.js',
+
+      // Router
+      'frontend/js/routers/router.js',
+      'clusterFrontend/js/routers/clusterRouter.js',
 
       // Specs
       // GraphViewer
-      
       'test/specs/graphViewer/specColourMapper/colourMapperSpec.js',
       'test/specs/graphViewer/specWindowObjects/domObserverFactorySpec.js',
       'test/specs/graphViewer/specCommunityNode/communityNodeSpec.js',
@@ -210,9 +242,18 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specContextMenu/contextMenuSpec.js', 
       // Arango
       'test/specs/arango/arangoSpec.js',
+
       // Models
       'test/specs/models/currentDatabaseSpec.js',
       'test/specs/models/graphSpec.js',
+
+      // Collections
+      'test/specs/collections/clusterServersSpec.js',
+      'test/specs/collections/clusterDatabasesSpec.js',
+      'test/specs/collections/clusterCollectionsSpec.js',
+      'test/specs/collections/clusterShardsSpec.js',
+
+
       // Views
       'test/specs/views/editListEntryViewSpec.js',
       'test/specs/views/collectionViewSpec.js',
@@ -223,12 +264,25 @@ module.exports = function(karma) {
       'test/specs/views/graphViewSpec.js',
       'test/specs/views/graphManagementViewSpec.js',
       'test/specs/views/addNewGraphViewSpec.js',
+      'test/specs/views/clusterDashboardViewSpec.js',
+      'test/specs/views/clusterOverviewViewSpec.js',
+      'test/specs/views/clusterServerViewSpec.js',
+      'test/specs/views/clusterCoordinatorViewSpec.js',
+      'test/specs/views/clusterDatabaseViewSpec.js',
+      'test/specs/views/clusterCollectionViewSpec.js',
+      'test/specs/views/clusterShardsViewSpec.js',
       // Router
       'test/specs/router/routerSpec.js',
-      // JSLint
-      
+
+      //Planner
+      //Router
+      'test/specs/planner/router/routerSpec.js',
+      //View
+      'test/specs/planner/views/planSymmetricViewSpec.js',
+      'test/specs/planner/views/planTestViewSpec.js',
+      'test/specs/planner/views/planScenarioSelectorViewSpec.js',
+
       'test/specJSLint/jsLintSpec.js'
-      */
     ],
 
 
@@ -269,7 +323,7 @@ module.exports = function(karma) {
     // - Safari (only Mac)
     // - PhantomJS
     // - IE (only Windows)
-    browsers: ["PhantomJS", "Firefox"],
+    browsers: ["PhantomJS"],
 
     // If browser does not capture in given timeout [ms], kill it
     captureTimeout: 60000,

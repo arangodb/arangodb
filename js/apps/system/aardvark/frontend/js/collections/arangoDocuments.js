@@ -12,7 +12,7 @@
         offset: 0,
 
         url: '/_api/documents',
-        model: arangoDocumentModel,
+        model: window.arangoDocumentModel,
         getFirstDocuments: function () {
           if (this.currentPage !== 1) {
             var link = window.location.hash.split("/");
@@ -143,7 +143,7 @@
             sortString = " SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)";
           }
 
-          var myQueryVal = "FOR u in @@collection" + filterString + sortString + 
+          var myQueryVal = "FOR u in @@collection" + filterString + sortString +
             " LIMIT @offset, @count RETURN u";
 
           this.offset = (this.currentPage - 1) * this.documentsPerPage;
@@ -210,6 +210,41 @@
         },
         clearDocuments: function () {
           window.arangoDocumentsStore.reset();
+        },
+        getStatisticsHistory: function(params) {
+            var self = this;
+            var body = {
+                startDate : params.startDate,
+                endDate   : params.endDate,
+                figures   : params.figures
+            };
+            var server = params.server;
+            var addAuth = function(){};
+            var url = "";
+            if (server) {
+              url = server.endpoint;
+              url += "/_admin/history";
+              if (server.isDBServer) {
+                url += "?DBserver=" + server.target;
+              }
+              addAuth = server.addAuth;
+            } else {
+              url = "/_admin/history";
+            }
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                async: false,
+                url: url,
+                data: JSON.stringify(body),
+                contentType: "application/json",
+                beforeSend: addAuth,
+                success: function(data) {
+                  self.history =  data.result;
+                },
+                error: function(data) {
+                }
+            });
         }
   });
 }());

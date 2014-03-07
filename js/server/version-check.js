@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
-/*global require, exports, module, UPGRADE_ARGS */
+/*global require, exports, module, UPGRADE_ARGS, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server
@@ -40,15 +40,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function(args) {
+  delete UPGRADE_ARGS;
+
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
   var userManager = require("org/arangodb/users");
+  var cluster = require("org/arangodb/cluster");
   var db = internal.db;
 
   // whether or not we are initialising an empty / a new database
   var isInitialisation;
 
+  // set this global variable to inform the server we actually got until here...
+  UPGRADE_STARTED = true;
 
   var logger = {
     info: function (msg) {
@@ -112,6 +117,9 @@
     // helper function to define a task that is run on upgrades only, but not on initialisation
     // of a new empty database
     function addUpgradeTask (name, description, fn) {
+      if (cluster.isCoordinator()) {
+        return;
+      }
       if (isInitialisation) {
         // if we are initialising a new database, set the task to completed
         // without executing it. this saves unnecessary migrations for empty
@@ -124,7 +132,7 @@
       }
     }
 
-    if (fs.exists(versionFile)) {
+    if (!cluster.isCoordinator() && fs.exists(versionFile)) {
       // VERSION file exists, read its contents
       var versionInfo = fs.read(versionFile);
 
@@ -271,7 +279,7 @@
 
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {
-      return createSystemCollection("_users", { waitForSync : true });
+      return createSystemCollection("_users", { waitForSync : true, shardKeys: [ "user" ] });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +298,8 @@
         users.ensureUniqueConstraint("user");
 
         return true;
-      });
+      }
+    );
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief addDefaultUser
@@ -303,13 +312,22 @@
         return false;
       }
 
+      var foundUser = false;
+
       if (args && args.users) {
         args.users.forEach(function(user) {
-          userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          foundUser = true;
+          try {
+            userManager.save(user.username, user.passwd, user.active, user.extra || { });
+          }
+          catch (err) {
+            logger.error("could not add database user '" + user.username + "': " + 
+                         String(err.stack || err));
+          }
         });
       }
 
-      if (users.count() === 0) {
+      if (! foundUser && users.count() === 0) {
         // only add account if user has not created his/her own accounts already
         userManager.save("root", "", true);
       }
@@ -326,25 +344,6 @@
       return createSystemCollection("_graphs", { waitForSync : true });
     });
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createGraphsIndex
-////////////////////////////////////////////////////////////////////////////////
-
-    // create a unique index on name attribute in _graphs
-    addTask("createGraphsIndex",
-            "create index on name attribute in _graphs collection",
-      function () {
-        var graphs = getCollection("_graphs");
-
-        if (! graphs) {
-          return false;
-        }
-
-        graphs.ensureUniqueConstraint("name");
-
-        return true;
-      });
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief addCollectionVersion
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +404,8 @@
         }
 
         return true;
-      });
+      }
+    );
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createModules
@@ -425,7 +425,18 @@
       // needs to be big enough for assets
       return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
     });
-    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _cluster_kickstarter_plans
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _routing collection
+    addTask("createKickstarterConfiguration",
+      "setup _cluster_kickstarter_plans collection", function () {
+        //TODO add check if this is the main dispatcher
+      return createSystemCollection("_cluster_kickstarter_plans");
+    });
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insertRedirectionsAll
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,7 +469,7 @@
             "do": "org/arangodb/actions/redirectRequest",
             options: {
               permanently: true,
-              destination: "/_db/" + encodeURIComponent(db._name()) + "/_admin/aardvark/index.html"
+              destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
             }
           },
           priority: -1000000
@@ -515,7 +526,10 @@
 
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : true });
+      return createSystemCollection("_aal", { 
+        waitForSync : true, 
+        shardKeys: [ "name", "version" ] 
+      });
     });
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,19 +564,23 @@
 /// @brief setupTrx
 ////////////////////////////////////////////////////////////////////////////////
 
-    // set up the collection _trx
-    addTask("setupTrx", "setup _trx collection", function () {
-      return createSystemCollection("_trx", { waitForSync : false });
-    });
+    if (! cluster.isCoordinator()) {
+      // set up the collection _trx
+      addTask("setupTrx", "setup _trx collection", function () {
+        return createSystemCollection("_trx", { waitForSync : false });
+      });
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setupReplication
 ////////////////////////////////////////////////////////////////////////////////
 
-    // set up the collection _replication
-    addTask("setupReplication", "setup _replication collection", function () {
-      return createSystemCollection("_replication", { waitForSync : false });
-    });
+    if (! cluster.isCoordinator()) {
+      // set up the collection _replication
+      addTask("setupReplication", "setup _replication collection", function () {
+        return createSystemCollection("_replication", { waitForSync : false });
+      });
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief migrateAqlFunctions
@@ -671,10 +689,12 @@
           // success
           lastTasks[task.name] = true;
 
-          // save/update version info
-          fs.write(
-            versionFile,
-            JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          if (!cluster.isCoordinator()) {
+            // save/update version info
+            fs.write(
+              versionFile,
+              JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          }
 
           logger.log("Task successful");
         }
@@ -686,17 +706,18 @@
       }
     }
 
-    // save file so version gets saved even if there are no tasks
-    fs.write(
-      versionFile,
-      JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    if (!cluster.isCoordinator()) {
+      // save file so version gets saved even if there are no tasks
+      fs.write(
+        versionFile,
+        JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    }
 
     logger.log(procedure + " successfully finished");
 
     // successfully finished
     return true;
   }
-
 
   var lastVersion = null;
   var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
@@ -709,6 +730,13 @@
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
+  if (cluster.isCoordinator()) {
+    var result = runUpgrade(currentVersion);
+    internal.initializeFoxx();
+
+    return result;
+  }
+
   if (! fs.exists(versionFile)) {
     logger.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);
@@ -759,9 +787,17 @@
     logger.error("Database directory version (" + lastVersion
                   + ") is lower than server version (" + currentVersion + ").");
 
-    logger.error("It seems like you have upgraded the ArangoDB binary. If this is"
-                  +" what you wanted to do, please restart with the --upgrade option"
-                  +" to upgrade the data in the database directory.");
+    logger.error("----------------------------------------------------------------------");
+    logger.error("It seems like you have upgraded the ArangoDB binary.");
+    logger.error("If this is what you wanted to do, please restart with the");
+    logger.error("  --upgrade");
+    logger.error("option to upgrade the data in the database directory.");
+
+    logger.error("Normally you can use the control script to upgrade your database");
+    logger.error("  /etc/init.d/arangodb stop");
+    logger.error("  /etc/init.d/arangodb upgrade");
+    logger.error("  /etc/init.d/arangodb start");
+    logger.error("----------------------------------------------------------------------");
 
     // do not start unless started with --upgrade
     return false;
@@ -770,8 +806,6 @@
   // we should never get here
   return true;
 }(UPGRADE_ARGS));
-
-delete UPGRADE_ARGS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

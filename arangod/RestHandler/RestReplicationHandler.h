@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_HANDLER_REST_REPLICATION_HANDLER_H
@@ -48,11 +48,6 @@ struct TRI_vocbase_col_s;
 // --SECTION--                                            RestReplicationHandler
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 namespace triagens {
   namespace arango {
 
@@ -62,18 +57,9 @@ namespace triagens {
 
     class RestReplicationHandler : public RestVocbaseBaseHandler {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -89,18 +75,9 @@ namespace triagens {
 
         ~RestReplicationHandler ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -108,31 +85,22 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_e execute();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        Handler::status_t execute();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-      
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
-/// because edges depend on vertices being there), then name 
+/// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
         static int sortCollections (const void*,
-                                    const void*); 
+                                    const void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
@@ -140,20 +108,17 @@ namespace triagens {
 
         static bool filterCollection (struct TRI_vocbase_col_s*, void*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief creates an error if called on a coordinator server
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+        bool isCoordinatorError ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the applier action into an action list
@@ -206,7 +171,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a batch command
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void handleCommandBatch ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +189,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the JSON provided TODO: move
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         int createCollection (struct TRI_json_s const*,
                               struct TRI_vocbase_col_s**,
                               bool,
@@ -246,7 +211,7 @@ namespace triagens {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollection (struct TRI_json_s* const,
+        int processRestoreCollection (struct TRI_json_s const*,
                                       bool,
                                       bool,
                                       bool,
@@ -257,7 +222,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexes (struct TRI_json_s* const,
+        int processRestoreIndexes (struct TRI_json_s const*,
                                    bool,
                                    TRI_server_id_t,
                                    std::string&);
@@ -289,7 +254,7 @@ namespace triagens {
 /// @brief restores the data of a collection TODO
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreData (CollectionNameResolver const&, 
+        int processRestoreData (CollectionNameResolver const&,
                                 TRI_voc_cid_t,
                                 TRI_server_id_t,
                                 bool,
@@ -356,25 +321,16 @@ namespace triagens {
 
         void handleCommandApplierDeleteState ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum chunk size
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         static const uint64_t defaultChunkSize;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,10 +342,6 @@ namespace triagens {
      };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

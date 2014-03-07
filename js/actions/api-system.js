@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module */
+/*global require, exports, module, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -32,15 +32,11 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
 var console = require("console");
+var users = require("org/arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routing function
@@ -101,8 +97,12 @@ function routing (req, res) {
       func(req, res, action.route.callback.options, next);
     }
     catch (err) {
+      if (err instanceof internal.SleepAndRequeue) {
+        throw err;
+      }
+
       var msg = 'A runtime error occurred while executing an action: '
-                + String(err) + " " + String(err.stack);
+              + String(err) + " " + String(err.stack) + " " + (typeof err);
 
       actions.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
     }
@@ -116,18 +116,9 @@ function routing (req, res) {
   execute();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main routing action
@@ -142,6 +133,20 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current server role
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/server/role",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { role: ArangoServerState.role() });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the server authentication information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,7 +156,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.reloadAuth();
+    users.reload();
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
@@ -273,6 +278,39 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_get_admin_sleep
+/// @brief sleeps, this is useful for timeout tests
+///
+/// @RESTHEADER{GET /_admin/sleep?duration=5,sleeps for 5 seconds}
+///
+/// @RESTDESCRIPTION
+///
+/// The call returns an object with the attribute `duration`. This takes
+/// as many seconds as the duration argument says.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Sleep was conducted successfully.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/sleep",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var time = parseFloat(req.parameters.duration);
+    if (isNaN(time)) {
+      time = 3.0;
+    }
+    internal.wait(time);
+    actions.resultOk(req, res, actions.HTTP_OK, { duration : time });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_echo
 /// @brief returns the request
 ///
@@ -304,37 +342,6 @@ actions.defineHttp({
     res.responseCode = actions.HTTP_OK;
     res.contentType = "application/json; charset=utf-8";
     res.body = JSON.stringify(req);
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_admin_echo_database_name
-/// @brief returns the database name
-///
-/// @RESTHEADER{GET /_admin/database_name,returns the database name}
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the following attributes:
-///
-/// - `name`: the name of the database
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Name was returned successfully.
-///
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/database-name",
-  context : "admin",
-  prefix : true,
-
-  callback : function (req, res) {
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json; charset=utf-8";
-    res.body = JSON.stringify({ name: internal.db._name() });
   }
 });
 
@@ -528,6 +535,15 @@ actions.defineHttp({
 
           {
             group: "system",
+            identifier: "residentSizePercent",
+            name: "Resident Set Size",
+            description: "The percentage of physical memory used as resident set size",
+            type: "current",
+            units: "percent"
+          },
+
+          {
+            group: "system",
             identifier: "virtualSize",
             name: "Virtual Memory Size",
             description: "The size of the virtual memory the process is using.",
@@ -708,6 +724,16 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
+          
+          {
+            group: "http",
+            identifier: "requestsOther",
+            name: "other HTTP requests",
+            description: "Number of other HTTP requests.",
+            type: "accumulated",
+            units: "number"
+          },
+
 
           // .............................................................................
           // server statistics
@@ -720,6 +746,15 @@ actions.defineHttp({
             description: "Number of seconds elapsed since server start.",
             type: "current",
             units: "seconds"
+          },
+
+          {
+            group: "server",
+            identifier: "physicalMemory",
+            name: "Physical Memory",
+            description: "Physical memory in bytes.",
+            type: "current",
+            units: "bytes"
           }
 
         ]
@@ -734,17 +769,81 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_post_admin_test
+/// @brief executes one or multiple tests on the server
+///
+/// @RESTHEADER{POST /_admin/test,runs tests on the server}
+///
+/// @RESTBODYPARAM{body,javascript,required}
+/// A JSON body containing an attribute "tests" which lists the files 
+/// containing the test suites.
+///
+/// @RESTDESCRIPTION
+///
+/// Executes the specified tests on the server and returns an object with the
+/// test results. The object has an attribute "error" which states whether 
+/// any error occurred. The object also has an attribute "passed" which 
+/// indicates which tests passed and which did not.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/test",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+   
+    var tests = body.tests;
+    if (! Array.isArray(tests)) {
+      actions.resultError(req, res,
+                          actions.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                          "expected attribute 'tests' is missing");
+      return;
+    }
+
+    var jsUnity = require("jsunity");
+    var testResults = { passed: { }, error: false };
+    
+    tests.forEach (function (test) {
+      var result = false;
+      try {
+        result = jsUnity.runTest(test);
+      }
+      catch (err) {
+      }
+      testResults.passed[test] = result;
+      if (! result) {
+        testResults.error = true;
+      }
+    });
+
+    actions.resultOk(req, res, actions.HTTP_OK, testResults);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_get_admin_execute
 /// @brief executes a JavaScript program on the server
 ///
 /// @RESTHEADER{POST /_admin/execute,executes a program}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// The body to be executed.
+/// The body to be executed. 
 ///
 /// @RESTDESCRIPTION
 ///
-/// Executes the javascript code in the body on the server.
+/// Executes the javascript code in the body on the server as the body
+/// of a function with no arguments. If you have a `return` statement
+/// then the return value you produce will be returned as content type
+/// `application/json`. If the parameter `returnAsJSON` is set to
+/// `true`, the result will be a JSON object describing the return value
+/// directly, otherwise a string produced by JSON.stringify will be
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -762,13 +861,15 @@ actions.defineHttp({
       result = eval("(function() {" + body + "}());");
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    if (req.parameters.hasOwnProperty("returnAsJSON") &&
+        req.parameters.returnAsJSON === "true") {
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+    }
   }
 });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

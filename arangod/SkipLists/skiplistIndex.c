@@ -207,7 +207,7 @@ static int CmpElmElm(void* sli, void* left, void* right,
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CmpKeyElm(void* sli, void* left, void* right) {
+static int CmpKeyElm (void* sli, void* left, void* right) {
 
   SkiplistIndex* skiplistindex = sli;
   TRI_skiplist_index_key_t* leftKey = left;

@@ -263,7 +263,8 @@
     },
 
     setFilterValues: function () {
-/*      var searchOptions = this.collection.searchOptions;
+      /*    
+      var searchOptions = this.collection.searchOptions;
       $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
       $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
       $('#checkSystem').attr('checked', searchOptions.includeSystem);
@@ -271,7 +272,8 @@
       $('#checkDocument').attr('checked', searchOptions.includeDocument);
       $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
       $('#sortType').attr('checked', searchOptions.sortBy === 'type');
-      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);*/
+      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);
+      */
     }
 
 

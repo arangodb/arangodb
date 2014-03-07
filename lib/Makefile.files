@@ -126,7 +126,8 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
-	lib/SimpleHttpClient/SimpleHttpResult.cpp
+	lib/SimpleHttpClient/SimpleHttpResult.cpp \
+	lib/SimpleHttpClient/ConnectionManager.cpp
 
 ################################################################################
 ### @brief library "libarango.a", front-end part
@@ -138,6 +139,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestJobHandler.cpp \
+	lib/Admin/RestShutdownHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
 	lib/ApplicationServer/ApplicationFeature.cpp \
 	lib/ApplicationServer/ApplicationServer.cpp \
@@ -146,6 +148,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/DispatcherQueue.cpp \
 	lib/Dispatcher/DispatcherThread.cpp \
 	lib/Dispatcher/Job.cpp \
+	lib/Dispatcher/RequeueTask.cpp \
 	lib/HttpServer/ApplicationEndpointServer.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
@@ -182,7 +185,8 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
-	lib/SimpleHttpClient/SimpleHttpResult.cpp
+	lib/SimpleHttpClient/SimpleHttpResult.cpp \
+	lib/SimpleHttpClient/ConnectionManager.cpp
 
 
 ################################################################################

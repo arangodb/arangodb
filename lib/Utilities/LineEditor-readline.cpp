@@ -51,6 +51,10 @@ LineEditor::LineEditor (std::string const& history)
     _historyFilename(history),
     _state(STATE_NONE) {
   rl_initialize();
+
+#ifndef __APPLE__
+  rl_catch_signals = 0;
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +122,14 @@ bool LineEditor::close () {
 
   _state = STATE_CLOSED;
 
-  return writeHistory();
+  bool res = writeHistory();
+    
+#ifndef __APPLE__
+  // reset state of the terminal to what it was before readline()
+  rl_cleanup_after_signal();
+#endif  
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +201,7 @@ char* LineEditor::prompt (char const* prompt) {
   }
 
   char const* sep = "";
-
+  
   while (true) {
     char* result = readline(p);
 

@@ -527,6 +527,9 @@ void HttpRequest::setHeader (char const* key,
         StringUtils::tolowerInPlace(&overridenType);
 
         _type = getRequestType(overridenType.c_str(), overridenType.size());
+
+        // don't insert this header!!
+        return;
       }
     }
 
@@ -680,6 +683,14 @@ string const& HttpRequest::user () const {
 
 void HttpRequest::setUser (string const& user) {
   _user = user;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the path of the request
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setRequestPath (char const* path) {
+  _requestPath = path;
 }
 
 // -----------------------------------------------------------------------------
@@ -895,7 +906,9 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           if (pathEnd - pathBegin >= 5) {
             char* q = pathBegin;
 
+            // check if the prefix is "_db"
             if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+
               // request contains database name
               q += 5;
               pathBegin = q;
@@ -1092,14 +1105,6 @@ void HttpRequest::setFullUrl (char const* begin, char const* end) {
   assert(begin <= end);
 
   _fullUrl = string(begin, end - begin);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setRequestPath (char const* path) {
-  _requestPath = path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1303,10 +1308,14 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
 
 string HttpRequest::translateVersion (HttpVersion version) {
   switch (version) {
-    case HTTP_1_0:      return "HTTP/1.0";
-    case HTTP_1_1:      return "HTTP/1.1";
+    case HTTP_1_1: {
+      return "HTTP/1.1";
+    }
+    case HTTP_1_0:      
     case HTTP_UNKNOWN:   
-    default:            return "HTTP/1.0";
+    default: {
+      return "HTTP/1.0";
+    }
   }
 }
 

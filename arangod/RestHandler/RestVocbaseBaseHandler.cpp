@@ -53,21 +53,16 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::BATCH_PATH           = "/_api/batch";
+const string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::DOCUMENT_PATH        = "/_api/document";
+const string RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
@@ -79,38 +74,29 @@ const string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EDGE_PATH            = "/_api/edge";
+const string RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::REPLICATION_PATH     = "/_api/replication";
+const string RestVocbaseBaseHandler::REPLICATION_PATH = "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::UPLOAD_PATH          = "/_api/upload";
+const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
   
-const string RestVocbaseBaseHandler::QUEUE_NAME           = "STANDARD";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+const string RestVocbaseBaseHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -130,18 +116,9 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request)
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
@@ -167,6 +144,17 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
     // "createCollection" parameter specified, but with non-true value
     return true;
   }
+
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator() ||  
+      ServerState::instance()->isDBserver()) {
+    // create-collection is not supported in a cluster
+    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
+    return false;
+  }
+#endif
+
 
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
                                                                           name.c_str(), 
@@ -202,11 +190,11 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // handle does not need to be RFC 2047-encoded
 
     if (_request->compatibility() < 10400L) {
-      // pre-1.4-location header (e.g. /_api/document/xyz)
+      // pre-1.4 location header (e.g. /_api/document/xyz)
       _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + handle));
     }
     else {
-      // 1.4-location header (e.g. /_api/document/xyz)
+      // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
       _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + handle));
     }
   }
@@ -338,8 +326,13 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+#ifdef TRI_ENABLE_CLUSTER
+    const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+#else
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+#endif
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
@@ -439,6 +432,28 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
     case TRI_ERROR_ARANGO_CONFLICT:
       generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
+
+#ifdef TRI_ENABLE_CLUSTER
+    case TRI_ERROR_CLUSTER_SHARD_GONE:
+      generateError(HttpResponse::SERVER_ERROR, res, 
+                    "coordinator: no responsible shard found");
+      return;
+
+    case TRI_ERROR_CLUSTER_TIMEOUT:
+      generateError(HttpResponse::SERVER_ERROR, res);
+      return;
+
+    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
+    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: { 
+      generateError(HttpResponse::BAD, res);
+      return;
+    }
+    
+    case TRI_ERROR_CLUSTER_UNSUPPORTED: {
+      generateError(HttpResponse::NOT_IMPLEMENTED, res);
+      return;
+    }
+#endif
 
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
@@ -573,10 +588,6 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   return json;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           HANDLER
 // -----------------------------------------------------------------------------
@@ -586,11 +597,10 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
-         
-std::string const& RestVocbaseBaseHandler::queue () const {
+
+string const& RestVocbaseBaseHandler::queue () const {
   return QUEUE_NAME;
 }
 
@@ -636,7 +646,11 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
     cid = StringUtils::uint64(split[0].c_str(), split[0].size());
   }
   else {
+#ifdef TRI_ENABLE_CLUSTER
+    cid = _resolver.getCollectionIdCluster(split[0]);
+#else
     cid = _resolver.getCollectionId(split[0]);
+#endif
   }
 
   if (cid == 0) {
@@ -647,10 +661,6 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

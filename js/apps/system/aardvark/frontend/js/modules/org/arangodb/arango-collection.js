@@ -208,44 +208,6 @@ ArangoCollection.prototype.toArray = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief queries by example
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {
-  var key;
-  var body;
-
-  limit = limit || null;
-  skip = skip || null;
-
-  if (index.hasOwnProperty("id")) {
-    index = index.id;
-  }
-
-  body = {
-    collection : this.name(),
-    index : index,
-    skip : skip,
-    limit : limit,
-    example : {} 
-  };
-
-  for (key in example) {
-    if (example.hasOwnProperty(key)) {
-      body.example[key] = example[key];
-    }
-  }
-
-  var requestResult = this._database._connection.PUT(
-    this._prefixurl("/_api/simple/BY-EXAMPLE-HASH"),
-    JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief print the help for ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -353,8 +315,18 @@ ArangoCollection.prototype.type = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.properties = function (properties) {
-  var requestResult;
+  var attributes = {
+    "doCompact": true,
+    "journalSize": true,
+    "isVolatile": false,
+    "waitForSync": true,
+    "shardKeys": false,
+    "numberOfShards": false,
+    "keyOptions": false
+  };
+  var a;
 
+  var requestResult;
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl("properties"));
 
@@ -363,14 +335,12 @@ ArangoCollection.prototype.properties = function (properties) {
   else {
     var body = {};
 
-    if (properties.hasOwnProperty("doCompact")) {
-      body.doCompact = properties.doCompact;
-    }
-    if (properties.hasOwnProperty("journalSize")) {
-      body.journalSize = properties.journalSize;
-    }
-    if (properties.hasOwnProperty("waitForSync")) {
-      body.waitForSync = properties.waitForSync;
+    for (a in attributes) {
+      if (attributes.hasOwnProperty(a)) {
+        if (properties.hasOwnProperty(a) && properties[a]) {
+          body[a] = properties[a];
+        }
+      }
     }
 
     requestResult = this._database._connection.PUT(this._baseurl("properties"),
@@ -379,15 +349,13 @@ ArangoCollection.prototype.properties = function (properties) {
     arangosh.checkRequestResult(requestResult);
   }
 
-  var result = { 
-    waitForSync : requestResult.waitForSync,
-    journalSize : requestResult.journalSize,
-    isVolatile : requestResult.isVolatile,
-    doCompact : requestResult.doCompact
-  };
-    
-  if (requestResult.keyOptions !== undefined) {
-    result.keyOptions = requestResult.keyOptions;
+  var result = { };
+  for (a in attributes) {
+    if (attributes.hasOwnProperty(a) && 
+        requestResult.hasOwnProperty(a) &&
+        requestResult[a] !== undefined) {
+      result[a] = requestResult[a];
+    }
   }
     
   return result;
@@ -596,7 +564,7 @@ ArangoCollection.prototype.index = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes one index
+/// @brief deletes an index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.dropIndex = function (id) {
@@ -619,19 +587,14 @@ ArangoCollection.prototype.dropIndex = function (id) {
 };
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a bitarray index
+/// @brief ensures a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureBitarray = function () {
-  var i;
-  var body;
-  var fields = [];
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
-  body = { type : "bitarray", unique : false, fields : fields };
+  var body = { 
+    type : "bitarray", 
+    fields : Array.prototype.slice.call(arguments) 
+  };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -641,13 +604,29 @@ ArangoCollection.prototype.ensureBitarray = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a cap constraint
+/// @brief ensures a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUndefBitarray = function () {
+  var body = { 
+    type : "bitarray", 
+    fields : Array.prototype.slice.call(arguments), 
+    "undefined" : true
+  };
+
+  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
-  var body;
-
-  body = { 
+  var body = { 
     type : "cap", 
     size : size || undefined,
     byteSize: byteSize || undefined 
@@ -661,61 +640,14 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a unique skip-list index
+/// @brief ensures a unique skip-list index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  var i;
-  var body;
-  var fields = [];
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
-  body = { type : "skiplist", unique : true, fields : fields };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a skip-list index
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  var i;
-  var body;
-  var fields = [];
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
-  body = { type : "skiplist", unique : false, fields : fields };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureFulltextIndex = function (attribute, minLength) {
-  var minLengthValue = minLength || undefined;
-  var body;
-
-  body = {
-    type: "fulltext",
-    minLength: minLengthValue,
-    fields: [ attribute ]
+  var body = { 
+    type : "skiplist", 
+    unique : true, 
+    fields : Array.prototype.slice.call(arguments) 
   };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
@@ -726,19 +658,51 @@ ArangoCollection.prototype.ensureFulltextIndex = function (attribute, minLength)
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a unique constraint
+/// @brief ensures a skip-list index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  var body = { 
+    type : "skiplist", 
+    unique : false, 
+    fields : Array.prototype.slice.call(arguments) 
+  };
+
+  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
+  var body = {
+    type: "fulltext",
+    minLength: minLength || undefined,
+    fields: [ field ]
+  };
+
+  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures a unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  var i;
-  var body;
-  var fields = [];
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
-  body = { type : "hash", unique : true, fields : fields };
+  var body = { 
+    type : "hash", 
+    unique : true, 
+    fields : Array.prototype.slice.call(arguments) 
+  };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -748,19 +712,15 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a hash index
+/// @brief ensures a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
-  var i;
-  var body;
-  var fields = [];
-
-  for (i = 0;  i < arguments.length;  ++i) {
-    fields.push(arguments[i]);
-  }
-
-  body = { type : "hash", unique : false, fields : fields };
+  var body = { 
+    type : "hash", 
+    unique : false, 
+    fields : Array.prototype.slice.call(arguments) 
+  };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -770,7 +730,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an geo index
+/// @brief ensures a geo index
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
@@ -812,7 +772,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an geo constraint
+/// @brief ensures a geo constraint
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
@@ -858,6 +818,22 @@ ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull)
   }
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures an index
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureIndex = function (data) {
+  if (typeof data !== "object" || Array.isArray(data)) {
+    throw "usage: ensureIndex(<description>)";
+  }
+
+  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(data));
 
   arangosh.checkRequestResult(requestResult);
 

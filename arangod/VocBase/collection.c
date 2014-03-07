@@ -1001,6 +1001,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_version       = TRI_COL_VERSION;
   parameter->_type          = type;
   parameter->_cid           = 0;
+  parameter->_planId        = 0;
   parameter->_revision      = 0;
 
   parameter->_deleted       = false;
@@ -1033,6 +1034,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_version       = src->_version;
   dst->_type          = src->_type;
   dst->_cid           = src->_cid;
+  dst->_planId        = src->_planId;
   dst->_revision      = src->_revision;
 
   dst->_deleted       = src->_deleted;
@@ -1370,6 +1372,7 @@ int TRI_SyncCollection (TRI_collection_t* collection) {
 TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   TRI_json_t* json;
   char* cidString;
+  char* planIdString;
    
   // create a json info object
   json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
@@ -1385,10 +1388,24 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
 
     return NULL;
   }
+  
+  planIdString = TRI_StringUInt64((uint64_t) info->_planId);
+
+  if (planIdString == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, cidString);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+    return NULL;
+  }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_version));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_type));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+
+  if (info->_planId > 0) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "planId",     TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, planIdString));
+  }
+
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
@@ -1400,6 +1417,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
   }
 
+  TRI_Free(TRI_CORE_MEM_ZONE, planIdString);
   TRI_Free(TRI_CORE_MEM_ZONE, cidString);
 
   return json;
@@ -1484,6 +1502,9 @@ int TRI_LoadCollectionInfo (char const* path,
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) value->_value._number;
       }
+      else if (TRI_EqualString(key->_value._string.data, "planId")) {
+        parameter->_planId = (TRI_voc_cid_t) value->_value._number;
+      }
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
         parameter->_maximalSize = (TRI_voc_size_t) value->_value._number;
       }
@@ -1496,6 +1517,9 @@ int TRI_LoadCollectionInfo (char const* path,
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
+      }
+      else if (TRI_EqualString(key->_value._string.data, "planId")) {
+        parameter->_planId = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }
     else if (value->_type == TRI_JSON_BOOLEAN) {
@@ -2441,8 +2465,12 @@ char* TRI_TypeNameCollection (const TRI_col_type_e type) {
       return "edge";
     case TRI_COL_TYPE_SHAPE_DEPRECATED:
       return "shape (deprecated)";
+    case TRI_COL_TYPE_UNKNOWN:
+    default:
+      return "unknown";
   }
 
+  assert(false);
   return "unknown";
 }
 

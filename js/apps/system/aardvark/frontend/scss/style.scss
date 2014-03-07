@@ -1,34 +1,27 @@
-// Shortcuts for multi-browser support
-@import "mixins";
-// All colours
-@import "colors";
-// Fonts and font bindings
-@import "fonts";
+//colorScheme
+@import 'colors';
+//shared
+@import 'shared';
 // All Abstract classes
-@import "abstracts";
-// Shared classes
-@import "resizing";
-// Buttons
-@import "buttons";
 // Navbar
-@import "navbar";
-// Navbar
-@import "statMenu";
-// Footer
-@import "footer";
-// List tiles
-@import "tiles";
+@import 'statisticBar';
 // Notifications
-@import "notification";
+@import 'notification';
 //contentTables
-@import "contentTables";
+@import 'contentTables';
 // Dropdown menu
-@import "dropdowns";
-// Dropdown menu
-@import "userMenu";
+@import 'userMenu';
 // Tooltips
-@import "tooltips";
+@import 'tooltips';
 // dbSelection
-@import "dbSelection";
+@import 'dbSelection';
+// dashboard http group
+@import 'dashboard';
+// dashboard http group
+@import 'dashboardHttpGroup';
+// dashboard distribution charts
+@import 'dashboardDistribution';
+// modals
+@import 'modals';
 // dbSelection
-@import "searchBar";
+@import 'searchBar';

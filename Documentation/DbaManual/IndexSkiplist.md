@@ -18,10 +18,10 @@ Accessing Skip-List Indexes from the Shell{#IndexSkiplistShell}
 ===============================================================
 
 @anchor IndexSkiplistShellEnsureUniqueSkiplist
-@copydetails JS_EnsureUniqueSkiplistVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureUniqueSkiplist
 
 @CLEARPAGE
 @anchor IndexSkiplistShellEnsureSkiplist
-@copydetails JS_EnsureSkiplistVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureSkiplist
 
 @BNAVIGATE_IndexSkiplist

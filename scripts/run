@@ -1,0 +1,12 @@
+#!/bin/bash
+export PID=$$
+mkdir data-$PID
+export SCRIPT=$1
+shift
+export PORT=`expr 1024 + $RANDOM`
+export ARGS=""
+for i in $*; do
+    ARGS="$ARGS --javascript.script-parameter $i"
+done
+bin/arangod --configuration none --cluster.agent-path bin/etcd-arango --cluster.arangod-path bin/arangod --cluster.coordinator-config etc/relative/arangod.conf --cluster.dbserver-config etc/relative/arangod.conf --cluster.disable-dispatcher-frontend false --cluster.disable-dispatcher-kickstarter false --cluster.data-path cluster --cluster.log-path cluster --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:$PORT --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT --ruby.action-directory mr/actions/system --ruby.modules-path "mr/server/modules;mr/common/modules" $ARGS
+rm -rf data-$PID log-$PID

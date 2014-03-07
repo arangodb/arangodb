@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -43,15 +43,11 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
+DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
+                                  Dispatcher* dispatcher,
                                   std::string const& name,
                                   Dispatcher::newDispatcherThread_fptr creator,
                                   size_t nrThreads,
@@ -71,6 +67,7 @@ DispatcherQueue::DispatcherQueue (Dispatcher* dispatcher,
     _nrStopped(0),
     _nrSpecial(0),
     _nrThreads(nrThreads),
+    _scheduler(scheduler),
     _dispatcher(dispatcher),
     createDispatcherThread(creator) {
 }
@@ -85,18 +82,9 @@ DispatcherQueue::~DispatcherQueue () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup _Dispatcher
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a job
@@ -106,7 +94,7 @@ bool DispatcherQueue::addJob (Job* job) {
   assert(job != 0);
 
   CONDITION_LOCKER(guard, _accessQueue);
-  
+
   if (_readyJobs.size() >= _maxSize) {
     // queue is full
     return false;
@@ -183,7 +171,7 @@ void DispatcherQueue::beginShutdown () {
       CONDITION_LOCKER(guard, _accessQueue);
 
       LOG_TRACE("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
-                _name.c_str(), 
+                _name.c_str(),
                 (int) _nrRunning,
                 (int) _nrWaiting,
                 (int) _nrSpecial);
@@ -197,9 +185,9 @@ void DispatcherQueue::beginShutdown () {
 
     usleep(10000);
   }
-      
+
   LOG_DEBUG("shutdown sequence dispatcher queue '%s', status: %d running threads, %d waiting threads, %d special threads",
-            _name.c_str(), 
+            _name.c_str(),
             (int) _nrRunning,
             (int) _nrWaiting,
             (int) _nrSpecial);
@@ -270,10 +258,6 @@ bool DispatcherQueue::startQueueThread () {
 
   return ok;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

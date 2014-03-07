@@ -103,7 +103,7 @@ namespace triagens {
             _maximalHeaderSize(0),
             _maximalBodySize(0) {
           LOG_TRACE("connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
-                    (int) socket.fileHandle,
+                    (int) TRI_get_fd_or_handle_of_socket(socket),
                     _connectionInfo.serverAddress.c_str(),
                     (int) _connectionInfo.serverPort,
                     _connectionInfo.clientAddress.c_str(),
@@ -123,7 +123,7 @@ namespace triagens {
       protected:
 
         ~GeneralCommTask () {
-          LOG_TRACE("connection closed, client %d", (int) _commSocket.fileHandle);
+          LOG_TRACE("connection closed, client %d", (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
           // free write buffers
           for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
@@ -183,10 +183,9 @@ namespace triagens {
             // these for linux as well.
             return;
           #endif
-          if (_commSocket.fileHandle != -1) {
+          if (TRI_isvalidsocket(_commSocket)) {
             TRI_CLOSE_SOCKET(_commSocket);
-            _commSocket.fileDescriptor = -1;
-            _commSocket.fileHandle = -1;
+            TRI_invalidatesocket(&_commSocket);
           }
         }
 

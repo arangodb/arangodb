@@ -74,9 +74,10 @@ controller.put("/foxxes/install", function (req, res) {
 }).summary("Installs a new foxx")
   .notes("This function is used to install a new foxx.");
   
-// .............................................................................
-// uninstall
-// .............................................................................
+/** Uninstall a Foxx
+ *
+ * Uninstall the Foxx with the given key.
+ */
 
 controller.del("/foxxes/:key", function (req, res) {
   res.json(foxxes.uninstall(req.params("key")));
@@ -88,9 +89,10 @@ controller.del("/foxxes/:key", function (req, res) {
 }).summary("Uninstall a Foxx.")
   .notes("This function is used to uninstall a foxx.");
   
-// .............................................................................
-// update
-// .............................................................................
+/** Update a Foxx
+ *
+ * Update the Foxx with the given information.
+ */ 
 
 controller.put("/foxxes/:key", function (req, res) {
   var content = JSON.parse(req.requestBody),
@@ -109,9 +111,10 @@ controller.put("/foxxes/:key", function (req, res) {
 }).summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
-// .............................................................................
-// read thumbnail
-// .............................................................................
+/** Get the thubmail of a Foxx
+ * 
+ * Request the Thumbnail stored for a Foxx
+ */
 
 controller.get("/foxxes/thumbnail/:app", function (req, res) {
   res.transformations = [ "base64decode" ];
@@ -130,29 +133,31 @@ controller.get("/foxxes/thumbnail/:app", function (req, res) {
 }).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
   
-// .............................................................................
-// all foxxes
-// .............................................................................
-  
+/** List all Foxxes
+ *
+ * Get a List of all Foxxes available and running
+ *
+ */
 controller.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
 }).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
   
-// .............................................................................
-// documentation for all foxxes
-// .............................................................................
-  
+/** List available Documentation
+ *
+ * Get the list of all running Foxxes with links to their documentation
+ */
 controller.get('/docus', function (req, res) {
   res.json(docus.list(req.protocol + "://" + req.headers.host + "/_db/" + req.database + req.path + "/"));
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
        + " foxxes and supplies the paths for the swagger documentation");
-  
-// .............................................................................
-// documentation for one foxx
-// .............................................................................
-  
+/** Get Documentation for one Foxx
+ *
+ * Get the complete documentation availabloe for one Foxx
+ *
+ */
+
 controller.get("/docu/:key",function (req, res) {
   var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
     key = req.params("key"),
@@ -162,10 +167,11 @@ controller.get("/docu/:key",function (req, res) {
   .notes("This function simply returns one specific"
        + " foxx and supplies the paths for the swagger documentation");
   
-// .............................................................................
-// API for one foxx
-// .............................................................................
-  
+ /** Subroutes for API Documentation
+  *
+  * Get the Elements of the API Documentation subroutes
+  *
+  */
 controller.get('/docu/:key/*', function(req, res) {
   var mountPoint = "";
     underscore.each(req.suffix, function(part) {
@@ -181,10 +187,11 @@ controller.get('/docu/:key/*', function(req, res) {
   .notes("This function lists the API of the foxx"
        + " running under the given mount point");
 
-// .............................................................................
-// Move one foxx from mount-point to another
-// .............................................................................
-
+/** Move Foxx to other Mount
+ *
+ * Move a running Foxx from one mount point to another
+ *
+ */
 controller.put('/foxx/move/:key', function(req, res) {
   var body = req.body();
   var mountPoint = body.mount;

@@ -70,6 +70,7 @@ struct TRI_transaction_collection_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
+  TRI_IDX_TYPE_UNKNOWN = 0,
   TRI_IDX_TYPE_PRIMARY_INDEX,
   TRI_IDX_TYPE_GEO1_INDEX,
   TRI_IDX_TYPE_GEO2_INDEX,
@@ -107,20 +108,10 @@ typedef struct TRI_index_s {
   TRI_vector_string_t _fields;
   bool _unique;
   bool _ignoreNull;
-  bool _needsFullCoverage;
 
-  const char* (*typeName) (struct TRI_index_s const*);
-  TRI_json_t* (*json) (struct TRI_index_s*, bool);
+  TRI_json_t* (*json) (struct TRI_index_s*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
-  // .........................................................................................
-  // the following functions are called for transaction management
-  // .........................................................................................
-
-  int (*beginTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-  int (*abortTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-  int (*commitTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
-
   // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
@@ -134,11 +125,6 @@ typedef struct TRI_index_s {
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
   
-#if 0
-  // reserve hint function. must be called under the collection's write-lock
-  bool (*reserve) (struct TRI_index_s*, int64_t);
-#endif
-
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
@@ -294,10 +280,10 @@ TRI_index_search_value_t;
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitIndex (TRI_index_t*, 
-                    const TRI_idx_type_e, 
+void TRI_InitIndex (TRI_index_t*,
+                    TRI_idx_iid_t, 
+                    TRI_idx_type_e, 
                     struct TRI_primary_collection_s*,
-                    bool,
                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,6 +298,24 @@ void TRI_InitIndex (TRI_index_t*,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not an index needs full coverage
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_type_e TRI_TypeIndex (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_TypeNameIndex (TRI_idx_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate index id string
@@ -330,7 +334,7 @@ bool TRI_ValidateIndexIdIndex (char const*,
 /// @brief free an index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeIndex (TRI_index_t* const);
+void TRI_FreeIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file
@@ -361,7 +365,7 @@ TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, 
-                           TRI_index_t*);
+                           TRI_index_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a result set returned by a hash index query
@@ -441,7 +445,8 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s*);
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s*,
+                                  TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an edge index, but does not free the pointer
@@ -480,9 +485,10 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s*,
-                                      TRI_vector_pointer_t* fields,
-                                      TRI_vector_t* paths,
-                                      bool unique);
+                                      TRI_idx_iid_t,
+                                      TRI_vector_pointer_t*,
+                                      TRI_vector_t*,
+                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -521,6 +527,7 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
+                                      TRI_idx_iid_t,
                                       const char*,
                                       const bool,
                                       int);
@@ -568,6 +575,7 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
+                                      TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
                                       TRI_vector_pointer_t*,

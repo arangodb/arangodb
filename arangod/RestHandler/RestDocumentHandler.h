@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_HANDLER_REST_DOCUMENT_HANDLER_H
@@ -34,11 +34,6 @@
 // --SECTION--                                         class RestDocumentHandler
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 namespace triagens {
   namespace arango {
 
@@ -48,18 +43,9 @@ namespace triagens {
 
     class RestDocumentHandler : public RestVocbaseBaseHandler {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -69,18 +55,9 @@ namespace triagens {
 
         RestDocumentHandler (rest::HttpRequest*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -88,20 +65,11 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_e execute ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        status_t execute ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
     protected:
 
@@ -167,13 +135,57 @@ namespace triagens {
 
       virtual bool deleteDocument ();
 
+#ifdef TRI_ENABLE_CLUSTER
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool createDocumentCoordinator (char const* collection,
+                                      bool waitForSync,
+                                      TRI_json_t* json);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool deleteDocumentCoordinator (string const& collname,
+                                      string const& key,
+                                      TRI_voc_rid_t const rev,
+                                      TRI_doc_update_policy_e policy,
+                                      bool waitForSync);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool getDocumentCoordinator (string const& collname,
+                                   string const& key,
+                                   bool generateBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all documents, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool getAllDocumentsCoordinator (string const& collname);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      bool modifyDocumentCoordinator (string const& collname,
+                                      string const& key,
+                                      TRI_voc_rid_t const rev,
+                                      TRI_doc_update_policy_e policy,
+                                      bool waitForSync,
+                                      bool isPatch,
+                                      TRI_json_t* json);
+
+#endif
+
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

@@ -1,166 +1,18 @@
 <script id="dashboardView.ejs" type="text/template">
-<ul class="thumbnails2">
+<div class="headerBar">
+  <a class="arangoHeader"><%= header %></a>
+</div>
+<div class="contentDiv">
+	<!--
   <div id="dashboardHeader" class="headerBar">
-    <a class="arangoHeader">Dashboard</a>
-    <div class="headerButtonBar pull-right">
-      <ul class="headerButtonList">
-        <li class="enabled">
-          <a id="dashboardToggle" class="headerButton">
-            <span class="icon_arangodb_settings2" title="Settings"></span>
-          </a>
-        </li>
-      </ul>
-    </div>
+      <a class="arangoHeader">Distribution Charts</a>
+   </div>
+	<div id="distributionChartDiv"></div>
+	-->
+	<div class="lineChartDiv" id="requestStatistics"></div>
+	<div class="headerBar">
+      <a class="arangoHeader">System Resources</a>
   </div>
-
-  <div id="dashboardDropdownOut" class="headerDropdown">
-    <div id="dashboardDropdown" class="dropdownInner">
-      <ul id="intervalUL">
-        <li class="nav-header">Update every:</li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every5seconds" value="5"><label><span></span>5 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every10seconds" value="10"><label><span></span>10 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every15seconds" value="15"><label><span></span>15 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every30seconds" value="30"><label><span></span>30 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every60seconds" value="60"><label><span></span>60 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every90seconds" value="90"><label><span></span>90 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every120seconds" value="120"><label><span></span>120 seconds</label></label></a></li>
-      </ul>
-    </div>
-  </div>
-  
-  <div id="replicationDropdownOut" class="dropdownOut headerDropdown">
-    <div id="replicationDropdown" class="dropdownIn dropdownInner">
-      <ul id="intervalULR">
-        <li class="nav-header">Update every:</li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every5secondsR" value="5"><label><span></span>5 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every10secondsR" value="10"><label><span></span>10 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every15secondsR" value="15"><label><span></span>15 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every30secondsR" value="30"><label><span></span>30 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every60secondsR" value="60"><label><span></span>60 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every90secondsR" value="90"><label><span></span>90 seconds</label></label></a></li>
-        <li><a><label class="radio"><input type="radio" name="replUpdateInterval" id="every120secondsR" value="120"><label><span></span>120 seconds</label></label></a></li>
-      </ul>
-    </div>
-  </div>
-
-  <!--<div id="clearDashboard" class="containerdivNewLine"></div>--!>
-</ul>
-
-<ul class="contentDiv">
-
-  <ul class="nav nav-tabs arangoTab">
-    <li class="active dashSwitch" id="statSwitch"><a>Statistics</a></li>
-    <li class="dashSwitch" id="replSwitch"><a>Replication</a></li>
-  </ul>
-
-
-  <li id="detailReplication" class="statSingleClient" style="display:none;">
-    <div id="detailReplicationDiv" class="statChart">
-      <div id="leftReplicationDiv">
-        <div class="arangoHeaderBar">
-          <a class="arangoSubHeader">Logger State</a>
-        </div> 
-        <table id="logReplicationTable">
-          <thead>
-            <tr>
-              <th class="firstTh">Name</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tr>
-            <td class="alignLeft">Running</td>
-            <td id="logRunningVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Total number of events logged</th>
-            <td id="logTotalEventsVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Local time</td>
-            <td id="logTimeVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Last log tick</td>
-            <td id="logLastTickVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Clients status</td>
-            <td id="logClientsVal"></td>
-          </tr>
-        </table>
-      </div>
-
-      <div id="rightReplicationDiv">
-        <div class="arangoHeaderBar">
-          <a class="arangoSubHeader">Applier State</a>
-        </div>
-        <table id="applyReplicationTable">
-          <thead>
-            <tr>
-              <th class="firstTh">Name</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tr>
-            <td class="alignLeft">Running</td>
-            <td id="applyRunningVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Local time</td>
-            <td id="applyTimeVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Logger endpoint</td>
-            <td id="applyEndpointVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Last applied tick</th>
-            <td id="applyLastAppliedTickVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Last available tick</th>
-            <td id="applyLastAvailableTickVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Total number of events processed</th>
-            <td id="applyTotalEventsVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Total number of requests</th>
-            <td id="applyTotalRequestsVal"></td>
-          </tr>
-          <tr>
-            <td class="alignLeft">Total number of failed connection attempts</th>
-            <td id="applyTotalFailedVal"></td>
-          </tr>
-          <tr class="checkApplyRunningStatus">
-            <td class="alignLeft">Progress</td>
-            <td id="applyProgressVal"></td>
-          </tr>
-          <tr class="checkApplyRunningStatus">
-            <td class="alignLeft">Last error</td>
-            <td id="applyLastErrorVal"></td>
-          </tr>
-        </table>
-      </div>
-    </div>
-  </li>
-
-  <li class="nocssli" style="display:none">
-    <h4 class="">Detail Chart</h4>
-  </li>
-
-  <div id="detailGraphPadding">
-  <li id="detailGraph" class="statSingleClient">
-    <div class="boxHeader">
-      <h6 id="detailGraphHeader" class="dashboardH6">User Time</h6>
-    </div>
-    <div id="detailGraphChart" class="statChart">
-      <svg class="svgDetailClass"/>
-    </div>
-  </li>
-  </div>
-  <div id="dbThumbnailsIn"/>
-
-</ul>
+  <div class="lineChartDiv" id="systemResources"></div>
+</div>
 </script>

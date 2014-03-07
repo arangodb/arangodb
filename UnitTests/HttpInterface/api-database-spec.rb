@@ -1,7 +1,7 @@
 # coding: utf-8
 
 require 'rspec'
-require './arangodb.rb'
+require 'arangodb.rb'
 
 describe ArangoDB do
   prefix = "api-database"
@@ -140,7 +140,7 @@ describe ArangoDB do
       doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       
-      doc = ArangoDB.log_post("#{prefix}-post", api, :body => body)
+      doc = ArangoDB.log_post("#{prefix}-re-create", api, :body => body)
       doc.code.should eq(409)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
       

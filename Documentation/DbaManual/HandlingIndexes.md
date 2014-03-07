@@ -131,6 +131,10 @@ Collection Methods {#HandlingIndexesCollectionMethods}
 @copydetails JS_DropIndexVocbaseCol
 
 @CLEARPAGE
+@anchor HandlingIndexesEnsure
+@copydetails JS_EnsureIndexVocbaseCol
+
+@CLEARPAGE
 Database Methods {#HandlingIndexesDatabaseMethods}
 --------------------------------------------------
 

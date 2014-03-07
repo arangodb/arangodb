@@ -175,18 +175,10 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameCapConstraint (TRI_index_t const* idx) {
-  return "cap";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonCapConstraint (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
 
@@ -195,6 +187,10 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, bool withStats) {
 
   // create json object and fill it
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  if (json == NULL) {
+    return NULL;
+  }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_count));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
@@ -281,6 +277,7 @@ static int RemoveCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
+                                      TRI_idx_iid_t iid,
                                       size_t count,
                                       int64_t size) {
   TRI_cap_constraint_t* cap;
@@ -294,8 +291,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
 
   idx = &cap->base;
 
-  idx->typeName = TypeNameCapConstraint;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->json        = JsonCapConstraint;

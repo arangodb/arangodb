@@ -400,6 +400,12 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
+
   // copy shaped json into the marker
   memcpy(mem + baseLength, (char*) shaped->_data.data, shaped->_data.length);
   
@@ -522,6 +528,12 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
 
   *keyBody = mem + markerSize;
 
@@ -1403,7 +1415,7 @@ static int AddIndex (TRI_document_collection_t* document,
   assert(idx != NULL);
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
-            idx->typeName(idx),
+            TRI_TypeNameIndex(idx->_type),
             document->base.base._info._name);
 
   res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);
@@ -1481,36 +1493,6 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send a resize hint to all indexes
-/// must be called under the collection's write-lock
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static bool ResizeIndexes (TRI_document_collection_t* document,
-                           int64_t numDocuments) {
-  size_t i, n;
-  bool result;
-
-  result = true;
-
-  n = document->_allIndexes._length;
-  for (i = 0 ; i < n ; ++i) {
-    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
-
-    if (idx->reserve != NULL) {
-      result = idx->reserve(idx, numDocuments);
-
-      if (! result) {
-        break;
-      }
-    }
-  }
-
-  return result;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief debug output for headers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1534,42 +1516,6 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
              (unsigned long long) d->_rid);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief notify a collection about transaction begin/commit/abort
-////////////////////////////////////////////////////////////////////////////////
-
-static int NotifyTransaction (TRI_primary_collection_t* primary, 
-                              TRI_transaction_status_e status) {
-  TRI_document_collection_t* document;
-  size_t i, n;
-
-  document = (TRI_document_collection_t*) primary;
-
-  n = document->_allIndexes._length;
-
-  for (i = 0; i < n ; ++i) {
-    TRI_index_t* idx = TRI_AtVectorPointer(&document->_allIndexes, i);
-
-    if (status == TRI_TRANSACTION_RUNNING) {
-      if (idx->beginTransaction != NULL) {
-        idx->beginTransaction(idx, primary);
-      }
-    }
-    else if (status == TRI_TRANSACTION_ABORTED) {
-      if (idx->abortTransaction != NULL) {
-        idx->abortTransaction(idx, primary);
-      }
-    }
-    else if (status == TRI_TRANSACTION_COMMITTED) {
-      if (idx->commitTransaction != NULL) {
-        idx->commitTransaction(idx, primary);
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2880,7 +2826,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   if (document->base.base._info._type == TRI_COL_TYPE_EDGE) {
     TRI_index_t* edgesIndex;
 
-    edgesIndex = TRI_CreateEdgeIndex(&document->base);
+    edgesIndex = TRI_CreateEdgeIndex(&document->base, document->base.base._info._cid);
 
     if (edgesIndex == NULL) {
       TRI_FreeIndex(primaryIndex);
@@ -2920,8 +2866,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->base.dump              = DumpCollection;
 #endif
 
-  document->base.notifyTransaction = NotifyTransaction;
-
   // crud methods
   document->base.insert            = InsertShapedJson;
   document->base.read              = ReadShapedJson;
@@ -2932,9 +2876,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->_requestedJournalSize  = 0;
   document->_rotateRequested       = false;
   document->cleanupIndexes         = CleanupIndexes;
-#if 0  
-  document->reserveIndexes         = ResizeIndexes;
-#endif
 
   return true;
 }
@@ -3087,7 +3028,9 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
-    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->_directory, TRI_last_error());
+    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", 
+              collection->_directory, 
+              TRI_last_error());
 
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
@@ -3736,13 +3679,13 @@ static bool DropIndex (TRI_document_collection_t* document,
 
     idx = document->_allIndexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // cannot remove these index types
-      continue;
-    }
-
     if (idx->_iid == iid) {
+      if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+          idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+        // cannot remove these index types
+        break;
+      }
+
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
 
       if (found != NULL && found->removeIndex != NULL) {
@@ -3842,11 +3785,10 @@ static int FillIndex (TRI_document_collection_t* document,
 static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
                                                        TRI_vector_t const* paths,
                                                        TRI_idx_type_e type,
-                                                       bool unique) {
-  TRI_index_t* matchedIndex = NULL;
+                                                       bool unique,
+                                                       bool allowAnyAttributeOrder) {
   TRI_vector_t* indexPaths = NULL;
   size_t j;
-  size_t k;
 
   // ...........................................................................
   // go through every index and see if we have a match
@@ -3854,7 +3796,8 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
   for (j = 0;  j < collection->_allIndexes._length;  ++j) {
     TRI_index_t* idx = collection->_allIndexes._buffer[j];
-    bool found       = true;
+    bool found;
+    size_t k;
 
     // .........................................................................
     // check if the type of the index matches
@@ -3864,7 +3807,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // check if uniqueness matches
     // .........................................................................
@@ -3873,13 +3815,11 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // Now perform checks which are specific to the type of index
     // .........................................................................
 
     switch (type) {
-
       case TRI_IDX_TYPE_BITARRAY_INDEX: {
         TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
         indexPaths = &(baIndex->_paths);
@@ -3919,32 +3859,55 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       continue;
     }
 
-
     // .........................................................................
     // go through all the attributes and see if they match
     // .........................................................................
 
-    for (k = 0;  k < paths->_length;  ++k) {
-      TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*)(TRI_AtVector(indexPaths, k)));
-      TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, k)));
+    found = true;
 
-      if (indexShape != givenShape) {
+    if (allowAnyAttributeOrder) {
+      // any permutation of attributes is allowed
+      for (k = 0;  k < paths->_length;  ++k) {
+        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
+        size_t l;
+
         found = false;
-        break;
+
+        for (l = 0;  l < paths->_length;  ++l) {
+          TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, l));
+     
+          if (indexShape == givenShape) {
+            found = true;
+            break;
+          }
+        } 
+        
+        if (! found) {
+          break;
+        }      
+      }
+    }
+    else {
+      // attributes need to present in a given order
+      for (k = 0;  k < paths->_length;  ++k) {
+        TRI_shape_pid_t indexShape = *((TRI_shape_pid_t*) TRI_AtVector(indexPaths, k));
+        TRI_shape_pid_t givenShape = *((TRI_shape_pid_t*) TRI_AtVector(paths, k));
+        
+        if (indexShape != givenShape) {
+          found = false;
+          break;
+        }
       }
     }
 
     // stop if we found a match
     if (found) {
-      matchedIndex = idx;
-      break;
+      return idx;
     }
   }
 
-  return matchedIndex;
+  return NULL;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores a bitarray based index (template)
@@ -4202,12 +4165,16 @@ static int ComparePidName (void const* left, void const* right) {
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document, bool withStats) {
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
   TRI_vector_pointer_t* vector;
-  size_t n;
-  size_t i;
+  size_t i, n;
 
   vector = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+
+  if (vector == NULL) {
+    return NULL;
+  }
+
   TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
 
   n = document->_allIndexes._length;
@@ -4218,7 +4185,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx,withStats);
+    json = idx->json(idx);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
@@ -4255,11 +4222,12 @@ bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t* document,
 /// freed.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
-                                  TRI_shaper_t* shaper,
-                                  TRI_vector_t* pids,
-                                  TRI_vector_pointer_t* names,
-                                  bool sorted) {
+static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
+                                     TRI_shaper_t* shaper,
+                                     TRI_vector_t* pids,
+                                     TRI_vector_pointer_t* names,
+                                     bool sorted,
+                                     bool create) {
   pid_name_t* pidnames;
   size_t j;
 
@@ -4268,17 +4236,23 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
   // .............................................................................
 
   if (sorted) {
-
     // combine name and pid
     pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+
     if (pidnames == NULL) {
-      LOG_ERROR("out of memory in TRI_PidNamesByAttributeNames");
+      LOG_ERROR("out of memory in PidNamesByAttributeNames");
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     for (j = 0;  j < attributes->_length;  ++j) {
       pidnames[j]._name = attributes->_buffer[j];
-      pidnames[j]._pid = shaper->findAttributePathByName(shaper, pidnames[j]._name);
+
+      if (create) {
+        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
+      }
+      else {
+        pidnames[j]._pid = shaper->lookupAttributePathByName(shaper, pidnames[j]._name);
+      }
 
       if (pidnames[j]._pid == 0) {
         TRI_Free(TRI_CORE_MEM_ZONE, pidnames);
@@ -4315,7 +4289,13 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
       TRI_shape_pid_t pid;
 
       name = attributes->_buffer[j];
-      pid = shaper->findAttributePathByName(shaper, name);
+
+      if (create) {
+        pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
+      }
+      else {
+        pid = shaper->lookupAttributePathByName(shaper, name);
+      }
 
       if (pid == 0) {
         TRI_DestroyVector(pids);
@@ -4381,16 +4361,12 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
 
   // create a new index
-  idx = TRI_CreateCapConstraint(primary, count, size);
+  idx = TRI_CreateCapConstraint(primary, iid, count, size);
 
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
-  }
-
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -4490,10 +4466,26 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupCapConstraintDocumentCollection (TRI_document_collection_t* document) {
+  TRI_primary_collection_t* primary = &document->base;
+
+  // check if we already know a cap constraint
+  if (primary->_capConstraint != NULL) {
+    return &primary->_capConstraint->base;
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         size_t count,
                                                         int64_t size,
                                                         bool* created,
@@ -4511,7 +4503,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
+  idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -4583,7 +4575,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   shaper = primary->_shaper;
 
   if (location != NULL) {
-    loc = shaper->findAttributePathByName(shaper, location);
+    loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4592,7 +4584,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (latitude != NULL) {
-    lat = shaper->findAttributePathByName(shaper, latitude);
+    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4601,7 +4593,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (longitude != NULL) {
-    lon = shaper->findAttributePathByName(shaper, longitude);
+    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4611,10 +4603,10 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndex1DocumentCollection(document, loc, geoJson, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson, unique, ignoreNull);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2DocumentCollection(document, lat, lon, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude, unique, ignoreNull);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -4634,14 +4626,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // create a new index
   if (location != NULL) {
-    idx = TRI_CreateGeo1Index(primary, location, loc, geoJson, unique, ignoreNull);
+    idx = TRI_CreateGeo1Index(primary, iid, location, loc, geoJson, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_CreateGeo2Index(primary, latitude, lat, longitude, lon, unique, ignoreNull);
+    idx = TRI_CreateGeo2Index(primary, iid, latitude, lat, longitude, lon, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
@@ -4652,10 +4644,6 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
-  }
-
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -4844,12 +4832,21 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_shape_pid_t location,
+                                                    char const* location,
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull) {
-  size_t n;
-  size_t i;
+  TRI_shape_pid_t loc;
+  TRI_shaper_t* shaper;
+  size_t i, n;
+
+  shaper = document->base._shaper;
+    
+  loc = shaper->lookupAttributePathByName(shaper, location);
+
+  if (loc == 0) {
+    return NULL;
+  }
 
   n = document->_allIndexes._length;
 
@@ -4861,7 +4858,9 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_location != 0 && geo->_location == location && geo->_geoJson == geoJson && idx->_unique == unique) {
+      if (geo->_location != 0 && geo->_location == loc && 
+          geo->_geoJson == geoJson && 
+          idx->_unique == unique) {
         if (! unique || geo->base._ignoreNull == ignoreNull) {
           return idx;
         }
@@ -4877,12 +4876,23 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
-                                                    TRI_shape_pid_t latitude,
-                                                    TRI_shape_pid_t longitude,
+                                                    char const* latitude,
+                                                    char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull) {
-  size_t n;
-  size_t i;
+  TRI_shape_pid_t lat;
+  TRI_shape_pid_t lon;
+  TRI_shaper_t* shaper;
+  size_t i, n;
+  
+  shaper = document->base._shaper;
+  
+  lat = shaper->lookupAttributePathByName(shaper, latitude);
+  lon = shaper->lookupAttributePathByName(shaper, longitude);
+
+  if (lat == 0 || lon == 0) {
+    return NULL;
+  }
 
   n = document->_allIndexes._length;
 
@@ -4894,7 +4904,11 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
-      if (geo->_latitude != 0 && geo->_longitude != 0 && geo->_latitude == latitude && geo->_longitude == longitude && idx->_unique == unique) {
+      if (geo->_latitude != 0 && 
+          geo->_longitude != 0 && 
+          geo->_latitude == lat && 
+          geo->_longitude == lon && 
+          idx->_unique == unique) {
         if (! unique || geo->base._ignoreNull == ignoreNull) {
           return idx;
         }
@@ -4910,6 +4924,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     char const* location,
                                                     bool geoJson,
                                                     bool unique,
@@ -4929,7 +4944,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -4959,6 +4974,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     char const* latitude,
                                                     char const* longitude,
                                                     bool unique,
@@ -4978,7 +4994,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5037,11 +5053,12 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   idx = NULL;
 
   // determine the sorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     true);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 true,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5057,7 +5074,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
 
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -5074,6 +5091,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
   idx = TRI_CreateHashIndex(&document->base,
+                            iid,
                             &fields,
                             &paths,
                             unique,
@@ -5089,11 +5107,6 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-  // if index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
-  }
 
   // initialises the index with all existing documents
   res = FillIndex(document, idx);
@@ -5153,25 +5166,23 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   int res;
 
-  primary = &document->base;
-
   // determine the sorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     primary->_shaper,
-                                     &paths,
-                                     &fields,
-                                     true);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 true, 
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5185,6 +5196,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
+                                                    TRI_idx_iid_t iid,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
                                                     bool* created,
@@ -5203,7 +5215,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   // given the list of attributes (as strings)
-  idx = CreateHashIndexDocumentCollection(document, attributes, 0, unique, created);
+  idx = CreateHashIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5259,11 +5271,12 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   TRI_vector_t paths;
   int res;
 
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5279,7 +5292,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
 
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -5294,7 +5307,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the skiplist index
-  idx = TRI_CreateSkiplistIndex(&document->base, &fields, &paths, unique);
+  idx = TRI_CreateSkiplistIndex(&document->base, iid, &fields, &paths, unique);
   
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -5304,11 +5317,6 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-  // If index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
-  }
 
   // initialises the index with all existing documents
   res = FillIndex(document, idx);
@@ -5369,25 +5377,23 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   int res;
 
-  primary = &document->base;
-
   // determine the unsorted shape ids for the attributes
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     primary->_shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5401,6 +5407,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
                                                         bool* created, 
@@ -5418,7 +5425,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateSkiplistIndexDocumentCollection(document, attributes, 0, unique, created);
+  idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5529,16 +5536,11 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the fulltext index
-  idx = TRI_CreateFulltextIndex(&document->base, attributeName, indexSubstrings, minWordLength);
+  idx = TRI_CreateFulltextIndex(&document->base, iid, attributeName, indexSubstrings, minWordLength);
   
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
-  }
-
-  // If index id given, use it otherwise use the default.
-  if (iid) {
-    idx->_iid = iid;
   }
 
   // initialises the index with all existing documents
@@ -5679,6 +5681,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
                                                         int minWordLength,
@@ -5697,7 +5700,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, 0, created);
+  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, iid, created);
 
   if (idx != NULL) {
     if (created) {
@@ -5744,23 +5747,24 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
-                                                      const TRI_vector_pointer_t* attributes,
-                                                      const TRI_vector_pointer_t* values,
-                                                      TRI_idx_iid_t iid,
-                                                      bool supportUndef,
-                                                      bool* created,
-                                                      int* errorNum,
-                                                      char** errorStr) {
+                                                           const TRI_vector_pointer_t* attributes,
+                                                           const TRI_vector_pointer_t* values,
+                                                           TRI_idx_iid_t iid,
+                                                           bool supportUndef,
+                                                           bool* created,
+                                                           int* errorNum,
+                                                           char** errorStr) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
   int res;
 
-  res = TRI_PidNamesByAttributeNames(attributes,
-                                     document->base._shaper,
-                                     &paths,
-                                     &fields,
-                                     false);
+  res = PidNamesByAttributeNames(attributes,
+                                 document->base._shaper,
+                                 &paths,
+                                 &fields,
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != NULL) {
@@ -5777,7 +5781,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, false);
 
   if (idx != NULL) {
 
@@ -5802,7 +5806,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // Create the bitarray index
   // ...........................................................................
 
-  idx = TRI_CreateBitarrayIndex(&document->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
+  idx = TRI_CreateBitarrayIndex(&document->base, iid, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
   
   if (idx == NULL) {
     TRI_DestroyVector(&paths);
@@ -5811,23 +5815,12 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     return NULL;
   }
 
-
   // ...........................................................................
   // release memory allocated to fields & paths vectors
   // ...........................................................................
 
   TRI_DestroyVector(&paths);
   TRI_DestroyVectorPointer(&fields);
-
-
-  // ...........................................................................
-  // If an index id given, use it otherwise use the default (generate one)
-  // ...........................................................................
-
-  if (iid) {
-    idx->_iid = iid;
-  }
-
 
   // ...........................................................................
   // initialises the index with all existing documents
@@ -5848,7 +5841,6 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
 
     return NULL;
   }
-
 
   // ...........................................................................
   // store index within the collection and return
@@ -5913,14 +5905,18 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // determine the unsorted shape ids for the attributes
   // ...........................................................................
 
-  result = TRI_PidNamesByAttributeNames(attributes, primary->_shaper, &paths,
-                                     &fields, false);
+  result = PidNamesByAttributeNames(attributes, 
+                                    primary->_shaper, 
+                                    &paths, 
+                                    &fields, 
+                                    false,
+                                    false);
 
   if (result != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
+  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, true);
 
   // .............................................................................
   // release memory allocated to vector
@@ -5937,6 +5933,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        TRI_idx_iid_t iid,
                                                         const TRI_vector_pointer_t* attributes,
                                                         const TRI_vector_pointer_t* values,
                                                         bool supportUndef,
@@ -5960,7 +5957,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, 0, supportUndef, created, errorCode, errorStr);
+  idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, iid, supportUndef, created, errorCode, errorStr);
 
   if (idx != NULL) {
     if (created) {

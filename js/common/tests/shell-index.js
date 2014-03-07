@@ -120,24 +120,24 @@ function indexSuite() {
     testDropIndex : function () {
       var id = collection.ensureGeoIndex("a");
       var res = collection.dropIndex(id.id);
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = collection.dropIndex(id.id);
-      assertEqual(false, res);
+      assertFalse(res);
 
       id = collection.ensureGeoIndex("a");
       res = collection.dropIndex(id);
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = collection.dropIndex(id);
-      assertEqual(false, res);
+      assertFalse(res);
 
       id = collection.ensureGeoIndex("a");
       res = internal.db._dropIndex(id);
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = internal.db._dropIndex(id);
-      assertEqual(false, res);
+      assertFalse(res);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,24 +148,24 @@ function indexSuite() {
       // pick up the numeric part (starts after the slash)
       var id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
       var res = collection.dropIndex(collection.name() + "/" + id);
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = collection.dropIndex(collection.name() + "/" + id);
-      assertEqual(false, res);
+      assertFalse(res);
 
       id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
       res = collection.dropIndex(parseInt(id, 10));
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = collection.dropIndex(parseInt(id, 10));
-      assertEqual(false, res);
+      assertFalse(res);
 
       id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
       res = internal.db._dropIndex(collection.name() + "/" + id);
-      assertEqual(true, res);
+      assertTrue(res);
 
       res = internal.db._dropIndex(collection.name() + "/" + id);
-      assertEqual(false, res);
+      assertFalse(res);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +271,7 @@ function getIndexesSuite() {
       var idx = res[0];
 
       assertEqual("primary", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "_id" ], idx.fields);
     },
 
@@ -287,7 +287,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -303,7 +303,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -319,7 +319,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("hash", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -335,7 +335,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("hash", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -351,7 +351,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("skiplist", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -367,7 +367,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("skiplist", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -383,7 +383,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("skiplist", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -399,7 +399,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("skiplist", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -415,8 +415,8 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("bitarray", idx.type);
-      assertEqual(false, idx.unique);
-      assertEqual(false, idx["undefined"]);
+      assertFalse(idx.unique);
+      assertFalse(idx["undefined"]);
       assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
     },
 
@@ -432,7 +432,7 @@ function getIndexesSuite() {
       var idx = res[1];
 
       assertEqual("fulltext", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
     }
 
@@ -483,8 +483,10 @@ function getIndexesEdgesSuite() {
       var idx = res[0];
 
       assertEqual("primary", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "_id" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name() + "/0", idx.id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,15 +500,120 @@ function getIndexesEdgesSuite() {
       var idx = res[1];
 
       assertEqual("edge", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "_from", "_to" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get geo constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetGeoConstraint1 : function () {
+      collection.ensureGeoConstraint("lat", "lon", false);
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("geo2", idx.type);
+      assertTrue(idx.unique);
+      assertFalse(idx.ignoreNull);
+      assertEqual([ "lat", "lon" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get geo constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetGeoConstraint2 : function () {
+      collection.ensureGeoConstraint("lat", "lon", true);
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("geo2", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.ignoreNull);
+      assertEqual([ "lat", "lon" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get geo constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetGeoConstraint3 : function () {
+      collection.ensureGeoConstraint("lat", true, true);
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("geo1", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.geoJson);
+      assertTrue(idx.ignoreNull);
+      assertEqual([ "lat" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get geo index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetGeoIndex1 : function () {
+      collection.ensureGeoIndex("lat", true, false);
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("geo1", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.geoJson);
+      assertFalse(idx.ignoreNull);
+      assertEqual([ "lat" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get geo index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetGeoIndex2 : function () {
+      collection.ensureGeoIndex("lat", "lon");
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("geo2", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.ignoreNull);
+      assertEqual([ "lat", "lon" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: get unique hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetHashUnique1 : function () {
+    testGetHashUnique : function () {
       collection.ensureUniqueConstraint("value");
       var res = collection.getIndexes();
 
@@ -514,15 +621,37 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetHash : function () {
+      collection.ensureHashIndex("value");
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: get unique skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetSkiplistUnique1 : function () {
+    testGetSkiplistUnique : function () {
       collection.ensureUniqueSkiplist("value");
       var res = collection.getIndexes();
 
@@ -530,8 +659,30 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("skiplist", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSkiplist : function () {
+      collection.ensureSkiplist("value");
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,9 +697,31 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("bitarray", idx.type);
-      assertEqual(false, idx.unique);
-      assertEqual(false, idx["undefined"]);
+      assertFalse(idx.unique);
+      assertFalse(idx["undefined"]);
       assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetUndefBitarray: function () {
+      collection.ensureUndefBitarray("value", [ "one", "two", "three" ]);
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("bitarray", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx["undefined"]);
+      assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,8 +736,12 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("fulltext", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
+      assertEqual(2, idx.minLength);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
     }
 
   };

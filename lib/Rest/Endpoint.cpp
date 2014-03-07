@@ -69,8 +69,7 @@ Endpoint::Endpoint (const Endpoint::EndpointType type,
   _encryption(encryption),
   _specification(specification),
   _listenBacklog(listenBacklog) {
-  _socket.fileHandle = 0;
-  _socket.fileDescriptor = 0;
+  TRI_invalidatesocket(&_socket);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,11 +353,11 @@ bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
-  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
     return false;
   }
 
-  if (setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {
     return false;
   }
 
@@ -385,7 +384,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   }
 
   // set close-on-exec flag, executed for both client and server endpoints
-  ok = TRI_SetCloseOnExitSocket(s);
+  ok = TRI_SetCloseOnExecSocket(s);
 
   if (! ok) {
     LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));

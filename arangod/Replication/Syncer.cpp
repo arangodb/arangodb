@@ -268,7 +268,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json, true, true);
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
@@ -418,9 +418,16 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
+  params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  params._isVolatile  = JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  params._isSystem    = (name[0] == '_');
+  params._planId      = 0;
+
+  TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
+  if (planId > 0) {
+    params._planId = planId;
+  }
   
   // wait for "old" collection to be dropped
   char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
@@ -718,10 +725,12 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
-
-  if (major != 1 ||
-      (major == 1 && minor < 4)) {
-    // we can connect to 1.4 and higher only
+  
+  if (major < 1 || 
+      major > 2 ||
+      (major == 1 && minor < 4) ||
+      (major == 2 && minor > 0)) {
+    // we can connect to 1.4, 2.0 and higher only
     errorMsg = "got incompatible master version" + endpointString + ": '" + versionString + "'";
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;

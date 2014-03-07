@@ -96,9 +96,9 @@ bool ClientConnection::checkSocket () {
   int so_error = -1;
   socklen_t len = sizeof so_error;
 
-  assert(_socket.fileHandle > 0);
+  assert(TRI_isvalidsocket(_socket));
 
-  int res = getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)(&so_error), &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errno);
@@ -141,7 +141,7 @@ bool ClientConnection::connectSocket () {
   }
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (_socket.fileHandle == 0) {
+  if (!TRI_isvalidsocket(_socket)) {
     return false;
   }
 
@@ -160,8 +160,7 @@ void ClientConnection::disconnectSocket () {
   if (_endpoint) {
     _endpoint->disconnect();
   }
-  _socket.fileDescriptor = 0;
-  _socket.fileHandle = 0;
+  TRI_invalidatesocket(&_socket);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,13 +171,13 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   struct timeval tv;
   fd_set fdset;
 
-  assert(_socket.fileHandle > 0);
+  assert(TRI_isvalidsocket(_socket));
 
   tv.tv_sec = (long) timeout;
   tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket.fileHandle, &fdset);
+  FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -190,7 +189,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
     readFds = &fdset;
   }
 
-  int sockn = (int) (_socket.fileHandle + 1);
+  int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
   int res = select(sockn, readFds, writeFds, NULL, &tv);
 
   if (res > 0) {
@@ -220,12 +219,12 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 
 #if defined(__APPLE__)
   // MSG_NOSIGNAL not supported on apple platform
-  int status = ::send(_socket.fileHandle, buffer, length, 0);
+  int status = TRI_send(_socket, buffer, length, 0);
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
-  int status = TRI_WRITE_SOCKET(_socket, (const char*)(buffer), (int)(length), 0);
+  int status = TRI_send(_socket, buffer, length, 0);
 #else
-  int status = ::send(_socket.fileHandle, buffer, length, MSG_NOSIGNAL);
+  int status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
 
   if (status < 0) {
@@ -247,7 +246,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     return false;
   }
 
-  assert(_socket.fileHandle > 0);
+  assert(TRI_isvalidsocket(_socket));
 
   do {
     // reserve some memory for reading
@@ -266,8 +265,11 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 
     if (lenRead == 0) {
       // nothing more to read
+      // since we come from a call to select which indicated that there 
+      // is something to read and we are reading from a socket, this is
+      // an error condition. Therefore we return false
       _isConnected = false;
-      break;
+      return false;
     }
 
     stringBuffer.increaseLength(lenRead);

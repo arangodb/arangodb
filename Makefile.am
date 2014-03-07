@@ -65,12 +65,24 @@ BISONXX_FILES =
 ## --SECTION--                                                             PATHS
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief program suffix
+################################################################################
+
+PROGRAM_SUFFIX=$(shell echo | sed '$(program_transform_name)')
+
+################################################################################
+### @brief system directory
+################################################################################
+
 if ENABLE_RELATIVE
 
 TRI_PKGDATADIR = .
 TRI_LOCALSTATEDIR = .
 TRI_SBINDIR = ${abs_builddir}/bin
 TRI_BINDIR = ${abs_builddir}/bin
+TRI_LIBEXECDIR = ${abs_builddir}/bin
+TRI_SYSCONFDIR = etc/relative
 
 else
 
@@ -78,6 +90,8 @@ TRI_LOCALSTATEDIR = ${localstatedir}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
 TRI_BINDIR = ${bindir}
+TRI_LIBEXECDIR = ${libexecdir}
+TRI_SYSCONFDIR = ${sysconfdir}/${PACKAGE_TARNAME}
 
 endif
 
@@ -96,8 +110,10 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 
 AM_CPPFLAGS = \
+	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
+	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
@@ -105,20 +121,6 @@ AM_CPPFLAGS = \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
 	@V8_CPPFLAGS@
-
-
-if ENABLE_RELATIVE
-
-AM_CPPFLAGS += \
-	-D_SYSCONFDIR_='"etc/relative"'
-
-
-else
-
-AM_CPPFLAGS += \
-	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
-
-endif
 
 ################################################################################
 ### @brief linker flags
@@ -204,7 +206,17 @@ sbin_PROGRAMS = \
 noinst_bin =
 
 ################################################################################
-### @brief /sbin scripts
+### @brief /libexec programs
+################################################################################
+
+pkglibexec_SCRIPTS =
+
+if ENABLE_ALL_IN_ONE_ETCD
+pkglibexec_SCRIPTS += bin/etcd-arango$(PROGRAM_SUFFIX)
+endif
+
+################################################################################
+### @brief /bin scripts
 ################################################################################
 
 bin_SCRIPTS =
@@ -221,7 +233,7 @@ noinst_PROGRAMS =
 
 arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
 
-arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*.conf" -print)
+arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFFIX).conf" -print)
 
 ################################################################################
 ### @brief /share data
@@ -264,12 +276,11 @@ install-data-local:
 ################################################################################
 
 install-exec-hook:
-	rm -f $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
-	$(LN_S) `echo arangosh | sed '$(program_transform_name)'` $(DESTDIR)$(bindir)/`echo foxx-manager | sed '$(program_transform_name)'`
+	rm -f $(DESTDIR)$(bindir)/foxx-manager$(PROGRAM_SUFFIX)
+	$(LN_S) arangosh$(PROGRAM_SUFFIX) $(DESTDIR)$(bindir)/foxx-manager$(PROGRAM_SUFFIX)
 
-	rm -f $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
-	$(LN_S) `echo arangod | sed '$(program_transform_name)'` $(DESTDIR)$(sbindir)/`echo arango-dfdb | sed '$(program_transform_name)'`
-
+	rm -f $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
+	$(LN_S) arangod$(PROGRAM_SUFFIX) $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
@@ -496,6 +507,72 @@ endif
 ################################################################################
 
 include 3rdParty/Makefile.zlib
+
+################################################################################
+### @brief etcd
+################################################################################
+
+if ENABLE_ALL_IN_ONE_ETCD
+include 3rdParty/Makefile.etcd
+endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       CMAKE SETUP
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief cmake build
+################################################################################
+
+.PHONY: cmake-setup
+
+cmake-setup:
+	test -d Build || mkdir Build
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
+		\
+		-D ARANGODB_VERSION=${VERSION} \
+		-D USE_MRUBY=${tr_MRUBY} \
+		\
+		-D ICU_INCLUDE="${CMAKE_ICU_INCLUDE}" \
+		-D ICU_LIB_PATH="${CMAKE_ICU_LIB_PATH}" \
+		-D ICU_LIBS="${CMAKE_ICU_LIBS}" \
+		-D ICU_VERSION="${CMAKE_ICU_VERSION}" \
+		\
+		-D LIBEV_INCLUDE="${CMAKE_LIBEV_INCLUDE}" \
+		-D LIBEV_LIB_PATH="${CMAKE_LIBEV_LIB_PATH}" \
+		-D LIBEV_LIBS="${CMAKE_LIBEV_LIBS}" \
+		-D LIBEV_VERSION="${CMAKE_LIBEV_VERSION}" \
+		\
+		-D MRUBY_INCLUDE= \
+		-D MRUBY_LIB_PATH= \
+		-D MRUBY_LIBS= \
+		-D MRUBY_VERSION= \
+		\
+		-D OPENSSL_INCLUDE= \
+		-D OPENSSL_LIB_PATH= \
+		-D OPENSSL_LIBS= \
+		-D OPENSSL_VERSION= \
+		\
+		-D READLINE_INCLUDE= \
+		-D READLINE_LIB_PATH= \
+		-D READLINE_LIBS= \
+		-D READLINE_VERSION= \
+		\
+		-D V8_INCLUDE= \
+		-D V8_LIB_PATH= \
+		-D V8_LIBS= \
+		-D V8_VERSION= \
+		\
+		-D ZLIB_INCLUDE= \
+		-D ZLIB_LIB_PATH= \
+		-D ZLIB_LIBS= \
+		-D ZLIB_VERSION= \
+		\
+		..
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

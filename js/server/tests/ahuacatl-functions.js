@@ -2299,8 +2299,6 @@ function ahuacatlFunctionsTestSuite () {
       actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '==', 2 ]] }) RETURN x"); 
       assertEqual(expected, actual);
       
-      assertQueryError(errors.ERROR_ARANGO_NO_INDEX.code, "RETURN SKIPLIST(" + cn + ", { b: [[ '==', 2 ]], a: [[ '==', 1 ]] })"); 
-      
       expected = [ ];
       actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 2 ]], b: [[ '==', 1 ]] }, 1, 1) RETURN x"); 
       assertEqual(expected, actual);

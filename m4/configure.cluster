@@ -1,0 +1,17 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                          CLUSTER
+dnl ----------------------------------------------------------------------------
+
+AC_DEFINE_UNQUOTED(TRI_ENABLE_CLUSTER, 1, [always true])
+AM_CONDITIONAL(ENABLE_CLUSTER, [test yes = yes])
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+dnl End:

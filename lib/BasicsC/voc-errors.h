@@ -139,7 +139,7 @@ extern "C" {
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
 /// - 1211: @LIT{geo index violated}
-///   Will be raised when a illegale coordinate is used.
+///   Will be raised when an illegal coordinate is used.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -192,7 +192,9 @@ extern "C" {
 /// - 1234: @LIT{index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into an index is
 ///   caused by in the document not having one or more attributes which the
-///   index is built on
+///   index is built on.
+/// - 1235: @LIT{index creation failed}
+///   Will be raised when an attempt to create an index has failed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -235,6 +237,71 @@ extern "C" {
 /// - 1413: @LIT{no start tick}
 ///   Will be raised when the replication error is started without a known
 ///   start tick value.
+/// - 1450: @LIT{could not connect to agency}
+///   Will be raised when none of the agency servers can be connected to.
+/// - 1451: @LIT{missing coordinator header}
+///   Will be raised when a DB server in a cluster receives a HTTP request
+///   without a coordinator header.
+/// - 1452: @LIT{could not lock plan in agency}
+///   Will be raised when a coordinator in a cluster cannot lock the Plan
+///   hierarchy in the agency.
+/// - 1453: @LIT{collection ID already exists}
+///   Will be raised when a coordinator in a cluster tries to create a
+///   collection and the collection ID already exists.
+/// - 1454: @LIT{could not create collection in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new collection in the Plan hierarchy in the agency.
+/// - 1455: @LIT{could not read version in current in agency}
+///   Will be raised when a coordinator in a cluster cannot read the Version
+///   entry in the Current hierarchy in the agency.
+/// - 1456: @LIT{could not create collection}
+///   Will be raised when a coordinator in a cluster notices that some
+///   DBServers report problems when creating shards for a new collection.
+/// - 1457: @LIT{timeout in cluster operation}
+///   Will be raised when a coordinator in a cluster runs into a timeout for
+///   some cluster wide operation.
+/// - 1458: @LIT{could not remove collection from plan}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a collection in the Plan hierarchy in the agency.
+/// - 1459: @LIT{could not remove collection from current}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a collection in the Current hierarchy in the agency.
+/// - 1460: @LIT{could not create database in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new database in the Plan hierarchy in the agency.
+/// - 1461: @LIT{could not create database}
+///   Will be raised when a coordinator in a cluster notices that some
+///   DBServers report problems when creating databases for a new cluster wide
+///   database.
+/// - 1462: @LIT{could not remove database from plan}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a database in the Plan hierarchy in the agency.
+/// - 1463: @LIT{could not remove database from current}
+///   Will be raised when a coordinator in a cluster cannot remove an entry for
+///   a database in the Current hierarchy in the agency.
+/// - 1464: @LIT{no responsible shard found}
+///   Will be raised when a coordinator in a cluster cannot determine the shard
+///   that is responsible for a given document.
+/// - 1465: @LIT{cluster internal HTTP connection broken}
+///   Will be raised when a coordinator in a cluster loses an HTTP connection
+///   to a DBserver in the cluster whilst transferring data.
+/// - 1466: @LIT{must not specify _key for this collection}
+///   Will be raised when a coordinator in a cluster finds that the _key
+///   attribute was specified in a sharded collection the uses not only _key as
+///   sharding attribute.
+/// - 1467: @LIT{got contradicting answers from different shards}
+///   Will be raised if a coordinator in a cluster gets conflicting results
+///   from different shards, which should never happen.
+/// - 1468: @LIT{not all sharding attributes given}
+///   Will be raised if a coordinator tries to find out which shard is
+///   responsible for a partial document, but cannot do this because not all
+///   sharding attributes are specified.
+/// - 1469: @LIT{must not change the value of a shardkey attribute}
+///   Will be raised if there is an attempt to update the value of a shard
+///   attribute.
+/// - 1470: @LIT{unsupported operation or parameter}
+///   Will be raised when there is an attempt to carry out an operation that is
+///   not supported in the context of a sharded collection.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -413,10 +480,6 @@ extern "C" {
 ///   Will be returned if the key was not found in the structure.
 /// - 10003: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
-/// - 11000: @LIT{the index garbage collector has shutdown and no further entries can be processed}
-///   Will be raised when an attempt to add an item to the index garbage
-///   collector fails due to the fact that the state of the collector is in
-///   shutdown mode.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,7 +1083,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// geo index violated
 ///
-/// Will be raised when a illegale coordinate is used.
+/// Will be raised when an illegal coordinate is used.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                               (1211)
@@ -1249,10 +1312,20 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// Will be raised when an attempt to insert a document into an index is caused
 /// by in the document not having one or more attributes which the index is
-/// built on
+/// built on.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING                 (1234)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1235: ERROR_ARANGO_INDEX_CREATION_FAILED
+///
+/// index creation failed
+///
+/// Will be raised when an attempt to create an index has failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_CREATION_FAILED                            (1235)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -1414,6 +1487,238 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1450: ERROR_CLUSTER_NO_AGENCY
+///
+/// could not connect to agency
+///
+/// Will be raised when none of the agency servers can be connected to.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NO_AGENCY                                       (1450)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1451: ERROR_CLUSTER_NO_COORDINATOR_HEADER
+///
+/// missing coordinator header
+///
+/// Will be raised when a DB server in a cluster receives a HTTP request
+/// without a coordinator header.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NO_COORDINATOR_HEADER                           (1451)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1452: ERROR_CLUSTER_COULD_NOT_LOCK_PLAN
+///
+/// could not lock plan in agency
+///
+/// Will be raised when a coordinator in a cluster cannot lock the Plan
+/// hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN                             (1452)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
+///
+/// collection ID already exists
+///
+/// Will be raised when a coordinator in a cluster tries to create a collection
+/// and the collection ID already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            (1453)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1454: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN
+///
+/// could not create collection in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new collection in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN             (1454)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1455: ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION
+///
+/// could not read version in current in agency
+///
+/// Will be raised when a coordinator in a cluster cannot read the Version
+/// entry in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION                  (1455)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
+///
+/// could not create collection
+///
+/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// report problems when creating shards for a new collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION                     (1456)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1457: ERROR_CLUSTER_TIMEOUT
+///
+/// timeout in cluster operation
+///
+/// Will be raised when a coordinator in a cluster runs into a timeout for some
+/// cluster wide operation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_TIMEOUT                                         (1457)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1458: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN
+///
+/// could not remove collection from plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// collection in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN             (1458)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1459: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT
+///
+/// could not remove collection from current
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// collection in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          (1459)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
+///
+/// could not create database in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new database in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               (1460)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
+///
+/// could not create database
+///
+/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// report problems when creating databases for a new cluster wide database.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       (1461)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1462: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
+///
+/// could not remove database from plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// database in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               (1462)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
+///
+/// could not remove database from current
+///
+/// Will be raised when a coordinator in a cluster cannot remove an entry for a
+/// database in the Current hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            (1463)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1464: ERROR_CLUSTER_SHARD_GONE
+///
+/// no responsible shard found
+///
+/// Will be raised when a coordinator in a cluster cannot determine the shard
+/// that is responsible for a given document.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_GONE                                      (1464)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1465: ERROR_CLUSTER_CONNECTION_LOST
+///
+/// cluster internal HTTP connection broken
+///
+/// Will be raised when a coordinator in a cluster loses an HTTP connection to
+/// a DBserver in the cluster whilst transferring data.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_CONNECTION_LOST                                 (1465)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1466: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
+///
+/// must not specify _key for this collection
+///
+/// Will be raised when a coordinator in a cluster finds that the _key
+/// attribute was specified in a sharded collection the uses not only _key as
+/// sharding attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            (1466)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1467: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
+///
+/// got contradicting answers from different shards
+///
+/// Will be raised if a coordinator in a cluster gets conflicting results from
+/// different shards, which should never happen.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       (1467)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1468: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
+///
+/// not all sharding attributes given
+///
+/// Will be raised if a coordinator tries to find out which shard is
+/// responsible for a partial document, but cannot do this because not all
+/// sharding attributes are specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               (1468)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1469: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
+///
+/// must not change the value of a shardkey attribute
+///
+/// Will be raised if there is an attempt to update the value of a shard
+/// attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             (1469)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1470: ERROR_CLUSTER_UNSUPPORTED
+///
+/// unsupported operation or parameter
+///
+/// Will be raised when there is an attempt to carry out an operation that is
+/// not supported in the context of a sharded collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -2182,19 +2487,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 11000: WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN
-///
-/// the index garbage collector has shutdown and no further entries can be
-/// processed
-///
-/// Will be raised when an attempt to add an item to the index garbage
-/// collector fails due to the fact that the state of the collector is in
-/// shutdown mode.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN               (11000)
 
 
 ////////////////////////////////////////////////////////////////////////////////

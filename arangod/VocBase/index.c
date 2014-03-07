@@ -67,32 +67,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitIndex (TRI_index_t* idx, 
-                    const TRI_idx_type_e type, 
+                    TRI_idx_iid_t iid,
+                    TRI_idx_type_e type, 
                     struct TRI_primary_collection_s* primary,
-                    bool unique,
-                    bool needsFullCoverage) {
+                    bool unique) {
+  // note: primary can be NULL
   assert(idx != NULL);
 
-  idx->_iid               = TRI_NewTickServer();
+  if (iid > 0) {
+    // use iid if specified
+    idx->_iid = iid;
+  }
+  else if (type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    // override iid
+    idx->_iid = 0;
+  }
+  else {
+    idx->_iid = TRI_NewTickServer();
+  }
+
   idx->_type              = type;
   idx->_collection        = primary;
   idx->_unique            = unique;
-  idx->_needsFullCoverage = needsFullCoverage;
   
   // init common functions
   idx->removeIndex       = NULL;
   idx->cleanup           = NULL;
-#if 0  
-  idx->reserve           = NULL;
-#endif
 
   idx->postInsert        = NULL;
 
-  idx->beginTransaction  = NULL;
-  idx->abortTransaction  = NULL;
-  idx->commitTransaction = NULL;
-
-  LOG_TRACE("initialising index of type %s", idx->typeName(idx));
+  LOG_TRACE("initialising index of type %s", TRI_TypeNameIndex(idx->_type));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,6 +111,102 @@ void TRI_InitIndex (TRI_index_t* idx,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not an index needs full coverage
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
+  switch (type) {
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_HASH_INDEX:
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return true;
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      return false;
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_UNKNOWN:
+      return false;
+  }
+
+  // unknown type...
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_idx_type_e TRI_TypeIndex (char const* type) {
+  if (TRI_EqualString(type, "primary")) {
+    return TRI_IDX_TYPE_PRIMARY_INDEX;
+  }
+  else if (TRI_EqualString(type, "edge")) {
+    return TRI_IDX_TYPE_EDGE_INDEX;
+  }
+  else if (TRI_EqualString(type, "hash")) {
+    return TRI_IDX_TYPE_HASH_INDEX;
+  }
+  else if (TRI_EqualString(type, "skiplist")) {
+    return TRI_IDX_TYPE_SKIPLIST_INDEX;
+  }
+  else if (TRI_EqualString(type, "fulltext")) {
+    return TRI_IDX_TYPE_FULLTEXT_INDEX;
+  }
+  else if (TRI_EqualString(type, "bitarray")) {
+    return TRI_IDX_TYPE_BITARRAY_INDEX;
+  }
+  else if (TRI_EqualString(type, "cap")) {
+    return TRI_IDX_TYPE_CAP_CONSTRAINT;
+  }
+  else if (TRI_EqualString(type, "geo1")) {
+    return TRI_IDX_TYPE_GEO1_INDEX;
+  }
+  else if (TRI_EqualString(type, "geo2")) {
+    return TRI_IDX_TYPE_GEO2_INDEX;
+  }
+
+  return TRI_IDX_TYPE_UNKNOWN;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of an index type
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_TypeNameIndex (TRI_idx_type_e type) {
+  switch (type) {
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+      return "primary";
+    case TRI_IDX_TYPE_GEO1_INDEX:
+      return "geo1";
+    case TRI_IDX_TYPE_GEO2_INDEX:
+      return "geo2";
+    case TRI_IDX_TYPE_HASH_INDEX:
+      return "hash";
+    case TRI_IDX_TYPE_EDGE_INDEX:
+      return "edge";
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return "fulltext";
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      return "skiplist";
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      return "bitarray";
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      return "cap";
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_UNKNOWN:
+    default: {
+    }
+  }
+
+  return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate an index id
@@ -178,7 +278,7 @@ bool TRI_ValidateIndexIdIndex (char const* key,
 /// @brief free an index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeIndex (TRI_index_t* const idx) {
+void TRI_FreeIndex (TRI_index_t* idx) {
   assert(idx);
 
   LOG_TRACE("freeing index");
@@ -292,7 +392,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
   bool ok;
 
   // convert into JSON
-  json = idx->json(idx,false);
+  json = idx->json(idx);
 
   if (json == NULL) {
     LOG_TRACE("cannot save index definition: index cannot be jsonified");
@@ -365,7 +465,8 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* primary,
 /// specialised index 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
+TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, 
+                           TRI_index_t const* idx) {
   TRI_json_t* json;
 
   json = TRI_CreateArrayJson(zone);
@@ -375,7 +476,7 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
     
     number = TRI_StringUInt64(idx->_iid);
     TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
-    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, idx->typeName(idx)));
+    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type)));
     TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -466,30 +567,6 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNamePrimary (TRI_index_t const* idx) {
-  return "primary";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space for a specific number of extra documents
-/// must be called under the collection's write-lock
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-static bool ReservePrimary (TRI_index_t* idx,
-                            int64_t numDocuments) {
-  TRI_primary_collection_t* primary;
-
-  primary = idx->_collection;
-  
-  return TRI_ReserveAssociativePointer(&primary->_primaryIndex, (uint32_t) numDocuments);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -513,11 +590,15 @@ static int RemovePrimary (TRI_index_t* idx,
 /// @brief JSON description of a primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, bool withStats) { 
+static TRI_json_t* JsonPrimary (TRI_index_t* idx) { 
   TRI_json_t* json;
   TRI_json_t* fields;
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  
+  if (json == NULL) {
+    return NULL;
+  }
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_id"));
@@ -547,25 +628,24 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   TRI_index_t* idx;
   char* id;
 
+  // note: primary can be NULL
+
   // create primary index
   idx = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
+
+  if (idx == NULL) {
+    return NULL;
+  }
 
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  idx->typeName = TypeNamePrimary;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true, true);
-
-  // override iid
-  idx->_iid     = 0;
+  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true);
 
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
-#if 0  
-  idx->reserve  = ReservePrimary;
-#endif
 
   return idx;
 }
@@ -704,14 +784,6 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameEdge (TRI_index_t const* idx) {
-  return "edge";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert method for edges
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -808,11 +880,15 @@ static int RemoveEdge (TRI_index_t* idx,
 /// @brief JSON description of edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonEdge (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonEdge (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  if (json == NULL) {
+    return NULL;
+  }
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
@@ -839,7 +915,8 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, bool withStats) {
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid) {
   TRI_edge_index_t* edgeIndex;
   TRI_index_t* idx;
   char* id;
@@ -872,8 +949,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
  
-  idx->typeName = TypeNameEdge;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_EDGE_INDEX, primary, false, true); 
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, primary, false); 
 
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
@@ -956,8 +1032,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-
-      logicalOperator = (TRI_logical_index_operator_t*)(slOperator);
+      logicalOperator = (TRI_logical_index_operator_t*) slOperator;
       result = FillLookupSLOperator(logicalOperator->_left, primary);
       if (result == TRI_ERROR_NO_ERROR) {
         result = FillLookupSLOperator(logicalOperator->_right, primary);
@@ -974,18 +1049,28 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-
-      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
+      relationOperator = (TRI_relation_index_operator_t*) slOperator;
       relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
-
       relationOperator->_fields = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+
       if (relationOperator->_fields != NULL) {
         for (j = 0; j < relationOperator->_numFields; ++j) {
-          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
-          if (shapedObject) {
+          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
+
+          if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) && 
+              slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
+            // non-equality operator used on complex data type, this is disallowed
+            return TRI_ERROR_BAD_PARAMETER;
+          }
+
+          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject, false, false);
+
+          if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
+          }
+          else {
+            return TRI_RESULT_ELEMENT_NOT_FOUND; 
           }
         }
       }
@@ -994,103 +1079,6 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
       }
       break;
     }
-
-    // .........................................................................
-    // This index operator is special
-    // The parameters are given to us as a list of json objects for EQ(...),
-    // however for the IN(...) operator each parameter in the parameters list
-    // is itself a list. For skiplists, the number of parameters is a
-    // decreasing sequence. That is, for a skiplist with 3 attributes,
-    // the parameters [ ["a","b","c","d"],["x","y"],[0] ] are allowed, whereas
-    // the parameters [ ["a","b","c"], ["x","y"], [0,1,2] ] are not allowed.
-    // .........................................................................
-
-    case TRI_IN_INDEX_OPERATOR: {
-      int maxEntries;
-
-      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
-      relationOperator->_numFields  = 0;
-      relationOperator->_fields     = NULL;
-
-      // .......................................................................
-      // check that the parameters field is not null
-      // .......................................................................
-
-      if (relationOperator->_parameters == NULL) {
-        LOG_WARNING("No parameters given when using Skiplist lookup index");
-        return TRI_ERROR_INTERNAL;
-      }
-
-
-      // .......................................................................
-      // check that the parameters json object is of the type list
-      // .......................................................................
-
-      if (relationOperator->_parameters->_type != TRI_JSON_LIST) {
-        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (a)");
-        return TRI_ERROR_INTERNAL;
-      }
-
-      // .......................................................................
-      // Each entry in the list is itself a list
-      // .......................................................................
-
-      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
-
-      if (relationOperator->_fields == NULL) {
-        relationOperator->_numFields = 0; // out of memory?
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-
-      result     = 0;
-      maxEntries = -1;
-
-      for (j = 0; j < relationOperator->_numFields; ++j) {
-        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-
-        if (jsonObject == NULL) {
-          result = -1;
-          break;
-        }
-
-        if (jsonObject->_type != TRI_JSON_LIST) {
-          result = -2;
-          break;
-        }
-
-        // check and see that entries are non-increasing
-        if ((int) jsonObject->_value._objects._length > maxEntries) {
-          if (maxEntries > 0) {
-            result = -3;
-            break;
-          }
-          maxEntries = (int) jsonObject->_value._objects._length;
-        }
-
-        // convert json to shaped json
-        shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject);
-        if (shapedObject == NULL) {
-          result = -4;
-          break;
-        }
-
-        // store shaped json list
-        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
-      }
-
-      if (result != 0) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE,relationOperator->_fields);
-        relationOperator->_fields = NULL;
-        relationOperator->_numFields = 0;
-        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (b)");
-        return TRI_ERROR_INTERNAL;
-      }
-
-    }
-
-
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1124,11 +1112,14 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
 
   if (errorResult != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(errorResult);
+
     return NULL;
   }
 
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, 
-                                      &skiplistIndex->_paths, slOperator);
+                                      &skiplistIndex->_paths, 
+                                      slOperator);
 
   // .........................................................................
   // we must deallocate any memory we allocated in FillLookupSLOperator
@@ -1284,18 +1275,10 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameSkiplistIndex (TRI_index_t const* idx) {
-  return "skiplist";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -1303,7 +1286,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
   TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
   size_t j;
-  uint64_t nrUsed;
 
   // ..........................................................................
   // Recast as a skiplist index
@@ -1349,11 +1331,6 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, bool withStats) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
-  if (withStats) {
-    nrUsed = SkiplistIndex_getNrUsed(skiplistIndex->_skiplistIndex);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "numUsed", 
-               TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) nrUsed));
-  }
 
   TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
@@ -1440,6 +1417,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
+                                      TRI_idx_iid_t iid,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
@@ -1457,8 +1435,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
 
   idx = &skiplistIndex->base;
 
-  idx->typeName = TypeNameSkiplistIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique);
 
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
@@ -1667,18 +1644,10 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameFulltextIndex (TRI_index_t const* idx) {
-  return "fulltext";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a fulltext index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -1771,6 +1740,7 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
+                                      TRI_idx_iid_t iid,
                                       const char* attributeName,
                                       const bool indexSubstrings,
                                       int minWordLength) {
@@ -1783,7 +1753,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   // look up the attribute
   shaper = primary->_shaper;
-  attribute = shaper->findAttributePathByName(shaper, attributeName);
+  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
     return NULL;
@@ -1800,8 +1770,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   idx = &fulltextIndex->base;
 
-  idx->typeName = TypeNameFulltextIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false, true); 
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false); 
 
   idx->json     = JsonFulltextIndex;
   idx->insert   = InsertFulltextIndex;
@@ -1938,14 +1907,6 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
 
     }
 
-
-    // .........................................................................
-    // This index operator is special
-    // .........................................................................
-
-    case TRI_IN_INDEX_OPERATOR: {
-      assert(false);
-    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2207,18 +2168,10 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameBitarrayIndex (TRI_index_t const* idx) {
-  return "bitarray";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a bitarray index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
   TRI_json_t* json;      // the json object we return describing the index
   TRI_json_t* keyValues; // a list of attributes and their associated values
   TRI_primary_collection_t* primary;
@@ -2447,6 +2400,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
+                                      TRI_idx_iid_t iid,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       TRI_vector_pointer_t* values,
@@ -2515,8 +2469,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
   idx = &baIndex->base;
 
-  idx->typeName = TypeNameBitarrayIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false);
 
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;

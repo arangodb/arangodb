@@ -556,57 +556,37 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
   // ..........................................................................
   // Windows likes to operate on SOCKET types (sort of handles) while libev
   // likes to operate on file descriptors
+  // Our abstraction for sockets allows to use exactly the same code
   // ..........................................................................
 
-  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
-    SocketWatcher* watcher = new SocketWatcher;
-    watcher->loop = (struct ev_loop*) lookupLoop(loop);
-    watcher->task = task;
+EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
+  SocketWatcher* watcher = new SocketWatcher;
+  watcher->loop = (struct ev_loop*) lookupLoop(loop);
+  watcher->task = task;
+  watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
 
-    int flags = 0;
+  int flags = 0;
 
-    if (type & EVENT_SOCKET_READ) {
-      flags |= EV_READ;
-    }
-
-    if (type & EVENT_SOCKET_WRITE) {
-      flags |= EV_WRITE;
-    }
-    watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
-    ev_io* w = (ev_io*) watcher;
-    ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
-    ev_io_start(watcher->loop, w);
-    return watcher->token;
+  if (type & EVENT_SOCKET_READ) {
+    flags |= EV_READ;
   }
-#else
-  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
-    SocketWatcher* watcher = new SocketWatcher;
-    watcher->loop = (struct ev_loop*) lookupLoop(loop);
-    watcher->task = task;
-    watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
 
-    int flags = 0;
-
-    if (type & EVENT_SOCKET_READ) {
-      flags |= EV_READ;
-    }
-
-    if (type & EVENT_SOCKET_WRITE) {
-      flags |= EV_WRITE;
-    }
-
-    ev_io* w = (ev_io*) watcher;
-    ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
-    ev_io_start(watcher->loop, w);
-
-    return watcher->token;
+  if (type & EVENT_SOCKET_WRITE) {
+    flags |= EV_WRITE;
   }
-#endif
+
+  ev_io* w = (ev_io*) watcher;
+  // Note that we do not use TRI_get_fd_or_handle_of_socket here because even
+  // under Windows we want get the entry fileDescriptor here because
+  // of the reason that is mentioned above!
+  ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
+  ev_io_start(watcher->loop, w);
+
+  return watcher->token;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}

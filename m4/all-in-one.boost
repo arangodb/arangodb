@@ -1,0 +1,37 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl -----------------------------------------------------------------------------------------
+dnl option for BOOST support
+dnl -----------------------------------------------------------------------------------------
+
+BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost_1_55_0/include"
+BOOST_LDFLAGS=""
+BOOST_LIBS=""
+
+TRI_BOOST_VERSION="1.55.0"
+
+dnl -----------------------------------------------------------------------------------------
+dnl add substitutions
+dnl -----------------------------------------------------------------------------------------
+
+AC_SUBST(BOOST_CPPFLAGS)
+AC_SUBST(BOOST_LDFLAGS)
+AC_SUBST(BOOST_LIBS)
+
+BOOST_CPPFLAGS="${BOOST_CPPFLAGS} -DTRI_BOOST_VERSION='\"${TRI_BOOST_VERSION}\"'"
+
+dnl -----------------------------------------------------------------------------------------
+dnl informational output
+dnl -----------------------------------------------------------------------------------------
+
+LIB_INFO="$LIB_INFO|BOOST VERSION: $TRI_BOOST_VERSION"
+
+FLAG_INFO="$FLAG_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+FLAG_INFO="$FLAG_INFO|BOOST_LDFLAGS:  ${BOOST_LDFLAGS}"
+FLAG_INFO="$FLAG_INFO|BOOST_LIBS:     ${BOOST_LIBS}"
+FLAG_INFO="$FLAG_INFO|."
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

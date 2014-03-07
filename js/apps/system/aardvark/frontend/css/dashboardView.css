@@ -8,14 +8,6 @@
   opacity: 0 !important;
 }
 
-#dashboardHeader .btn-group {
-  margin-left: 10px;
-  margin-top: 6px;
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-radius: 0 !important;
-  max-height: 30px !important;
-}
 
 .group-close, .group-open {
   opacity: 0 !important;

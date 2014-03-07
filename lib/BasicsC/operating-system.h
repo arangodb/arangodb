@@ -111,6 +111,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_MACOS_MEM_STATS            1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACH                       1
 #define TRI_HAVE_MACOS_SPIN                 1
@@ -174,7 +175,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -312,7 +313,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -419,6 +420,7 @@
 
 #define TRI_HAVE_POSIX                      1
 
+#define TRI_HAVE_SC_PHYS_PAGES              1
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
@@ -467,7 +469,7 @@
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
 
-#define INVALID_SOCKET                  -1
+#define TRI_INVALID_SOCKET              -1
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
@@ -544,6 +546,8 @@
 #define TRI_HAVE_GMTIME_S                   1
 #define TRI_HAVE_STRTOI64                   1
 #define TRI_HAVE_STRTOUI64                  1
+
+#define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
@@ -674,6 +678,8 @@ typedef unsigned char bool;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_CONNECT_AI_FLAGS            AI_PASSIVE | AI_NUMERICSERV | AI_ALL
+
+#define TRI_INVALID_SOCKET              INVALID_SOCKET
 
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
