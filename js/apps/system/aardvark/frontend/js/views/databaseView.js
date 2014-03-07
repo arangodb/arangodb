@@ -134,7 +134,7 @@
     deleteDatabase: function(e) {
       this.hideModal('editDatabaseModal');
       this.dbToDelete = $('#editDatabaseName').html();
-      this.showModal('deleteDatabaseModal')
+      this.showModal('deleteDatabaseModal');
     },
 
     currentDatabase: function() {
@@ -162,7 +162,7 @@
       $('#editDatabaseName').html(dbName);
       var button = $('#deleteDatabase');
       if(dbName === this.currentDB) {
-        var element
+        var element;
         button.prop('disabled', true);
         button.removeClass('button-danger');
         button.addClass('button-neutral');
