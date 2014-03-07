@@ -14,16 +14,9 @@
   margin-right: 10px;
 }
 
-
 .thumbnail, .navbar-inner {
   border-radius:0;
   box-shadow: 0;
-}
-
-.thumbnails2 {
-  padding-top: 1px !important;
-  margin-left:0;
-  margin-bottom:0;
 }
 
 .btn-group {

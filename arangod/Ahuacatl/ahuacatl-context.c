@@ -83,8 +83,9 @@ static void FreeCollections (TRI_aql_context_t* const context) {
 
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    if (collection) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+
+    if (collection != NULL) {
+      TRI_FreeCollectionAql(collection);
     }
   }
   TRI_DestroyVectorPointer(&context->_collections);
@@ -184,6 +185,7 @@ static void ProcessOptions (TRI_aql_context_t* context) {
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query,
                                          const size_t queryLength,
+                                         bool isCoordinator,
                                          TRI_json_t* userOptions) {
   TRI_aql_context_t* context;
   int res;
@@ -287,6 +289,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   }
   
   ProcessOptions(context);
+
+  context->_isCoordinator = isCoordinator;
 
   return context;
 }

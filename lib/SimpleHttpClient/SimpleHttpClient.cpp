@@ -53,6 +53,7 @@ namespace triagens {
                                         double requestTimeout, 
                                         bool warn) :
       _connection(connection),
+      _keepConnectionOnDestruction(false),
       _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _requestTimeout(requestTimeout),
@@ -70,12 +71,15 @@ namespace triagens {
       _errorMessage = "";
       _written = 0;
       _state = IN_CONNECT;
-
-      reset();
+      if (_connection->isConnected()) {
+        _state = FINISHED;
+      }
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      _connection->disconnect();
+      if (!_keepConnectionOnDestruction) {
+        _connection->disconnect();
+      }
     }
 
 // -----------------------------------------------------------------------------
@@ -350,7 +354,10 @@ namespace triagens {
       else {
         _writeBuffer.appendText("\r\n");
       }
-      _writeBuffer.appendText(body, bodyLength);
+
+      if (body != 0) {
+        _writeBuffer.appendText(body, bodyLength);
+      }
 
       LOG_TRACE("Request: %s", _writeBuffer.c_str());
 

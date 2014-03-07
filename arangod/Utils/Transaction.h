@@ -28,6 +28,10 @@
 #ifndef TRIAGENS_UTILS_TRANSACTION_H
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#endif
+
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
@@ -89,8 +93,8 @@ namespace triagens {
 
         Transaction (TRI_vocbase_t* const vocbase,
                      TRI_server_id_t generatingServer,
-                     const triagens::arango::CollectionNameResolver& resolver,
-                     const bool replicate) :
+                     triagens::arango::CollectionNameResolver const& resolver,
+                     bool replicate) :
           T(),
           _setupState(TRI_ERROR_NO_ERROR),
           _nestingLevel(0),
@@ -99,12 +103,19 @@ namespace triagens {
           _timeout(0.0),
           _waitForSync(false),
           _replicate(replicate),
+          _isReal(true),
           _trx(0),
           _vocbase(vocbase),
           _generatingServer(generatingServer),
           _resolver(resolver) {
 
           TRI_ASSERT_MAINTAINER(_vocbase != 0);
+
+#ifdef TRI_ENABLE_CLUSTER
+          if (ServerState::instance()->isCoordinator()) {
+            _isReal = false;
+          }
+#endif
 
           this->setupTransaction();
         }
@@ -208,6 +219,14 @@ namespace triagens {
             return _setupState;
           }
 
+          if (! _isReal) {
+            if (_nestingLevel == 0) {
+              _trx->_status = TRI_TRANSACTION_RUNNING;
+            }
+            return TRI_ERROR_NO_ERROR;
+          }
+
+
           int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
 
           return res;
@@ -221,6 +240,13 @@ namespace triagens {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
             return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+          
+          if (! _isReal) {
+            if (_nestingLevel == 0) {
+              _trx->_status = TRI_TRANSACTION_COMMITTED;
+            }
+            return TRI_ERROR_NO_ERROR;
           }
 
           int res = TRI_CommitTransaction(_trx, _nestingLevel);
@@ -236,6 +262,13 @@ namespace triagens {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
             return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+          
+          if (! _isReal) {
+            if (_nestingLevel == 0) {
+              _trx->_status = TRI_TRANSACTION_ABORTED;
+            }
+            return TRI_ERROR_NO_ERROR;
           }
 
           int res = TRI_AbortTransaction(_trx, _nestingLevel);
@@ -331,7 +364,7 @@ namespace triagens {
           if (_trx == 0) {
             return registerError(TRI_ERROR_INTERNAL);
           }
-
+         
           if (cid == 0) {
             // invalid cid
             return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -366,6 +399,12 @@ namespace triagens {
           if (name == TRI_COL_NAME_TRANSACTION) {
             return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
           }
+
+#ifdef TRI_ENABLE_CLUSTER
+          if (! _isReal) {
+            return addCollection(_resolver.getCollectionIdCluster(name), name.c_str(), type);
+          }
+#endif
 
           return addCollection(_resolver.getCollectionId(name), name.c_str(), type);
         }
@@ -805,7 +844,7 @@ namespace triagens {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
           TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
@@ -870,7 +909,7 @@ namespace triagens {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
           TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
@@ -1210,6 +1249,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _replicate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not this is a "real" transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _isReal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

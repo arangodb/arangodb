@@ -123,6 +123,21 @@ query_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return an empty result set
+////////////////////////////////////////////////////////////////////////////////
+  
+static v8::Handle<v8::Value> EmptyResult () {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("documents"), v8::Array::New());
+  result->Set(v8::String::New("total"), v8::Number::New(0));
+  result->Set(v8::String::New("count"), v8::Number::New(0));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,11 +149,11 @@ static void ExtractSkipAndLimit (v8::Arguments const& argv,
   skip = TRI_QRY_NO_SKIP;
   limit = TRI_QRY_NO_LIMIT;
 
-  if (pos < (size_t) argv.Length() && ! argv[pos]->IsNull()) {
+  if (pos < (size_t) argv.Length() && ! argv[pos]->IsNull() && ! argv[pos]->IsUndefined()) {
     skip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[pos]);
   }
 
-  if (pos + 1 < (size_t) argv.Length() && ! argv[pos + 1]->IsNull()) {
+  if (pos + 1 < (size_t) argv.Length() && ! argv[pos + 1]->IsNull() && ! argv[pos + 1]->IsUndefined()) {
     limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[pos + 1]);
   }
 }
@@ -212,7 +227,7 @@ static void CleanupExampleObject (TRI_memory_zone_t* zone,
 /// @brief sets up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupExampleObject (v8::Handle<v8::Object> example,
+static int SetupExampleObject (v8::Handle<v8::Object> const& example,
                                TRI_shaper_t* shaper,
                                size_t& n,
                                TRI_shape_pid_t*& pids,
@@ -225,6 +240,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
 
   // setup storage
   pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
+
   if (pids == 0) {
     // out of memory
     *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
@@ -233,6 +249,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
   }
 
   values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
+
   if (values == 0) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
@@ -250,8 +267,14 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
-      pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
-      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+      pids[i] = shaper->lookupAttributePathByName(shaper, *keyStr);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
+
+      if (pids[i] == 0 || values[i] == 0) {
+        // no attribute path found. this means the result will be empty 
+        CleanupExampleObject(shaper->_memoryZone, i, pids, values);
+        return TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
     }
 
     if (*keyStr == 0 || pids[i] == 0 || values[i] == 0) {
@@ -280,9 +303,10 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> conditions) {
   TRI_index_operator_t* lastOperator = 0;
-  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   size_t numEq = 0;
   size_t lastNonEq = 0;
+
+  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (parameters == 0) {
     return 0;
@@ -865,7 +889,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
   for (size_t i = 0; i < idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
 
-    if (!example->HasOwnProperty(key)) {
+    if (! example->HasOwnProperty(key)) {
       break;
     }
 
@@ -950,6 +974,8 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   // convert
   for (size_t i = 0;  i < n;  ++i) {
     TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
+
+    assert(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
@@ -964,15 +990,18 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper);
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false, false); 
     }
     else {
-      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper);
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false, false); 
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       DestroySearchValue(shaper->_memoryZone, result);
-      *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+
+      if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
+        *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+      }
       return res;
     }
   }
@@ -1014,6 +1043,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1046,6 +1077,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   trx.lockRead();
 
+
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
 
@@ -1054,7 +1086,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_index_operator_t* skiplistOperator;
@@ -1068,13 +1100,18 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (skiplistOperator == 0) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up skiplist operator failed");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
 
   if (skiplistIterator == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    int res = TRI_errno();
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return scope.Close(EmptyResult());
+    }
+     
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_barrier_t* barrier = 0;
@@ -1083,8 +1120,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
 
   while (true) {
-    TRI_skiplist_index_element_t* indexElement = 
-                  skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
       break;
@@ -1209,6 +1245,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1254,7 +1292,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
 
@@ -1268,7 +1306,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (indexOperator == 0) { // something wrong
-    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up bitarray index operator failed");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 
   // .............................................................................
@@ -1490,7 +1528,8 @@ static int StoreGeoResult (ReadTransactionType& trx,
 /// @brief looks up edges for given direction
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arguments const& argv) {
+static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, 
+                                         v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_col_t const* col;
@@ -1499,9 +1538,11 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   if (col->_type != TRI_COL_TYPE_EDGE) {
-    TRI_V8_TYPE_ERROR(scope, "invalid collection type for edge query");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1547,33 +1588,23 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
-    uint32_t len = vertices->Length();
+    const uint32_t len = vertices->Length();
 
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
       TRI_voc_cid_t cid;
-      TRI_voc_rid_t rid;
       TRI_voc_key_t key = 0;
 
-      TRI_vocbase_col_t const* vertexCollection = 0;
-      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(resolver, vertexCollection, key, rid, vertices->Get(i));
+      res = TRI_ParseVertex(resolver, cid, key, vertices->Get(i), true);
 
-      if (! errMsg.IsEmpty()) {
-        if (key) {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-          key = 0;
-        }
-
+      if (res != TRI_ERROR_NO_ERROR) {
+        // error is just ignored
         continue;
       }
 
-      assert(vertexCollection != 0);
-
-      cid = vertexCollection->_cid;
-
       edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
 
-      if (key) {
+      if (key != 0) {
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       }
 
@@ -1611,27 +1642,19 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // argument is a single vertex
   else {
     TRI_vector_pointer_t edges;
-    TRI_voc_cid_t cid;
-    TRI_voc_rid_t rid;
+
     TRI_voc_key_t key = 0;
+    TRI_voc_cid_t cid;
 
-    TRI_vocbase_col_t const* vertexCollection = 0;
-    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(resolver, vertexCollection, key, rid, argv[0]);
+    res = TRI_ParseVertex(resolver, cid, key, argv[0], true);
 
-    if (! errMsg.IsEmpty()) {
-      if (key) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-      }
-      return scope.Close(v8::ThrowException(errMsg));
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
     }
-
-    assert(vertexCollection != 0);
-
-    cid = vertexCollection->_cid;
 
     edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
 
-    if (key) {
+    if (key != 0) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
@@ -1662,7 +1685,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   trx.finish(res);
 
   // .............................................................................
-  // outside a write transaction
+  // outside a read transaction
   // .............................................................................
 
   if (error) {
@@ -1703,6 +1726,8 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1778,6 +1803,8 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_voc_size_t internalSkip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[0]);
   TRI_voc_size_t batchSize = (TRI_voc_size_t) TRI_ObjectToDouble(argv[1]);
@@ -1929,6 +1956,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1951,11 +1980,16 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   // extract sub-documents
   TRI_shape_pid_t* pids;
-  TRI_shaped_json_t** values;
+  TRI_shaped_json_t** values = 0;
   size_t n;
 
   v8::Handle<v8::Object> err;
   res = SetupExampleObject(example, shaper, n, pids, values, &err);
+
+  if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+    // empty result
+    return scope.Close(EmptyResult());
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(err));
@@ -2076,7 +2110,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   }
 
   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a hash index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
@@ -2089,6 +2123,10 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return scope.Close(EmptyResult());
+    }
+
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2156,6 +2194,8 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2190,7 +2230,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
-  std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
+  std::string const signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
 }
@@ -2200,7 +2240,7 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
-  std::string signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
+  std::string const signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
 }
@@ -2210,7 +2250,7 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
-  std::string signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
+  std::string const signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
 
   return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
 }
@@ -2220,7 +2260,7 @@ static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) {
-  std::string signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
+  std::string const signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
 }
@@ -2257,9 +2297,14 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
+#ifndef TRI_ENABLE_CLUSTER
     const string extra = helper->_resolver->getCollectionName(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
                          helper->_resolver->getCollectionName(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+#else
+    const string extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                         helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
   
+#endif
     localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
@@ -2297,10 +2342,19 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 /// If the optional argument @FA{withData} is set to @LIT{true}, then the 
 /// actual document data is also checksummed. Including the document data in
 /// checksumming will make the calculation slower, but is more accurate.
+///
+/// Note: this method is not available in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+#endif
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
@@ -2308,6 +2362,8 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
   
   bool withRevisions = false;
   if (argv.Length() > 0) {
@@ -2424,50 +2480,24 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the n first documents in the collection
-///
-/// @FUN{@FA{collection}.first(@FA{count})}
-///
-/// The @FN{first} method returns the n first documents from the collection, in 
-/// order of document insertion/update time. 
-///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
-/// in the collection, then the result will contain as many documents as there
-/// are in the collection.
-/// The result list is ordered, with the "oldest" documents being positioned at 
-/// the beginning of the result list.
-///
-/// When called without an argument, the result is the first document from the
-/// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.first(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
-///
-/// @code
-/// arangod> db.example.first()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "first(<count>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "FIRST(<count>)");
   }
-
+  
   int64_t count = 1;
   bool returnList = false;
 
   // if argument is supplied, we'll return a list - otherwise we simply return the first doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
@@ -2575,7 +2605,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   }
 
   if (idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a fulltext index");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   const string queryString = TRI_ObjectToString(argv[1]);
@@ -2674,6 +2704,8 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2705,41 +2737,13 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the n last documents in the collection
-///
-/// @FUN{@FA{collection}.last(@FA{count})}
-///
-/// The @FN{first} method returns the n last documents from the collection, in 
-/// order of document insertion/update time. 
-///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
-/// in the collection, then the result will contain as many documents as there
-/// are in the collection.
-/// The result list is ordered, with the "latest" documents being positioned at 
-/// the beginning of the result list.
-///
-/// When called without an argument, the result is the last document from the
-/// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.last(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
-///
-/// @code
-/// arangod> db.example.last()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "last(<count>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "LAST(<count>)");
   }
 
   int64_t count = 1;
@@ -2747,8 +2751,10 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 
   // if argument is supplied, we'll return a list - otherwise we simply return the last doc
   if (argv.Length() == 1) {
-    count = TRI_ObjectToInt64(argv[0]);
-    returnList = true;
+    if (! argv[0]->IsUndefined()) {
+      count = TRI_ObjectToInt64(argv[0]);
+      returnList = true;
+    }
   }
 
   if (count < 1) {
@@ -2761,6 +2767,8 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   TRI_barrier_t* barrier = 0;
 
@@ -2855,8 +2863,9 @@ static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
     return scope.Close(v8::ThrowException(*err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && 
+      idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   // extract latitude and longitude
@@ -2901,6 +2910,8 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -2976,8 +2987,9 @@ static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
     return scope.Close(v8::ThrowException(*err));
   }
 
-  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
+  if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && 
+      idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
   // extract latitude and longitude
@@ -3022,6 +3034,8 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -3088,26 +3102,26 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   rt = v8g->VocbaseColTempl;
 
-  TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
-  TRI_AddMethodVocbase(rt, "any", JS_AnyQuery);
-  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
-  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex);
-  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
+  TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery, true);
+  TRI_AddMethodVocbase(rt, "ANY", JS_AnyQuery, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist, true);
   TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
-  TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
-  TRI_AddMethodVocbase(rt, "first", JS_FirstQuery);
-  TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
-  TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
-  TRI_AddMethodVocbase(rt, "last", JS_LastQuery);
-  TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
+  TRI_AddMethodVocbase(rt, "EDGES", JS_EdgesQuery, true);
+  TRI_AddMethodVocbase(rt, "FIRST", JS_FirstQuery, true);
+  TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery, true);
+  TRI_AddMethodVocbase(rt, "INEDGES", JS_InEdgesQuery, true);
+  TRI_AddMethodVocbase(rt, "LAST", JS_LastQuery, true);
+  TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true); 
 
-  TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
+  TRI_AddMethodVocbase(rt, "OUTEDGES", JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
 

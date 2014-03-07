@@ -61,6 +61,14 @@ is specified, the server will pick a reasonable default value.
 @copydetails JSF_ArangoCollection_prototype_toArray
 
 @CLEARPAGE
+@anchor SimpleQueryFirst
+@copydetails JSF_ArangoCollection_prototype_first
+
+@CLEARPAGE
+@anchor SimpleQueryLast
+@copydetails JSF_ArangoCollection_prototype_last
+
+@CLEARPAGE
 Geo Queries {#SimpleQueriesGeoQueries}
 ======================================
 

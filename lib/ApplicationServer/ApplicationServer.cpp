@@ -398,6 +398,8 @@ bool ApplicationServer::parse (int argc,
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
+  TRI_SetLogLevelLogging(_logLevel.c_str());
+
   // .............................................................................
   // parse phase 1
   // .............................................................................
@@ -489,7 +491,7 @@ bool ApplicationServer::parse (int argc,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the server
+/// @brief prepares the server, step one
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::prepare () {
@@ -514,7 +516,7 @@ void ApplicationServer::prepare () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the server
+/// @brief prepares the server, step two
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::prepare2 () {
@@ -881,11 +883,11 @@ bool ApplicationServer::readConfigurationFile () {
 
     // do not use init files
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOG_DEBUG("using no init file at all");
+      LOG_INFO("using no init file at all");
       return true;
     }
 
-    LOG_INFO("using init file '%s'", _configFile.c_str());
+    LOG_DEBUG("using init file '%s'", _configFile.c_str());
 
     bool ok = _options.parse(_descriptionFile, _configFile);
 
@@ -928,7 +930,7 @@ bool ApplicationServer::readConfigurationFile () {
 
       // check and see if file exists
       if (FileUtils::exists(homeDir)) {
-        LOG_INFO("using user init file '%s'", homeDir.c_str());
+        LOG_DEBUG("using user init file '%s'", homeDir.c_str());
 
         bool ok = _options.parse(_descriptionFile, homeDir);
 
@@ -967,7 +969,7 @@ bool ApplicationServer::readConfigurationFile () {
 
       // check and see if a local override file exists
       if (FileUtils::exists(localSysDir)) {
-        LOG_INFO("using init override file '%s'", localSysDir.c_str());
+        LOG_DEBUG("using init override file '%s'", localSysDir.c_str());
 
         bool ok = _options.parse(_descriptionFile, localSysDir);
 
@@ -979,12 +981,12 @@ bool ApplicationServer::readConfigurationFile () {
         }
       }
       else {
-        LOG_TRACE("no system init override file '%s' found", sysDir.c_str());
+        LOG_DEBUG("no system init override file '%s' found", sysDir.c_str());
       }
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
-        LOG_INFO("using init file '%s'", sysDir.c_str());
+        LOG_DEBUG("using init file '%s'", sysDir.c_str());
 
         bool ok = _options.parse(_descriptionFile, sysDir);
 

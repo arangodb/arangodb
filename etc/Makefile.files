@@ -5,25 +5,29 @@
 ## -----------------------------------------------------------------------------
 
 BUILT_SOURCES += \
-	etc/arangodb/arango-dfdb.conf \
-	etc/arangodb/arangob.conf \
-	etc/arangodb/arangod.conf \
-	etc/arangodb/arangodump.conf \
-	etc/arangodb/arangoimp.conf \
-	etc/arangodb/arangoirb.conf \
-	etc/arangodb/arangorestore.conf \
-	etc/arangodb/arangosh.conf \
-	etc/arangodb/foxx-manager.conf
+	etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangob$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangod$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangodump$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangoimp$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangoirb$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangorestore$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/arangosh$(PROGRAM_SUFFIX).conf \
+	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf
 
 ################################################################################
 ### @brief config
 ################################################################################
 
-etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
+etc/arangodb/%$(PROGRAM_SUFFIX).conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
+		-e 's%@LIBEXECDIR@%${TRI_LIBEXECDIR}%g' \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@LOCALSTATEDIR@%${TRI_LOCALSTATEDIR}%g' \
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		-e 's%@SYSCONFDIR@%${TRI_SYSCONFDIR}%g' \
+		-e 's%@PROGRAM_SUFFIX@%${PROGRAM_SUFFIX}%g' \
 		$< > $@
 
 ## -----------------------------------------------------------------------------

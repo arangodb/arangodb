@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "mr-actions.h"
@@ -64,19 +64,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Actions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief global MRuby dealer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationMR* GlobalMRDealer = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -85,11 +76,6 @@ ApplicationMR* GlobalMRDealer = 0;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class mr_action_t
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for MRuby
@@ -129,7 +115,8 @@ class mr_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+      TRI_action_result_t result;
       ApplicationMR::MRContext* context = GlobalMRDealer->enterContext();
       mrb_state* mrb = context->_mrb;
 
@@ -139,7 +126,11 @@ class mr_action_t : public TRI_action_t {
 
       if (i == _callbacks.end()) {
         LOG_WARNING("no callback function for Ruby action '%s'", _url.c_str());
-        return new HttpResponse(HttpResponse::NOT_FOUND);
+
+        result.isValid = true;
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+
+        return result;
       }
 
       mrb_value callback = i->second;
@@ -148,7 +139,10 @@ class mr_action_t : public TRI_action_t {
 
       GlobalMRDealer->exitContext(context);
 
-      return response;
+      result.isValid = true;
+      result.response = response;
+
+      return result;
     }
 
   private:
@@ -166,18 +160,9 @@ class mr_action_t : public TRI_action_t {
     ReadWriteLock _callbacksLock;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief float value
@@ -300,40 +285,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     string const& k = i->first;
     string const& v = i->second;
 
-    map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
+    key = mrb_str_new(mrb, k.c_str(), k.size());
+    val = mrb_str_new(mrb, v.c_str(), v.size());
 
-    if (p == action->_parameters.end()) {
-      key = mrb_str_new(mrb, k.c_str(), k.size());
-      val = mrb_str_new(mrb, v.c_str(), v.size());
-
-      mrb_hash_set(mrb, parametersArray, key, val);
-    }
-    else {
-      TRI_action_parameter_type_e const& ap = p->second;
-
-      switch (ap) {
-        case TRI_ACT_COLLECTION:
-        case TRI_ACT_COLLECTION_NAME:
-        case TRI_ACT_COLLECTION_ID:
-        case TRI_ACT_STRING: {
-          key = mrb_str_new(mrb, k.c_str(), k.size());
-          val = mrb_str_new(mrb, v.c_str(), v.size());
-
-          mrb_hash_set(mrb, parametersArray, key, val);
-          break;
-        }
-
-        case TRI_ACT_NUMBER: {
-          key = mrb_str_new(mrb, k.c_str(), k.size());
-          // TODO: val is assigned and then re-assigned. Is this intentional??
-          val = mrb_str_new(mrb, v.c_str(), v.size());
-          val = mrb_float_value(mrb, TRI_DoubleString(v.c_str()));
-
-          mrb_hash_set(mrb, parametersArray, key, val);
-          break;
-        }
-      }
-    }
+    mrb_hash_set(mrb, parametersArray, key, val);
   }
 
   id = mrb_intern(mrb, "@parameters");
@@ -383,18 +338,9 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   return response;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ruby functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
@@ -451,18 +397,9 @@ static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  module functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init mruby utilities
@@ -499,10 +436,6 @@ void TRI_InitMRActions (mrb_state* mrb, triagens::arango::ApplicationMR* applica
 
   rcl = mrs->_arangoResponse = mrb_define_class_under(mrb, arango, "HttpResponse", mrb->object_class);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

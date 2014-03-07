@@ -211,7 +211,6 @@
         var header = div.children[0];
         expect(header).toBeTag("ul");
         expect(header.id).toEqual("menubar");
-        expect(header.className).toEqual("thumbnails2");
       });
     });
     

@@ -114,15 +114,6 @@
   border-radius: 0 !important;
 }
 
-.modalTooltips span {
-  font-size: 20px;
-  opacity: 0.5;
-}
-
-.modalTooltips span:hover {
-  opacity: 0.8;
-}
-
 #infoTab, #collectionTab{
   padding-right: 10px;
   border-bottom: 0;
@@ -179,9 +170,14 @@
   top: 3px;
 }
 
+.modal-header a {
+  top: 2px !important;
+}
+
 .modal-header .close {
   color: #FFFFFF;
   opacity: 0.5;
+  font-weight: 300;
 }
 
 .modal-header .close:hover {
@@ -230,40 +226,8 @@
   border-bottom: 0 !important;
 }
 
-#add-collection table tr {
-  border-bottom: 0 !important;
-}
-
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px;
-}
-
-#add-collection .icon_arangodb_info {
-  top: 2px !important;
-  position: relative;
-  margin-left: 20px !important;
-}
-
-#add-collection .accordion {
-  margin-top: 10px;
-}
-
-#add-collection .collectionThSec {
-  width: 380px !important;
-}
-
-#add-collection input {
-  width: 380px !important;
-  margin-left: 45px;
-}
-
-#add-collection select {
-  width: 394px !important;
-  margin-left: 45px;
-}
-
-#add-collection .accordion-toggle {
-  width: 457px !important;
 }
 
 #change-collection input {

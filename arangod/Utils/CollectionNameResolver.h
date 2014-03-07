@@ -33,6 +33,11 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#endif
+
 namespace triagens {
   namespace arango {
 
@@ -84,10 +89,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a collection id for a collection name
+/// @brief look up a collection id for a collection name (local case)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCollectionId (const string& name) const {
+        TRI_voc_cid_t getCollectionId (string const& name) const {
           if (name[0] >= '0' && name[0] <= '9') {
             // name is a numeric id
             return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
@@ -98,7 +103,6 @@ namespace triagens {
           if (collection != 0) {
             return collection->_cid;
           }
-
           return 0;
         }
 
@@ -106,7 +110,7 @@ namespace triagens {
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_col_t* getCollectionStruct (const string& name) const {
+        const TRI_vocbase_col_t* getCollectionStruct (string const& name) const {
           if (_resolvedNames.size() > 0) {
             map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
 
@@ -125,7 +129,35 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a collection name for a collection id
+/// @brief look up a cluster collection id for a cluster collection name
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        TRI_voc_cid_t getCollectionIdCluster (string const& name) const {
+          if (! ServerState::instance()->isRunningInCluster()) {
+            return getCollectionId(name);
+          }
+          if (name[0] >= '0' && name[0] <= '9') {
+            // name is a numeric id
+            return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
+          }
+
+          // We have to look up the collection info:
+          ClusterInfo* ci = ClusterInfo::instance();
+          TRI_shared_ptr<CollectionInfo> cinfo 
+            = ci->getCollection(DatabaseID(_vocbase->_name),
+                                name);
+          if (cinfo->empty()) {
+            return 0;
+          }
+          return cinfo->id();
+        }
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a collection name for a collection id, this implements
+/// some magic in the cluster case: a DBserver in a cluster will automatically
+/// translate the local collection ID into a cluster wide collection name.
 ////////////////////////////////////////////////////////////////////////////////
 
         string getCollectionName (const TRI_voc_cid_t cid) const {
@@ -137,18 +169,80 @@ namespace triagens {
             }
           }
 
-          char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (n == 0) {
-            return "_unknown";
+          string name;
+#ifndef TRI_ENABLE_CLUSTER
+          char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+          if (0 != n) {
+            name = n;
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
           }
+#else
+          if (ServerState::instance()->isDBserver()) {
+            TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
-          string name(n);
+            TRI_vocbase_col_t* found 
+                = static_cast<TRI_vocbase_col_t*>(
+                     TRI_LookupByKeyAssociativePointer
+                                   (&_vocbase->_collectionsById, &cid));
 
+            if (0 != found) {
+              name = triagens::basics::StringUtils::itoa(found->_planId);
+            }
+
+            TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
+
+            if (!name.empty()) {
+              TRI_shared_ptr<CollectionInfo> ci
+                = ClusterInfo::instance()->getCollection(found->_dbName, name);
+              name = ci->name();
+            }
+          }
+          else {
+            // exactly as in the non-cluster case
+            char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+            if (0 != n) {
+              name = n;
+              TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
+            }
+          }
+#endif
+          if (name.empty()) {
+            name = "_unknown";
+          }
           _resolvedIds[cid] = name;
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
 
           return name;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a cluster-wide collection name for a cluster-wide 
+/// collection id
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
+          if (!ServerState::instance()->isRunningInCluster()) {
+            return getCollectionName(cid);
+          }
+
+          int tries = 0;
+
+          while (tries++ < 2) {
+            TRI_shared_ptr<CollectionInfo> ci
+              = ClusterInfo::instance()->getCollection(_vocbase->_name, 
+                             triagens::basics::StringUtils::itoa(cid));
+            string name = ci->name();
+
+            if (name.empty()) {
+              ClusterInfo::instance()->flush();
+              continue;
+            }
+            return name;
+          }
+
+          return "_unknown";
+        }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

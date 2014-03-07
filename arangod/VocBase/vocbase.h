@@ -61,11 +61,6 @@ struct TRI_vocbase_defaults_s;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the collections structure
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -184,18 +179,9 @@ struct TRI_vocbase_defaults_s;
   TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
   TRI_UnlockCondition(&(a)->_syncWaitersCondition)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
@@ -302,18 +288,32 @@ struct TRI_vocbase_defaults_s;
 
 #define TRI_QRY_NO_SKIP ((TRI_voc_ssize_t) 0)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief database state
 ////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_VOCBASE_STATE_INACTIVE           = 0,
+  TRI_VOCBASE_STATE_NORMAL             = 1,
+  TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR = 2,
+  TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP   = 3,
+  TRI_VOCBASE_STATE_FAILED_VERSION     = 4
+}
+TRI_vocbase_state_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief database type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_VOCBASE_TYPE_NORMAL      = 0,
+  TRI_VOCBASE_TYPE_COORDINATOR = 1
+}
+TRI_vocbase_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
@@ -325,6 +325,7 @@ typedef struct TRI_vocbase_s {
   TRI_voc_tick_t             _id;                 // internal database id
   char*                      _path;               // path to the data directory
   char*                      _name;               // database name
+  TRI_vocbase_type_e         _type;               // type (normal or coordinator)
 
   struct {
     TRI_spin_t               _lock;               // a lock protecting the usage information
@@ -356,6 +357,8 @@ typedef struct TRI_vocbase_s {
   // 1 = normal operation/running
   // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
+  // 4 = version check failed
+
   sig_atomic_t               _state;
 
   TRI_thread_t               _synchroniser;
@@ -403,10 +406,11 @@ TRI_vocbase_col_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* const              _vocbase;
+  TRI_vocbase_t*                    _vocbase;
 
-  TRI_col_type_t const              _type;       // collection type
-  TRI_voc_cid_t const               _cid;        // collecttion identifier
+  TRI_voc_cid_t                     _cid;        // local collecttion identifier
+  TRI_voc_cid_t                     _planId;     // cluster-wide collecttion identifier
+  TRI_col_type_t                    _type;       // collection type
 
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
@@ -414,25 +418,20 @@ typedef struct TRI_vocbase_col_s {
   struct TRI_primary_collection_s*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
+  char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
+//  TRI_voc_cid_t                     _planId;     // id in plan
 
+  bool                              _isLocal;    // if true, the collection is local. if false,
+                                                 // the collection is a remote (cluster) collection
   bool                              _canDrop;    // true if the collection can be dropped
   bool                              _canUnload;  // true if the collection can be unloaded
   bool                              _canRename;  // true if the collection can be renamed
 }
 TRI_vocbase_col_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
@@ -445,6 +444,22 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a vocbase object, without threads and some other attributes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e,
+                                         char const*,
+                                         TRI_voc_tick_t,
+                                         char const*,
+                                         struct TRI_vocbase_defaults_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an initial, not fully constructed vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyInitialVocBase (TRI_vocbase_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
@@ -491,6 +506,12 @@ struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
                                                     TRI_voc_tick_t,
                                                     bool (*)(TRI_vocbase_col_t*, void*),
                                                     void*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a translation of a collection status
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_GetStatusStringCollectionVocBase (TRI_vocbase_col_status_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id
@@ -642,10 +663,6 @@ bool TRI_IsSystemVocBase (TRI_vocbase_t*);
 
 bool TRI_IsAllowedNameVocBase (bool, 
                                char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
-/*global require, module, Module, ArangoError,
+/*global require, module, Module, ArangoError, SleepAndRequeue,
   REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE,
   REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
   REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
@@ -81,21 +81,39 @@
 
       this.message = this.toString();
     };
+  
+    exports.ArangoError.prototype = new Error(); //Error.prototype;
+    
+    exports.ArangoError.prototype._PRINT = function (context) {
+      context.output += this.toString();
+    };
 
-    exports.ArangoError.prototype = Error.prototype;
+    exports.ArangoError.prototype.toString = function() {
+      var errorNum = this.errorNum;
+      var errorMessage = this.errorMessage || this.message;
+
+      return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+    };
+
   }
 
-  exports.ArangoError.prototype._PRINT = function (context) {
-    context.output += this.toString();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SleepAndRequeue
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SleepAndRequeue !== "undefined") {
+    exports.SleepAndRequeue = SleepAndRequeue;
+    delete SleepAndRequeue;
+
+    exports.SleepAndRequeue.prototype._PRINT = function (context) {
+      context.output += this.toString();
+    };
+
+    exports.SleepAndRequeue.prototype.toString = function() {
+      return "[SleepAndRequeue sleep: " + this.sleep + "]";
   };
 
-  exports.ArangoError.prototype.toString = function() {
-    var errorNum = this.errorNum;
-    var errorMessage = this.errorMessage;
-
-    return "[ArangoError " + errorNum + ": " + errorMessage + "]";
-  };
-
+  }
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------

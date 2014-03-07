@@ -338,7 +338,7 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
 
   if (properties !== undefined) {
     [ "waitForSync", "journalSize", "isSystem", "isVolatile", 
-      "doCompact", "keyOptions" ].forEach(function(p) {
+      "doCompact", "keyOptions", "shardKeys", "numberOfShards" ].forEach(function(p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -441,6 +441,8 @@ ArangoDatabase.prototype._flushCache = function () {
       var collection = this[name];
 
       if (collection instanceof this._collectionConstructor) {
+        // reset the collection status
+        collection._status = null;
         this[name] = undefined;
       }
     }
@@ -882,6 +884,15 @@ ArangoDatabase.prototype._listDatabases = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._useDatabase = function (name) {
+  if (internal.printBrowser) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+      errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+      errorMessage: "_useDatabase() is not supported in the web interface"
+    });
+  }
+
   var old = this._connection.getDatabaseName();
 
   // no change

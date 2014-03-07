@@ -305,13 +305,13 @@ bool TRI_IsBooleanJson (TRI_json_t const*);
 /// @brief adds a new sub-object to a list object, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PushBackListJson (TRI_memory_zone_t*, TRI_json_t* list, TRI_json_t* object);
+void TRI_PushBackListJson (TRI_memory_zone_t*, TRI_json_t* list, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to a list object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object);
+int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object, not copying it but freeing the pointer

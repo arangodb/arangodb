@@ -6,17 +6,24 @@
   "isSystem": true,
 
   "controllers": {
-    "/": "aardvark.js"
+    "/": "aardvark.js",
+    "/cluster": "cluster.js"
   },
 
   "assets": {
     "index.html": {
       "files": [
+        "frontend/html/redirect.html"
+      ]
+    },
+
+    "standalone.html": {
+      "files": [
         "frontend/html/start.html.part",
-        "frontend/html/headadmin.html.part",
+        "frontend/html/head.html.part",
         "frontend/js/templates/**",
         "frontend/html/body.html.part",
-        "frontend/html/scriptsadmin.html.part",
+        "frontend/html/scripts.html.part",
         "frontend/html/end.html.part"
       ]
     },
@@ -48,6 +55,7 @@
         "frontend/js/arango/arango.js",
         "frontend/js/arango/templateEngine.js",
         "frontend/js/shell/browser.js",
+        "frontend/js/config/dygraphConfig.js",
         "frontend/js/modules/org/arangodb/**",
         "frontend/js/modules/org/arangodb-common.js",
         "frontend/js/modules/org/arangodb.js",
@@ -64,30 +72,41 @@
       ]
     },
 
-    "libs.js": {
+    "sharedLibs.js": {
       "files": [
         "frontend/js/lib/jquery-2.1.0.min.js",
+        "frontend/js/lib/underscore.js",
+        "frontend/js/lib/backbone.js",
+        "frontend/js/lib/bootstrap.js"
+      ]
+    },
+
+    "libs.js": {
+      "files": [
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
         "frontend/js/lib/jquery.dataTables.js",
         "frontend/js/lib/jquery.snippet.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.contextmenu.js",
+        "frontend/js/lib/select2.min.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
         "frontend/js/lib/backbone.js",
         "frontend/js/lib/jsoneditor-min.js",
         "frontend/js/lib/d3.v3.min.js",
         "frontend/js/lib/nv.d3.js",
+        "frontend/js/lib/strftime-min.js",
+        "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/d3.fisheye.js",
         "frontend/js/lib/ColVis.js",
-        "frontend/js/lib/bootstrap.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
         "frontend/js/lib/splitter.js",
         "frontend/js/lib/swagger.js",
         "frontend/js/lib/swagger-ui.js",
-        "frontend/js/lib/highlight.7.3.pack.js"
+        "frontend/js/lib/highlight.7.3.pack.js",
+        "frontend/js/lib/md5.js"
       ]
     },
 
@@ -107,6 +126,7 @@
         "frontend/css/bootstrap-glyphicons.css",
         "frontend/css/jquery-ui-1.9.2.custom.css",
         "frontend/css/jquery.contextmenu.css",
+        "frontend/css/select2.css",
         "frontend/css/layout.css",
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
@@ -133,8 +153,51 @@
         "frontend/css/general.css",
         "frontend/css/headerBar.css",
         "frontend/css/screenSizes.css",
+        "frontend/css/clusterDashboardView.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
+      ]
+    },
+
+    "cluster.html": {
+      "files": [
+        "frontend/html/start.html.part",
+        "clusterFrontend/html/head.html.part",
+        "frontend/js/templates/**",
+        "frontend/js/templates/dashboardView.ejs",
+        "frontend/js/templates/dashboardDistributed.ejs",
+        "frontend/js/templates/dashboardHttpGroup.ejs",
+        "frontend/js/templates/lineChartDetailView.ejs",
+        "clusterFrontend/js/templates/**",
+        "frontend/html/body.html.part",
+        "clusterFrontend/html/scripts.html.part",
+        "frontend/html/end.html.part"
+       ]
+    },
+
+    "css/cluster.css": {
+        "files": [
+         "frontend/scss/cluster.css",
+         "frontend/scss/generated.css"
+        ]
+    },
+
+    "cluster.js": {
+       "files": [
+        "frontend/js/arango/templateEngine.js",
+        "frontend/js/models/arangoStatistics.js",
+        "frontend/js/models/arangoStatisticsDescription.js",
+        "clusterFrontend/js/models/**",
+        "clusterFrontend/js/collections/**",
+        "frontend/js/views/footerView.js",
+        "frontend/js/views/dashboardView.js",
+        "frontend/js/collections/arangoStatisticsCollection.js",
+        "frontend/js/collections/arangoDocuments.js",
+        "frontend/js/models/arangoDocument.js",
+        "frontend/js/config/dygraphConfig.js",
+        "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
+        "clusterFrontend/js/views/**",
+        "clusterFrontend/js/routers/**"
       ]
     }
   },

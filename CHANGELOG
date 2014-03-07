@@ -1,5 +1,46 @@
-v1.5.0 (XXXX-XX-XX)
--------------------
+v2.0.0-rc1 (2014-02-28)
+-----------------------
+
+* added sharding :-)
+
+* added collection._dbName attribute to query the name of the database from a collection
+
+  more detailed documentation on the sharding and cluster features can be found in the user 
+  manual, section **Sharding**
+
+* INCOMPATIBLE CHANGE: using complex values in AQL filter conditions with operators other
+  than equality (e.g. >=, >, <=, <) will disable usage of skiplist indexes for filter 
+  evaluation.
+  
+  For example, the following queries will be affected by change:
+
+      FOR doc IN docs FILTER doc.value < { foo: "bar" } RETURN doc
+      FOR doc IN docs FILTER doc.value >= [ 1, 2, 3 ] RETURN doc
+
+  The following queries will not be affected by the change:
+      
+      FOR doc IN docs FILTER doc.value == 1 RETURN doc
+      FOR doc IN docs FILTER doc.value == "foo" RETURN doc
+      FOR doc IN docs FILTER doc.value == [ 1, 2, 3 ] RETURN doc
+      FOR doc IN docs FILTER doc.value == { foo: "bar" } RETURN doc
+
+* INCOMPATIBLE CHANGE: removed undocumented method `collection.saveOrReplace`
+  
+  this feature was never advertised nor documented nor tested.
+
+* INCOMPATIBLE CHANGE: removed undocumented REST API method `/_api/simple/BY-EXAMPLE-HASH`
+
+  this feature was never advertised nor documented nor tested.
+
+* added explicit startup parameter `--server.reuse-address`
+
+  This flag can be used to control whether sockets should be acquired with the SO_REUSEADDR 
+  flag.
+  
+  Regardless of this setting, sockets on Windows are always acquired using the
+  SO_EXCLUSIVEADDRUSE flag.
+
+* removed undocumented REST API method GET `/_admin/database-name`
 
 * added user validation API at POST `/_api/user/<username>`
 
@@ -8,7 +49,7 @@ v1.5.0 (XXXX-XX-XX)
   Previously, when creating a new user via HTTP POST, the username needed to be 
   passed in an attribute `username`. When users were returned via this API,
   the usernames were returned in an attribute named `user`. This was slightly
-  confusing and was changed in 1.5 as follows:
+  confusing and was changed in 2.0 as follows:
 
   - when adding a user via HTTP POST, the username can be specified in an attribute 
   `user`. If this attribute is not used, the API will look into the attribute `username`
@@ -20,8 +61,6 @@ v1.5.0 (XXXX-XX-XX)
 
 * added AQL SLICE function to extract slices from lists
 
-* removed check-server binary
-
 * made module loader more node compatible
 
 * the startup option `--javascript.package-path` for arangosh is now deprecated and does
@@ -31,7 +70,32 @@ v1.5.0 (XXXX-XX-XX)
 
 * Several UI improvements.
 
-* Exchanged icons in the graphviwer toolbar
+* Exchanged icons in the graphviewer toolbar
+
+* always start networking and HTTP listeners when starting the server (even in 
+  console mode)
+
+* allow vertex and edge filtering with user-defined functions in TRAVERSAL,
+  TRAVERSAL_TREE and SHORTEST_PATH AQL functions:
+
+      // using user-defined AQL functions for edge and vertex filtering
+      RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        followEdges: "myfunctions::checkedge",
+        filterVertices: "myfunctions::checkvertex"
+      })
+
+      // using the following custom filter functions
+      var aqlfunctions = require("org/arangodb/aql/functions");
+      aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
+        return (edge.type !== 'dislikes'); // don't follow these edges
+      }, false);
+
+      aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) { 
+        if (vertex.isDeleted || ! vertex.isActive) {
+          return [ "prune", "exclude" ]; // exclude these and don't follow them
+        }
+        return [ ]; // include everything else
+      }, false);
 
 * fail if invalid `strategy`, `order` or `itemOrder` attribute values
   are passed to the AQL TRAVERSAL function. Omitting these attributes 
@@ -68,9 +132,7 @@ v1.5.0 (XXXX-XX-XX)
 
 * fixed issue #695: arangosh server.password error
 
-* use pretty-printing in `--console` mode by defaul
-
-* added `check-server` binary for testing
+* use pretty-printing in `--console` mode by default
 
 * simplified ArangoDB startup options
 
@@ -105,7 +167,7 @@ v1.5.0 (XXXX-XX-XX)
 
 * database selection is moved to the bottom right corner of the web interface
 
-* removed priority queues
+* removed priority queue index type
 
   this feature was never advertised nor documented nor tested.
 
@@ -113,7 +175,7 @@ v1.5.0 (XXXX-XX-XX)
 
 * removed separate shape collections
 
-  When upgrading to ArangoDB 1.5, existing collections will be converted to include
+  When upgrading to ArangoDB 2.0, existing collections will be converted to include
   shapes and attribute markers in the datafiles instead of using separate files for
   shapes.
 
@@ -154,12 +216,22 @@ v1.5.0 (XXXX-XX-XX)
 
 * added collection status "loading"
 
-* added the option to return the number of elements indexed to the
-  result of <collection>.getIndexes() for each index. This is
-  currently only implemented for hash indices and skiplist indices.
+
+v1.4.12 (XXXX-XX-XX)
+--------------------
+
+* fixed display bug in web interface which caused the following problems:
+  - documents were displayed in web interface as being empty
+  - document attributes view displayed many attributes with content "undefined"
+  - document source view displayed many attributes with name "TYPEOF" and value "undefined"
+  - an alert popping up in the browser with message "Datatables warning..."
+  
+* re-introduced old-style read-write locks to supports Windows versions older than
+  Windows 2008R2 and Windows 7. This should re-enable support for Windows Vista and
+  Windows 2008.
 
 
-v1.4.11 (XXXX-XX-XX)
+v1.4.11 (2014-02-27)
 --------------------
 
 * added SHORTEST_PATH AQL function 
@@ -561,7 +633,7 @@ v1.4.1-rc1 (2013-11-07)
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
   header. Previously, the batch API expected the client to send a Content-Type header
   of`multipart/form-data; boundary=<some boundary value>`. This is still supported in
-  ArangoDB 1.5, but clients can now also omit this header. If the header is not 
+  ArangoDB 2.0, but clients can now also omit this header. If the header is not 
   present in a client request, ArangoDB will ignore the request content type and
   read the MIME boundary from the beginning of the request body.
 

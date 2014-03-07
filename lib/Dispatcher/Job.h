@@ -42,7 +42,6 @@ namespace triagens {
 
   namespace rest {
     class DispatcherThread;
-    class JobObserver;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         class Job
@@ -85,13 +84,22 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief notification for job observers
+/// @brief result of execution
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum notification_e {
-          JOB_WORK,
-          JOB_CLEANUP,
-          JOB_SHUTDOWN
+        class status_t {
+          public:
+            status_t ()
+              : status(JOB_FAILED) {
+            }
+
+            explicit
+            status_t (status_e status)
+              : status(status) {
+            }
+
+            status_e status;
+            double sleep;
         };
 
 // -----------------------------------------------------------------------------
@@ -125,12 +133,6 @@ namespace triagens {
 
         const string& getName () const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attach an observer
-////////////////////////////////////////////////////////////////////////////////
-
-        void attachObserver (JobObserver* observer);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
@@ -161,7 +163,7 @@ namespace triagens {
 /// @brief starts working
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual status_e work () = 0;
+        virtual status_t work () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up after work and delete
@@ -182,18 +184,6 @@ namespace triagens {
         virtual void handleError (basics::TriagensError const&) = 0;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief notify attached observers
-////////////////////////////////////////////////////////////////////////////////
-
-        void notifyObservers (const Job::notification_e type);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -204,12 +194,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const string& _name;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attached observers
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<JobObserver*> _observers;
     };
   }
 }

@@ -5,18 +5,38 @@ require 'httparty'
 require 'json'
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
+$user = ENV['ARANGO_USER']
+$password = ENV['ARANGO_PASSWORD']
+$ssl = ENV['ARANGO_SSL']
+
+begin
+  $address = RSpec.configuration.ARANGO_SERVER
+rescue
+end
+begin
+  $user = RSpec.configuration.ARANGO_USER
+rescue
+end
+begin
+  $password = RSpec.configuration.ARANGO_PASSWORD
+rescue
+end
+begin
+  $ssl = RSpec.configuration.ARANGO_SSL
+rescue
+end
 
 class ArangoDB
   include HTTParty
 
-  if ENV['ARANGO_SSL'] == '1'
+  if $ssl == '1'
     base_uri "https://#{$address}"
   else
     base_uri "http://#{$address}"
   end 
 
   # set HTTP basic authorization
-  basic_auth ENV['ARANGO_USER'], ENV['ARANGO_PASSWORD']
+  basic_auth $user, $password
 
   # expect json as output/response format
   format :json

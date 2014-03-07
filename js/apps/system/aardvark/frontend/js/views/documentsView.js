@@ -216,6 +216,9 @@
     },
 
     filterCollection : function () {
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#filterCollection').toggleClass('activated');
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
       $('#indexHeader').hide();
@@ -230,12 +233,18 @@
     },
 
     importCollection: function () {
+      $('#filterCollection').removeClass('activated');
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').toggleClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
       $('#indexHeader').hide();
     },
 
     indexCollection: function () {
+      $('#filterCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
       $('#indexEditView').show();
       $('#indexHeader').slideToggle(200);
@@ -581,6 +590,8 @@
       }
 
       this.uploadSetup();
+
+      $("[data-toggle=tooltip]").tooltip();
 
       $('.modalImportTooltips').tooltip({
         placement: "left"

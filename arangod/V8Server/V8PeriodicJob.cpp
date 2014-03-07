@@ -84,13 +84,13 @@ const string& V8PeriodicJob::queue () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_e V8PeriodicJob::work () {
+Job::status_t V8PeriodicJob::work () {
   ApplicationV8::V8Context* context
-    = _v8Dealer->enterContext(_vocbase, true, false);
+    = _v8Dealer->enterContext(_vocbase, 0, true, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == 0) {
-    return JOB_DONE;
+    return status_t(JOB_DONE);
   }
 
   // now execute the function within this context
@@ -111,7 +111,7 @@ Job::status_e V8PeriodicJob::work () {
 
   _v8Dealer->exitContext(context);
 
-  return JOB_DONE;
+  return status_t(JOB_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ bool V8PeriodicJob::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicJob::handleError (basics::TriagensError const& ex) {
+void V8PeriodicJob::handleError (TriagensError const& ex) {
 }
 
 // -----------------------------------------------------------------------------

@@ -68,10 +68,12 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
+	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplistIndex.c \
@@ -108,6 +110,22 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
 	arangod/VocBase/vocbase-defaults.c
+
+if ENABLE_CLUSTER
+
+bin_arangod_SOURCES += \
+        arangod/Cluster/AgencyComm.cpp \
+	arangod/Cluster/ApplicationCluster.cpp \
+	arangod/Cluster/ClusterComm.cpp \
+	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/HeartbeatThread.cpp \
+	arangod/Cluster/RestShardHandler.cpp \
+	arangod/Cluster/ServerJob.cpp \
+	arangod/Cluster/ServerState.cpp \
+	arangod/Cluster/v8-cluster.cpp \
+	arangod/Cluster/ClusterMethods.cpp
+endif
+
 
 if ENABLE_MRUBY
 

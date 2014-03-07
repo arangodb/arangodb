@@ -1711,6 +1711,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
     TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
+    ok = false;
 
     TRI_SystemFree(buffer);
     buffer = NULL;

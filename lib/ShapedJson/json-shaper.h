@@ -91,13 +91,14 @@ TRI_basic_shapes_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shaper_s {
-  TRI_shape_aid_t (*findAttributeByName) (struct TRI_shaper_s*, char const*, bool);
+  TRI_shape_aid_t (*findOrCreateAttributeByName) (struct TRI_shaper_s*, char const*, bool);
+  TRI_shape_aid_t (*lookupAttributeByName) (struct TRI_shaper_s*, char const*);
   char const* (*lookupAttributeId) (struct TRI_shaper_s*, TRI_shape_aid_t);
-  TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*);
+  TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*, bool, bool);
   TRI_shape_t const* (*lookupShapeId) (struct TRI_shaper_s*, TRI_shape_sid_t);
   int64_t (*lookupAttributeWeight) (struct TRI_shaper_s*, TRI_shape_aid_t);
   TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
-  TRI_shape_pid_t (*findAttributePathByName) (struct TRI_shaper_s*, char const*);
+  TRI_shape_pid_t (*findOrCreateAttributePathByName) (struct TRI_shaper_s*, char const*, bool);
   TRI_shape_pid_t (*lookupAttributePathByName) (struct TRI_shaper_s*, char const*);
 
   TRI_associative_synced_t _attributePathsByName;

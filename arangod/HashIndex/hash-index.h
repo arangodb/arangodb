@@ -99,23 +99,24 @@ TRI_hash_index_t;
 /// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
-                                  TRI_vector_pointer_t* fields,
-                                  TRI_vector_t* paths,
-                                  bool unique,
-                                  size_t initialDocumentCount);
+TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
+                                  TRI_idx_iid_t,
+                                  TRI_vector_pointer_t*,
+                                  TRI_vector_t*,
+                                  bool,
+                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyHashIndex (TRI_index_t* idx);
+void TRI_DestroyHashIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeHashIndex (TRI_index_t* idx);
+void TRI_FreeHashIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -134,8 +135,8 @@ void TRI_FreeHashIndex (TRI_index_t* idx);
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
-                                        struct TRI_index_search_value_s* searchValue);
+TRI_index_result_t TRI_LookupHashIndex (TRI_index_t*,
+                                        struct TRI_index_search_value_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

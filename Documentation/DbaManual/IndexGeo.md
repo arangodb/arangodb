@@ -24,11 +24,11 @@ Accessing Geo Indexes from the Shell{#IndexGeoShell}
 ====================================================
 
 @anchor IndexGeoShellEnsureGeoIndex
-@copydetails JS_EnsureGeoIndexVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureGeoIndex
 
 @CLEARPAGE
 @anchor IndexGeoShellEnsureGeoConstraint
-@copydetails JS_EnsureGeoConstraintVocbaseCol
+@copydetails JSF_ArangoCollection_prototype_ensureGeoConstraint
 
 @CLEARPAGE
 @anchor IndexGeoShellGeo

@@ -1,0 +1,11 @@
+Conventions for testing framework:
+==================================
+
+All files in this directory whose name starts with "shell-"
+and ends with ".js" automatically take part in client
+shell tests (target "shell_client").
+
+If the filename contains the string "-cluster", then it is
+only executed when testing in cluster mode. If the filename
+contains the string "-noncluster", then it is only executed
+when testing in single instance mode.

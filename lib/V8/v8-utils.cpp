@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -128,7 +128,8 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+  v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
+
   if (! proto.IsEmpty()) {
     errorObject->SetPrototype(proto);
   }
@@ -263,7 +264,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
                               char const* name,
                               StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New();
- 
+
   result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
   result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
 
@@ -298,17 +299,17 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "base64Decode(<value>)");
   }
 
-  string base64;
-
   try {
-    string value = TRI_ObjectToString(argv[0]);
-    base64 = StringUtils::decodeBase64(value);
+    string const value = TRI_ObjectToString(argv[0]);
+    string const base64 = StringUtils::decodeBase64(value);
+  
+    return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,17 +327,17 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "base64Encode(<value>)");
   }
 
-  string base64;
-
   try {
-    string value = TRI_ObjectToString(argv[0]);
-    base64 = StringUtils::encodeBase64(value);
+    string const value = TRI_ObjectToString(argv[0]);
+    string const base64 = StringUtils::encodeBase64(value);
+  
+    return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +397,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 /// Downloads the data from the URL specified by @FA{url} and saves the
 /// response body to @FA{outfile}. The following @FA{options} are supported:
 ///
-/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are 
+/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
 ///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
 ///
 /// - @LIT{timeout}: a timeout value for the connection
@@ -444,7 +445,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
   // options
   // ------------------------------------------------------------------------
-  
+
   map<string, string> headerFields;
   double timeout = 10.0;
   bool followRedirects = true;
@@ -496,7 +497,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     if (options->Has(TRI_V8_SYMBOL("followRedirects"))) {
       followRedirects = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("followRedirects")));
     }
-    
+
     // max redirects
     if (options->Has(TRI_V8_SYMBOL("maxRedirects"))) {
       if (! options->Get(TRI_V8_SYMBOL("maxRedirects"))->IsNumber()) {
@@ -547,11 +548,16 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       relative = "/";
       if (found != string::npos) {
         relative.append(url.substr(found + 1));
-        endpoint = "tcp://" + url.substr(7, found - 7) + ":80";
+        endpoint = url.substr(7, found - 7);
       }
       else {
-        endpoint = "tcp://" + url.substr(7) + ":80";
+        endpoint = url.substr(7);
       }
+      found = endpoint.find(":");
+      if (found == string::npos) {
+        endpoint = endpoint + ":80";
+      }
+      endpoint = "tcp://" + endpoint;
     }
     else if (url.substr(0, 8) == "https://") {
       size_t found = url.find('/', 8);
@@ -559,17 +565,22 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       relative = "/";
       if (found != string::npos) {
         relative.append(url.substr(found + 1));
-        endpoint = "ssl://" + url.substr(8, found - 8) + ":443";
+        endpoint = url.substr(8, found - 8);
       }
       else {
-        endpoint = "ssl://" + url.substr(8) + ":443";
+        endpoint = url.substr(8);
       }
+      found = endpoint.find(":");
+      if (found == string::npos) {
+        endpoint = endpoint + ":443";
+      }
+      endpoint = "ssl://" + endpoint;
     }
     else {
       TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
     }
 
-    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s", 
+    LOG_TRACE("downloading file. endpoint: %s, relative URL: %s",
               endpoint.c_str(),
               url.c_str());
 
@@ -588,17 +599,17 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     SimpleHttpClient* client = new SimpleHttpClient(connection, timeout, false);
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    
+
     if (numRedirects > 0) {
       // do not send extra headers now
       headerFields.clear();
     }
 
     // send the actual request
-    SimpleHttpResult* response = client->request(method, 
-                                                relative, 
-                                                (body.size() > 0 ? body.c_str() : 0), 
-                                                body.size(), 
+    SimpleHttpResult* response = client->request(method,
+                                                relative,
+                                                (body.size() > 0 ? body.c_str() : 0),
+                                                body.size(),
                                                 headerFields);
 
     int returnCode;
@@ -622,8 +633,8 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       returnCode = response->getHttpReturnCode();
 
       // follow redirects?
-      if (followRedirects && 
-          (returnCode == 301 || returnCode == 302)) {
+      if (followRedirects &&
+          (returnCode == 301 || returnCode == 302 || returnCode == 307)) {
         bool found;
         url = response->getHeaderField(string("location"), found);
 
@@ -755,28 +766,37 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   }
 
   // execute script inside the context
-  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+  v8::Handle<v8::Script> script;
+  v8::Handle<v8::Value> result;
 
-  // compilation failed, print errors that happened during compilation
-  if (script.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+  {
+    v8::TryCatch tryCatch;
+
+    script = v8::Script::Compile(source->ToString(), filename);
+
+    // compilation failed, print errors that happened during compilation
+    if (script.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
+
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
 
-    return scope.Close(v8::Undefined());
-  }
+    // compilation succeeded, run the script
+    result = script->Run();
 
-  // compilation succeeded, run the script
-  v8::Handle<v8::Value> result = script->Run();
+    if (result.IsEmpty()) {
+      if (useSandbox) {
+        context->DetachGlobal();
+        context->Exit();
+      }
 
-  if (result.IsEmpty()) {
-    if (useSandbox) {
-      context->DetachGlobal();
-      context->Exit();
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
-
-    return scope.Close(v8::Undefined());
   }
 
   // copy result back into the sandbox
@@ -908,7 +928,7 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
   if (path == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
-  
+
   v8::Handle<v8::Value> result = v8::String::New(path);
   TRI_Free(TRI_CORE_MEM_ZONE, path);
 
@@ -1010,6 +1030,51 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
   // return result
   return scope.Close((TRI_ExistsFile(*name) && ! TRI_IsDirectory(*name)) ? v8::True() : v8::False());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief makes a given path absolute
+///
+/// @FUN{fs.makeAbsolute(@FA{path})}
+///
+/// Returns the given string if it is an absolute path, otherwise an
+/// absolute path to the same location is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "makeAbsolute(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  int err = 0;
+  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  if (0 != err) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, err,"cannot get current working directory");
+  }
+
+  char *abs = TRI_GetAbsolutePath (*name, cwd.c_str());
+  v8::Handle<v8::String> res;
+
+  if (0 != abs) {
+    res = v8::String::New(abs);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+  }
+  else {
+    res = v8::String::New(cwd.c_str(), cwd.size());
+  }
+
+  // return result
+  return scope.Close(res);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory listing
@@ -1500,7 +1565,7 @@ static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "createNonce()");
   }
 
-  string str =  Nonce::createNonce();
+  string str = Nonce::createNonce();
 
   return scope.Close(v8::String::New(str.c_str(), (int) str.length()));
 }
@@ -1632,12 +1697,15 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 /// - numberOfThreads: Number of threads in this process.
 ///
-/// - residentSize: Resident Set Size: total size of the number of pages 
-///   the process has in real memory.  This is just the pages which count 
-///   toward text, data, or stack space.  This does not include pages which 
+/// - residentSize: Resident Set Size: total size of the number of pages
+///   the process has in real memory.  This is just the pages which count
+///   toward text, data, or stack space.  This does not include pages which
 ///   have not been demand-loaded in, or which are swapped out.
 ///
 ///   The resident set size is reported in bytes.
+///
+/// - residentSizePercent: resident size as percent of the total physical
+///   memory size.
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
@@ -1650,13 +1718,20 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   TRI_process_info_t info = TRI_ProcessInfoSelf();
+  double rss = (double) info._residentSize;
+  double rssp = 0;
+
+  if (TRI_PhysicalMemory != 0) {
+    rssp = 100.0 * rss / TRI_PhysicalMemory;
+  }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
   result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
   result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
   result->Set(v8::String::New("numberOfThreads"), v8::Number::New((double) info._numberThreads));
-  result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
+  result->Set(v8::String::New("residentSize"), v8::Number::New(rss));
+  result->Set(v8::String::New("residentSizePercent"), v8::Number::New(rssp));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
@@ -1917,7 +1992,7 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   if (! force) {
     // check if we're inside the temp directory. force will override this check
     char* tempPath = TRI_GetUserTempPath();
-  
+
     if (tempPath == 0 || strlen(tempPath) < 6) {
       // some security measure so we don't accidently delete all our files
       if (tempPath != 0) {
@@ -1928,10 +2003,10 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     }
 
     const string path(*name);
-#ifdef _WIN32    
+#ifdef _WIN32
     // windows paths are case-insensitive
     if (! TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
-#else      
+#else
     if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
 #endif
       TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
@@ -1965,10 +2040,11 @@ static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_server_statistics_t info = TRI_GetServerStatistics();
-  
+
   v8::Handle<v8::Object> result = v8::Object::New();
 
   result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
+  result->Set(v8::String::New("physicalMemory"), v8::Number::New((double) TRI_PhysicalMemory));
 
   return scope.Close(result);
 }
@@ -2184,27 +2260,41 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>)");
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>, <gc>)");
   }
 
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
-  v8::V8::LowMemoryNotification();
-  while(! v8::V8::IdleNotification()) {
+  bool gc = true; // default is to trigger the gc
+  if (argv.Length() > 1) {
+    gc = TRI_ObjectToBoolean(argv[1]);
   }
 
-  size_t i = 0;
-  while (TRI_microtime() < until) {
-    if (++i % 1000 == 0) {
-      // garbage collection only every x iterations, otherwise we'll use too much CPU
-      v8::V8::LowMemoryNotification();
-      while(! v8::V8::IdleNotification()) {
-      }
+  if (gc) {
+    // wait with gc
+    v8::V8::LowMemoryNotification();
+    while(! v8::V8::IdleNotification()) {
     }
 
-    usleep(100);
+    size_t i = 0;
+    while (TRI_microtime() < until) {
+      if (++i % 1000 == 0) {
+        // garbage collection only every x iterations, otherwise we'll use too much CPU
+        v8::V8::LowMemoryNotification();
+        while(! v8::V8::IdleNotification()) {
+        }
+      }
+
+      usleep(100);
+    }
+  }
+  else {
+    // wait without gc
+    while (TRI_microtime() < until) {
+      usleep(100);
+    }
   }
 
   return scope.Close(v8::Undefined());
@@ -2354,7 +2444,7 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "queueTime", queueTime);
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
-  
+
   return scope.Close(result);
 }
 
@@ -2398,8 +2488,9 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract the arguments
-  if (2 < argv.Length() || argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "executeExternal(<filename>, [<arguments>])");
+  if (3 < argv.Length() || argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, 
+      "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -2445,9 +2536,14 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
         }
     }
   }
+  bool usePipes = false;
+  if (3 <= argv.Length()) {
+    usePipes = TRI_ObjectToBoolean(argv[2]);
+  }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (const char**) arguments, n, &external);
+  TRI_CreateExternalProcess(*name, (const char**) arguments, n, 
+                            usePipes, &external);
   if (arguments != 0) {
     for (size_t i = 0;  i < n;  ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
@@ -2455,45 +2551,42 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
 
     TRI_Free(TRI_CORE_MEM_ZONE, arguments);
   }
-#ifndef _WIN32
-  return scope.Close(v8::Number::New(external));
-#else
-  size_t pid_len, readPipe_len, writePipe_len; 
-  char * hProcess  = NULL;
-  char * readPipe  = NULL; 
-  char * writePipe = NULL; 
-
-  if (external._hProcess) {
-    hProcess = TRI_EncodeHexString((const char *)&external._hProcess, sizeof(HANDLE), &pid_len);
-  } else {
-    TRI_V8_TYPE_ERROR(scope, "Internal Error, Process could not be started");
+  if (external._pid == TRI_INVALID_PROCESS_ID) {
+    TRI_V8_ERROR(scope, "Process could not be started");
   }
-
-
-  if (external._hChildStdoutRd) {
-    readPipe = TRI_EncodeHexString((const char *)external._hChildStdoutRd, sizeof(HANDLE), &readPipe_len);
-  }
-  if (external._hChildStdinWr) {
-    writePipe = TRI_EncodeHexString((const char *)external._hChildStdinWr, sizeof(HANDLE), &writePipe_len);
-  }
-  // return the result
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8::String::New("pid"), v8::String::New(hProcess, pid_len));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, hProcess);
-
-  if (readPipe) {
-    result->Set(v8::String::New("readPipe"), v8::String::New(readPipe, readPipe_len));
+  result->Set(v8::String::New("pid"), v8::Number::New(external._pid));
+  // Now report about possible stdin and stdout pipes:
+#ifndef _WIN32
+  if (external._readPipe >= 0) {
+    result->Set(v8::String::New("readPipe"),
+                v8::Number::New(external._readPipe));
+  }
+  if (external._writePipe >= 0) {
+    result->Set(v8::String::New("writePipe"),
+                v8::Number::New(external._writePipe));
+  }
+#else
+  size_t readPipe_len, writePipe_len;
+  char* readPipe  = NULL;
+  char* writePipe = NULL;
+  if (0 != external._readPipe) {
+    readPipe = TRI_EncodeHexString((const char *)external._readPipe, 
+                                   sizeof(HANDLE), &readPipe_len);
+    result->Set(v8::String::New("readPipe"), 
+                v8::String::New(readPipe, readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
-
-  if (writePipe) {
-    result->Set(v8::String::New("writePipe"), v8::String::New(writePipe, writePipe_len));
+  if (0 != external._writePipe) {
+    writePipe = TRI_EncodeHexString((const char *)external._writePipe, 
+                                    sizeof(HANDLE), &writePipe_len);
+    result->Set(v8::String::New("writePipe"), 
+                v8::String::New(writePipe, writePipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
   }
-  return scope.Close(result);
 #endif
+  return scope.Close(result);
 }
-#ifndef _WIN32
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
@@ -2501,117 +2594,31 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
 
   // extract the arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
+  if (argv.Length() < 1 || argv.Length() > 2 ||
+      !argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, 
+                           "statusExternal(<external-identifier>[, <wait>])");
   }
 
-  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
-  TRI_external_status_t external = TRI_CheckExternalProcess(pid);
-
-  v8::Handle<v8::Object> result = v8::Object::New();
-  const char* status = "UNKNOWN";
-
-  switch (external._status) {
-    case TRI_EXT_NOT_STARTED: status = "NOT-STARTED"; break;
-    case TRI_EXT_PIPE_FAILED: status = "FAILED"; break;
-    case TRI_EXT_FORK_FAILED: status = "FAILED"; break;
-    case TRI_EXT_RUNNING: status = "RUNNING"; break;
-    case TRI_EXT_NOT_FOUND: status = "NOT-FOUND"; break;
-    case TRI_EXT_TERMINATED: status = "TERMINATED"; break;
-    case TRI_EXT_ABORTED: status = "ABORTED"; break;
-    case TRI_EXT_STOPPED: status = "STOPPED"; break;
-    case TRI_EXT_KILL_FAILED: status = "ZOMBIE"; break;
-  }
-
-  result->Set(v8::String::New("status"), v8::String::New(status));
-
-  if (external._status == TRI_EXT_TERMINATED) {
-    result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
-  }
-
-  // return the result
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kills an external process
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the arguments
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
-  }
-
-  TRI_external_id_t pid = TRI_ObjectToUInt64(argv[0], true);
-
-  TRI_KillExternalProcess(pid);
-
-  // return the result
-  return scope.Close(v8::Undefined());
-}
-#else
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kills an external process
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the arguments
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
-  }
   v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
-  string pid, hChildStdoutRd, hChildStdinWr;
-  if(obj->Has(v8::String::New("pid"))) {
-    pid = TRI_ObjectToString(obj->Get(v8::String::New("pid")));
+  if (!obj->Has(pidname)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                             "statusExternal: pid must be given");
   }
-  if (pid.empty()) {
-     TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
+  TRI_external_id_t pid;
+#ifndef _WIN32
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+#endif
+  bool wait = false;
+  if (argv.Length() == 2) {
+    wait = TRI_ObjectToBoolean(argv[1]);
   }
-  size_t pid_len /*, readPipe_len, writePipe_len*/; 
-  char * thePid    = TRI_DecodeHexString(pid.c_str(), pid.size(), &pid_len);
-/*
-  char * readPipe  = TRI_DecodeHexString(hChildStdoutRd.c_str(), hChildStdoutRd.c_str.size(), &readPipe_len);
-  char * writePipe = TRI_DecodeHexString(hChildStdinWr.c_str(), hChildStdinWr.c_str.size(), &writePipe_len);
-*/
-  TRI_external_id_t external;
-  external._hProcess = (HANDLE)(*((intptr_t* )thePid)); 
-  external._hChildStdoutRd = NULL;
-  external._hChildStdinWr = NULL;
-/*
-  external._hChildStdoutRd = (HANDLE)(*readPipe); 
-  external._hChildStdinWr = (HANDLE)(*writePipe); 
-*/
-  TRI_KillExternalProcess(&external);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, thePid);
-/*
-  TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
-*/
-  // return the result
-  return scope.Close(v8::Undefined());
-}
-
-static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the arguments
-  if (argv.Length() != 1 || !argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "statusExternal(<external-identifier>)");
-  }
-
-  string hProcessStr =  TRI_ObjectToString(argv[0]);
-  size_t pid_len;
-  char * hProcessCharPtr    = TRI_DecodeHexString(hProcessStr.c_str(), hProcessStr.size(), &pid_len);
-  HANDLE hProcess = (HANDLE)(*((intptr_t* )hProcessCharPtr)); 
-  TRI_external_status_t external = TRI_CheckExternalProcess(hProcess);
+  TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   const char* status = "UNKNOWN";
@@ -2625,7 +2632,6 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
     case TRI_EXT_TERMINATED: status = "TERMINATED"; break;
     case TRI_EXT_ABORTED: status = "ABORTED"; break;
     case TRI_EXT_STOPPED: status = "STOPPED"; break;
-    case TRI_EXT_KILL_FAILED: status = "ZOMBIE"; break;
   }
 
   result->Set(v8::String::New("status"), v8::String::New(status));
@@ -2633,11 +2639,43 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
   }
+  else if (external._status == TRI_EXT_ABORTED) {
+    result->Set(v8::String::New("signal"), v8::Number::New(external._exitStatus));
+  }
 
   // return the result
   return scope.Close(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::Handle<v8::String> pidname = v8::String::New("pid");
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
+  }
+
+  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (!obj->Has(pidname)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                             "statusExternal: pid must be given");
+  }
+  TRI_external_id_t pid;
+#ifndef _WIN32
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
 #endif
+
+  // return the result
+  return scope.Close(v8::Boolean::New(TRI_KillExternalProcess(pid)));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a port is available
 ////////////////////////////////////////////////////////////////////////////////
@@ -2652,16 +2690,21 @@ static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
 
   string address = TRI_ObjectToString(argv[0]);
   Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
+  if (0 == endpoint) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
+                      "address description invalid, cannot create endpoint");
+  }
   TRI_socket_t s = endpoint->connect(1, 1);
-  
-  if (s.fileDescriptor == 0) {
+  bool available = TRI_isvalidsocket(s);
+
+  if (available) {
     endpoint->disconnect();
   }
 
   delete endpoint;
 
   // return the result
-  return scope.Close(v8::Boolean::New(s.fileDescriptor != 0));
+  return scope.Close(v8::Boolean::New(available));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2699,7 +2742,29 @@ static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
   }
 
   return scope.Close(self);
-} 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SleepAndRequeue
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SleepAndRequeue (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder()->ToObject();
+
+  if (0 < args.Length() && args[0]->IsObject()) {
+    v8::Handle<v8::Object> data = args[0]->ToObject();
+
+    if (data->Has(v8g->SleepKey)) {
+      self->Set(v8g->SleepKey, data->Get(v8g->SleepKey));
+    }
+  }
+
+  return scope.Close(self);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -3080,7 +3145,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& startupPath,
                       string const& modules) {
   v8::HandleScope scope;
- 
+
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
@@ -3106,7 +3171,26 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "ArangoError", ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->ArangoErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+
+  // .............................................................................
+  // sleep and requeue a job
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("SleepAndRequeue"));
+  ft->SetCallHandler(JS_SleepAndRequeue);
+
+  // SleepAndRequeue is a "sub-class" of Error
+  v8::Handle<v8::Function> SleepAndRequeueFunc = ft->GetFunction();
+
+  SleepAndRequeueFunc->Get(TRI_V8_SYMBOL("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
+
+  TRI_AddGlobalFunctionVocbase(context, "SleepAndRequeue", SleepAndRequeueFunc);
+
+  rt = ft->InstanceTemplate();
+  v8g->SleepAndRequeueTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  v8g->SleepAndRequeueFuncTempl = v8::Persistent<v8::FunctionTemplate>::New(isolate, ft);
 
   // .............................................................................
   // create the global functions
@@ -3117,6 +3201,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_ABSOLUTE", JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST", JS_List);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
@@ -3181,10 +3266,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
   TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRI_VERSION));
 
-  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(TRI_ConnectionTimeDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(TRI_RequestTimeDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(TRI_BytesSentDistributionVectorStatistics));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(TRI_BytesReceivedDistributionVectorStatistics));
 
   TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(TRI_PLATFORM));
 }

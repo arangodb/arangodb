@@ -1,0 +1,91 @@
+div.clusterColumn {
+  padding-right: 5px;
+  float: left;
+}
+
+div.clusterColumnMax {
+  float: none;
+  min-height: 255px;
+}
+
+div.clusterColumn li {
+  background: none;
+}
+h3.clusterColumnHeader {
+  text-align: center;
+}
+
+h4.domino-header {
+  margin: 0px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-right: 0px;
+  padding-left: 0px;
+}
+
+div.clusterAmounts {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+}
+
+span.cluster_icon_large {
+  font-size: 120px;
+}
+
+span.cluster_icon_small {
+  font-size: 25px;
+}
+
+div.tile {
+  width: 200px;
+  height: 200px;
+  position: absolute;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+div.tile-left {
+  right: 50%;
+  margin-right: 20px;
+}
+
+div.tile-right {
+  left: 50%;
+  margin-left: 20px;
+}
+
+div.domino {
+  float: left;
+  text-align: center;
+  background-color: #f4f3f3;
+  cursor: pointer;
+  margin: 5px;
+  width: 210px;
+}
+
+hr.domino-line {
+  margin: 0px 5px;
+  border-width: 1px;
+  border-top-color: #686766;
+  border-bottom-color: #333232;
+}
+
+div.domino-upper, div.domino-lower,  div.domino-inner {
+  height: 100px;
+  margin: 5px;
+}
+
+div.domino-upper {
+  margin-bottom: 0px;
+}
+div.domino-lower {
+  margin-top: 0px;
+}
+
+button.shard {
+  cursor: default;
+}

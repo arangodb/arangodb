@@ -34,6 +34,12 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -97,6 +103,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// If this parameter has a value of `true` or `yes`, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
+///
+/// Note: this flag is not supported in a cluster. Using it will result in an
+/// error.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until the edge document has been synced to disk.
@@ -177,7 +186,6 @@ bool RestEdgeHandler::createDocument () {
   // extract the from
   bool found;
   char const* from = _request->value("from", found);
-
   if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -218,6 +226,13 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+#ifdef TRI_ENABLE_CLUSTER
+  if (ServerState::instance()->isCoordinator()) {
+    // json will be freed inside!
+    return createDocumentCoordinator(collection, waitForSync, json, from, to);
+  }
+#endif
+
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
@@ -255,12 +270,18 @@ bool RestEdgeHandler::createDocument () {
   edge._toKey   = 0;
 
   string wrongPart;
+  // Note that in a DBserver in a cluster, the following call will
+  // actually parse the first part of `from` as a cluster-wide
+  // collection name, exactly as it is needed here!
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
     wrongPart = "'from'";
   }
   else {
+    // Note that in a DBserver in a cluster, the following call will
+    // actually parse the first part of `from` as a cluster-wide
+    // collection name, exactly as it is needed here!
     res = parseDocumentId(to, edge._toCid, edge._toKey);
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'to'";
@@ -317,6 +338,40 @@ bool RestEdgeHandler::createDocument () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document (an edge), coordinator case in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
+                                                 bool waitForSync,
+                                                 TRI_json_t* json,
+                                                 char const* from,
+                                                 char const* to) {
+  string const& dbname = _request->databaseName();
+
+  triagens::rest::HttpResponse::HttpResponseCode responseCode;
+  map<string, string> resultHeaders;
+  string resultBody;
+
+  int error = triagens::arango::createEdgeOnCoordinator(
+            dbname, collname, waitForSync, json, from, to,
+            responseCode, resultHeaders, resultBody);
+
+  if (error != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collname.c_str(), error);
+    return false;
+  }
+  // Essentially return the response we got from the DBserver, be it
+  // OK or an error:
+  _response = createResponse(responseCode);
+  triagens::arango::mergeResponseHeaders(_response, resultHeaders);
+  _response->body().appendText(resultBody.c_str(), resultBody.size());
+  return responseCode >= triagens::rest::HttpResponse::BAD;
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single edge

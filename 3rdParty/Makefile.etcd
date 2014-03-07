@@ -1,0 +1,53 @@
+# -*- mode: Makefile; -*-
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             ETCD
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief etcd
+################################################################################
+
+@top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX):
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING etcd"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+if ENABLE_INTERNAL_GO
+	cd @top_srcdir@/3rdParty/etcd && GOROOT="`pwd`/../go-$(TRI_BITS)/" PATH="`pwd`/../go-$(TRI_BITS)/bin:$$PATH" ./build
+else
+	cd @top_srcdir@/3rdParty/etcd && ./build
+endif
+	cp @top_srcdir@/3rdParty/etcd/bin/etcd @top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX)
+
+if ENABLE_DARWIN
+else
+	strip @top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX)
+endif
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD etcd FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+
+CLEANUP_3RD += clean-etcd
+
+clean-etcd:
+	cd @top_srcdir@/3rdParty/etcd && ./clean
+	rm -f @top_srcdir@/bin/etcd-arango
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

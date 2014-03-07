@@ -339,6 +339,13 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
   : LineEditor(history), _context(context) {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the editor
+////////////////////////////////////////////////////////////////////////////////
+
+V8LineEditor::~V8LineEditor () {
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -347,7 +354,7 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8LineEditor::open (const bool autoComplete) {
+bool V8LineEditor::open (const bool autoComplete) { 
   if (autoComplete) {
 #ifdef TRI_HAVE_LINENOISE
 	  linenoiseSetCompletionCallback(AttemptedCompletion);

@@ -1834,6 +1834,7 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
   collectionName = TRI_AQL_NODE_STRING(nameNode);
 
   switch (hint->_index->_idx->_type) {
+    case TRI_IDX_TYPE_UNKNOWN:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
@@ -2355,8 +2356,15 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
 
     if (h != NULL && h->_index == NULL) {
       // no index, process incrementally
-      ProcessCollection(generator, expressionNode, true);
-      hint->_isIncremental = true;
+      bool incremental = true;
+
+      if (generator->_context->_isCoordinator) {
+        // coordinator cannot process data incrementally
+        incremental = false;
+      }
+
+      ProcessCollection(generator, expressionNode, incremental);
+      hint->_isIncremental = incremental;
     }
     else {
       ProcessNode(generator, expressionNode);

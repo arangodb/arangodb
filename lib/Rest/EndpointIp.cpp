@@ -114,58 +114,65 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   }
 
   TRI_socket_t listenSocket;
-  listenSocket.fileDescriptor = 0;
-  listenSocket.fileHandle = ::socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
+  listenSocket = TRI_socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
-  if (listenSocket.fileHandle == INVALID_SOCKET) {
+  if (!TRI_isvalidsocket(listenSocket)) {
     LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
     return listenSocket;
   }
 
   if (_type == ENDPOINT_SERVER) {
-    // try to reuse address
 
+#ifdef _WIN32
+	  int excl = 1;
+	  if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+		  reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+		  LOG_ERROR("setsockopt() failed with %d", WSAGetLastError());
+
+		  TRI_CLOSE_SOCKET(listenSocket);
+		  TRI_invalidatesocket(&listenSocket);
+		  return listenSocket;
+	  }
+#else
+	// try to reuse address
     if (_reuseAddress) {
       int opt = 1;
-      if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
+      if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
         LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
 
         TRI_CLOSE_SOCKET(listenSocket);
-
-        listenSocket.fileDescriptor = 0;
-        listenSocket.fileHandle = 0;
+        TRI_invalidatesocket(&listenSocket);
         return listenSocket;
       }
     }
+#endif
 
     // server needs to bind to socket
-    int result = ::bind(listenSocket.fileHandle, aip->ai_addr, (int) aip->ai_addrlen);
+    int result = TRI_bind(listenSocket, aip->ai_addr, (int) aip->ai_addrlen);
 
     if (result != 0) {
       // error
+#ifndef _WIN32
       LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
-
+#else
+      LOG_ERROR("bind() failed with %d", WSAGetLastError());
+#endif
       TRI_CLOSE_SOCKET(listenSocket);
 
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
 
     // listen for new connection, executed for server endpoints only
     LOG_TRACE("using backlog size %d", (int) _listenBacklog);
-    result = ::listen(listenSocket.fileHandle, _listenBacklog);
+    result = TRI_listen(listenSocket, _listenBacklog);
 
-    if (result == INVALID_SOCKET) {
+    if (result != 0) {
       // todo: get the correct error code using WSAGetLastError for windows
       LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
       
       TRI_CLOSE_SOCKET(listenSocket);
-
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
   }
@@ -175,20 +182,18 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    int result = ::connect(listenSocket.fileHandle, (const struct sockaddr*) aip->ai_addr, (int) aip->ai_addrlen);
+    int result = TRI_connect(listenSocket, (const struct sockaddr*) aip->ai_addr, (int) aip->ai_addrlen);
 
-    if (result == INVALID_SOCKET) {
+    if (result != 0) {
       TRI_CLOSE_SOCKET(listenSocket);
-      listenSocket.fileDescriptor = 0;
-      listenSocket.fileHandle = 0;
+      TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
   }
 
   if (!setSocketFlags(listenSocket)) { // set some common socket flags for a server
     TRI_CLOSE_SOCKET(listenSocket);
-    listenSocket.fileDescriptor = 0;
-    listenSocket.fileHandle = 0;
+    TRI_invalidatesocket(&listenSocket);
     return listenSocket;
   }
 
@@ -219,12 +224,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
   struct addrinfo hints;
   int error;
   TRI_socket_t listenSocket;
-  listenSocket.fileHandle = 0;
-  listenSocket.fileDescriptor = 0;
+  TRI_invalidatesocket(&listenSocket);
 
   LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
-  assert(_socket.fileHandle == 0);
+  assert(!TRI_isvalidsocket(_socket));
   assert(!_connected);
 
   memset(&hints, 0, sizeof (struct addrinfo));
@@ -270,7 +274,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
   for (aip = result; aip != NULL; aip = aip->ai_next) {
     // try to bind the address info pointer
     listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
-    if (listenSocket.fileHandle != 0) {
+    if (TRI_isvalidsocket(listenSocket)) {
       // OK
       break;
     }
@@ -289,12 +293,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   struct addrinfo hints;
   int error;
   TRI_socket_t listenSocket;
-  listenSocket.fileHandle = 0;
-  listenSocket.fileDescriptor = 0;
+  TRI_invalidatesocket(&listenSocket);
 
   LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
-  assert(_socket.fileHandle == 0);
+  assert(!TRI_isvalidsocket(_socket));
   assert(!_connected);
 
   memset(&hints, 0, sizeof (struct addrinfo));
@@ -320,7 +323,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   for (aip = result; aip != NULL; aip = aip->ai_next) {
     // try to bind the address info pointer
     listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
-    if (listenSocket.fileHandle != 0) {
+    if (TRI_isvalidsocket(listenSocket)) {
       // OK
       break;
     }
@@ -339,13 +342,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
 void EndpointIp::disconnect () {
   if (_connected) {
-    assert(_socket.fileHandle);
+    assert(TRI_isvalidsocket(_socket));
 
     _connected = false;
     TRI_CLOSE_SOCKET(_socket);
-
-    _socket.fileHandle = 0;
-    _socket.fileDescriptor = 0;
+    TRI_invalidatesocket(&_socket);
   }
 }
 
@@ -356,7 +357,7 @@ void EndpointIp::disconnect () {
 bool EndpointIp::initIncoming (TRI_socket_t incoming) {
   // disable nagle's algorithm
   int n = 1;
-  int res = setsockopt(incoming.fileHandle, IPPROTO_TCP, TCP_NODELAY, (char*) &n, sizeof(n));
+  int res = TRI_setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*) &n, sizeof(n));
 
   if (res != 0 ) {
     // todo: get correct windows error code

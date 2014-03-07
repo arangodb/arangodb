@@ -30,6 +30,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+var cluster = require("org/arangodb/cluster");
 
 var API = "_api/collection";
 
@@ -75,6 +76,11 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     result.journalSize   = properties.journalSize;      
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
+
+    if (cluster.isCoordinator()) {
+      result.shardKeys = properties.shardKeys;
+      result.numberOfShards = properties.numberOfShards;
+    }
   }
 
   if (showCount) {
@@ -108,6 +114,67 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to parse arguments for creating collections
+////////////////////////////////////////////////////////////////////////////////
+
+function parseBodyForCreateCollection (req, res) {
+  var body = actions.getJsonBody(req, res);
+
+  if (body === undefined) {
+    return { bodyIsEmpty: true };
+  }
+
+  var r = {};
+
+  if (! body.hasOwnProperty("name")) {
+    r.name = "";
+  }
+  else {
+    r.name = body.name;
+  }
+  r.parameter = { waitForSync : false };
+  r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
+
+  if (body.hasOwnProperty("doCompact")) {
+    r.parameter.doCompact = body.doCompact;
+  }
+
+  if (body.hasOwnProperty("isSystem")) {
+    r.parameter.isSystem = body.isSystem;
+  }
+  
+  if (body.hasOwnProperty("isVolatile")) {
+    r.parameter.isVolatile = body.isVolatile;
+  }
+  
+  if (body.hasOwnProperty("journalSize")) {
+    r.parameter.journalSize = body.journalSize;
+  }
+  
+  if (body.hasOwnProperty("keyOptions")) {
+    r.parameter.keyOptions = body.keyOptions;
+  }
+
+  if (body.hasOwnProperty("type")) {
+    r.type = body.type;
+  }
+  
+  if (body.hasOwnProperty("waitForSync")) {
+    r.parameter.waitForSync = body.waitForSync;
+  }
+  
+  if (body.hasOwnProperty("shardKeys") && cluster.isCoordinator()) {
+    r.parameter.shardKeys = body.shardKeys || { };
+  }
+  
+  if (body.hasOwnProperty("numberOfShards") && cluster.isCoordinator()) {
+    r.parameter.numberOfShards = body.numberOfShards || 0;
+  }
+
+  return r;
+}
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection
 ///
@@ -172,6 +239,18 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///   - `2`: document collection
 ///   - `3`: edges collection
 ///
+/// - `numberOfShards` (optional, default is `1`): in a cluster, this value
+///   determines the number of shards to create for the collection. In a single
+///   server setup, this option is meaningless.
+///
+/// - `shardKeys` (optional, default is `[ "_key" ]`): in a cluster, this
+///   attribute determines which document attributes are used to determine the
+///   target shard for documents. Documents are sent to shards based on the
+///   values of their shard key attributes. The values of all shard
+///   key attributes in a document are hashed, and the hash value is used to 
+///   determine the target shard. Note that values of shard key attributes cannot
+///   be changed once set.
+///   This option is meaningless in a single server setup.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
@@ -222,74 +301,47 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
-  var body = actions.getJsonBody(req, res);
+  var r = parseBodyForCreateCollection(req, res);
 
-  if (body === undefined) {
-    return;
+  if (r.bodyIsEmpty) {
+    return;   // error in JSON, is already reported
   }
-
-  if (! body.hasOwnProperty("name")) {
+    
+  if (r.name === "") {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
                       "name must be non-empty");
     return;
   }
 
-  var name = body.name;
-  var parameter = { waitForSync : false };
-  var type = arangodb.ArangoCollection.TYPE_DOCUMENT;
-
-  if (body.hasOwnProperty("doCompact")) {
-    parameter.doCompact = body.doCompact;
-  }
-
-  if (body.hasOwnProperty("isSystem")) {
-    parameter.isSystem = body.isSystem;
-  }
-  
-  if (body.hasOwnProperty("isVolatile")) {
-    parameter.isVolatile = body.isVolatile;
-  }
-  
-  if (body.hasOwnProperty("journalSize")) {
-    parameter.journalSize = body.journalSize;
-  }
-  
-  if (body.hasOwnProperty("keyOptions")) {
-    parameter.keyOptions = body.keyOptions;
-  }
-
-  if (body.hasOwnProperty("type")) {
-    type = body.type;
-  }
-  
-  if (body.hasOwnProperty("waitForSync")) {
-    parameter.waitForSync = body.waitForSync;
-  }
-  
   try {
     var collection;
-    if (typeof(type) === "string") {
-      if (type.toLowerCase() === "edge") {
-        type = arangodb.ArangoCollection.TYPE_EDGE;
+    if (typeof(r.type) === "string") {
+      if (r.type.toLowerCase() === "edge") {
+        r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }
-    if (type === arangodb.ArangoCollection.TYPE_EDGE) {
-      collection = arangodb.db._createEdgeCollection(name, parameter);
+    if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
+      collection = arangodb.db._createEdgeCollection(r.name, r.parameter);
     }
     else {
-      collection = arangodb.db._createDocumentCollection(name, parameter);
+      collection = arangodb.db._createDocumentCollection(r.name, r.parameter);
     }
 
     var result = {};
 
     result.id = collection._id;
     result.name = collection.name();
-    result.waitForSync = parameter.waitForSync || false;
-    result.isVolatile = parameter.isVolatile || false;
-    result.isSystem = parameter.isSystem || false;
+    result.waitForSync = r.parameter.waitForSync || false;
+    result.isVolatile = r.parameter.isVolatile || false;
+    result.isSystem = r.parameter.isSystem || false;
     result.status = collection.status();
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;
+
+    if (cluster.isCoordinator()) {
+      result.shardKeys = collection.shardKeys;
+      result.numberOfShards = collection.numberOfShards;
+    }
     
     var headers = {
       location: databasePrefix(req, "/" + API + "/" + result.name)
@@ -419,7 +471,7 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
-/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` properties. 
+/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` attributes.
 /// This is achieved by forcing a load of the underlying collection.
 ///
 /// - `waitForSync`: If `true` then creating or changing a
@@ -433,6 +485,11 @@ function get_api_collections (req, res) {
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
+/// In a cluster setup, the result will also contain the following attributes:
+/// - `numberOfShards`: the number of shards of the collection.
+///
+/// - `shardKeys`: contains the names of document attributes that are used to 
+///   determine the target shard for documents. 
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
@@ -708,6 +765,8 @@ function get_api_collections (req, res) {
 /// - `checksum`: The calculated checksum as a number.
 ///
 /// - `revision`: The collection revision id as a string.
+///
+/// Note: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1127,8 +1186,9 @@ function put_api_collection_truncate (req, res, collection) {
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// Note: some other collection properties, such as `type` or `isVolatile` 
-/// cannot be changed once the collection is created.
+/// Note: some other collection properties, such as `type`, `isVolatile`,
+/// `numberOfShards` or `shardKeys` cannot be changed once a collection is 
+/// created.
 ///
 /// @EXAMPLES
 ///
@@ -1259,6 +1319,8 @@ function put_api_collection_rename (req, res, collection) {
 /// If returns an object with the attributes
 ///
 /// - `result`: will be `true` if rotation succeeded
+///
+/// Note: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///

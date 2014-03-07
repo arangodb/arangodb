@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [1.5.devel], [info@triagens.de], [arangodb], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [2.0.0-rc1], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -105,6 +105,42 @@ AC_ARG_ENABLE(all-in-one-icu,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ICU, test "x$tr_ALL_IN_ONE_ICU" = xyes)
 
+dnl ----------------------------------------------------------------------------
+dnl BOOST
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-boost,
+  AS_HELP_STRING([--enable-all-in-one-boost], [use supplied BOOST from 3rdParty directory (default: yes)]),
+  [tr_ALL_IN_ONE_BOOST="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_BOOST=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_BOOST, test "x$tr_ALL_IN_ONE_BOOST" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl ETCD
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-etcd,
+  AS_HELP_STRING([--enable-all-in-one-etcd], [use supplied etcd from 3rdParty directory (default: yes)]),
+  [tr_ALL_IN_ONE_ETCD="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_ETCD=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl GO
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(internal-go,
+  AS_HELP_STRING([--enable-internal-go], [use  go binaries from 3rdParty directory (default: no)]),
+  [tr_INTERNAL_GO="${enableval:-yes}"],
+  [tr_INTERNAL_GO=no]
+)
+
+AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
+
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================
@@ -141,6 +177,12 @@ m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
 m4_include([m4/configure.maintainer])
+
+dnl ============================================================================
+dnl --SECTION--                                                 CLUSTER FEATURES
+dnl ============================================================================
+
+m4_include([m4/configure.cluster])
 
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
@@ -204,6 +246,18 @@ if test "x$tr_ALL_IN_ONE_ICU" = xyes;  then
   m4_include([m4/all-in-one.icu])
 else
   m4_include([m4/external.icu])
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl BOOST
+dnl ----------------------------------------------------------------------------
+
+if test "x$tr_ALL_IN_ONE_BOOST" = xyes;  then
+  m4_include([m4/all-in-one.boost])
+  BASIC_INFO="$BASIC_INFO|ALL-IN_ONE-BOOST: enabled"
+else
+  m4_include([m4/external.boost])
+  BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-BOOST: disabled"
 fi
 
 

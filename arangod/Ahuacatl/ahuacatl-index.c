@@ -67,7 +67,7 @@ static void LogIndexString (const char* const what,
 
   LOG_TRACE("%s %s index (%s) for '%s'",
             what,
-            idx->typeName(idx),
+            TRI_TypeNameIndex(idx->_type),
             buffer->_buffer,
             collectionName);
 
@@ -261,6 +261,7 @@ static bool CanUseIndex (TRI_index_t const* idx) {
 
   // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
   switch (idx->_type) {
+    case TRI_IDX_TYPE_UNKNOWN:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
@@ -316,7 +317,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
   size_t i, n;
-
+  
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   assert(context);
@@ -324,6 +325,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   assert(candidates);
 
   n = availableIndexes->_length;
+
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
     size_t numIndexFields;
@@ -340,7 +342,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
     lastTypeWasExact = true;
     numIndexFields = idx->_fields._length;
-
+    
     // now loop over all index fields, from left to right
     // index field order is important because skiplists can be used with leftmost prefixes as well,
     // but not with rightmost prefixes
@@ -450,6 +452,31 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             continue;
           }
 
+          if (candidate->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
+            // range type. check if the compare value is a list or an object
+            TRI_json_t* value = candidate->_value._singleRange._value;
+
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+          }
+          else if (candidate->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+            // range type. check if the compare value is a list or an object
+            TRI_json_t* value = candidate->_value._between._lower._value;
+
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+            
+            value = candidate->_value._between._upper._value;
+            if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
+              // list or object, we cannot use this for comparison in a skiplist
+              continue;
+            }
+          }
+
           lastTypeWasExact = candidateIsExact;
 
           TRI_PushBackVectorPointer(&matches, candidate);
@@ -470,7 +497,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && idx->_needsFullCoverage) {
+    if (matches._length < numIndexFields && 
+        TRI_NeedsFullCoverageIndex(idx->_type)) {
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }

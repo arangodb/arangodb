@@ -238,18 +238,10 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
-  return "geo1";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -272,15 +264,17 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
+  if (json == NULL) {
+    return NULL;
+  }
+
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
   
   // "constraint" and "unique" are identical for geo indexes. 
-  // we return it for downwards-compatibility
+  // we return "constraint" just for downwards-compatibility
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  if (idx->_unique) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
-  }
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
@@ -290,18 +284,10 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, bool withStats) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the index type name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
-  return "geo2";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, bool withStats) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_primary_collection_t* primary;
@@ -333,14 +319,16 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, bool withStats) {
 
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  
+  if (json == NULL) {
+    return NULL;
+  }
 
   // "constraint" and "unique" are identical for geo indexes. 
-  // we return it for downwards-compatibility
+  // we return "constraint" just for downwards-compatibility
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  if (idx->_unique) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
-  }
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
@@ -492,6 +480,7 @@ static int RemoveGeoIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
@@ -506,8 +495,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  idx->typeName = TypeNameGeo1Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, primary, unique);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -545,6 +533,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
+                                  TRI_idx_iid_t iid,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
@@ -561,8 +550,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  idx->typeName = TypeNameGeo2Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, unique, true);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, primary, unique);
 
   idx->_ignoreNull = ignoreNull;
   

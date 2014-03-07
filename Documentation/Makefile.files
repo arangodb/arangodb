@@ -20,6 +20,7 @@ WIKI = \
 	CommandLine \
 	Communication \
 	Compiling \
+	CookbookCluster \
 	DbaManual \
 	DbaManualAuthentication \
 	DbaManualBasics \
@@ -50,6 +51,7 @@ WIKI = \
 	HttpMisc \
 	HttpQuery \
 	HttpReplication \
+	HttpSharding \
 	HttpSimple \
 	HttpSystem \
 	HttpTransactions \
@@ -67,6 +69,7 @@ WIKI = \
 	InstallManual \
 	Installing \
 	JSModuleActions \
+	JSModuleCluster \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
@@ -76,12 +79,14 @@ WIKI = \
 	NewFeatures12 \
 	NewFeatures13 \
 	NewFeatures14 \
+	NewFeatures20 \
 	RefManual \
 	RefManualArangoErrors \
 	RefManualReplication \
 	RestDocument \
 	RestEdge \
 	RestoreManual \
+	Sharding \
 	SimpleQueries \
 	ToolsManual \
 	Transactions \
@@ -92,6 +97,7 @@ WIKI = \
 	Upgrading12 \
 	Upgrading13 \
 	Upgrading14 \
+	Upgrading20 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -136,6 +142,7 @@ dist_man_MANS += \
 
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
+	Doxygen/js/actions/api-cluster.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-database.c \
@@ -178,6 +185,9 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/foxx/template_middleware.c \
 	Doxygen/js/server/modules/org/arangodb/graph.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
+	Doxygen/js/server/modules/org/arangodb/cluster.c \
+	Doxygen/js/server/modules/org/arangodb/cluster/planner.c \
+	Doxygen/js/server/modules/org/arangodb/cluster/kickstarter.c \
 	Doxygen/js/server/server.c
 
 ## -----------------------------------------------------------------------------
@@ -191,18 +201,18 @@ DOXYGEN = \
 .PHONY: doxygen-create-directories
 
 doxygen-create-directories:
-	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
-	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
+	@test -d Doxygen/doc || mkdir -p Doxygen/doc
+	@test -d Doxygen/website || mkdir -p Doxygen/website
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/common/modules/org/arangodb/graph || mkdir -p Doxygen/js/common/modules/org/arangodb/graph
 	@test -d Doxygen/js/server/modules/org/arangodb/foxx || mkdir -p Doxygen/js/server/modules/org/arangodb/foxx
 	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
+	@test -d Doxygen/js/server/modules/org/arangodb/cluster || mkdir -p Doxygen/js/server/modules/org/arangodb/cluster
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
-	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
@@ -258,11 +268,11 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-html.doxy > /dev/null
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
 ################################################################################
@@ -280,7 +290,6 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	cp -R Documentation/latex/*.tex Doxygen/latex
-	cp -R Documentation/images Doxygen/latex/images
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
@@ -388,7 +397,7 @@ publish-html:
 	$(MAKE) doxygen
 	mkdir -p $(OUTPUT_FOLDER)/images
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
+	@for i in `ls Doxygen/website/*.png`; do cp $$i $(OUTPUT_FOLDER)/; done
 	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
 	@cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
 

@@ -78,8 +78,7 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
   _ssl(0),
   _ctx(0) {
 
-  _socket.fileHandle = 0;
-  _socket.fileDescriptor = 0;
+  TRI_invalidatesocket(&_socket);
           
   SSL_METHOD SSL_CONST* meth = 0;
 
@@ -152,24 +151,22 @@ SslClientConnection::~SslClientConnection () {
 bool SslClientConnection::connectSocket () {
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (_socket.fileHandle <= 0 || _ctx == 0) {
+  if (!TRI_isvalidsocket(_socket) || _ctx == 0) {
     return false;
   }
 
   _ssl = SSL_new(_ctx);
   if (_ssl == 0) {
     _endpoint->disconnect();
-    _socket.fileHandle = 0;
-    _socket.fileDescriptor = 0;
+    TRI_invalidatesocket(&_socket);
     return false;
   }
 
-  if (SSL_set_fd(_ssl, (int) _socket.fileHandle) != 1) {
+  if (SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;
-    _socket.fileHandle = 0;
-    _socket.fileDescriptor = 0;
+    TRI_invalidatesocket(&_socket);
     return false;
   }
 
@@ -180,8 +177,7 @@ bool SslClientConnection::connectSocket () {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;
-    _socket.fileHandle = 0;
-    _socket.fileDescriptor = 0;
+    TRI_invalidatesocket(&_socket);
     return false;
   }
 
@@ -194,8 +190,7 @@ bool SslClientConnection::connectSocket () {
 
 void SslClientConnection::disconnectSocket () {
   _endpoint->disconnect();
-  _socket.fileHandle = 0;
-  _socket.fileDescriptor = 0;
+  TRI_invalidatesocket(&_socket);
 
   if (_ssl) {
     SSL_free(_ssl);
@@ -215,7 +210,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket.fileHandle, &fdset);
+  FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -227,7 +222,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
     readFds = &fdset;
   }
 
-  int sockn = (int) (_socket.fileHandle + 1);
+  int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
   if (select(sockn, readFds, writeFds, NULL, &tv) > 0) {
     return true;
   }
@@ -349,9 +344,9 @@ bool SslClientConnection::checkSocket () {
   int so_error = -1;
   socklen_t len = sizeof so_error;
 
-  assert(_socket.fileHandle > 0);
+  assert(TRI_isvalidsocket(_socket));
 
-  int res = getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
     _isConnected = false;

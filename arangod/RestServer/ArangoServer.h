@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
@@ -37,8 +37,10 @@
 
 #include "VocBase/vocbase.h"
 
-struct TRI_server_s;
-struct TRI_vocbase_defaults_s;
+extern "C" {
+  struct TRI_server_s;
+  struct TRI_vocbase_defaults_s;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -61,6 +63,7 @@ namespace triagens {
   namespace arango {
     class ApplicationMR;
     class ApplicationV8;
+    class ApplicationCluster;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoServer
@@ -124,18 +127,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the JavaScript emergency console
+/// @brief runs in server mode
 ////////////////////////////////////////////////////////////////////////////////
 
-        int executeConsole (triagens::rest::OperationMode::server_operation_mode_e);
+        int runServer (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the ruby emergency console
+/// @brief runs in console mode
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MRUBY
-        int executeRubyConsole ();
-#endif
+        int runConsole (struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs unit tests
+////////////////////////////////////////////////////////////////////////////////
+
+        int runUnitTests (struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs script
+////////////////////////////////////////////////////////////////////////////////
+
+        int runScript (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the system database
@@ -196,6 +209,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         admin::ApplicationAdminServer* _applicationAdminServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster application feature
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        triagens::arango::ApplicationCluster* _applicationCluster;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief asynchronous job manager
@@ -268,9 +289,9 @@ namespace triagens {
 /// @CMDOPT{\--server.disable-authentication-unix-sockets @CA{value}}
 ///
 /// Setting @CA{value} to true will turn off authentication on the server side
-/// for requests coming in via UNIX domain sockets. With this flag enabled, 
-/// clients located on the same host as the ArangoDB server can use UNIX domain 
-/// sockets to connect to the server without authentication. 
+/// for requests coming in via UNIX domain sockets. With this flag enabled,
+/// clients located on the same host as the ArangoDB server can use UNIX domain
+/// sockets to connect to the server without authentication.
 /// Requests coming in by other means (e.g. TCP/IP) are not affected by this
 /// option.
 ///

@@ -1,0 +1,64 @@
+.modalChartDetail {
+  height: 70%;
+  margin-left: 0;
+  width: 70%;
+}
+
+.waitModal {
+  @include box-shadow(none);
+  background: $c-transp;
+  border: 0;
+  color: $c-white;
+}
+
+.waitModalBackdrop {
+  opacity: .7 !important;
+}
+
+.addCollection {
+  $inputwidth: 320px;
+
+  table tr {
+    border-bottom: 0 !important;
+    height: 53px;
+  }
+
+  .icon_arangodb_info {
+    margin-left: 20px !important;
+    position: relative;
+    top: 2px !important;
+  }
+
+  .accordion {
+    margin-top: 10px;
+  }
+
+  .collectionThSec {
+    width: $inputwidth !important;
+  }
+
+  .collectionTh {
+    width: 96px;
+  }
+
+  .modalInput {
+    width: $inputwidth;
+  }
+
+  .modalSelect {
+    width: $inputwidth + 14px;
+  }
+
+  .accordion-toggle {
+    width: $inputwidth + 137px !important;
+  }
+}
+
+.modalTooltips span {
+  color: $c-btn-inverse;
+  font-size: 20px;
+
+  &:hover {
+    color: $c-black;
+  }
+}

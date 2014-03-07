@@ -57,14 +57,14 @@ function stop_pager () {
 function help () {
   var internal = require("internal");
   var arangodb = require("org/arangodb");
-  var client = require("org/arangodb/arangosh");
+  var arangosh = require("org/arangodb/arangosh");
 
-  internal.print(client.HELP);
+  internal.print(arangosh.HELP);
   arangodb.ArangoDatabase.prototype._help();
   arangodb.ArangoCollection.prototype._help();
   arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoQueryCursor.prototype._help();
-  internal.print(client.helpExtended);
+  internal.print(arangosh.helpExtended);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ var Buffer = require("buffer").Buffer;
   if (internal.quiet !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
       if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
-        internal.print(arangosh.HELP);
+        internal.print("use 'help' to see common examples");
       }
     }
   }

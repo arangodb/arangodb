@@ -1,679 +1,535 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global templateEngine */
+/*global document, Dygraph, _,templateEngine */
 
 (function() {
   "use strict";
 
   window.dashboardView = Backbone.View.extend({
     el: '#content',
-    updateInterval: 1000, // 1 second, constant
-    updateFrequency: 5, // the actual update rate (5 s)
-    updateFrequencyR: 5, // the actual update rate (5 s) REPLICATION
-    updateCounter: 0,
-    updateCounterR: 0,
-    arraySize: 20, // how many values will we keep per figure?
-    seriesData: {},
-    charts: {},
-    units: [],
-    graphState: {},
-    updateNOW: false,
-    detailGraph: "userTime",
-
-    initialize: function () {
-      this.loadGraphState();
-      this.arangoReplication = new window.ArangoReplication();
-      var self = this;
-
-      this.initUnits();
-
-      this.collection.fetch({
-        success: function() {
-          self.addCustomCharts();
-          self.calculateSeries();
-          self.renderCharts();
-
-          window.setInterval(function() {
-            self.updateCounter++;
-            self.updateCounterR++;
-
-            if (self.updateNOW === true) {
-              self.calculateSeries();
-              self.renderCharts();
-              self.updateNOW = false;
-            }
-
-            if (window.location.hash === '' && self.updateCounterR > self.updateFrequencyR) {
-              self.getReplicationStatus();
-              self.updateCounterR = 0;
-            }
-
-            if (self.updateCounter < self.updateFrequency) {
-              return false;
-            }
-
-            self.updateCounter = 0;
-            self.collection.fetch({
-              success: function() {
-                self.calculateSeries();
-                self.renderCharts();
-              },
-              error: function() {
-                // need to flush previous values
-                self.calculateSeries(true);
-                self.renderCharts();
-              }
-            });
-
-          }, self.updateInterval);
-        }
-      });
-    },
+    contentEl: '.contentDiv',
+    distributionChartDiv : "#distributionChartDiv",
+    interval: 5000, // in milliseconds
+    detailTemplate: templateEngine.createTemplate("lineChartDetailView.ejs"),
+    detailEl: '#modalPlaceholder',
 
     events: {
-      "click #dashboardDropdown li"  : "checkEnabled",
-      "click #intervalUL li"         : "checkInterval",
-      "click #intervalULR li"        : "checkIntervalR",
-      "click .db-zoom"               : "renderDetailChart",
-      "click .db-minimize"           : "checkDetailChart",
-      "click .db-hide"               : "hideChart",
-      "click .group-close"           : "hideGroup",
-      "click .group-open"            : "showGroup",
-      "click .dashSwitch"            : "showCategory",
-      "click #dashboardToggle"       : "toggleEvent"
+      "click .innerDashboardChart" : "showDetail",
+      "mousedown .dygraph-rangesel-zoomhandle" : "stopUpdating",
+      "mouseup .dygraph-rangesel-zoomhandle" : "startUpdating",
+      "mouseleave .dygraph-rangesel-zoomhandle" : "startUpdating",
+      "click #backToCluster" : "returnToClusterView"
     },
-
-    template: templateEngine.createTemplate("dashboardView.ejs"),
-
-    toggleEvent: function () {
-      if ($('#detailReplication').is(':visible')) {
-        $('#replicationDropdownOut').slideToggle(220);
-      }
-      else {
-        $('#dashboardDropdownOut').slideToggle(220);
-      }
-    },
-
-    getReplicationStatus: function () {
-      this.replLogState = this.arangoReplication.getLogState();
-      this.replApplyState = this.arangoReplication.getApplyState();
-      this.putReplicationStatus();
-    },
-
-    putReplicationStatus: function () {
-      var loggerRunning  = this.replLogState.state.running;
-      var applierRunning = this.replApplyState.state.running;
-
-      if (applierRunning || this.replApplyState.state.lastError !== '') {
-        $('#detailReplication').height(290);
-        $('.checkApplyRunningStatus').show();
-      }
-      else {
-        $('.checkApplyRunningStatus').hide();
-      }
-
-      var time = this.replLogState.state.time;
-
-      var cls = loggerRunning ? 'true' : 'false';
-      //var runningLog = '<div class="' + cls + 'Class">' + cls + '</div>';
-      var runningLog = '-';
-
-      var clientString = '-';
-      if (this.replLogState.state.clients) {
-        $.each(this.replLogState.state.clients, function(k,v) {
-          clientString = clientString + "Server: " + v.serverId + " | Time: " + v.time + "\n";
-        });
-      }
-
-      var lastLog;
-      if (this.replLogState.state.lastLogTick === '0') {
-        lastLog = '-';
-      }
-      else {
-        lastLog = this.replLogState.state.lastLogTick;
-      }
-
-      var numEvents = this.replLogState.state.totalEvents || 0;
-
-      //log table
-      if (cls === true) {
-        runningLog = '<div class="greenLight"/>';
-      }
-      else {
-        runningLog = '<div class="redLight"/>';
-      }
-
-      $('#logRunningVal').html(runningLog);
-      $('#logTotalEventsVal').text(numEvents);
-      $('#logTimeVal').text(time);
-      $('#logLastTickVal').text(lastLog);
-      $('#logClientsVal').text(clientString);
-
-
-      //apply table
-      var lastAppliedTick = "-";
-      var lastAvailableTick = "-";
-      var progress = "-";
-      var lastError = "-";
-      var endpoint = "-";
-      var numRequests = "-";
-      var numFailed = "-";
-
-      if (this.replApplyState.state.lastAppliedContinuousTick !== null) {
-        lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
-      }
-
-      if (this.replApplyState.state.lastAvailableContinuousTick !== null) {
-        lastAvailableTick = this.replApplyState.state.lastAvailableContinuousTick;
-      }
-
-      if (this.replApplyState.state.endpoint !== undefined) {
-        endpoint = this.replApplyState.state.endpoint;
-      }
-
-      time = this.replApplyState.state.time;
-
-      if (this.replApplyState.state.progress) {
-        progress = this.replApplyState.state.progress.message;
-      }
-
-      if (this.replApplyState.state.lastError) {
-        lastError = this.replApplyState.state.lastError.errorMessage;
-      }
-
-      cls = applierRunning ? 'true' : 'false';
-      //var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
-      var runningApply = '-';
-
-      numEvents = this.replApplyState.state.totalEvents || 0;
-      numRequests = this.replApplyState.state.totalRequests || 0;
-      numFailed = this.replApplyState.state.totalFailedConnects || 0;
-
-      if (cls === true) {
-        runningApply = '<div class="greenLight"/>';
-      }
-      else {
-        runningApply = '<div class="redLight"/>';
-      }
-
-      $('#applyRunningVal').html(runningApply);
-      $('#applyEndpointVal').text(endpoint);
-      $('#applyLastAppliedTickVal').text(lastAppliedTick);
-      $('#applyLastAvailableTickVal').text(lastAvailableTick);
-      $('#applyTimeVal').text(time);
-      $('#applyProgressVal').text(progress);
-      $('#applyTotalEventsVal').text(numEvents);
-      $('#applyTotalRequestsVal').text(numRequests);
-      $('#applyTotalFailedVal').text(numFailed);
-      $('#applyLastErrorVal').text(lastError);
-    },
-
-    render: function() {
+    
+    showDetail : function(e) {
       var self = this;
-      self.updateNOW = true;
-      $(this.el).html(this.template.render({}));
-      this.getReplicationStatus();
-      
-      arangoHelper.fixTooltips(".icon_arangodb", "top");
-
-      var counter = 1;
-
-      $.each(this.options.description.models[0].attributes.groups, function () {
-        $('#dbThumbnailsIn').append(
-          '<ul class="statGroups" id="' + this.group + '">' +
-          '<i class="group-close icon-minus icon-white"></i>' +
-          '<div id="statsHeaderDiv"><h4 class="statsHeader">' + this.name + '</h4></div>' +
-          '</ul>');
-
-        //group
-        $('#dashboardDropdown').append('<ul id="' + this.group + 'Ul"></ul>');
-        $('#'+this.group+'Ul').append('<li class="nav-header">' + this.name + '</li>');
-
-        //group entries
-        if (self.options.description.models[0].attributes.groups.length === counter) {
-          $('#'+this.group+'Divider').addClass('dbNotVisible');
-        }
-        counter++;
-      });
-
-      $.each(this.options.description.models[0].attributes.figures, function () {
-        self.renderFigure(this);
-      });
-      $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-      $('#every'+self.updateFrequencyR+'secondsR').prop('checked',true);
-
-      if (this.collection.models[0] === undefined) {
-        this.collection.fetch({
-          success: function() {
-            self.calculateSeries();
-            self.renderCharts();
-          },
-          error: function() {
-            self.calculateSeries();
-            self.renderCharts(flush);
+      var id = $(e.currentTarget).attr("id").replace(/LineChart/g , "");
+      var group;
+      Object.keys(self.series).forEach(function (g) {
+        Object.keys(self.series[g]).forEach(function (f) {
+          if (f === id) {
+            group = g;
           }
         });
+      });
+      var figures = [];
+      if (self.dygraphConfig.combinedCharts[group + "_" + id]) {
+        self.dygraphConfig.combinedCharts[group + "_" + id].forEach(function(e) {
+          figures.push(group + "." + e);
+        });
+      } else {
+        figures.push(group + "." + id);
       }
-      else {
-        self.calculateSeries();
-        self.renderCharts();
-      }
-
-      this.loadGraphState();
-      return this;
-    },
-
-    addCustomCharts: function () {
-      var self = this;
-      var figure = {
-        "description" : "Cumulated values of User + System Time",
-        "group" : "system",
-        "identifier" : "userSystemTime",
-        "name" : "User + System Time",
-        "type" : "accumulated",
-        "units" : "seconds",
-        "exec" : function () {
-          var val1 = self.collection.models[0].attributes.system.userTime;
-          var val2 = self.collection.models[0].attributes.system.systemTime;
-
-          if (val1 === undefined || val2 === undefined) {
-            return undefined;
+      self.getStatisticHistory({
+        startDate :  (new Date().getTime() - 14 * 24 * 60 * 60 * 1000) / 1000,
+        figures :  figures
+      });
+      var figs = [{identifier : "uptime", group : "server"}];
+      figures.forEach(function(f) {
+        figs.push({
+          identifier : f.split(".")[1],
+          group : f.split(".")[0]
+        });
+      });
+      self.description = {
+        get: function(y) {
+          if (y === "groups") {
+            return [{
+              group : group
+            }, {
+              group : "server"
+            }];
           }
-          return val1 + val2;
+          if (y === "figures") {
+            return figs;
+          }
         }
       };
 
-      var addGroup = true;
-
-      $.each(this.options.description.models[0].attributes.groups, function(k, v) {
-        if (self.options.description.models[0].attributes.groups[k].group === figure.group) {
-          addGroup = false;
+      self.uptime = undefined;
+      var chart;
+      Object.keys(self.series[group][id]).forEach(function(valueList) {
+        var c = self.series[group][id][valueList];
+        if (c.type === "current" && c.showGraph === true) {
+          chart = c;
+          chart.data = [];
         }
       });
+      $(self.detailEl).html(this.detailTemplate.render({figure: chart.options.title}));
+      self.calculateSeries();
+      chart.graphCreated = false;
+      self.showDetailFor("dashboardDetailed", id, chart, chart.options.title);
+      self.createLineChart(chart, id,  "dashboardDetailed");
+      $('#lineChartDetail').modal('show');
+      $('#lineChartDetail').on('hidden', function () {
+        self.hidden();
+      });
+      $('.modalTooltips').tooltip({
+        placement: "left"
+      });
+      return self;
+    },
 
-      if (addGroup === true) {
-        self.options.description.models[0].attributes.groups.push({
-          "description" : "custom",
-          "group" : "custom",
-          "name" : "custom"
+    hidden: function () {
+      if (this.modal) {
+          $(".modal-backdrop.fade.in").click();
+          this.hide();
+      }
+      delete this.currentChart;
+      this.options.description.fetch({
+        async:false
+      });
+      if (this.options.server) {
+        this.getStatisticHistory({
+          startDate :  (new Date().getTime() - 20 * 60 * 1000) / 1000
         });
+        this.calculateSeries();
       }
-
-      this.options.description.models[0].attributes.figures.unshift(figure);
+      this.description = this.options.description.models[0];
+      this.detailChart.chart.options.title = this.detailChart.title;
+      this.detailChart = {};
+      window.App.navigate("#", {trigger: true});
     },
 
-    checkInterval: function (a) {
-      this.updateFrequency = a.target.value;
-      this.calculateSeries();
-      this.renderCharts();
-    },
-    checkIntervalR: function (a) {
-      if (a.target.value) {
-        this.updateFrequencyR = a.target.value;
-        this.getReplicationStatus();
-      }
-    },
-
-    checkEnabled: function (a) {
-      var myId = a.target.id;
-      var position = myId.search('Checkbox');
-      var preparedId = myId.substring(0, position);
-      var toCheck = $(a.target).is(':checked');
-      if (toCheck === false) {
-        $("#" + preparedId).hide();
-      }
-      else if (toCheck === true) {
-        $("#" + preparedId).show();
-      }
-      this.saveGraphState();
-    },
-
-    initUnits : function () {
-      this.units = [ ];
-      var i;
-      var scale = 0.0001;
-
-      for (i = 0; i < 12; ++i) {
-        this.units.push(scale * 2);
-        this.units.push(scale * 2.5);
-        this.units.push(scale * 4);
-        this.units.push(scale * 5);
-        scale *= 10;
-      }
-    },
-
-    checkMaxValue: function (identifier) {
-      var maxValue = 0;
-      $.each(this.seriesData[identifier].values, function (k,v) {
-        if (v.y > maxValue) {
-          maxValue = v.y;
-        }
+    initialize: function () {
+      this.documentStore = this.options.documentStore;
+      this.getStatisticHistory({
+        startDate :  (new Date().getTime() - 20 * 60 * 1000) / 1000
       });
-      this.seriesData[identifier].max = maxValue;
-    },
-
-    getMaxValue : function (identifier) {
-      this.checkMaxValue(identifier);
-      var max = this.seriesData[identifier].max || 1;
-
-      var i = 0, n = this.units.length;
-      while (i < n) {
-        var unit = this.units[i++];
-        if (max === unit) {
-          break;
-        }
-        if (max < unit) {
-          return unit;
-        }
+      if (this.options.server) {
+        this.statisticsUrl = this.options.server.endpoint
+          + "/_admin/clusterStatistics"
+          + "?DBserver=" + this.options.server.target;
+      } else {
+        this.statisticsUrl = "/_admin/statistics";
       }
-
-      return max;
+      this.description = this.options.description.models[0];
+      this.detailChart = {};
+      this.dygraphConfig = this.options.dygraphConfig;
+      this.startUpdating();
+      this.graphs = {};
     },
 
-    checkDetailChart: function (a) {
-      if ($(a.target).hasClass('icon-minus') === true) {
-        $('#detailGraph').height(43);
-        $('#detailGraphChart').hide();
-        $(a.target).removeClass('icon-minus');
-        $(a.target).addClass('icon-plus');
-      }
-      else {
-        $('#detailGraphChart').show();
-        $('#detailGraph').height(300);
-        $(a.target).removeClass('icon-plus');
-        $(a.target).addClass('icon-minus');
-      }
-    },
-
-    hideGroup: function (a) {
-      var group = $(a.target).parent();
-      $(a.target).removeClass('icon-minus group-close');
-      $(a.target).addClass('icon-plus group-open');
-      $(group).addClass("groupHidden");
-    },
-
-    showCategory: function (e) {
-      var parent = $(e.target).parent().attr('id');
-      $('.arangoTab li').removeClass('active');
-      $('.arangoTab #'+parent).addClass('active');
-      if (parent === 'replSwitch') {
-        $('#detailGraph').hide();
-        $('.statGroups').hide();
-          $('#detailReplication').show();
-        if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
-          $('#replicationDropdownOut').show();
-          $('#dashboardDropdownOut').hide();
-        }
-      }
-      else if (parent === 'statSwitch') {
-        $('#detailReplication').hide();
-        $('#detailGraph').show();
-        $('.statGroups').show();
-        if ($('#dashboardDropdown').is(':visible') || $('#replicationDropdown').is(':visible')) {
-          $('#replicationDropdownOut').hide();
-          $('#dashboardDropdownOut').show();
-        }
-      }
-    },
-
-    showGroup: function (a) {
-      var group = $(a.target).parent();
-      $(a.target).removeClass('icon-plus group-open');
-      $(a.target).addClass('icon-minus group-close');
-      $(group).removeClass("groupHidden");
-    },
-
-    hideChart: function (a) {
-      var figure = $(a.target).attr("value");
-      $('#'+figure+'Checkbox').prop('checked', false);
-      $('#'+figure).hide();
-      this.saveGraphState();
-    },
-
-    renderDetailChart: function (a) {
+    prepareSeries: function () {
       var self = this;
-      self.detailGraph = $(a.target).attr("value");
-      $.each(this.options.description.models[0].attributes.figures, function () {
-        if(this.identifier === self.detailGraph) {
-          $('#detailGraphHeader').text(this.name);
-          $("html, body").animate({ scrollTop: 0 }, "slow");
-          $('#detailGraphChart').show();
-          $('#detailGraph').height(400);
-          $('#dbHideSwitch').addClass('icon-minus');
-          $('#dbHideSwitch').removeClass('icon-plus');
-          self.updateNOW = true;
-          self.calculateSeries();
-          self.renderCharts();
-        }
+      self.series = {};
+      self.description.get("groups").forEach(function(group) {
+        self.series[group.group] = {};
+      });
+      self.description.get("figures").forEach(function(figure) {
+        self.series[figure.group][figure.identifier] =
+            self.dygraphConfig.getChartsForFigure(figure.identifier, figure.type, figure.name);
+      });
+      Object.keys(self.dygraphConfig.combinedCharts).forEach(function (cc) {
+        var part = cc.split("_");
+        self.series[part[0]][part[1]] =
+            self.dygraphConfig.getChartsForFigure(part[1], self.dygraphConfig.regularLineChartType);
       });
     },
 
-    renderCharts: function () {
+
+    processSingleStatistic: function (entry) {
       var self = this;
-      $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-      $('#every'+self.updateFrequencyR+'secondsR').prop('checked',true);
+      var time = entry.time * 1000;
+      var newUptime = entry.server.uptime;
+      if (self.uptime && newUptime < self.uptime) {
 
-      $.each(self.options.description.models[0].attributes.figures, function () {
-        var figure = this;
-        var identifier = figure.identifier;
-        var chart;
-
-        if (self.charts[identifier] === undefined) {
-          chart = self.charts[identifier] = nv.models.lineChart();
-          chart.xAxis.axisLabel('').tickFormat(function (d) {
-            if (isNaN(d)) {
-              return '';
-            }
-
-            function pad (value) {
-              return (value < 10 ? "0" + String(value) : String(value));
-            }
-
-            var date = new Date(d / 10);
-
-            return pad(date.getHours()) + ":"
-              + pad(date.getMinutes()) + ":"
-              + pad(date.getSeconds());
-          });
-
-    chart.tooltips(false);
-
-          var label = figure.units;
-
-          if (figure.units === 'bytes') {
-            label = "megabytes";
+        var e = {time : (time-(newUptime+10)* 1000 ) /1000};
+        self.description.get("figures").forEach(function(figure) {
+          if (!e[figure.group]) {
+            e[figure.group] = {};
           }
-          chart.yAxis.axisLabel(label);
+          e[figure.group][figure.identifier] = null;
+        });
+        self.uptime = newUptime;
+        self.processSingleStatistic(e);
+      }
+      self.uptime = newUptime;
+      self.description.get("groups").forEach(function(g) {
+        Object.keys(entry[g.group]).forEach(function(figure) {
+          var valueLists = self.series[g.group][figure];
+          Object.keys(valueLists).forEach(function (valueList) {
+            var val = entry[g.group][figure];
+            if (valueList === self.dygraphConfig.differenceBasedLineChartType) {
+              if (!self.LastValues[figure]) {
+                self.LastValues[figure] = {value : val , time: 0};
+              }
+              if (!self.LastValues[figure].value) {
+                self.LastValues[figure].value = val;
+              }
+              if (val !== null) {
+                var graphVal = (val - self.LastValues[figure].value) /
+                               (time - self.LastValues[figure].time);
+                valueLists[valueList].data.push(
+                  [new Date(time), graphVal]
+                );
+                self.LastValues[figure] = {
+                  value : val, 
+                  time: time, 
+                  graphVal : graphVal
+                };
+              } else {
+                valueLists[valueList].data.push(
+                  [new Date(time), null]
+                );
+                self.LastValues[figure] = {
+                  value : undefined, 
+                  time: 0, 
+                  graphVal : null
+                };
+              }
 
-          nv.addGraph (function () {
-            nv.utils.windowResize(function () {
-              d3.select('#' + identifier + 'Chart svg').call(chart);
+            } else if (valueList === self.dygraphConfig.distributionChartType) {
+              valueLists[valueList].data = val;
+            } else if (valueList === self.dygraphConfig.regularLineChartType) {
+              valueLists[valueList].data.push([new Date(time), val]);
+            } else if (valueList === self.dygraphConfig.distributionBasedLineChartType)  {
+                if (val !== null) {
+                val = val.count === 0 ? 0 : val.sum / val.count;
+              }
+              self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
+              valueLists[valueList].data.push([
+                new Date(time),
+                val
+              ]);
+            }
+          });
+        });
+      });
+      Object.keys(self.dygraphConfig.combinedCharts).forEach(function (cc) {
+        var part = cc.split("_");
+        var val = [new Date(time)];
+
+        self.dygraphConfig.combinedCharts[cc].sort().forEach(function(attrib) {
+          if (self.LastValues[attrib])  {
+            val.push(self.LastValues[attrib].graphVal);
+          } 
+          else if (typeof entry[part[0]] === 'object' && 
+                   entry[part[0]].hasOwnProperty(attrib)) {
+            val.push(entry[part[0]][attrib]);
+          }
+        });
+        self.series[part[0]][part[1]].current.data.push(val);
+      });
+    },
+
+    calculateSeries: function () {
+      var self = this;
+      self.LastValues = {};
+      self.maxMinValue = {};
+      self.history.forEach(function(entry) {
+        self.processSingleStatistic(entry);
+      });
+
+      Object.keys(self.dygraphConfig.combinedCharts).forEach(function (cc) {
+        var part = cc.split("_");
+        self.dygraphConfig.combinedCharts[cc].sort().forEach(function(attrib) {
+          Object.keys(self.series[part[0]][attrib]).forEach(function(c) {
+            self.series[part[0]][attrib][c].showGraph = false;
+          });
+        });
+      });
+    },
+
+
+    updateSeries : function(data) {
+      this.uptime = data.server.uptime;
+      this.processSingleStatistic(data);
+    },
+
+    spliceSeries: function (data, boarderLeft, boarderRight, hideRangeSelector) {
+      var file = [];
+      var i = 0;
+      data.forEach(function(e) {
+        if (e[0].getTime()  >= boarderLeft && e[0].getTime() <= boarderRight) {
+          file.push(e);
+        } else {
+          i++;
+          if (i > 3 && !hideRangeSelector) {
+            file.push(e);
+            i = 0;
+          }
+        }
+      });
+      return file;
+    },
+
+    createLineChart : function (chart, figure, div, createDiv) {
+      var self = this;
+      var displayOptions = {};
+      var file = [];
+      var t = new Date().getTime();
+      var borderLeft, borderRight;
+      if (!createDiv) {
+          displayOptions.height = $('#lineChartDetail').height() - 34 -29;
+          displayOptions.width = $('#lineChartDetail').width() -10;
+          chart.detailChartConfig();
+          if (chart.graph.dateWindow_) {
+              borderLeft = chart.graph.dateWindow_[0];
+              borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
+                  chart.graph.dateWindow_[1] : t;
+              file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
+          }
+      } else {
+          borderLeft = chart.options.dateWindow[0] + (t - chart.options.dateWindow[1]);
+          borderRight = t;
+      }
+      if (self.modal && createDiv) {
+          displayOptions.height = $('.innerDashboardChart').height() - 34;
+          displayOptions.width = $('.innerDashboardChart').width() -45;
+      }
+      if (!chart.graphCreated) {
+        if (createDiv) {
+          self.renderHttpGroup(figure);
+        }
+
+        chart.updateDateWindow();
+        chart.graph = new Dygraph(
+          document.getElementById(div+"LineChart"),
+          file.length > 0 ? file : chart.data,
+          _.extend(chart.options,  displayOptions)
+        );
+        chart.graphCreated = true;
+        if (!createDiv) {
+          self.currentChart = chart.graph;
+          self.delegateEvents();
+        }
+      } else {
+        var opts = {
+            file: file.length > 0 ? file : chart.data,
+            dateWindow : [borderLeft, borderRight]
+        };
+        chart.graph.updateOptions(opts);
+      }
+    },
+
+    resize: function() {
+        var self = this;
+        if (this.modal) {
+            Object.keys(self.series).forEach(function(group) {
+                Object.keys(self.series[group]).forEach(function(figure) {
+                    Object.keys(self.series[group][figure]).forEach(function(valueList) {
+                        var chart = self.series[group][figure][valueList];
+                        if (chart.type === "current" && chart.showGraph === true &&
+                            self.dygraphConfig.hideGraphs.indexOf(figure) === -1) {
+                            var height = $('.innerDashboardChart').height() - 34;
+                            var width = $('.innerDashboardChart').width() -45;
+                            chart.graph.resize(width , height);
+                        }
+                    });
+                });
             });
-
-            return chart;
-          });
+        } else if (self.currentChart) {
+            var height = $('#lineChartDetail').height() - 34 - 29;
+            var width = $('#lineChartDetail').width() - 10;
+            self.currentChart.resize(width , height);
         }
-        else {
-          chart = self.charts[identifier];
-        }
-
-        chart.yDomain([ 0, self.getMaxValue(identifier) ]);
-
-        if (self.detailGraph === undefined) {
-          self.detailGraph = "userTime";
-        }
-
-        if (self.detailGraph === identifier) {
-          d3.select("#detailGraphChart svg")
-            .call(chart)
-            .datum([{
-              values: self.seriesData[identifier].values,
-              key: identifier,
-              color: "#8aa14c"
-            }])
-            .attr("stroke-width", "0.5")
-            .transition().duration(500);
-        }
-        
-        //disable ticks/label for small charts
-        d3.select("#" + identifier + "Chart svg")
-          .call(chart)
-          .datum([ {
-            values: self.seriesData[identifier].values,
-            key: identifier,
-            color: "#8aa14c" }
-          ])
-          .attr("stroke-width", "0.5")
-          .transition().duration(500);
-      
-          // Claudius: hide y-axis labels for small charts
-          $('#' + identifier + ' .nv-y.nv-axis text').attr('display', 'none');  
-      });
-
-      this.loadGraphState();
-      // #8AA051
-      //fix position for last x-value label in detailgraph
-      $('.nv-x.nv-axis .nvd3.nv-wrap.nv-axis:last-child text').attr('x','-5');
-      //fix position of small graphs
-      $('.svgClass .nv-lineChart').attr('transform','translate(5,5)');
-      
     },
 
-    calculateSeries: function (flush) {
+    createLineCharts: function() {
       var self = this;
-
-      var timeStamp = Math.round(new Date() * 10);
-
-      $.each(self.options.description.models[0].attributes.figures, function () {
-        var figure = this;
-        var identifier = figure.identifier;
-
-        if (self.seriesData[identifier] === undefined) {
-          self.seriesData[identifier] = { max: 0, values: [ ] };
-        }
-
-        while (self.seriesData[identifier].values.length > self.arraySize) {
-          self.seriesData[identifier].values.shift();
-        }
-
-        if (flush) {
-          self.seriesData[identifier].values.push({ x: timeStamp, y: undefined, value: undefined });
-          return;
-        }
-
-        var responseValue;
-
-        if (figure.exec) {
-          responseValue = figure.exec();
-        }
-        else {
-          responseValue = self.collection.models[0].attributes[figure.group][identifier];
-        }
-
-        if (responseValue !== undefined && responseValue !== null) {
-          if (responseValue.sum !== undefined) {
-            responseValue = responseValue.sum;
-          }
-        }
-
-        function sanitize (value, figure) {
-          if (value < 0) {
-            value = 0;
-          }
-          else {
-            if (figure.units === 'bytes') {
-              value /= (1024 * 1024);
+      Object.keys(self.series).forEach(function(group) {
+        Object.keys(self.series[group]).forEach(function(figure) {
+          Object.keys(self.series[group][figure]).forEach(function(valueList) {
+            var chart = self.series[group][figure][valueList];
+            if (chart.type === "current" && chart.showGraph === true &&
+              self.dygraphConfig.hideGraphs.indexOf(figure) === -1) {
+              self.createLineChart(chart, figure, figure, true);
             }
-            value = Math.round(value * 100) / 100;
-          }
-
-          return value;
-        }
-
-        var newValue = 0;
-
-        if (figure.type === 'current') {
-          newValue = responseValue;
-        }
-        else {
-          var n = self.seriesData[identifier].values.length;
-
-          if (responseValue !== undefined && n > 0) {
-            var previous = self.seriesData[identifier].values[n - 1];
-            if (previous.value !== undefined) {
-              newValue = responseValue - previous.value;
-            }
-          }
-        }
-
-        newValue = sanitize(newValue, figure);
-        if (newValue > self.seriesData[identifier].max) {
-          self.seriesData[identifier].max = newValue;
-        }
-
-        self.seriesData[identifier].values.push({
-          x: timeStamp,
-          y: newValue, 
-          value: responseValue
+          });
         });
       });
     },
 
-    saveGraphState: function () {
-      var self = this;
-      $.each(this.options.description.models[0].attributes.figures, function(k,v) {
-        var identifier = v.identifier;
-        var toCheck = $('#'+identifier+'Checkbox').is(':checked');
-        if (toCheck === true) {
-          self.graphState[identifier] = true;
-        }
-        else {
-          self.graphState[identifier] = false;
-        }
-      });
-      localStorage.setItem("dbGraphState", this.graphState);
+    getStatisticHistory : function (params) {
+      if (this.options.server) {
+        params.server  = this.options.server;
+      }
+      this.documentStore.getStatisticsHistory(params);
+      this.history = this.documentStore.history;
     },
 
-    loadGraphState: function () {
-      var loadGraphState = localStorage.getItem("dbGraphState");
-      if (loadGraphState === undefined) {
+    stopUpdating: function () {
+      this.isUpdating = false;
+    },
+
+    startUpdating: function () {
+      var self = this;
+      if (self.isUpdating) {
         return;
       }
-      $.each(this.graphState, function(k,v) {
-        if (v === true) {
-          $("#"+k).show();
-          $('#'+k+'Checkbox').prop('checked', true);
-        }
-        else {
-          $("#"+k).hide();
-          $('#'+k+'Checkbox').prop('checked', false);
-        }
-      });
-    },
+      self.isUpdating = true;
+      self.timer = window.setInterval(function() {
+        self.collection.fetch({
+          url: self.statisticsUrl,
+          success: function() {
+            if (!self.isUpdating) {
+              return;
+            }
+            self.updateSeries({
+              time : new Date().getTime() / 1000,
+              client: self.collection.first().get("client"),
+              http: self.collection.first().get("http"),
+              server: self.collection.first().get("server"),
+              system: self.collection.first().get("system")
+            });
+            if (Object.keys(self.detailChart).length === 0) {
+              self.createLineCharts();
+              self.createDistributionCharts();
+            } else {
+              self.createLineChart(self.detailChart.chart,
+                self.detailChart.figure, self.detailChart.div);
+            }
+          }
+        });
+      },
+      self.interval
+    );
+  },
 
-    renderFigure: function (figure) {
-      $('#' + figure.group).append(
-        '<li class="statClient" id="' + figure.identifier + '">' +
-        '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
-        '</h6>'+
-        '<i class="icon-remove db-hide" value="' + figure.identifier + '"></i>' +
-        '<i class="icon-info-sign db-info" value="' + figure.identifier +
-        '" title="' + figure.description + '"></i>' +
-        '<i class="icon-zoom-in db-zoom" value="' + figure.identifier + '"></i>' +
-        '</div>' +
-        '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
-        '</li>'
-      );
+  showDetailFor : function (div, figure, chart, title) {
+    this.detailChart = {
+        div: div, chart : chart,
+        figure: figure, graphCreated : false,
+        title : title
+    };
+  },
 
-      $('#' + figure.group + 'Ul').append(
-        '<li><a><label class="checkbox checkboxLabel">'+
-        '<input class="css-checkbox" type="checkbox" id="'+figure.identifier+'Checkbox" checked/>'+
-        '<label class="css-label"/>' +
-        figure.name + '</label></a></li>'
-      );
-      //tooltips small charts
-      arangoHelper.fixTooltips(".db-info", "top");
+  template: templateEngine.createTemplate("dashboardView.ejs"),
+
+  httpTemplate: templateEngine.createTemplate("dashboardHttpGroup.ejs"),
+
+  distributionTemplate: templateEngine.createTemplate("dashboardDistribution.ejs"),
+
+  renderHttpGroup: function(id) {
+    $(this.dygraphConfig.figureDependedOptions[id].div).append(this.httpTemplate.render({
+      id : id + "LineChart"
+    }));
+  },
+
+  render: function() {
+    var self = this;
+    var header = "Request Statistics";
+    var addBackbutton = false;
+    if (this.options.server) {
+      header += " for Server ";
+      header += this.options.server.raw + " (";
+      header += decodeURIComponent(this.options.server.target) + ")";
     }
+    $(this.el).html(this.template.render({
+      header : header
+    }));
+    this.renderDistributionPlaceholder();
+    this.prepareSeries();
+    this.calculateSeries();
+    this.createLineCharts();
+    this.createDistributionCharts();
+  },
 
-  });
+  createDistributionSeries: function(name) {
+    var cuts = [];
+
+    _.each(this.description.attributes.figures, function(k, v) {
+      if (k.identifier === name) {
+        cuts = k.cuts;
+        if (cuts[0] !== 0) {
+          cuts.unshift(0);
+        }
+      }
+    });
+
+    //value prep for d3 graphs
+    var distributionValues = this.series.client[name].distribution.data.counts;
+    var sum = this.series.client[name].distribution.data.sum;
+    var areaLength = this.series.client[name].distribution.data.counts.length;
+    var values = [];
+    var counter = 0;
+    _.each(distributionValues, function() {
+      values.push({
+        //"label" : (sum / areaLength) * counter,
+        "label" : cuts[counter],
+        "value" : distributionValues[counter]
+      });
+      counter++;
+    });
+    return values;
+  },
+
+  createDistributionCharts: function () {
+    //distribution bar charts
+    var self = this;
+    _.each(this.dygraphConfig.chartTypeExceptions.distribution, function(k, v) {
+
+      var valueData = self.createDistributionSeries(v);
+
+      var data = [{
+        key: v,
+        color: "#617E2B",
+        values: valueData
+      }];
+      nv.addGraph(function() {
+        var chart = nv.models.multiBarHorizontalChart()
+        .x(function(d) { return d.label; })
+        .y(function(d) { return d.value; })
+        //.margin({top: 30, right: 20, bottom: 50, left: 175})
+        .margin({left: 80})
+        .showValues(true)
+        .transitionDuration(350)
+        .tooltips(false)
+        .showControls(false);
+
+        chart.yAxis
+        .tickFormat(d3.format(',.2f'));
+
+        chart.xAxis
+        .tickFormat(d3.format(',.2f'));
+
+        d3.select('#' + v + 'Distribution svg')
+        .datum(data)
+        .call(chart)
+        .append("text")
+        .attr("x", 0)
+        .attr("y", 16)
+        .style("font-size", "16px")
+        .style("text-decoration", "underline")
+        .text(v);
+
+        nv.utils.windowResize(chart.update);
+      });
+    });
+  },
+
+  renderDistributionPlaceholder: function () {
+    var self = this;
+    _.each(this.dygraphConfig.chartTypeExceptions.distribution, function(k, v) {
+      $(self.distributionChartDiv).append(self.distributionTemplate.render({
+        elementId: v + "Distribution"
+      }));
+    });
+  },
+
+  returnToClusterView : function() {
+    window.history.back();
+  }
+});
 }());

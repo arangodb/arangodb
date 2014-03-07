@@ -26,8 +26,10 @@ var jsUnity = exports.jsUnity = (function () {
     function hash(v) {
         if (v instanceof Object && v != null) {
             var arr = [];
+            var sorted = Object.keys(v).sort();
             
-            for (var p in v) {
+            for (var i = 0; i < sorted.length; i++) {
+              var p = sorted[i];
                                 if (v.hasOwnProperty(p)) {
                                         arr.push(p);
                                         arr.push(hash(v[p]));    

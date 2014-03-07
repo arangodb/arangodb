@@ -668,7 +668,6 @@ char* TRI_Dirname (char const* path) {
 
 char* TRI_Basename (char const* path) {
   size_t n;
-  char const* p;
 
   n = strlen(path);
 
@@ -690,6 +689,8 @@ char* TRI_Basename (char const* path) {
     }
   }
   else {
+    char const* p;
+
     for (p = path + (n - 2);  path < p;  --p) {
       if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
         break;
@@ -1417,9 +1418,10 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // backslash.
   // ...........................................................................
 
-  if ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) {
-    if ((fileName[1] != '\0') && (fileName[1] == ':')) {
-      if ((fileName[2] != '\0') && (fileName[2] == '/' || fileName[2] == '\\')) {
+  if ((fileName[0] > 64 && fileName[0] < 91) || 
+      (fileName[0] > 96 && fileName[0] < 123)) {
+    if (fileName[1] == ':') {
+      if (fileName[2] == '/' || fileName[2] == '\\') {
         return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fileName);
       }
     }
@@ -1448,9 +1450,10 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // ...........................................................................
 
   ok = false;
-  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
-    if ((currentWorkingDirectory[1] != '\0') && (currentWorkingDirectory[1] == ':')) {
-      if ((currentWorkingDirectory[2] != '\0') && (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\')) {
+  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || 
+      (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
+    if (currentWorkingDirectory[1] == ':') {
+      if (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\') {
         ok = true;
       }
     }
@@ -1468,7 +1471,8 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   cwdLength  = strlen(currentWorkingDirectory);
   fileLength = strlen(fileName);
 
-  if (currentWorkingDirectory[cwdLength - 1] != '\\' && currentWorkingDirectory[cwdLength - 1] != '/') {
+  if (currentWorkingDirectory[cwdLength - 1] == '\\' || 
+      currentWorkingDirectory[cwdLength - 1] == '/') {
     // we do not require a backslash
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false);
     memcpy(result, currentWorkingDirectory, cwdLength);
@@ -1557,25 +1561,10 @@ char* TRI_BinaryName (const char* argv0) {
   p = name;
   e = name + strlen(name);
 
-  for (;  p < e;  ++p) {
-    if (*p == '.') {
-      *p = '\0';
-      break;
+  if (p < e - 4) {
+    if (TRI_CaseEqualString(e - 4, ".exe")) {
+      e[-4] = '\0';
     }
-  }
-
-  for (;  name < p;  --p) {
-    if (*p == '-') {
-      break;
-    }
-  }
-
-  // TODO this needs to be fixed: the install script should do some transformation
-  //      on the config files installed. But in this case all programs must use
-  //      config files based on their name.
-
-  if (*p == '-' && TRI_EqualString(p, "-unstable")) {
-    *p = '\0';
   }
 
   return name;
@@ -1981,14 +1970,14 @@ void TRI_SetUserTempPath (char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate the installation directory
+/// @brief locate the installation directory in the given rootKey
 ///
+/// rootKey should be: either HKEY_CURRENT_USER or HKEY_LOCAL_MASCHINE
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
 #if _WIN32
-
-char* TRI_LocateInstallDirectory () {
+char * __LocateInstallDirectory_In(HKEY rootKey) {
   DWORD dwType;
   char  szPath[1023];
   DWORD dwDataSize;
@@ -1999,25 +1988,46 @@ char* TRI_LocateInstallDirectory () {
 
   // open the key for reading
   long lResult = RegOpenKeyEx(
-        HKEY_LOCAL_MACHINE,
-        "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
-        0,
-        KEY_READ,
-        &key);
+                              rootKey,
+                              "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+                               0,
+                               KEY_READ,
+                               &key);
 
   if (lResult == ERROR_SUCCESS) {
+      // read the version value
+      lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
 
-    // read the version value
-    lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
+      if (lResult == ERROR_SUCCESS) {
+        return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
+      }
 
-    if (lResult == ERROR_SUCCESS) {
-      return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
+      RegCloseKey(key);
     }
 
-    RegCloseKey(key);
-  }
-
   return NULL;
+
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate the installation directory 
+//
+/// Will always end in a directory separator.
+////////////////////////////////////////////////////////////////////////////////
+
+#if _WIN32
+char* TRI_LocateInstallDirectory () {
+  // We look for the configuration first in HKEY_CURRENT_USER (arango was 
+  // installed for a single user). When we don't find  anything when look in 
+  // HKEY_LOCAL_MACHINE (arango was installed as service).
+
+  char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
+
+  if (!directory) {
+    directory = __LocateInstallDirectory_In(HKEY_LOCAL_MACHINE);
+  }
+  return directory;
 }
 
 #else

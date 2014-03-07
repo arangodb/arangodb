@@ -322,7 +322,7 @@ unittests-single:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint "tcp://$(VOCHOST):$(VOCPORT)" --javascript.unit-tests $(TEST) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 
@@ -358,6 +358,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
+               @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-download.js \
@@ -367,6 +368,8 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                @top_srcdir@/js/common/tests/shell-keygen.js \
+               @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
+               @top_srcdir@/js/common/tests/shell-index-ensure.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
@@ -385,12 +388,13 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
-               @top_srcdir@/js/server/tests/compaction.js \
-               @top_srcdir@/js/server/tests/transactions.js \
-               @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
+               @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any.js \
                @top_srcdir@/js/server/tests/shell-bitarray-index.js \
-               @top_srcdir@/js/server/tests/shell-database.js \
+               @top_srcdir@/js/server/tests/shell-database-noncluster.js \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
@@ -419,7 +423,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -440,7 +444,7 @@ unittests-shell-server-only:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -483,15 +487,15 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-02.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-03.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-04.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-05.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-06.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-07.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-08.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-09.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
@@ -515,8 +519,8 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
-	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -528,7 +532,7 @@ unittests-shell-server-ahuacatl:
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
-	       @top_srcdir@/js/client/tests/client.js
+	       @top_srcdir@/js/client/tests/shell-client.js
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
@@ -659,7 +663,7 @@ unittests-replication-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -673,7 +677,7 @@ unittests-replication-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
@@ -733,7 +737,7 @@ unittests-replication-logger:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 	@rm -rf "$(VOCDIR)"
 	@echo
 
@@ -756,8 +760,8 @@ unittests-upgrade:
 	@mkdir -p "$(VOCDIR)/databases"
 	@sleep 2 
 
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --upgrade || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -775,7 +779,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)/databases"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 ################################################################################
 ### @brief FOXX MANAGER TESTS
@@ -890,7 +894,7 @@ unittests-authentication:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/shell-auth.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/auth.js || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 

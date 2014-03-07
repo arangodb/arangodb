@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-globals.h"
@@ -39,10 +39,17 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   : JSBarriers(),
     JSCollections(),
 
-    ErrorTempl(),
+#ifdef TRI_ENABLE_CLUSTER
+    AgencyTempl(),
+    ClusterInfoTempl(),
+    ServerStateTempl(),
+    ClusterCommTempl(),
+#endif
+    ArangoErrorTempl(),
+    SleepAndRequeueTempl(),
+    SleepAndRequeueFuncTempl(),
     GeneralCursorTempl(),
     ShapedJsonTempl(),
-    TransactionTempl(),
     VocbaseColTempl(),
     VocbaseTempl(),
 
@@ -62,9 +69,15 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     BodyFromFileKey(),
     BodyKey(),
     ClientKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    ClientTransactionIDKey(),
+#endif
     CodeKey(),
     CompatibilityKey(),
     ContentTypeKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    CoordTransactionIDKey(),
+#endif
     DatabaseKey(),
     DoCompactKey(),
     DomainKey(),
@@ -81,6 +94,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     LengthKey(),
     LifeTimeKey(),
     NameKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    OperationIDKey(),
+#endif
     ParametersKey(),
     PathKey(),
     PrefixKey(),
@@ -91,7 +107,17 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ResponseCodeKey(),
     SecureKey(),
     ServerKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    ShardIDKey(),
+#endif
+    SleepKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    StatusKey(),
+#endif
     SuffixKey(),
+#ifdef TRI_ENABLE_CLUSTER
+    TimeoutKey(),
+#endif
     TransformationsKey(),
     UrlKey(),
     UserKey(),
@@ -99,6 +125,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     WaitForSyncKey(),
 
     _FromKey(),
+    _DbNameKey(),
     _IdKey(),
     _KeyKey(),
     _OldRevKey(),
@@ -109,8 +136,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _server(0),
     _vocbase(0),
     _loader(0),
-    _allowUseDatabase(true),
-    _containsGarbage(false) {
+    _allowUseDatabase(true) {
   v8::HandleScope scope;
 
   BufferConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("Buffer"));
@@ -121,15 +147,21 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   PatchConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PATCH"));
   PostConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("POST"));
   PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
-  
+
   AddressKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("address"));
   BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
   ClientKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("client"));
+#ifdef TRI_ENABLE_CLUSTER
+  ClientTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("clientTransactionID"));
+#endif
   CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
   CompatibilityKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("compatibility"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
+#ifdef TRI_ENABLE_CLUSTER
+  CoordTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("coordTransactionID"));
+#endif
   DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
   DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
   DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
@@ -146,6 +178,9 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
   LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
+#ifdef TRI_ENABLE_CLUSTER
+  OperationIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("operationID"));
+#endif
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
@@ -156,14 +191,25 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
   SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
   ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
+#ifdef TRI_ENABLE_CLUSTER
+  ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
+#endif
+  SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
+#ifdef TRI_ENABLE_CLUSTER
+  StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
+#endif
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
+#ifdef TRI_ENABLE_CLUSTER
+  TimeoutKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("timeout"));
+#endif
   TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
   UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
   UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
   ValueKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("value"));
   WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
-  
+
   _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));
+  _DbNameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_dbName"));
   _IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_id"));
   _KeyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_key"));
   _OldRevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_oldRev"));
@@ -225,10 +271,14 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           v8::FunctionTemplate::New(func)->GetFunction(),
+                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           v8::FunctionTemplate::New(func)->GetFunction(),
+                           v8::ReadOnly);
   }
 }
 
@@ -242,15 +292,19 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name), func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           func,
+                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
+    context->Global()->Set(TRI_V8_SYMBOL(name),
+                           func,
+                           v8::ReadOnly);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global variable to the given context
+/// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,

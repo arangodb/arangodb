@@ -276,7 +276,7 @@ namespace triagens {
           LOG_DEBUG("trying to establish secure connection");
 
           // convert in a SSL BIO structure
-          BIO * sbio = BIO_new_socket((int) socket.fileHandle, BIO_NOCLOSE);
+          BIO * sbio = BIO_new_socket((int) TRI_get_fd_or_handle_of_socket(socket), BIO_NOCLOSE);
 
           if (sbio == 0) {
             LOG_WARNING("cannot build new SSL BIO: %s", triagens::basics::lastSSLError().c_str());

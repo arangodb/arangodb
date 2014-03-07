@@ -38,6 +38,8 @@
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/tri-strings.h"
+#include "Rest/HttpRequest.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -46,6 +48,11 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
+  
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ServerState.h"
+#include "Cluster/v8-cluster.h"
+#endif
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -253,6 +260,7 @@ void ApplicationV8::skipUpgrade () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
+                                                       triagens::rest::HttpRequest* request,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
@@ -287,7 +295,6 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   v8g->_vocbase = vocbase;
   v8g->_allowUseDatabase = allowUseDatabase;
-
 
   LOG_TRACE("entering V8 context %d", (int) context->_id);
   context->handleGlobalContextMethods();
@@ -597,6 +604,7 @@ bool ApplicationV8::prepare2 () {
   }
 
   _startupLoader.setDirectory(_startupPath);
+  ServerState::instance()->setJavaScriptPath(_startupPath);
 
   // check for development mode
   if (! _devAppPath.empty()) {
@@ -719,6 +727,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8VocBridge(context->_context, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
 
+#ifdef TRI_ENABLE_CLUSTER
+  TRI_InitV8Cluster(context->_context);
+#endif
+
 
   if (_useActions) {
     TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);
@@ -738,6 +750,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), _devAppPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
     TRI_AddGlobalVariableVocbase(context->_context, "FE_DEVELOPMENT_MODE", v8::Boolean::New(_frontendDevelopmentMode));
+
+    for (map<string, bool>::iterator i = _definedBooleans.begin();  i != _definedBooleans.end(); ++i) {
+      TRI_AddGlobalVariableVocbase(context->_context, i->first.c_str(), v8::Boolean::New(i->second));
+    }
   }
 
   // set global flag before loading system files
@@ -774,11 +790,16 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
         bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
 
         if (! ok) {
-          if (_performUpgrade) {
-            LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
+          if (context->_context->Global()->Has(v8::String::New("UPGRADE_STARTED"))) {
+            if (_performUpgrade) {
+              LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
+            }
+            else {
+              LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
+            }
           }
           else {
-            LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
+            LOG_FATAL_AND_EXIT("JavaScript error during server start");
           }
         }
 

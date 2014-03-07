@@ -61,11 +61,7 @@ namespace triagens {
         typedef enum {
           MODE_CONSOLE,
           MODE_UNITTESTS,
-          MODE_JSLINT,
           MODE_SCRIPT,
-#ifdef TRI_ENABLE_MRUBY
-          MODE_RUBY_CONSOLE,
-#endif
           MODE_SERVER
         }
         server_operation_mode_e;
@@ -96,17 +92,9 @@ namespace triagens {
           else if (options.has("javascript.unit-tests")) {
             return MODE_UNITTESTS;
           }
-          else if (options.has("jslint")) {
-            return MODE_JSLINT;
-          }
           else if (options.has("javascript.script")) {
             return MODE_SCRIPT;
           }
-#ifdef TRI_ENABLE_MRUBY
-          else if (options.has("ruby-console")) {
-            return MODE_RUBY_CONSOLE;
-          }
-#endif
           else {
             return MODE_SERVER;
           }
