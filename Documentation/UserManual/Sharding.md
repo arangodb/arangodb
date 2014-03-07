@@ -280,15 +280,15 @@ and work:
     can have fully sharded collections as well as cluster-wide available
     collections with only a single shard. After creation, these
     differences are transparent to the client.
-  - Creating and dropping cluster-wide databases, works.
-  - Creating, dropping and modifying cluster-wide collections, all work.
+  - Creating and dropping cluster-wide databases works.
+  - Creating, dropping and modifying cluster-wide collections all work.
     Since these operations occur seldom, we will only improve their
     performance in a future release, when we will have our own
     implementation of the agency as well as a cluster-wide event managing
     system (see road map for release 2.3).
   - Sharding in a collection, can be configured to use hashing
     on arbitrary properties of the documents in the collection.
-  - Creating and dropping indices on sharded collections, works. Please
+  - Creating and dropping indices on sharded collections works. Please
     note that an index on a sharded collection is not a global index 
     but only leads to a local index of the same type on each shard.
   - All SimpleQueries work. Again, we will improve the performance in
@@ -299,7 +299,7 @@ and work:
     to an out of memory situation on the coordinator handling the
     request. We will improve this situation when we revisit the AQL
     query optimiser (see road map for release 2.2).
-  - Authentication on the cluster, works, with the method known from
+  - Authentication on the cluster works with the method known from
     single ArangoDB instances on the coordinators. A new cluster-internal
     authorisation scheme has been created. See below for hints on a
     sensible firewall and authorisation setup.
@@ -433,12 +433,9 @@ The coordinators in your cluster will use this cluster-wide sharded collection
 to authenticate HTTP requests. If you add users using the usual methods
 via a coordinator, you will in fact change the cluster-wide
 collection `_users` and thus all coordinators will eventually see the
-new users and authenticate against them. "Eventually" means that one has
-to reload the user cache on each coordinator using
-
-    require("org/arangodb/users").reload();
-
-or restart the coordinators.
+new users and authenticate against them. "Eventually" means that they
+might need a few seconds to notice the change in user setup and update
+their user cache.
 
 The DBservers will have their authentication switched on as well.
 However, they do not use the cluster-wide `_users` collection for
@@ -455,7 +452,7 @@ configuration files `arangod.conf` in all dispatchers, since the
 coordinators and DBservers will simply inherit this configuration file
 from the dispatcher that has launched them.
 
-Let's summarise what you have to do, to enable authentication in a cluster:
+Let us summarise what you have to do, to enable authentication in a cluster:
 
   1. Set `server.disable-authentication` to `false` in all configuration
      files of all dispatchers (this is already the default).
@@ -464,13 +461,8 @@ Let's summarise what you have to do, to enable authentication in a cluster:
   3. Create users via the usual interface on the coordinators
      (initially after the cluster launch there will be a single user `root`
      with empty password).
-  4. Run
 
-         require("org/arangodb/users").reload();
-
-     on all coordinators.
-
-PLease note, that in Version 2.0 of ArangoDB you can already configure the 
+Please note, that in Version 2.0 of ArangoDB you can already configure the 
 endpoints of the coordinators to use SSL. However, this is not yet conveniently
 supported in the planner, kickstarter and in the graphical cluster 
 management tools. We will fix this in the next version.
@@ -513,9 +505,10 @@ need to contact one of them, who will then in turn contact the others
 using cluster-internal communication. You can even get away with closing
 access to all dispatchers to the outside world, provided the machine
 running your browser is within the cluster network and does not have to
-go through the firewall to contact the dispatchers. It's important to be aware,
-that anybody who can reach a dispatcher and can authorise himself to it,
-can launch arbitrary processes on the machine on which the dispatcher runs!
+go through the firewall to contact the dispatchers. It is important to
+be aware that anybody who can reach a dispatcher and can authorise
+himself to it can launch arbitrary processes on the machine on which
+the dispatcher runs!
 
 Therefore we recommend to use SSL endpoints with user/password 
 authentication on the dispatchers *and* to block access to them in
