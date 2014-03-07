@@ -215,7 +215,7 @@
   z-index: 1000;
 
   li {
-    line-height: 20;
+    line-height: 20px;
     white-space: nowrap;
     width: 100%;
   }
@@ -227,18 +227,18 @@
       weight: 600;
     }
     font-variant: small-caps;
-    padding: 0 20;
+    padding: 0 20px;
   }
 
   li.divider {
     background-color: $c-grey;
     height: 1px;
-    margin: 10 1px;
+    margin: 10px 1px;
   }
 
   a {
     color: $c-nav-bg;
-    padding: 0 20;
+    padding: 0 20px;
   }
 
   &:before {

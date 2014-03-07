@@ -4,158 +4,160 @@ ul.tileList {
   margin-right: -6px;
 }
 
-li {
-  $iconsize: 50px;
+$iconsize: 50px;
 
-  %tile {
-    @extend %pull-left;
-    @include box-shadow(none);
+%tile {
+  @extend %pull-left;
+  @include box-shadow(none);
 
-    background-color: $c-very-transp;
-    list-style: none;
-    margin: {
-      bottom: 13px;
-      left: 6px;
-      right: 6px;
+  background-color: $c-very-transp;
+  list-style: none;
+  margin: {
+    bottom: 13px;
+    left: 6px;
+    right: 6px;
+  }
+  position: relative;
+  text-align: center;
+
+  img {
+    &.icon {
+      height: $iconsize;
+      width: $iconsize;
     }
-    position: relative;
-    text-align: center;
+  }
 
-    img {
+  a {
+    span {
+
+      &.add-Icon {
+        @extend %pull-left;
+        font-size: 22px;
+        margin-left: 22px;
+        margin-right: 10px;
+        margin-top: -5px;
+        position: relative;
+      }
+
+      &.icon {
+        @extend %clickable;
+        font-size: $iconsize;
+      }
+    }
+
+    svg {
+      @extend %clickable;
+
       &.icon {
         height: $iconsize;
         width: $iconsize;
       }
     }
+  }
 
-    a {
-      span {
+  svg.tile-icon-svg {
+    fill: $c-icon-grey;
+    height: $iconsize;
+    margin-top: 10px;
+    margin-left: 90px;
+    width: $iconsize;
+  }
 
-        &.add-Icon {
-          @extend %pull-left;
-          font-size: 22px;
-          margin-left: 22px;
-          margin-right: 10px;
-          margin-top: -5px;
-          position: relative;
-        }
+  span.tile-icon {
+    color: $c-icon-grey;
+    font-size: $iconsize;
+    line-height: 1.2;
+  }
 
-        &.icon {
-          @extend %clickable;
-          font-size: $iconsize;
-        }
+  h5 {
+    background: $c-bar-bg;
+    color: $c-white;
+    font-size: 12px;
+    margin: 0;
+    overflow: hidden !important;
+    padding: 4px 8px;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  div.iconSet {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+
+    span {
+      @extend %clickable;
+      @extend %pull-right;
+      font-size: 18px;
+      opacity: .5;
+      padding-left: 7px;
+
+      &:hover {
+        opacity: 1.0;
       }
 
-      svg {
-        @extend %clickable;
+      &.disabled {
+        cursor: default;
+        opacity: .2;
+      }
+    }
+  }
 
-        &.icon {
-          height: $iconsize;
-          width: $iconsize;
-        }
+  .badge-success {
+    font-weight: 300;
+  }
+
+  .unloaded div {
+    border-bottom: 16px solid $c-unloaded;
+  }
+
+  .deleted div {
+    border-bottom: 16px solid $c-state-critical;
+  }
+
+  div.tileBadge {
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    position: absolute;
+    right: 0;
+
+    button {
+      margin: {
+        left: 0;
+        right: 5px;
       }
     }
 
-    svg.tile-icon-svg {
-      fill: $c-icon-grey;
-      height: $iconsize;
-      margin-top: 10px;
-      width: $iconsize;
-    }
+    span {
+      display: inline-block;
+      line-height: 13px;
 
-    span.tile-icon {
-      color: $c-icon-grey;
-      font-size: $iconsize;
-      line-height: 1.2;
-    }
-
-    h5 {
-      background: $c-bar-bg;
-      color: $c-white;
-      font-size: 12px;
-      margin: 0;
-      overflow: hidden !important;
-      padding: 4px 8px;
-      text-overflow: ellipsis !important;
-      white-space: nowrap !important;
-    }
-
-    div.iconSet {
-      position: absolute; 
-      right: 5px;
-      top: 5px;
-
-      span {
-        @extend %clickable;
-        @extend %pull-right;
-        font-size: 18px;
-        opacity: .5;
-        padding-left: 7px;
-
-        &:hover {
-          opacity: 1.0;
-        }
-
-        &.disabled {
-          cursor: default;
-          opacity: .2;
-        }
-      }
-    }
-
-    .badge-success {
-      font-weight: 300;
-    }
-
-    .unloaded div {
-      border-bottom: 16px solid $c-unloaded;
-    }
-
-    .deleted div {
-      border-bottom: 16px solid $c-state-critical;
-    }
-
-    div.tileBadge {
-      bottom: 29px;
-      font-size: 11px;
-      font-weight: 300;
-      position: absolute;
-      right: 0;
-
-      button {
-        margin: {
-          left: 0;
-          right: 5px;
-        }
-      }
-
-      span {
-        display: inline-block;
-        line-height: 13px;
-
-        div.corneredBadge {
-          border: {
-            left: 17px solid $c-transp;
-            bottom: {
-              style: solid;
-              width: 17px;
-            }
+      div.corneredBadge {
+        border: {
+          left: 17px solid $c-transp;
+          bottom: {
+            style: solid;
+            width: 17px;
           }
-          height: 0;
-          padding-left: 4px;
-          padding-right: 9px;
+        }
+        height: 0;
+        padding-left: 4px;
+        padding-right: 9px;
 
-          &.loaded {
-            border-bottom-color: $c-positive;
-          }
+        &.loaded {
+          border-bottom-color: $c-positive;
+        }
 
-          &.unloaded {
-            border-bottom-color: $c-unloaded;
-          }
+        &.unloaded {
+          border-bottom-color: $c-unloaded;
         }
       }
     }
   }
+}
+
+li {
 
   &.tile {
     @extend %tile;
