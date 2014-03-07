@@ -105,6 +105,8 @@ HeartbeatThread::~HeartbeatThread () {
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
   
+  uint64_t oldUserVersion = 0;
+
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
   
@@ -170,6 +172,72 @@ void HeartbeatThread::run () {
         }
       }
 
+      result.clear();
+
+      result = _agency.getValues("Sync/UserVersion", false);
+      if (result.successful()) {
+        result.parse("", false);
+        std::map<std::string, AgencyCommResultEntry>::iterator it 
+            = result._values.begin();
+        if (it != result._values.end()) {
+          // there is a UserVersion
+          uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+          if (userVersion != oldUserVersion) {
+            // reload user cache for all databases
+            vector<DatabaseID> dbs 
+                = ClusterInfo::instance()->listDatabases(true);
+            vector<DatabaseID>::iterator i;
+            bool allOK = true;
+            for (i = dbs.begin(); i != dbs.end(); i++) {
+              TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
+                                                    i->c_str());
+
+              if (vocbase != NULL) {
+                LOG_INFO("Reloading users for database %s.",vocbase->_name);
+                TRI_json_t* json = 0;
+
+                int res = usersOnCoordinator(string(vocbase->_name), 
+                                             json);
+
+                if (res == TRI_ERROR_NO_ERROR) {
+                  // we were able to read from the _users collection
+                  assert(TRI_IsListJson(json));
+
+                  if (json->_value._objects._length == 0) {
+                    // no users found, now insert initial default user
+                    TRI_InsertInitialAuthInfo(vocbase);
+                  }
+                  else {
+                    // users found in collection, insert them into cache
+                    TRI_PopulateAuthInfo(vocbase, json);
+                  }
+                }
+                else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+                  // could not access _users collection, probably the cluster
+                  // was just created... insert initial default user
+                  TRI_InsertInitialAuthInfo(vocbase);
+                }
+                else if (res == TRI_ERROR_INTERNAL) {
+                  // something is wrong... probably the database server
+                  // with the _users collection is not yet available
+                  TRI_InsertInitialAuthInfo(vocbase);
+                  allOK = false;
+                  // we will not set oldUserVersion such that we will try this
+                  // very same exercise again in the next heartbeat
+                }
+                  
+                if (json != 0) {
+                  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+                }
+                TRI_ReleaseVocBase(vocbase);
+              }
+            }
+            if (allOK) {
+              oldUserVersion = userVersion;
+            }
+          }
+        }
+      }
     }
     else {
       // ! isCoordinator

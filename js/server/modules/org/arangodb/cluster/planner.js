@@ -555,7 +555,8 @@ Planner.prototype.makePlan = function() {
                   "Problems"           : {},
                   "LatestID"           : '"0"',
                   "Commands"           : {},
-                  "HeartbeatIntervalMs": '1000' };
+                  "HeartbeatIntervalMs": '1000',
+                  "UserVersion"        : '"1"' };
   tmp = prefix.Sync.Commands;
   for (i = 0; i < DBservers; i++) {
     tmp[DBservers[i].id] = '"SERVE"';

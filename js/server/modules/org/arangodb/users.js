@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief User management
@@ -58,6 +58,29 @@ for (i in base) {
   
 exports.reload = function () {
   internal.reloadAuth();
+  if (require("org/arangodb/cluster").isCoordinator()) {
+    // Tell the agency about this reload, such that all other coordinators
+    // reload as well. This is important because most calls to this
+    // function here come from actual changes in the collection _users.
+    var UserVersion;
+    var done = false;
+    while (! done) {
+      try {
+        UserVersion = ArangoAgency.get("Sync/UserVersion")["Sync/UserVersion"];
+        // This is now a string!
+      }
+      catch (err) {
+        break;
+      }
+      try {
+        done = ArangoAgency.cas("Sync/UserVersion",UserVersion,
+                                (parseInt(UserVersion,10)+1).toString());
+      }
+      catch (err2) {
+        break;
+      }
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
