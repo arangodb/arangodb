@@ -1,9 +1,9 @@
 %cluster-state-icon {
   color: $c-black;
-  height: 50;
+  height: 50px;
   position: absolute;
-  top: 10;
-  width: 50;
+  top: 10px;
+  width: 50px;
   
   h6.serverName {
     bottom: 0;
@@ -39,11 +39,11 @@ a.coordinator {
   @extend %cluster-state-icon;
 
   &.single {
-    left: 90;
+    left: 90px;
   }
 
   &.double {
-    left: 60;
+    left: 60px;
   }
 }
 
@@ -51,10 +51,10 @@ a.dbserver {
   @extend %cluster-state-icon;
 
   &.single {
-    right: 90;
+    right: 90px;
   }
 
   &.double {
-    right: 60;
+    right: 60px;
   }
 }
