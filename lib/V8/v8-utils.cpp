@@ -2639,6 +2639,9 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(v8::String::New("exit"), v8::Number::New(external._exitStatus));
   }
+  else if (external._status == TRI_EXT_ABORTED) {
+    result->Set(v8::String::New("signal"), v8::Number::New(external._exitStatus));
+  }
 
   // return the result
   return scope.Close(result);
