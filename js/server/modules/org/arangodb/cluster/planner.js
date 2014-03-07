@@ -533,7 +533,7 @@ Planner.prototype.makePlan = function() {
            = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
     launchers[s.dispatcher].Coordinators.push(s.id);
   }
-  tmp.Databases = { "_system" : '{"name":"_system"}' };
+  tmp.Databases = { "_system" : '{"name":"_system", "id":"1"}' };
   tmp.Collections = { "_system" : {} };
 
   // Now Plan:
@@ -545,7 +545,7 @@ Planner.prototype.makePlan = function() {
                      "Version"          : '"1"',
                      "DBservers"        : {},
                      "Coordinators"     : {},
-                     "Databases"        : {"_system":{}},
+                     "Databases"        : {"_system":{ "name": '"name"', "id": '"1"' }},
                      "Collections"      : {"_system":{}},
                      "ServersRegistered": {"Version":'"1"'},
                      "ShardsCopied"     : {} };
@@ -553,7 +553,7 @@ Planner.prototype.makePlan = function() {
   // Now Sync:
   prefix.Sync = { "ServerStates"       : {},
                   "Problems"           : {},
-                  "LatestID"           : '"0"',
+                  "LatestID"           : '"1"',
                   "Commands"           : {},
                   "HeartbeatIntervalMs": '1000' };
   tmp = prefix.Sync.Commands;
