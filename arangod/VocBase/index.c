@@ -136,6 +136,7 @@ bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
 
   // unknown type...
   assert(false);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
