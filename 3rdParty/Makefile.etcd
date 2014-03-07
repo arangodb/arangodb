@@ -8,7 +8,7 @@
 ### @brief etcd
 ################################################################################
 
-@top_srcdir@/bin/etcd-arango:
+@top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX):
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING etcd"
