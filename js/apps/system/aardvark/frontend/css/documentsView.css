@@ -181,7 +181,7 @@
 .pagination-small ul > li.disabled:first-child > span {
    pointer-events: none;
    cursor: default;
-   background-color: ##777;
+   background-color: #777;
    color:#666666;
 }
 
