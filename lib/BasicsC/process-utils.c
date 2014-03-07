@@ -970,7 +970,12 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 
 #ifndef _WIN32
 static bool ourKillProcess(TRI_external_t* pid) {
-  return (0 != kill(pid->_pid, SIGTERM));
+  bool success;
+  int loc;
+  success = (0 != kill(pid->_pid, SIGTERM));
+  // And wait for it to avoid a zombie:
+  waitpid(pid->_pid, &loc, WUNTRACED);
+  return success;
 }
 #else
 static bool ourKillProcess(TRI_external_t* pid) {
@@ -1019,6 +1024,8 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
   bool ok = true;
+  bool success;
+  int loc;
 
   TRI_LockMutex(&ExternalProcessesLock);
 
@@ -1034,7 +1041,10 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
     TRI_UnlockMutex(&ExternalProcessesLock);
 #ifndef _WIN32
     // Kill just in case:
-    return (0 != kill(pid._pid, SIGTERM));
+    success = (0 != kill(pid._pid, SIGTERM));
+    // And wait for it to avoid a zombie:
+    waitpid(pid._pid, &loc, WUNTRACED);
+    return success;
 #else
     return ourKillProcessPID(pid._pid);
 #endif
