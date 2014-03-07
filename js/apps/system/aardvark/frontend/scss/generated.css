@@ -553,7 +553,8 @@ li.tile, li.bigtile {
   li.tile svg.tile-icon-svg, li.bigtile svg.tile-icon-svg {
     fill: #686766;
     height: 50px;
-    margin: 110px;
+    margin-top: 10px;
+    margin-left: 90px;
     width: 50px; }
   li.tile span.tile-icon, li.bigtile span.tile-icon {
     color: #686766;
