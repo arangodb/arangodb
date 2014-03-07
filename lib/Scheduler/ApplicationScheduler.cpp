@@ -73,8 +73,11 @@ static SignalTask* localSignalTask;
 
       ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
-        // TODO: Variable 'result' is assigned a value that is never used
-        int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true);
+        int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
+
+        if (result == 0) {
+          LOG_WARNING("unable to install control-c handler");
+        }
       }
 
     public:
@@ -227,7 +230,7 @@ static SignalTask* localSignalTask;
 #ifdef _WIN32
 
   bool CtrlHandler (DWORD eventType) {
-    ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
+    ControlCTask* ccTask = (ControlCTask*) localSignalTask;
     string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
@@ -238,7 +241,6 @@ static SignalTask* localSignalTask;
 
 
     switch (eventType) {
-
       case CTRL_BREAK_EVENT: {
         //TODO: windows does not appreciate changing the environment in this manner
         //TRI_SetProcessTitle(msg.c_str());

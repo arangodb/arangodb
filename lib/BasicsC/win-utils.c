@@ -174,9 +174,9 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
   // ............................................................................
 
   switch (finaliseWhat) {
-
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
       result = WSACleanup();     // could this cause error on server termination?
+
       if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated
         printf("ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup returned error %d.",result);
@@ -236,11 +236,12 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_ERROR("Could not find a usuable Winsock DLL. WSAStartup returned an error.");
+        LOG_ERROR("Could not find a usable Winsock DLL. WSAStartup returned an error.");
         return -1;
       }
+
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_ERROR("Could not find a usuable Winsock DLL. WSAStartup did not return version 2.2.");
+        LOG_ERROR("Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.");
         WSACleanup();
         return -1;
       }
