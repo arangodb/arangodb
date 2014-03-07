@@ -33,16 +33,28 @@
   
     getStatuses: function(cb) {
       var self = this;
-      this.fetch({async: false}).done(function() {
+      var completed = function() {
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
+      };
+      // This is the first function called in
+      // Each update loop
+      this.fetch({
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
+      }).done(completed)
+      .fail(function(d) {
+        if (d.status === 401) {
+          window.App.requestAuth();
+        }
       });
     },
 
     byAddress: function (res) {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       res = res || {};
       this.forEach(function(m) {
@@ -57,7 +69,8 @@
 
     getList: function() {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       var res = [],
           self = this;
@@ -74,7 +87,8 @@
 
     getOverview: function() {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       var res = {
         plan: 0,

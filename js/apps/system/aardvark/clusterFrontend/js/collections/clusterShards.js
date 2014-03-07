@@ -33,7 +33,8 @@
       this.colname = colname;
       this.updateUrl();
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       return this.map(function(m) {
         return m.forList();
@@ -53,7 +54,9 @@
       var self = this;
       this.timer = window.setInterval(function() {
         this.updateUrl();
-        self.fetch();
+        self.fetch({
+          beforeSend: window.App.addAuth.bind(window.App)
+        });
       }, this.interval);
     }
 

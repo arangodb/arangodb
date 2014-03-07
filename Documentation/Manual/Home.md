@@ -80,4 +80,4 @@ Frank is twittering for the project on Twitter using
 @S_EXTREF{http://www.twitter.com/arangodb,@@arangodb}
 
 You can also subscribe to a low traffic announcement list on the
-@S_EXTREF{http://www.arangodb.org/connect,connect page}.
+@S_EXTREF{http://www.arangodb.org/community,connect page}.

@@ -30,7 +30,10 @@
   
     getStatuses: function(cb) {
       var self = this;
-      this.fetch({async: false}).done(function() {
+      this.fetch({
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
+      }).done(function() {
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
@@ -39,7 +42,8 @@
 
     byAddress: function (res) {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       res = res || {};
       this.forEach(function(m) {
@@ -54,7 +58,8 @@
 
     getList: function() {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       return this.map(function(m) {
         return m.forList();
@@ -63,7 +68,8 @@
 
     getOverview: function() {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       var res = {
         plan: 0,

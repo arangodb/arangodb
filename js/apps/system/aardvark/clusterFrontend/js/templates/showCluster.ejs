@@ -12,20 +12,18 @@
     }
   };
 %>
-<ul class="thumbnails2">
-  <div class="headerBar">
-    <a class="arangoHeader">Cluster Dashboard</a>
-    <div class="headerButtonBar pull-right">
-      <select id="selectDB">
-        <% _.each(dbs, function(d) { %>
-          <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
-        <% }); %>
-      </select>
-      <select id="selectCol">
-      </select>
-    </div>
+<div class="headerBar">
+  <a class="arangoHeader">Cluster Dashboard</a>
+  <div class="headerButtonBar pull-right">
+    <select id="selectDB">
+      <% _.each(dbs, function(d) { %>
+        <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
+      <% }); %>
+    </select>
+    <select id="selectCol">
+    </select>
   </div>
-</ul>
+</div>
 <ul id="clusterLayout" class="tileList">
   <% if(type === "testPlan") { 
     _.each(byAddress, function(s, a) { 
@@ -68,7 +66,7 @@
           url = c.get("protocol")
             + "://"
             + c.get("address")
-            + "_db/_system/_admin/aardvark/standalone.html"
+            + "/_db/_system/_admin/aardvark/standalone.html"
             + "#collections";
         %>
           <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">

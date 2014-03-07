@@ -57,6 +57,21 @@
       return result;
     },
 
+    storeCredentials: function(name, passwd) {
+      var self = this;
+      $.ajax({
+        url: "cluster/plan/credentials",
+        type: "PUT",
+        data: JSON.stringify({
+          user: name,
+          passwd: passwd
+        }),
+        async: false
+      }).done(function() {
+        self.fetch();
+      });
+    },
+
     isSymmetricSetup: function() {
       var config = this.get("config");
       var count = _.size(config.dispatchers);
