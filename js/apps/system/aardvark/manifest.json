@@ -55,6 +55,7 @@
         "frontend/js/arango/arango.js",
         "frontend/js/arango/templateEngine.js",
         "frontend/js/shell/browser.js",
+        "frontend/js/config/dygraphConfig.js",
         "frontend/js/modules/org/arangodb/**",
         "frontend/js/modules/org/arangodb-common.js",
         "frontend/js/modules/org/arangodb.js",
@@ -192,6 +193,7 @@
         "frontend/js/collections/arangoStatisticsCollection.js",
         "frontend/js/collections/arangoDocuments.js",
         "frontend/js/models/arangoDocument.js",
+        "frontend/js/config/dygraphConfig.js",
         "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
         "clusterFrontend/js/views/**",
         "clusterFrontend/js/routers/**"

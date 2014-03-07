@@ -400,6 +400,12 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
+
   // copy shaped json into the marker
   memcpy(mem + baseLength, (char*) shaped->_data.data, shaped->_data.length);
   
@@ -522,6 +528,12 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
 
   *keyBody = mem + markerSize;
 

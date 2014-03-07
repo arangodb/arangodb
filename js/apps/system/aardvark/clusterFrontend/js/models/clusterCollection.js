@@ -17,13 +17,6 @@
         status: this.get("status")
       };
     }
-    /*
-    url: "/_admin/aardvark/cluster/Collections";
-
-    updateUrl: function() {
-      this.url = window.getNewRoute("Collections");
-    }
-    */
   });
 }());
 

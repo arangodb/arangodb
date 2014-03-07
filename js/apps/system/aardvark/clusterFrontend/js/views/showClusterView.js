@@ -5,20 +5,22 @@
   "use strict";
 
   window.ShowClusterView = Backbone.View.extend({
-
+    detailEl: '#modalPlaceholder',
     el: "#content",
 
     template: templateEngine.createTemplate("showCluster.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
     modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
+    detailTemplate: templateEngine.createTemplate("detailView.ejs"),
 
     events: {
       "change #selectDB"        : "updateCollections",
       "change #selectCol"       : "updateShards",
       "click .dbserver"         : "dashboard",
       "click .coordinator"      : "dashboard",
-      "mouseover #lineGraph"    : "setShowAll",
-      "mouseout #lineGraph"     : "resetShowAll"
+      "click #lineGraph"        : "showDetail"
+      //"mouseover #lineGraph"    : "setShowAll",
+      //"mouseout #lineGraph"     : "resetShowAll"
     },
 
     replaceSVGs: function() {
@@ -42,7 +44,6 @@
 
     setShowAll: function() {
       this.graphShowAll = true;
-      this.renderLineChart();
     },
 
     resetShowAll: function() {
@@ -52,13 +53,14 @@
 
 
     initialize: function() {
-        this.interval = 10000;
-        this.isUpdating = false;
-        this.timer = null;
-        this.knownServers = [];
-        this.graph = undefined;
-        this.graphShowAll = false;
-        this.updateServerTime();
+      this.interval = 10000;
+      this.isUpdating = false;
+      this.timer = null;
+      this.knownServers = [];
+      this.graph = undefined;
+      this.graphShowAll = false;
+      this.updateServerTime();
+      this.dygraphConfig = this.options.dygraphConfig;
       this.dbservers = new window.ClusterServers([], {
         interval: this.interval
       });
@@ -70,7 +72,6 @@
       this.statisticsDescription.fetch({
         async: false
       });
-
       this.dbs = new window.ClusterDatabases([], {
         interval: this.interval
       });
@@ -206,7 +207,8 @@
               raw: dbserver.get("address"),
               isDBServer: true,
               target: encodeURIComponent(dbserver.get("name")),
-              endpoint: endpoint
+              endpoint: endpoint,
+              addAuth: window.App.addAuth.bind(window.App)
             };
             self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
@@ -233,7 +235,8 @@
               raw: coordinator.get("address"),
               isDBServer: false,
               target: encodeURIComponent(coordinator.get("name")),
-              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address")
+              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+              addAuth: window.App.addAuth.bind(window.App)
             };
             self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
             self.history = self.documentStore.history;
@@ -259,31 +262,40 @@
         var self = this;
         this.data = undefined;
         var statCollect = new window.ClusterStatisticsCollection();
+        var coord = this.coordinators.first();
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
             var stat = new window.Statistics({name: dbserver.id});
-            stat.url = "http://" + dbserver.get("address") + "/_admin/statistics";
+            stat.url = coord.get("protocol") + "://"
+              + coord.get("address")
+              + "/_admin/clusterStatistics?DBserver="
+              + dbserver.get("name");
             statCollect.add(stat);
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
             if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
             var stat = new window.Statistics({name: coordinator.id});
-            stat.url = "http://" + coordinator.get("address") + "/_admin/statistics";
+            stat.url = coordinator.get("protocol") + "://"
+              + coordinator.get("address")
+              + "/_admin/statistics";
             statCollect.add(stat);
         });
-        statCollect.fetch();
+        statCollect.fetch({
+          beforeSend: window.App.addAuth.bind(window.App),
+          async: false
+        });
         statCollect.forEach(function(m) {
-            var uptime = m.get("server").uptime * 1000
-            var time = self.serverTime;
-            if (self.hist[m.get("name")].lastTime && (time - self.hist[m.get("name")].lastTime) > uptime) {
-                self.hist[m.get("name")][
-                    self.hist[m.get("name")].lastTime +
-                        (time-self.hist[m.get("name")].lastTime) / 2] = null;
-            }
-            self.hist[m.get("name")].lastTime = time;
-            self.hist[m.get("name")][time] = m.get("client").totalTime.sum / m.get("client").totalTime.count;
+          var uptime = m.get("server").uptime * 1000
+          var time = self.serverTime;
+          if (self.hist[m.get("name")].lastTime && (time - self.hist[m.get("name")].lastTime) > uptime) {
+              self.hist[m.get("name")][
+                  self.hist[m.get("name")].lastTime +
+                      (time-self.hist[m.get("name")].lastTime) / 2] = null;
+          }
+          self.hist[m.get("name")].lastTime = time;
+          self.hist[m.get("name")][time] = m.get("client").totalTime.sum / m.get("client").totalTime.count;
         });
         this.data = statCollect;
     },
@@ -341,7 +353,7 @@
             .text(function(d) { return d.data.key; });
       },
 
-      renderLineChart: function() {
+      renderLineChart: function(remake) {
           var self = this;
           self.chartData = {
               labelsNormal : ['datetime'],
@@ -418,8 +430,7 @@
                   i++
               });
           };
-
-          if (this.graph !== undefined) {
+          if (this.graph !== undefined && !remake) {
               getData();
               var opts = {file : this.chartData.data};
               if (this.graphShowAll ) {
@@ -429,49 +440,38 @@
                 opts.labels = this.chartData.labelsNormal;
                 opts.visibility = this.chartData.visibilityNormal;
               }
-              this.graph.updateOptions(opts);
+              this.graph.graph.updateOptions(opts);
               return;
           }
 
-          var makeGraph = function(className) {
-            getData(),
-            self.graph = new Dygraph(
-                  document.getElementById('lineGraph'),
-                  self.chartData.data,
-                  {   title: 'Average request time in milliseconds',
-                      labelsDivStyles: { 'backgroundColor': '#e1e3e5','textAlign': 'right' },
-                      //labelsSeparateLines: true,
-                      connectSeparatedPoints : false,
-                      digitsAfterDecimal: 3,
-                      fillGraph : true,
-                      strokeWidth: 2,
-                      legend: "always",
-                      axisLabelFont: "Open Sans",
-                      dateWindow : [new Date().getTime() -
-                          Math.min(
-                              20 * 60 * 1000,
-                              self.chartData.data.length * 10 * 1000)
-                      ,new Date().getTime()],
-                      labels: self.chartData.labelsNormal,
-                      visibility: self.chartData.visibilityNormal ,
-                      xAxisLabelWidth : "60",
-                      showRangeSelector: false,
-                      rightGap: 15,
-                      pixelsPerLabel : 60,
-                      labelsKMG2: false,
-                      highlightCircleSize: 2
-                      });
-              var onclick = function(ev) {
-                  if (self.graph.isSeriesLocked()) {
-                      self.graph.clearSelection();
-                  } else {
-                      self.graph.setSelection(self.graph.getSelection(), self.graph.getHighlightSeries(), true);
-                  }
-              };
-          self.graph.updateOptions({clickCallback: onclick}, true);
-          self.graph.setSelection(false, 'ClusterAverage', true);
-        };
-        makeGraph('lineGraph');
+          var makeGraph = function(remake) {
+            self.graph = new self.dygraphConfig.Chart(
+                "clusterAverageRequestTime",
+                self.dygraphConfig.regularLineChartType,
+                true,
+                'Average request time in milliseconds'
+            );
+            getData();
+            self.graph.data = self.chartData.data;
+            self.graph.updateDateWindow();
+            self.graph.options.visibility = self.chartData.visibilityNormal;
+            self.graph.updateLabels(self.chartData.labelsNormal);
+            if (remake) {
+                self.graph.detailChartConfig();
+                self.graph.updateLabels(self.chartData.labelsShowAll);
+                self.graph.options.visibility = self.chartData.visibilityShowAll;
+                self.graph.options.height = $('#lineChartDetail').height() - 34 -29;
+                self.graph.options.width = $('#lineChartDetail').width() -10;
+                self.graph.options.title = "";
+            }
+            self.graph.graph = new Dygraph(
+                  document.getElementById(remake ? 'detailGraph' : 'lineGraph'),
+                self.graph.data,
+                self.graph.options
+            );
+            self.graph.graph.setSelection(false, 'ClusterAverage', true);
+          };
+        makeGraph(remake);
 
       },
 
@@ -523,7 +523,26 @@
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
         window.App.dashboard();
+      },
+
+      showDetail : function(e) {
+          var self = this;
+          delete self.graph;
+          $(self.detailEl).html(this.detailTemplate.render({figure: "Average request time in milliseconds"}));
+          self.setShowAll();
+          self.renderLineChart(true);
+          $('#lineChartDetail').modal('show');
+          $('#lineChartDetail').on('hidden', function () {
+              delete self.graph;
+              self.resetShowAll();
+          });
+          $('.modalTooltips').tooltip({
+              placement: "left"
+          });
+          return self;
       }
     });
+
+
 
   }());

@@ -1052,6 +1052,14 @@ BUILD_H = @BUILD_H@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+CMAKE_ICU_INCLUDE = @CMAKE_ICU_INCLUDE@
+CMAKE_ICU_LIBS = @CMAKE_ICU_LIBS@
+CMAKE_ICU_LIB_PATH = @CMAKE_ICU_LIB_PATH@
+CMAKE_ICU_VERSION = @CMAKE_ICU_VERSION@
+CMAKE_LIBEV_INCLUDE = @CMAKE_LIBEV_INCLUDE@
+CMAKE_LIBEV_LIBS = @CMAKE_LIBEV_LIBS@
+CMAKE_LIBEV_LIB_PATH = @CMAKE_LIBEV_LIB_PATH@
+CMAKE_LIBEV_VERSION = @CMAKE_LIBEV_VERSION@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -2010,6 +2018,7 @@ WIKI = \
 	InstallManual \
 	Installing \
 	JSModuleActions \
+	JSModuleCluster \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
@@ -8506,8 +8515,8 @@ update-disclaimer:
 .PHONY: doxygen-create-directories
 
 doxygen-create-directories:
-	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
-	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
+	@test -d Doxygen/doc || mkdir -p Doxygen/doc
+	@test -d Doxygen/website || mkdir -p Doxygen/website
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
@@ -8518,7 +8527,6 @@ doxygen-create-directories:
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
-	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
@@ -8572,12 +8580,10 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-html.doxy > /dev/null
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
@@ -8596,7 +8602,6 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	cp -R Documentation/latex/*.tex Doxygen/latex
-	cp -R Documentation/images Doxygen/latex/images
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
@@ -8685,7 +8690,6 @@ publish-html:
 	$(MAKE) doxygen
 	mkdir -p $(OUTPUT_FOLDER)/images
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
 	@for i in `ls Doxygen/website/*.png`; do cp $$i $(OUTPUT_FOLDER)/; done
 	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
 	@cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
@@ -8932,7 +8936,7 @@ clean-zlib:
 	rm -f @srcdir@/.zlib-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE) clean
 
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@@top_srcdir@/bin/etcd-arango:
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@@top_srcdir@/bin/etcd-arango$(PROGRAM_SUFFIX):
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	@echo "BUILDING etcd"
@@ -8986,6 +8990,60 @@ clean-zlib:
 ################################################################################
 ### @brief etcd
 ################################################################################
+
+################################################################################
+### @brief cmake build
+################################################################################
+
+.PHONY: cmake-setup
+
+cmake-setup:
+	test -d Build || mkdir Build
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
+		\
+		-D ARANGODB_VERSION=${VERSION} \
+		-D USE_MRUBY=${tr_MRUBY} \
+		\
+		-D ICU_INCLUDE="${CMAKE_ICU_INCLUDE}" \
+		-D ICU_LIB_PATH="${CMAKE_ICU_LIB_PATH}" \
+		-D ICU_LIBS="${CMAKE_ICU_LIBS}" \
+		-D ICU_VERSION="${CMAKE_ICU_VERSION}" \
+		\
+		-D LIBEV_INCLUDE="${CMAKE_LIBEV_INCLUDE}" \
+		-D LIBEV_LIB_PATH="${CMAKE_LIBEV_LIB_PATH}" \
+		-D LIBEV_LIBS="${CMAKE_LIBEV_LIBS}" \
+		-D LIBEV_VERSION="${CMAKE_LIBEV_VERSION}" \
+		\
+		-D MRUBY_INCLUDE= \
+		-D MRUBY_LIB_PATH= \
+		-D MRUBY_LIBS= \
+		-D MRUBY_VERSION= \
+		\
+		-D OPENSSL_INCLUDE= \
+		-D OPENSSL_LIB_PATH= \
+		-D OPENSSL_LIBS= \
+		-D OPENSSL_VERSION= \
+		\
+		-D READLINE_INCLUDE= \
+		-D READLINE_LIB_PATH= \
+		-D READLINE_LIBS= \
+		-D READLINE_VERSION= \
+		\
+		-D V8_INCLUDE= \
+		-D V8_LIB_PATH= \
+		-D V8_LIBS= \
+		-D V8_VERSION= \
+		\
+		-D ZLIB_INCLUDE= \
+		-D ZLIB_LIB_PATH= \
+		-D ZLIB_LIBS= \
+		-D ZLIB_VERSION= \
+		\
+		..
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
