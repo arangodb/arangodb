@@ -1,17 +1,17 @@
-%clusterStateIcon {
-  width: 50px;
-  height: 50px;
+%cluster-state-icon {
+  color: $c-black;
+  height: 50;
   position: absolute;
-  top: 10px;
-  color: $c_black;
+  top: 10;
+  width: 50;
   
   h6.serverName {
-    margin: 0px;
+    bottom: 0;
     font-size: 11px;
+    left: 0;
+    margin: 0;
     position: absolute;
-    bottom: 0px;
-    left: 0px;
-    right: 0px;
+    right: 0;
   }
 
   &.success {
@@ -36,21 +36,25 @@
 }
 
 a.coordinator {
-  @extend %clusterStateIcon;
+  @extend %cluster-state-icon;
+
   &.single {
-    left: 90px;
+    left: 90;
   }
+
   &.double {
-    left: 60px;
+    left: 60;
   }
 }
 
 a.dbserver {
-  @extend %clusterStateIcon;
+  @extend %cluster-state-icon;
+
   &.single {
-    right: 90px;
+    right: 90;
   }
+
   &.double {
-    right: 60px;
+    right: 60;
   }
 }

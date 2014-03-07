@@ -1,15 +1,17 @@
 .clusterInfoIcon {
   float: left;
-  padding-top: 2px;
   padding-left: 5px;
+  padding-top: 2px;
 }
 
 .waitModal {
   text-align: center;
+
   &.icon {
     font-size: 100px;
     height: 120px;
   }
+
   &.message {
     font-size: 20px;
   }
