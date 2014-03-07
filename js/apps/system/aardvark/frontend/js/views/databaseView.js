@@ -12,12 +12,16 @@
     currentDB: "",
 
     events: {
-      "click #createDatabase"                           : "createDatabase",
-      "click #submitCreateDatabase"                     : "submitCreateDatabase",
-      "click #selectDatabase"                           : "updateDatabase",
-      "click #databaseTable .icon_arangodb_roundminus"  : "removeDatabase",
-      "click #submitDeleteDatabase"                     : "submitRemoveDatabase",
-      "click .contentRowInactive a"                     : "changeDatabase"
+      "click #createDatabase"       : "createDatabase",
+      "click #submitCreateDatabase" : "submitCreateDatabase",
+      "click .editDatabase"         : "editDatabase",
+      "click .icon"                 : "editDatabase",
+      "click #selectDatabase"       : "updateDatabase",
+      "click #deleteDatabase"       : "deleteDatabase",
+      "click #submitDeleteDatabase" : "submitDeleteDatabase",
+      "click .contentRowInactive a" : "changeDatabase",
+      "keyup #databaseSearchInput"  : "search",
+      "click #databaseSearchSubmit" : "search"
     },
 
     initialize: function() {
@@ -26,20 +30,15 @@
 
     render: function(){
       this.currentDatabase();
-      $(this.el).html(this.template.render({}));
-      this.renderTable();
-      this.selectCurrentDatabase();
-      return this;
-    },
+      this.collection.sort();
 
-    renderTable: function () {
-      this.collection.forEach(function(dbs) {
-        $("#databaseTable tbody").append(
-          '<tr><td><a id="' + dbs.get("name") + '">' + dbs.get("name") + '</a></td>' +
-          '<td><span class="arangoicon icon_arangodb_roundminus"' + 
-          'data-original-title="Delete database"></span></td></tr>'
-        );
-      });
+      $(this.el).html(this.template.render({
+        collection   : this.collection,
+        searchString : '',
+        currentDB    : this.currentDB
+      }));
+      this.replaceSVGs();
+      return this;
     },
 
     selectedDatabase: function () {
@@ -105,45 +104,41 @@
           self.handleError(err.status, err.statusText, name);
         },
         success: function(data) {
-          self.hideModal();
+          self.hideModal('createDatabaseModal');
           self.updateDatabases();
         }
       });
     },
 
-    hideModal: function() {
-      $('#createDatabaseModal').modal('hide');
+    hideModal: function(modal) {
+      $('#' + modal).modal('hide');
     },
 
-    showModal: function() {
-      $('#createDatabaseModal').modal('show');
+    showModal: function(modal) {
+      $('#' + modal).modal('show');
     },
 
-    createDatabase: function() {
-      this.showModal();
+    createDatabase: function(e) {
+      e.preventDefault();
+      this.showModal('createDatabaseModal');
     },
 
-    submitRemoveDatabase: function(e) {
+    submitDeleteDatabase: function(e) {
       var toDelete = this.collection.where({name: this.dbToDelete});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+this.dbToDelete});
       this.dbToDelete = '';
-      $('#deleteDatabaseModal').modal('hide');
+      this.hideModal('deleteDatabaseModal');
       this.updateDatabases();
     },
 
-    removeDatabase: function(e) {
-      this.dbToDelete = $(e.currentTarget).parent().parent().children().first().text();
-      $('#deleteDatabaseModal').modal('show');
+    deleteDatabase: function(e) {
+      this.hideModal('editDatabaseModal');
+      this.dbToDelete = $('#editDatabaseName').html();
+      this.showModal('deleteDatabaseModal')
     },
 
     currentDatabase: function() {
       this.currentDB = this.collection.getCurrentDatabase();
-    },
-
-    selectCurrentDatabase: function() {
-      $('#databaseTableBody tr').addClass('contentRowInactive');
-      var tr = $('#databaseTableBody td:contains('+this.currentDB+')').parent();
-      $(tr).removeClass('contentRowInactive').addClass('contentRowActive');
     },
 
     changeDatabase: function(e) {
@@ -160,7 +155,66 @@
           window.App.handleSelectDatabase();
         }
       });
+    },
+
+    editDatabase: function(e) {
+      var dbName = $(e.currentTarget).attr("id");
+      $('#editDatabaseName').html(dbName);
+      var button = $('#deleteDatabase');
+      if(dbName === this.currentDB) {
+        var element
+        button.prop('disabled', true);
+        button.removeClass('button-danger');
+        button.addClass('button-neutral');
+      } else {
+        button.prop('disabled', false);
+        button.removeClass('button-neutral');
+        button.addClass('button-danger');
+      }
+      this.showModal('editDatabaseModal');
+    },
+
+    search: function() {
+      var searchInput,
+        searchString,
+        strLength,
+        reducedCollection;
+
+      searchInput = $('#databaseSearchInput');
+      searchString = $("#databaseSearchInput").val();
+      reducedCollection = this.collection.filter(
+        function(u) {
+          return u.get("name").indexOf(searchString) !== -1;
+        }
+      );
+      $(this.el).html(this.template.render({
+        collection   : reducedCollection,
+        searchString : searchString
+      }));
+
+      //after rendering, get the "new" element
+      searchInput = $('#databaseSearchInput');
+      //set focus on end of text in input field
+      strLength= searchInput.val().length;
+      searchInput.focus();
+      searchInput[0].setSelectionRange(strLength, strLength);
+    },
+
+    replaceSVGs: function() {
+      $(".svgToReplace").each(function() {
+        var img = $(this);
+        var id = img.attr("id");
+        var src = img.attr("src");
+        $.get(src, function(d) {
+          var svg = $(d).find("svg");
+          svg.attr("id", id)
+            .attr("class", "tile-icon-svg")
+            .removeAttr("xmlns:a");
+          img.replaceWith(svg);
+        }, "xml");
+      });
     }
+
 
   });
 }());
