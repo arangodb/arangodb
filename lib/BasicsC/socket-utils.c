@@ -52,6 +52,27 @@
 int TRI_closesocket (TRI_socket_t s) {
   int res = 0;
   #ifdef _WIN32
+  if (s.fileHandle != TRI_INVALID_SOCKET) {
+    res = shutdown(s.fileHandle, SD_SEND);
+
+    if (res != 0) {
+      // Windows complains about shutting down a socket that was not bound
+      // so we will not print out the error here
+      // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
+    }
+    else {
+      char buf[256];
+      int len;
+      do {
+        len = TRI_readsocket(s, buf, sizeof(buf), 0);
+      } while (len > 0);
+
+    }
+    res = closesocket(s.fileHandle);
+
+    if (res != 0) {
+      LOG_WARNING("socket close error: %d", WSAGetLastError());
+    }
     if (s.fileDescriptor != -1) {
       res = _close(s.fileDescriptor);
       /*
@@ -60,30 +81,8 @@ int TRI_closesocket (TRI_socket_t s) {
       so it is not necessary to call the Win32 function CloseHandle on the original handle.
       */
     }
-    else if (s.fileHandle != TRI_INVALID_SOCKET) {
-      res = shutdown(s.fileHandle, SD_SEND);
-
-      if (res != 0) {
-        // Windows complains about shutting down a socket that was not bound
-        // so we will not print out the error here
-        // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
-      }
-      else {
-        char buf[256];
-        int len;
-        do {
-          len = TRI_readsocket(s, buf, sizeof(buf), 0);
-        } 
-        while (len > 0);
-
-        res = closesocket(s.fileHandle);
-
-        if (res != 0) {
-          LOG_WARNING("socket close error: %d", WSAGetLastError());
-        }
-      }
-    }
-  #else
+  }
+#else
     if (s.fileDescriptor != TRI_INVALID_SOCKET) {
       res = close(s.fileDescriptor);
     }
