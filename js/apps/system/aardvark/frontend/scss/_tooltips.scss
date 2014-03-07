@@ -1,14 +1,16 @@
 .tooltip-inner {
   max-width: 300px !important;
-  word-wrap: break-word !important;
   white-space: normal !important;
+  word-wrap: break-word !important;
 }
 
 .indexTooltip {
-  color: $c_btn_inverse;
+  color: $c-btn-inverse;
+
   &:hover {
-    color: $c_black;
+    color: $c-black;
   }
+
   span.arangoicon {
     font-size: 18px !important;
   }
