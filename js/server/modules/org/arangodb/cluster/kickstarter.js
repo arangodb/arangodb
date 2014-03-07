@@ -356,13 +356,10 @@ launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
   console.info("Shutting down agent %s", JSON.stringify(run.pid));
   killExternal(run.pid);
-  statusExternal(run.pid);
   return {"error": false, "isStartAgent": true};
 };
 
 shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
-  console.info("Waiting for 3 seconds for servers before shutting down agency.");
-  wait(3);
   return {"error": false, "isSendConfiguration": true};
 };
 
@@ -379,12 +376,15 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     }
     download(url,"",{method:"GET", headers: hdrs});
   }
-  console.info("Waiting 3 seconds for servers to shutdown gracefully...");
-  wait(3);
+  console.info("Waiting 5 seconds for servers to shutdown gracefully...");
+  wait(5);
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Shutting down %s the hard way...", JSON.stringify(run.pids[i]));
-    killExternal(run.pids[i]);
-    statusExternal(run.pids[i]);
+    var s = statusExternal(run.pids[i]);
+    if (s.status !== "TERMINATED") {
+      console.info("Shutting down %s the hard way...", 
+                   JSON.stringify(run.pids[i]));
+      killExternal(run.pids[i]);
+    }
   }
   return {"error": false, "isStartServers": true};
 };
