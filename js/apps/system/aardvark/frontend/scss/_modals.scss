@@ -1,38 +1,40 @@
 .modalChartDetail {
-  height : 70%;
-  width : 70%;
-  margin-left: 0px;
+  height: 70%;
+  margin-left: 0;
+  width: 70%;
 }
 
 .waitModal {
-  background: transparent;
-  color: $c_white;
-  box-shadow: none;
-  border: none;
+  @include box-shadow(none);
+  background: $c-transp;
+  border: 0;
+  color: $c-white;
 }
 
 .waitModalBackdrop {
-  opacity: 0.7 !important;
+  opacity: .7 !important;
 }
 
 .addCollection {
-  $inputWidth: 320px;
+  $inputwidth: 320;
+
   table tr {
-    height: 53px;
     border-bottom: 0 !important;
+    height: 53px;
   }
+
   .icon_arangodb_info {
-    top: 2px !important;
+    margin-left: 20 !important;
     position: relative;
-    margin-left: 20px !important;
+    top: 2px !important;
   }
 
   .accordion {
-    margin-top: 10px;
+    margin-top: 10;
   }
 
   .collectionThSec {
-    width: $inputWidth !important;
+    width: $inputwidth !important;
   }
 
   .collectionTh {
@@ -40,22 +42,23 @@
   }
 
   .modalInput {
-    width: $inputWidth;
+    width: $inputwidth;
   }
 
   .modalSelect {
-    width: $inputWidth + 14px;
+    width: $inputwidth + 14px;
   }
 
   .accordion-toggle {
-    width: $inputWidth + 137px !important;
+    width: $inputwidth + 137px !important;
   }
 }
 
 .modalTooltips span {
-  font-size: 20px;
-  color: $c_btn_inverse;
+  color: $c-btn-inverse;
+  font-size: 20;
+
   &:hover {
-    color: $c_black;
+    color: $c-black;
   }
 }
