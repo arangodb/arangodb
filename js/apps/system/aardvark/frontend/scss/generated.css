@@ -547,6 +547,15 @@ li.tile, li.bigtile {
   li.tile a svg.icon, li.bigtile a svg.icon {
     height: 50px;
     width: 50px; }
+  li.tile svg.tile-icon-svg, li.bigtile svg.tile-icon-svg {
+    margin-top: 10px;
+    height: 50px;
+    width: 50px;
+    fill: #686766; }
+  li.tile span.tile-icon, li.bigtile span.tile-icon {
+    line-height: 1.2;
+    font-size: 50px;
+    color: #686766; }
   li.tile h5, li.bigtile h5 {
     font-size: 12px;
     white-space: nowrap !important;
