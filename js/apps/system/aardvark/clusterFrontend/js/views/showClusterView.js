@@ -283,18 +283,19 @@
             statCollect.add(stat);
         });
         statCollect.fetch({
-          beforeSend: window.App.addAuth.bind(window.App)
+          beforeSend: window.App.addAuth.bind(window.App),
+          async: false
         });
         statCollect.forEach(function(m) {
-            var uptime = m.get("server").uptime * 1000
-            var time = self.serverTime;
-            if (self.hist[m.get("name")].lastTime && (time - self.hist[m.get("name")].lastTime) > uptime) {
-                self.hist[m.get("name")][
-                    self.hist[m.get("name")].lastTime +
-                        (time-self.hist[m.get("name")].lastTime) / 2] = null;
-            }
-            self.hist[m.get("name")].lastTime = time;
-            self.hist[m.get("name")][time] = m.get("client").totalTime.sum / m.get("client").totalTime.count;
+          var uptime = m.get("server").uptime * 1000
+          var time = self.serverTime;
+          if (self.hist[m.get("name")].lastTime && (time - self.hist[m.get("name")].lastTime) > uptime) {
+              self.hist[m.get("name")][
+                  self.hist[m.get("name")].lastTime +
+                      (time-self.hist[m.get("name")].lastTime) / 2] = null;
+          }
+          self.hist[m.get("name")].lastTime = time;
+          self.hist[m.get("name")][time] = m.get("client").totalTime.sum / m.get("client").totalTime.count;
         });
         this.data = statCollect;
     },
