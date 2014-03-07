@@ -331,7 +331,11 @@ function runThere (options, instanceInfo, file) {
 
 function executeAndWait (cmd, args) {
   var pid = executeExternal(cmd, args);
-  return statusExternal(pid, true).exit;
+  var res = statusExternal(pid, true);
+  if (res.status === "TERMINATED") {
+    return res.exit;
+  }
+  return res;
 }
 
 function runInArangosh (options, instanceInfo, file, addArgs) {
@@ -665,6 +669,7 @@ testFuncs.importing = function (options) {
     result.teardown = r;
   }
   catch (banana) {
+    print("A banana of the following form was caught:",JSON.stringify(banana));
   }
 
   print("Shutting down...");
