@@ -28,11 +28,11 @@
                             var $svg = $(data).find('svg');
 
                             // Add replaced image's ID to the new SVG
-                            if(typeof imgID !== 'undefined') {
+                            if(imgID === undefined) {
                                 $svg = $svg.attr('id', imgID);
                             }
                             // Add replaced image's classes to the new SVG
-                            if(typeof imgClass !== 'undefined') {
+                            if(imgClass === undefined) {
                                 $svg = $svg.attr('class', imgClass+' replaced-svg');
                             }
 

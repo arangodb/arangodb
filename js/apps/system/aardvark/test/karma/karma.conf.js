@@ -212,7 +212,6 @@ module.exports = function(karma) {
       'test/specs/graphViewer/specAdapter/interfaceSpec.js',
       'test/specs/graphViewer/specAdapter/abstractAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/jsonAdapterSpec.js',
-      /*
       'test/specs/graphViewer/specAdapter/arangoAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/foxxAdapterSpec.js',
       'test/specs/graphViewer/specAdapter/previewAdapterSpec.js',
@@ -276,7 +275,6 @@ module.exports = function(karma) {
       'test/specs/planner/views/planSymmetricViewSpec.js',
       'test/specs/planner/views/planTestViewSpec.js',
       'test/specs/planner/views/planScenarioSelectorViewSpec.js',
-      */
       'test/specJSLint/jsLintSpec.js'
     ],
 
