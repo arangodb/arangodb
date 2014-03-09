@@ -103,17 +103,17 @@ a.warning.coordinator, a.warning.dbserver {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   color: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover {
-    color: gray; }
+    color: grey; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   fill: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover {
-    fill: gray; }
+    fill: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -583,7 +583,8 @@ li.tile, li.bigtile {
   li.tile svg.tile-icon-svg, li.bigtile svg.tile-icon-svg {
     fill: #686766;
     height: 50px;
-    margin: 110px;
+    margin-left: 90px;
+    margin-top: 10px;
     width: 50px; }
   li.tile span.tile-icon, li.bigtile span.tile-icon {
     color: #686766;
@@ -912,7 +913,7 @@ svg.clusterChart {
 .lineGraph {
   position: absolute; }
   .lineGraph .few .dygraph-legend > span.highlight {
-    border: 1px solid gray; }
+    border: 1px solid grey; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
   .lineGraph .many .dygraph-legend > span.highlight {

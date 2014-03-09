@@ -16,3 +16,4 @@ TOC {#CompilingTOC}
     - @ref DownloadSourceDevel
     - @ref CompilingDevelSetup
     - @ref CompilingDevelConfigure
+    - @ref CompilingDevelGo

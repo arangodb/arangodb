@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, plannerTemplateEngine, alert */
+/*global window, $, Backbone, templateEngine, alert */
 
 (function() {
   "use strict";
@@ -57,7 +57,7 @@
           numberCoordinators: parseInt(c, 10)
         },
         {
-          success: function(info) {
+          success: function() {
             $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
             window.App.updateAllUrls();

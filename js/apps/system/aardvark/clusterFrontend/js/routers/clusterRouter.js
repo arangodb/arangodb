@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase*/
+/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase, btoa, _*/
 
 (function() {
   "use strict";
@@ -92,7 +92,6 @@
       });
       this.footerView = new window.FooterView();
       this.footerView.render();
-      var self = this;
       $(window).resize(function() {
         self.handleResize();
       });
