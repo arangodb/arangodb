@@ -14,7 +14,7 @@
       this.url = window.App.getNewRoute("DBServers");
     },
 
-    initialize: function(options) {
+    initialize: function() {
       window.App.registerForUpdate(this);
     },
 
@@ -32,8 +32,8 @@
     },
   
     getStatuses: function(cb) {
-      var self = this;
-      var completed = function() {
+      var self = this,
+        completed = function() {
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
