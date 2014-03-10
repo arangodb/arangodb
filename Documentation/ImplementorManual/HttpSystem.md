@@ -27,27 +27,7 @@ monitoring of the server.
 @copydetails JSF_get_admin_statistics_description
 
 @CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingGET
-@copydetails JSF_cluster_test_GET
-
-@CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingPUT
-@copydetails JSF_cluster_test_PUT
-
-@CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingPOST
-@copydetails JSF_cluster_test_POST
-
-@CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingDELETE
-@copydetails JSF_cluster_test_DELETE
-
-@CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingPATCH
-@copydetails JSF_cluster_test_PATCH
-
-@CLEARPAGE
-@anchor HttpSystemAdminDescriptionShardingHEAD
-@copydetails JSF_cluster_test_HEAD
+@anchor HttpSystemAdminServerRole
+@copydetails JSF_get_admin_server_role
 
 @BNAVIGATE_HttpSystem
