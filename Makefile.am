@@ -213,6 +213,8 @@ pkglibexec_SCRIPTS =
 
 if ENABLE_ALL_IN_ONE_ETCD
 pkglibexec_SCRIPTS += bin/etcd-arango$(PROGRAM_SUFFIX)
+
+CLEANUP += bin/etcd-arango$(PROGRAM_SUFFIX)
 endif
 
 ################################################################################
