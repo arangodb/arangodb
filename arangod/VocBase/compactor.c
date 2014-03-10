@@ -309,32 +309,30 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
               TRI_last_error());
   }
   else if (datafile->isPhysical(datafile)) {
-    if (primary->base._vocbase->_settings.removeOnCompacted) {
-      int res;
+     int res;
 
-      LOG_DEBUG("wiping compacted datafile from disk");
+     LOG_DEBUG("wiping compacted datafile from disk");
 
-      res = TRI_UnlinkFile(filename);
+     res = TRI_UnlinkFile(filename);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("cannot wipe obsolete datafile '%s': %s",
-                  datafile->getName(datafile),
-                  TRI_last_error());
-      }
+     if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("cannot wipe obsolete datafile '%s': %s",
+                datafile->getName(datafile),
+                TRI_last_error());
+     }
 
-      // check for .dead files
-      if (copy != NULL) {
-        // remove .dead file for datafile
-        char* deadfile = TRI_Concatenate2String(copy, ".dead");
+     // check for .dead files
+     if (copy != NULL) {
+      // remove .dead file for datafile
+      char* deadfile = TRI_Concatenate2String(copy, ".dead");
 
-        if (deadfile != NULL) {
-          // check if .dead file exists, then remove it
-          if (TRI_ExistsFile(deadfile)) {
-            TRI_UnlinkFile(deadfile);
-          }
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, deadfile);
+      if (deadfile != NULL) {
+        // check if .dead file exists, then remove it
+        if (TRI_ExistsFile(deadfile)) {
+          TRI_UnlinkFile(deadfile);
         }
+
+        TRI_FreeString(TRI_CORE_MEM_ZONE, deadfile);
       }
     }
   }
