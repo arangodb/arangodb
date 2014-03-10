@@ -9490,7 +9490,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
   
   v8::Local<v8::String> keyRemoveOnDrop = v8::String::New("removeOnDrop");
-  v8::Local<v8::String> keyRemoveOnCompacted = v8::String::New("removeOnCompacted");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
@@ -9504,10 +9503,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyRemoveOnDrop)) {
       defaults.removeOnDrop = options->Get(keyRemoveOnDrop)->BooleanValue();
-    }
-
-    if (options->Has(keyRemoveOnCompacted)) {
-      defaults.removeOnCompacted = options->Get(keyRemoveOnCompacted)->BooleanValue();
     }
 
     if (options->Has(keyDefaultMaximalSize)) {

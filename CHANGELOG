@@ -1,3 +1,9 @@
+v2.1.0 (XXXX-XX-XX)
+-------------------
+
+* removed arangod command line option `--database.remove-on-compacted`
+
+
 v2.0.0 (2014-03-10)
 -------------------
 
