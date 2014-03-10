@@ -7,6 +7,7 @@ TOC {#HttpSystemTOC}
   - @ref HttpSystemFlushServerModules "POST /_admin/modules/flush"
   - @ref HttpSystemAdminStatistics "GET /_admin/statistics"
   - @ref HttpSystemAdminStatisticsDescription "GET /_admin/statistics-descriptions"
+  - @ref HttpSystemAdminServerRole "GET /_admin/server/role"
   - @ref HttpSystemAdminDescriptionShardingGET "GET /_admin/sharding-test"
   - @ref HttpSystemAdminDescriptionShardingPUT "PUT /_admin/sharding-test"
   - @ref HttpSystemAdminDescriptionShardingPOST "POST /_admin/sharding-test"
