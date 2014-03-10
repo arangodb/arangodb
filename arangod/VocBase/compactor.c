@@ -77,10 +77,30 @@
 #define COMPACTOR_MAX_FILES 4
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum multiple of journal filesize of a compacted file
+/// a value of 3 means that the maximum filesize of the compacted file is
+/// 3 x (collection->journalSize)
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_MAX_SIZE_FACTOR (3)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum filesize of resulting compacted file
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_MAX_RESULT_FILESIZE (128 * 1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief datafiles smaller than the following value will be merged with others
 ////////////////////////////////////////////////////////////////////////////////
 
 #define COMPACTOR_MIN_SIZE (128 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief re-try compaction of a specific collection in this interval (in s)
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_COLLECTION_INTERVAL (15.0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compactify interval in microseconds
@@ -265,6 +285,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
   if (datafile->isPhysical(datafile)) {
+    // copy the current filename
     copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, datafile->_filename);
 
     ok = TRI_RenameDatafile(datafile, filename);
@@ -979,6 +1000,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   TRI_primary_collection_t* primary;
   TRI_vector_t vector;
+  uint64_t maxSize;
   int64_t numAlive;
   size_t i, n;
   bool compactNext;
@@ -1005,6 +1027,15 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     return false;
   }
 
+  // get maximum size of result file
+  maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) primary->base._info._maximalSize;
+  if (maxSize < 8 * 1024 * 1024) {
+    maxSize = 8 * 1024 * 1024;
+  }
+  if (maxSize >= COMPACTOR_MAX_RESULT_FILESIZE) {
+    maxSize = COMPACTOR_MAX_RESULT_FILESIZE;
+  }
+
   // copy datafile information
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
   numAlive = 0;
@@ -1013,6 +1044,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
     compaction_info_t compaction;
+    uint64_t totalSize = 0;
     bool shouldCompact;
   
     df = primary->base._datafiles._buffer[i];
@@ -1024,7 +1056,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     if (dfi == NULL) {
       continue;
     }
-  
+
     shouldCompact = false;
   
     if (! compactNext && 
@@ -1034,8 +1066,8 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       shouldCompact = true;
       compactNext = true;
     }
-    else if (numAlive == 0 && dfi->_numberDeletion > 0) {
-      // compact first datafile already if it has got some deletions
+    else if (numAlive == 0 && dfi->_numberAlive == 0 && dfi->_numberDeletion > 0) {
+      // compact first datafile(s) already if they have some deletions
       shouldCompact = true;
       compactNext = true;
     }
@@ -1066,9 +1098,12 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       }
     }
     
-    LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
+    totalSize += (uint64_t) df->_maximalSize;
+    
+    LOG_TRACE("found datafile eligible for compaction: '%s', fid: %llu, size: %llu "
               "numberDead: %llu, numberAlive: %llu, numberTransaction: %llu, numberDeletion: %llu, "
               "sizeDead: %llu, sizeAlive: %llu, sizeTransaction: %llu",
+              df->getName(df),
               (unsigned long long) df->_fid,
               (unsigned long long) df->_maximalSize,
               (unsigned long long) dfi->_numberDead,
@@ -1091,7 +1126,8 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     // delete the collection in the middle of compaction, but the compactor
     // will not pick this up as it is read-locking the collection status)
 
-    if (TRI_LengthVector(&vector) >= COMPACTOR_MAX_FILES) {
+    if (TRI_LengthVector(&vector) >= COMPACTOR_MAX_FILES ||
+        totalSize >= maxSize) {
       // found enough to compact
       break;
     }
@@ -1393,10 +1429,11 @@ void TRI_CompactorVocBase (void* data) {
   while (true) {
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state;
-  
+ 
     // check if compaction is currently disallowed
     if (CheckAndLockCompaction(vocbase)) {
       // compaction is currently allowed
+      double now = TRI_microtime();
       size_t i, n;
       numCompacted = 0;
 
@@ -1444,19 +1481,27 @@ void TRI_CompactorVocBase (void* data) {
               TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
               continue;
             }
-
-            ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
-
-            if (ce == NULL) {
-              // out of memory
-              LOG_WARNING("out of memory when trying to create a barrier element");
-            }
-            else {
-              worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
-
-              TRI_FreeBarrier(ce);
-            }
           
+            if (primary->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
+              // only compact if last compaction is a while ago
+              ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
+
+              if (ce == NULL) {
+                // out of memory
+                LOG_WARNING("out of memory when trying to create a barrier element");
+              }
+              else {
+                worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
+
+                if (! worked) {
+                  // set compaction stamp
+                  primary->_lastCompaction = now;
+                }
+  
+                TRI_FreeBarrier(ce);
+              }
+            }
+        
             // read-unlock the compaction lock
             TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
           }
