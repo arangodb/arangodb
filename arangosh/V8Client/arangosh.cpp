@@ -1667,8 +1667,8 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
   }
 
-  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
-  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
   // run tests
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
