@@ -27,6 +27,10 @@ monitoring of the server.
 @copydetails JSF_get_admin_statistics_description
 
 @CLEARPAGE
+@anchor HttpSystemAdminServerRole
+@copydetails JSF_get_admin_server_role
+
+@CLEARPAGE
 @anchor HttpSystemAdminDescriptionShardingGET
 @copydetails JSF_cluster_test_GET
 
