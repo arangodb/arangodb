@@ -59,6 +59,7 @@ In addition you will need the following library:
 
 - the GNU readline library
 - the OpenSSL library
+- Go 1.2 (or higher)
 
 Under Mac OS X you also need to install:
 
@@ -131,7 +132,7 @@ Use your favorite browser to access the URL
 
 This should produce a JSON object like
 
-    {"server" : "arango", "version" : "1.x.y"}
+    {"server" : "arango", "version" : "..."}
 
 as result.
 
@@ -179,6 +180,7 @@ Verify that your system contains
 - the GNU scanner generator FLEX, at least version 2.3.35
 - the GNU parser generator BISON, at least version 2.4
 - Python, version 2 or 3
+- Go, version 1.2 or higher
 
 In addition you will need the following libraries
 
@@ -201,8 +203,9 @@ Install or download the prerequisites
 - SCons for compiling V8 (see http://www.scons.org)
 - libev (see http://software.schmorp.de/pkg/libev.html) 
 - OpenSSL (http://openssl.org/)
+- Go (http://golang.org/)
 
-if necessary.  Most linux systems already supply RPM or DEP for these
+if necessary. Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
 
 Download the Source{#DownloadSourceDevel}
@@ -265,10 +268,10 @@ When used, you can start ArangoDB using this command:
 ArangoDB will then automatically use the configuration from file `etc/relative/arangod.conf`.
 
 `--enable-all-in-one-libev` tells the build system to use the bundled version
-of LIBEV instead of using the system version.
+of libev instead of using the system version.
 
 `--disable-all-in-one-libev` tells the build system to use the installed
-system version of LIBEV instead of compiling the supplied version from the
+system version of libev instead of compiling the supplied version from the
 3rdParty directory in the make run.
 
 `--enable-all-in-one-v8` tells the build system to use the bundled version of
@@ -285,6 +288,16 @@ ICU instead of using the system version.
 version of ICU instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
+`--enable-all-in-one-boost` tells the build system to use the bundled version of
+Boost header files. This is the default and recommended.
+
+`--enable-all-in-one-etcd` tells the build system to use the bundled version 
+of ETCD. This is the default and recommended.
+
+`--enable-internal-go` tells the build system to use Go binaries located in the
+3rdParty directory. Note that ArangoDB does not ship with Go binaries, and that
+the Go binaries must be copied into this directory manually.
+
 `--enable-maintainer-mode` tells the build system to use BISON and FLEX to
 regenerate the parser and scanner files. If disabled, the supplied files will be
 used so you cannot make changes to the parser and scanner files.  You need at
@@ -293,5 +306,34 @@ to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
+
+Compiling Go{#CompilingDevelGo}
+-------------------------------
+
+Users F21 and duralog told us that some systems don't provide an 
+update-to-date version of go. This seems to be the case for at least Ubuntu 
+12 and 13. To install go on these system, you may follow the instructions 
+provided @EXTREF{http://blog.labix.org/2013/06/15/in-flight-deb-packages-of-go,here}.
+For other systems, you may follow the instructions 
+@EXTREF{http://golang.org/doc/install,here}.
+
+To make ArangoDB use a specific version of go, you may copy the go binaries
+into the 3rdParty/go-32 or 3rdParty/go-64 directories of ArangoDB (depending
+on your architecture), and then tell ArangoDB to use this specific go version
+by using the `--enable-internal-go` configure option.
+
+User duralog provided some the following script to pull the latest release 
+version of go into the ArangoDB source directory and build it:
+
+    cd ArangoDB
+    hg clone -u release https://code.google.com/p/go 3rdParty/go-64 && \
+      cd 3rdParty/go-64/src && \
+      ./all.bash
+
+    # now that go is installed, run your configure with --enable-internal-go
+    ./configure\
+      --enable-all-in-one-v8 \
+      --enable-all-in-one-libev \
+      --enable-internal-go
 
 @BNAVIGATE_Compiling

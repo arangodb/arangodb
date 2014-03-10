@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, plannerTemplateEngine */
+/*global window, $, Backbone, templateEngine, alert, _ */
 
 (function() {
   "use strict";
@@ -26,12 +26,11 @@
     },
 
     startPlan: function() {
-      var isDBServer;
-      var isCoordinator;
       var self = this;
       var data = {dispatchers: []};
       var foundCoordinator = false;
       var foundDBServer = false;
+      /*jslint unparam: true*/
       $(".dispatcher").each(function(i, dispatcher) {
           var host = $(".host", dispatcher).val();
           var port = $(".port", dispatcher).val();
@@ -51,7 +50,8 @@
           foundDBServer = foundDBServer || hostObject.isDBServer;
 
           data.dispatchers.push(hostObject);
-      })
+      });
+      /*jslint unparam: false*/
       if (!self.isSymmetric) {
         if (!foundDBServer) {
             alert("Please provide at least one database server");
@@ -74,10 +74,11 @@
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       delete window.App.clusterPlan._coord;
+      /*jslint unparam: true*/
       window.App.clusterPlan.save(
         data,
         {
-          success : function(info) {
+          success : function() {
             $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
             $('#waitModalLayer').modal('hide');
             window.App.updateAllUrls();
@@ -90,6 +91,7 @@
           }
         }
       );
+      /*jslint unparam: false*/
     },
 
     addEntry: function() {
@@ -108,19 +110,19 @@
     },
 
     render: function(isSymmetric) {
+      var params = {},
+        isFirst = true,
+        config = window.App.clusterPlan.get("config");
       this.isSymmetric = isSymmetric;
       $(this.el).html(this.template.render({
         isSymmetric : isSymmetric,
         params      : params
       }));
-      var params = {},
-        isFirst = true,
-        config = window.App.clusterPlan.get("config");
       if (config) {
         var self = this,
         isCoordinator = false,
         isDBServer = false;
-        _.each(config.dispatchers, function(dispatcher, key) {
+        _.each(config.dispatchers, function(dispatcher) {
           if (dispatcher.allowDBservers === undefined) {
             isDBServer = true;
           } else {
@@ -131,9 +133,7 @@
           } else {
             isCoordinator = dispatcher.allowCoordinators;
           }
-          var host = dispatcher.endpoint,
-            ip,
-            port;
+          var host = dispatcher.endpoint;
           host = host.split("//")[1];
           host = host.split(":");
           var template = self.entryTemplate.render({

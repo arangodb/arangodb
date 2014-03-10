@@ -129,11 +129,11 @@ module.exports = function(karma) {
       'frontend/js/models/foxx.js',
       'frontend/js/models/notification.js',
       'frontend/js/models/graph.js',
-      'frontend/js/models/clusterServer.js',
-      'frontend/js/models/clusterCoordinator.js',
-      'frontend/js/models/clusterDatabase.js',
-      'frontend/js/models/clusterCollection.js',
-      'frontend/js/models/clusterShard.js',
+      'clusterFrontend/js/models/clusterServer.js',
+      'clusterFrontend/js/models/clusterCoordinator.js',
+      'clusterFrontend/js/models/clusterDatabase.js',
+      'clusterFrontend/js/models/clusterCollection.js',
+      'clusterFrontend/js/models/clusterShard.js',
 
       // Collections
       'frontend/js/collections/arangoCollections.js',
@@ -146,11 +146,11 @@ module.exports = function(karma) {
       'frontend/js/collections/arangoStatisticsDescriptionCollection.js',
       'frontend/js/collections/foxxCollection.js',
       'frontend/js/collections/graphCollection.js',
-      'frontend/js/collections/clusterServers.js',
-      'frontend/js/collections/clusterCoordinators.js',
-      'frontend/js/collections/clusterDatabases.js',
-      'frontend/js/collections/clusterCollections.js',
-      'frontend/js/collections/clusterShards.js',
+      'clusterFrontend/js/collections/clusterServers.js',
+      'clusterFrontend/js/collections/clusterCoordinators.js',
+      'clusterFrontend/js/collections/clusterDatabases.js',
+      'clusterFrontend/js/collections/clusterCollections.js',
+      'clusterFrontend/js/collections/clusterShards.js',
       'frontend/js/collections/notificationCollection.js',
 
       // Views
@@ -170,9 +170,7 @@ module.exports = function(karma) {
       'frontend/js/views/logsView.js',
       'frontend/js/views/applicationsView.js',
       'frontend/js/views/foxxActiveView.js',
-      'frontend/js/views/foxxActiveListView.js',
       'frontend/js/views/foxxInstalledView.js',
-      'frontend/js/views/foxxInstalledListView.js',
       'frontend/js/views/foxxEditView.js',
       'frontend/js/views/foxxMountView.js',
       'frontend/js/views/appDocumentationView.js',
@@ -195,13 +193,9 @@ module.exports = function(karma) {
       'frontend/js/views/userBarView.js',
 
       //Views Planner
-      'plannerFrontend/js/views/planScenarioSelectorView.js',
-      'plannerFrontend/js/views/planSymmetricView.js',
-      'plannerFrontend/js/views/planTestView.js',
-
-      // Router
-      'frontend/js/routers/router.js',
-      'plannerFrontend/js/routers/clusterRouter.js',
+      'clusterFrontend/js/views/planScenarioSelectorView.js',
+      'clusterFrontend/js/views/planSymmetricView.js',
+      'clusterFrontend/js/views/planTestView.js',
 
       //Views cluster
       'clusterFrontend/js/views/showClusterView.js',
@@ -281,7 +275,6 @@ module.exports = function(karma) {
       'test/specs/planner/views/planSymmetricViewSpec.js',
       'test/specs/planner/views/planTestViewSpec.js',
       'test/specs/planner/views/planScenarioSelectorViewSpec.js',
-
       'test/specJSLint/jsLintSpec.js'
     ],
 
