@@ -73,14 +73,19 @@ int TRI_closesocket (TRI_socket_t s) {
     if (res != 0) {
       LOG_WARNING("socket close error: %d", WSAGetLastError());
     }
-    if (s.fileDescriptor != -1) {
-      res = _close(s.fileDescriptor);
-      /*
-      To close a file opened with _open_osfhandle, call _close.
-      The underlying handle is also closed by a call to _close,
-      so it is not necessary to call the Win32 function CloseHandle on the original handle.
-      */
-    }
+    // We patch libev on Windows lightly to not really distinguish between
+    // socket handles and file descriptors, therefore, we do not have to do the 
+    // following any more:
+    // if (s.fileDescriptor != -1) {
+    //   res = _close(s.fileDescriptor);
+         // "To close a file opened with _open_osfhandle, call _close."
+         // The underlying handle is also closed by a call to _close,
+         // so it is not necessary to call the Win32 function CloseHandle 
+         // on the original handle.
+    // However, we do want to do the special shutdown/recv magic above
+    // because only then we can reuse the port quickly, which we want
+    // to do directly after a port test.
+    // }
   }
 #else
     if (s.fileDescriptor != TRI_INVALID_SOCKET) {
