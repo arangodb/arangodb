@@ -7,11 +7,13 @@
 
   describe("Collection View", function() {
 
-    var myView;
-    window.App = function() {};
-    window.App.navigate = function() {};
+    var myView, oldRouter;
+
 
     beforeEach(function() {
+      oldRouter = window.App;
+      window.App = function() {};
+      window.App.navigate = function() {};
       $('body').append('<div id="content" class="removeMe"></div>');
 
       myView = new window.CollectionView({
@@ -22,6 +24,7 @@
 
     afterEach(function() {
       $('.removeMe').remove();
+      window.App = oldRouter;
     });
 
 
