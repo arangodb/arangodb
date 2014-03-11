@@ -11,6 +11,7 @@
       div;  
     
     beforeEach(function() {
+      window.App = {navigate : function(){}};
       div = document.createElement("div");
       div.id = "content"; 
       document.body.appendChild(div);
