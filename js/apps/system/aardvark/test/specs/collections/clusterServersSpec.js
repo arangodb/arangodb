@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, */
+/*global describe, beforeEach, afterEach, it, jasmine, */
 /*global spyOn, expect*/
 /*global templateEngine, $, _, uiMatchers*/
 (function() {
