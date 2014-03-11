@@ -70,11 +70,11 @@
       it("Check if System Collections should be drawn", function() {
         myView.render();
         var wasRendered;
-        $('#checkSystem').click();
 
         spyOn(myView, 'render').andCallFake(function(request) {
           wasRendered = true;
         });
+        $('#checkSystem').click();
         myView.checkSystem();
         expect(wasRendered).toBeTruthy();
       });
@@ -93,11 +93,11 @@
       it("Check if Edge Collections should be drawn", function() {
         myView.render();
         var wasRendered;
-        $('#checkEdge').click();
-
         spyOn(myView, 'render').andCallFake(function(request) {
           wasRendered = true;
         });
+
+        $('#checkEdge').click();
         myView.checkEdge();
         expect(wasRendered).toBeTruthy();
       });
@@ -116,11 +116,11 @@
       it("Check if Document Collections should be drawn", function() {
         myView.render();
         var wasRendered;
-        $('#checkDocument').click();
-
         spyOn(myView, 'render').andCallFake(function(request) {
           wasRendered = true;
         });
+
+        $('#checkDocument').click();
         myView.checkDocument();
         expect(wasRendered).toBeTruthy();
       });
@@ -139,11 +139,11 @@
       it("Check if Loaded Collections should be drawn", function() {
         myView.render();
         var wasRendered;
-        $('#checkLoaded').click();
-
         spyOn(myView, 'render').andCallFake(function(request) {
           wasRendered = true;
         });
+
+        $('#checkLoaded').click();
         myView.checkLoaded();
         expect(wasRendered).toBeTruthy();
       });
@@ -162,13 +162,15 @@
       it("Check if Unloaded Collections should be drawn", function() {
         myView.render();
         var wasRendered;
-        $('#checkUnloaded').click();
-
         spyOn(myView, 'render').andCallFake(function(request) {
           wasRendered = true;
         });
-        myView.checkUnloaded();
+
+        $('#checkUnloaded').click();
         expect(wasRendered).toBeTruthy();
+        wasRendered =false;
+        myView.checkUnloaded();
+        expect(wasRendered).toBeFalsy();
       });
 
       it("Check if Name Sort is inactive", function() {

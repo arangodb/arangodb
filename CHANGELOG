@@ -1,3 +1,21 @@
+v2.1.0 (XXXX-XX-XX)
+-------------------
+
+* removed arangod command line option `--database.remove-on-compacted`
+
+
+v2.0.0 (2014-03-10)
+-------------------
+
+* first 2.0 release
+
+
+v2.0.0-rc2 (2014-03-07)
+-----------------------
+
+* fixed cluster authorization
+
+
 v2.0.0-rc1 (2014-02-28)
 -----------------------
 
@@ -217,7 +235,16 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.12 (XXXX-XX-XX)
+v1.4.13 (XXXX-XX-XX)
+--------------------
+
+* fixed too eager compaction
+  
+  The compaction will now wait for several seconds before trying to re-compact the same
+  collection. Additionally, some other limits have been introduced for the compaction.
+ 
+
+v1.4.12 (2014-03-05)
 --------------------
 
 * fixed display bug in web interface which caused the following problems:
