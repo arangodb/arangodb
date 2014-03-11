@@ -1155,3 +1155,17 @@ div img.searchSubmitIcon {
 
 .searchField {
   margin-left: 15px; }
+
+.shortcuts {
+  font-size: 11px;
+  font-weight: 200; }
+
+.shortcuts b {
+  border-left: 1px solid rgba(0, 0, 0, 0.34);
+  padding-left: 5px;
+  margin-left: 5px; }
+
+.shortcuts b:first-child {
+  border-left: 0;
+  padding-left: 0;
+  margin-left: 0; }
