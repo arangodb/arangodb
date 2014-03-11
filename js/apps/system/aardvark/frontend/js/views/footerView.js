@@ -7,6 +7,7 @@
     el: '#footerBar',
     system: {},
     isOffline: true,
+    isOfflineCounter: 0,
     firstLogin: true,
 
     initialize: function () {
@@ -34,6 +35,7 @@
         success: function(data) {
           if (self.isOffline === true) {
             self.isOffline = false;
+            self.isOfflineCounter = 0;
             if (!self.firstLogin) {
               window.setTimeout(function(){
                 //Heiko: notification for connected server
@@ -48,7 +50,10 @@
         },
         error: function (data) {
           self.isOffline = true;
-          arangoHelper.arangoError("Server", "Server is offline");
+          self.isOfflineCounter++;
+          if (self.isOfflineCounter >= 3) {
+            arangoHelper.arangoError("Server", "Server is offline");
+          }
         }
       });
 
