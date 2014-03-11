@@ -83,7 +83,7 @@ nav.navbar, footer.footer {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1007,7 +1007,7 @@ select.filterSelect {
 .createModalDialog table {
   width: 100%; }
 
-.userMenuImg {
+.user-menu-img {
   background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
@@ -1020,11 +1020,11 @@ select.filterSelect {
   white-space: normal !important;
   word-wrap: break-word !important; }
 
-.indexTooltip {
+.index-tooltip {
   color: #736b68; }
-  .indexTooltip:hover {
+  .index-tooltip:hover {
     color: black; }
-  .indexTooltip span.arangoicon {
+  .index-tooltip span.arangoicon {
     font-size: 18px !important; }
 
 .dbselection {

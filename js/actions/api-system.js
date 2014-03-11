@@ -133,7 +133,27 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current server role
+/// @fn JSF_get_admin_server_role
+/// @brief returns the role of a server in a cluster
+///
+/// @RESTHEADER{GET /_admin/server/role,returns the role of a server in a cluster}
+///
+/// @RESTDESCRIPTION
+///
+/// Returns the role of a server in a cluster.
+/// The role is returned in the `role` attribute of the result.
+/// Possible return values for `role` are:
+/// - `COORDINATOR`: the server is a coordinator in a cluster
+/// - `PRIMARY`: the server is a primary database server in a cluster
+/// - `SECONDARY`: the server is a secondary database server in a cluster
+/// - `UNKNOWN`: in a cluster, `UNKNOWN` is returned if the server role cannot be 
+///    determined. On a single server, `UNKNOWN` is the only possible return
+///    value.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned in all cases.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

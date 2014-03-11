@@ -450,20 +450,6 @@ namespace triagens {
         bool _disableReplicationApplier;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove on compaction
-///
-/// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
-///
-/// Normally the garbage collection will removed compacted datafile. For debug
-/// purposes you can use this option to keep the old datafiles. You should
-/// never set it to @LIT{false} on a live system.
-///
-/// The default is @LIT{true}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _removeOnCompacted;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on drop
 ///
 /// @CMDOPT{\--database.remove-on-drop @CA{flag}}

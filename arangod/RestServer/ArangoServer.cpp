@@ -313,7 +313,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
-    _removeOnCompacted(true),
     _removeOnDrop(true),
     _server(0) {
 
@@ -527,10 +526,6 @@ void ArangoServer::buildApplicationServer () {
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
-  ;
-
-  additional["DATABASE Options:help-devel"]
-    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
 
   // deprecated options
@@ -1016,7 +1011,6 @@ void ArangoServer::openDatabases () {
   // override with command-line options
   defaults.defaultMaximalSize               = _defaultMaximalSize;
   defaults.removeOnDrop                     = _removeOnDrop;
-  defaults.removeOnCompacted                = _removeOnCompacted;
   defaults.defaultWaitForSync               = _defaultWaitForSync;
   defaults.forceSyncProperties              = _forceSyncProperties;
   defaults.requireAuthentication            = ! _disableAuthentication;

@@ -28,6 +28,7 @@
   border-bottom: 0px;
   height: 27px;
   background-color: #F0F0F0;
+  font-size: 20px;
 }
 
 #editorToolbar {
@@ -301,7 +302,6 @@
 }
 
 #queryDiv .icon_arangodb {
-  font-size: 20px;
   margin-bottom: 5px;
 }
 
