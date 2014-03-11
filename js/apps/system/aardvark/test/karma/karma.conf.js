@@ -258,6 +258,7 @@ module.exports = function(karma) {
       'test/specs/views/graphViewSpec.js',
       'test/specs/views/graphManagementViewSpec.js',
       'test/specs/views/addNewGraphViewSpec.js',
+      /*
       'test/specs/views/clusterDashboardViewSpec.js',
       'test/specs/views/clusterOverviewViewSpec.js',
       'test/specs/views/clusterServerViewSpec.js',
@@ -265,6 +266,7 @@ module.exports = function(karma) {
       'test/specs/views/clusterDatabaseViewSpec.js',
       'test/specs/views/clusterCollectionViewSpec.js',
       'test/specs/views/clusterShardsViewSpec.js',
+      */
       // Router
       'test/specs/router/routerSpec.js',
 
