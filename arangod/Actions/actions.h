@@ -54,7 +54,7 @@ namespace triagens {
 class TRI_action_result_t {
   public:
     TRI_action_result_t ()
-      : isValid(false), response(0), requeue(false), sleep(0.0) {
+      : isValid(false), requeue(false), response(0), sleep(0.0) {
     }
 
     // Please be careful here: In the beginning we had "bool requeue" after
