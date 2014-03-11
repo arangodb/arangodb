@@ -8,9 +8,15 @@
 
   describe("Cluster Collections Collection", function() {
 
-    var col, list, c1, c2, c3;
+    var col, list, c1, c2, c3, oldRouter;
 
     beforeEach(function() {
+      oldRouter = window.App;
+      window.App = {
+        registerForUpdate: function(){},
+        addAuth: function(){},
+        getNewRoute: function(){}
+      };
       list = [];
       c1 = {name: "Documents", id: "123"};
       c2 = {name: "Edges", id: "321"};
@@ -29,7 +35,8 @@
         col.fetch.reset();
         col.getList();
         expect(col.fetch).toHaveBeenCalledWith({
-          async: false
+          async: false,
+          beforeSend: jasmine.any(Function)
         });
       });
       
