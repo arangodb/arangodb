@@ -1209,7 +1209,9 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   if (type != TRI_DF_MARKER_HEADER && 
       type != TRI_DF_MARKER_FOOTER &&
-      type != TRI_COL_MARKER_HEADER) {
+      type != TRI_COL_MARKER_HEADER &&
+      type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     // check _tick value of marker and set min/max tick values for datafile
