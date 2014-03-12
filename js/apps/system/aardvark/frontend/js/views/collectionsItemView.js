@@ -17,12 +17,15 @@
     },
     events: {
       'click .pull-left' : 'noop',
-      'click #editCollection' : 'editProperties',
+      'click .icon_arangodb_settings2' : 'editProperties',
+//      'click #editCollection' : 'editProperties',
       'click .spanInfo' : 'showProperties',
       'click': 'selectCollection'
     },
     render: function () {
-      $(this.el).html(this.template.render(this.model));
+      $(this.el).html(this.template.render({
+        model: this.model
+      }));
       return this;
     },
 
