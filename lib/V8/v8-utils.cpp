@@ -218,7 +218,7 @@ static bool LoadJavaScriptDirectory (char const* path,
 
     filename = files._buffer[i];
 
-    if (! regexec(&re, filename, 0, 0, 0) == 0) {
+    if (regexec(&re, filename, 0, 0, 0) != 0) {
       continue;
     }
 

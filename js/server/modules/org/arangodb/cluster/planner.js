@@ -55,8 +55,10 @@ var PlannerLocalDefaults = {
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}}
+  "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
                               // this means only we as a local instance
+  "useSSLonDBservers"       : false,
+  "useSSLonCoordinators"    : false
 };
   
 // Some helpers using underscore:
@@ -156,6 +158,14 @@ PortFinder.prototype.next = function () {
   }
 };
  
+function exchangeProtocol (endpoint, useSSL) {
+  var pos = endpoint.indexOf("://");
+  if (pos !== -1) {
+    return (useSSL ? "ssl" : "tcp") + endpoint.substr(3);
+  }
+  return (useSSL ? "ssl://" : "tcp://") + endpoint;
+}
+    
 function exchangePort (endpoint, newport) {
   var pos = endpoint.lastIndexOf(":");
   if (pos < 0) {
@@ -170,6 +180,17 @@ function getAddrPort (endpoint) {
     return endpoint.substr(pos+3);
   }
   return endpoint;
+}
+
+function endpointToURL (endpoint) {
+  if (endpoint.substr(0,6) === "ssl://") {
+    return "https://" + endpoint.substr(6);
+  }
+  var pos = endpoint.indexOf("://");
+  if (pos === -1) {
+    return "http://" + endpoint;
+  }
+  return "http" + endpoint.substr(pos);
 }
 
 function getAddr (endpoint) {
@@ -322,6 +343,10 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     DBservers. The same comments as for `agentExtPorts` apply.
 ///   - `coordinatorPorts`: a list of port numbers to use for the
 ///     coordinators. The same comments as for `agentExtPorts` apply.
+///   - `useSSLonDBservers`: a boolean flag indicating whether or not 
+///     we use SSL on all DBservers in the cluster
+///   - `useSSLonCoordinators`: a boolean falg indicating whether or not
+///     we use SSL on all coordinators in the cluster
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
@@ -344,8 +369,10 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///       "agentIntPorts"           : [7001],
 ///       "DBserverPorts"           : [8629],
 ///       "coordinatorPorts"        : [8530],
-///       "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}}
+///       "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
 ///                                   // this means only we as a local instance
+///       "useSSLonDBservers"       : false,
+///       "useSSLonCoordinators"    : false
 ///     };
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -519,18 +546,22 @@ Planner.prototype.makePlan = function() {
   tmp.MapLocalToEndpoint = {};  // will stay empty for now
   var map = tmp.MapIDToEndpoint = {};
   var s;
+  var ep;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
     dbs[s.id] = '"none"';
-    map[s.id] = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
+    ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
+    ep = exchangeProtocol(ep, config.useSSLonDBservers);
+    map[s.id] = '"'+ep+'"';
     launchers[s.dispatcher].DBservers.push(s.id);
   }
   var coo = tmp.Coordinators = {};
   for (i = 0; i < coordinators.length; i++) {
     s = coordinators[i];
     coo[s.id] = '"none"';
-    map[s.id] 
-           = '"'+exchangePort(dispatchers[s.dispatcher].endpoint,s.port)+'"';
+    ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
+    ep = exchangeProtocol(ep, config.useSSLonCoordinators);
+    map[s.id] = '"' + ep + '"';
     launchers[s.dispatcher].Coordinators.push(s.id);
   }
   tmp.Databases = { "_system" : '{"name":"_system", "id":"1"}' };
@@ -579,7 +610,7 @@ Planner.prototype.makePlan = function() {
              "agentPath": config.agentPath,
              "onlyLocalhost": config.onlyLocalhost };
     for (j = 0; j < i; j++) {
-      var ep = dispatchers[agents[j].dispatcher].endpoint;
+      ep = dispatchers[agents[j].dispatcher].endpoint;
       tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
     }
     tmp.push(tmp2);
@@ -600,12 +631,15 @@ Planner.prototype.makePlan = function() {
                 "logPath": config.logPath,
                 "arangodPath": config.arangodPath,
                 "onlyLocalhost": config.onlyLocalhost,
-                "agency": copy(agencyPos) } );
+                "agency": copy(agencyPos),
+                "useSSLonDBservers": config.useSSLonDBservers,
+                "useSSLonCoordinators": config.useSSLonCoordinators } );
   }
   var c = coordinators[0];
   var e = exchangePort(dispatchers[c.dispatcher].endpoint,c.port);
+  e = exchangeProtocol(e, config.useSSLonCoordinators);
   tmp.push( { "action": "createSystemColls",
-              "url": "http://"+getAddrPort(e) });
+              "url": endpointToURL(e) });
   this.myname = "me";
 };
 
@@ -629,9 +663,11 @@ Planner.prototype.getPlan = function() {
 exports.PortFinder = PortFinder;
 exports.Planner = Planner;
 exports.exchangePort = exchangePort;
+exports.exchangeProtocol = exchangeProtocol;
 exports.getAddrPort = getAddrPort;
 exports.getPort = getPort;
 exports.getAddr = getAddr;
+exports.endpointToURL = endpointToURL;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
