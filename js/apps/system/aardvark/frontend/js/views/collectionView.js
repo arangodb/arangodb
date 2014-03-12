@@ -24,7 +24,7 @@
       return this;
     },
     events: {
-      "click #save-modified-collection"       :    "saveModifiedCollection(true)",
+      "click #save-modified-collection"       :    "saveModifiedCollection",
       "hidden #change-collection"             :    "hidden",
       "click #delete-modified-collection"     :    "deleteCollection",
       "click #load-modified-collection"       :    "loadCollection",
@@ -36,7 +36,7 @@
     },
     listenKey: function(e) {
       if (e.keyCode === 13) {
-        this.saveModifiedCollection(true);
+        this.saveModifiedCollection();
       }
     },
     hidden: function () {
@@ -97,11 +97,7 @@
       $('#change-collection-size').val(calculatedSize);
       $('#change-collection').modal('show');
     },
-    saveModifiedCollection: function(run) {
-
-      if (run !== true) {
-        return 0;
-      }
+    saveModifiedCollection: function() {
 
       var newname = $('#change-collection-name').val();
       if (newname === '') {

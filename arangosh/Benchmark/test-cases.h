@@ -256,11 +256,10 @@ struct ShapesTest : public BenchmarkOperation {
         }
         TRI_AppendStringStringBuffer(buffer, ",\"value");
         TRI_AppendUInt64StringBuffer(buffer, (uint64_t) ((globalCounter + i) % mod));
-        TRI_AppendStringStringBuffer(buffer, "\":\"");
-        TRI_AppendStringStringBuffer(buffer, "some bogus string value to fill up the datafile...");
+        TRI_AppendStringStringBuffer(buffer, "\":\"some bogus string value to fill up the datafile...\"");
       }
 
-      TRI_AppendStringStringBuffer(buffer, "\"}");
+      TRI_AppendStringStringBuffer(buffer, "}");
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
@@ -275,6 +274,191 @@ struct ShapesTest : public BenchmarkOperation {
       return (const char*) 0;
     }
   }
+
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                shapes append test
+// -----------------------------------------------------------------------------
+
+struct ShapesAppendTest : public BenchmarkOperation {
+  ShapesAppendTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~ShapesAppendTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      return string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 2);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+
+      return string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    return HttpRequest::HTTP_REQUEST_GET;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      const uint64_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 2);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      for (uint64_t i = 1; i <= n; ++i) {
+        uint64_t mod = Operations / 10;
+        if (mod < 100) {
+          mod = 100;
+        }
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt64StringBuffer(buffer, (uint64_t) ((globalCounter + i) % mod));
+        TRI_AppendStringStringBuffer(buffer, "\":\"some bogus string value to fill up the datafile...\"");
+      }
+
+      TRI_AppendStringStringBuffer(buffer, "}");
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = true;
+      char* ptr = TRI_StealStringBuffer(buffer); 
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) 0;
+    }
+  }
+
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                random shapes test
+// -----------------------------------------------------------------------------
+
+struct RandomShapesTest : public BenchmarkOperation {
+  RandomShapesTest ()
+    : BenchmarkOperation () {
+    _randomValue = TRI_UInt32Random();
+  }
+
+  ~RandomShapesTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      return string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 3);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+
+      return string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    else if (mod == 1) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else {
+      return HttpRequest::HTTP_REQUEST_DELETE;
+    }
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 3;
+
+    if (mod == 0) {
+      const uint64_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 3);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      uint32_t const t = _randomValue % (uint32_t) (globalCounter + threadNumber + 1);
+
+      for (uint64_t i = 1; i <= n; ++i) {
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt64StringBuffer(buffer, (uint64_t) (globalCounter + i));
+        if (t % 3 == 0) {
+          TRI_AppendStringStringBuffer(buffer, "\":true");
+        }
+        else if (t % 3 == 1) {
+          TRI_AppendStringStringBuffer(buffer, "\":null");
+        }
+        else
+          TRI_AppendStringStringBuffer(buffer, "\":\"some bogus string value to fill up the datafile...\"");
+      }
+
+      TRI_AppendStringStringBuffer(buffer, "}");
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = true;
+      char* ptr = TRI_StealStringBuffer(buffer); 
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) 0;
+    }
+  }
+
+  uint32_t _randomValue;
 
 };
 
@@ -1200,6 +1384,12 @@ static BenchmarkOperation* GetTestCase (const string& name) {
   }
   if (name == "shapes") {
     return new ShapesTest();
+  }
+  if (name == "shapes-append") {
+    return new ShapesAppendTest();
+  }
+  if (name == "random-shapes") {
+    return new RandomShapesTest();
   }
   if (name == "crud") {
     return new DocumentCrudTest();
