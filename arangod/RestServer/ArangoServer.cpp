@@ -469,10 +469,15 @@ void ArangoServer::buildApplicationServer () {
   // define server options
   // .............................................................................
 
+  // command-line only options
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
+  ;
+ 
+  // other options 
+  additional[ApplicationServer::OPTIONS_SERVER]
+    ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 

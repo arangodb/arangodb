@@ -756,7 +756,9 @@ testFuncs.dump = function (options) {
 var benchTodo = [
   ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
   ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
-  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16"],
+  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16", "--complexity","2"],
+  ["--requests","100000","--concurrency","2","--test","shapes-append", "--batch-size","16", "--complexity","4"],
+  ["--requests","100000","--concurrency","2","--test","random-shapes", "--batch-size","16", "--complexity","2"],
   ["--requests","1000","--concurrency","2","--test","version", "--batch-size", "16"],
   ["--requests","100","--concurrency","1","--test","version", "--batch-size", "0"],
   ["--requests","100","--concurrency","2","--test","document", "--batch-size",
