@@ -1,6 +1,9 @@
 v1.4.13 (XXXX-XX-XX)
 --------------------
 
+* allow startup options `temp-path` and `default-language` to be specified from the arangod
+  configuration file and not only from the command line
+
 * fixed too eager compaction
   
   The compaction will now wait for several seconds before trying to re-compact the same
