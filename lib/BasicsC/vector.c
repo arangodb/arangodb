@@ -339,30 +339,30 @@ void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
   return (void*) (vector->_buffer + pos * vector->_elementSize);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts an element at a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position) {
+int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t n) {
   char* newBuffer;
 
   // ...........................................................................
   // Check and see if we need to extend the vector
   // ...........................................................................
 
-  if (vector->_length >= vector->_capacity || position >= vector->_length) {
+  if (vector->_length >= vector->_capacity || n >= vector->_capacity) {
     size_t newSize = (size_t) (1 + (GROW_FACTOR * vector->_capacity));
 
-    if (position >= newSize) {
-      newSize = position + 1;
+    if (n >= newSize) {
+      newSize = n + 1;
     }
+    
+    assert(newSize > n);
 
     newBuffer = (char*) TRI_Allocate(vector->_memoryZone, newSize * vector->_elementSize, false);
 
     if (newBuffer == NULL) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     vector->_capacity = newSize;
@@ -375,20 +375,21 @@ void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t positio
     vector->_buffer = newBuffer;
   }
 
-  if (position < vector->_length) {
-    memmove(vector->_buffer + (vector->_elementSize * (position + 1)),
-            vector->_buffer + (vector->_elementSize * position),
-            vector->_elementSize * (vector->_length - position)
+  if (n < vector->_length) {
+    memmove(vector->_buffer + (vector->_elementSize * (n + 1)),
+            vector->_buffer + (vector->_elementSize * n),
+            vector->_elementSize * (vector->_length - n)
            );
     vector->_length += 1;
   }
   else {
-    vector->_length = position + 1;
+    vector->_length = n + 1;
   }
 
-  memcpy(vector->_buffer + (vector->_elementSize * position), element, vector->_elementSize);
-}
+  memcpy(vector->_buffer + (vector->_elementSize * n), element, vector->_elementSize);
 
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an element at a given position
@@ -690,18 +691,19 @@ int TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t n) {
-
   // ...........................................................................
   // Check and see if we need to extend the vector
   // ...........................................................................
 
-  if (vector->_length >= vector->_capacity || n >= vector->_length) {
+  if (vector->_length >= vector->_capacity || n >= vector->_capacity) {
     void* newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
     if (n >= newSize) {
       newSize = n + 1;
     }
+
+    assert(newSize > n);
 
     newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(void*));
 
@@ -720,6 +722,8 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
             vector->_buffer + n,
             sizeof(void*) * (vector->_length - n));
   }
+
+  assert(vector->_capacity >= vector->_length);
 
   vector->_buffer[n] = element;
 
@@ -1081,18 +1085,19 @@ int TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n) {
-
   // ...........................................................................
   // Check and see if we need to extend the vector
   // ...........................................................................
 
-  if (n >= vector->_capacity || n >= vector->_length) {
+  if (n >= vector->_capacity || n >= vector->_capacity) {
     char** newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 
     if (n >= newSize) {
       newSize = n + 1;
     }
+    
+    assert(newSize > n);
 
     newBuffer = (char**) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(char*));
 
@@ -1109,6 +1114,8 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
             vector->_buffer + n,
             sizeof(char**) * (vector->_length - n));
   }
+  
+  assert(vector->_capacity >= vector->_length);
 
   vector->_length++;
   vector->_buffer[n] = element;
