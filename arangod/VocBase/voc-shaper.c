@@ -318,7 +318,7 @@ static void SetAttributeWeight (voc_shaper_t* shaper,
     return;
   }
 
-  TRI_InsertVectorPointer(&(shaper->_sortedAttributes), item, *searchResult);
+  TRI_InsertVectorPointer(&(shaper->_sortedAttributes), item, (size_t) (*searchResult));
 }
  
 ////////////////////////////////////////////////////////////////////////////////
