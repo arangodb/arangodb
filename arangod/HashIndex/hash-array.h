@@ -63,18 +63,6 @@ typedef struct TRI_hash_array_s {
   uint64_t _nrUsed; // the number of used entries
 
   struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
-
-#ifdef TRI_INTERNAL_STATS
-  uint64_t _nrFinds; // statistics: number of lookup calls
-  uint64_t _nrAdds; // statistics: number of insert calls
-  uint64_t _nrRems; // statistics: number of remove calls
-  uint64_t _nrResizes; // statistics: number of resizes
-
-  uint64_t _nrProbesF; // statistics: number of misses while looking up
-  uint64_t _nrProbesA; // statistics: number of misses while inserting
-  uint64_t _nrProbesD; // statistics: number of misses while removing
-  uint64_t _nrProbesR; // statistics: number of misses while adding
-#endif
 }
 TRI_hash_array_t;
 
