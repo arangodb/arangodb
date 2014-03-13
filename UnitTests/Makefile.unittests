@@ -363,6 +363,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-download.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
