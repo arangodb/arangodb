@@ -553,7 +553,6 @@ function rubyTests (options, ssl) {
       }
     }
   }
-  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
@@ -639,6 +638,11 @@ var impTodo = [
 ];
 
 testFuncs.importing = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
+    
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
@@ -731,6 +735,10 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.dump = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -782,7 +790,7 @@ testFuncs.arangob = function (options) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
-         benchTodo[i].indexOf("multitdx") === -1)) {
+         benchTodo[i].indexOf("multitrx") === -1)) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
       if (r !== 0 && !options.force) {
