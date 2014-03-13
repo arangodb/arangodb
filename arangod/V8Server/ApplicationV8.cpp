@@ -60,6 +60,32 @@ using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace std;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        class GlobalContextMethods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise code for pre-defined actions
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reload the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const GlobalContextMethods::CodeReloadRouting    = "require(\"org/arangodb/actions\").reloadRouting()";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the modules cache
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const GlobalContextMethods::CodeFlushModuleCache = "require(\"internal\").flushModuleCache()";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reload AQL functions
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const GlobalContextMethods::CodeReloadAql        = "try { require(\"org/arangodb/ahuacatl\").reload(); } catch (err) { }";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll store deprecated config option values in here
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,10 +154,25 @@ namespace {
 /// @brief adds a global method
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
-  MUTEX_LOCKER(_globalMethodsLock);
+bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+  GlobalContextMethods::MethodType type = GlobalContextMethods::getType(method);
 
-  _globalMethods.push_back(method);
+  if (type == GlobalContextMethods::TYPE_UNKNOWN) {
+    return false;
+  }
+
+  MUTEX_LOCKER(_globalMethodsLock);
+  
+  for (size_t i = 0; i < _globalMethods.size(); ++i) {
+    if (_globalMethods[i] == type) {
+      // action is already registered. no need to register it again
+      return true;
+    }
+  }
+
+  // insert action into vector
+  _globalMethods.push_back(type);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +182,7 @@ void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   v8::HandleScope scope;
 
-  vector<string> copy;
+  vector<GlobalContextMethods::MethodType> copy;
 
   {
     // we need to copy the vector of functions so we do not need to hold the
@@ -153,13 +194,14 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     _globalMethods.clear();
   }
 
-  for (vector<string>::const_iterator i = copy.begin();  i != copy.end();  ++i) {
-    string const& func = *i;
+  for (vector<GlobalContextMethods::MethodType>::const_iterator i = copy.begin();  i != copy.end();  ++i) {
+    GlobalContextMethods::MethodType const type = *i;
+    string const func = GlobalContextMethods::getCode(type);
 
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);
 
     TRI_ExecuteJavaScriptString(_context,
-                                v8::String::New(func.c_str()),
+                                v8::String::New(func.c_str(), func.size()),
                                 v8::String::New("global context method"),
                                 false);
   }
@@ -366,10 +408,16 @@ void ApplicationV8::exitContext (V8Context* context) {
 /// @brief adds a global context functions to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::addGlobalContextMethod (string const& method) {
+bool ApplicationV8::addGlobalContextMethod (string const& method) {
+  bool result = true;
+
   for (size_t i = 0; i < _nrInstances; ++i) {
-    _contexts[i]->addGlobalContextMethod(method);
+    if (! _contexts[i]->addGlobalContextMethod(method)) {
+      result = false;
+    }
   }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

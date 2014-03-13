@@ -10461,7 +10461,7 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;      
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require('internal').executeGlobalContextFunction('require(\\'org/arangodb/actions\\').reloadRouting()')"),
+                              v8::String::New("require('internal').executeGlobalContextFunction('reloadRouting')"),
                               v8::String::New("reload routing"),
                               false);
 }
