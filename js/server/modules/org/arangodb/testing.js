@@ -795,7 +795,7 @@ testFuncs.arangob = function (options) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
-         benchTodo[i].indexOf("multitdx") === -1)) {
+         benchTodo[i].indexOf("multitrx") === -1)) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
       if (r !== 0 && !options.force) {
