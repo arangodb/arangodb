@@ -82,7 +82,7 @@
       this.message = this.toString();
     };
   
-    exports.ArangoError.prototype = new Error(); //Error.prototype; //new Error(); //Error.prototype;
+    exports.ArangoError.prototype = new Error(); 
   } 
   
   exports.ArangoError.prototype._PRINT = function (context) {
