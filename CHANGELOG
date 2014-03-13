@@ -1,6 +1,9 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* don't requeue identical context methods in V8 threads in case a method is 
+  already registered
+
 * removed arangod command line option `--database.remove-on-compacted`
 
 
