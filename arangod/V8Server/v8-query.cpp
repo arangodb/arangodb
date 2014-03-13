@@ -2044,9 +2044,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       TRI_DestroyVector(&filtered);
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
-  }
-
-  if (0 < total) {
+    
     assert(barrier != 0);
 
     size_t s, e;
@@ -2054,7 +2052,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     for (size_t j = s; j < e; ++j) {
       TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-
+      
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier);
 
       if (doc.IsEmpty()) {
