@@ -1104,7 +1104,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // release the lock on the collection temporarily
     // this will allow other threads to check the collection's
     // status while it is loading (loading may take a long time because of
-    // disk activity)
+    // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     document = TRI_OpenDocumentCollection(vocbase, collection->_path);

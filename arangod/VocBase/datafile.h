@@ -214,6 +214,7 @@ typedef struct TRI_df_scan_s {
   TRI_vector_t   _entries;
 
   uint32_t _status;
+  bool _isSealed;
 }
 TRI_df_scan_t;
 
