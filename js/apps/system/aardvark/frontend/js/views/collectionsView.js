@@ -15,7 +15,7 @@
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
     render: function () {
-      var dropdownVisible = false; 
+      var dropdownVisible = false;
       if ($('#collectionsDropdown').is(':visible')) {
         dropdownVisible = true;
       }
@@ -40,6 +40,15 @@
           model: arango_collection
         }).render().el);
       }, this);
+
+      //if type in collectionsDropdown2 is changed,
+      // the page will be rerendered, so check the toggel button
+      if($('#collectionsDropdown2').css('display') === 'none') {
+        $('#collectionsToggle').removeClass('activated');
+
+      } else {
+        $('#collectionsToggle').addClass('activated');
+      }
 
       //append info icon for loaded collections
       /*
