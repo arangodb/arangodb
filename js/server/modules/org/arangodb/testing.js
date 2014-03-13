@@ -638,6 +638,11 @@ var impTodo = [
 ];
 
 testFuncs.importing = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
+    
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
@@ -730,6 +735,10 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.dump = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
