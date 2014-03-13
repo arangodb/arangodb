@@ -957,7 +957,7 @@ exports.mount = function (appId, mount, options) {
   }
 
   if (typeof options.reload === "undefined" || options.reload === true) {
-    executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    executeGlobalContextFunction("reloadRouting");
   }
 
   return { appId: app._id, mountId: doc._key, mount: mount };
@@ -1048,7 +1048,7 @@ exports.unmount = function (mount) {
 
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   return { appId: doc.app, mount: doc.mount, options: doc.options };
 };
@@ -1104,7 +1104,7 @@ exports.purge = function (key) {
   // remove the app
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
