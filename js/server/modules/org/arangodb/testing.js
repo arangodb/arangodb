@@ -553,7 +553,6 @@ function rubyTests (options, ssl) {
       }
     }
   }
-  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
