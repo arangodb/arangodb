@@ -10,6 +10,8 @@ v2.1.0 (XXXX-XX-XX)
 v2.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed startup options for arango-dfdb, added details option for arango-dfdb
+
 * fixed display of missing error messages and codes in arangosh
 
 * when creating a collection via the web interface, the collection type was always 
@@ -249,6 +251,10 @@ v2.0.0-rc1 (2014-02-28)
 
 v1.4.13 (XXXX-XX-XX)
 --------------------
+
+* added diagnostic output for Foxx application upload
+
+* allow dump & restore from ArangoDB 1.4 with an ArangoDB 2.0 server
 
 * allow startup options `temp-path` and `default-language` to be specified from the arangod
   configuration file and not only from the command line
