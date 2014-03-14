@@ -196,10 +196,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
   // get database name from request
   string dbName = request->databaseName();
 
-  LOG_INFO("LookupDatabaseFromRequest: %s",dbName.c_str());
-
   if (databases.empty()) {
-    LOG_INFO("LDFR: no databases defined");
     // no databases defined. this means all databases are accessible via the endpoint
 
     if (dbName.empty()) {
@@ -227,19 +224,15 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
       }
 
       // requested database not found
-      LOG_INFO("LDFR: database not found");
       if (! found) {
         return 0;
       }
     }
   }
-  LOG_INFO("LDFR: %s",dbName.c_str());
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    TRI_vocbase_t* v = TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
-    LOG_INFO("LDFR: %llu",(unsigned long long) v);
-    return v;
+    return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
   }
 #endif
 
