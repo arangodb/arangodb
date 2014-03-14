@@ -168,20 +168,12 @@ function PrintEntries (entries, amount) {
 /// @brief checks a datafile deeply
 ////////////////////////////////////////////////////////////////////////////////
 
-function DeepCheckDatafile (collection, type, datafile, scan, details) {
+function DeepCheckDatafile (collection, type, datafile, scan) {
   var entries = scan.entries;
-
-  printf("Entries\n");
 
   var lastGood = 0;
   var lastGoodPos = 0;
   var stillGood = true;
-
-  if (details) {
-    // print details
-    PrintEntries(entries, 10);
-    PrintEntries(entries, -10);
-  }
 
   for (var i = 0;  i < entries.length;  ++i) {
     var entry = entries[i];
@@ -356,12 +348,19 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     RemoveDatafile(collection, type, datafile);
     return;
   }
+  
+  if (details) {
+    // print details
+    printf("Entries\n");
+    PrintEntries(scan.entries, 10);
+    PrintEntries(scan.entries, -10);
+  }
 
   if (scan.status === 1 && scan.isSealed) {
     return;
   }
 
-  DeepCheckDatafile(collection, type, datafile, scan, details);
+  DeepCheckDatafile(collection, type, datafile, scan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
