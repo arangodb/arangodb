@@ -31,6 +31,7 @@
 
 #include "datafile.h"
 
+#include "BasicsC/conversions.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
@@ -421,6 +422,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
   scan._maximalSize = datafile->_maximalSize;
   scan._numberMarkers = 0;
   scan._status = 1;
+  scan._isSealed = false; // assume false
 
   if (datafile->_currentSize == 0) {
     end = datafile->_data + datafile->_maximalSize;
@@ -494,6 +496,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       scan._endPosition = currentSize;
+      scan._isSealed = true;
       return scan;
     }
 
@@ -1712,6 +1715,7 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
     TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
 
     scan._status = 5;
+    scan._isSealed = false;
   }
 
   return scan;

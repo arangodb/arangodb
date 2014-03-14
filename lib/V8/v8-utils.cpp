@@ -2275,7 +2275,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   if (gc) {
     // wait with gc
     v8::V8::LowMemoryNotification();
-    while(! v8::V8::IdleNotification()) {
+    while (! v8::V8::IdleNotification()) {
     }
 
     size_t i = 0;

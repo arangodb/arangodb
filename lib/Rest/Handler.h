@@ -98,10 +98,9 @@ namespace triagens {
                 }
 
                 case Handler::HANDLER_FAILED:
+                default:
                   return Job::status_t(Job::JOB_FAILED);
               }
-
-              return Job::status_t(Job::JOB_FAILED);
             }
 
             status_e status;
