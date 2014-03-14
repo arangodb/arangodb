@@ -42,6 +42,7 @@ var fs = require("fs");
 var wait = require("internal").wait;
 
 var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
+var exchangeProtocol = require("org/arangodb/cluster/planner").exchangeProtocol;
 
 var console = require("console");
 
@@ -52,6 +53,7 @@ var isHealthyActions = {};
 
 var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
 var getPort = require("org/arangodb/cluster/planner").getPort;
+var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
 
 function makePath (path) {
   return fs.join.apply(null,path.split("/"));
@@ -201,7 +203,7 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
     wait(1);
     return {"error":false, "isSendConfiguration": true};
   }
-  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys";
+  var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys";
   var res = sendToAgency(url, "", cmd.data);
   if (res === true) {
     return {"error":false, "isSendConfiguration": true};
@@ -219,7 +221,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
 
-  var url = "http://"+getAddrPort(cmd.agency.endpoints[0])+"/v2/keys/"+
+  var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
   console.info("Downloading %sLaunchers/%s", url, cmd.name);
   var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
@@ -255,11 +257,14 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     body = JSON.parse(res.body);
     ep = JSON.parse(body.node.value);
     port = getPort(ep);
+    var useSSL = false;
     if (roles[i] === "DBserver") {
       args = ["--configuration", ArangoServerState.dbserverConfig()];
+      useSSL = cmd.useSSLonDBservers;
     }
     else {
       args = ["--configuration", ArangoServerState.coordinatorConfig()];
+      useSSL = cmd.useSSLonCoordinators;
     }
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
@@ -269,10 +274,10 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
     if (cmd.onlyLocalhost) {
-      args.push("tcp://127.0.0.1:"+port);
+      args.push(exchangeProtocol("tcp://127.0.0.1:"+port,useSSL));
     }
     else {
-      args.push("tcp://0.0.0.0:"+port);
+      args.push(exchangeProtocol("tcp://0.0.0.0:"+port,useSSL));
     }
     args.push("--log.file");
     var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
@@ -303,7 +308,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
       arangodPath = ArangoServerState.arangodPath();
     }
     pids.push(executeExternal(arangodPath, args));
-    endpoints.push(exchangePort(dispatchers[cmd.dispatcher].endpoint,port));
+    ep = exchangePort(dispatchers[cmd.dispatcher].endpoint,port);
+    ep = exchangeProtocol(ep,useSSL);
+    endpoints.push(ep);
   }
 
   console.info("Waiting 3 seconds for servers to come to life...");
@@ -338,9 +345,10 @@ launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
-             'return load("'+fs.join(ArangoServerState.javaScriptPath(),
-                                     makePath("server/version-check.js"))+
-             '");\n';
+             'return load('+JSON.stringify(
+                                fs.join(ArangoServerState.javaScriptPath(),
+                                        makePath("server/version-check.js")))+
+             ');\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   if (r.code === 200) {
@@ -368,7 +376,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   var url;
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
-    url = "http://"+run.endpoints[i].substr(6)+"/_admin/shutdown";
+    url = endpointToURL(run.endpoints[i])+"/_admin/shutdown";
     var hdrs = {};
     if (dispatchers[cmd.dispatcher].username !== undefined &&
         dispatchers[cmd.dispatcher].passwd !== undefined) {
@@ -539,7 +547,7 @@ Kickstarter.prototype.launch = function () {
                                         "dispatchers": dispatchers,
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
-      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var url = endpointToURL(ep) + "/_admin/clusterDispatch";
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
@@ -633,7 +641,7 @@ Kickstarter.prototype.relaunch = function () {
                                         "dispatchers": dispatchers,
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
-      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var url = endpointToURL(ep) + "/_admin/clusterDispatch";
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
@@ -716,7 +724,7 @@ Kickstarter.prototype.shutdown = function() {
                                         "commands": [cmd] },
                                   "runInfo": [run],
                                   "myname": cmd.dispatcher });
-      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var url = endpointToURL(ep) + "/_admin/clusterDispatch";
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {
@@ -794,7 +802,7 @@ Kickstarter.prototype.cleanup = function() {
                                         "dispatchers": dispatchers,
                                         "commands": [cmd] },
                                   "myname": cmd.dispatcher });
-      var url = "http" + ep.substr(3) + "/_admin/clusterDispatch";
+      var url = endpointToURL(ep) + "/_admin/clusterDispatch";
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
           dispatchers[cmd.dispatcher].passwd !== undefined) {

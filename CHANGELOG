@@ -1,7 +1,24 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* don't requeue identical context methods in V8 threads in case a method is 
+  already registered
+
 * removed arangod command line option `--database.remove-on-compacted`
+
+
+v2.0.1 (XXXX-XX-XX)
+-------------------
+
+* bumped version in `X-Arango-Version` compatibility header sent by arangosh and other
+  client tools from `1.5` to `2.0`.
+
+* fixed startup options for arango-dfdb, added details option for arango-dfdb
+
+* fixed display of missing error messages and codes in arangosh
+
+* when creating a collection via the web interface, the collection type was always 
+  "document", regardless of the user's choice
 
 
 v2.0.0 (2014-03-10)
@@ -237,6 +254,13 @@ v2.0.0-rc1 (2014-02-28)
 
 v1.4.13 (XXXX-XX-XX)
 --------------------
+
+* added diagnostic output for Foxx application upload
+
+* allow dump & restore from ArangoDB 1.4 with an ArangoDB 2.0 server
+
+* allow startup options `temp-path` and `default-language` to be specified from the arangod
+  configuration file and not only from the command line
 
 * fixed too eager compaction
   

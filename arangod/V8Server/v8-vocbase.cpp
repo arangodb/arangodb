@@ -6076,6 +6076,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   result->Set(v8::String::New("endPosition"), v8::Number::New(scan._endPosition));
   result->Set(v8::String::New("numberMarkers"), v8::Number::New(scan._numberMarkers));
   result->Set(v8::String::New("status"), v8::Number::New(scan._status));
+  result->Set(v8::String::New("isSealed"), v8::Boolean::New(scan._isSealed));
 
   v8::Handle<v8::Array> entries = v8::Array::New();
   result->Set(v8::String::New("entries"), entries);
@@ -10460,7 +10461,7 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;      
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require('internal').executeGlobalContextFunction('require(\\'org/arangodb/actions\\').reloadRouting()')"),
+                              v8::String::New("require('internal').executeGlobalContextFunction('reloadRouting')"),
                               v8::String::New("reload routing"),
                               false);
 }

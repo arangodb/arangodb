@@ -803,7 +803,7 @@ static int OpenDatabases (TRI_server_t* server,
                               databaseName, 
                               &defaults,
                               isUpgrade, 
-                              server->_wasShutdownCleanly);
+                              ! server->_wasShutdownCleanly);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -1863,8 +1863,12 @@ int TRI_StartServer (TRI_server_t* server,
     return TRI_ERROR_INTERNAL;
   }
 
+
   server->_wasShutdownCleanly = (res == TRI_ERROR_NO_ERROR);
 
+  if (! server->_wasShutdownCleanly) {
+    LOG_INFO("server was not shut down cleanly. scanning datafile markers");
+  }
 
   // .............................................................................
   // verify existence of "databases" subdirectory

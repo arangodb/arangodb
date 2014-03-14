@@ -196,7 +196,10 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
   // get database name from request
   string dbName = request->databaseName();
 
+  LOG_INFO("LookupDatabaseFromRequest: %s",dbName.c_str());
+
   if (databases.empty()) {
+    LOG_INFO("LDFR: no databases defined");
     // no databases defined. this means all databases are accessible via the endpoint
 
     if (dbName.empty()) {
@@ -224,15 +227,19 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
       }
 
       // requested database not found
+      LOG_INFO("LDFR: database not found");
       if (! found) {
         return 0;
       }
     }
   }
+  LOG_INFO("LDFR: %s",dbName.c_str());
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
+    TRI_vocbase_t* v = TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
+    LOG_INFO("LDFR: %llu",(unsigned long long) v);
+    return v;
   }
 #endif
 
@@ -256,6 +263,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   // database needs upgrade
   if (vocbase->_state == (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION) {
+    LOG_INFO("Please upgrade Fall");
     request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
@@ -263,6 +271,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
 
   if (ctx == 0) {
+    LOG_INFO("out of memory Fall");
     // out of memory
     return false;
   }
@@ -270,6 +279,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   // the "true" means the request is the owner of the context
   request->setRequestContext(ctx, true);
 
+  LOG_INFO("Request contex set");
   return true;
 }
 
@@ -469,10 +479,15 @@ void ArangoServer::buildApplicationServer () {
   // define server options
   // .............................................................................
 
+  // command-line only options
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
+  ;
+ 
+  // other options 
+  additional[ApplicationServer::OPTIONS_SERVER]
+    ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 

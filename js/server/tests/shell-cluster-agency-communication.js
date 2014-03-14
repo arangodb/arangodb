@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
-/*global require*/
+/*global require, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -27,8 +27,6 @@
 /// @author Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-(function() {
-  "use strict";
   var jsunity = require("jsunity");
   var _ = require("underscore");
 
@@ -51,6 +49,7 @@
   var Communication = require("org/arangodb/cluster/agency-communication");
   var comm;
   var dummy;
+  var ips;
   var agencyRoutes = {
     vision: "Vision",
     target: "Target",
@@ -58,9 +57,11 @@
     current: "Current",
     sync: "Sync",
     sub: {
-      servers:"DBServers",
+      servers: "DBServers",
+      databases: "Databases",
       coords: "Coordinators",
       colls: "Collections",
+      mapToE: "MapIDToEndpoint",
       registered: "ServersRegistered",
       beat: "ServerStates",
       interval: "HeartbeatIntervalMs"
@@ -73,9 +74,9 @@
       "patricia": "sandra"
     };
     var coordinators = {
-      "cindy": 2,
-      "carlos": true,
-      "charly": "alice"
+      "cindy": "none",
+      "carlos": "none",
+      "charly": "none"
     };
     var databases = ["_system", "z_db", "a_db", "b_db"];
     var vInfo = {
@@ -139,16 +140,16 @@
         }
       }
     };
-    var ips = {
-      "pavel": "tcp://192.168.0.1:8529",
-      "paul": "tcp://192.168.0.2:8529",
-      "patricia": "tcp://192.168.0.3:8529",
-      "sandro": "tcp://192.168.0.4:8529",
-      "sally": "tcp://192.168.0.5:8529",
-      "sandra": "tcp://192.168.0.6:8529",
-      "carlos": "tcp://192.168.1.1:8529",
-      "charly": "tcp://192.168.1.2:8529",
-      "cindy": "tcp://192.168.1.3:8529"
+    ips = {
+      "pavel": {endpoint: "tcp://192.168.0.1:8529"},
+      "paul": {endpoint: "tcp://192.168.0.2:8529"},
+      "patricia": {endpoint: "tcp://192.168.0.3:8529"},
+      "sandro": {endpoint: "tcp://192.168.0.4:8529"},
+      "sally": {endpoint: "tcp://192.168.0.5:8529"},
+      "sandra": {endpoint: "tcp://192.168.0.6:8529"},
+      "carlos": {endpoint: "tcp://192.168.1.1:8529"},
+      "charly": {endpoint: "tcp://192.168.1.2:8529"},
+      "cindy": {endpoint: "tcp://192.168.1.3:8529"}
     };
     var heartbeats = {
       pavel: {
@@ -220,6 +221,9 @@
         if (parts[1] === agencyRoutes.sub.servers && recursive) {
           return base.servers;
         }
+        if (parts[1] === agencyRoutes.sub.coords && recursive) {
+          return base.coordinators;
+        }
         if (parts[1] === agencyRoutes.sub.colls) {
           if (recursive) {
             if (parts[2] === "_system") {
@@ -245,6 +249,13 @@
       };
       switch (parts[0]) {
         case agencyRoutes.target:
+          if (parts[1] === agencyRoutes.sub.mapToE) {
+            res = ips[parts[2]];
+            if (!res) {
+              fail("Could not find IP of: " + parts[2]);
+            }
+            return res;
+          }
           res = returnResult(dummy.target);
           if (res) {
             return res;
@@ -283,6 +294,9 @@
     list: function(route, recursive, flat) {
       var parts = route.split("/");
       var returnResult = function(route) {
+        if (parts[1] === agencyRoutes.sub.databases) {
+          return route.databases;
+        }
         if (parts[1] === agencyRoutes.sub.colls) {
           return _.map(route.databases, function(d) {
             return route + "/" + d;
@@ -525,11 +539,11 @@
         tearDown: teardown,
 
         testGetCoordinatorList: function() {
-          var list = [
-            "carlos",
-            "charly",
-            "cindy"
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+            "cindy": {"role": "primary"}
+          };
           assertEqual(targetCoordinators.getList(), list);
         },
 
@@ -538,19 +552,19 @@
           var wasCalled = false;
           agencyMock.set = function(route, value) {
             assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
-            assertEqual(value, true);
+            assertEqual(value, "none");
             dummy.target.coordinators[route] = value;
             wasCalled = true;
             return true;
           };
           assertTrue(targetCoordinators.add(name), "Failed to insert a new coordinator.");
           assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
-          var list = [
-            "carlos",
-            "charly",
-            "cindy",
-            name
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+            "cindy": {"role": "primary"}
+          };
+          list[name] = {"role": "primary"};
           assertEqual(targetCoordinators.getList(), list);
         },
 
@@ -566,10 +580,10 @@
           };
           assertTrue(targetCoordinators.remove(name), "Failed to remove a coordinator.");
           assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
-          var list = [
-            "carlos",
-            "charly"
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+          };
           assertEqual(targetCoordinators.getList(), list);
         }
       };
@@ -735,11 +749,11 @@
         tearDown: teardown,
 
         testGetCoordinatorList: function() {
-          var list = [
-            "carlos",
-            "charly",
-            "cindy"
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+            "cindy": {"role": "primary"}
+          };
           assertEqual(coordinators.getList(), list);
         }
       };
@@ -844,29 +858,35 @@
             pavel: {
               role: "primary",
               secondary: "sandro",
-              address: "tcp://192.168.0.1:8529"
+              address: "192.168.0.1:8529",
+              protocol: "http"
             },
             paul: {
               role: "primary",
               secondary: "sally",
-              address: "tcp://192.168.0.2:8529"
+              address: "192.168.0.2:8529",
+              protocol: "http"
             },
             patricia: {
               role: "primary",
               secondary: "sandra",
-              address: "tcp://192.168.0.3:8529"
+              address: "192.168.0.3:8529",
+              protocol: "http"
             },
             sandro: {
               role: "secondary",
-              address: "tcp://192.168.0.4:8529"
+              address: "192.168.0.4:8529",
+              protocol: "http"
             },
             sally: {
               role: "secondary",
-              address: "tcp://192.168.0.5:8529"
+              address: "192.168.0.5:8529",
+              protocol: "http"
             },
             sandra: {
               role: "secondary",
-              address: "tcp://192.168.0.6:8529"
+              address: "192.168.0.6:8529",
+              protocol: "http"
             }
           };
           var res = targetServers.getList();
@@ -885,9 +905,18 @@
 
         testGetServerList: function() {
           var expected = {
-            "carlos": "tcp://192.168.1.1:8529",
-            "charly": "tcp://192.168.1.2:8529",
-            "cindy": "tcp://192.168.1.3:8529"
+            "carlos": {
+              "address": "192.168.1.1:8529",
+              "protocol": "http"
+            },
+            "charly": {
+              "address": "192.168.1.2:8529",
+              "protocol": "http"
+            },
+            "cindy": {
+              "address": "192.168.1.3:8529",
+              "protocol": "http"
+            }
           };
           var res = comm.current.Coordinators().getList();
           assertEqual(res, expected);
@@ -1198,19 +1227,19 @@
           var wasCalled = false;
           agencyMock.set = function(route, value) {
             assertEqual(route, [agencyRoutes.target, agencyRoutes.sub.coords, name].join("/"));
-            assertEqual(value, true);
+            assertEqual(value, "none");
             dummy.target.coordinators[route] = value;
             wasCalled = true;
             return true;
           };
           assertTrue(comm.addCoordinator(name), "Failed to insert a new coordinator.");
           assertTrue(wasCalled, "Agency has not been informed to insert coordinator.");
-          var list = [
-            "carlos",
-            "charly",
-            "cindy",
-            name
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+            "cindy": {"role": "primary"}
+          };
+          list[name] = {"role": "primary"};
           assertEqual(targetCoordinators.getList(), list);
         },
 
@@ -1226,10 +1255,10 @@
           };
           assertTrue(comm.removeServer(name), "Failed to remove a coordinator.");
           assertTrue(delWasCalled, "Agency has not been informed to remove a coordinator.");
-          var list = [
-            "carlos",
-            "charly"
-          ].sort();
+          var list = {
+            "carlos": {"role": "primary"},
+            "charly": {"role": "primary"},
+          };
           assertEqual(targetCoordinators.getList(), list);
         }
       };
@@ -1237,10 +1266,35 @@
     };
 
     function DifferenceSuite() {
-      var planMissingDB = ["pavel", "sandra"];
-      var planMissingCoords = ["carlos"];
-      var currentMissingDB = ["patricia"];
-      var currentMissingCoords = ["charly"];
+      var planMissingDB = [{
+        name: "pavel",
+        role: "primary",
+        address: ips["pavel"].endpoint.split("://")[1],
+        protocol: "http"
+      }, {
+        name: "sandra",
+        role: "secondary",
+        address: ips["sandra"].endpoint.split("://")[1],
+        protocol: "http"
+      }];
+      var planMissingCoords = [{
+        name: "carlos",
+        role: "primary",
+        address: ips["carlos"].endpoint.split("://")[1],
+        protocol: "http"
+      }];
+      var currentMissingDB = [{
+        name: "patricia",
+        role: "primary",
+        address: ips["patricia"].endpoint.split("://")[1],
+        protocol: "http"
+      }];
+      var currentMissingCoords = [{
+        name: "charly",
+        role: "primary",
+        address: ips["charly"].endpoint.split("://")[1],
+        protocol: "http"
+      }];
       var modified = "sandro";
       var modtarget = dummy.target.servers[[agencyRoutes.target, agencyRoutes.sub.servers, modified].join("/")];
       var modplan = "none";
@@ -1248,34 +1302,25 @@
 
       return {
         setUp: function() {
-          /*
-          var ips = {
-            "pavel": "tcp://192.168.0.1:8529",
-            "paul": "tcp://192.168.0.2:8529",
-            "patricia": "tcp://192.168.0.3:8529",
-            "sandro": "tcp://192.168.0.4:8529",
-            "sally": "tcp://192.168.0.5:8529",
-            "sandra": "tcp://192.168.0.6:8529",
-            "carlos": "tcp://192.168.1.1:8529",
-            "charly": "tcp://192.168.1.2:8529",
-            "cindy": "tcp://192.168.1.3:8529"
-          };
-          */
-          _.each(planMissingDB, function(d) {
+          _.each(planMissingDB, function(obj) {
+            var d = obj.name;
             delete dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, d].join("/")];
             delete dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, d].join("/")];
           });
           dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, lonelyPrimary].join("/")] = "none";
           dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, lonelyPrimary].join("/")] = "none";
 
-          _.each(planMissingCoords, function(d) {
+          _.each(planMissingCoords, function(obj) {
+            var d = obj.name;
             delete dummy.plan.coordinators[[agencyRoutes.plan, agencyRoutes.sub.coords, d].join("/")];
             delete dummy.current.coordinators[[agencyRoutes.current, agencyRoutes.sub.coords, d].join("/")];
           });
-          _.each(currentMissingDB, function(d) {
+          _.each(currentMissingDB, function(obj) {
+            var d = obj.name;
             delete dummy.current.servers[[agencyRoutes.current, agencyRoutes.sub.servers, d].join("/")];
           });
-          _.each(currentMissingCoords, function(d) {
+          _.each(currentMissingCoords, function(obj) {
+            var d = obj.name;
             delete dummy.current.coordinators[[agencyRoutes.current, agencyRoutes.sub.coords, d].join("/")];
           });
           dummy.plan.servers[[agencyRoutes.plan, agencyRoutes.sub.servers, modified].join("/")] = modplan;
@@ -1310,13 +1355,11 @@
         testDifferenceCurrentDBServers: function() {
           var diff = comm.diff.current.DBServers();
           assertEqual(diff.missing, currentMissingDB);
-          assertEqual(diff.difference, {});
         },
 
         testDifferenceCurrentCoordinators: function() {
           var diff = comm.diff.current.Coordinators();
           assertEqual(diff.missing, currentMissingCoords);
-          assertEqual(diff.difference, {});
         }
       };
     };
@@ -1333,7 +1376,6 @@
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes the test suites
   ////////////////////////////////////////////////////////////////////////////////
-
   runVisionTests(jsunity);
   runTargetTests(jsunity);
   runPlanTests(jsunity);
@@ -1347,4 +1389,3 @@
   // mode: outline-minor
   // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
   // End:
-}());

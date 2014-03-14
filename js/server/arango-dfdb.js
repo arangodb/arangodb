@@ -61,34 +61,52 @@ function WipeDatafile (collection, type, datafile, lastGoodPos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a journal
+/// @brief queries user to wipe a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-function DeepCheckJournal (collection, type, datafile, scan, lastGoodPos) {
+function QueryWipeDatafile (collection, type, datafile, scan, lastGoodPos) {
   var entries = scan.entries;
 
   if (entries.length == 0) {
-    printf("WARNING: The journal is empty. Even the header is missing. Going\n");
-    printf("         to remove the datafile.\n");
+    if (type === "journal" || type === "compactor") {
+      printf("WARNING: The journal is empty. Even the header is missing. Going\n");
+      printf("         to remove the file.\n");
+    }
+    else {
+      printf("WARNING: The datafile is empty. Even the header is missing. Going\n");
+      printf("         to remove the datafile. This should never happen. Datafiles\n");
+      printf("         are append-only. Make sure your hard disk does not contain\n");
+      printf("         any hardware errors.\n");
+    }
     printf("\n");
 
     RemoveDatafile(collection, type, datafile);
-
     return;
   }
 
-  if (entries.length === lastGoodPos + 3 && entries[lastGoodPos + 2].status === 2) {
-    printf("WARNING: The journal was not closed properly, the last entry is corrupted.\n");
-    printf("         This might happen ArangoDB was killed and the last entry was not\n");
-    printf("         fully written to disk. Going to remove the last entry.\n");
-    printf("\n");
+  var ask = true;
+  if (type === "journal") {
+    if (entries.length === lastGoodPos + 3 && entries[lastGoodPos + 2].status === 2) {
+      printf("WARNING: The journal was not closed properly, the last entry is corrupted.\n");
+      printf("         This might happen ArangoDB was killed and the last entry was not\n");
+      printf("         fully written to disk. Going to remove the last entry.\n");
+      ask = false;
+    }
+    else {
+      printf("WARNING: The journal was not closed properly, the last entries are corrupted.\n");
+      printf("         This might happen ArangoDB was killed and the last entries were not\n");
+      printf("         fully written to disk.\n");
+    }
   }
   else {
-    printf("WARNING: The journal was not closed properly, the last entries is corrupted.\n");
-    printf("         This might happen ArangoDB was killed and the last entries were not\n");
-    printf("         fully written to disk.\n");
-    printf("\n");
+    printf("WARNING: The datafile contains corrupt entries. This should never happen.\n");
+    printf("         Datafiles are append-only. Make sure your hard disk does not contain\n");
+    printf("         any hardware errors.\n");
+  }
 
+  printf("\n");
+
+  if (ask) {
     printf("Wipe the last entries (Y/N)? ");
     var line = console.getline();
 
@@ -104,57 +122,34 @@ function DeepCheckJournal (collection, type, datafile, scan, lastGoodPos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a datafile
+/// @brief prints details about entries
 ////////////////////////////////////////////////////////////////////////////////
 
-function DeepCheckDatafile (collection, type, datafile, scan, lastGoodPos) {
-  var entries = scan.entries;
+function PrintEntries (entries, amount) {
+  var start, end;
 
-  if (entries.length == 0) {
-    printf("WARNING: The datafile is empty. Even the header is missing. Going\n");
-    printf("         to remove the datafile. This should never happen. Datafiles\n");
-    printf("         are append-only. Make sure your hard disk does not contain\n");
-    printf("         any hardware errors.\n");
-    printf("\n");
+  if (amount > 0) {
+    start = 0;
+    end = amount; 
+    if (end > entries.length) {
+      end = entries.length;
+    }
+  }
+  else {
+    start = entries.length + amount - 1;
+    if (start < 0) {
+      return;
+    }
+    if (start < Math.abs(amount)) {
+      return;
+    }
 
-    RemoveDatafile(collection, type, datafile);
-
-    return;
+    end = entries.length;
   }
 
-  printf("WARNING: The datafile contains corrupt entries. This should never happen.\n");
-  printf("         Datafiles are append-only. Make sure your hard disk does not contain\n");
-  printf("         any hardware errors.\n");
-  printf("\n");
-
-  printf("Wipe the last entries (Y/N)? ");
-  var line = console.getline();
-
-  if (line !== "yes" && line !== "YES" && line !== "y" && line !== "Y") {
-    printf("ABORTING\n");
-    return;
-  }
-
-  var entry = entries[lastGoodPos];
-
-  WipeDatafile(collection, type, datafile, entry.position + entry.size);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a datafile deeply
-////////////////////////////////////////////////////////////////////////////////
-
-function DeepCheckDatafile (collection, type, datafile, scan) {
-  var entries = scan.entries;
-
-  printf("Entries\n");
-
-  var lastGood = 0;
-  var lastGoodPos = 0;
-  var stillGood = true;
-
-  for (var i = 0;  i < entries.length;  ++i) {
+  for (var i = start;  i < end;  ++i) {
     var entry = entries[i];
+
     var s = "unknown";
 
     switch (entry.status) {
@@ -165,7 +160,23 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
       case 5: s = "FAILED (crc mismatch)";  break;
     }
 
-    printf("  %d: status %s type %d size %d\n", i, s, entry.type, entry.size);
+    printf("  %d: status %s type %d size %d, tick %s\n", i, s, entry.type, entry.size, entry.tick);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a datafile deeply
+////////////////////////////////////////////////////////////////////////////////
+
+function DeepCheckDatafile (collection, type, datafile, scan) {
+  var entries = scan.entries;
+
+  var lastGood = 0;
+  var lastGoodPos = 0;
+  var stillGood = true;
+
+  for (var i = 0;  i < entries.length;  ++i) {
+    var entry = entries[i];
 
     if (entry.status === 1 || entry.status === 2) {
       if (stillGood) {
@@ -182,12 +193,7 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
     printf("  Last good position: %d\n", lastGood.position + lastGood.size);
     printf("\n");
 
-    if (type === "journal" || type === "compactor") {
-      DeepCheckJournal(collection, type, datafile, scan, lastGoodPos);
-    }
-    else {
-      DeepCheckDatafile(collection, type, datafile, scan, lastGoodPos);
-    }
+    QueryWipeDatafile(collection, type, datafile, scan, lastGoodPos);
   }
 
   printf("\n");
@@ -197,7 +203,7 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
 /// @brief checks a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-function CheckDatafile (collection, type, datafile, issues) {
+function CheckDatafile (collection, type, datafile, issues, details) {
   printf("Datafile\n");
   printf("  path: %s\n", datafile);
   printf("  type: %s\n", type);
@@ -208,6 +214,8 @@ function CheckDatafile (collection, type, datafile, issues) {
   printf("  maximal size: %d\n", scan.maximalSize);
   printf("  total used: %d\n", scan.endPosition);
   printf("  # of entries: %d\n", scan.numberMarkers);
+  printf("  status: %d\n", scan.status);
+  printf("  isSealed: %s\n", scan.isSealed ? "yes" : "no");
 
   // set default value to unknown
   var statusMessage = "UNKNOWN (" + scan.status + ")"; 
@@ -217,9 +225,12 @@ function CheckDatafile (collection, type, datafile, issues) {
     case 1:
       statusMessage = "OK";
       color = internal.COLORS.COLOR_GREEN;
+      if (! scan.isSealed && type === "datafile") {
+        color = internal.COLORS.COLOR_YELLOW;
+      }
       break;
 
-    case 1:
+    case 2:
       statusMessage = "NOT OK (reached empty marker)";
       color = internal.COLORS.COLOR_RED;
       break;
@@ -296,7 +307,7 @@ function CheckDatafile (collection, type, datafile, issues) {
     return;
   }
 
-  if (scan.entries.length == 2 && scan.entries[1].type !== 2000) {
+  if (scan.entries.length === 2 && scan.entries[1].type !== 2000) {
     // asserting a TRI_COL_MARKER_HEADER as second marker
     statusMessage = "datafile contains no collection header marker at pos #1!";
     color = internal.COLORS.COLOR_YELLOW;
@@ -316,8 +327,36 @@ function CheckDatafile (collection, type, datafile, issues) {
     RemoveDatafile(collection, type, datafile);
     return;
   }
+  
+  if (type !== "journal" && scan.entries.length === 3 && scan.entries[2].type === 0) {
+    // got the two initial header markers but nothing else...
+    statusMessage = "datafile is empty but not sealed";
+    color = internal.COLORS.COLOR_YELLOW;
 
-  if (scan.status === 1) {
+    issues.push({
+      collection: collection.name(), 
+      path: datafile, 
+      type: type, 
+      status: scan.status, 
+      message: statusMessage,
+      color: color
+    });
+
+    printf(color);
+    printf("WARNING: %s\n", statusMessage);
+    printf(internal.COLORS.COLOR_RESET);
+    RemoveDatafile(collection, type, datafile);
+    return;
+  }
+  
+  if (details) {
+    // print details
+    printf("Entries\n");
+    PrintEntries(scan.entries, 10);
+    PrintEntries(scan.entries, -10);
+  }
+
+  if (scan.status === 1 && scan.isSealed) {
     return;
   }
 
@@ -328,7 +367,7 @@ function CheckDatafile (collection, type, datafile, issues) {
 /// @brief checks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function CheckCollection (collection, issues) {
+function CheckCollection (collection, issues, details) {
   printf("Database\n");
   printf("  name: %s\n", internal.db._name());
   printf("  path: %s\n", internal.db._path());
@@ -348,15 +387,15 @@ function CheckCollection (collection, issues) {
   printf("\n");
 
   for (var i = 0;  i < datafiles.journals.length;  ++i) {
-    CheckDatafile(collection, "journal", datafiles.journals[i], issues);
+    CheckDatafile(collection, "journal", datafiles.journals[i], issues, details);
   }
 
   for (var i = 0;  i < datafiles.datafiles.length;  ++i) {
-    CheckDatafile(collection, "datafiles", datafiles.datafiles[i], issues);
+    CheckDatafile(collection, "datafile", datafiles.datafiles[i], issues, details);
   }
 
   for (var i = 0;  i < datafiles.compactors.length;  ++i) {
-    CheckDatafile(collection, "compactor", datafiles.compactors[i], issues);
+    CheckDatafile(collection, "compactor", datafiles.compactors[i], issues, details);
   }
 }
 
@@ -378,7 +417,7 @@ function main (argv) {
 
     return 0;
   };
-
+  
   printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
   printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
   printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
@@ -398,9 +437,11 @@ function main (argv) {
     printf("  %d: %s\n", i, databases[i]);
   }
   
+  var line;
+  
   printf("Database to check: ");
   while (true) {
-    var line = console.getline();
+    line = console.getline();
    
     if (line == "") {
       printf("Exiting. Please wait.\n");
@@ -445,7 +486,7 @@ function main (argv) {
   var a = [];
   
   while (true) {
-    var line = console.getline();
+    line = console.getline();
 
     if (line == "") {
       printf("Exiting. Please wait.\n");
@@ -470,6 +511,23 @@ function main (argv) {
         break;
       }
     }
+  }
+  
+  printf("\n");
+  printf("Prints details (yes/no)? ");
+
+  var details = false;
+  while (true) {
+    line = console.getline();
+    if (line === "") {
+      printf("Exiting. Please wait.\n");
+      return;
+    }
+
+    if (line === "yes" || line === "YES" || line === "y" || line === "Y") {
+      details = true;
+    }
+    break;
   }
 
   var issues = [ ];
@@ -496,7 +554,7 @@ function main (argv) {
 
     printf("\n");
 
-    CheckCollection(collection, issues);
+    CheckCollection(collection, issues, details);
   }
 
  

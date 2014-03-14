@@ -808,8 +808,8 @@ if (MSVC)
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
   
   set(CPACK_NSIS_CREATE_ICONS_EXTRA 
-    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
-     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
+    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
+     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
     ")
 
 # Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but

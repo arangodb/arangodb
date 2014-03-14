@@ -957,7 +957,7 @@ exports.mount = function (appId, mount, options) {
   }
 
   if (typeof options.reload === "undefined" || options.reload === true) {
-    executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    executeGlobalContextFunction("reloadRouting");
   }
 
   return { appId: app._id, mountId: doc._key, mount: mount };
@@ -1048,7 +1048,7 @@ exports.unmount = function (mount) {
 
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   return { appId: doc.app, mount: doc.mount, options: doc.options };
 };
@@ -1104,7 +1104,7 @@ exports.purge = function (key) {
   // remove the app
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
@@ -1215,45 +1215,55 @@ exports.devTeardown = function (filename) {
 
 exports.appRoutes = function () {
   'use strict';
-
+  
   var aal = getStorage();
-  var find = aal.byExample({ type: "mount", active: true });
 
-  var routes = [];
+  return arangodb.db._executeTransaction({
+    collections: {
+      read: [ aal.name() ]
+    },
+    params: {
+      aal : aal
+    },
+    action: function (params) {
+      var find = params.aal.byExample({ type: "mount", active: true });
 
-  while (find.hasNext()) {
-    var doc = find.next();
+      var routes = [];
 
-    var appId = doc.app;
-    var mount = doc.mount;
-    var options = doc.options || { };
+      while (find.hasNext()) {
+        var doc = find.next();
+        var appId = doc.app;
+        var mount = doc.mount;
+        var options = doc.options || { };
 
-    try {
-      var app = module.createApp(appId, options || {});
+        try {
+          var app = module.createApp(appId, options || {});
 
-      if (app === null) {
-        throw new Error("Cannot find application '" + appId + "'");
+          if (app === null) {
+            throw new Error("Cannot find application '" + appId + "'");
+          }
+
+          var r = routingAalApp(app, mount, options);
+
+          if (r === null) {
+            throw new Error("Cannot compute the routing table for foxx application '" 
+                            + app._id + "', check the log file for errors!");
+          }
+
+          routes.push(r);
+
+          if (!developmentMode) {
+            console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+          }
+        }
+        catch (err) {
+          console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+        }
       }
 
-      var r = routingAalApp(app, mount, options);
-
-      if (r === null) {
-        throw new Error("Cannot compute the routing table for foxx application '" 
-                        + app._id + "', check the log file for errors!");
-      }
-
-      routes.push(r);
-
-      if (!developmentMode) {
-        console.log("Mounted foxx app '%s' on '%s'", appId, mount);
-      }
+      return routes;
     }
-    catch (err) {
-      console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
-    }
-  }
-
-  return routes;
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
