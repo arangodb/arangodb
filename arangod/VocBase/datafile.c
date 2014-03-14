@@ -631,12 +631,39 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  char* pos1;
+  char* pos2;
+
+  pos1 = strrchr(filename, '.');
+
+  if (pos1 == NULL) {
+    return 0;
+  }
+
+  pos2 = strrchr(filename, '-');
+
+  if (pos2 == NULL || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
+static TRI_datafile_t* OpenDatafile (char const* filename, 
+                                     bool ignoreErrors) {
   TRI_datafile_t* datafile;
   TRI_voc_size_t size;
+  TRI_voc_fid_t fid;
   bool ok;
   void* data;
   char* ptr;
@@ -649,6 +676,8 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // this function must not be called for non-physical datafiles
   assert(filename != NULL);
+
+  fid = GetNumericFilenamePart(filename);
 
   // ..........................................................................
   // attempt to open a datafile file
@@ -663,7 +692,6 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
     return NULL;
   }
-
 
   // compute the size of the file
   res = fstat(fd, &status);
@@ -767,7 +795,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
                mmHandle,
                size,
                size,
-               header._fid,
+               fid,
                data);
 
   return datafile;
@@ -1253,12 +1281,16 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     }
   }
 
-  if (datafile->_tickMin == 0) {
-    datafile->_tickMin = tick;
-  }
+  if (type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
 
-  if (datafile->_tickMax < tick) {
-    datafile->_tickMax = tick;
+    if (datafile->_tickMin == 0) {
+      datafile->_tickMin = tick;
+    }
+
+    if (datafile->_tickMax < tick) {
+      datafile->_tickMax = tick;
+    }
   }
    
   assert(markerSize > 0);
