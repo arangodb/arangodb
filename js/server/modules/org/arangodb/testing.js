@@ -68,6 +68,8 @@
 ///   - `test`: path to single test to execute for "single" test target
 ///   - `skipServer`: flag for "single" test target to skip the server test
 ///   - `skipClient`: flag for "single" test target to skip the client test
+///   - `cleanup`: if set to true (the default), the cluster data files
+///     and logs are removed after termination of the test.
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
@@ -99,7 +101,8 @@ var optionsDefaults = { "cluster": false,
                         "password": "",
                         "test": undefined,
                         "skipServer": false,
-                        "skipClient": false };
+                        "skipClient": false,
+                        "cleanup": true };
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
@@ -165,6 +168,7 @@ function startInstance (protocol, options, addArgs) {
     if (addArgs !== undefined) {
       dispatcher.arangodExtraArgs = addArgs;
     }
+    print("Temporary cluster data and logs are in",tmpDataDir);
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
                          "dispatchers": {"me": dispatcher},
@@ -228,7 +232,9 @@ function startInstance (protocol, options, addArgs) {
 function shutdownInstance (instanceInfo, options) {
   if (options.cluster) {
     instanceInfo.kickstarter.shutdown();
-    instanceInfo.kickstarter.cleanup();
+    if (options.cleanup) {
+      instanceInfo.kickstarter.cleanup();
+    }
   }
   else {
     download(instanceInfo.url+"/_admin/shutdown","",
@@ -236,7 +242,9 @@ function shutdownInstance (instanceInfo, options) {
     wait(10);
     killExternal(instanceInfo.pid);
   }
-  fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+  if (options.cleanup) {
+    fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+  }
 }
 
 function makePath (path) {
