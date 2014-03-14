@@ -49,6 +49,10 @@ extern "C" {
 ///   Will be raised when a type error is unencountered.
 /// - 18: @LIT{lock timeout}
 ///   Will be raised when there's a timeout waiting for a lock.
+/// - 19: @LIT{cannot create directory}
+///   Will be raised when an attempt to create a directory fails.
+/// - 20: @LIT{cannot create temporary file}
+///   Will be raised when an attempt to create a temporary file fails.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -688,6 +692,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LOCK_TIMEOUT                                            (18)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 19: ERROR_CANNOT_CREATE_DIRECTORY
+///
+/// cannot create directory
+///
+/// Will be raised when an attempt to create a directory fails.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_CREATE_DIRECTORY                                 (19)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20: ERROR_CANNOT_CREATE_TEMP_FILE
+///
+/// cannot create temporary file
+///
+/// Will be raised when an attempt to create a temporary file fails.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_CREATE_TEMP_FILE                                 (20)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
