@@ -1,6 +1,8 @@
 v2.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed startup options for arango-dfdb, added details option for arango-dfdb
+
 * fixed display of missing error messages and codes in arangosh
 
 * when creating a collection via the web interface, the collection type was always 
