@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, */
+/*global describe, beforeEach, afterEach, it, jasmine, */
 /*global spyOn, expect*/
 /*global templateEngine, $, _, uiMatchers*/
 (function() {
@@ -8,9 +8,14 @@
 
   describe("Cluster Servers Collection", function() {
 
-    var col, list, prim1, prim2, prim3, sec1, sec2, sec3;
+    var col, list, prim1, prim2, prim3, sec1, sec2, sec3, oldRouter;
 
     beforeEach(function() {
+      oldRouter = window.App;
+      window.App = {
+        registerForUpdate: function(){},
+        addAuth: function(){}
+      };
       list = [];
       sec1 = {
         role: "secondary",
@@ -53,13 +58,18 @@
       });
     });
 
+    afterEach(function() {
+      window.App = oldRouter;
+    });
+
     describe("list overview", function() {
 
       it("should fetch the result sync", function() {
         col.fetch.reset();
         col.getOverview();
         expect(col.fetch).toHaveBeenCalledWith({
-          async: false
+          async: false,
+          beforeSend: jasmine.any(Function)
         });
       });
       
@@ -140,7 +150,8 @@
         col.fetch.reset();
         col.getList();
         expect(col.fetch).toHaveBeenCalledWith({
-          async: false
+          async: false,
+          beforeSend: jasmine.any(Function)
         });
       });
       

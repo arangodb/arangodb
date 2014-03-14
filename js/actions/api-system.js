@@ -219,7 +219,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    internal.executeGlobalContextFunction("reloadRouting");
     console.warn("about to flush the routing cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
@@ -263,7 +263,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"internal\").flushModuleCache()");
+    internal.executeGlobalContextFunction("flushModuleCache");
     console.warn("about to flush the modules cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }

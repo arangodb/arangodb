@@ -31,6 +31,7 @@
 
 #include "datafile.h"
 
+#include "BasicsC/conversions.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
@@ -421,6 +422,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
   scan._maximalSize = datafile->_maximalSize;
   scan._numberMarkers = 0;
   scan._status = 1;
+  scan._isSealed = false; // assume false
 
   if (datafile->_currentSize == 0) {
     end = datafile->_data + datafile->_maximalSize;
@@ -494,6 +496,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       scan._endPosition = currentSize;
+      scan._isSealed = true;
       return scan;
     }
 
@@ -628,12 +631,39 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  char* pos1;
+  char* pos2;
+
+  pos1 = strrchr(filename, '.');
+
+  if (pos1 == NULL) {
+    return 0;
+  }
+
+  pos2 = strrchr(filename, '-');
+
+  if (pos2 == NULL || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
+static TRI_datafile_t* OpenDatafile (char const* filename, 
+                                     bool ignoreErrors) {
   TRI_datafile_t* datafile;
   TRI_voc_size_t size;
+  TRI_voc_fid_t fid;
   bool ok;
   void* data;
   char* ptr;
@@ -646,6 +676,8 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // this function must not be called for non-physical datafiles
   assert(filename != NULL);
+
+  fid = GetNumericFilenamePart(filename);
 
   // ..........................................................................
   // attempt to open a datafile file
@@ -660,7 +692,6 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
     return NULL;
   }
-
 
   // compute the size of the file
   res = fstat(fd, &status);
@@ -764,7 +795,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
                mmHandle,
                size,
                size,
-               header._fid,
+               fid,
                data);
 
   return datafile;
@@ -1209,7 +1240,9 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   if (type != TRI_DF_MARKER_HEADER && 
       type != TRI_DF_MARKER_FOOTER &&
-      type != TRI_COL_MARKER_HEADER) {
+      type != TRI_COL_MARKER_HEADER &&
+      type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     // check _tick value of marker and set min/max tick values for datafile
@@ -1248,12 +1281,16 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     }
   }
 
-  if (datafile->_tickMin == 0) {
-    datafile->_tickMin = tick;
-  }
+  if (type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
 
-  if (datafile->_tickMax < tick) {
-    datafile->_tickMax = tick;
+    if (datafile->_tickMin == 0) {
+      datafile->_tickMin = tick;
+    }
+
+    if (datafile->_tickMax < tick) {
+      datafile->_tickMax = tick;
+    }
   }
    
   assert(markerSize > 0);
@@ -1710,6 +1747,7 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
     TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
 
     scan._status = 5;
+    scan._isSealed = false;
   }
 
   return scan;

@@ -2013,7 +2013,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   size_t total = filtered._length;
   size_t count = 0;
   bool error = false;
-
+  
   if (0 < total) {
     size_t s;
     size_t e;

@@ -272,7 +272,7 @@
         data.name = collName;
         data.waitForSync = wfs;
         data.isSystem = isSystem;
-        data.type = collType;
+        data.type = parseInt(collType, 10);
         if (shards) {
           data.numberOfShards = shards;
           data.shardKeys = keys;

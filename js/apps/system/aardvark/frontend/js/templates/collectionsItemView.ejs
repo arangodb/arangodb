@@ -1,20 +1,20 @@
 <script id="collectionsItemView.ejs" type="text/template">
 <div class="iconSet">
-  <span id="editCollection" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
-  <% if(attributes.status === "loaded") { %>
-    <span class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
+  <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
+  <% if(model.get('status') === "loaded") { %>
+    <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
   <%} else {%>
     <span class="icon_arangodb_info disabled" alt="disabled"></span>
   <%}%>
 </div>
 
-<img src="<%= attributes.picture %>" height="50" width="50" alt="" class="icon">
+<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">
 <div class="tileBadge">
   <span>
-    <div class="corneredBadge <%= attributes.status %>">
-      <%= attributes.status %>
+    <div class="corneredBadge <%= model.get('status') %>">
+      <%= model.get('status') %>
     </div>
   </span>
 </div>
-<h5 class="collectionName"><%= attributes.name %></h5>
+<h5 class="collectionName"><%= model.get('name') %></h5>
 </script>
