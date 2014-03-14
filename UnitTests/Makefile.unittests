@@ -10,6 +10,7 @@ SKIP_GEO = 0
 SKIP_AHUACATL = 0
 SKIP_RANGES = 0
 VALGRIND = 
+NO_LOG = 
 USERNAME = root
 PASSWORD =
 PROTO = http
@@ -575,7 +576,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_NO_LOG="$(NO_LOG)" ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 

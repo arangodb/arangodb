@@ -1495,9 +1495,9 @@ AQL has the following functions to traverse graphs:
   - `filterVertices`: an optional list of example vertex documents that the traversal will
     treat specially. If no examples are given, the traversal will handle all encountered
     vertices equally. If one or many vertex examples are given, the traversal will exclude
-    the vertex from the result and/or not descend into it. Optionally, `filterVertices` can 
-    contain the name of a user-defined AQL function that should be responsible for filtering.
-    If so, the AQL function is expected to have the following signature:
+    any non-matching vertex from the result and/or not descend into it. Optionally,
+    `filterVertices` can contain the name of a user-defined AQL function that should be responsible
+    for filtering. If so, the AQL function is expected to have the following signature:
 
         function (config, vertex, path)
 
