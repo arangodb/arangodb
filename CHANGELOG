@@ -1,6 +1,9 @@
 v2.0.1 (XXXX-XX-XX)
 -------------------
 
+* bumped version in `X-Arango-Version` compatibility header sent by arangosh and other
+  client tools from `1.5` to `2.0`.
+
 * fixed startup options for arango-dfdb, added details option for arango-dfdb
 
 * fixed display of missing error messages and codes in arangosh
