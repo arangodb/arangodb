@@ -3775,6 +3775,8 @@ function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   if (! MATCHES(vertex, config.filterVertexExamples)) {
     return config.vertexFilterMethod;
   }
+
+  return [];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
