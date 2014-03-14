@@ -263,7 +263,6 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   // database needs upgrade
   if (vocbase->_state == (sig_atomic_t) TRI_VOCBASE_STATE_FAILED_VERSION) {
-    LOG_INFO("Please upgrade Fall");
     request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
@@ -271,7 +270,6 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
 
   if (ctx == 0) {
-    LOG_INFO("out of memory Fall");
     // out of memory
     return false;
   }
@@ -279,7 +277,6 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   // the "true" means the request is the owner of the context
   request->setRequestContext(ctx, true);
 
-  LOG_INFO("Request contex set");
   return true;
 }
 
