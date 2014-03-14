@@ -428,6 +428,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
         TRI_GetDatabaseDefaultsServer(_server, &defaults);
 
         // create a local database object...
+        LOG_INFO("Creating local database object %s(%llu) because of plan change.", name.c_str(), id);
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
   
         if (vocbase != 0) {
@@ -458,6 +459,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
             // something is wrong... probably the database server with the 
             // _users collection is not yet available
             // delete the database again (and try again next time)
+            LOG_INFO("Dropping local database object %s(%llu) because _users collections is not (yet) available.", vocbase->_name, vocbase->_id);
             TRI_ReleaseVocBase(vocbase);
             TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
 
@@ -486,6 +488,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
         vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
 
         if (r == ids.end()) {
+          LOG_INFO("Dropping local database object %llu because it is no longer in plan.", *p);
           TRI_DropByIdCoordinatorDatabaseServer(_server, *p, false);
         }
 
