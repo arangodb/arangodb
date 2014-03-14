@@ -1895,7 +1895,7 @@ int TRI_GetTempName (char const* directory,
 
   if (! TRI_IsDirectory(dir)) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_CANNOT_CREATE_DIRECTORY; 
   }
 
   tries = 0;
@@ -1945,7 +1945,7 @@ int TRI_GetTempName (char const* directory,
 
   TRI_Free(TRI_CORE_MEM_ZONE, dir);
 
-  return TRI_ERROR_INTERNAL;
+  return TRI_ERROR_CANNOT_CREATE_TEMP_FILE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

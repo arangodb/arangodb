@@ -123,7 +123,7 @@ static int ExtractCurrentFile (unzFile uf,
     fullPath = TRI_Concatenate2File(outPath, writeFilename);
     
     if (! overwrite && TRI_ExistsFile(fullPath)) {
-      return TRI_ERROR_INTERNAL;
+      return TRI_ERROR_CANNOT_OVERWRITE_FILE;
     }
 
     // try to write the outfile
