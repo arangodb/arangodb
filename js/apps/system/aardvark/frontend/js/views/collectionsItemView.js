@@ -26,6 +26,7 @@
       $(this.el).html(this.template.render({
         model: this.model
       }));
+      $(this.el).attr('id', 'collection_' + this.model.get('name'));
       return this;
     },
 
