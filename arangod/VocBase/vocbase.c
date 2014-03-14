@@ -823,6 +823,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   files = TRI_FilesDirectory(path);
   n = files._length;
 
+  if (iterateMarkers) {
+    LOG_TRACE("scanning all collection markers in database '%s", vocbase->_name);
+  }
+
   for (i = 0;  i < n;  ++i) {
     char* name;
     char* file;
