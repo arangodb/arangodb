@@ -368,24 +368,28 @@
         selector = '#queryModalSelect';
         $(selector).empty();
         $.each(this.customQueries, function (k, v) {
-          $(selector).append('<option id="' + v.name + '">' + v.name + '</option>');
+          var escapedName = arangoHelper.escapeHtml(v.name);
+          $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
         });
       }
       else {
         selector = '#querySelect';
         $(selector).empty();
+
         $(selector).append('<option id="emptyquery">Insert Query</option>');
 
         $(selector).append('<optgroup label="Example queries">');
         $.each(this.queries, function (k, v) {
-          $(selector).append('<option id="' + v.name + '">' + v.name + '</option>');
+          var escapedName = arangoHelper.escapeHtml(v.name);
+          $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
         });
         $(selector).append('</optgroup>');
 
         if (this.customQueries.length > 0) {
           $(selector).append('<optgroup label="Custom queries">');
           $.each(this.customQueries, function (k, v) {
-            $(selector).append('<option id="' + v.name + '">' + v.name + '</option>');
+            var escapedName = arangoHelper.escapeHtml(v.name);
+            $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
           });
           $(selector).append('</optgroup>');
         }
@@ -425,7 +429,7 @@
         contentType: "application/json",
         processData: false,
         success: function (data) {
-          outputEditor.setValue(arangoHelper.FormatJSON(data.result));
+          outputEditor.setValue(JSON.stringify(data.result, undefined, 2));
           if (typeof Storage) {
             localStorage.setItem("queryContent", inputEditor.getValue());
             localStorage.setItem("queryOutput", outputEditor.getValue());
