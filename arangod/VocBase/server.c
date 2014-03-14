@@ -1866,6 +1866,9 @@ int TRI_StartServer (TRI_server_t* server,
 
   server->_wasShutdownCleanly = (res == TRI_ERROR_NO_ERROR);
 
+  if (! server->_wasShutdownCleanly) {
+    LOG_INFO("server was not shut down cleanly. scanning datafile markers");
+  }
 
   // .............................................................................
   // verify existence of "databases" subdirectory
