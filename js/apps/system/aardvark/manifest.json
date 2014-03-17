@@ -133,7 +133,6 @@
         "frontend/css/queryView.css",
         "frontend/css/dashboardView.css",
         "frontend/css/logsView.css",
-        "frontend/css/collectionsItemView.css",
         "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
