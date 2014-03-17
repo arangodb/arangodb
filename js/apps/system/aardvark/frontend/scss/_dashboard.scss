@@ -9,4 +9,5 @@
   top: 10%;
   @include border-radius(8px !important); //.modal has it
   padding: 10px;
+  width: $width !important;
 }
