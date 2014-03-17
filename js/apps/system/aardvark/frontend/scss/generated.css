@@ -81,7 +81,7 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
     background-color: gray; }
 
@@ -1008,7 +1008,7 @@ select.filterSelect {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -1178,3 +1178,50 @@ div img.searchSubmitIcon {
   border-left: 0;
   margin-left: 0;
   padding-left: 0; }
+
+.query-toolbar, .aql-editor {
+  margin-left: 0px;
+  margin-right: 0px;
+  border-width: 1px;
+  border-style: solid;
+  border-bottom: 0px;
+  height: 27px;
+  background-color: #F0F0F0;
+  font-size: 20px; }
+
+.editor-toolbar {
+  border-color: #A0A0A0;
+  margin-top: 5px; }
+  .editor-toolbar span {
+    float: right;
+    margin-left: 5px;
+    margin-right: 5px;
+    position: relative;
+    top: 2px; }
+  .editor-toolbar i {
+    margin-right: 5px;
+    margin-top: 3px; }
+    .editor-toolbar i:hover {
+      cursor: pointer; }
+  .editor-toolbar .arango-icon-disk {
+    margin-top: 1px; }
+
+.aql-editor {
+  border-bottom: 1px;
+  width: auto;
+  border-color: #A0A0A0;
+  min-width: 99.8%;
+  height: 200px;
+  min-height: 100px;
+  margin-bottom: 5px;
+  border-left: 0 !important;
+  border-bottom: 0 !important;
+  border-top: 0 !important; }
+  .aql-editor .ace_error, .aql-editor .ace_info {
+    background: none; }
+
+.queryTH {
+  width: 20% !important; }
+
+.queryTH2 {
+  width: 75% !important; }
