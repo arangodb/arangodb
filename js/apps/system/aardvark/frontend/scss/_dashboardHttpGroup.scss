@@ -8,6 +8,10 @@
   border: 1px solid $c-black;
   height: 300px;
   width: 100%;
+
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
 }
 
 .innerDashboardChart {
@@ -16,6 +20,16 @@
   position: absolute;
   right: 5px;
   top: 5px;
+
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
+}
+
+.dashboardDetailChart {
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
 }
 
 #distributionChartDiv {
