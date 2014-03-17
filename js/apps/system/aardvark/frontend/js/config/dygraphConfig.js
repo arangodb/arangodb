@@ -107,7 +107,7 @@
     };
 
     //colors for dygraphs
-    var colors = ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
+    var colors = ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
         "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"];
 
         //figure dependend options
@@ -123,7 +123,10 @@
                 axes : {
                 y: {
                     labelsKMG2: false,
-                        axisLabelFormatter: function(y) {
+                    axisLabelFormatter: function(y) {
+                        return y.toPrecision(2) + "%";
+                    },
+                    valueFormatter: function(y) {
                         return y.toPrecision(2) + "%";
                     }
                 }
