@@ -1,8 +1,9 @@
-language: c
+language: cpp
 compiler: clang
 
 before_install:
 # g++4.8.1
+- echo "using cxx: $CXX"
 - if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
 
 # clang 3.4
