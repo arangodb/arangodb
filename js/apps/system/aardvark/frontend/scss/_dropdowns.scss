@@ -5,13 +5,6 @@ div.headerDropdown {
   position: relative;
   width: auto;
 
-  & > div.dropdownInner {
-    @include box-shadow(0);
-    min-height: 125px;
-    position: relative;
-    width: auto;
-  }
-
   &.headerDropdown input[type=checkbox].css-checkbox {
     display: none;
 
@@ -34,12 +27,50 @@ div.headerDropdown {
   }
 }
 
+div.dropdownInner {
+  @include box-shadow(0);
+  min-height: 125px;
+  position: relative;
+  width: auto;
+
+  & > .nav-header {
+    color: $c-black;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  & > label {
+    color: $c-black;
+    font-weight: 300;
+  }
+
+  & ul {
+    @extend %pull-left;
+    border-left: 1px solid $c-black;
+    display: inline;
+    margin-top: 10px;
+    min-height: 105px;
+    width: 238px;
+
+    &:first-of-type {
+      border: 0;
+    }
+
+    label {
+      color: $c-black;
+      padding-left: 35px;
+    }
+  }
+
+}
+
 div.queryline {
   color: $c-black;
   height: 35px;
 
   select,
   input {
+
     margin-bottom: 5px;
   }
 

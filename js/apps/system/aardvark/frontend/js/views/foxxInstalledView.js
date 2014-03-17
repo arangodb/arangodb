@@ -4,7 +4,7 @@
 (function() {
   "use strict";
   window.FoxxInstalledView = Backbone.View.extend({
-    tagName: 'li',
+    tagName: 'div',
     className: "tile",
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
