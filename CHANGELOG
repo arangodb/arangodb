@@ -1,6 +1,10 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* provide a size hint to indexes when initially filling them
+    
+  this may speed up building indexes when opening an existing collection
+
 * don't requeue identical context methods in V8 threads in case a method is 
   already registered
 
