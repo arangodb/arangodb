@@ -44,21 +44,9 @@
         $('#collectionsToggle').addClass('activated');
       }
 
-      //append info icon for loaded collections
-      /*
-      $('.loaded').parent().prev().append(
-        '<span class="icon_arangodb_info spanInfo ICON" ' + 
-        'title="Show collection properties"</span>'
-      );
-      $('.unloaded').parent().prev().append(
-        '<span class="icon_arangodb_info spanDisabled ICON" alt="disabled"</span>'
-      );
-      */
-
       $('#searchInput').val(searchOptions.searchPhrase);
       $('#searchInput').focus();
       var val = $('#searchInput').val();
-      $('#searchInput').val('');
       $('#searchInput').val(val);
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
