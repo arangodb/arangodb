@@ -2126,6 +2126,8 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   TRI_UnlockMutex(&server->_createLock);
+  
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
 
