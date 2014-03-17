@@ -93,6 +93,7 @@ void TRI_InitIndex (TRI_index_t* idx,
   // init common functions
   idx->removeIndex       = NULL;
   idx->cleanup           = NULL;
+  idx->sizeHint          = NULL;
 
   idx->postInsert        = NULL;
 
@@ -899,6 +900,23 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON description of edge index
+////////////////////////////////////////////////////////////////////////////////
+
+static int SizeHintEdge (TRI_index_t* idx,
+                         size_t size) {
+
+  TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
+
+  // we assume this is called when setting up the index and the index is still empty
+  assert(edgesIndex->_nrUsed == 0);
+
+  // set an initial size for the index and allow for some new nodes to be created
+  // without resizing
+  return TRI_ResizeMultiPointer(edgesIndex, size + 2048);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -954,6 +972,8 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
+
+  idx->sizeHint = SizeHintEdge;
 
   return idx;
 }
