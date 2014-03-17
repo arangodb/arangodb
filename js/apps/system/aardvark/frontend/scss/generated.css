@@ -83,7 +83,7 @@ nav.navbar, footer.footer {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
