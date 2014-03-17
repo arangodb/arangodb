@@ -29,12 +29,6 @@
 
       var searchOptions = this.collection.searchOptions;
 
-      $('#collectionsThumbnailsIn', this.el).append(
-        '<li class="tile"><a href="#new" class="add">' +
-        '<span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon" />' +
-        'Add Collection</a></li>'
-      );
-
       this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
         $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
           model: arango_collection
