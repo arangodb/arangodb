@@ -1,6 +1,6 @@
-#loginWindow {
-  background-color: #F4F4F4;
-  border: 1px solid #868686;
+.login-window {
+  background-color: $c-login-window-bg;
+  border: 1px solid $c-login-window-border;
   border-radius: 2px;
   height: 300px;
   left: 50%;
@@ -13,16 +13,10 @@
   width: 400px;
 }
 
-#loginLogo {
-}
-
-#loginSpace {
+.login-space {
   height: 50px;
 }
 
-#loginForm {
-}
-
-.loginInput {
+.login-input {
   width: 387px;
 }
