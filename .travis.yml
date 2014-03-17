@@ -1,4 +1,5 @@
 language: c
+compiler: clang
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/script.sh"
 branches:
