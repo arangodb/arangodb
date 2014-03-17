@@ -588,7 +588,8 @@ static void AddNewElementPointer (TRI_multi_pointer_t* array, void* element) {
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
+static int ResizeMultiPointer (TRI_multi_pointer_t* array,
+                               size_t targetSize) {
   void** oldTable;
   uint64_t oldAlloc;
   uint64_t j;
@@ -596,7 +597,7 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
+  array->_nrAlloc = (uint64_t) targetSize;
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -604,7 +605,7 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
     array->_nrAlloc = oldAlloc;
     array->_table = oldTable;
 
-    return;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   array->_nrUsed = 0;
@@ -619,7 +620,11 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
     }
   }
 
-  TRI_Free(array->_memoryZone, oldTable);
+  if (oldTable != NULL) {
+    TRI_Free(array->_memoryZone, oldTable);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -831,7 +836,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeMultiPointer(array);
+    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
   }
 
   return NULL;
@@ -890,6 +895,14 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 
   // return success
   return old;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resize the array
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
+  return ResizeMultiPointer(array, 2 * size + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
