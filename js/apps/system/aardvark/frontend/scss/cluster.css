@@ -103,17 +103,17 @@ a.warning.coordinator, a.warning.dbserver {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   color: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover {
-    color: grey; }
+    color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   fill: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover {
-    fill: grey; }
+    fill: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -913,7 +913,7 @@ svg.clusterChart {
 .lineGraph {
   position: absolute; }
   .lineGraph .few .dygraph-legend > span.highlight {
-    border: 1px solid grey; }
+    border: 1px solid gray; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
   .lineGraph .many .dygraph-legend > span.highlight {
