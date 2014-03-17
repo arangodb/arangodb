@@ -8,9 +8,6 @@
     resizing: false,
 
     el: '#content',
-    events: {
-      'click #editor-run'     : 'submitEditor'
-    },
 
     template: templateEngine.createTemplate("shellView.ejs"),
 
