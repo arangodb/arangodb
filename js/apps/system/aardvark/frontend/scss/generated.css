@@ -1055,6 +1055,8 @@ select.filterSelect {
   border: 1px solid black;
   height: 300px;
   width: 100%; }
+  #dashboardDetailedChart .dygraph-axis-label-y {
+    text-align: left; }
 
 .innerDashboardChart {
   bottom: 5px;
@@ -1062,6 +1064,11 @@ select.filterSelect {
   position: absolute;
   right: 5px;
   top: 5px; }
+  .innerDashboardChart .dygraph-axis-label-y {
+    text-align: left; }
+
+.dashboardDetailChart .dygraph-axis-label-y {
+  text-align: left; }
 
 .dashboardChart {
   background-color: white;
@@ -1162,10 +1169,11 @@ div img.searchSubmitIcon {
 
 .shortcuts b {
   border-left: 1px solid rgba(0, 0, 0, 0.34);
-  padding-left: 5px;
-  margin-left: 5px; }
+  margin-left: 5px;
+  padding-left: 5px; }
 
-.shortcuts b:first-child, .shortcuts .clearShortcut {
+.shortcuts b:first-child,
+.shortcuts .clearShortcut {
   border-left: 0;
-  padding-left: 0;
-  margin-left: 0; }
+  margin-left: 0;
+  padding-left: 0; }

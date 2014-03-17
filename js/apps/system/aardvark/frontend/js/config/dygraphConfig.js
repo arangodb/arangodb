@@ -123,7 +123,10 @@
                 axes : {
                 y: {
                     labelsKMG2: false,
-                        axisLabelFormatter: function(y) {
+                    axisLabelFormatter: function(y) {
+                        return y.toPrecision(2) + "%";
+                    },
+                    valueFormatter: function(y) {
                         return y.toPrecision(2) + "%";
                     }
                 }
