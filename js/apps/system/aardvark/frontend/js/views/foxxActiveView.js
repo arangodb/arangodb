@@ -5,7 +5,7 @@
   "use strict";
 
   window.FoxxActiveView = Backbone.View.extend({
-    tagName: 'li',
+    tagName: 'div',
     className: "tile",
     template: templateEngine.createTemplate("foxxActiveView.ejs"),
 

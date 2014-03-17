@@ -14,10 +14,10 @@
       <a class="arangoHeader">Collections</a>
     </div>
     <div class="searchField pull-left">
-      <input type="text" id="searchInput" class="searchInput" placeholder="Search..."/><img id="searchSubmit" width="16"
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/><img id="searchSubmit" width="16"
                                                                                             height="16"
                                                                                             src="img/enter_icon.png"
-                                                                                            class="searchSubmitIcon"/>
+                                                                                            class="search-submit-icon"/>
     </div>
   </div>
 
@@ -97,7 +97,10 @@
   </div>
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div class="containerdivNewLine"/>
-    <ul id="collectionsThumbnailsIn" class="tileList"/>
+      <div id="collectionsThumbnailsIn" class="tileList">
+        <div class="tile">
+          <a href="#new" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+        </div>
+      </div>
   </div>
 </script>
