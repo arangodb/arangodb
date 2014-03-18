@@ -3,3 +3,47 @@ table.dataTable thead th {
   padding: 10px 14px;
 }
 
+// TODO Hard cleanup
+#documentsTableID_length, #documentsTableID_filter {
+  display: none;
+}
+
+#documentsTableID_wrapper {
+  min-height: 513px !important;
+  padding-bottom: 0px !important;
+}
+
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden;
+}
+
+#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+  visibility: hidden;
+}
+
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  margin-bottom:0px;
+}
+
+.cuttedContent, .prettify ul li, .writeable a {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.prettify {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1em !important;
+}
+
+// i think it is removed
+.sorting_asc,
+.sorting_desc {
+  background:#e4e0dd;
+}
+

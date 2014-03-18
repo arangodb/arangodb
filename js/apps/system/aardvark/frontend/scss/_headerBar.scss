@@ -54,6 +54,8 @@ div.headerBar a.arangoHeader,
 // The buttons on the right side
 
 div.headerBar > div.headerButtonBar {
+  @extend %clear-float;
+  @extend %pull-right;
   margin: 4px 0;
   margin-bottom: 0 !important;
 }

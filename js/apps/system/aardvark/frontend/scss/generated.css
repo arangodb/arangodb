@@ -39,10 +39,10 @@ textarea,
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button, .arango-tab li, .show-save-state {
+div.navmenu, div.footer-right, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .arango-tab li, .show-save-state {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
+div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
   clear: both;
   content: '.';
   display: block;
@@ -311,8 +311,7 @@ ul.headerButtonList {
   margin-left: 0;
   padding-left: 0 !important; }
   ul.headerButtonList li {
-    display: inline;
-    margin-right: 2px; }
+    display: inline; }
 
 button.shutdown {
   margin-top: 6px;
@@ -326,7 +325,7 @@ a.headerButton, a.button-gui {
   -moz-box-shadow: none;
   box-shadow: none;
   margin-left: 5px;
-  margin-right: 3px;
+  margin-right: 5px;
   padding-left: 9px;
   padding-right: 9px; }
 
@@ -1361,6 +1360,158 @@ div img.searchSubmitIcon {
   cursor: default !important;
   opacity: .5 !important; }
 
+.pagination-mini ul > li.disabled:last-child > a,
+.pagination-small ul > li.disabled:last-child > a,
+.pagination-mini ul > li.disabled:last-child > span,
+.pagination-small ul > li.disabled:last-child > span,
+.pagination-mini ul > li.disabled:first-child > a,
+.pagination-small ul > li.disabled:first-child > a,
+.pagination-mini ul > li.disabled:first-child > span,
+.pagination-small ul > li.disabled:first-child > span {
+  pointer-events: none;
+  cursor: default;
+  background-color: #777;
+  color: #666666; }
+
+.pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
+  background-color: #8f8d8c;
+  color: #FFFFFF; }
+
+.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
+.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
+  box-shadow: none;
+  background: #8f8d8c;
+  border: none;
+  color: #FFFFFF;
+  position: relative;
+  width: 14px;
+  height: 20px; }
+
+.arangoPagination li:first-child a {
+  margin-right: 20px !important; }
+
+.arangoPagination li:last-child a {
+  margin-left: 30px !important; }
+
+.pagination ul > li > a, .pagination ul > li > span {
+  cursor: pointer;
+  border-width: 0 0 0 0px; }
+
+#documentsToolbarF .prePagi {
+  margin-right: -5px !important; }
+
+#documentsToolbarF a,
+#logPaginationDiv a {
+  margin-left: 11px; }
+
+#documentsToolbarF {
+  padding-bottom: 5px;
+  margin-top: 20px; }
+
+#documentsToolbarF span, #logPaginationDiv span {
+  position: relative;
+  top: 2px;
+  font-size: 14px;
+  color: black; }
+
 table.dataTable thead th {
   font-weight: 400 !important;
   padding: 10px 14px; }
+
+#documentsTableID_length, #documentsTableID_filter {
+  display: none; }
+
+#documentsTableID_wrapper {
+  min-height: 513px !important;
+  padding-bottom: 0px !important; }
+
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden; }
+
+#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+  visibility: hidden; }
+
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  margin-bottom: 0px; }
+
+.cuttedContent, .prettify ul li, .writeable a {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important; }
+
+.prettify {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1em !important; }
+
+.sorting_asc,
+.sorting_desc {
+  background: #e4e0dd; }
+
+.new-index-view input[type='checkbox'] {
+  float: left;
+  margin-top: -9px; }
+.new-index-view table tr {
+  width: 600px !important; }
+  .new-index-view table tr th:last-child {
+    width: 50px !important; }
+.new-index-view table th {
+  font-weight: 300 !important;
+  width: 200px !important; }
+
+.edit-index-table {
+  margin-top: 5px;
+  min-width: auto !important; }
+  .edit-index-table th {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 5px; }
+  .edit-index-table .icon_arangodb_locked {
+    font-size: 20px;
+    margin-left: 10px;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: default; }
+  .edit-index-table .icon_arangodb_roundminus {
+    font-size: 20px;
+    color: #BE342E;
+    margin-left: 10px;
+    cursor: pointer; }
+
+.contentIn > div {
+  padding: 10px; }
+.contentIn .arangoicon {
+  font-size: 25px;
+  position: relative;
+  top: -3px !important; }
+
+.index-button-bar {
+  margin-top: 15px; }
+  .index-button-bar button {
+    margin-left: 0; }
+
+.docsFirstCol, .docsSecCol, .docsThirdCol {
+  border: 0 !important; }
+
+.docsFirstCol {
+  width: 70%; }
+
+.docsSecCol {
+  min-width: 400px !important;
+  width: 20%; }
+
+.docsThirdCol {
+  float: right; }
+
+.add-filter-item {
+  margin-left: 5px; }
+  .add-filter-item i {
+    margin-top: 0 !important; }
+
+.upload-indicator {
+  display: none;
+  margin-top: -3px;
+  padding-right: 10px; }
