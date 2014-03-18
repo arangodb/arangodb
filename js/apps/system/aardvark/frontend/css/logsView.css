@@ -16,6 +16,10 @@
   padding-bottom: 0px !important;
 }
 
+#logContent .tab-content {
+  margin-top: 1px !important;
+}
+
 .dataTables_info {
   display:none !important;
 }
@@ -103,7 +107,7 @@
   padding-bottom: 5px !important;
 }
 
-#logContent .nav-tabs {
+#logContent .arango-tab {
   border-bottom: 0 !important;
 }
 

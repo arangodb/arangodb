@@ -72,7 +72,7 @@
       });
 
       it("should create a sorted list of all graphs", function() {
-        var list = $("li.tile h5.collectionName", "#graphManagementThumbnailsIn");
+        var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
         expect(list.length).toEqual(3);
         // Order would be g2, g3, g1
         expect($(list[0]).html()).toEqual(g2._key);

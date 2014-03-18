@@ -159,6 +159,21 @@ int Manager::abortTransaction (Transaction* transaction) {
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the status of a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+Transaction::StateType Manager::statusTransaction (Transaction::IdType id) {
+  READ_LOCKER(_lock);
+  
+  auto it = _transactions.find(id);
+  if (it == _transactions.end()) {
+    return Transaction::STATE_COMMITTED;
+  }
+
+  return (*it).second;
+}
+
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
