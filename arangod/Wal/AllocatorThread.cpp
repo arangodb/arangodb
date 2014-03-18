@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief Write-ahead log storage allocator thread
 ///
 /// @file
 ///
@@ -25,37 +25,36 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
+#include "AllocatorThread.h"
+#include "BasicsC/logging.h"
+#include "Basics/ConditionLocker.h"
+#include "Wal/LogfileManager.h"
 
-using namespace triagens::transaction;
+using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the allocator thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(STATE_UNINITIALISED),
-    _vocbase(vocbase) {
+AllocatorThread::AllocatorThread (LogfileManager* logfileManager) 
+  : Thread("WalAllocator"),
+    _logfileManager(logfileManager),
+    _condition(),
+    _createLogfile(false),
+    _stop(0) {
+  
+  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief destroy the allocator thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
-    this->abort();
-  }
+AllocatorThread::~AllocatorThread () {
 }
 
 // -----------------------------------------------------------------------------
@@ -63,51 +62,75 @@ Transaction::~Transaction () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief initialises the allocator thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+bool AllocatorThread::init () {
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
+/// @brief stops the allocator thread
 ////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
 
-    return TRI_ERROR_NO_ERROR;
+void AllocatorThread::stop () {
+  if (_stop > 0) {
+    return;
   }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+
+  _stop = 1;
+  _condition.signal();
+
+  while (_stop != 2) {
+    usleep(1000);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
 
-    return TRI_ERROR_NO_ERROR;
+void AllocatorThread::signalLogfileCreation () {
+  CONDITION_LOCKER(guard, _condition);
+
+  _createLogfile = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new logfile
+////////////////////////////////////////////////////////////////////////////////
+
+bool AllocatorThread::createLogfile () {
+  int res = _logfileManager->allocateDatafile();
+
+  return (res == TRI_ERROR_NO_ERROR);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main loop
+////////////////////////////////////////////////////////////////////////////////
+
+void AllocatorThread::run () {
+  while (_stop == 0) {
+    CONDITION_LOCKER(guard, _condition);
+
+    if (_createLogfile) {
+      if (createLogfile()) {
+        _createLogfile = false;
+        continue;
+      }
+      
+      LOG_ERROR("unable to create new wal logfile");
+    }
+      
+    guard.wait(1000000);
   }
 
-  _state = STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  _stop = 2;
 }
 
 // Local Variables:
