@@ -179,7 +179,7 @@
           Object.keys(valueLists).forEach(function (valueList) {
             var val = entry[g.group][figure];
             if (val === undefined) {return;}
-            if (valueList === self.dygraphConfig.differenceBasedLineChartType) {
+              if (valueList === self.dygraphConfig.differenceBasedLineChartType) {
               if (!self.LastValues[figure]) {
                 self.LastValues[figure] = {value : val , time: 0};
               }
@@ -234,7 +234,7 @@
           } 
           else if (typeof entry[part[0]] === 'object' && 
                    entry[part[0]].hasOwnProperty(attrib) &&
-              typeof entry[part[0]][attrib] === "number") {
+              (typeof entry[part[0]][attrib] === "number" || entry[part[0]][attrib] === null)) {
                 val.push(entry[part[0]][attrib]);
           }
         });
