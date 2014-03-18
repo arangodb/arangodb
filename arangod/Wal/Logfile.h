@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief Write-ahead log logfile
 ///
 /// @file
 ///
@@ -25,90 +25,108 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
+#ifndef TRIAGENS_WAL_LOGFILE_H
+#define TRIAGENS_WAL_LOGFILE_H 1
 
-using namespace triagens::transaction;
+#include "Basics/Common.h"
+#include "VocBase/datafile.h"
+
+namespace triagens {
+  namespace wal {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     class Logfile
+// -----------------------------------------------------------------------------
+
+    class Logfile {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for logfile ids
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef TRI_voc_fid_t IdType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(STATE_UNINITIALISED),
-    _vocbase(vocbase) {
-}
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief Logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
-    this->abort();
-  }
-}
+        Logfile (Logfile const&);
+        Logfile& operator= (Logfile const&);
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        Logfile (TRI_datafile_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        ~Logfile ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief return the allocated size of the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
+      uint64_t allocatedSize () const {
+        return static_cast<uint64_t>(_df->_maximalSize);
+      }
 
-    return TRI_ERROR_NO_ERROR;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the size of the free space in the logfile
+////////////////////////////////////////////////////////////////////////////////
+
+      uint64_t freeSize () const {
+        if (_df->_isSealed) {
+          return 0;
+        }
+
+        return static_cast<uint64_t>(allocatedSize() - _df->_footerSize);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the logfile is sealed
+////////////////////////////////////////////////////////////////////////////////
+
+      bool isSealed () const {
+        return _df->_isSealed;
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the datafile entry
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_datafile_t* _df;
+
+    };
+
   }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  _state = STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor
