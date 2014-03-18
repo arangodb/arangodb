@@ -118,7 +118,6 @@
 
     "css/style.css": {
       "files": [
-        "frontend/css/openSansFont.css",
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
         "frontend/css/arangodbIcons.css",
@@ -133,9 +132,6 @@
         "frontend/css/shellView.css",
         "frontend/css/dashboardView.css",
         "frontend/css/logsView.css",
-        "frontend/css/collectionsView.css",
-        "frontend/css/collectionsItemView.css",
-        "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
         "frontend/css/swaggerView.css",

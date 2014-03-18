@@ -1,0 +1,37 @@
+// TODO Needs to be cleaned up it is not so !important as it looks...
+.jsoneditor {
+  background-color: $c-white !important;
+  border: 1px solid $c-semi-transp !important;
+
+  .menu {
+    background-color: $c-bar-bg !important;
+    border-bottom: 1px solid $c-semi-transp !important;
+  }
+
+  .search {
+
+    .frame {
+      border: 0 !important;
+      margin: 3px !important;
+    }
+
+    .results {
+      color: $c-white !important;
+      margin-top: 3px !important;
+    }
+  }
+}
+
+.show-save-state {
+  @extend %pull-right;
+  color: #008000;
+  display: none;
+  font-weight: 300;
+  margin-top: 10px;
+}
+
+.document-editor {
+  width: 100%;
+  height: 500px;
+  margin-bottom: 5px;
+}

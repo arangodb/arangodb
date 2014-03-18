@@ -86,11 +86,11 @@
         graphs.add(g3);
         view.render();
       });
-
+      /*
       it("should offer the list of collections", function() {
 
       });
-
+      */
       it("should be able to create a new graph", function() {
         var nField = "#newGraphName",
           vField = "#newGraphVertices",
@@ -102,7 +102,7 @@
         $(vField).val(v);
         $(eField).val(e);
         spyOn(graphs, "create");
-        $("#createGraph").click();
+        $("#createNewGraph").click();
         expect(graphs.create).toHaveBeenCalledWith({
           _key: name,
           vertices: v,
@@ -130,7 +130,7 @@
           $(nField).val(name);
           $(vField).val(v);
           $(eField).val(e);
-          $("#createGraph").click();
+          $("#createNewGraph").click();
           expect(arangoHelper.arangoNotification)
             .toHaveBeenCalledWith(
               "A name for the graph has to be provided."
@@ -148,7 +148,7 @@
           $(nField).val(name);
           $(vField).val(v);
           $(eField).val(e);
-          $("#createGraph").click();
+          $("#createNewGraph").click();
           expect(arangoHelper.arangoNotification)
             .toHaveBeenCalledWith(
               "A vertex collection has to be provided."
@@ -166,7 +166,7 @@
           $(nField).val(name);
           $(vField).val(v);
           $(eField).val(e);
-          $("#createGraph").click();
+          $("#createNewGraph").click();
           expect(arangoHelper.arangoNotification)
             .toHaveBeenCalledWith(
               "An edge collection has to be provided."
@@ -197,7 +197,7 @@
             });
           });
           spyOn(arangoHelper, "arangoError");
-          $("#createGraph").click();
+          $("#createNewGraph").click();
           expect(graphs.create).toHaveBeenCalled();
           expect(arangoHelper.arangoError)
             .toHaveBeenCalledWith(errMsg);

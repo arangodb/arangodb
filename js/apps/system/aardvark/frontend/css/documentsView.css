@@ -1,3 +1,7 @@
+#addFilterItem, .removeFilterItem {
+  cursor: pointer;
+}
+
 #documentAddBtn {
   margin-left: 6px;
 }

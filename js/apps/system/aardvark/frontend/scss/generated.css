@@ -6,13 +6,43 @@ textarea,
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, li.tile, li.bigtile, li.tile a span.add-Icon, li.bigtile a span.add-Icon, div.centralContent, .contentDiv li, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 300;
+  src: local("Open Sans Light"), local("OpenSans-Light"), url("../fonts/opensans/OpenSansLight.woff") format("woff"); }
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: local("Open Sans"), local("OpenSans"), url("../fonts/opensans/OpenSans.woff") format("woff"); }
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 700;
+  src: local("Open Sans Bold"), local("OpenSans-Bold"), url("../fonts/opensans/OpenSansBold.woff") format("woff"); }
+@font-face {
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 300;
+  src: local("Open Sans Light Italic"), local("OpenSansLight-Italic"), url("../fonts/opensans/OpenSansLightItalic.woff") format("woff"); }
+@font-face {
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 400;
+  src: local("Open Sans Italic"), local("OpenSans-Italic"), url("../fonts/opensans/OpenSansItalic.woff") format("woff"); }
+@font-face {
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 700;
+  src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, li.tile div.iconSet span, li.bigtile div.iconSet span, .fixedDropdown button, .query-button {
+div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state {
   float: right; }
 
-ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after {
+div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
   clear: both;
   content: '.';
   display: block;
@@ -20,7 +50,7 @@ ul.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .line
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, li.tile a span.icon, li.bigtile a span.icon, li.tile a svg, li.bigtile a svg, li.tile div.iconSet span, li.bigtile div.iconSet span, li.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -257,9 +287,6 @@ footer.footer {
 .button-header {
   margin-top: 5px; }
 
-.button-notification {
-  margin-right: 5px; }
-
 .addButton {
   font-size: 22px;
   margin-right: 7px;
@@ -271,6 +298,12 @@ footer.footer {
   padding-right: 3px;
   position: relative;
   top: 3px; }
+
+button.large-distance {
+  margin-left: 12px; }
+
+button.short-distance {
+  margin-left: 6px; }
 
 ul.headerButtonList {
   display: inline-block;
@@ -521,46 +554,49 @@ a.button-gui {
     .clusterDownBtn button.green:hover {
       background-color: #8ba142; }
 
-ul.tileList {
+div.tileList {
   margin-left: -6px;
   margin-right: -6px; }
 
-li.tile, li.bigtile {
+div.tile, div.bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: rgba(0, 0, 0, 0.05);
+  font-size: 14px;
   list-style: none;
   margin-bottom: 13px;
   margin-left: 6px;
   margin-right: 6px;
   position: relative;
   text-align: center; }
-  li.tile img.icon, li.bigtile img.icon {
+  div.tile img.icon, div.bigtile img.icon {
     height: 50px;
     width: 50px; }
-  li.tile a span.add-Icon, li.bigtile a span.add-Icon {
+  div.tile a span.add-Icon, div.bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
     margin-right: 10px;
     margin-top: -5px;
-    position: relative; }
-  li.tile a span.icon, li.bigtile a span.icon {
+    position: relative;
+    right: 4px;
+    top: 2px; }
+  div.tile a span.icon, div.bigtile a span.icon {
     font-size: 50px; }
-  li.tile a svg.icon, li.bigtile a svg.icon {
+  div.tile a svg.icon, div.bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  li.tile svg.tile-icon-svg, li.bigtile svg.tile-icon-svg {
+  div.tile svg.tile-icon-svg, div.bigtile svg.tile-icon-svg {
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  li.tile span.tile-icon, li.bigtile span.tile-icon {
+  div.tile span.tile-icon, div.bigtile span.tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  li.tile h5, li.bigtile h5 {
+  div.tile h5, div.bigtile h5 {
     background: #686766;
     color: white;
     font-size: 12px;
@@ -569,58 +605,58 @@ li.tile, li.bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  li.tile div.iconSet, li.bigtile div.iconSet {
+  div.tile div.iconSet, div.bigtile div.iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    li.tile div.iconSet span, li.bigtile div.iconSet span {
+    div.tile div.iconSet span, div.bigtile div.iconSet span {
       font-size: 18px;
       opacity: .5;
       padding-left: 7px; }
-      li.tile div.iconSet span:hover, li.bigtile div.iconSet span:hover {
+      div.tile div.iconSet span:hover, div.bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      li.tile div.iconSet span.disabled, li.bigtile div.iconSet span.disabled {
+      div.tile div.iconSet span.disabled, div.bigtile div.iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-  li.tile .badge-success, li.bigtile .badge-success {
+  div.tile .badge-success, div.bigtile .badge-success {
     font-weight: 300; }
-  li.tile .unloaded div, li.bigtile .unloaded div {
+  div.tile .unloaded div, div.bigtile .unloaded div {
     border-bottom: 16px solid #ff8f35; }
-  li.tile .deleted div, li.bigtile .deleted div {
+  div.tile .deleted div, div.bigtile .deleted div {
     border-bottom: 16px solid #770000; }
-  li.tile div.tileBadge, li.bigtile div.tileBadge {
+  div.tile div.tileBadge, div.bigtile div.tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    li.tile div.tileBadge button, li.bigtile div.tileBadge button {
+    div.tile div.tileBadge button, div.bigtile div.tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    li.tile div.tileBadge span, li.bigtile div.tileBadge span {
+    div.tile div.tileBadge span, div.bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      li.tile div.tileBadge span div.corneredBadge, li.bigtile div.tileBadge span div.corneredBadge {
+      div.tile div.tileBadge span div.corneredBadge, div.bigtile div.tileBadge span div.corneredBadge {
         border-left: 17px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
         height: 0;
         padding-left: 4px;
         padding-right: 9px; }
-        li.tile div.tileBadge span div.corneredBadge.loaded, li.bigtile div.tileBadge span div.corneredBadge.loaded {
+        div.tile div.tileBadge span div.corneredBadge.loaded, div.bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        li.tile div.tileBadge span div.corneredBadge.unloaded, li.bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div.tile div.tileBadge span div.corneredBadge.unloaded, div.bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
-li.tile {
+div.tile {
   height: 100px;
   width: 230px; }
-li.bigtile {
+div.bigtile {
   height: 309px;
   width: 460px; }
-  li.bigtile div.shardContainer {
+  div.bigtile div.shardContainer {
     font-size: 30px; }
-    li.bigtile div.shardContainer span {
+    div.bigtile div.shardContainer span {
       padding: 2px; }
 
 .collectionName {
@@ -799,13 +835,6 @@ div.headerDropdown {
   padding: 10px;
   position: relative;
   width: auto; }
-  div.headerDropdown > div.dropdownInner {
-    -webkit-box-shadow: 0;
-    -moz-box-shadow: 0;
-    box-shadow: 0;
-    min-height: 125px;
-    position: relative;
-    width: auto; }
   div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
@@ -819,6 +848,32 @@ div.headerDropdown {
       vertical-align: middle; }
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
       background-position: 0 -15px; }
+
+div.dropdownInner {
+  -webkit-box-shadow: 0;
+  -moz-box-shadow: 0;
+  box-shadow: 0;
+  min-height: 125px;
+  position: relative;
+  width: auto; }
+  div.dropdownInner > .nav-header {
+    color: black;
+    font-size: 13px;
+    font-weight: 400; }
+  div.dropdownInner > label {
+    color: black;
+    font-weight: 300; }
+  div.dropdownInner ul {
+    border-left: 1px solid black;
+    display: inline;
+    margin-top: 10px;
+    min-height: 105px;
+    width: 238px; }
+    div.dropdownInner ul:first-of-type {
+      border: 0; }
+    div.dropdownInner ul label {
+      color: black;
+      padding-left: 35px; }
 
 div.queryline {
   color: black;
@@ -870,6 +925,60 @@ select.filterSelect {
   float: right;
   margin-left: 10px !important;
   margin-top: 1px; }
+
+input.search-input {
+  border: 0;
+  height: 18px;
+  line-height: 18px;
+  margin-top: 5px;
+  width: 214px; }
+  input.search-input:focus {
+    -webkit-box-shadow: 0 0 10px #8aa051;
+    -moz-box-shadow: 0 0 10px #8aa051;
+    box-shadow: 0 0 10px #8aa051;
+    border-color: #8aa051;
+    outline: none; }
+
+.search-submit-icon {
+  height: 14px;
+  margin-left: -18px;
+  margin-top: 11px;
+  opacity: .2;
+  position: absolute;
+  width: 14px; }
+  .search-submit-icon:hover {
+    opacity: .8; }
+
+div.headerBar {
+  background-color: #686766;
+  color: white;
+  font-size: 16px;
+  height: 36px;
+  margin-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  position: relative; }
+
+div.headerBar a.arangoHeader,
+.modal-header .arangoHeader {
+  color: white;
+  font-size: 16px;
+  left: 5px;
+  position: relative;
+  top: 7px; }
+
+div.headerBar > div.headerButtonBar {
+  margin: 4px 0;
+  margin-bottom: 0 !important; }
+
+div.headerBar > div.breadcrumb {
+  padding-left: 5px !important; }
+
+div.breadcrumb a.disabledBread {
+  color: white; }
+
+.arangoHeader {
+  font-weight: 400; }
 
 .navlogo .stat_cpu {
   height: 26px;
@@ -1150,6 +1259,12 @@ select.filterSelect {
   .modalTooltips span:hover {
     color: black; }
 
+.change-collection .tab-content {
+  min-height: 230px; }
+
+.show-collection .tab-content {
+  min-height: 200px; }
+
 div img.searchSubmitIcon {
   height: 14px;
   margin-left: -18px;
@@ -1367,3 +1482,74 @@ div img.searchSubmitIcon {
 
 .display-none {
   display: none; }
+
+.arango-tab {
+  border-bottom: 1px solid #dddddd;
+  list-style: none;
+  margin-bottom: -1px;
+  margin-left: 0;
+  margin-right: 15px;
+  padding-bottom: 0; }
+  .arango-tab a {
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    background-color: #f1f0ee;
+    border: 1px solid transparent;
+    border-bottom-color: #888888;
+    color: black;
+    display: block;
+    font-size: 13px;
+    line-height: 20px;
+    margin-right: 2px;
+    min-width: 50px;
+    padding: 2px 15px;
+    text-align: center; }
+  .arango-tab li {
+    background-color: transparent;
+    border: 0;
+    margin-bottom: -1px;
+    margin-left: 2px;
+    position: relative;
+    z-index: 900; }
+    .arango-tab li.active a {
+      background: white;
+      border-bottom-color: white;
+      border-left-color: #888888;
+      border-right-color: #888888;
+      border-top-color: #888888;
+      height: 21px;
+      margin-top: -1px; }
+
+.jsoneditor {
+  background-color: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important; }
+  .jsoneditor .menu {
+    background-color: #686766 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important; }
+  .jsoneditor .search .frame {
+    border: 0 !important;
+    margin: 3px !important; }
+  .jsoneditor .search .results {
+    color: white !important;
+    margin-top: 3px !important; }
+
+.show-save-state {
+  color: #008000;
+  display: none;
+  font-weight: 300;
+  margin-top: 10px; }
+
+.document-editor {
+  width: 100%;
+  height: 500px;
+  margin-bottom: 5px; }
+
+.disabledPag,
+.disabledPag a {
+  cursor: default !important;
+  opacity: .5 !important; }
+
+table.dataTable thead th {
+  font-weight: 400 !important;
+  padding: 10px 14px; }
