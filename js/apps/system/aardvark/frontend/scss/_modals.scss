@@ -62,3 +62,18 @@
     color: $c-black;
   }
 }
+
+.change-collection {
+  //TODO Check if could be removed
+  .tab-content {
+    min-height: 230px;
+  }
+}
+
+.show-collection {
+  //TODO Check if could be removed
+  .tab-content {
+    min-height: 200px;
+  }
+}
+

@@ -33,7 +33,6 @@
 .button-notification {
   @extend %btn;
   @extend %notification;
-  margin-right: 5px;
 }
 
 .button-success {
@@ -77,6 +76,14 @@
   padding-right: 3px;
   position: relative;
   top: 3px;
+}
+
+button.large-distance {
+  margin-left: 12px;
+}
+
+button.short-distance {
+  margin-left: 6px;
 }
 
 ul.headerButtonList {
