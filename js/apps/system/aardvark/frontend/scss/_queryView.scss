@@ -1,0 +1,255 @@
+%toolbar {
+  background-color: $c-toolbar-bg;
+  border-bottom: 0;
+  border-style: solid;
+  border-width: 1px;
+  font-size: 20px;
+  height: 27px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.editor-toolbar {
+  border-color: $c-editor-toolbar;
+  margin-top: 5px;
+
+  span {
+    float: right;
+    margin-left: 5px;
+    margin-right: 5px;
+    position: relative;
+    top: 2px;
+  }
+
+  i {
+    margin-right: 5px;
+    margin-top: 3px;
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  .arango-icon-disk {
+    margin-top: 1px;
+  }
+}
+
+.query-toolbar {
+  @extend %toolbar;
+}
+
+.aql-editor {
+  @extend %toolbar;
+  border-color: $c-editor-toolbar;
+  border-left: 0 !important;
+  border-top: 0 !important;
+  height: 200px;
+  margin-bottom: 5px;
+  min-height: 100px;
+  min-width: 99.8%;
+  width: auto;
+
+  .ace_error,
+  .ace_info {
+    background: none;
+  }
+}
+
+.queryTH {
+  width: 20% !important;
+}
+
+.queryTH2 {
+  width: 75% !important;
+}
+
+.query-output {
+  background-color: $c-white;
+  border: 1px solid $c-query-output-border;
+  border-top-width: 0;
+  height: 200px;
+  margin-bottom: 10px;
+  margin-left: 0;
+  margin-right: 0;
+  min-height: 100px;
+  overflow-y: hidden;
+  width: auto;
+
+  .ace_cursor-layer,
+  .ace_replace_form {
+    display: none;
+  }
+
+  .ace_error,
+  .ace_info {
+    background: none;
+  }
+}
+
+.ace_print-margin {
+  visibility: hidden !important;
+}
+
+.styled-select {
+  float: right;
+  height: 30px;
+  overflow: hidden;
+  width: 220px;
+
+  select {
+    background: $c-white;
+    border: 0;
+    border-radius: 0;
+    font-size: 14px;
+    font-weight: 300;
+    height: 30px;
+    line-height: 1;
+    padding: 5px;
+    padding-left: 5px !important;
+    padding-top: 3px !important;
+  }
+}
+
+.querySizeDiv {
+  height: 30px !important;
+  margin-right: 10px;
+  width: 130px !important;
+}
+
+.querySizeDiv select {
+  height: 30px !important;
+}
+
+.wide-button-div {
+  height: 20px;
+  margin-bottom: 15px;
+  padding-top: 5px;
+  width: 100%;
+}
+
+.shortcut-div {
+  float: left;
+  margin-top: -5px;
+  padding-left: 45px;
+  width: auto;
+}
+
+.query-dropdown-left {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.query-dropdown-right {
+  width: 100%;
+
+  textarea {
+    padding: 5px 0 0;
+    resize: vertical;
+    width: 100%;
+
+    &:focus {
+      border-color: $c-positive;
+      box-shadow: 0 0 3px $c-positive;
+      outline: none;
+    }
+  }
+}
+
+.query-modal-select {
+  padding-left: 0;
+  width: 100%;
+}
+
+.output-toolbar {
+  border-color: $c-query-output-border;
+  position: relative;
+  width: auto;
+
+  span {
+    float: right;
+    margin-left: 5px;
+    margin-right: 5px;
+    position: relative;
+    top: 2px;
+  }
+}
+
+.query-select {
+  border: 0 !important;border-radius: 0 !important;
+  line-height: 20px !important;
+  margin-bottom: 0;
+  z-index: 9999 !important;
+
+  option {
+    z-index: 9999 !important;
+  }
+}
+
+.editor-label {
+  width: 100%;
+
+  h6 {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 5px;
+  }
+}
+
+.query-button {
+  @extend %pull-right;
+}
+
+.query-dropdown {
+  background-color: $c-odd;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.tooltip-margin {
+  margin-top: 1px;
+}
+
+.query-dropdown-in {
+  background-color: $c-white;
+  padding: 10px;
+
+  a {
+    color: $c-icon-grey;
+    font-size: 16px;
+    font-weight: bolder;
+    margin-bottom: 5px;
+    width: 100%;
+  }
+
+  #save-edit-query {
+    margin-left: 7px !important;
+  }
+
+  #delete-edit-query {
+    margin-left: 0 !important;
+  }
+}
+
+.query-size {
+  border-radius: 0 !important;
+  line-height: 20px !important;
+  width: 130px !important;
+  z-index: 9999 !important;
+}
+
+.query-div {
+  display: none;
+
+  &> * {
+    border: 0 !important;
+  }
+
+  .icon_arangodb {
+    cursor: pointer;
+    margin-bottom: 5px;
+  }
+}
