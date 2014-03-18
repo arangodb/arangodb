@@ -11,13 +11,13 @@
     <div class="tab-content" id="tabContentQuery">
       <div class="tab-pane active" id="query">
 
-        <div id="queryDropdown" class="headerDropdown">
-          <div class="dropdownInner" id="queryDropdownIn">
+        <div id="queryDropdown" class="headerDropdown query-dropdown">
+          <div class="dropdownInner query-dropdown-in" id="queryDropdownIn">
             <a class="arangoHeader">Edit custom queries</a>
 
-            <div id="queryDropdownLeft">
+            <div id="queryDropdownLeft" class="query-dropdown-left">
               Name
-              <select id="queryModalSelect"/>
+              <select id="queryModalSelect" class="query-modal-select"/>
             </div>
             <div id="queryDropdownRight">
               Query
@@ -39,23 +39,23 @@
           </div>
         </div>
 
-        <div id="queryDiv" style="display:none">
-          <div id="editorLabel"><h6>Query</h6></div>
-          <div id="editorToolbar" class="queryToolbar">
-            <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearInput"/>
+        <div id="queryDiv" class="query-div">
+          <div id="editorLabel" class="editor-label"><h6>Query</h6></div>
+          <div id="editorToolbar" class="query-toolbar editor-toolbar">
+            <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
             <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
-            <span class="icon_arangodb icon_arangodb_bubble1 queryTooltips" title="Comment" id="commentText"/>
-            <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips" title="Redo" id="redoText"/>
-            <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips" title="Undo" id="undoText"/>
+            <span class="icon_arangodb icon_arangodb_bubble1 queryTooltips tooltip-margin" title="Comment" id="commentText"/>
+            <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips tooltip-margin" title="Redo" id="redoText"/>
+            <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips tooltip-margin" title="Undo" id="undoText"/>
           </div>
 
-          <div id="aqlEditor"></div>
+          <div id="aqlEditor" class='aql-editor'></div>
 
 
-          <div id="wideButtonDiv">
+          <div id="wideButtonDiv" class="wide-button-div">
             <div>
 
-              <div id="shortcutDiv" class="shortcuts">
+              <div id="shortcutDiv" class="shortcuts shortcut-div">
                 <b>Submit:</b> Ctrl/Cmd + Return<b>Undo:</b> Ctrl/Cmd + Z<b>Redo:</b> Ctrl/Cmd + Shift + Z
                 <b>Toggle Comments:</b> Ctrl/Cmd + Shift + C
                 <br/><b class="clearShortcut">Warning:</b> Right now there is a bug in Safari, the cursor is misplaced. Please use a different
@@ -64,13 +64,13 @@
             </div>
             <div>
 
-              <button id="submitQueryButton" class="button-success">Submit</button>
-              <button id="clearQueryButton" class="button-close">Clear</button>
+              <button id="submitQueryButton" class="button-success query-button">Submit</button>
+              <button id="clearQueryButton" class="button-close query-button">Clear</button>
               <div class="styled-select">
-                <select id="querySelect"/>
+                <select id="querySelect" class="query-select"/>
               </div>
               <div class="styled-select querySizeDiv">
-                <select id="querySize"/>
+                <select id="querySize" class="query-size"/>
               </div>
             </div>
           </div>
@@ -82,12 +82,12 @@
     <div class="tab-content" id="tabContentResult">
 
       <div class="tab-pane" id="result">
-        <div id="editorLabel"><h6>Result</h6></div>
-        <div id="outputToolbar" class="queryToolbar">
-          <span class="icon_arangodb icon_arangodb_trash queryTooltips" title="Clear" id="clearOutput"></span>
+        <div id="editorLabel" class="editor-label"><h6>Result</h6></div>
+        <div id="outputToolbar" class="query-toolbar output-toolbar">
+          <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
           <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
         </div>
-        <div id="queryOutput" class="contentDiv">
+        <div id="queryOutput" class="contentDiv query-output">
         </div>
 
       </div>

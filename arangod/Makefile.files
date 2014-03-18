@@ -112,7 +112,13 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/update-policy.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
-	arangod/VocBase/vocbase-defaults.c
+	arangod/VocBase/vocbase-defaults.c \
+        arangod/Wal/AllocatorThread.cpp \
+        arangod/Wal/CollectorThread.cpp \
+        arangod/Wal/Configuration.cpp \
+        arangod/Wal/LogfileManager.cpp \
+        arangod/Wal/Logfile.cpp \
+        arangod/Wal/Logger.cpp 
 
 if ENABLE_CLUSTER
 
