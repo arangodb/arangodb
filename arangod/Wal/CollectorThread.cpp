@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief Write-ahead log garbage collection thread
 ///
 /// @file
 ///
@@ -25,37 +25,35 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
+#include "CollectorThread.h"
+#include "BasicsC/logging.h"
+#include "Basics/ConditionLocker.h"
+#include "Wal/LogfileManager.h"
 
-using namespace triagens::transaction;
+using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(STATE_UNINITIALISED),
-    _vocbase(vocbase) {
+CollectorThread::CollectorThread (LogfileManager* logfileManager) 
+  : Thread("WalCollector"),
+    _logfileManager(logfileManager),
+    _condition(),
+    _stop(0) {
+  
+  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief destroy the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
-    this->abort();
-  }
+CollectorThread::~CollectorThread () {
 }
 
 // -----------------------------------------------------------------------------
@@ -63,51 +61,47 @@ Transaction::~Transaction () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief initialises the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+bool CollectorThread::init () {
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
+/// @brief stops the collector thread
 ////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
 
-    return TRI_ERROR_NO_ERROR;
+void CollectorThread::stop () {
+  if (_stop > 0) {
+    return;
   }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+
+  _stop = 1;
+  _condition.signal();
+
+  while (_stop != 2) {
+    usleep(1000);
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
 
-    return TRI_ERROR_NO_ERROR;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main loop
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::run () {
+  while (_stop == 0) {
+    CONDITION_LOCKER(guard, _condition);
+
+    // TODO: implement collection
+    guard.wait(1000000);
   }
 
-  _state = STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  _stop = 2;
 }
 
 // Local Variables:

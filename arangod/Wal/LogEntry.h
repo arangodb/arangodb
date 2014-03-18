@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief Write-ahead log entry
 ///
 /// @file
 ///
@@ -25,90 +25,89 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
+#ifndef TRIAGENS_WAL_LOG_ENTRY_H
+#define TRIAGENS_WAL_LOG_ENTRY_H 1
 
-using namespace triagens::transaction;
+#include "Basics/Common.h"
+#include "VocBase/voc-types.h"
+
+namespace triagens {
+  namespace wal {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   struct LogEntry
+// -----------------------------------------------------------------------------
+
+    struct LogEntry {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
+        typedef TRI_voc_tick_t TickType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
+      
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(STATE_UNINITIALISED),
-    _vocbase(vocbase) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief create a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
-    this->abort();
-  }
-}
+        LogEntry (void* mem,
+                  size_t size, 
+                  TickType tick)
+          : _mem(mem),
+            _size(size),
+            _tick(tick) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a log entry
+////////////////////////////////////////////////////////////////////////////////
+
+        ~LogEntry () {
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief check if the entry is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
+        bool isValid () const {
+          return _mem != nullptr;
+        }
 
-    return TRI_ERROR_NO_ERROR;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the position in memory where the log entry resides
+////////////////////////////////////////////////////////////////////////////////
+
+      void* const _mem;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the size of the log entry
+////////////////////////////////////////////////////////////////////////////////
+
+      size_t const _size;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the id (sequence number of the log entry)
+////////////////////////////////////////////////////////////////////////////////
+
+      TickType _tick;
+    };
+
   }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  _state = STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor

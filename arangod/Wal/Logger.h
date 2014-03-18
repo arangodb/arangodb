@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief Write-ahead log logger
 ///
 /// @file
 ///
@@ -25,90 +25,85 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
+#ifndef TRIAGENS_WAL_LOGGER_H
+#define TRIAGENS_WAL_LOGGER_H 1
 
-using namespace triagens::transaction;
+#include "Basics/Common.h"
+#include "Wal/LogEntry.h"
+
+namespace triagens {
+  namespace wal {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      class Logger
+// -----------------------------------------------------------------------------
+
+    class LogfileManager;
+
+    class Logger {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Logger
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+        Logger (Logger const&);
+        Logger& operator= (Logger const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(STATE_UNINITIALISED),
-    _vocbase(vocbase) {
-}
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief create a logger component
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
-    this->abort();
-  }
-}
+        Logger (LogfileManager*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a logger component
+////////////////////////////////////////////////////////////////////////////////
+
+        ~Logger ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief reserve space in a log file
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
+        LogEntry reserve (size_t);
 
-    return TRI_ERROR_NO_ERROR;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the log file manager
+////////////////////////////////////////////////////////////////////////////////
+
+        LogfileManager* _manager;
+
+    };
+
   }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  _state = STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor
