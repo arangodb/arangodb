@@ -22,3 +22,16 @@
   }
 }
 
+.show-save-state {
+  @extend %pull-right;
+  color: #008000;
+  display: none;
+  font-weight: 300;
+  margin-top: 10px;
+}
+
+.document-editor {
+  width: 100%;
+  height: 500px;
+  margin-bottom: 5px;
+}

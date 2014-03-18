@@ -16,6 +16,10 @@
   padding-bottom: 0px !important;
 }
 
+#logContent .tab-content {
+  margin-top: 1px !important;
+}
+
 .dataTables_info {
   display:none !important;
 }

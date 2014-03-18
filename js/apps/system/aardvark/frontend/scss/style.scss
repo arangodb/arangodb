@@ -32,4 +32,9 @@
 // The views containing tabs
 @import 'tabViews';
 // The json editor overwrites
-@import 'jsonEditor'
+@import 'jsonEditor';
+// Pagination
+@import 'pagination';
+
+// Data Tables, TODO: might all be superflous
+@import 'dataTables';
