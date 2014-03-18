@@ -39,10 +39,10 @@ textarea,
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button {
+div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button, .arango-tab li {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after {
+div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
   clear: both;
   content: '.';
   display: block;
@@ -50,7 +50,7 @@ div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lin
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -111,9 +111,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1117,7 +1117,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -1293,3 +1293,54 @@ div img.searchSubmitIcon {
   border-left: 0;
   margin-left: 0;
   padding-left: 0; }
+
+.arango-tab {
+  border-bottom: 1px solid #dddddd;
+  list-style: none;
+  margin-bottom: -1px;
+  margin-left: 0;
+  margin-right: 15px;
+  padding-bottom: 0; }
+  .arango-tab a {
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    background-color: #f1f0ee;
+    border: 1px solid transparent;
+    border-bottom-color: #888888;
+    color: black;
+    display: block;
+    font-size: 13px;
+    line-height: 20px;
+    margin-right: 2px;
+    min-width: 50px;
+    padding: 2px 15px;
+    text-align: center; }
+  .arango-tab li {
+    background-color: transparent;
+    border: 0;
+    margin-bottom: -1px;
+    margin-left: 2px;
+    position: relative;
+    z-index: 900; }
+    .arango-tab li.active a {
+      background: white;
+      border-bottom-color: white;
+      border-left-color: #888888;
+      border-right-color: #888888;
+      border-top-color: #888888;
+      height: 21px;
+      margin-top: -1px; }
+
+.jsoneditor {
+  background-color: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important; }
+  .jsoneditor .menu {
+    background-color: #686766 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important; }
+  .jsoneditor .search .frame {
+    border: 0 !important;
+    margin: 3px !important; }
+  .jsoneditor .search .results {
+    color: white !important;
+    margin-top: 3px !important; }

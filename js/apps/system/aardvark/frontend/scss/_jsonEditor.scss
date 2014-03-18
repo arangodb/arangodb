@@ -1,0 +1,24 @@
+// TODO Needs to be cleaned up it is not so !important as it looks...
+.jsoneditor {
+  background-color: $c-white !important;
+  border: 1px solid $c-semi-transp !important;
+
+  .menu {
+    background-color: $c-bar-bg !important;
+    border-bottom: 1px solid $c-semi-transp !important;
+  }
+
+  .search {
+
+    .frame {
+      border: 0 !important;
+      margin: 3px !important;
+    }
+
+    .results {
+      color: $c-white !important;
+      margin-top: 3px !important;
+    }
+  }
+}
+
