@@ -1541,9 +1541,9 @@ div img.searchSubmitIcon {
   margin-top: 10px; }
 
 .document-editor {
-  width: 100%;
   height: 500px;
-  margin-bottom: 5px; }
+  margin-bottom: 5px;
+  width: 100%; }
 
 .disabledPag,
 .disabledPag a {
