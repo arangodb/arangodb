@@ -39,7 +39,7 @@ textarea,
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button, .arango-tab li {
+div.navmenu, div.footer-right, div.tile div.iconSet span, div.bigtile div.iconSet span, .fixedDropdown button, .arango-tab li, .show-save-state {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
@@ -1344,3 +1344,23 @@ div img.searchSubmitIcon {
   .jsoneditor .search .results {
     color: white !important;
     margin-top: 3px !important; }
+
+.show-save-state {
+  color: #008000;
+  display: none;
+  font-weight: 300;
+  margin-top: 10px; }
+
+.document-editor {
+  width: 100%;
+  height: 500px;
+  margin-bottom: 5px; }
+
+.disabledPag,
+.disabledPag a {
+  cursor: default !important;
+  opacity: .5 !important; }
+
+table.dataTable thead th {
+  font-weight: 400 !important;
+  padding: 10px 14px; }
