@@ -190,24 +190,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
     makeConfigure = function (div, idConf, idFilter) {
       var ul, liConf, aConf, spanConf, liFilter, aFilter, spanFilter, lists;
-      div.className = "headerButtonBar pull-right";
+      div.className = "headerButtonBar";
       ul = document.createElement("ul");
       ul.className = "headerButtonList";
 
       div.appendChild(ul);
-
-      liFilter = document.createElement("li");
-      liFilter.className = "enabled";
-      aFilter = document.createElement("a");
-      aFilter.id = idFilter;
-      aFilter.className = "headerButton";
-      spanFilter = document.createElement("span");
-      spanFilter.className = "icon_arangodb_filter";
-      $(spanFilter).attr("title", "Filter");
-      
-      ul.appendChild(liFilter);
-      liFilter.appendChild(aFilter);
-      aFilter.appendChild(spanFilter);
 
       liConf = document.createElement("li");
       liConf.className = "enabled";
@@ -222,6 +209,18 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       liConf.appendChild(aConf);
       aConf.appendChild(spanConf);
 
+      liFilter = document.createElement("li");
+      liFilter.className = "enabled";
+      aFilter = document.createElement("a");
+      aFilter.id = idFilter;
+      aFilter.className = "headerButton";
+      spanFilter = document.createElement("span");
+      spanFilter.className = "icon_arangodb_filter";
+      $(spanFilter).attr("title", "Filter");
+      
+      ul.appendChild(liFilter);
+      liFilter.appendChild(aFilter);
+      aFilter.appendChild(spanFilter);
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
       aConf.onclick = function () {

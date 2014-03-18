@@ -93,8 +93,8 @@ ul.headerButtonList {
   padding-left: 0 !important;
 
   li {
+    @extend %pull-right;
     display: inline;
-    margin-right: 2px;
   }
 }
 
@@ -112,7 +112,7 @@ button.shutdown {
 
   margin: {
     left: 5px;
-    right: 3px;
+    right: 5px;
   }
   padding: {
     left: 9px;
