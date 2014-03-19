@@ -41,3 +41,6 @@ textarea,
 @font-face {
   @include sans(italic, 700, ' Bold Italic', '-BoldItalic', 'BoldItalic');
 }
+
+// Font Awesome
+@import 'font-awesome/font-awesome'
