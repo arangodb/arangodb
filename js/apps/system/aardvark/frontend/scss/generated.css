@@ -111,9 +111,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1019,7 +1019,7 @@ div.headerBar {
   div.headerBar input[type="radio"] {
     display: none; }
     div.headerBar input[type="radio"] + label span {
-      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
+      background: url("../img/check_radio_sheet.png") -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
       height: 19px;
@@ -1027,7 +1027,7 @@ div.headerBar {
       vertical-align: middle;
       width: 19px; }
   div.headerBar input[type="radio"]:checked + label span {
-    background: url(../img/check_radio_sheet.png) -57px top no-repeat; }
+    background: url("../img/check_radio_sheet.png") -57px top no-repeat; }
 
 div.headerBar a.arangoHeader,
 .modal-header .arangoHeader {
@@ -1197,7 +1197,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -1752,7 +1752,7 @@ div img.searchSubmitIcon {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: gray; }
+  background-color: grey; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
