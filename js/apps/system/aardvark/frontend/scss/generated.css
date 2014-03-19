@@ -36,13 +36,13 @@ textarea,
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state {
+div.navmenu, div.footer-right, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
+div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
   clear: both;
   content: '.';
   display: block;
@@ -50,7 +50,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -67,9 +67,9 @@ nav.navbar, footer.footer {
   .button-danger:hover {
     background-color: #be342e; }
 
-.deleteButton, .contentTables td span {
+.deleteButton, .contentTables td span, .edit-index-table .icon_arangodb_roundminus {
   color: #da4f49; }
-  .deleteButton:hover, .contentTables td span:hover {
+  .deleteButton:hover, .contentTables td span:hover, .edit-index-table .icon_arangodb_roundminus:hover {
     color: #be342e; }
 
 .button-success {
@@ -470,8 +470,8 @@ button.gv-zoom-btn {
   button.gv-zoom-btn.pan-bottom {
     background-image: url("../img/gv_arrow_bottom.png"); }
 
-a.paginationButton,
-ul.arangoPagination a {
+a.pagination-button,
+ul.arango-pagination a {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px; }
@@ -1549,59 +1549,69 @@ div img.searchSubmitIcon {
   cursor: default !important;
   opacity: .5 !important; }
 
-.pagination-mini ul > li.disabled:last-child > a,
-.pagination-small ul > li.disabled:last-child > a,
-.pagination-mini ul > li.disabled:last-child > span,
-.pagination-small ul > li.disabled:last-child > span,
-.pagination-mini ul > li.disabled:first-child > a,
-.pagination-small ul > li.disabled:first-child > a,
-.pagination-mini ul > li.disabled:first-child > span,
-.pagination-small ul > li.disabled:first-child > span {
-  pointer-events: none;
-  cursor: default;
-  background-color: #777;
-  color: #666666; }
-
-.pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
-  background-color: #8f8d8c;
-  color: #FFFFFF; }
-
-.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
-.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
-  box-shadow: none;
-  background: #8f8d8c;
-  border: none;
-  color: #FFFFFF;
-  position: relative;
-  width: 14px;
-  height: 20px; }
-
-.arangoPagination li:first-child a {
-  margin-right: 20px !important; }
-
-.arangoPagination li:last-child a {
-  margin-left: 30px !important; }
-
-.pagination ul > li > a, .pagination ul > li > span {
-  cursor: pointer;
-  border-width: 0 0 0 0px; }
-
-#documentsToolbarF .prePagi {
-  margin-right: -5px !important; }
-
-#documentsToolbarF a,
-#logPaginationDiv a {
-  margin-left: 11px; }
-
-#documentsToolbarF {
+.pagination-line {
+  margin: 20px 0;
   padding-bottom: 5px;
-  margin-top: 20px; }
+  text-align: center; }
+  .pagination-line li a:hover, .pagination-line li.active a,
+  .pagination-line li.active span {
+    background-color: #8f8d8c;
+    color: white; }
+  .pagination-line li a {
+    background-color: white;
+    border: 1px solid #dddddd;
+    border-left-width: 0;
+    font-size: 11.9px;
+    line-height: 20px;
+    padding: 2px 10px;
+    text-decoration: none; }
+  .pagination-line ul {
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
+    -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    display: inline-block;
+    margin-bottom: 0;
+    margin-left: 0; }
+  .pagination-line li {
+    display: inline-block;
+    margin-left: 11px; }
+    .pagination-line li a {
+      border-width: 0; }
+    .pagination-line li span {
+      color: black;
+      font-size: 14px;
+      position: relative;
+      top: 2px; }
+    .pagination-line li:last-child a,
+    .pagination-line li:last-child span, .pagination-line li:first-child a,
+    .pagination-line li:first-child span {
+      -webkit-box-shadow: 0;
+      -moz-box-shadow: 0;
+      box-shadow: 0;
+      background: #8f8d8c;
+      border: 0;
+      color: black;
+      height: 20px;
+      position: relative;
+      width: 14px; }
+    .pagination-line li.disabled:last-child a,
+    .pagination-line li.disabled:last-child span, .pagination-line li.disabled:first-child a,
+    .pagination-line li.disabled:first-child span {
+      background-color: #777777;
+      color: #666666;
+      cursor: default;
+      pointer-events: none; }
 
-#documentsToolbarF span, #logPaginationDiv span {
-  position: relative;
-  top: 2px;
-  font-size: 14px;
-  color: black; }
+.arango-pagination li:first-child {
+  margin-right: 20px; }
+.arango-pagination li:last-child {
+  margin-left: 30px; }
+
+.pre-pagi {
+  margin-right: -5px !important; }
 
 table.dataTable thead th {
   font-weight: 400 !important;
@@ -1656,19 +1666,17 @@ table.dataTable thead th {
   margin-top: 5px;
   min-width: auto !important; }
   .edit-index-table th {
-    padding-top: 5px;
     padding-bottom: 5px;
-    padding-left: 5px; }
+    padding-left: 5px;
+    padding-top: 5px; }
   .edit-index-table .icon_arangodb_locked {
-    font-size: 20px;
-    margin-left: 10px;
     color: rgba(0, 0, 0, 0.5);
-    cursor: default; }
+    cursor: default;
+    font-size: 20px;
+    margin-left: 10px; }
   .edit-index-table .icon_arangodb_roundminus {
     font-size: 20px;
-    color: #BE342E;
-    margin-left: 10px;
-    cursor: pointer; }
+    margin-left: 10px; }
 
 .contentIn > div {
   padding: 10px; }
@@ -1691,9 +1699,6 @@ table.dataTable thead th {
 .docsSecCol {
   min-width: 400px !important;
   width: 20%; }
-
-.docsThirdCol {
-  float: right; }
 
 .add-filter-item {
   margin-left: 5px; }

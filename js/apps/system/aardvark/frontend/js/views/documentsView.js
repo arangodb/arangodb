@@ -638,10 +638,10 @@
       };
       target.pagination(options);
       $('#documentsToolbarF').prepend(
-        '<ul class="prePagi"><li><a id="documents_first" class="paginationButton">'+
+        '<ul class="pre-pagi"><li><a id="documents_first" class="pagination-button">'+
         '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>');
         $('#documentsToolbarF').append(
-          '<ul class="lasPagi"><li><a id="documents_last" class="paginationButton">'+
+          '<ul class="las-pagi"><li><a id="documents_last" class="pagination-button">'+
           '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>');
           var total = $('#totalDocuments');
           if (total.length > 0) {
