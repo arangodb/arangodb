@@ -857,6 +857,77 @@ select.filterSelect {
   margin-top: 1px;
   margin-left: 10px !important; }
 
+div.headerBar {
+  position: relative;
+  margin-bottom: 5px;
+  background-color: #686766;
+  color: white;
+  height: 36px;
+  font-size: 16px;
+  padding-left: 5px;
+  padding-right: 5px;
+  position: relative; }
+  div.headerBar input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerBar input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle;
+      cursor: pointer; }
+  div.headerBar input[type=checkbox].css-checkbox:checked + label.css-label {
+    background-position: 0 -15px; }
+  div.headerBar input[type="radio"] {
+    display: none; }
+    div.headerBar input[type="radio"] + label span {
+      display: inline-block;
+      width: 19px;
+      height: 19px;
+      margin: -1px 4px 0 0;
+      vertical-align: middle;
+      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
+      cursor: pointer; }
+  div.headerBar input[type="radio"]:checked + label span {
+    background: url(../img/check_radio_sheet.png) -57px top no-repeat; }
+
+div.headerBar a.arangoHeader,
+.modal-header .arangoHeader {
+  color: white;
+  position: relative;
+  top: 7px;
+  left: 5px;
+  font-size: 16px; }
+
+div.headerBar > div.headerButtonBar {
+  margin: 4px 0px;
+  margin-bottom: 0 !important; }
+
+div.headerBar > div.breadcrumb {
+  padding-left: 5px !important; }
+
+div.breadcrumb a.disabledBread {
+  color: white; }
+
+.arangoHeader {
+  font-weight: 400; }
+
+#transparentHeader input[type=checkbox].css-checkbox {
+  display: none; }
+
+.checkboxLabel {
+  margin-top: 4px;
+  padding-left: 0; }
+
+.css-label {
+  background-image: url(../img/dark-check-green.png); }
+
+.css-label-round {
+  background-image: url(../img/dark-check-green-round.png); }
+
 .navlogo .stat_cpu {
   margin-top: 1px;
   width: 26px;
