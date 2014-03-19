@@ -16,3 +16,11 @@
     font-size: 20px;
   }
 }
+
+.icon-info-sign {
+  @extend %clickable;
+}
+
+.icon_arangodb_info {
+  color: $c-icon-with-opacity;
+}

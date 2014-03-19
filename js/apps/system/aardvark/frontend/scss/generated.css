@@ -50,7 +50,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, .icon-info-sign, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -850,6 +850,9 @@ div.centralContent {
   .waitModal.message {
     font-size: 20px; }
 
+.icon_arangodb_info {
+  color: #333333; }
+
 div.headerDropdown {
   background-color: white;
   display: none;
@@ -1238,6 +1241,14 @@ div.breadcrumb a.disabledBread {
     height: 220px;
     width: 250px; }
 
+.modal-body {
+  color: #736b68;
+  font-size: 14px; }
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4; }
+
 .modalChartDetail {
   height: 70%;
   margin-left: 0;
@@ -1250,6 +1261,9 @@ div.breadcrumb a.disabledBread {
   background: transparent;
   border: 0;
   color: white; }
+
+.collectionTh {
+  font-size: 14px; }
 
 .waitModalBackdrop {
   opacity: .7 !important; }
@@ -1624,6 +1638,18 @@ div img.searchSubmitIcon {
   top: 2px;
   font-size: 14px;
   color: black; }
+
+.accordion-group {
+  border: 0; }
+
+.accordion-inner {
+  border-top: 0; }
+
+.accordion-heading a {
+  border: 1px solid #cccccc;
+  color: black;
+  font-weight: 400;
+  width: 397px !important; }
 
 table.dataTable thead th {
   font-weight: 400 !important;
