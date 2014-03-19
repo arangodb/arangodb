@@ -63,7 +63,7 @@ div.headerBar {
     display: none;
 
     & + label span {
-      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
+      background: url('../img/check_radio_sheet.png') -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
       height: 19px;
@@ -74,7 +74,7 @@ div.headerBar {
   }
 
   input[type="radio"]:checked + label span {
-    background: url(../img/check_radio_sheet.png) -57px top no-repeat;
+    background: url('../img/check_radio_sheet.png') -57px top no-repeat;
   }
 }
 

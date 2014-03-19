@@ -232,9 +232,10 @@
                 }
                 self.hist[dbserver.id].lastTime = time;
                 if (e.client.totalTime.count === 0) {
-                    self.hist[dbserver.id][time] = 0;
+                  self.hist[dbserver.id][time] = 0;
                 } else {
-                    self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                  self.hist[dbserver.id][time] = e.client.totalTime.sum
+                    / e.client.totalTime.count;
                 }
             });
         });
@@ -272,7 +273,8 @@
                 if (e.client.totalTime.count === 0) {
                     self.hist[coordinator.id][time] = 0;
                 } else {
-                    self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                  self.hist[coordinator.id][time] = e.client.totalTime.sum
+                    / e.client.totalTime.count;
                 }
             });
         });
