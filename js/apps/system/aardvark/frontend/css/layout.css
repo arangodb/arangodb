@@ -1,7 +1,3 @@
-.modal-backdrop, .modal-backdrop.fade.in {
-  opacity: 0.4 ;
-}
-
 .arango-logo img {
   margin-left: 22px;
 }
@@ -72,80 +68,8 @@ body {
   background: none;
 }
 
-/* ICONS */
-.icon-info-sign:hover {
-  cursor: pointer;
-}
-
-.about-icon {
-  float: left;
-  margin-right: 12px;
-}
-
-.clearicon, .reloadicon {
-  opacity: 0.2;
-  cursor: pointer;
-  margin-top: 3px;
-  top: 20px;
-  position: absolute;
-}
-
-.clearicon {
-  right: 25px;
-}
-
-.reloadicon {
-  right: 45px;
-}
-
-#plusIcon {
-  margin-right: 10px;
-  margin-top: 11px;
-  margin-right: 22px;
-  opacity: 0.3;
-}
-
-#plusIcon:hover, .clearicon:hover, .reloadicon:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
 table .sorting {
   background: none !important;
-}
-
-/* ABOUT VIEW */
-#aboutDiv {
-  padding-bottom: 5px;
-}
-
-#aboutDiv .row {
-  border: 8px solid #F4F3F3 !important;
-  margin-bottom: 25px;
-  background-color: white;
-  padding-bottom: 5px;
-  margin-right: 5px;
-  margin-bottom: 5px;
-  margin-left: 5px;
-}
-
-#aboutHeader {
-  padding-bottom: 33px;
-}
-
-#aboutDiv h3 {
-}
-
-#aboutDiv .row a {
-  padding-left: 20px;
-}
-
-.disabledHover {
-  cursor: default !important;
-}
-
-.disabledHover:hover {
-  background-color: #8F8D8C !important;
 }
 
 /* TESTING DYN */
@@ -176,21 +100,6 @@ button {
   cursor: pointer !important;
 }
 
-.accordion-group {
-  border: 0;
-}
-
-.accordion-inner {
-  border-top: 0;
-}
-
-.accordion-heading a {
-  border: 1px solid #cccccc;
-  color: black;
-  width: 397px !important;
-  font-weight: 400;
-}
-
 li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   font-size: 18px;
   position: absolute;
@@ -198,7 +107,7 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   top: 2px;
 }
 
-.modal-body .icon_arangodb_info {
+.icon_arangodb_info {
   font-size: 23px;
   color: #736B68;
 }
