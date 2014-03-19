@@ -185,7 +185,6 @@
         var buttonBar = $("#contentDiv #menubar #modifiers");
         expect(buttonBar.length).toEqual(1);
         expect(buttonBar).toBeOfClass("headerButtonBar");
-        expect(buttonBar).toBeOfClass("pull-right");
       });
       
       it('should contain a general configure menu', function() {
