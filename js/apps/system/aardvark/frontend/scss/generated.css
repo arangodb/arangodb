@@ -36,10 +36,10 @@ textarea,
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal {
   float: left; }
 
-div.navmenu, div.footer-right, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after {
@@ -111,9 +111,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -260,13 +260,35 @@ ul.gv-dropdown-menu {
   vertical-align: top;
   width: 0; }
 
+.footer {
+  background-color: #333232;
+  bottom: 0;
+  font-size: 14px;
+  left: 0;
+  position: fixed;
+  right: 0;
+  text-align: center;
+  z-index: 1000; }
+
 footer.footer {
   bottom: 0;
   height: 40px; }
   footer.footer p {
-    margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px; }
+    padding-top: 10px;
+    margin-bottom: 0; }
+
+div.footer-left {
+  background: none repeat scroll 0 0 #333232;
+  color: white;
+  width: 45%; }
+
+div.footer-right {
+  background: none repeat scroll 0 0 #333232;
+  color: #333232;
+  width: 45%; }
+  div.footer-right p {
+    color: white; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
   -moz-border-radius: 4px;
@@ -1113,7 +1135,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
