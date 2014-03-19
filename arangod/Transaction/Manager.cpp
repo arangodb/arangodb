@@ -114,7 +114,7 @@ int Manager::beginTransaction (Transaction* transaction) {
   Transaction::IdType id = transaction->id();
 
   WRITE_LOCKER(_lock);
-  auto it = _transactions.insert(make_pair(id, Transaction::STATE_BEGUN));
+  auto it = _transactions.insert(make_pair(id, Transaction::StateType::STATE_BEGUN));
 
   if (it.first == _transactions.end()) {
     return TRI_ERROR_INTERNAL;
@@ -155,7 +155,7 @@ int Manager::abortTransaction (Transaction* transaction) {
     return TRI_ERROR_INTERNAL;
   }
 
-  (*it).second = Transaction::STATE_ABORTED;
+  (*it).second = Transaction::StateType::STATE_ABORTED;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -168,7 +168,7 @@ Transaction::StateType Manager::statusTransaction (Transaction::IdType id) {
   
   auto it = _transactions.find(id);
   if (it == _transactions.end()) {
-    return Transaction::STATE_COMMITTED;
+    return Transaction::StateType::STATE_COMMITTED;
   }
 
   return (*it).second;

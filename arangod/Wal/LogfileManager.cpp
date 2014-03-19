@@ -57,6 +57,7 @@ LogfileManager::LogfileManager (Configuration* configuration)
     _collectorThread(nullptr),
     _logfileIdLock(),
     _logfileId(0),
+    _lastCollectedId(0),
     _logfilesLock(),
     _logfiles(),
     _directory(configuration->directory()) {
@@ -204,9 +205,20 @@ LogEntry::TickType LogfileManager::nextTick () {
 /// @brief returns the last assigned tick
 ////////////////////////////////////////////////////////////////////////////////
 
-LogEntry::TickType LogfileManager::currentTick () {
+LogEntry::TickType LogfileManager::lastTick () {
   READ_LOCKER(_tickLock);
   return _tick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the id of the last fully collected logfile
+/// returns 0 if no logfile was yet collected or no information about the
+/// collection is present
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile::IdType LogfileManager::lastCollected () {
+  MUTEX_LOCKER(_logfileIdLock);
+  return _lastCollectedId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,9 +234,21 @@ int LogfileManager::readShutdownInfo () {
     return TRI_ERROR_INTERNAL;
   }
 
-  uint64_t const tick = basics::JsonHelper::stringUInt64(json, "maxTick");
-
-  _tick = static_cast<LogEntry::TickType>(tick);
+  // read last assigned tick (may be 0)
+  uint64_t const lastTick = basics::JsonHelper::stringUInt64(json, "lastTick");
+  
+  {
+    WRITE_LOCKER(_tickLock);
+    _tick = static_cast<LogEntry::TickType>(lastTick);
+  }
+  
+  // read if of last collected logfile (maybe 0)
+  uint64_t const lastCollected = basics::JsonHelper::stringUInt64(json, "lastCollected");
+  
+  {
+    MUTEX_LOCKER(_logfileIdLock);
+    _lastCollectedId = static_cast<Logfile::IdType>(lastCollected);
+  }
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
@@ -239,8 +263,10 @@ int LogfileManager::writeShutdownInfo () {
   std::string const filename = shutdownFilename();
 
   std::string content;
-  content.append("{\"maxTick\":\"");
-  content.append(basics::StringUtils::itoa(currentTick()));
+  content.append("{\"lastTick\":\"");
+  content.append(basics::StringUtils::itoa(lastTick()));
+  content.append("\",\"lastCollected\":\"");
+  content.append(basics::StringUtils::itoa(lastCollected()));
   content.append("\"}");
 
   // TODO: spit() doesn't return success/failure. FIXME!
@@ -330,7 +356,8 @@ int LogfileManager::inventory () {
     return res;
   }
     
-  LOG_INFO("scanning wal directory: '%s'", _directory.c_str());
+  LOG_TRACE("scanning wal directory: '%s'", _directory.c_str());
+
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
 
   for (auto it = files.begin(); it != files.end(); ++it) {
@@ -341,8 +368,13 @@ int LogfileManager::inventory () {
     if (regexec(&_regex, s, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
       Logfile::IdType const id = basics::StringUtils::uint64(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
-      WRITE_LOCKER(_logfilesLock);
-      _logfiles.insert(make_pair(id, nullptr));
+      if (id == 0) {
+        LOG_WARNING("encountered invalid id for logfile '%s'. ids must be > 0", file.c_str());
+      }
+      else {
+        WRITE_LOCKER(_logfilesLock);
+        _logfiles.insert(make_pair(id, nullptr));
+      }
     }
   }
      
