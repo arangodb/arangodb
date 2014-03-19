@@ -38,25 +38,30 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative;
+
   input[type=checkbox].css-checkbox {
-    display:none;
+    display: none;
+
     & + label.css-label {
-      padding-left:20px;
+      padding-left: 20px;
       margin-top: 0px;
-      height:15px;
-      display:inline-block;
-      background-repeat:no-repeat;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
       background-position: 0 0;
-      font-size:15px;
-      vertical-align:middle;
+      font-size: 15px;
+      vertical-align: middle;
       cursor:pointer;
     }
   }
+
   input[type=checkbox].css-checkbox:checked + label.css-label {
     background-position: 0 -15px;
   }
+
   input[type="radio"] {
     display:none;
+
     & + label span {
       display:inline-block;
       width:19px;
@@ -67,6 +72,7 @@ div.headerBar {
       cursor:pointer;
     }
   }
+  
   input[type="radio"]:checked + label span {
     background:url(../img/check_radio_sheet.png) -57px top no-repeat;
   }
