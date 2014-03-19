@@ -225,7 +225,11 @@
                             (time-self.hist[dbserver.id].lastTime) / 2] = null;
                 }
                 self.hist[dbserver.id].lastTime = time;
-                self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                if (e.client.totalTime.count === 0) {
+                    self.hist[dbserver.id][time] = 0;
+                } else {
+                    self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                }
             });
         });
         this.coordinators.forEach(function (coordinator) {
@@ -253,7 +257,11 @@
                             (time-self.hist[coordinator.id].lastTime) / 2] = null;
                 }
                 self.hist[coordinator.id].lastTime = time;
-                self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                if (e.client.totalTime.count === 0) {
+                    self.hist[coordinator.id][time] = 0;
+                } else {
+                    self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                }
             });
         });
     },
@@ -289,13 +297,19 @@
         statCollect.forEach(function(m) {
           var uptime = m.get("server").uptime * 1000
           var time = self.serverTime;
-          if (self.hist[m.get("name")].lastTime && (time - self.hist[m.get("name")].lastTime) > uptime) {
-              self.hist[m.get("name")][
-                  self.hist[m.get("name")].lastTime +
-                      (time-self.hist[m.get("name")].lastTime) / 2] = null;
+          var name = m.get("name");
+          var totalTime = m.get("client").totalTime;
+          if (self.hist[name].lastTime
+            && (time - self.hist[name].lastTime) > uptime) {
+            self.hist[name][
+                self.hist[name].lastTime +
+                    (time-self.hist[name].lastTime) / 2] = null;
           }
-          self.hist[m.get("name")].lastTime = time;
-          self.hist[m.get("name")][time] = m.get("client").totalTime.sum / m.get("client").totalTime.count;
+          if (totalTime.count === 0) {
+            self.hist[name][time] = 0;
+          } else {
+            self.hist[name][time] = totalTime.sum / totalTime.count;
+          }
         });
         this.data = statCollect;
     },
