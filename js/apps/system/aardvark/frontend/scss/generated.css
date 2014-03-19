@@ -111,9 +111,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1113,7 +1113,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -1537,7 +1537,7 @@ div img.searchSubmitIcon {
   color: #008000;
   display: none;
   font-weight: 300;
-  margin-top: 10px; }
+  margin-top: 5px; }
 
 .document-editor {
   height: 500px;
