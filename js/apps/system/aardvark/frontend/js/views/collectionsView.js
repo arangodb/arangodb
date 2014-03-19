@@ -29,12 +29,6 @@
 
       var searchOptions = this.collection.searchOptions;
 
-      $('#collectionsThumbnailsIn', this.el).append(
-        '<li class="tile"><a href="#new" class="add">' +
-        '<span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon" />' +
-        'Add Collection</a></li>'
-      );
-
       this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
         $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
           model: arango_collection
@@ -50,21 +44,9 @@
         $('#collectionsToggle').addClass('activated');
       }
 
-      //append info icon for loaded collections
-      /*
-      $('.loaded').parent().prev().append(
-        '<span class="icon_arangodb_info spanInfo ICON" ' + 
-        'title="Show collection properties"</span>'
-      );
-      $('.unloaded').parent().prev().append(
-        '<span class="icon_arangodb_info spanDisabled ICON" alt="disabled"</span>'
-      );
-      */
-
       $('#searchInput').val(searchOptions.searchPhrase);
       $('#searchInput').focus();
       var val = $('#searchInput').val();
-      $('#searchInput').val('');
       $('#searchInput').val(val);
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");

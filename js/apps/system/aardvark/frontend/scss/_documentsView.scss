@@ -1,0 +1,100 @@
+.new-index-view {
+  input[type='checkbox'] {
+    float: left;
+    margin-top: -9px;
+  }
+
+  table {
+    tr {
+      width: 600px !important;
+
+      th:last-child {
+        width: 50px !important;
+      }
+    }
+
+    th {
+      font-weight: 300 !important;
+      width: 200px !important;
+    }
+  }
+}
+
+.edit-index-table {
+  margin-top: 5px;
+  min-width: auto !important;
+
+  th {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 5px;
+  }
+
+  .icon_arangodb_locked {
+    font-size: 20px;
+    margin-left: 10px;
+    color: rgba(0,0,0,0.5);
+    cursor: default;
+  }
+
+  .icon_arangodb_roundminus {
+    font-size: 20px;
+    color: #BE342E;
+    margin-left: 10px;
+    cursor: pointer;
+  }
+
+}
+
+.contentIn  {
+  & > div {
+    padding: 10px;
+  }
+
+  .arangoicon {
+    font-size: 25px;
+    position: relative;
+    top: -3px !important;
+  }
+}
+
+.index-button-bar {
+  margin-top: 15px;
+
+  button {
+    margin-left: 0;
+  }
+}
+
+.docsFirstCol, .docsSecCol, .docsThirdCol {
+  border: 0 !important;
+}
+
+.docsFirstCol {
+  width: 70%;
+}
+
+.docsSecCol {
+  min-width: 400px !important;
+  width: 20%;
+}
+
+.docsThirdCol {
+  float: right;
+}
+
+.add-filter-item {
+  margin-left: 5px;
+
+  i {
+    margin-top: 0 !important;
+  }
+}
+
+.upload-indicator {
+  display: none;
+  margin-top: -3px;
+  padding-right: 10px;
+}
+
+

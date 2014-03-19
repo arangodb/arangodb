@@ -1,0 +1,72 @@
+// It is not as important as necessary though
+.disabledPag,
+.disabledPag a {
+  cursor: default !important;
+  opacity: .5 !important;
+}
+
+.pagination-mini ul > li.disabled:last-child > a,
+.pagination-small ul > li.disabled:last-child > a,
+.pagination-mini ul > li.disabled:last-child > span,
+.pagination-small ul > li.disabled:last-child > span,
+.pagination-mini ul > li.disabled:first-child > a,
+.pagination-small ul > li.disabled:first-child > a,
+.pagination-mini ul > li.disabled:first-child > span,
+.pagination-small ul > li.disabled:first-child > span {
+   pointer-events: none;
+   cursor: default;
+   background-color: #777;
+   color:#666666;
+}
+
+.pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
+  background-color: #8f8d8c;
+  color:#FFFFFF;
+}
+
+.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
+.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
+ 	box-shadow: none;
+	background: #8f8d8c;
+	border: none;
+	color:#FFFFFF;
+	position:relative;
+	width:14px;
+	height:20px;
+}
+
+.arangoPagination li:first-child a {
+  margin-right: 20px !important;
+}
+
+.arangoPagination li:last-child a {
+  margin-left: 30px !important;
+}
+
+.pagination ul > li > a, .pagination ul > li > span {
+	cursor:pointer;
+	border-width:0 0 0 0px;
+}
+
+#documentsToolbarF .prePagi {
+  margin-right: -5px !important;
+}
+
+
+#documentsToolbarF a,
+#logPaginationDiv a {
+  margin-left: 11px;
+}
+
+#documentsToolbarF {
+  padding-bottom: 5px;
+  margin-top: 20px;
+}
+
+#documentsToolbarF span, #logPaginationDiv span {
+  position: relative;
+  top: 2px;
+  font-size: 14px;
+  color: black;
+}
+

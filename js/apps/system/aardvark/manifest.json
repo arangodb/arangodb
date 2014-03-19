@@ -118,7 +118,6 @@
 
     "css/style.css": {
       "files": [
-        "frontend/css/openSansFont.css",
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
         "frontend/css/arangodbIcons.css",
@@ -131,18 +130,12 @@
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
         "frontend/css/shellView.css",
-        "frontend/css/queryView.css",
-        "frontend/css/dashboardView.css",
         "frontend/css/logsView.css",
-        "frontend/css/collectionsView.css",
-        "frontend/css/collectionsItemView.css",
-        "frontend/css/collectionView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
         "frontend/css/swaggerView.css",
         "frontend/css/foxxView.css",
         "frontend/css/graphView.css",
-        "frontend/css/loginView.css",
         "frontend/css/dbSelectionView.css",
         "frontend/css/jquery.snippet.css",
         "frontend/css/modal.css",
@@ -150,10 +143,8 @@
         "frontend/css/graphlayout.css",
         "frontend/css/datatables.css",
         "frontend/css/api.css",
-        "frontend/css/general.css",
         "frontend/css/headerBar.css",
         "frontend/css/screenSizes.css",
-        "frontend/css/clusterDashboardView.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]

@@ -68,7 +68,6 @@
           success: function(data) {
             var name = data.result.name;
             self.system.database = name;
-            window.databaseName = name;
 
             var timer = window.setInterval(function () {
               var navElement = $('#databaseNavi');

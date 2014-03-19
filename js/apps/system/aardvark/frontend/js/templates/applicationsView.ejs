@@ -2,16 +2,16 @@
   <div class="headerBar">
     <a class="arangoHeader">Applications</a>
 
-    <div class="headerButtonBar pull-right">
+    <div class="headerButtonBar">
       <ul class="headerButtonList">
-        <li>
-          <a id="importFoxxToggle" class="headerButton">
-            <span class="icon_arangodb_import" title="Upload foxx from ZIP file"></span>
-          </a>
-        </li>
         <li>
           <a id="foxxToggle" class="headerButton">
             <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+        <li>
+          <a id="importFoxxToggle" class="headerButton">
+            <span class="icon_arangodb_import" title="Upload foxx from ZIP file"></span>
           </a>
         </li>
       </ul>
@@ -54,7 +54,7 @@
     <div class="queryline">
       <input id="importFoxx" name="importFoxx" type="file" accept="application/zip"/>
       <button id="confirmFoxxImport" class="button-success btn-old-padding" style="float:right">
-        <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import Foxx
+        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import Foxx
       </button>
     </div>
   </div>
@@ -66,14 +66,14 @@
         <!-- <i id="toggleInstalled" class="pull-right icon-minus icon-white toggle-icon"></i> -->
         <a class="arangoHeader">Active</a>
       </div>
-      <ul id="installedList" class="tileList"></ul>
+      <div id="installedList" class="tileList"></div>
     </div>
     <div id="available">
       <div class="headerBar">
         <!-- <i id="toggleAvailable" class="pull-right icon-minus icon-white toggle-icon"></i> -->
         <a class="arangoHeader">Available</a>
       </div>
-      <ul id="availableList" class="tileList"></ul>
+      <div id="availableList" class="tileList"></div>
     </div>
   </div>
 </script>

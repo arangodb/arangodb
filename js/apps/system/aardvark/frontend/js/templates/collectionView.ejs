@@ -1,5 +1,5 @@
 <script id="collectionView.ejs" type="text/template">
-<div id="change-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+<div id="change-collection" class="modal hide fade change-collection" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <a class="arangoHeader">Modify Collection</a>
@@ -76,9 +76,9 @@
 
   </div>
   <div id="colFooter" class="modal-footer">
-    <button id="delete-modified-collection" class="button-danger">Delete</button>
-    <button id="save-modified-collection" class="button-success" style="margin-right:8px">Save</button>
-    <button class="button-close btn-margin" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="delete-modified-collection" class="button-danger short-distance">Delete</button>
+    <button id="save-modified-collection" class="button-success">Save</button>
+    <button class="button-close large-distance" data-dismiss="modal" aria-hidden="true">Close</button>
   </div>
   <div class="alert alert-error" style="display:none" id="reallyDeleteColDiv">
     <strong>Really delete Collection?</strong>

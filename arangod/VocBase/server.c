@@ -1866,6 +1866,9 @@ int TRI_StartServer (TRI_server_t* server,
 
   server->_wasShutdownCleanly = (res == TRI_ERROR_NO_ERROR);
 
+  if (! server->_wasShutdownCleanly) {
+    LOG_INFO("server was not shut down cleanly. scanning datafile markers");
+  }
 
   // .............................................................................
   // verify existence of "databases" subdirectory
@@ -2123,6 +2126,8 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   TRI_UnlockMutex(&server->_createLock);
+  
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
 

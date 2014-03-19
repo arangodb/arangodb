@@ -94,6 +94,12 @@
 
     createUser : function(e) {
       e.preventDefault();
+      //reset modal (e.g. if opened, filled in and closed its not empty)
+      $('#newUsername').val('');
+      $('#newName').val('');
+      $('#newPassword').val('');
+      $('#newStatus').prop('checked', true);
+
       this.showModal();
     },
 
