@@ -3100,6 +3100,59 @@ div img.searchSubmitIcon {
 .query-output .ace_gutter-cell {
   background-color: #f0f0f0; }
 
+.swagger-ui-wrap ul#resources li.resource {
+  background-color: #f4f3f3; }
+
+.centralContent .api-actions {
+  margin: 0 !important;
+  padding: 0; }
+.centralContent .api-actions .container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  margin-left: 5px !important;
+  margin-right: 5px !important;
+  padding-top: 13px !important;
+  padding-bottom: 10px !important; }
+.centralContent .api-actions .resource {
+  border-bottom: 0 !important;
+  padding-left: 5px !important; }
+.centralContent .api-actions .resource .heading h2 a {
+  color: black !important;
+  font-weight: 300 !important; }
+.centralContent .api-actions .active .heading h2 a {
+  color: black !important; }
+.centralContent .api-actions .endpoints {
+  margin-right: 5px !important; }
+.centralContent .api-actions .endpoints .endpoint:last-child {
+  padding-bottom: 5px !important; }
+.centralContent .api-actions .endpoint .operations .heading,
+.centralContent .api-actions .endpoint .operations .content {
+  border-radius: 0 !important;
+  font-weight: 300 !important; }
+.centralContent .api-actions .endpoint .operations .content {
+  margin: 0 !important; }
+.centralContent .api-actions .endpoint .operations .content h4 {
+  font-weight: 700 !important; }
+.centralContent .api-actions .toggleOperation,
+.centralContent .api-actions .http_method {
+  border-radius: 0 !important; }
+.centralContent .api-actions .required,
+.centralContent .api-actions em,
+.centralContent .api-actions strong {
+  font-weight: 400 !important; }
+.centralContent .api-actions input[type="button"] {
+  background: none repeat scroll 0 0 #8f8d8c !important;
+  border: medium none !important;
+  box-shadow: none !important;
+  color: white !important;
+  float: right !important;
+  font-size: 14px !important;
+  font-weight: 300 !important;
+  margin-top: 10px !important;
+  padding: 8px 16px !important; }
+.centralContent .api-actions .resource > .heading > .options {
+  margin: 11px 10px 0 0 !important; }
+
 table.dataTable thead th {
   font-weight: 400 !important;
   padding: 10px 14px; }
