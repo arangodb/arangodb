@@ -61,7 +61,7 @@ namespace triagens {
 /// @brief transaction state
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum StateType {
+        enum class StateType {
           STATE_UNINITIALISED = 0,
           STATE_BEGUN         = 1,
           STATE_ABORTED       = 2,

@@ -130,7 +130,6 @@
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
         "frontend/css/shellView.css",
-        "frontend/css/dashboardView.css",
         "frontend/css/logsView.css",
         "frontend/css/documentsView.css",
         "frontend/css/documentView.css",
@@ -144,9 +143,7 @@
         "frontend/css/graphlayout.css",
         "frontend/css/datatables.css",
         "frontend/css/api.css",
-        "frontend/css/headerBar.css",
         "frontend/css/screenSizes.css",
-        "frontend/css/clusterDashboardView.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]

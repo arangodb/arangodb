@@ -68,7 +68,7 @@
   width: 150px;
 }
 
-#figures table {
+.collection-info-figures table {
   padding: 3px;
   text-align: left;
   min-width: 200px;
@@ -82,16 +82,17 @@
 */
 }
 
-#figures1, #figures2 {
+.figures1,
+.figures2 {
   margin-bottom: 20px;
   width: 255px;
 }
 
-#figures2 {
+.figures2 {
   margin-left: 20px !important;
 }
 
-#figures3 {
+.figures3 {
   width: 100%;
   margin-bottom: 0;
 }
@@ -143,7 +144,7 @@
 }
 
 #tab-content-collection-info #info,
-#tab-content-collection-info #figures,
+#tab-content-collection-info .collection-info-figures,
 #tab-content-collection-info #index {
   padding-top: 10px;
   border-top: 1px solid #888888 !important;
@@ -239,7 +240,7 @@
   width: 398px !important;
 }
 
-#figures .icon_arangodb_info {
+.collection-info-figures .icon_arangodb_info {
   position: relative !important;
   right: -4px !important;
 }

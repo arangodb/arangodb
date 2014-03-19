@@ -1,3 +1,13 @@
+.modal-body {
+  color: $c-btn-inverse;
+  font-size: 14px;
+}
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4;
+}
+
 .modalChartDetail {
   height: 70%;
   margin-left: 0;
@@ -9,6 +19,10 @@
   background: $c-transp;
   border: 0;
   color: $c-white;
+}
+
+.collectionTh {
+  font-size: 14px;
 }
 
 .waitModalBackdrop {
