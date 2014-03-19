@@ -44,7 +44,7 @@ Transaction::Transaction (Manager* manager,
                           TRI_vocbase_t* vocbase) 
   : _manager(manager),
     _id(id),
-    _state(STATE_UNINITIALISED),
+    _state(StateType::STATE_UNINITIALISED),
     _vocbase(vocbase) {
 }
 
@@ -53,7 +53,7 @@ Transaction::Transaction (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::~Transaction () {
-  if (state() != STATE_COMMITTED && state() != STATE_ABORTED) {
+  if (state() != StateType::STATE_COMMITTED && state() != StateType::STATE_ABORTED) {
     this->abort();
   }
 }
@@ -67,9 +67,9 @@ Transaction::~Transaction () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::begin () {
-  if (state() == STATE_UNINITIALISED &&
+  if (state() == StateType::STATE_UNINITIALISED &&
       _manager->beginTransaction(this)) {
-    _state = STATE_BEGUN;
+    _state = StateType::STATE_BEGUN;
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -83,9 +83,9 @@ int Transaction::begin () {
 ////////////////////////////////////////////////////////////////////////////////
         
 int Transaction::commit () {
-  if (state() == STATE_BEGUN && 
+  if (state() == StateType::STATE_BEGUN && 
       _manager->commitTransaction(this)) {
-    _state = STATE_COMMITTED;
+    _state = StateType::STATE_COMMITTED;
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -99,14 +99,14 @@ int Transaction::commit () {
 ////////////////////////////////////////////////////////////////////////////////
         
 int Transaction::abort () {
-  if (state() == STATE_BEGUN &&
+  if (state() == StateType::STATE_BEGUN &&
       _manager->abortTransaction(this)) {
-    _state = STATE_ABORTED;
+    _state = StateType::STATE_ABORTED;
 
     return TRI_ERROR_NO_ERROR;
   }
 
-  _state = STATE_ABORTED;
+  _state = StateType::STATE_ABORTED;
   return TRI_ERROR_TRANSACTION_INTERNAL;
 }
 

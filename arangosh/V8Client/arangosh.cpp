@@ -107,7 +107,7 @@ V8ClientConnection* ClientConnection = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static int CodePage = 65001;
+static int CodePage = -1;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1929,10 +1929,14 @@ int main (int argc, char* argv[]) {
       if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
-
+     
       // not sure about the code page. let user set code page by command-line argument if required
       if (CodePage > 0) {
         SetConsoleOutputCP((UINT) CodePage);
+      }
+      else {
+        UINT cp = GetConsoleOutputCP();
+        SetConsoleOutputCP(cp);
       }
 
       // TODO we should have a special "printf" which can handle the color escape sequences!
