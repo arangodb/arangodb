@@ -274,9 +274,9 @@ footer.footer {
   bottom: 0;
   height: 40px; }
   footer.footer p {
+    margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px;
-    margin-bottom: 0; }
+    padding-top: 10px; }
 
 div.footer-left {
   background: none repeat scroll 0 0 #333232;
