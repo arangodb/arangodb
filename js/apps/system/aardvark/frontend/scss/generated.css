@@ -111,9 +111,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -176,6 +176,17 @@ nav.navbar {
   height: 38px;
   margin-bottom: 3px;
   top: 0; }
+  nav.navbar .nav > .active > a {
+    background-color: #8aa051;
+    color: white;
+    -webkit-box-shadow: 0 0 0 transparent inset;
+    -moz-box-shadow: 0 0 0 transparent inset;
+    box-shadow: 0 0 0 transparent inset; }
+  nav.navbar .nav > li > a:focus {
+    background-color: #333232; }
+  nav.navbar .nav > li > a:hover {
+    background-color: #8aa051;
+    color: white; }
 
 div.navlogo {
   margin-left: 5px;
@@ -259,6 +270,15 @@ ul.gv-dropdown-menu {
   height: 0;
   vertical-align: top;
   width: 0; }
+
+.applications-menu {
+  display: block; }
+
+.arango-logo {
+  height: 34px;
+  padding: 0 !important; }
+  .arango-logo img {
+    margin-left: 22px; }
 
 .footer {
   background-color: #333232;
@@ -985,27 +1005,27 @@ div.headerBar {
   div.headerBar input[type=checkbox].css-checkbox {
     display: none; }
     div.headerBar input[type=checkbox].css-checkbox + label.css-label {
-      padding-left: 20px;
-      margin-top: 0px;
-      height: 15px;
-      display: inline-block;
-      background-repeat: no-repeat;
       background-position: 0 0;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      display: inline-block;
       font-size: 15px;
-      vertical-align: middle;
-      cursor: pointer; }
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
+      vertical-align: middle; }
   div.headerBar input[type=checkbox].css-checkbox:checked + label.css-label {
     background-position: 0 -15px; }
   div.headerBar input[type="radio"] {
     display: none; }
     div.headerBar input[type="radio"] + label span {
+      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
+      cursor: pointer;
       display: inline-block;
-      width: 19px;
       height: 19px;
       margin: -1px 4px 0 0;
       vertical-align: middle;
-      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
-      cursor: pointer; }
+      width: 19px; }
   div.headerBar input[type="radio"]:checked + label span {
     background: url(../img/check_radio_sheet.png) -57px top no-repeat; }
 
@@ -1038,10 +1058,10 @@ div.breadcrumb a.disabledBread {
   padding-left: 0; }
 
 .css-label {
-  background-image: url(../img/dark-check-green.png); }
+  background-image: url("../img/dark-check-green.png"); }
 
 .css-label-round {
-  background-image: url(../img/dark-check-green-round.png); }
+  background-image: url("../img/dark-check-green-round.png"); }
 
 .navlogo .stat_cpu {
   height: 26px;
@@ -1177,7 +1197,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -1699,6 +1719,63 @@ div img.searchSubmitIcon {
   color: black;
   font-weight: 400;
   width: 397px !important; }
+
+.shell_workspace {
+  margin-top: 13px; }
+
+.replShell {
+  background-color: white;
+  float: left;
+  height: 100%;
+  min-width: 100px;
+  position: relative;
+  width: 100%; }
+  .replShell pre {
+    border-bottom: 0;
+    border-left: 0;
+    border-right: 1px solid #a0a0a0;
+    border-top: 1px solid #a0a0a0; }
+
+.jqconsole {
+  background-color: black;
+  border-radius: 0;
+  padding: 10px; }
+
+.jqconsole-header {
+  color: white; }
+
+.jserror {
+  color: #ff0066;
+  margin-left: -10px; }
+
+.jssuccess {
+  color: #66ff00; }
+
+.jqconsole-cursor {
+  background-color: gray; }
+
+.jqconsole-blurred .jqconsole-header .jqconsole-cursor {
+  color: #c4cccc; }
+
+.jqconsole-prompt {
+  color: #bb9911; }
+
+.jqconsole-old-prompt {
+  color: #ff6600;
+  font-weight: normal; }
+
+.jqconsole-input {
+  color: #dddd00; }
+
+.jqconsole-old-input {
+  color: #bbbb00;
+  font-weight: normal; }
+
+.jqconsole-output {
+  color: white; }
+
+.query-output .ace_gutter-cell {
+  background-color: #f0f0f0; }
 
 table.dataTable thead th {
   font-weight: 400 !important;
