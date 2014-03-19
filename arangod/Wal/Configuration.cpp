@@ -67,7 +67,7 @@ Configuration::~Configuration () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void Configuration::setupOptions (std::map<std::string, basics::ProgramOptionsDescription>& options) {
+void Configuration::setupOptions (std::map<std::string, triagens::basics::ProgramOptionsDescription>& options) {
   options["Write-ahead log options:help-wal"]
     ("wal.filesize", &_filesize, "size of each logfile")
     ("wal.logfiles", &_numberOfLogfiles, "target number of logfiles")

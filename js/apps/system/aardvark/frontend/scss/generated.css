@@ -36,10 +36,10 @@ textarea,
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
@@ -50,7 +50,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, .icon-info-sign, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -260,6 +260,16 @@ ul.gv-dropdown-menu {
   vertical-align: top;
   width: 0; }
 
+.footer {
+  background-color: #333232;
+  bottom: 0;
+  font-size: 14px;
+  left: 0;
+  position: fixed;
+  right: 0;
+  text-align: center;
+  z-index: 1000; }
+
 footer.footer {
   bottom: 0;
   height: 40px; }
@@ -267,6 +277,18 @@ footer.footer {
     margin-bottom: 0;
     padding-bottom: 10px;
     padding-top: 10px; }
+
+div.footer-left {
+  background: none repeat scroll 0 0 #333232;
+  color: white;
+  width: 45%; }
+
+div.footer-right {
+  background: none repeat scroll 0 0 #333232;
+  color: #333232;
+  width: 45%; }
+  div.footer-right p {
+    color: white; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
   -moz-border-radius: 4px;
@@ -828,6 +850,9 @@ div.centralContent {
   .waitModal.message {
     font-size: 20px; }
 
+.icon_arangodb_info {
+  color: #333333; }
+
 div.headerDropdown {
   background-color: white;
   display: none;
@@ -957,6 +982,32 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
+  div.headerBar input[type=checkbox].css-checkbox {
+    display: none; }
+    div.headerBar input[type=checkbox].css-checkbox + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle;
+      cursor: pointer; }
+  div.headerBar input[type=checkbox].css-checkbox:checked + label.css-label {
+    background-position: 0 -15px; }
+  div.headerBar input[type="radio"] {
+    display: none; }
+    div.headerBar input[type="radio"] + label span {
+      display: inline-block;
+      width: 19px;
+      height: 19px;
+      margin: -1px 4px 0 0;
+      vertical-align: middle;
+      background: url(../img/check_radio_sheet.png) -38px top no-repeat;
+      cursor: pointer; }
+  div.headerBar input[type="radio"]:checked + label span {
+    background: url(../img/check_radio_sheet.png) -57px top no-repeat; }
 
 div.headerBar a.arangoHeader,
 .modal-header .arangoHeader {
@@ -978,6 +1029,19 @@ div.breadcrumb a.disabledBread {
 
 .arangoHeader {
   font-weight: 400; }
+
+#transparentHeader input[type=checkbox].css-checkbox {
+  display: none; }
+
+.checkboxLabel {
+  margin-top: 4px;
+  padding-left: 0; }
+
+.css-label {
+  background-image: url(../img/dark-check-green.png); }
+
+.css-label-round {
+  background-image: url(../img/dark-check-green-round.png); }
 
 .navlogo .stat_cpu {
   height: 26px;
@@ -1216,6 +1280,14 @@ div.breadcrumb a.disabledBread {
     height: 220px;
     width: 250px; }
 
+.modal-body {
+  color: #736b68;
+  font-size: 14px; }
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4; }
+
 .modalChartDetail {
   height: 70%;
   margin-left: 0;
@@ -1228,6 +1300,9 @@ div.breadcrumb a.disabledBread {
   background: transparent;
   border: 0;
   color: white; }
+
+.collectionTh {
+  font-size: 14px; }
 
 .waitModalBackdrop {
   opacity: .7 !important; }
@@ -1612,6 +1687,18 @@ div img.searchSubmitIcon {
 
 .pre-pagi {
   margin-right: -5px !important; }
+
+.accordion-group {
+  border: 0; }
+
+.accordion-inner {
+  border-top: 0; }
+
+.accordion-heading a {
+  border: 1px solid #cccccc;
+  color: black;
+  font-weight: 400;
+  width: 397px !important; }
 
 table.dataTable thead th {
   font-weight: 400 !important;

@@ -38,7 +38,47 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative;
+
+  input[type=checkbox].css-checkbox {
+    display: none;
+
+    & + label.css-label {
+      padding-left: 20px;
+      margin-top: 0px;
+      height: 15px;
+      display: inline-block;
+      background-repeat: no-repeat;
+      background-position: 0 0;
+      font-size: 15px;
+      vertical-align: middle;
+      cursor:pointer;
+    }
+  }
+
+  input[type=checkbox].css-checkbox:checked + label.css-label {
+    background-position: 0 -15px;
+  }
+
+  input[type="radio"] {
+    display:none;
+
+    & + label span {
+      display:inline-block;
+      width:19px;
+      height:19px;
+      margin:-1px 4px 0 0;
+      vertical-align:middle;
+      background:url(../img/check_radio_sheet.png) -38px top no-repeat;
+      cursor:pointer;
+    }
+  }
+  
+  input[type="radio"]:checked + label span {
+    background:url(../img/check_radio_sheet.png) -57px top no-repeat;
+  }
 }
+
+
 
 // The title of the page
 
@@ -76,3 +116,6 @@ div.breadcrumb a.disabledBread {
   font-weight: 400;
 }
 
+#transparentHeader input[type=checkbox].css-checkbox {
+  display:none;
+}

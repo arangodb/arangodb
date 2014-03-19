@@ -1,4 +1,3 @@
-//.databaseButtons => .contentButtons
 .contentButtons {
   clear: both;
   margin-bottom: 10px;
@@ -9,8 +8,6 @@
     margin-left: 0;
   }
 }
-
-// #databaseTable => .contentTables
 
 .contentTables {
   margin-bottom: 10px;
@@ -54,8 +51,6 @@
         display: none;
       }
     }
-
-    //.databaseInactive => .contentRowInactive
 
     &.contentRowInactive {
       a {
