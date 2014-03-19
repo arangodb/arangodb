@@ -143,7 +143,6 @@
         "frontend/css/graphlayout.css",
         "frontend/css/datatables.css",
         "frontend/css/api.css",
-        "frontend/css/headerBar.css",
         "frontend/css/screenSizes.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
