@@ -431,7 +431,8 @@ void ArangoClient::parse (ProgramOptions& options,
 void ArangoClient::printErrLine (const string& s) {
 #ifdef _WIN32
   // no, we can use std::cerr as this doesn't support UTF-8 on Windows
-  fprintf(stderr, "%s\r\n", s.c_str());
+  //fprintf(stderr, "esteban: %s\r\n", s.c_str());
+  printLine(s);
 #else
   fprintf(stderr, "%s\n", s.c_str());
 #endif
@@ -440,11 +441,73 @@ void ArangoClient::printErrLine (const string& s) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a string and a newline to stdout
 ////////////////////////////////////////////////////////////////////////////////
-
+void ArangoClient::_printLine(const string &s) {
+#ifdef _WIN32
+ 
+  LPWSTR wBuf = (LPWSTR)TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
+  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (sizeof WCHAR)* (s.size() + 1));
+  if (wLen) {
+    DWORD n;
+    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
+    COORD pos;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
+      // when we are at the last visible line of the console
+      // the first line of console is deleted (the content of the console 
+      // is scrolled one line above
+      SMALL_RECT srctScrollRect;
+      srctScrollRect.Top = 0;
+      srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
+      srctScrollRect.Left = 0;
+      srctScrollRect.Right = bufferInfo.dwSize.X;
+      COORD coordDest;
+      coordDest.X = 0;
+      coordDest.Y = -1;
+      CONSOLE_SCREEN_BUFFER_INFO  consoleScreenBufferInfo;
+      CHAR_INFO chiFill;
+      chiFill.Char.AsciiChar = (char)' ';
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleScreenBufferInfo)) {
+        chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
+      }
+      else {
+        // Fill the bottom row with green blanks.
+        chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
+      }
+      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
+      pos.Y = bufferInfo.dwCursorPosition.Y;
+      pos.X = 0;
+    }
+    else {
+      pos.Y = bufferInfo.dwCursorPosition.Y + 1;
+      pos.X = 0;
+    }
+    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
+    pos.Y += 1;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    // Workaround recomended by 
+    // http://social.msdn.microsoft.com/Forums/de-DE/c16846a3-eb27-4698-80a5-6c4ecf92a799/aus-der-msdnhotline-deutsche-umlaute-in-der-console-anzeigen-standard-c?forum=visualcplusde
+    // but it does not work
+    // std::locale::global(std::locale("German_germany"));
+    // std::cout << "esteban: " << s;
+  }
+  else {
+    fprintf(stdout, "window error: '%d' \r\n", GetLastError());
+    fprintf(stdout, "%s \r\n", s.c_str());
+  }
+  if (wBuf) {
+    TRI_Free(TRI_CORE_MEM_ZONE, wBuf);
+  }
+#endif
+}
 void ArangoClient::printLine (const string& s) {
 #ifdef _WIN32
   // no, we can use std::cout as this doesn't support UTF-8 on Windows
-  fprintf(stdout, "%s\r\n", s.c_str());
+  //fprintf(stdout, "%s\r\n", s.c_str());
+  TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
+  for (int i = 0; i < subStrings._length; i++) {
+    _printLine(subStrings._buffer[i]);
+  }
+  TRI_DestroyVectorString(&subStrings);
 #else
   fprintf(stdout, "%s\n", s.c_str());
 #endif
@@ -456,8 +519,12 @@ void ArangoClient::printLine (const string& s) {
 
 void ArangoClient::printContinuous (const string& s) {
   // no, we can use std::cout as this doesn't support UTF-8 on Windows
+#ifdef _WIN32
+  printLine(s);
+#else
   fprintf(stdout, "%s", s.c_str());
   fflush(stdout);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,7 +619,8 @@ void ArangoClient::internalPrint (const char* format, const char* str) {
   }
 
   if (_pager == stdout) {
-    fprintf(_pager, format, str);
+    //fprintf(_pager, format, str);
+    printLine(str);
     if (_log) {
       string sanitised = StripBinary(str);
       log(format, sanitised.c_str());
@@ -579,11 +647,11 @@ void ArangoClient::openLog () {
     ostringstream s;
     if (_log == 0) {
       s << "Cannot open file '" << _logFile << "' for logging.";
-	  printErrLine(s.str());
+      printErrLine(s.str());
     }
     else {
       s << "Logging input and output to '" << _logFile << "'.";
-	  printLine(s.str());
+      printLine(s.str());
     }
   }
 }
@@ -605,14 +673,14 @@ void ArangoClient::closeLog () {
 
 void ArangoClient::printWelcomeInfo () {
   if (_usePager) {
-	ostringstream s;
-	s << "Using pager '" << _outputPager << "' for output buffering.";
+     ostringstream s;
+     s << "Using pager '" << _outputPager << "' for output buffering.";
 
-	printLine(s.str());
+     printLine(s.str());
   }
 
   if (_prettyPrint) {
-	printLine("Pretty printing values.");
+     printLine("Pretty printing values.");
   }
 }
 
