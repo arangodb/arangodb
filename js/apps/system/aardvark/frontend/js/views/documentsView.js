@@ -566,12 +566,6 @@
       this.totalPages = window.arangoDocumentsStore.totalPages;
       this.currentPage = window.arangoDocumentsStore.currentPage;
       this.documentsCount = window.arangoDocumentsStore.documentsCount;
-      if (this.documentsCount !== 0) {
-        $('#documentsStatus').html(
-          'Showing Page '+this.currentPage+' of '+this.totalPages+
-          ', '+this.documentsCount+' entries'
-        );
-      }
     },
 
 

@@ -1,3 +1,33 @@
+input.search-input {
+  border: 0;
+  height: 18px;
+  line-height: 18px;
+  margin-top: 5px;
+  width: 214px;
+
+  &:focus {
+    @include box-shadow(0 0 10px $c-positive);
+    border-color: $c-positive;
+    outline: none;
+  }
+}
+
+.search-submit-icon {
+  @extend %clickable;
+  height: 14px;
+  margin-left: -18px;
+  margin-top: 11px;
+  opacity: .2;
+  position: absolute;
+  width: 14px;
+
+  &:hover {
+    opacity: .8;
+  }
+}
+
+// To be cleaned up from here on!
+
 // The bar on top of each page
 div.headerBar {
   background-color: $c-bar-bg;
@@ -24,6 +54,8 @@ div.headerBar a.arangoHeader,
 // The buttons on the right side
 
 div.headerBar > div.headerButtonBar {
+  @extend %clear-float;
+  @extend %pull-right;
   margin: 4px 0;
   margin-bottom: 0 !important;
 }

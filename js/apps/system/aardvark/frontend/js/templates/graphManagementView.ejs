@@ -1,6 +1,6 @@
 <script id="graphManagementView.ejs" type="text/template">
   <div class="headerBar">
-    <!--  <div class="headerButtonBar pull-right">
+    <!--  <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li class="enabled">
             <a id="graphManagementToggle" class="headerButton">
@@ -13,9 +13,9 @@
       <a class="arangoHeader">Graph Management</a>
     </div>
     <div class="searchField pull-left">
-      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="searchInput" placeholder="Search..."/><img id="graphManagementSearchSubmit"
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/><img id="graphManagementSearchSubmit"
                                                                                                                                     width="16" height="16"
-                                                                                                                                    src="img/enter_icon.png" class="searchSubmitIcon">
+                                                                                                                                    src="img/enter_icon.png" class="search-submit-icon">
     </div>
   </div>
 
@@ -53,21 +53,20 @@
 
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div class="containerdivNewLine"/>
-    <ul id="graphManagementThumbnailsIn" class="tileList">
-      <li class="tile">
+    <div id="graphManagementThumbnailsIn" class="tileList">
+      <div class="tile">
         <a href="#" id="createGraph" class="add">
           <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
           Add Graph
         </a>
-      </li>
+      </div>
 
 
       <% graphs.forEach(function(graph) {
         var graphName = graph.get("_key");
       %>
 
-      <li class="tile">
+      <div class="tile">
       <div class="iconSet">
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
         <span class="icon_arangodb_info" id="<%=graphName %>_info" alt="Show graph properties" title="Show graph properties"></span>
@@ -77,9 +76,9 @@
     </div>
 
       <h5 class="collectionName"><%=graphName %></h5>
-    </li>
+    </div>
       <%});%>
-     </ul>
+     </div>
   </div>
 
   <div id="editGraphModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">

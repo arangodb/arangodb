@@ -1,23 +1,13 @@
 <script id="documentsView.ejs" type="text/template">
 <div id="transparentHeader" class="headerBar">
-  <div id="documentsToolbar" class="headerButtonBar pull-right">
+  <div id="documentsToolbar" class="headerButtonBar">
 
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
     <li class="enabled">
-      <a id="indexCollection" class="headerButton">
-        <span class="icon_arangodb_checklist" title="Index collection"></span>
-      </a>
-    </li>
-    <li class="enabled">
-      <a id="filterCollection" class="headerButton">
-        <span class="icon_arangodb_filter" title="Filter collection"></span>
-      </a>
-    </li>
-    <li class="enabled">
-      <a id="importCollection" class="headerButton">
-        <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+      <a id="collectionNext" class="headerButton">
+        <span class="icon_arangodb_arrowright" title="Next collection"></span>
       </a>
     </li>
     <li class="enabled">
@@ -26,8 +16,18 @@
       </a>
     </li>
     <li class="enabled">
-      <a id="collectionNext" class="headerButton">
-        <span class="icon_arangodb_arrowright" title="Next collection"></span>
+      <a id="importCollection" class="headerButton">
+        <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="filterCollection" class="headerButton">
+        <span class="icon_arangodb_filter" title="Filter collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="indexCollection" class="headerButton">
+        <span class="icon_arangodb_checklist" title="Index collection"></span>
       </a>
     </li>
   </ul>
@@ -46,7 +46,7 @@
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
-        <a id="addFilterItem"><i class="icon-plus"></i></a>
+        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus"></i></a>
         <button id="resetView" class="button-warning btn-old-padding">Reset</button>
         <button id="filterSend" class="button-success btn-old-padding">Filter</button>
     </div>
@@ -56,7 +56,7 @@
     <div class="queryline">
       <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
-        <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import JSON
+        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
       </button>
     </div>
   </div>
@@ -64,8 +64,8 @@
   <div id="indexHeader" class="headerDropdown">
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
-          <a>Indexes:</a>
-          <table id="collectionEditIndexTable" class="">
+          <span class="arangoHeader">Indexes:</span>
+          <table id="collectionEditIndexTable" class="edit-index-table">
             <tr class="figuresHeader">
               <th class="collectionInfoTh">ID</th>
               <th class="collectionInfoTh">Type</th>
@@ -74,11 +74,13 @@
               <th class="collectionInfoTh">Action</th>
             </tr>
           </table>
-          <button id="addIndex" class="button-success">Add Index</button>
+          <div class="index-button-bar">
+            <button id="addIndex" class="button-success">Add Index</button>
+          </div>
       </div>
 
-        <div id="newIndexView" style="display:none">
-          <a id="newIndexHeader" class="arangoHeader">Add Index:</a>
+        <div id="newIndexView" class="new-index-view" style="display:none">
+          <span id="newIndexHeader" class="arangoHeader">Add Index:</span>
           <table>
             <tr>
               <th class="collectionTh">Type:</th>
@@ -261,11 +263,12 @@
             </table>
           </div>
 
-          <button id="createIndex" class="button-success">Save</button>
-          <button id="cancelIndex" class="button-danger">Cancel</button>
-
+          <div class="index-button-bar">
+            <button id="createIndex" class="button-success">Save</button>
+            <button id="cancelIndex" class="button-danger">Cancel</button>
+          </div>
+      </div>
     </div>
-  </div>
   </div>
 
 </div>

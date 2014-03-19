@@ -231,7 +231,11 @@
                             (time-self.hist[dbserver.id].lastTime) / 2] = null;
                 }
                 self.hist[dbserver.id].lastTime = time;
-                self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                if (e.client.totalTime.count === 0) {
+                    self.hist[dbserver.id][time] = 0;
+                } else {
+                    self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                }
             });
         });
         this.coordinators.forEach(function (coordinator) {
@@ -265,7 +269,11 @@
                             (time-self.hist[coordinator.id].lastTime) / 2] = null;
                 }
                 self.hist[coordinator.id].lastTime = time;
-                self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                if (e.client.totalTime.count === 0) {
+                    self.hist[coordinator.id][time] = 0;
+                } else {
+                    self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                }
             });
         });
     },
@@ -314,7 +322,11 @@
                       (time-self.hist[name].lastTime) / 2] = null;
           }
           self.hist[name].lastTime = time;
-          self.hist[name][time] = totalTime.sum / totalTime.count;
+          if (totalTime.count === 0) {
+            self.hist[name][time] = 0;
+          } else {
+            self.hist[name][time] = totalTime.sum / totalTime.count;
+          }
         });
         this.data = statCollect;
     },
