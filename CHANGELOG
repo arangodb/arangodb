@@ -1,5 +1,5 @@
-v2.0.1 (XXXX-XX-XX)
--------------------
+v2.0.1-rc1 (XXXX-XX-XX)
+-----------------------
 
 * fixed issue #781: Cant save current query from AQL editor ui
 

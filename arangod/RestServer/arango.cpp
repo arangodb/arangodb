@@ -454,14 +454,14 @@ int main (int argc, char* argv[]) {
 
 #endif
 
-  // shutdown sub-systems
-  TRIAGENS_REST_SHUTDOWN;
-  TRI_GlobalExitFunction(res, NULL);
-
   if (ArangoInstance != 0) {
     delete ArangoInstance;
     ArangoInstance = 0;
   }
+
+  // shutdown sub-systems
+  TRIAGENS_REST_SHUTDOWN;
+  TRI_GlobalExitFunction(res, NULL);
 
   return res;
 }
