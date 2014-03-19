@@ -4,46 +4,50 @@ table.dataTable thead th {
 }
 
 // TODO Hard cleanup
-#documentsTableID_length, #documentsTableID_filter {
+#documentsTableID_length,
+#documentsTableID_filter {
   display: none;
 }
 
 #documentsTableID_wrapper {
   min-height: 513px !important;
-  padding-bottom: 0px !important;
+  padding-bottom: 0 !important;
 }
 
 #documentsTableID_wrapper .fg-toolbar {
   visibility: hidden;
 }
 
-#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+#documentsTableID_paginate,
+#documentsTableID_filter,
+#documentsTableID_length {
   visibility: hidden;
 }
 
 .snippet-no-num {
+  font-family: 'Open Sans', sans-serif;
   font-size: 1em;
   font-weight: 400;
-  font-family: 'Open Sans', sans-serif;
-  margin-bottom:0px;
+  margin-bottom: 0;
 }
 
-.cuttedContent, .prettify ul li, .writeable a {
-  white-space: nowrap !important;
+.cuttedContent,
+.prettify ul li,
+.writeable a {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .prettify {
   border: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
   font-size: 1em !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 // i think it is removed
 .sorting_asc,
 .sorting_desc {
-  background:#e4e0dd;
+  background: #e4e0dd;
 }
-
