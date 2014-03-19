@@ -52,38 +52,42 @@
 int TRI_closesocket (TRI_socket_t s) {
   int res = 0;
   #ifdef _WIN32
-    if (s.fileDescriptor != -1) {
-      res = _close(s.fileDescriptor);
-      /*
-      To close a file opened with _open_osfhandle, call _close.
-      The underlying handle is also closed by a call to _close,
-      so it is not necessary to call the Win32 function CloseHandle on the original handle.
-      */
+  if (s.fileHandle != TRI_INVALID_SOCKET) {
+    res = shutdown(s.fileHandle, SD_SEND);
+
+    if (res != 0) {
+      // Windows complains about shutting down a socket that was not bound
+      // so we will not print out the error here
+      // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
     }
-    else if (s.fileHandle != TRI_INVALID_SOCKET) {
-      res = shutdown(s.fileHandle, SD_SEND);
+    else {
+      char buf[256];
+      int len;
+      do {
+        len = TRI_readsocket(s, buf, sizeof(buf), 0);
+      } while (len > 0);
 
-      if (res != 0) {
-        // Windows complains about shutting down a socket that was not bound
-        // so we will not print out the error here
-        // LOG_WARNING("socket shutdown error: %d", WSAGetLastError());
-      }
-      else {
-        char buf[256];
-        int len;
-        do {
-          len = TRI_readsocket(s, buf, sizeof(buf), 0);
-        } 
-        while (len > 0);
-
-        res = closesocket(s.fileHandle);
-
-        if (res != 0) {
-          LOG_WARNING("socket close error: %d", WSAGetLastError());
-        }
-      }
     }
-  #else
+    res = closesocket(s.fileHandle);
+
+    if (res != 0) {
+      LOG_WARNING("socket close error: %d", WSAGetLastError());
+    }
+    // We patch libev on Windows lightly to not really distinguish between
+    // socket handles and file descriptors, therefore, we do not have to do the 
+    // following any more:
+    // if (s.fileDescriptor != -1) {
+    //   res = _close(s.fileDescriptor);
+         // "To close a file opened with _open_osfhandle, call _close."
+         // The underlying handle is also closed by a call to _close,
+         // so it is not necessary to call the Win32 function CloseHandle 
+         // on the original handle.
+    // However, we do want to do the special shutdown/recv magic above
+    // because only then we can reuse the port quickly, which we want
+    // to do directly after a port test.
+    // }
+  }
+#else
     if (s.fileDescriptor != TRI_INVALID_SOCKET) {
       res = close(s.fileDescriptor);
     }

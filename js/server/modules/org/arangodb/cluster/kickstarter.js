@@ -338,9 +338,10 @@ launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
   url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
-             'return load("'+fs.join(ArangoServerState.javaScriptPath(),
-                                     makePath("server/version-check.js"))+
-             '");\n';
+             'return load('+JSON.stringify(
+                                fs.join(ArangoServerState.javaScriptPath(),
+                                        makePath("server/version-check.js")))+
+             ');\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
   r = download(url, body, o);
   if (r.code === 200) {
