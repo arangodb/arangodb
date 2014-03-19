@@ -7,7 +7,6 @@ window.ApplicationsView = Backbone.View.extend({
   template: templateEngine.createTemplate("applicationsView.ejs"),
 
   events: {
-    "click .toggle-icon"        : "toggleView",
     "click #checkDevel"         : "toggleDevel",
     "click #checkActive"        : "toggleActive",
     "click #checkInactive"      : "toggleInactive",
@@ -55,7 +54,7 @@ window.ApplicationsView = Backbone.View.extend({
                     filename: res.filename
                   }),
                   processData: false
-                }).done(function (res) {
+                }).done(function () {
                   self.reload();
                 }).fail(function (err) {
                   self.hideSpinner();
@@ -135,26 +134,6 @@ window.ApplicationsView = Backbone.View.extend({
     this.hideImportModal();
   },
 
-  toggleView: function(event) {
-    var target = $(event.currentTarget);
-    var type = target.attr("id");
-    var close = target.hasClass("icon-minus");
-    var selector = "";
-    if (type === "toggleInstalled") {
-      selector = "#installedList";
-    } else if (type === "toggleAvailable") {
-      selector = "#availableList";
-    }
-    if (close) {
-      $(selector).hide();
-    } else {
-      $(selector).show();
-    }
-    target.toggleClass("icon-minus");
-    target.toggleClass("icon-plus");
-    event.stopPropagation();
-  },
-  
   reload: function() {
     var self = this;
 
