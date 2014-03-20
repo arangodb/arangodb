@@ -835,6 +835,26 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief registers the executes file function
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "registerExecuteCallback(<func>)");
+  }
+
+  v8g->ExecuteFileCallback
+  = v8::Persistent<v8::Function>::New(v8::Handle<v8::Function>::Cast(argv[0]));
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a file of any type or directory exists
 ///
 /// @FUN{fs.exists(@FA{path})}
@@ -3134,7 +3154,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialisation
+// --SECTION--                                             module initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3246,6 +3266,9 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
+
+  // register callback functions
+  TRI_AddGlobalFunctionVocbase(context, "REGISTER_EXECUTE_FILE", JS_RegisterExecuteFile);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SEGFAULT", JS_DebugSegfault);
