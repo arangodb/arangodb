@@ -1,0 +1,79 @@
+.log-content {
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+.log-content-id {
+  padding-bottom: 0 !important;
+
+  .dataTable {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+    table-layout: fixed !important;
+  }
+
+  .arango-tab {
+    border-bottom: 0 !important;
+  }
+
+  .tab-content {
+    margin-top: 1px !important;
+  }
+}
+
+.tab-content {
+  min-height: 390px;
+}
+
+.log-table-id,
+.info-table-id,
+.debug-table-id,
+.crit-table-id,
+.warn-table-id {
+  border-spacing: 0 0;
+  font-size: 15px !important;
+  margin-top: -5px !important;
+
+  thead {
+    background-color: $c-logs-table-id-thead-bg;
+    border-top: 6px solid $c-tab-border !important;
+    text-align: center;
+
+    tr th {
+      background-color: $c-white !important;
+      border-bottom: 1px solid $c-c2grey;
+      border-top: 2px solid $c-tab-border;
+    }
+  }
+
+  .firstcol {
+    cursor: default !important;
+    max-width: 80px !important;
+    width: 80px !important;
+  }
+
+  tbody .firstcol {
+    background-color: transparent !important;
+  }
+
+  tbody tr td {
+    padding-bottom: 8px !important;
+    padding-top: 8px !important;
+  }
+}
+
+.thirdcol {
+  cursor: default !important;
+  max-width: 500px !important;
+}
+
+.seccol,
+.dataTables_empty {
+  cursor: default !important;
+  margin-bottom: 5px;
+  width: 100px !important;
+}
+
+.dataTables_info {
+  display: none;
+}
