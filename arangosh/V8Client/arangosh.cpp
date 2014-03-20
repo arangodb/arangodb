@@ -1579,19 +1579,36 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
   ok = true;
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Function> func = v8g->ExecuteFileCallback;
+
+  if (func.IsEmpty()) {
+    string msg = "no execute function has been registered";
+
+    BaseClient.printErrLine(msg.c_str());
+    BaseClient.log("%s", msg.c_str());
+
+    BaseClient.flushLog();
+
+    return false;
+  }
+
   for (size_t i = 0;  i < scripts.size();  ++i) {
     if (! FileUtils::exists(scripts[i])) {
-      ostringstream s;
-      s << "error: Javascript file not found: '" << scripts[i].c_str() << "'";
-      BaseClient.printErrLine(s.str());
-  
-      BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
+      string msg = "error: Javascript file not found: '" + scripts[i] + "'";
+
+      BaseClient.printErrLine(msg.c_str());
+      BaseClient.log("%s", msg.c_str());
+
       ok = false;
       break;
     }
 
     if (execute) {
-      TRI_ExecuteLocalJavaScriptFile(scripts[i].c_str());
+      v8::Handle<v8::String> name = v8::String::New(scripts[i].c_str());
+      v8::Handle<v8::Value> args[] = { name };
+
+      func->Call(func, 1, args);
     }
     else {
       TRI_ParseJavaScriptFile(scripts[i].c_str());
@@ -1599,9 +1616,10 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
-      BaseClient.printErrLine(exception);
 
+      BaseClient.printErrLine(exception);
       BaseClient.log("%s\n", exception.c_str());
+
       ok = false;
       break;
     }
