@@ -38,7 +38,7 @@ var _ = require("underscore");
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
 var checkParameter = arangodb.checkParameter;
-var transformScript = require("org/arangodb/foxx/preprocessor").preprocess;
+var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
 
 var developmentMode = require("internal").developmentMode;
 
@@ -55,6 +55,20 @@ var DEVELOPMENTMOUNTS = null;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the transform script
+////////////////////////////////////////////////////////////////////////////////
+
+function transformScript (file) {
+  if (/\.coffee$/.test(file)) {
+    return function (content) {
+      return preprocess(content, "coffee");
+    };
+  }
+
+  return preprocess;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the aal collection
@@ -741,7 +755,7 @@ function routingAalApp (app, mount, options) {
 
         extendContext(context, app, root);
 
-        app.loadAppScript(context.appModule, file, context, { transform: transformScript });
+        app.loadAppScript(context.appModule, file, context, { transform: transformScript(file) });
 
         // .............................................................................
         // routingInfo
@@ -793,9 +807,8 @@ function routingAalApp (app, mount, options) {
     return routes;
   }
   catch (err) {
-    console.error("Cannot compute foxx application routes: %s - %s", 
-                  String(err), 
-                  String(err.stack));
+    console.errorLines(
+      "Cannot compute foxx application routes: %s", String(err.stack || err));
   }
 
   return null;
@@ -837,16 +850,16 @@ function scanDirectory (path) {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("Cannot read thumbnail referenced by manifest '%s': %s", 
-                          m, 
-                          String(err2.stack || err2));
+            console.errorLines(
+              "Cannot read thumbnail referenced by manifest '%s': %s", m, String(err2.stack || err2));
           }
         }
 
         upsertAalAppEntry(mf, thumbnail, files[j]);
       }
       catch (err) {
-        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.errorLines(
+          "Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
@@ -1016,7 +1029,8 @@ exports.teardown = function (mount) {
     teardownApp(app, mount, doc.options.collectionPrefix);
   }
   catch (err) {
-    console.error("Teardown not possible for mount '%s': %s", mount, String(err));
+    console.errorLines(
+      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
   }
 };
 
@@ -1249,7 +1263,8 @@ exports.appRoutes = function () {
       }
     }
     catch (err) {
-      console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+      console.errorLines(
+        "Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
     }
   }
 
@@ -1320,7 +1335,8 @@ exports.developmentRoutes = function () {
         mounts.push(desc);
       }
       catch (err) {
-        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.errorLines(
+          "Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
