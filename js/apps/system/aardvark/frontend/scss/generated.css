@@ -3061,6 +3061,9 @@ div img.searchSubmitIcon {
       cursor: default;
       pointer-events: none; }
 
+.collection-pagination {
+  margin-left: 23px !important; }
+
 .arango-pagination li:first-child {
   margin-right: 20px; }
 .arango-pagination li:last-child {
@@ -3320,6 +3323,12 @@ table.dataTable thead th {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important; }
+
+.totalDocuments {
+  float: left;
+  color: black;
+  padding-left: 10px;
+  margin-top: -54px !important; }
 
 .prettify {
   border: 0 !important;
