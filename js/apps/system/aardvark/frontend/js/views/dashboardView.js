@@ -262,31 +262,13 @@
 
 
     updateSeries : function(data) {
-      this.uptime = data.server.uptime;
       this.processSingleStatistic(data);
     },
 
-    spliceSeries: function (data, boarderLeft, boarderRight, hideRangeSelector) {
-      var file = [];
-      var i = 0;
-      data.forEach(function(e) {
-        if (e[0].getTime()  >= boarderLeft && e[0].getTime() <= boarderRight) {
-          file.push(e);
-        } else {
-          i++;
-          if (i > 3 && !hideRangeSelector) {
-            file.push(e);
-            i = 0;
-          }
-        }
-      });
-      return file;
-    },
 
     createLineChart : function (chart, figure, div, createDiv) {
       var self = this;
       var displayOptions = {};
-      var file = [];
       var t = new Date().getTime();
       var borderLeft, borderRight;
       if (!createDiv) {
@@ -297,7 +279,6 @@
               borderLeft = chart.graph.dateWindow_[0];
               borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
                   chart.graph.dateWindow_[1] : t;
-              file = self.spliceSeries(chart.data, borderLeft, borderRight, false);
           }
       } else {
           chart.updateDateWindow();
@@ -317,7 +298,7 @@
         chart.updateDateWindow();
         chart.graph = new Dygraph(
           document.getElementById(div+"LineChart"),
-          file.length > 0 ? file : chart.data,
+          chart.data,
           _.extend(chart.options,  displayOptions)
         );
         chart.graphCreated = true;
@@ -327,7 +308,7 @@
         }
       } else {
         var opts = {
-            file: file.length > 0 ? file : chart.data,
+            file: chart.data,
             dateWindow : [borderLeft, borderRight]
         };
         chart.graph.updateOptions(opts);

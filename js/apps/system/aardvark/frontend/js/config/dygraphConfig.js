@@ -148,7 +148,7 @@
         },
         systemUserTime : {
             div : "#systemResources",
-            title : "System and User Time",
+            title : "System and User Time in seconds",
             stacked : true
         },
         httpConnections : {
@@ -323,9 +323,7 @@
 
     var updateDateWindow = function(chart) {
         chart.options.dateWindow =   [new Date().getTime() -
-                Math.min(
-                    20 * 60 * 1000,
-                    chart.data.length * 10 * 1000)
+                    20 * 60 * 1000
                 ,new Date().getTime()];
     };
     window.dygraphConfig = {
