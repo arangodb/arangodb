@@ -70,13 +70,6 @@
   border-spacing:0 5px;
 }
 
-#logPaginationDiv a {
-  border-radius: 0 !important;
-}
-
-#logPaginationDiv {
-  padding-bottom: 5px !important;
-}
 
 #logContent .arango-tab {
   border-bottom: 0 !important;
