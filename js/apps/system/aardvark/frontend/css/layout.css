@@ -58,10 +58,6 @@ body {
   /*background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;*/
 }
 
-#footer {
-  width: 100%;
-}
-
 .form-actions {
   margin-top: -10px !important;
   border:none;
@@ -107,7 +103,3 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   top: 2px;
 }
 
-.icon_arangodb_info {
-  font-size: 23px;
-  color: #736B68;
-}
