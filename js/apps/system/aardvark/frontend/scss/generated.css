@@ -2930,6 +2930,9 @@ div img.searchSubmitIcon {
   margin-right: 0;
   margin-top: 0; }
 
+.innerContent {
+  padding-top: 13px; }
+
 .container {
   margin-left: 20px;
   margin-right: 20px;
