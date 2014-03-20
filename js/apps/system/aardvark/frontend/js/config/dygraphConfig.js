@@ -148,7 +148,7 @@
         },
         systemUserTime : {
             div : "#systemResources",
-            title : "System and User Time",
+            title : "System and User Time in seconds",
             stacked : true
         },
         httpConnections : {
