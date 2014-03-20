@@ -11,7 +11,7 @@ Bottom=20
 
 [Field 2]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ as Service into default directory
+Text=Install @CPACK_PACKAGE_NAME@ as service into the default directory
 Left=0
 Right=-1
 Top=30
@@ -20,7 +20,7 @@ State=1
 
 [Field 3]
 Type=radiobutton
-Text=Install @CPACK_PACKAGE_NAME@ as into configurable directory
+Text=Install @@CPACK_PACKAGE_NAME@ as service into a configurable directory
 Left=0
 Right=-1
 Top=40
