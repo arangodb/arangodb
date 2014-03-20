@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
 /*global require, module: true, STARTUP_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
-  EXPORTS_SLOW_BUFFER, SYS_PLATFORM */
+  EXPORTS_SLOW_BUFFER, SYS_PLATFORM, REGISTER_EXECUTE_FILE, SYS_EXECUTE, SYS_READ */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -853,6 +853,29 @@ function require (path) {
     return requireModuleAbsolute(current, normalizeModuleName(current._path, path));
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a file
+////////////////////////////////////////////////////////////////////////////////
+
+  REGISTER_EXECUTE_FILE((function () {
+    var read = SYS_READ;
+    var execute = SYS_EXECUTE;
+
+    return function (filename) {
+      var fileContent = read(filename);
+
+      if (/\.coffee$/.test(filename)) {
+        var cs = require("coffee-script");
+      
+        fileContent = cs.compile(fileContent, {bare: true});
+      }
+
+      execute(fileContent, undefined, filename);
+    };
+  }()));
+
+  delete REGISTER_EXECUTE_FILE;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Package
 // -----------------------------------------------------------------------------
@@ -1574,12 +1597,8 @@ function require (path) {
 
     options = options || {};
 
-    var fileContent;
-    var full;
-    var key;
-
-    full = fs.join(this._root, this._path, filename);
-    fileContent = fs.read(full);
+    var full = fs.join(this._root, this._path, filename);
+    var fileContent = fs.read(full);
 
     if (options.hasOwnProperty('transform')) {
       fileContent = options.transform(fileContent);
@@ -1591,6 +1610,7 @@ function require (path) {
     }
 
     var sandbox = {};
+    var key;
 
     if (options.hasOwnProperty('context')) {
       var context = options.context;
