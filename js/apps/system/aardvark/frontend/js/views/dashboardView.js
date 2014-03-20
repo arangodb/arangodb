@@ -112,7 +112,10 @@
       this.detailChart.chart.updateLabels();
       this.description = this.options.description.models[0];
       this.detailChart.chart.options.title = this.detailChart.title;
-      this.createLineChart(this.detailChart.chart, this.detailChart.figure, this.detailChart.figure, true);
+      this.createLineChart(this.detailChart.chart, 
+                           this.detailChart.figure, 
+                           this.detailChart.figure, 
+                           true);
       this.detailChart = {};
      window.App.navigate("#", {trigger: true});
     },
@@ -158,8 +161,7 @@
       var self = this;
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
-      if (newUptime != null  && self.uptime && newUptime < self.uptime) {
-
+      if (newUptime !== null && self.uptime && newUptime < self.uptime) {
         var e = {time : (time-(newUptime+0.01)* 1000 ) /1000};
         self.description.get("figures").forEach(function(figure) {
           if (!e[figure.group]) {
@@ -446,14 +448,15 @@
 
     _.each(this.description.attributes.figures, function(k, v) {
       if (k.identifier === name) {
-        if (k.units == "bytes") {
-            var c = 0;
+        var c;
+        if (k.units === "bytes") {
+            c = 0;
             _.each(k.cuts, function() {
                 k.cuts[c] = k.cuts[c] / 1000;
                 c++;
             });
             k.units = "kilobytes";
-        } else if (k.units == "seconds") {
+        } else if (k.units === "seconds") {
             c = 0;
             _.each(k.cuts, function() {
                 k.cuts[c] = k.cuts[c] * 1000;
@@ -477,7 +480,8 @@
     _.each(distributionValues, function() {
       values.push({
         //"label" : (sum / areaLength) * counter,
-        "label" : counter === cuts.length-1 ? "> " + cuts[counter] : cuts[counter] +" - " + cuts[counter+1],
+        "label" : (counter === cuts.length - 1) ? "> " + cuts[counter] : 
+                  cuts[counter] + " - " + cuts[counter + 1],
         "value" : distributionValues[counter]
       });
       counter++;
