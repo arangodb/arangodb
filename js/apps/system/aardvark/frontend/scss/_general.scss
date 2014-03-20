@@ -1,3 +1,19 @@
 .display-none {
   display: none;
 }
+
+.row {
+  margin-bottom: 20px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+}
+
+/*
+still in use???
+*/
+.container {
+  width: auto !important;
+  margin-left: 20px;
+  margin-right: 20px;
+}

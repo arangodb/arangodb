@@ -29,3 +29,12 @@
 .arangoicon {
   @extend %clickable
 }
+
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
+  font-size: 18px;
+  position: absolute;
+  right: 4px;
+  top: 2px;
+}
+

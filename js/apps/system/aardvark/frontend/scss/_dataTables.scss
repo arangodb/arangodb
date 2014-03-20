@@ -46,6 +46,10 @@ table.dataTable thead th {
   padding: 0 !important;
 }
 
+table .sorting {
+  background: none !important;
+}
+
 // i think it is removed
 .sorting_asc,
 .sorting_desc {
