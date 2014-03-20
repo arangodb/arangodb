@@ -43,15 +43,15 @@ div.headerBar {
     display: none;
 
     & + label.css-label {
-      padding-left: 20px;
-      margin-top: 0px;
-      height: 15px;
-      display: inline-block;
-      background-repeat: no-repeat;
       background-position: 0 0;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      display: inline-block;
       font-size: 15px;
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
       vertical-align: middle;
-      cursor:pointer;
     }
   }
 
@@ -60,21 +60,21 @@ div.headerBar {
   }
 
   input[type="radio"] {
-    display:none;
+    display: none;
 
     & + label span {
-      display:inline-block;
-      width:19px;
-      height:19px;
-      margin:-1px 4px 0 0;
-      vertical-align:middle;
-      background:url(../img/check_radio_sheet.png) -38px top no-repeat;
-      cursor:pointer;
+      background: url('../img/check_radio_sheet.png') -38px top no-repeat;
+      cursor: pointer;
+      display: inline-block;
+      height: 19px;
+      margin: -1px 4px 0 0;
+      vertical-align: middle;
+      width: 19px;
     }
   }
-  
+
   input[type="radio"]:checked + label span {
-    background:url(../img/check_radio_sheet.png) -57px top no-repeat;
+    background: url('../img/check_radio_sheet.png') -57px top no-repeat;
   }
 }
 
@@ -117,5 +117,5 @@ div.breadcrumb a.disabledBread {
 }
 
 #transparentHeader input[type=checkbox].css-checkbox {
-  display:none;
+  display: none;
 }

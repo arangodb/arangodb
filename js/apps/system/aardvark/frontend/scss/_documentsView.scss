@@ -25,28 +25,28 @@
   min-width: auto !important;
 
   th {
-    padding-top: 5px;
     padding-bottom: 5px;
     padding-left: 5px;
+    padding-top: 5px;
   }
 
   .icon_arangodb_locked {
+    color: $c-arangodb-locked;
+    cursor: default;
     font-size: 20px;
     margin-left: 10px;
-    color: rgba(0,0,0,0.5);
-    cursor: default;
   }
 
   .icon_arangodb_roundminus {
+    @extend %clickable;
+    @extend %icon-negative;
     font-size: 20px;
-    color: #BE342E;
     margin-left: 10px;
-    cursor: pointer;
   }
 
 }
 
-.contentIn  {
+.contentIn {
   & > div {
     padding: 10px;
   }
@@ -66,21 +66,24 @@
   }
 }
 
-.docsFirstCol, .docsSecCol, .docsThirdCol {
+%docs-col-no-border {
   border: 0 !important;
 }
 
 .docsFirstCol {
+  @extend %docs-col-no-border;
   width: 70%;
 }
 
 .docsSecCol {
+  @extend %docs-col-no-border;
   min-width: 400px !important;
   width: 20%;
 }
 
 .docsThirdCol {
-  float: right;
+  @extend %docs-col-no-border;
+  @extend %pull-right;
 }
 
 .add-filter-item {

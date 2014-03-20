@@ -164,11 +164,11 @@
       target.html("");
       target.pagination(options);
       $('#logPaginationDiv').prepend(
-        '<ul class="prePagi"><li><a id="logTableID_first" class="paginationButton">'+
+        '<ul class="pre-pagi"><li><a id="logTableID_first" class="pagination-button">'+
         '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>'
       );
       $('#logPaginationDiv').append(
-        '<ul class="lasPagi"><li><a id="logTableID_last" class="paginationButton">'+
+        '<ul class="las-pagi"><li><a id="logTableID_last" class="pagination-button">'+
         '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>'
       );
     },

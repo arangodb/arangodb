@@ -3,6 +3,30 @@ nav.navbar {
   height: 38px;
   margin-bottom: 3px;
   top: 0;
+
+  .nav {
+
+    & > .active {
+
+      & > a {
+        background-color: $c-positive;
+        color: $c-white;
+        @include box-shadow(0 0 0 $c-transp inset);
+      }
+    }
+
+    & > li {
+
+      & > a:focus {
+        background-color: $c-nav-bg;
+      }
+
+      & > a:hover {
+        background-color: $c-positive;
+        color: $c-white;
+      }
+    }
+  }
 }
 
 div.navlogo {
@@ -139,4 +163,17 @@ ul.gv-dropdown-menu {
   height: 0;
   vertical-align: top;
   width: 0;
+}
+
+.applications-menu {
+  display: block;
+}
+
+.arango-logo {
+  height: 34px;
+  padding: 0 !important;
+
+  img {
+    margin-left: 22px;
+  }
 }
