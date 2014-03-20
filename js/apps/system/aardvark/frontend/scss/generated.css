@@ -1505,6 +1505,11 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     right: 8px;
     top: -6px; }
 
+.navbar .nav li.dropdown .active > .dropdown-toggle,
+.navbar .nav li.dropdown .open > .dropdown-toggle,
+.navbar .nav li.dropdown .open.active > .dropdown-toggle {
+  background: #788f3d; }
+
 nav.navbar {
   height: 38px;
   margin-bottom: 3px;
@@ -2206,6 +2211,13 @@ div.centralContent {
 .icon_arangodb_info {
   color: #333333;
   font-size: 23px; }
+
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
+  font-size: 18px;
+  position: absolute;
+  right: 4px;
+  top: 2px; }
 
 div.headerDropdown {
   background-color: white;
@@ -2911,6 +2923,20 @@ div img.searchSubmitIcon {
 .display-none {
   display: none; }
 
+.row {
+  margin-bottom: 20px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0; }
+
+/*
+still in use???
+*/
+.container {
+  width: auto !important;
+  margin-left: 20px;
+  margin-right: 20px; }
+
 .arango-tab {
   border-bottom: 1px solid #dddddd;
   list-style: none;
@@ -3222,6 +3248,9 @@ table.dataTable thead th {
   font-size: 1em !important;
   margin: 0 !important;
   padding: 0 !important; }
+
+table .sorting {
+  background: none !important; }
 
 .sorting_asc,
 .sorting_desc {
