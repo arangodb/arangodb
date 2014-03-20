@@ -2,7 +2,8 @@ div.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
-  & legend{
+
+  & legend {
     padding-left: 5px;
   }
 }
