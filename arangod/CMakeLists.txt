@@ -152,7 +152,8 @@ add_executable(
     Wal/Configuration.cpp 
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
-    Wal/Logger.cpp 
+    Wal/Slots.cpp
+    Wal/SynchroniserThread.cpp
     ${ARANGOD_MRUBY_SOURCE}
 )
 

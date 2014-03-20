@@ -28,6 +28,7 @@
 #include "CollectorThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -61,14 +62,6 @@ CollectorThread::~CollectorThread () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the collector thread
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectorThread::init () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,9 +88,20 @@ void CollectorThread::stop () {
 
 void CollectorThread::run () {
   while (_stop == 0) {
-    CONDITION_LOCKER(guard, _condition);
+    LOG_INFO("hello from collector thread");
 
-    // TODO: implement collection
+    Logfile* logfile = _logfileManager->getCollectableLogfile();
+
+    if (logfile != nullptr) {
+      _logfileManager->setCollectionRequested(logfile);
+      // TODO: implement collection
+      
+      LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
+
+      _logfileManager->setCollectionDone(logfile);
+    }
+
+    CONDITION_LOCKER(guard, _condition);
     guard.wait(1000000);
   }
 

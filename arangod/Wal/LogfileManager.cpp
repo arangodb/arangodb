@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Basics/Exceptions.h"
@@ -35,9 +36,12 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/Configuration.h"
+#include "Wal/Slots.h"
+#include "Wal/SynchroniserThread.h"
 
 using namespace triagens::wal;
 
@@ -51,22 +55,27 @@ using namespace triagens::wal;
 
 LogfileManager::LogfileManager (Configuration* configuration) 
   : _configuration(configuration),
-    _tickLock(),
-    _tick(0),
+    _slots(nullptr),
+    _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
     _collectorThread(nullptr),
-    _logfileIdLock(),
-    _logfileId(0),
-    _lastCollectedId(0),
     _logfilesLock(),
+    _lastCollectedId(0),
     _logfiles(),
-    _directory(configuration->directory()) {
+    _maxEntrySize(configuration->maxEntrySize()),
+    _directory(configuration->directory()),
+    _regex(),
+    _shutdown(false) {
   
+  LOG_INFO("creating wal logfile manager");
+
   int res = regcomp(&_regex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
 
   if (res != 0) {
     THROW_INTERNAL_ERROR("could not compile regex"); 
   }
+
+  _slots = new Slots(this, 32, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,13 +83,45 @@ LogfileManager::LogfileManager (Configuration* configuration)
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager::~LogfileManager () {
+  LOG_INFO("shutting down wal logfile manager");
+
   shutdown();
+
   regfree(&_regex);
+
+  if (_slots != nullptr) {
+    delete _slots;
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not there are reserve logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::hasReserveLogfiles () {
+  size_t numberOfLogfiles = 0;
+
+  READ_LOCKER(_logfilesLock);
+      
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr && 
+      logfile->freeSize() > 0 && 
+      ! logfile->isSealed()) {
+
+      if (++numberOfLogfiles >= 3) { // TODO: make "3" a configuration option
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup the logfile manager
@@ -113,10 +154,10 @@ int LogfileManager::startup () {
     return res;
   }
 
-  res = reserveSpace();
-  
+  res = startSynchroniserThread();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not reserve wal space: %s", TRI_errno_string(res));
+    LOG_ERROR("could not start wal synchroniser thread: %s", TRI_errno_string(res));
     return res;
   }
 
@@ -152,11 +193,204 @@ int LogfileManager::startup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::shutdown () {
+  if (_shutdown) {
+    return;
+  }
+
+  _shutdown = true;
+
+  LOG_INFO("stopping collector thread");
   // stop threads
   stopCollectorThread();
+  
+  LOG_INFO("stopping allocator thread");
   stopAllocatorThread();
+  
+  LOG_INFO("stopping synchroniser thread");
+  stopSynchroniserThread();
+  
+  LOG_INFO("closing logfiles");
+  sleep(1);
 
   // close all open logfiles
+  closeLogfiles();
+
+  int res = writeShutdownInfo();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not write wal shutdown info: %s", TRI_errno_string(res));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal that a sync operation is required
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::signalSync () {
+  _synchroniserThread->signalSync();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allocate space in a logfile for later writing
+////////////////////////////////////////////////////////////////////////////////
+
+Slot* LogfileManager::allocate (uint32_t size, int ctx) {
+  /*
+  if (size > _maxEntrySize) {
+    // entry is too big
+    return LogEntry(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+  }
+  */
+
+  return _slots->nextUnused(size, ctx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalise a log entry
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::finalise (Slot* slot) {
+  _slots->returnUsed(slot);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::allocateAndWrite (void* mem,
+                                      uint32_t size,
+                                      int ctx) {
+
+  Slot* slot = allocate(size, ctx);
+ 
+  if (slot == nullptr) {
+    // TODO: return "real" error code
+    LOG_ERROR("no free slot!");
+    assert(false);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(slot->mem());
+
+  // write tick into marker
+  marker->_tick = slot->tick();
+
+  // set initial crc to 0
+  marker->_crc = 0;
+  
+  // now calculate crc  
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_BlockCrc32(crc, static_cast<char const*>(mem), static_cast<TRI_voc_size_t>(size));
+  marker->_crc = TRI_FinalCrc32(crc);
+
+  memcpy(slot->mem(), mem, static_cast<TRI_voc_size_t>(size));
+
+  return finalise(slot);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief seal a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::sealLogfile (Logfile* logfile) {
+  assert(logfile != nullptr);
+
+  LOG_INFO("sealing logfile");
+
+  WRITE_LOCKER(_logfilesLock);
+  logfile->seal();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile for writing
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
+  size_t iterations = 0;
+
+  while (++iterations < 1000) {
+    {
+      READ_LOCKER(_logfilesLock);
+
+      for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+        Logfile* logfile = (*it).second;
+
+        if (logfile != nullptr && 
+            logfile->isWriteable(size)) {
+          return logfile;
+        }
+      }
+    }
+
+    // signal & sleep outside the lock
+    _allocatorThread->signalLogfileCreation();
+    usleep(10000);
+  }
+  
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile to collect. this may return nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getCollectableLogfile () {
+  READ_LOCKER(_logfilesLock);
+
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr && logfile->canCollect()) {
+      return logfile;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a file as being requested for collection
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::setCollectionRequested (Logfile* logfile) {
+  assert(logfile != nullptr);
+
+  WRITE_LOCKER(_logfilesLock);
+  logfile->setCollectionRequested();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a file as being done with collection
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::setCollectionDone (Logfile* logfile) {
+  assert(logfile != nullptr);
+
+  {
+    WRITE_LOCKER(_logfilesLock);
+    logfile->setCollectionDone();
+  
+    // finally get rid of the logfile
+    _logfiles.erase(logfile->id());
+  }
+
+  delete logfile;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes all logfiles
+////////////////////////////////////////////////////////////////////////////////
+  
+void LogfileManager::closeLogfiles () {
   WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
@@ -168,46 +402,6 @@ void LogfileManager::shutdown () {
   }
 
   _logfiles.clear();
-
-  int res = writeShutdownInfo();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not write wal shutdown info: %s", TRI_errno_string(res));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space in a log file
-////////////////////////////////////////////////////////////////////////////////
-
-LogEntry LogfileManager::reserve (size_t size) {
-  LogEntry::TickType const tick = nextTick();
-
-  LogEntry entry = LogEntry(0, size, tick);
-
-  return entry;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increases the tick value and returns it
-////////////////////////////////////////////////////////////////////////////////
-
-LogEntry::TickType LogfileManager::nextTick () {
-  WRITE_LOCKER(_tickLock);
-  return ++_tick;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the last assigned tick
-////////////////////////////////////////////////////////////////////////////////
-
-LogEntry::TickType LogfileManager::lastTick () {
-  READ_LOCKER(_tickLock);
-  return _tick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +411,7 @@ LogEntry::TickType LogfileManager::lastTick () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile::IdType LogfileManager::lastCollected () {
-  MUTEX_LOCKER(_logfileIdLock);
+  READ_LOCKER(_logfilesLock);
   return _lastCollectedId;
 }
 
@@ -236,17 +430,13 @@ int LogfileManager::readShutdownInfo () {
 
   // read last assigned tick (may be 0)
   uint64_t const lastTick = basics::JsonHelper::stringUInt64(json, "lastTick");
-  
-  {
-    WRITE_LOCKER(_tickLock);
-    _tick = static_cast<LogEntry::TickType>(lastTick);
-  }
+  _slots->setLastTick(static_cast<Slot::TickType>(lastTick));
   
   // read if of last collected logfile (maybe 0)
   uint64_t const lastCollected = basics::JsonHelper::stringUInt64(json, "lastCollected");
   
   {
-    MUTEX_LOCKER(_logfileIdLock);
+    WRITE_LOCKER(_logfilesLock);
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollected);
   }
   
@@ -264,7 +454,7 @@ int LogfileManager::writeShutdownInfo () {
 
   std::string content;
   content.append("{\"lastTick\":\"");
-  content.append(basics::StringUtils::itoa(lastTick()));
+  content.append(basics::StringUtils::itoa(_slots->lastTick()));
   content.append("\",\"lastCollected\":\"");
   content.append(basics::StringUtils::itoa(lastCollected()));
   content.append("\"}");
@@ -273,6 +463,41 @@ int LogfileManager::writeShutdownInfo () {
   basics::FileUtils::spit(filename, content);
   
   return TRI_ERROR_NO_ERROR; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the synchroniser thread
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::startSynchroniserThread () {
+  _synchroniserThread = new SynchroniserThread(this);
+
+  if (_synchroniserThread == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (! _synchroniserThread->start()) {
+    delete _synchroniserThread;
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the synchroniser thread
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::stopSynchroniserThread () {
+  if (_synchroniserThread != nullptr) {
+    LOG_TRACE("stopping wal synchroniser thread");
+
+    _synchroniserThread->stop();
+    _synchroniserThread->shutdown();
+
+    delete _synchroniserThread;
+    _synchroniserThread = 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,8 +511,8 @@ int LogfileManager::startAllocatorThread () {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (! _allocatorThread->init() ||
-      ! _allocatorThread->start()) {
+  if (! _allocatorThread->start()) {
+    delete _allocatorThread;
     return TRI_ERROR_INTERNAL;
   }
 
@@ -321,8 +546,8 @@ int LogfileManager::startCollectorThread () {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (! _collectorThread->init() ||
-      ! _collectorThread->start()) {
+  if (! _collectorThread->start()) {
+    delete _collectorThread;
     return TRI_ERROR_INTERNAL;
   }
 
@@ -372,22 +597,15 @@ int LogfileManager::inventory () {
         LOG_WARNING("encountered invalid id for logfile '%s'. ids must be > 0", file.c_str());
       }
       else {
+        // update global tick
+        TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+
         WRITE_LOCKER(_logfilesLock);
         _logfiles.insert(make_pair(id, nullptr));
       }
     }
   }
      
-  // now pick up the logfile with the highest id and use its id
-
-  READ_LOCKER(_logfilesLock);
-  if (! _logfiles.empty()) {
-    auto it = _logfiles.rbegin();
-
-    MUTEX_LOCKER(_logfileIdLock);
-    _logfileId = (*it).first;
-  }
-  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -415,87 +633,11 @@ int LogfileManager::openLogfiles () {
       }
     }
     
+    // TODO: the last logfile is probably still a journal. must fix the "false" value
     (*it).second = new Logfile(df);
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space in the logfile directory
-////////////////////////////////////////////////////////////////////////////////
-
-int LogfileManager::reserveSpace () {
-  while (shouldAllocate()) {
-    int res = allocateDatafile();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to allocate new datafile: %s", TRI_errno_string(res));
-      
-      return res;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a new datafile must be allocated
-////////////////////////////////////////////////////////////////////////////////
-
-bool LogfileManager::shouldAllocate () {
-  uint64_t const maximum    = _configuration->maximumSize();
-  uint64_t const reserve    = _configuration->reserveSize();
-  uint64_t const allocated  = allocatedSize();
-  uint64_t const free       = freeSize();
-
-  if (allocated >= maximum) {
-    return false;
-  }
-  
-  if (free >= reserve) {
-    return false;
-  }
-  
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief total number of bytes allocated in datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t LogfileManager::allocatedSize () {
-  uint64_t allocated = 0;
-
-  READ_LOCKER(_logfilesLock);
-  
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
-    
-    assert(logfile != nullptr);
-    allocated += logfile->allocatedSize();
-  }
-
-  return allocated;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief total number of free bytes in already allocated datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t LogfileManager::freeSize () {
-  uint64_t free = 0;
-
-  READ_LOCKER(_logfilesLock);
-  
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
-
-    assert(logfile != nullptr);
-    free += logfile->freeSize();
-  }
-
-  return free;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,8 +677,7 @@ int LogfileManager::runRecovery () {
 ////////////////////////////////////////////////////////////////////////////////
         
 Logfile::IdType LogfileManager::nextId () {
-  MUTEX_LOCKER(_logfileIdLock);
-  return ++_logfileId;
+  return static_cast<Logfile::IdType>(TRI_NewTickServer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

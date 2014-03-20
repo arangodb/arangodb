@@ -117,6 +117,26 @@ bool Configuration::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Configuration::open () {
+  for (size_t i = 0; i < 64 * 1024 * 1024; ++i) {
+    void* p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 64, true);
+    TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(p);
+
+    marker->_type = TRI_DF_MARKER_HEADER;
+    marker->_size = 64;
+    marker->_crc  = 0;
+    marker->_tick = 0;
+
+if (i % 500000 == 0) {
+  LOG_INFO("now at: %d", (int) i);
+}
+    memcpy(static_cast<char*>(p) + sizeof(TRI_df_marker_t), "the fox is brown\0", strlen("the fox is brown") + 1);
+    _logfileManager->allocateAndWrite(p, static_cast<uint32_t>(64), (int) i);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
+  }
+
+  LOG_INFO("done");
+
   return true;
 }
 

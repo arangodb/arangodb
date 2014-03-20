@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log entry
+/// @brief Write-ahead log synchroniser thread
 ///
 /// @file
 ///
@@ -25,100 +25,116 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_LOG_ENTRY_H
-#define TRIAGENS_WAL_LOG_ENTRY_H 1
+#ifndef TRIAGENS_WAL_SYNCHRONISER_THREAD_H
+#define TRIAGENS_WAL_SYNCHRONISER_THREAD_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/voc-types.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
+#include "Wal/Logfile.h"
 
 namespace triagens {
   namespace wal {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct LogEntry
-// -----------------------------------------------------------------------------
-
-    struct LogEntry {
+    class LogfileManager;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          typedefs
+// --SECTION--                                          class SynchroniserThread
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the datatype for tick values
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef TRI_voc_tick_t TickType;
+    class SynchroniserThread : public basics::Thread {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the datatype for crc values
+/// @brief SynchroniserThread
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef TRI_voc_crc_t CrcType;
+      private:
+        SynchroniserThread (SynchroniserThread const&);
+        SynchroniserThread& operator= (SynchroniserThread const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a log entry
-////////////////////////////////////////////////////////////////////////////////
 
-        LogEntry (void* mem,
-                  size_t size, 
-                  TickType tick)
-          : _mem(mem),
-            _crc(0),
-            _size(size),
-            _tick(tick) {
-        }
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a log entry
+/// @brief create the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~LogEntry () {
-        }
+        SynchroniserThread (LogfileManager*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the synchroniser thread
+////////////////////////////////////////////////////////////////////////////////
+
+        ~SynchroniserThread ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if the entry is valid
+/// @brief stops the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isValid () const {
-          return _mem != nullptr;
-        }
+        void stop ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal that a sync is needed
+////////////////////////////////////////////////////////////////////////////////
+
+        void signalSync ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
+// --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the position in memory where the log entry resides
-////////////////////////////////////////////////////////////////////////////////
-
-      void* const _mem;
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the crc value of the log entry
+/// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
-      CrcType _crc;
+        void run ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the size of the log entry
+/// @brief the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t const _size;
+        LogfileManager* _logfileManager;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the id (sequence number) of the log entry
+/// @brief condition variable for the thread
 ////////////////////////////////////////////////////////////////////////////////
 
-      TickType _tick;
+        basics::ConditionVariable _condition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of requests waiting 
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t _waiting;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop flag
+////////////////////////////////////////////////////////////////////////////////
+        
+        volatile sig_atomic_t _stop;
 
     };
 
