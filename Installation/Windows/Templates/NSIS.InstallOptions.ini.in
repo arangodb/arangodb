@@ -29,7 +29,7 @@ State=0
 
 [Field 4]
 Type=radiobutton
-Text=install @CPACK_PACKAGE_NAME@ for current user
+Text=Install @CPACK_PACKAGE_NAME@ for the current user
 Left=0
 Right=-1
 Top=50
