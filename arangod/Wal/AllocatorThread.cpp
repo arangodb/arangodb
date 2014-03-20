@@ -44,7 +44,7 @@ AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
   : Thread("WalAllocator"),
     _logfileManager(logfileManager),
     _condition(),
-    _createLogfile(false),
+    _createRequests(0),
     _stop(0) {
   
   allowAsynchronousCancelation();
@@ -60,14 +60,6 @@ AllocatorThread::~AllocatorThread () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the allocator thread
-////////////////////////////////////////////////////////////////////////////////
-
-bool AllocatorThread::init () {
-  return true;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the allocator thread
@@ -92,8 +84,12 @@ void AllocatorThread::stop () {
 
 void AllocatorThread::signalLogfileCreation () {
   CONDITION_LOCKER(guard, _condition);
-
-  _createLogfile = true;
+  if (_createRequests == 0) {
+    ++_createRequests;
+    guard.signal();
+    
+    LOG_INFO("got logfile creation signal");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,6 +97,7 @@ void AllocatorThread::signalLogfileCreation () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AllocatorThread::createLogfile () {
+  LOG_INFO("creating new logfile"); 
   int res = _logfileManager->allocateDatafile();
 
   return (res == TRI_ERROR_NO_ERROR);
@@ -116,18 +113,37 @@ bool AllocatorThread::createLogfile () {
 
 void AllocatorThread::run () {
   while (_stop == 0) {
-    CONDITION_LOCKER(guard, _condition);
+    uint32_t createRequests = 0;
+    bool reserveRequested = false;
 
-    if (_createLogfile) {
+    {
+      CONDITION_LOCKER(guard, _condition);
+      createRequests = _createRequests;
+    }
+
+    if (createRequests == 0 && 
+        ! _logfileManager->hasReserveLogfiles()) {
+      reserveRequested = true;
+
+      if (! createLogfile()) {
+        LOG_ERROR("unable to create new spare logfile");
+      }
+    }
+    else if (createRequests > 0) {
       if (createLogfile()) {
-        _createLogfile = false;
+        CONDITION_LOCKER(guard, _condition);
+        --_createRequests;
+
         continue;
       }
       
       LOG_ERROR("unable to create new wal logfile");
     }
-      
-    guard.wait(1000000);
+    
+    {  
+      CONDITION_LOCKER(guard, _condition);
+      guard.wait(1000000);
+    }
   }
 
   _stop = 2;

@@ -38,7 +38,9 @@ using namespace triagens::wal;
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile::Logfile (TRI_datafile_t* df) 
-  : _df(df) {
+  : _df(df),
+    _sealRequested(false),
+    _collectionStatus(CollectionStatusType::UNCOLLECTED) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +48,22 @@ Logfile::Logfile (TRI_datafile_t* df)
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile::~Logfile () {
-  TRI_CloseDatafile(_df);
+  if (_df != nullptr) {
+    TRI_CloseDatafile(_df);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief seal a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+void Logfile::seal () {
+  LOG_INFO("sealing logfile %llu", (unsigned long long) id());
+  _sealRequested = true;
 }
 
 // Local Variables:
