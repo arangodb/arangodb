@@ -222,7 +222,7 @@ namespace triagens {
 /// @brief print a string and a newline to stdout, necessary for Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-        void printLine (const std::string&);
+        void printLine (const std::string&, bool forceNewLine = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a string to stdout, without a newline, necessary for Windows
@@ -246,7 +246,7 @@ namespace triagens {
 /// @brief print to pager
 ////////////////////////////////////////////////////////////////////////////////
 
-        void internalPrint (const char* format, const char* str = 0);
+        void internalPrint (const string & str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open log

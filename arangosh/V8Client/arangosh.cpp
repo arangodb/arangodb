@@ -205,7 +205,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
     string str = TRI_ObjectToString(val);
 
-    BaseClient.internalPrint(str.c_str());
+    BaseClient.internalPrint(str);
   }
 
   return v8::Undefined();
@@ -221,7 +221,7 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
   }
   else {
     BaseClient.setUsePager(true);
-    BaseClient.internalPrint("Using pager '%s' for output buffering.\n", BaseClient.outputPager().c_str());
+    BaseClient.internalPrint(string(string("Using pager ") + BaseClient.outputPager() + " for output buffering.\n"));
   }
 
   return v8::Undefined();
@@ -2005,7 +2005,7 @@ int main (int argc, char* argv[]) {
     ostringstream s;
     s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
 
-    BaseClient.printLine(s.str());
+    BaseClient.printLine(s.str(), true);
 
     ostringstream info;
     info << "Using ";
@@ -2024,8 +2024,8 @@ int main (int argc, char* argv[]) {
     info << ", ICU " << TRI_ICU_VERSION;
 #endif
 
-    BaseClient.printLine(info.str()); 
-    BaseClient.printLine("");
+    BaseClient.printLine(info.str(), true); 
+    BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();
 
@@ -2036,7 +2036,7 @@ int main (int argc, char* argv[]) {
            << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
            << "', username: '" << BaseClient.username() << "'";
 
-        BaseClient.printLine(is.str());
+        BaseClient.printLine(is.str(), true);
       }
       else {
         ostringstream is;
@@ -2053,7 +2053,7 @@ int main (int argc, char* argv[]) {
         promptError = true;
       }
 
-      BaseClient.printLine("");
+      BaseClient.printLine("", true);
     }
   }
 
