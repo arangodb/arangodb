@@ -264,7 +264,6 @@
 
 
     updateSeries : function(data) {
-      this.uptime = data.server.uptime;
       this.processSingleStatistic(data);
     },
 

@@ -1369,10 +1369,10 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div.tile, div.bigtile, div.tile a span.add-Icon, div.bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div.tile div.iconSet span, div.bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
@@ -1383,7 +1383,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -1936,8 +1936,10 @@ a.button-gui {
 div.tileList {
   margin-left: -6px;
   margin-right: -6px; }
+  div.tileList legend {
+    padding-left: 5px; }
 
-div.tile, div.bigtile {
+div .tile, div .bigtile {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -1949,10 +1951,10 @@ div.tile, div.bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
-  div.tile img.icon, div.bigtile img.icon {
+  div .tile img.icon, div .bigtile img.icon {
     height: 50px;
     width: 50px; }
-  div.tile a span.add-Icon, div.bigtile a span.add-Icon {
+  div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
     margin-right: 10px;
@@ -1960,22 +1962,22 @@ div.tile, div.bigtile {
     position: relative;
     right: 4px;
     top: 2px; }
-  div.tile a span.icon, div.bigtile a span.icon {
+  div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
-  div.tile a svg.icon, div.bigtile a svg.icon {
+  div .tile a svg.icon, div .bigtile a svg.icon {
     height: 50px;
     width: 50px; }
-  div.tile svg.tile-icon-svg, div.bigtile svg.tile-icon-svg {
+  div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
     fill: #686766;
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
     width: 50px; }
-  div.tile span.tile-icon, div.bigtile span.tile-icon {
+  div .tile span.tile-icon, div .bigtile span.tile-icon {
     color: #686766;
     font-size: 50px;
     line-height: 1.2; }
-  div.tile h5, div.bigtile h5 {
+  div .tile h5, div .bigtile h5 {
     background: #686766;
     color: white;
     font-size: 12px;
@@ -1984,58 +1986,58 @@ div.tile, div.bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
-  div.tile div.iconSet, div.bigtile div.iconSet {
+  div .tile div.iconSet, div .bigtile div.iconSet {
     position: absolute;
     right: 5px;
     top: 5px; }
-    div.tile div.iconSet span, div.bigtile div.iconSet span {
+    div .tile div.iconSet span, div .bigtile div.iconSet span {
       font-size: 18px;
       opacity: .5;
       padding-left: 7px; }
-      div.tile div.iconSet span:hover, div.bigtile div.iconSet span:hover {
+      div .tile div.iconSet span:hover, div .bigtile div.iconSet span:hover {
         opacity: 1.0; }
-      div.tile div.iconSet span.disabled, div.bigtile div.iconSet span.disabled {
+      div .tile div.iconSet span.disabled, div .bigtile div.iconSet span.disabled {
         cursor: default;
         opacity: .2; }
-  div.tile .badge-success, div.bigtile .badge-success {
+  div .tile .badge-success, div .bigtile .badge-success {
     font-weight: 300; }
-  div.tile .unloaded div, div.bigtile .unloaded div {
+  div .tile .unloaded div, div .bigtile .unloaded div {
     border-bottom: 16px solid #ff8f35; }
-  div.tile .deleted div, div.bigtile .deleted div {
+  div .tile .deleted div, div .bigtile .deleted div {
     border-bottom: 16px solid #770000; }
-  div.tile div.tileBadge, div.bigtile div.tileBadge {
+  div .tile div.tileBadge, div .bigtile div.tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0; }
-    div.tile div.tileBadge button, div.bigtile div.tileBadge button {
+    div .tile div.tileBadge button, div .bigtile div.tileBadge button {
       margin-left: 0;
       margin-right: 5px; }
-    div.tile div.tileBadge span, div.bigtile div.tileBadge span {
+    div .tile div.tileBadge span, div .bigtile div.tileBadge span {
       display: inline-block;
       line-height: 13px; }
-      div.tile div.tileBadge span div.corneredBadge, div.bigtile div.tileBadge span div.corneredBadge {
+      div .tile div.tileBadge span div.corneredBadge, div .bigtile div.tileBadge span div.corneredBadge {
         border-left: 17px solid transparent;
         border-bottom-style: solid;
         border-bottom-width: 17px;
         height: 0;
         padding-left: 4px;
         padding-right: 9px; }
-        div.tile div.tileBadge span div.corneredBadge.loaded, div.bigtile div.tileBadge span div.corneredBadge.loaded {
+        div .tile div.tileBadge span div.corneredBadge.loaded, div .bigtile div.tileBadge span div.corneredBadge.loaded {
           border-bottom-color: #8aa051; }
-        div.tile div.tileBadge span div.corneredBadge.unloaded, div.bigtile div.tileBadge span div.corneredBadge.unloaded {
+        div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
 
-div.tile {
+div .tile {
   height: 100px;
   width: 230px; }
-div.bigtile {
+div .bigtile {
   height: 309px;
   width: 460px; }
-  div.bigtile div.shardContainer {
+  div .bigtile div.shardContainer {
     font-size: 30px; }
-    div.bigtile div.shardContainer span {
+    div .bigtile div.shardContainer span {
       padding: 2px; }
 
 .collectionName {
@@ -2442,8 +2444,10 @@ div.breadcrumb a.disabledBread {
   .fixedDropdown a {
     padding-left: 5px !important; }
   .fixedDropdown .notificationItemContent {
+    font-weight: 300;
     margin-left: 15px;
     max-width: 155px;
+    min-height: 15px;
     white-space: normal;
     width: 155px;
     word-wrap: break-word; }
@@ -2486,9 +2490,6 @@ div.breadcrumb a.disabledBread {
     color: white;
     line-height: 24px;
     margin-left: 0; }
-
-.notificationItemContent {
-  font-weight: 300; }
 
 .fullNotification {
   background-color: #cc0000 !important;

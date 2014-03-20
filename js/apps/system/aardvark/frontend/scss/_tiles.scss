@@ -2,6 +2,10 @@ div.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
+
+  & legend {
+    padding-left: 5px;
+  }
 }
 
 $iconsize: 50px;
@@ -163,13 +167,13 @@ $iconsize: 50px;
 
 div {
 
-  &.tile {
+  & .tile {
     @extend %tile;
     height: 100px;
     width: 230px;
   }
 
-  &.bigtile {
+  & .bigtile {
     @extend %clickable;
     @extend %tile;
     height: 309px;
