@@ -1569,7 +1569,7 @@ function require (path) {
 /// @brief loadAppScript
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.loadAppScript = function (appModule, file, appContext, options) {
+  ArangoApp.prototype.loadAppScript = function (appModule, filename, appContext, options) {
     'use strict';
 
     options = options || {};
@@ -1578,11 +1578,16 @@ function require (path) {
     var full;
     var key;
 
-    full = fs.join(this._root, this._path, file);
+    full = fs.join(this._root, this._path, filename);
     fileContent = fs.read(full);
 
     if (options.hasOwnProperty('transform')) {
       fileContent = options.transform(fileContent);
+    }
+    else if (/\.coffee$/.test(filename)) {
+      var cs = require("coffee-script");
+      
+      fileContent = cs.compile(fileContent, {bare: true});
     }
 
     var sandbox = {};
