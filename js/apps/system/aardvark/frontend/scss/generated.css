@@ -1,3 +1,13 @@
+body {
+  background-color: white !important;
+  color: #333333;
+  display: block;
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  margin: 0; }
+
 body,
 input,
 textarea,
@@ -44,8 +54,8 @@ textarea,
  * -------------------------- */
 @font-face {
   font-family: 'FontAwesome';
-  src: url("../fonts/fontawesome-webfont.eot?v=4.0.3");
-  src: url("../fonts/fontawesome-webfont.eot?#iefix&v=4.0.3") format("embedded-opentype"), url("../fonts/fontawesome-webfont.woff?v=4.0.3") format("woff"), url("../fonts/fontawesome-webfont.ttf?v=4.0.3") format("truetype"), url("../fonts/fontawesome-webfont.svg?v=4.0.3#fontawesomeregular") format("svg");
+  src: url("../fonts/fontawesome/fontawesome-webfont.eot?v=4.0.3");
+  src: url("../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.0.3") format("embedded-opentype"), url("../fonts/fontawesome/fontawesome-webfont.woff?v=4.0.3") format("woff"), url("../fonts/fontawesome/fontawesome-webfont.ttf?v=4.0.3") format("truetype"), url("../fonts/fontawesome/fontawesome-webfont.svg?v=4.0.3#fontawesomeregular") format("svg");
   font-weight: normal;
   font-style: normal; }
 .fa {
@@ -1373,7 +1383,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, .icon-info-sign, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div.tile a span.icon, div.bigtile a span.icon, div.tile a svg, div.bigtile a svg, div.tile div.iconSet span, div.bigtile div.iconSet span, div.bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -1434,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1494,6 +1504,11 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     content: '';
     right: 8px;
     top: -6px; }
+
+.navbar .nav li.dropdown .active > .dropdown-toggle,
+.navbar .nav li.dropdown .open > .dropdown-toggle,
+.navbar .nav li.dropdown .open.active > .dropdown-toggle {
+  background: #788f3d; }
 
 nav.navbar {
   height: 38px;
@@ -2194,7 +2209,15 @@ div.centralContent {
     font-size: 20px; }
 
 .icon_arangodb_info {
-  color: #333333; }
+  color: #333333;
+  font-size: 23px; }
+
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
+  font-size: 18px;
+  position: absolute;
+  right: 4px;
+  top: 2px; }
 
 div.headerDropdown {
   background-color: white;
@@ -2520,7 +2543,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2900,6 +2923,20 @@ div img.searchSubmitIcon {
 .display-none {
   display: none; }
 
+.row {
+  margin-bottom: 20px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0; }
+
+/*
+still in use???
+*/
+.container {
+  width: auto !important;
+  margin-left: 20px;
+  margin-right: 20px; }
+
 .arango-tab {
   border-bottom: 1px solid #dddddd;
   list-style: none;
@@ -3075,7 +3112,7 @@ div img.searchSubmitIcon {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
@@ -3100,19 +3137,19 @@ div img.searchSubmitIcon {
 .query-output .ace_gutter-cell {
   background-color: #f0f0f0; }
 
-.swagger-ui-wrap ul#resources li.resource {
+.swagger-ui-wrap #resources li.resource {
   background-color: #f4f3f3; }
 
 .centralContent .api-actions {
   margin: 0 !important;
   padding: 0; }
 .centralContent .api-actions .container {
-  margin-top: 0 !important;
   margin-bottom: 0 !important;
   margin-left: 5px !important;
   margin-right: 5px !important;
-  padding-top: 13px !important;
-  padding-bottom: 10px !important; }
+  margin-top: 0 !important;
+  padding-bottom: 10px !important;
+  padding-top: 13px !important; }
 .centralContent .api-actions .resource {
   border-bottom: 0 !important;
   padding-left: 5px !important; }
@@ -3153,6 +3190,26 @@ div img.searchSubmitIcon {
 .centralContent .api-actions .resource > .heading > .options {
   margin: 11px 10px 0 0 !important; }
 
+.form-actions {
+  background: none;
+  border: 0; }
+
+.form-actions:before,
+.form-actions:after {
+  content: '';
+  display: table;
+  line-height: 0; }
+
+.form-actions:after {
+  clear: both; }
+
+.alert {
+  padding: 15px 35px 15px 14px; }
+
+textarea,
+.alert {
+  border-radius: 0 !important; }
+
 table.dataTable thead th {
   font-weight: 400 !important;
   padding: 10px 14px; }
@@ -3191,6 +3248,9 @@ table.dataTable thead th {
   font-size: 1em !important;
   margin: 0 !important;
   padding: 0 !important; }
+
+table .sorting {
+  background: none !important; }
 
 .sorting_asc,
 .sorting_desc {
@@ -3254,3 +3314,12 @@ table.dataTable thead th {
   display: none;
   margin-top: -3px;
   padding-right: 10px; }
+
+.breadcrumb {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 0; }
+
+.breadcrumb a.activeBread {
+  color: #b9d375; }

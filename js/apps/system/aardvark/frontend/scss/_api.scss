@@ -80,3 +80,19 @@
     margin: 11px 10px 0 0 !important;
   }
 }
+
+.form-actions {
+  background: none;
+  border: 0;
+}
+
+.form-actions:before,
+.form-actions:after {
+  content: '';
+  display: table;
+  line-height: 0;
+}
+
+.form-actions:after {
+  clear: both;
+}

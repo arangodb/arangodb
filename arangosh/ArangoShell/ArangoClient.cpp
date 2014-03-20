@@ -45,6 +45,46 @@ double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
+namespace {
+#ifdef _WIN32
+void _newLine() {
+    COORD pos;
+    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
+      // when we are at the last visible line of the console
+      // the first line of console is deleted (the content of the console 
+      // is scrolled one line above
+      SMALL_RECT srctScrollRect;
+      srctScrollRect.Top = 0;
+      srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
+      srctScrollRect.Left = 0;
+      srctScrollRect.Right = bufferInfo.dwSize.X;
+      COORD coordDest;
+      coordDest.X = 0;
+      coordDest.Y = -1;
+      CONSOLE_SCREEN_BUFFER_INFO  consoleScreenBufferInfo;
+      CHAR_INFO chiFill;
+      chiFill.Char.AsciiChar = (char)' ';
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleScreenBufferInfo)) {
+        chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
+      }
+      else {
+        // Fill the bottom row with green blanks.
+        chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
+      }
+      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
+         pos.Y = bufferInfo.dwCursorPosition.Y;
+         pos.X = 0;
+    } else {
+        pos.Y = bufferInfo.dwCursorPosition.Y + 1;
+        pos.X = 0;
+    }
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+  }
+
+#endif
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
 // -----------------------------------------------------------------------------
@@ -448,42 +488,12 @@ void ArangoClient::_printLine(const string &s) {
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (sizeof WCHAR)* (s.size() + 1));
   if (wLen) {
     DWORD n;
-    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
     COORD pos;
+    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
-    if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
-      // when we are at the last visible line of the console
-      // the first line of console is deleted (the content of the console 
-      // is scrolled one line above
-      SMALL_RECT srctScrollRect;
-      srctScrollRect.Top = 0;
-      srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
-      srctScrollRect.Left = 0;
-      srctScrollRect.Right = bufferInfo.dwSize.X;
-      COORD coordDest;
-      coordDest.X = 0;
-      coordDest.Y = -1;
-      CONSOLE_SCREEN_BUFFER_INFO  consoleScreenBufferInfo;
-      CHAR_INFO chiFill;
-      chiFill.Char.AsciiChar = (char)' ';
-      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleScreenBufferInfo)) {
-        chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
-      }
-      else {
-        // Fill the bottom row with green blanks.
-        chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
-      }
-      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
-      pos.Y = bufferInfo.dwCursorPosition.Y;
-      pos.X = 0;
-    }
-    else {
-      pos.Y = bufferInfo.dwCursorPosition.Y + 1;
-      pos.X = 0;
-    }
-    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
-    pos.Y += 1;
+    pos = bufferInfo.dwCursorPosition;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
     // Workaround recomended by 
     // http://social.msdn.microsoft.com/Forums/de-DE/c16846a3-eb27-4698-80a5-6c4ecf92a799/aus-der-msdnhotline-deutsche-umlaute-in-der-console-anzeigen-standard-c?forum=visualcplusde
     // but it does not work
@@ -499,13 +509,20 @@ void ArangoClient::_printLine(const string &s) {
   }
 #endif
 }
-void ArangoClient::printLine (const string& s) {
+void ArangoClient::printLine (const string& s, bool forceNewLine) {
 #ifdef _WIN32
   // no, we can use std::cout as this doesn't support UTF-8 on Windows
   //fprintf(stdout, "%s\r\n", s.c_str());
   TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
-  for (int i = 0; i < subStrings._length; i++) {
-    _printLine(subStrings._buffer[i]);
+  bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
+  if (hasNewLines) {
+    for (int i = 0; i < subStrings._length; i++) {
+      _printLine(subStrings._buffer[i]);
+      _newLine();
+    }
+  }
+  else {
+    _printLine(s);
   }
   TRI_DestroyVectorString(&subStrings);
 #else
@@ -612,26 +629,26 @@ static std::string StripBinary (const char* value) {
 /// @brief print to pager
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::internalPrint (const char* format, const char* str) {
-  if (str == 0) {
-    str = format;
-    format = "%s";
-  }
-
+void ArangoClient::internalPrint (const string & str) {
+  
   if (_pager == stdout) {
-    //fprintf(_pager, format, str);
+#ifdef _WIN32
+// at moment the formating is ignored in windows
     printLine(str);
+#else
+    fprintf(_pager, "%s", str.c_str());
+#endif
     if (_log) {
-      string sanitised = StripBinary(str);
-      log(format, sanitised.c_str());
+      string sanitised = StripBinary(str.c_str());
+      log("%s", sanitised.c_str());
     }
   }
   else {
-    string sanitised = StripBinary(str);
+    string sanitised = StripBinary(str.c_str());
 
     if (! sanitised.empty()) {
-      fprintf(_pager, format, sanitised.c_str());
-      log(format, sanitised.c_str());
+      fprintf(_pager, "%s", sanitised.c_str());
+      log("%s", sanitised.c_str());
     }
   }
 }
