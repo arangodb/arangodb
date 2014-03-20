@@ -1,3 +1,15 @@
+.navbar {
+  .nav {
+    li.dropdown {
+      .active > .dropdown-toggle,
+      .open > .dropdown-toggle,
+      .open.active > .dropdown-toggle {
+        background: $c-positive-hover;
+      }
+    }
+  }
+}
+
 nav.navbar {
   @extend %fixedbar;
   height: 38px;

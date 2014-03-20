@@ -1,5 +1,7 @@
 //colorScheme
 @import 'colors';
+//THE body
+@import 'body';
 //shared
 @import 'shared';
 // All Abstract classes
@@ -45,6 +47,8 @@
 @import 'shellView';
 // api docs
 @import 'api';
+// alerts
+@import 'alert';
 
 
 // Data Tables, TODO: might all be superflous
