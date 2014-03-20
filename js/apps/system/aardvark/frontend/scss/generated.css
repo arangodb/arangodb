@@ -3211,6 +3211,83 @@ textarea,
 .alert {
   border-radius: 0 !important; }
 
+.log-content {
+  word-break: break-all;
+  word-wrap: break-word; }
+
+.log-content-id {
+  padding-bottom: 0 !important; }
+  .log-content-id .dataTable {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+    table-layout: fixed !important; }
+  .log-content-id .arango-tab {
+    border-bottom: 0 !important; }
+  .log-content-id .tab-content {
+    margin-top: 1px !important; }
+
+.tab-content {
+  min-height: 390px; }
+
+.log-table-id,
+.info-table-id,
+.debug-table-id,
+.crit-table-id,
+.warn-table-id {
+  border-spacing: 0 0;
+  font-size: 15px !important;
+  margin-top: -5px !important; }
+  .log-table-id thead,
+  .info-table-id thead,
+  .debug-table-id thead,
+  .crit-table-id thead,
+  .warn-table-id thead {
+    background-color: #f9f9f9;
+    border-top: 6px solid #888888 !important;
+    text-align: center; }
+    .log-table-id thead tr th,
+    .info-table-id thead tr th,
+    .debug-table-id thead tr th,
+    .crit-table-id thead tr th,
+    .warn-table-id thead tr th {
+      background-color: white !important;
+      border-bottom: 1px solid #c2c2c2;
+      border-top: 2px solid #888888; }
+  .log-table-id .firstcol,
+  .info-table-id .firstcol,
+  .debug-table-id .firstcol,
+  .crit-table-id .firstcol,
+  .warn-table-id .firstcol {
+    cursor: default !important;
+    max-width: 80px !important;
+    width: 80px !important; }
+  .log-table-id tbody .firstcol,
+  .info-table-id tbody .firstcol,
+  .debug-table-id tbody .firstcol,
+  .crit-table-id tbody .firstcol,
+  .warn-table-id tbody .firstcol {
+    background-color: transparent !important; }
+  .log-table-id tbody tr td,
+  .info-table-id tbody tr td,
+  .debug-table-id tbody tr td,
+  .crit-table-id tbody tr td,
+  .warn-table-id tbody tr td {
+    padding-bottom: 8px !important;
+    padding-top: 8px !important; }
+
+.thirdcol {
+  cursor: default !important;
+  max-width: 500px !important; }
+
+.seccol,
+.dataTables_empty {
+  cursor: default !important;
+  margin-bottom: 5px;
+  width: 100px !important; }
+
+.dataTables_info {
+  display: none; }
+
 table.dataTable thead th {
   font-weight: 400 !important;
   padding: 10px 14px; }
