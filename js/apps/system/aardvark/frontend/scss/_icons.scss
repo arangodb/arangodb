@@ -26,3 +26,6 @@
   font-size: 23px;
 }
 
+.arangoicon {
+  @extend %clickable
+}
