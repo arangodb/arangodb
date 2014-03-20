@@ -31,7 +31,8 @@
 var Preprocessor,
   preprocess,
   ArrayIterator,
-  extend = require("underscore").extend;
+  extend = require("underscore").extend,
+  coffeeScript = require("coffee-script");
 
 ArrayIterator = function (arr) {
   'use strict';
@@ -74,8 +75,13 @@ extend(ArrayIterator.prototype, {
   }
 });
 
-Preprocessor = function (input) {
+Preprocessor = function (input, type) {
   'use strict';
+
+  if (type === 'coffee') {
+    input = coffeeScript.compile(input, {bare: true});
+  }
+
   this.iterator = new ArrayIterator(input.split("\n"));
   this.inJSDoc = false;
 };
@@ -140,9 +146,9 @@ extend(Preprocessor.prototype, {
   }
 });
 
-preprocess = function (input) {
+preprocess = function (input, type) {
   'use strict';
-  var processer = new Preprocessor(input);
+  var processer = new Preprocessor(input, type);
   return processer.convert().result();
 };
 
