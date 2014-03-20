@@ -1,6 +1,8 @@
 v2.0.1-rc1 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #783: coffee script not working in manifest file
+
 * fixed issue #781: Cant save current query from AQL editor ui
 
 * bumped version in `X-Arango-Version` compatibility header sent by arangosh and other
