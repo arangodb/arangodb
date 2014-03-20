@@ -114,7 +114,6 @@ bool AllocatorThread::createLogfile () {
 void AllocatorThread::run () {
   while (_stop == 0) {
     uint32_t createRequests = 0;
-    bool reserveRequested = false;
 
     {
       CONDITION_LOCKER(guard, _condition);
@@ -123,8 +122,6 @@ void AllocatorThread::run () {
 
     if (createRequests == 0 && 
         ! _logfileManager->hasReserveLogfiles()) {
-      reserveRequested = true;
-
       if (! createLogfile()) {
         LOG_ERROR("unable to create new spare logfile");
       }
