@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global module, require, exports, ArangoAgency, SYS_TEST_PORT */
+/*global module, require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster planning functionality
@@ -34,6 +34,7 @@
 
 var download = require("internal").download;
 var base64Encode = require("internal").base64Encode;
+var testPort = require("internal").testPort;
 
 // Our default configurations:
 
@@ -129,7 +130,7 @@ PortFinder.prototype.next = function () {
     if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
       var available = true;
       if (this.dispatcher.endpoint === "tcp://localhost:") {
-        available = SYS_TEST_PORT("tcp://0.0.0.0:"+this.port);
+        available = testPort("tcp://0.0.0.0:"+this.port);
       }
       else {
         var url = "http" + this.dispatcher.endpoint.substr(3) + 
