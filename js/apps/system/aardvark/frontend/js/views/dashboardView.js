@@ -51,21 +51,6 @@
           group : f.split(".")[0]
         });
       });
-      self.description = {
-        get: function(y) {
-          if (y === "groups") {
-            return [{
-              group : group
-            }, {
-              group : "server"
-            }];
-          }
-          if (y === "figures") {
-            return figs;
-          }
-        }
-      };
-
       self.uptime = undefined;
       var chart = {};
       Object.keys(self.series[group][id]).forEach(function(valueList) {
@@ -76,9 +61,9 @@
         }
       });
       $(self.detailEl).html(this.detailTemplate.render({figure: chart.options.title}));
-      self.calculateSeries();
       chart.graphCreated = false;
-      self.showDetailFor("dashboardDetailed", id, chart, chart.options.title);
+      self.showDetailFor("dashboardDetailed", id, chart, chart.options.title, figs);
+      self.calculateSeries();
       self.createLineChart(this.detailChart.chart, id,  "dashboardDetailed");
       $('#lineChartDetail').modal('show');
       $('#lineChartDetail').on('hidden', function () {
@@ -161,19 +146,28 @@
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
       if (newUptime !== null  && self.uptime && newUptime < self.uptime) {
-
         var e = {time : (time-(newUptime+0.01)* 1000 ) /1000};
-        self.description.get("figures").forEach(function(figure) {
-          if (!e[figure.group]) {
-            e[figure.group] = {};
-          }
-          e[figure.group][figure.identifier] = null;
+        var itList;
+        if (self.detailChart.neededFigures && self.detailChart.neededFigures.length > 0) {
+          itList = self.detailChart.neededFigures;
+        } else {
+          itList = self.description.get("figures");
+        }
+        itList.forEach(function(figure) {
+            if (!e[figure.group]) {
+                e[figure.group] = {};
+            }
+            e[figure.group][figure.identifier] = null;
         });
         self.uptime = newUptime;
         self.processSingleStatistic(e);
       }
       self.uptime = newUptime;
+      var graphVal;
       self.description.get("groups").forEach(function(g) {
+        if (!entry[g.group]) {
+            return;
+        }
         Object.keys(entry[g.group]).forEach(function(figure) {
           var valueLists = self.series[g.group][figure];
           Object.keys(valueLists).forEach(function (valueList) {
@@ -187,12 +181,12 @@
                 self.LastValues[figure].value = val;
               }
               if (val !== null) {
-                var graphVal = (val - self.LastValues[figure].value) /
+                graphVal = (val - self.LastValues[figure].value) /
                     ((time - self.LastValues[figure].time) / 1000 );
                 valueLists[valueList].data.push(
                   [new Date(time), graphVal]
                 );
-                self.LastValues[figure] = {
+                  self.LastValues[figure] = {
                   value : val, 
                   time: time, 
                   graphVal : graphVal
@@ -213,13 +207,26 @@
             } else if (valueList === self.dygraphConfig.regularLineChartType) {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === self.dygraphConfig.distributionBasedLineChartType)  {
-                if (val !== null) {
-                val = val.count === 0 ? 0 : val.sum / val.count;
+              if (!self.LastValues[figure]) {
+                  if (val !== null) {
+                    graphVal = val.count === 0 ? 0 : val.sum / val.count;
+                  } else {
+                    graphVal = null;
+                  }
+              } else if (val !== null) {
+                  if (self.LastValues[figure].value === null) {
+                      self.LastValues[figure].value = {sum : 0, count : 0};
+                  }
+                  graphVal = val.count - self.LastValues[figure].value.count === 0
+                      ? 0 : (val.sum - self.LastValues[figure].value.sum) /
+                        (val.count - self.LastValues[figure].value.count);
+              } else {
+                  graphVal = null;
               }
-              self.LastValues[figure] = {value : val,  time: 0, graphVal : val};
+              self.LastValues[figure] = {value : val,  time: 0, graphVal : graphVal};
               valueLists[valueList].data.push([
                 new Date(time),
-                val
+                  graphVal
               ]);
             }
           });
@@ -235,7 +242,7 @@
           else if (typeof entry[part[0]] === 'object' && 
                    entry[part[0]].hasOwnProperty(attrib) &&
               (typeof entry[part[0]][attrib] === "number" || entry[part[0]][attrib] === null)) {
-                val.push(entry[part[0]][attrib]);
+              val.push(entry[part[0]][attrib]);
           }
         });
         if (val.length > 1) {
@@ -247,7 +254,6 @@
     calculateSeries: function () {
       var self = this;
       self.LastValues = {};
-      self.maxMinValue = {};
       self.history.forEach(function(entry) {
         self.processSingleStatistic(entry);
       });
@@ -266,7 +272,6 @@
     updateSeries : function(data) {
       this.processSingleStatistic(data);
     },
-
 
     createLineChart : function (chart, figure, div, createDiv) {
       var self = this;
@@ -291,7 +296,6 @@
           displayOptions.height = $('.innerDashboardChart').height() - 34;
           displayOptions.width = $('.innerDashboardChart').width() -45;
       }
-
       if (!chart.graphCreated) {
         if (createDiv) {
           self.renderHttpGroup(figure);
@@ -401,11 +405,11 @@
     );
   },
 
-  showDetailFor : function (div, figure, chart, title) {
+  showDetailFor : function (div, figure, chart, title, neededFigures) {
     this.detailChart = {
         div: div, chart : chart,
         figure: figure, graphCreated : false,
-        title : title
+        title : title, neededFigures : neededFigures
     };
   },
 

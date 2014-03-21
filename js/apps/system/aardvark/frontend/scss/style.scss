@@ -23,8 +23,6 @@
 @import 'dashboardHttpGroup';
 // dashboard distribution charts
 @import 'dashboardDistribution';
-// modals
-@import 'modals';
 // dbSelection
 @import 'searchBar';
 // shortcuts info boxes
@@ -55,6 +53,9 @@
 @import 'graphViewer';
 // General Dialogs
 @import 'dialogs';
+// Collections
+@import 'collection';
+
 
 // Data Tables, TODO: might all be superflous
 @import 'dataTables';
