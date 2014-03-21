@@ -1359,7 +1359,7 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .machineClass, .scenarioMachine {
   float: left; }
 
 div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar {
@@ -1373,7 +1373,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .scenarioImage {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -1699,6 +1699,9 @@ div.footer-right {
   position: relative;
   top: 3px; }
 
+#closeBtnInfoView {
+  margin-left: 0 !important; }
+
 button.large-distance {
   margin-left: 12px; }
 
@@ -1753,21 +1756,28 @@ a.headerButton {
       background-color: white;
       color: #788f3d; }
 
-div.toolbox > div.gv_action_button {
-  background-color: #333232;
-  color: white;
-  height: 50px;
-  margin-bottom: 2px;
-  margin-top: 2px;
-  position: relative;
-  text-align: center;
-  width: 50px; }
-  div.toolbox > div.gv_action_button.active {
-    background-color: #8aa051; }
-  div.toolbox > div.gv_action_button:first-child {
-    margin-top: 0; }
-  div.toolbox > div.gv_action_button:last-child {
-    margin-bottom: 0; }
+div.toolbox {
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  border: 3px solid #333232;
+  margin-right: 5px;
+  position: absolute; }
+  div.toolbox div.gv_action_button {
+    background-color: #333232;
+    color: white;
+    height: 50px;
+    margin-bottom: 2px;
+    margin-top: 2px;
+    position: relative;
+    text-align: center;
+    width: 50px; }
+    div.toolbox div.gv_action_button.active {
+      background-color: #8aa051; }
+    div.toolbox div.gv_action_button:first-child {
+      margin-top: 0; }
+    div.toolbox div.gv_action_button:last-child {
+      margin-bottom: 0; }
 
 h6.gv_icon_icon, h6.gv_button_title {
   left: 0;
@@ -1899,9 +1909,6 @@ button {
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important; }
-
-.btn-group.open .btn-inverse.dropdown-toggle {
-  background-color: #736b68; }
 
 button.btn-overview,
 button.btn-server {
@@ -2302,6 +2309,8 @@ div.queryline {
     margin-left: 5px !important;
     margin-top: 0 !important; }
   div.queryline div.searchByAttribute {
+    margin-left: 6px;
+    margin-right: 6px;
     position: relative; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
@@ -2338,7 +2347,34 @@ select.filterSelect {
   margin-left: 10px !important;
   margin-top: 1px; }
 
+div.input-append button.gv_example_toggle {
+  -moz-border-radius: 0 4px 4px 0;
+  -webkit-border-radius: 0 4px 4px 0;
+  border-radius: 0 4px 4px 0;
+  background-color: #8f8d8c;
+  height: 30px;
+  margin-left: -1px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 12px;
+  vertical-align: top; }
+  div.input-append button.gv_example_toggle:hover {
+    background-color: #8aa051; }
+
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px; }
+
+img.gv-throbber {
+  background-image: url("../img/swagger/throbber.gif"); }
+
+span.gv_caret {
+  margin-top: 2px !important; }
+
 input.search-input {
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  border-radius: 0;
   border: 0;
   height: 18px;
   line-height: 18px;
@@ -2351,15 +2387,25 @@ input.search-input {
     border-color: #8aa051;
     outline: none; }
 
-.search-submit-icon {
+.search-field {
+  margin-left: 15px; }
+
+.search-submit-icon, .gv-search-submit-icon {
+  background-image: url("../img/enter_icon.png");
+  background-size: 14px;
   height: 14px;
   margin-left: -18px;
-  margin-top: 11px;
   opacity: .2;
   position: absolute;
   width: 14px; }
-  .search-submit-icon:hover {
+  .search-submit-icon:hover, .gv-search-submit-icon:hover {
     opacity: .8; }
+
+.search-submit-icon {
+  margin-top: 11px; }
+
+.gv-search-submit-icon {
+  margin-top: 6px; }
 
 div.headerBar {
   background-color: #686766;
@@ -2430,6 +2476,135 @@ div.breadcrumb a.disabledBread {
 
 .css-label-round {
   background-image: url("../img/dark-check-green-round.png"); }
+
+.modal-body {
+  color: #736b68;
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 300; }
+  .modal-body input,
+  .modal-body select,
+  .modal-body textarea {
+    margin-top: 10px; }
+  .modal-body th th.actionCell, .modal-body th th.keyCell, .modal-body th .valueCell {
+    text-align: center; }
+  .modal-body th.actionCell {
+    width: 30px; }
+  .modal-body th.keyCell {
+    width: 170px; }
+    .modal-body th.keyCell input {
+      width: 150px; }
+  .modal-body th .valueCell {
+    width: 300px; }
+    .modal-body th .valueCell input {
+      width: 290px; }
+  .modal-body .icon-info-sign {
+    margin-bottom: 10px;
+    margin-left: 10px;
+    opacity: .7;
+    padding-bottom: 5px; }
+  .modal-body .icon-info-sign:hover {
+    opacity: 1; }
+  .modal-body .accordion-inner {
+    margin-left: 0;
+    padding-left: 0; }
+  .modal-body input {
+    width: 320px; }
+  .modal-body select {
+    width: 334px; }
+
+.modal-text {
+  font-weight: 300;
+  padding-bottom: 3px;
+  padding-top: 3px; }
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4; }
+
+.modalChartDetail {
+  height: 70%;
+  margin-left: 0;
+  width: 70%; }
+
+.modal {
+  border-radius: 0 !important; }
+
+.waitModal {
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+  background: transparent;
+  border: 0;
+  color: white; }
+
+.waitModalBackdrop {
+  opacity: .7 !important; }
+
+.modalTooltips span {
+  color: #736b68;
+  font-size: 20px; }
+  .modalTooltips span:hover {
+    color: black; }
+
+pre.gv-object-view {
+  text-align: left;
+  white-space: pre; }
+
+.capitalize {
+  text-transform: capitalize; }
+
+.modal-footer {
+  border-top: 0 !important;
+  padding-right: 17px; }
+
+.modal-header {
+  background-color: #686766;
+  border-bottom: 0 !important;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px; }
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px; }
+
+.modal-header a {
+  top: 2px !important; }
+
+.modal-header .close {
+  color: white;
+  font-weight: 300;
+  opacity: .5; }
+
+.modal-header .close:hover {
+  opacity: 1; }
+
+.modal-body .icon_arangodb_info {
+  color: #736b68;
+  font-size: 18px;
+  margin-top: -10px;
+  position: absolute;
+  right: 12px; }
+
+.modal-body .icon_arangodb_info:hover {
+  color: black; }
+
+.modal.fade.in {
+  top: 12.1% !important; }
+
+.modal table tr,
+.thBorderBottom {
+  border-bottom: 1px solid #f7f3f2 !important; }
+
+.modal table tr:last-child {
+  border-bottom: 0 !important; }
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px; }
 
 .scenarioImage {
   height: 70%;
