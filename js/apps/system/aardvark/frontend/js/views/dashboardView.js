@@ -147,10 +147,11 @@
       var newUptime = entry.server.uptime;
       if (newUptime !== null  && self.uptime && newUptime < self.uptime) {
         var e = {time : (time-(newUptime+0.01)* 1000 ) /1000};
-        if (this.detailChart.neededFigures.length > 0) {
-            var itList = this.detailChart.neededFigures;
+        var itList;
+        if (self.detailChart.neededFigures && self.detailChart.neededFigures.length > 0) {
+          itList = self.detailChart.neededFigures;
         } else {
-            var itList = self.description.get("figures");
+          itList = self.description.get("figures");
         }
         itList.forEach(function(figure) {
             if (!e[figure.group]) {
@@ -162,6 +163,7 @@
         self.processSingleStatistic(e);
       }
       self.uptime = newUptime;
+      var graphVal;
       self.description.get("groups").forEach(function(g) {
         if (!entry[g.group]) {
             return;
@@ -179,7 +181,7 @@
                 self.LastValues[figure].value = val;
               }
               if (val !== null) {
-                var graphVal = (val - self.LastValues[figure].value) /
+                graphVal = (val - self.LastValues[figure].value) /
                     ((time - self.LastValues[figure].time) / 1000 );
                 valueLists[valueList].data.push(
                   [new Date(time), graphVal]
@@ -205,15 +207,14 @@
             } else if (valueList === self.dygraphConfig.regularLineChartType) {
               valueLists[valueList].data.push([new Date(time), val]);
             } else if (valueList === self.dygraphConfig.distributionBasedLineChartType)  {
-              var graphVal;
               if (!self.LastValues[figure]) {
                   if (val !== null) {
                     graphVal = val.count === 0 ? 0 : val.sum / val.count;
                   } else {
                     graphVal = null;
                   }
-              } else if (val != null) {
-                  if (self.LastValues[figure].value == null) {
+              } else if (val !== null) {
+                  if (self.LastValues[figure].value === null) {
                       self.LastValues[figure].value = {sum : 0, count : 0};
                   }
                   graphVal = val.count - self.LastValues[figure].value.count === 0
