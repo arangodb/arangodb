@@ -32,6 +32,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Wal/Logfile.h"
+#include "Wal/Slots.h"
 
 #include <regex.h>
 
@@ -42,7 +43,6 @@ namespace triagens {
     class CollectorThread;
     class Configuration;
     class Slot;
-    class Slots;
     class SynchroniserThread;
 
 // -----------------------------------------------------------------------------
@@ -122,13 +122,13 @@ namespace triagens {
 /// @brief reserve space in a logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        Slot* allocate (uint32_t, int);
+        SlotInfo allocate (uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
-        int finalise (Slot*);
+        void finalise (SlotInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
@@ -136,8 +136,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int allocateAndWrite (void*,
-                              uint32_t,
-                              int);
+                              uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief seal a logfile
@@ -361,7 +360,7 @@ namespace triagens {
 /// @brief whether or not we have been shutdown already
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _shutdown;
+        volatile sig_atomic_t _shutdown;
 
     };
 
