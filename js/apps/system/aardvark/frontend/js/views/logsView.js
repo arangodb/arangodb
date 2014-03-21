@@ -139,8 +139,6 @@
       return this;
     },
     renderPagination: function (totalPages, currentPage) {
-      console.log(totalPages);
-      console.log("HALLO");
       var self = this;
       var target = $('#logPaginationDiv'),
       options = {
