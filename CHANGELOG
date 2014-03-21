@@ -12,6 +12,16 @@ v2.0.2-rc1 (XXXX-XX-XX)
 * document how to persist a cluster plan in order to relaunch an existing
   cluster later
 
+* added REST API method HTTP GET `/_api/job/job-id` to query the status of an
+  async job without potentially fetching it from the list of done jobs
+
+* fixed non-intuitive behaviour in jobs API: previously, querying the status
+  of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
+  executing async job from the list of queryable jobs on the server.
+  Now, when querying the result of an async job that is still executing, 
+  the job is kept in the list of queryable jobs so its result can be fetched
+  by a subsequent request.
+
 * improve documentation of db._create and explain the rules and
   limitations following from the choice of shardKeys for sharded
   collections with more than one shard
@@ -40,6 +50,15 @@ v2.0.1 (2014-03-31)
 * fixed non-working "save" button in collection edit view of web interface
   clicking the save button did nothing. one had to press enter in one of the input
   fields to send modified form data
+
+* fixed V8 compile error on MacOS X
+
+* prevent `body length: -9223372036854775808` being logged in development mode for
+  some Foxx HTTP responses
+
+* fixed several bugs in web interface dashboard
+
+* fixed issue #783: coffee script not working in manifest file
 
 * fixed V8 compile error on MacOS X
 
