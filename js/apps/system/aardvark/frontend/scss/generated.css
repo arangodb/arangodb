@@ -1369,10 +1369,10 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, .docsThirdCol {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
@@ -1383,7 +1383,7 @@ div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonB
   height: 0;
   visibility: hidden; }
 
-.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox > div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .edit-index-table .icon_arangodb_roundminus {
+.addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile div.iconSet span, div .bigtile div.iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 nav.navbar, footer.footer {
@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1733,14 +1733,14 @@ a.headerButton {
       background-color: white;
       color: #788f3d; }
 
-div.toolbox > {
-  -moz-border-radius: 0;
-  -webkit-border-radius: 0;
-  border-radius: 0;
+div.toolbox {
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
   border: 3px solid #333232;
   margin-right: 5px;
   position: absolute; }
-  div.toolbox > div.gv_action_button {
+  div.toolbox div.gv_action_button {
     background-color: #333232;
     color: white;
     height: 50px;
@@ -1749,11 +1749,11 @@ div.toolbox > {
     position: relative;
     text-align: center;
     width: 50px; }
-    div.toolbox > div.gv_action_button.active {
+    div.toolbox div.gv_action_button.active {
       background-color: #8aa051; }
-    div.toolbox > div.gv_action_button:first-child {
+    div.toolbox div.gv_action_button:first-child {
       margin-top: 0; }
-    div.toolbox > div.gv_action_button:last-child {
+    div.toolbox div.gv_action_button:last-child {
       margin-bottom: 0; }
 
 h6.gv_icon_icon, h6.gv_button_title {
@@ -2322,7 +2322,25 @@ select.filterSelect {
   margin-left: 10px !important;
   margin-top: 1px; }
 
+div.input-append button.gv_example_toggle {
+  background-color: #8F8D8C;
+  height: 30px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 12px;
+  margin-left: -1px;
+  vertical-align: top;
+  -webkit-border-radius: 0 4px 4px 0;
+  -moz-border-radius: 0 4px 4px 0;
+  border-radius: 0 4px 4px 0; }
+
+.gv_example_toggle:hover {
+  background-color: #8AA051; }
+
 input.search-input {
+  -moz-border-radius: 0px;
+  -webkit-border-radius: 0px;
+  border-radius: 0px;
   border: 0;
   height: 18px;
   line-height: 18px;
@@ -2335,15 +2353,25 @@ input.search-input {
     border-color: #8aa051;
     outline: none; }
 
-.search-submit-icon {
+.search-field {
+  margin-left: 15px; }
+
+.search-submit-icon, .gv-search-submit-icon {
+  background-image: url("../img/enter_icon.png");
+  background-size: 14px;
   height: 14px;
   margin-left: -18px;
-  margin-top: 11px;
   opacity: .2;
   position: absolute;
   width: 14px; }
-  .search-submit-icon:hover {
+  .search-submit-icon:hover, .gv-search-submit-icon:hover {
     opacity: .8; }
+
+.search-submit-icon {
+  margin-top: 11px; }
+
+.gv-search-submit-icon {
+  margin-top: 6px; }
 
 div.headerBar {
   background-color: #686766;
@@ -2548,7 +2576,7 @@ div.breadcrumb a.disabledBread {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2654,6 +2682,18 @@ div.breadcrumb a.disabledBread {
 .modal-body {
   color: #736b68;
   font-size: 14px; }
+  .modal-body th th.actionCell, .modal-body th th.keyCell, .modal-body th .valueCell {
+    text-align: center; }
+  .modal-body th.actionCell {
+    width: 30px; }
+  .modal-body th.keyCell {
+    width: 170px; }
+    .modal-body th.keyCell input {
+      width: 150px; }
+  .modal-body th .valueCell {
+    width: 300px; }
+    .modal-body th .valueCell input {
+      width: 290px; }
 
 .modal-backdrop,
 .modal-backdrop.fade.in {
@@ -2709,17 +2749,6 @@ div.breadcrumb a.disabledBread {
 
 .show-collection .tab-content {
   min-height: 200px; }
-
-div img.searchSubmitIcon {
-  height: 14px;
-  margin-left: -18px;
-  margin-top: 11px;
-  opacity: .2;
-  position: absolute;
-  width: 14px; }
-
-.searchField {
-  margin-left: 15px; }
 
 .shortcuts {
   font-size: 11px;
@@ -3120,7 +3149,7 @@ div img.searchSubmitIcon {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: gray; }
+  background-color: grey; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
@@ -3295,6 +3324,77 @@ textarea,
 .dataTables_info {
   display: none; }
 
+div.gv_zoom_widget {
+  height: 300px;
+  left: 95px;
+  position: absolute;
+  top: 20px;
+  width: 40px;
+  z-index: 1; }
+  div.gv_zoom_widget div.gv_zoom_buttons_bg {
+    background-image: url("../img/gv_button_bg_reverse.png");
+    background-size: contain;
+    height: 40px;
+    margin-bottom: 20px; }
+  div.gv_zoom_widget div.gv_zoom_slider {
+    background: #333232;
+    height: 200px;
+    margin: 0 17px;
+    width: 4px; }
+  div.gv_zoom_widget a.ui-slider-handle {
+    background: white;
+    border-color: #686766;
+    height: .5em;
+    left: -.55em;
+    outline: none; }
+    div.gv_zoom_widget a.ui-slider-handle.ui-state-hover {
+      outline-color: #333232; }
+  div.gv_zoom_widget .ui-state-default {
+    background: #f6f6f6; }
+
+div.gv_colour_list {
+  max-height: 680px;
+  overflow: auto;
+  position: absolute;
+  right: 26px;
+  text-align: right;
+  top: 20px;
+  z-index: 1; }
+  div.gv_colour_list li {
+    background-color: transparent;
+    float: none;
+    padding: 2px 6px; }
+
+svg.graph-viewer {
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+  left: 74px;
+  position: absolute;
+  top: 12px;
+  z-index: 0; }
+  svg.graph-viewer text {
+    font-size: 16px;
+    pointer-events: none; }
+
+div.gv-background {
+  height: 685px;
+  position: relative; }
+
+.link > line {
+  stroke-width: 2; }
+
+div.gv-colour-list {
+  max-height: 680px;
+  overflow: auto;
+  position: absolute;
+  right: 26px;
+  text-align: right;
+  top: 20px;
+  z-index: 1; }
+  div.gv-colour-list li {
+    float: none;
+    padding: 2px 6px; }
+
 table.dataTable thead th {
   font-weight: 400 !important;
   padding: 10px 14px; }
@@ -3329,10 +3429,10 @@ table.dataTable thead th {
   white-space: nowrap !important; }
 
 .totalDocuments {
+  color: #000;
   float: left;
-  color: black;
-  padding-left: 10px;
-  margin-top: -54px !important; }
+  margin-top: -54px !important;
+  padding-left: 10px; }
 
 .prettify {
   border: 0 !important;
