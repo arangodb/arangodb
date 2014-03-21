@@ -1,4 +1,5 @@
 input.search-input {
+  @include border-radius(0px);
   border: 0;
   height: 18px;
   line-height: 18px;
@@ -12,11 +13,17 @@ input.search-input {
   }
 }
 
-.search-submit-icon {
+.search-field {
+  @extend %pull-left;
+  margin-left: 15px;
+}
+
+%search-submit-icon {
   @extend %clickable;
+  background-image: url('../img/enter_icon.png');
+  background-size: 14px;
   height: 14px;
   margin-left: -18px;
-  margin-top: 11px;
   opacity: .2;
   position: absolute;
   width: 14px;
@@ -24,6 +31,16 @@ input.search-input {
   &:hover {
     opacity: .8;
   }
+}
+
+.search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 11px;
+}
+
+.gv-search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 6px;
 }
 
 // To be cleaned up from here on!

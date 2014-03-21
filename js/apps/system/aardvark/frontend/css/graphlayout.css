@@ -1,22 +1,5 @@
-.gv_manageButtonContainer {
-  margin-top: 10px;
-}
-
 input.gv_searchInput {
   border: 1px solid #cccccc;
-}
-
-.btn-group {
-  border-radius: 2px 2px 2px 2px !important;
-}
-svg.graphViewer {
-  position: absolute;
-  left: 74px;
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgba(0,0,0,0.125);
-  z-index: 0;
 }
 
 div.gv_background {
@@ -24,52 +7,10 @@ div.gv_background {
   height: 685px;
 }
 
-img.searchSubmit {
-  height: 16px;
-  margin-left: -18px;
-  margin-top: 11px;
-  opacity: 0.2;
-  position: absolute;
-  width: 16px;
-  background-image:url("../img/enter_icon.png");
-}
 
-.link > line{
-  cursor: pointer;
-  stroke-width: 2; 
-}
-
-.node {
-  cursor: pointer;
-}
 .searchSubmit:hover {
   opacity: 0.8;
   cursor: pointer;
-}
-
-.toolbox {
-  position: absolute;
-  margin-right: 5px;
-  border-radius: 0px !important;  
-  -webkit-border-radius: 0px !important;
-  -moz-border-radius: 0px !important;
-  border-style: solid;
-  border-width: 3px;
-  border-color: rgb(51, 51, 51);
-}
-
-.toolbox > .btn {
-  width: 50px;
-  height: 50px;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  background-color: rgb(51, 51, 51);
-  background-size: 50px 50px;
-}
-
-.btn-icon {
-  padding: 4px 4px;
-  background-color: rgb(56, 52, 52);
 }
 
 .searchByAttribute, .searchEqualsLabel {
@@ -77,70 +18,8 @@ img.searchSubmit {
   margin-left: 6px;
 }
 
-svg.graphViewer text {
-  font: 16px Arial;
-  pointer-events: none;
-}
-
 .capitalize {
-  text-transform:capitalize;
-}
-
-
-div.mousepointer {
-  position: absolute;
-  margin: 0;
-  padding: 5px;  
-}
-
-.modal-body th.actionCell {
-  width: 30px;
-  text-align: center;
-}
-
-.modal-body th.keyCell {
-  width: 170px;
-  text-align: center;
-}
-
-.modal-body th.valueCell {
-  width: 300px;
-  text-align: center;
-}
-
-.modal-body th.keyCell input {
-  width: 150px;
-}
-
-.modal-body th.valueCell input {
-  width: 290px;
-}
-
-div.gv_zoom_widget {
-  position: absolute;
-  z-index: 1;
-  left: 95px;
-  top: 20px;
-  width: 40px;
-  height: 300px;
-}
-
-div.gv_zoom_slider {
-  margin: 0px 17px;
-  width: 4px;
-  height: 200px;
-}
-
-div.gv_zoom_slider > .ui-slider-handle {
-  height:0.5em;
-  left:-0.55em;
-}
-
-div.gv_zoom_buttons_bg {
-  height: 40px;
-  margin-bottom:20px;
-  background-image: url("../img/gv_button_bg_reverse.png");
-  background-size: contain;
+  text-transform: capitalize;
 }
 
 img.gv-throbber {
@@ -158,57 +37,9 @@ input.gv_radio_button {
   margin-top: 3px;
 }
 
-/*Overriding the slider UI*/
-.ui-slider {
-  background: #333333;
-}
-
-.ui-slider-handle {
-  outline: none;
-  border-color: #686766;
-  background: white;
-}
-
-.ui-slider-handle.ui-state-focus {
-  outline: none;
-  border-color: #686766;
-  background: white;
-}
-
-.ui-slider-handle.ui-state-hover {
-  outline-color: #333333;
-  border-color: #686766;
-  background: white;
-}
-
-div.input-append button.gv_example_toggle {
-  background-color:#8F8D8C;
-  height: 30px;
-  padding-left: 10px;
-  padding-right: 10px;
-  padding-top: 12px;
-  margin-left: -1px;
-  vertical-align: top;
-  -webkit-border-radius: 0 4px 4px 0;
-     -moz-border-radius: 0 4px 4px 0;
-          border-radius: 0 4px 4px 0;
-
-}
-
-.gv_example_toggle:hover {
-  background-color:#8AA051;
-}
-
 legend.gv_inner {
   font-size: 16px;
 }
-
-.gv_zoom_widget .ui-state-default,
-.gv_zoom_widget .ui-widget-content .ui-state-default,
-.gv_zoom_widget .ui-widget-header .ui-state-default {
-  background: #F6F6F6;
-}
-
 
 ul.gv_configure_menu {
   position: absolute;
@@ -219,21 +50,4 @@ ul.gv_configure_menu {
 
 span.gv_caret {
   margin-top: 2px !important;
-}
-
-div.gv_colour_list {
-  position: absolute;
-  right: 26px;
-  top: 20px;
-  text-align: right;
-  max-height: 680px;
-  overflow: auto;
-  float: right;
-  z-index: 1;
-}
-
-div.gv_colour_list li {
-  background-color: transparent;
-  padding: 2px 6px;
-  float:none;
 }

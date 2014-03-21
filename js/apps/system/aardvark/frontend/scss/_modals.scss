@@ -1,6 +1,36 @@
 .modal-body {
   color: $c-btn-inverse;
   font-size: 14px;
+
+  //TODO Check if this might be removed
+  th {
+    %cell-centered {
+      text-align: center;
+    }
+
+    &.actionCell {
+      @extend %cell-centered;
+      width: 30px;
+    }
+
+    &.keyCell {
+      @extend %cell-centered;
+      width: 170px;
+
+      input {
+        width: 150px;
+      }
+    }
+
+    .valueCell {
+      @extend %cell-centered;
+      width: 300px;
+
+      input {
+        width: 290px;
+      }
+    }
+  }
 }
 
 .modal-backdrop,
