@@ -6,9 +6,6 @@ input.gv_searchInput {
   border: 1px solid #cccccc;
 }
 
-.btn-group {
-  border-radius: 2px 2px 2px 2px !important;
-}
 svg.graphViewer {
   position: absolute;
   left: 74px;
@@ -45,17 +42,6 @@ img.searchSubmit {
 .searchSubmit:hover {
   opacity: 0.8;
   cursor: pointer;
-}
-
-.toolbox {
-  position: absolute;
-  margin-right: 5px;
-  border-radius: 0px !important;  
-  -webkit-border-radius: 0px !important;
-  -moz-border-radius: 0px !important;
-  border-style: solid;
-  border-width: 3px;
-  border-color: rgb(51, 51, 51);
 }
 
 .toolbox > .btn {

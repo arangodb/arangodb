@@ -246,7 +246,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "graphViewer")
+        .attr("class", "graph-viewer")
         .style("width", width + "px")
         .style("height", height + "px");
     },
