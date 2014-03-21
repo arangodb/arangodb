@@ -97,6 +97,12 @@
   margin-left: 23px !important;
 }
 
+%pagination-icon {
+  font-size: 19px;
+  position: relative;
+  top: -2px;
+}
+
 .arango-pagination {
   li {
     &:first-child {
@@ -106,6 +112,17 @@
     &:last-child {
       margin-left: 30px;
     }
+  }
+
+  i.fa {
+    @extend %pagination-icon;
+  }
+}
+
+.pre-pagi,
+.las-pagi {
+  i.fa {
+    @extend %pagination-icon;
   }
 }
 

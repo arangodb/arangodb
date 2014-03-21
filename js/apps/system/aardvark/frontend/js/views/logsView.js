@@ -139,6 +139,8 @@
       return this;
     },
     renderPagination: function (totalPages, currentPage) {
+      console.log(totalPages);
+      console.log("HALLO");
       var self = this;
       var target = $('#logPaginationDiv'),
       options = {
@@ -163,13 +165,21 @@
       };
       target.html("");
       target.pagination(options);
-      $('#logPaginationDiv').prepend(
+      /*$('#logPaginationDiv').prepend(
         '<ul class="pre-pagi"><li><a id="logTableID_first" class="pagination-button">'+
         '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>'
       );
       $('#logPaginationDiv').append(
         '<ul class="las-pagi"><li><a id="logTableID_last" class="pagination-button">'+
         '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>'
+      );*/
+      $('#logPaginationDiv').prepend(
+        '<ul class="pre-pagi"><li><a id="logTableID_first" class="pagination-button">'+
+        '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>'
+      );
+      $('#logPaginationDiv').append(
+        '<ul class="las-pagi"><li><a id="logTableID_last" class="pagination-button">'+
+        '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
       );
     },
 

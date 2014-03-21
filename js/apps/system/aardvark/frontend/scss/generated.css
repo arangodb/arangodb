@@ -3177,6 +3177,12 @@ pre.gv-object-view {
 .collection-pagination {
   margin-left: 23px !important; }
 
+.arango-pagination i.fa, .pre-pagi i.fa,
+.las-pagi i.fa {
+  font-size: 19px;
+  position: relative;
+  top: -2px; }
+
 .arango-pagination li:first-child {
   margin-right: 20px; }
 .arango-pagination li:last-child {
