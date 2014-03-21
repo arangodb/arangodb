@@ -119,7 +119,6 @@
       "files": [
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
-        "frontend/css/arangodbIcons.css",
         "frontend/css/bootstrap-glyphicons.css",
         "frontend/css/jquery-ui-1.9.2.custom.css",
         "frontend/css/jquery.contextmenu.css",
@@ -130,7 +129,6 @@
         "frontend/css/jquery.snippet.css",
         "frontend/css/modal.css",
         "frontend/css/ansi.css",
-        "frontend/css/graphlayout.css",
         "frontend/css/datatables.css",
         "frontend/css/screenSizes.css",
         "frontend/css/jsoneditor.css",

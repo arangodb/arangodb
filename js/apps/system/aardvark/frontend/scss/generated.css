@@ -2286,6 +2286,8 @@ div.queryline {
     margin-left: 5px !important;
     margin-top: 0 !important; }
   div.queryline div.searchByAttribute {
+    margin-left: 6px;
+    margin-right: 6px;
     position: relative; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
@@ -2323,24 +2325,33 @@ select.filterSelect {
   margin-top: 1px; }
 
 div.input-append button.gv_example_toggle {
-  background-color: #8F8D8C;
+  -moz-border-radius: 0 4px 4px 0;
+  -webkit-border-radius: 0 4px 4px 0;
+  border-radius: 0 4px 4px 0;
+  background-color: #8f8d8c;
   height: 30px;
+  margin-left: -1px;
   padding-left: 10px;
   padding-right: 10px;
   padding-top: 12px;
-  margin-left: -1px;
-  vertical-align: top;
-  -webkit-border-radius: 0 4px 4px 0;
-  -moz-border-radius: 0 4px 4px 0;
-  border-radius: 0 4px 4px 0; }
+  vertical-align: top; }
+  div.input-append button.gv_example_toggle:hover {
+    background-color: #8aa051; }
 
-.gv_example_toggle:hover {
-  background-color: #8AA051; }
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px; }
+
+img.gv-throbber {
+  background-image: url("../img/swagger/throbber.gif"); }
+
+span.gv_caret {
+  margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 0px;
-  -webkit-border-radius: 0px;
-  border-radius: 0px;
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  border-radius: 0;
   border: 0;
   height: 18px;
   line-height: 18px;
@@ -2750,6 +2761,13 @@ div.breadcrumb a.disabledBread {
 .show-collection .tab-content {
   min-height: 200px; }
 
+pre.gv-object-view {
+  text-align: left;
+  white-space: pre; }
+
+.capitalize {
+  text-transform: capitalize; }
+
 .shortcuts {
   font-size: 11px;
   font-weight: 200; }
@@ -2789,6 +2807,11 @@ div.breadcrumb a.disabledBread {
     margin-top: 3px; }
     .editor-toolbar i:hover {
       cursor: pointer; }
+  .editor-toolbar .fa-comment,
+  .editor-toolbar .fa-comment-o {
+    font-size: 18px;
+    position: relative;
+    top: -2px; }
   .editor-toolbar .arango-icon-disk {
     margin-top: 1px; }
 
@@ -3394,6 +3417,17 @@ div.gv-colour-list {
   div.gv-colour-list li {
     float: none;
     padding: 2px 6px; }
+
+div.gv-manage-button-container {
+  margin-top: 10px; }
+
+legend.gv-inner {
+  font-size: 16px; }
+
+input.gv-radio-button {
+  display: block;
+  margin-top: 3px;
+  width: auto; }
 
 table.dataTable thead th {
   font-weight: 400 !important;
