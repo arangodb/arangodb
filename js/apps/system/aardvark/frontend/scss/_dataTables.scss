@@ -1,9 +1,62 @@
-table.dataTable thead th {
-  font-weight: 400 !important;
-  padding: 10px 14px;
+.arangoDataTable {
+  width: 100% !important;
+  position: relative;
+  table-layout:fixed !important;
+  border-spacing:0 0px;
+
+  thead {
+    background-color: #FFF !important;
+    font-weight: 400 !important;
+    text-align: left;
+
+    th {
+      font-weight: 400 !important;
+      padding: 10px 14px !important;
+      border-bottom: none;
+      cursor: default !important;
+    }
+
+    tr {
+      border-bottom: 1px solid #C2C2C2;
+    }
+
+  }
+
+  tr {
+      cursor: pointer;
+  }
+
+  td {
+    padding: 10px 18px !important;
+  }
+
+  .key {
+    margin-top: 4px;
+  }
+
+  .dataTable {
+    .noPointer tr {
+      cursor: default;
+    }
+  }
+}
+
+/* Odd / Even coloring */
+.api-container ul#resources > li.resource:nth-child(even),
+table.arangoDataTable tr.even {
+  background-color: #FFF;
+}
+
+.api-container ul#resources > li.resource:nth-child(odd),
+table.arangoDataTable tr.odd {
+  background-color: #F1F0EE;
 }
 
 // TODO Hard cleanup
+#tableDiv table.dataTable td {
+  padding:12px 18px !important;
+}
+
 #documentsTableID_length,
 #documentsTableID_filter {
   display: none;
