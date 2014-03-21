@@ -130,7 +130,7 @@ if (i % 500000 == 0) {
   LOG_INFO("now at: %d", (int) i);
 }
     memcpy(static_cast<char*>(p) + sizeof(TRI_df_marker_t), "the fox is brown\0", strlen("the fox is brown") + 1);
-    _logfileManager->allocateAndWrite(p, static_cast<uint32_t>(64), (int) i);
+    _logfileManager->allocateAndWrite(p, static_cast<uint32_t>(64));
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
   }
