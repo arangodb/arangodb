@@ -3430,21 +3430,21 @@ input.gv-radio-button {
   width: auto; }
 
 .arangoDataTable {
-  width: 100% !important;
+  border-spacing: 0 0;
   position: relative;
   table-layout: fixed !important;
-  border-spacing: 0 0px; }
+  width: 100% !important; }
   .arangoDataTable thead {
-    background-color: #FFF !important;
+    background-color: #fff !important;
     font-weight: 400 !important;
     text-align: left; }
     .arangoDataTable thead th {
-      font-weight: 400 !important;
-      padding: 10px 14px !important;
       border-bottom: none;
-      cursor: default !important; }
+      cursor: default !important;
+      font-weight: 400 !important;
+      padding: 10px 14px !important; }
     .arangoDataTable thead tr {
-      border-bottom: 1px solid #C2C2C2; }
+      border-bottom: 1px solid #c2c2c2; }
   .arangoDataTable tr {
     cursor: pointer; }
   .arangoDataTable td {
@@ -3454,12 +3454,11 @@ input.gv-radio-button {
   .arangoDataTable .dataTable .noPointer tr {
     cursor: default; }
 
-/* Odd / Even coloring */
-.api-container ul#resources > li.resource:nth-child(even),
+.api-container #resources > li.resource:nth-child(even),
 table.arangoDataTable tr.even {
-  background-color: #FFF; }
+  background-color: #fff; }
 
-.api-container ul#resources > li.resource:nth-child(odd),
+.api-container #resources > li.resource:nth-child(odd),
 table.arangoDataTable tr.odd {
   background-color: #F1F0EE; }
 
@@ -3502,7 +3501,7 @@ table.arangoDataTable tr.odd {
   padding-left: 10px; }
 
 .prettify {
-  border: 0 !important;
+  border: none !important;
   font-size: 1em !important;
   margin: 0 !important;
   padding: 0 !important; }
