@@ -2286,7 +2286,9 @@ div.queryline {
     margin-left: 5px !important;
     margin-top: 0 !important; }
   div.queryline div.searchByAttribute {
-    position: relative; }
+    position: relative;
+    margin-left: 6px;
+    margin-right: 6px; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
@@ -2336,6 +2338,16 @@ div.input-append button.gv_example_toggle {
 
 .gv_example_toggle:hover {
   background-color: #8AA051; }
+
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px; }
+
+img.gv-throbber {
+  background-image: url("../img/swagger/throbber.gif"); }
+
+span.gv_caret {
+  margin-top: 2px !important; }
 
 input.search-input {
   -moz-border-radius: 0px;
@@ -2749,6 +2761,13 @@ div.breadcrumb a.disabledBread {
 
 .show-collection .tab-content {
   min-height: 200px; }
+
+pre.gv-object-view {
+  text-align: left;
+  white-space: pre; }
+
+.capitalize {
+  text-transform: capitalize; }
 
 .shortcuts {
   font-size: 11px;
@@ -3394,6 +3413,17 @@ div.gv-colour-list {
   div.gv-colour-list li {
     float: none;
     padding: 2px 6px; }
+
+div.gv-manage-button-container {
+  margin-top: 10px; }
+
+legend.gv-inner {
+  font-size: 16px; }
+
+input.gv-radio-button {
+  display: block;
+  margin-top: 3px;
+  width: auto; }
 
 table.dataTable thead th {
   font-weight: 400 !important;

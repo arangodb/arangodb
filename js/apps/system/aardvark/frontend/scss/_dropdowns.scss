@@ -88,6 +88,8 @@ div.queryline {
 
   div.searchByAttribute {
     position: relative;
+    margin-left: 6px;
+    margin-right: 6px;
 
     & > ul.gv-dropdown-menu {
       @include border-radius(0);
@@ -151,4 +153,17 @@ div.input-append button.gv_example_toggle {
 
 .gv_example_toggle:hover {
   background-color:#8AA051;
+}
+
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+img.gv-throbber {
+  background-image: url("../img/swagger/throbber.gif");
+}
+
+span.gv_caret {
+  margin-top: 2px !important;
 }
