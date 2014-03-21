@@ -1679,6 +1679,9 @@ div.footer-right {
   position: relative;
   top: 3px; }
 
+#closeBtnInfoView {
+  margin-left: 0 !important; }
+
 button.large-distance {
   margin-left: 12px; }
 
@@ -2456,7 +2459,13 @@ div.breadcrumb a.disabledBread {
 
 .modal-body {
   color: #736b68;
-  font-size: 14px; }
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 300; }
+  .modal-body input,
+  .modal-body select,
+  .modal-body textarea {
+    margin-top: 10px; }
   .modal-body th th.actionCell, .modal-body th th.keyCell, .modal-body th .valueCell {
     text-align: center; }
   .modal-body th.actionCell {
@@ -2469,6 +2478,25 @@ div.breadcrumb a.disabledBread {
     width: 300px; }
     .modal-body th .valueCell input {
       width: 290px; }
+  .modal-body .icon-info-sign {
+    margin-bottom: 10px;
+    margin-left: 10px;
+    opacity: .7;
+    padding-bottom: 5px; }
+  .modal-body .icon-info-sign:hover {
+    opacity: 1; }
+  .modal-body .accordion-inner {
+    margin-left: 0;
+    padding-left: 0; }
+  .modal-body input {
+    width: 320px; }
+  .modal-body select {
+    width: 334px; }
+
+.modal-text {
+  font-weight: 300;
+  padding-bottom: 3px;
+  padding-top: 3px; }
 
 .modal-backdrop,
 .modal-backdrop.fade.in {
@@ -2479,6 +2507,9 @@ div.breadcrumb a.disabledBread {
   margin-left: 0;
   width: 70%; }
 
+.modal {
+  border-radius: 0 !important; }
+
 .waitModal {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
@@ -2487,31 +2518,8 @@ div.breadcrumb a.disabledBread {
   border: 0;
   color: white; }
 
-.collectionTh {
-  font-size: 14px; }
-
 .waitModalBackdrop {
   opacity: .7 !important; }
-
-.addCollection table tr {
-  border-bottom: 0 !important;
-  height: 53px; }
-.addCollection .icon_arangodb_info {
-  margin-left: 20px !important;
-  position: relative;
-  top: 2px !important; }
-.addCollection .accordion {
-  margin-top: 10px; }
-.addCollection .collectionThSec {
-  width: 320px !important; }
-.addCollection .collectionTh {
-  width: 96px; }
-.addCollection .modalInput {
-  width: 320px; }
-.addCollection .modalSelect {
-  width: 334px; }
-.addCollection .accordion-toggle {
-  width: 457px !important; }
 
 .modalTooltips span {
   color: #736b68;
@@ -2519,18 +2527,64 @@ div.breadcrumb a.disabledBread {
   .modalTooltips span:hover {
     color: black; }
 
-.change-collection .tab-content {
-  min-height: 230px; }
-
-.show-collection .tab-content {
-  min-height: 200px; }
-
 pre.gv-object-view {
   text-align: left;
   white-space: pre; }
 
 .capitalize {
   text-transform: capitalize; }
+
+.modal-footer {
+  border-top: 0 !important;
+  padding-right: 17px; }
+
+.modal-header {
+  background-color: #686766;
+  border-bottom: 0 !important;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px; }
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px; }
+
+.modal-header a {
+  top: 2px !important; }
+
+.modal-header .close {
+  color: white;
+  font-weight: 300;
+  opacity: .5; }
+
+.modal-header .close:hover {
+  opacity: 1; }
+
+.modal-body .icon_arangodb_info {
+  color: #736b68;
+  font-size: 18px;
+  margin-top: -10px;
+  position: absolute;
+  right: 12px; }
+
+.modal-body .icon_arangodb_info:hover {
+  color: black; }
+
+.modal.fade.in {
+  top: 12.1% !important; }
+
+.modal table tr,
+.thBorderBottom {
+  border-bottom: 1px solid #f7f3f2 !important; }
+
+.modal table tr:last-child {
+  border-bottom: 0 !important; }
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px; }
 
 .navlogo .stat_cpu {
   height: 26px;
@@ -2683,6 +2737,9 @@ pre.gv-object-view {
     color: black; }
   .index-tooltip span.arangoicon {
     font-size: 18px !important; }
+
+.tooltipInfoTh {
+  width: 10%; }
 
 .dbselection {
   float: left;
@@ -3439,7 +3496,7 @@ input.gv-radio-button {
     font-weight: 400 !important;
     text-align: left; }
     .arangoDataTable thead th {
-      border-bottom: none;
+      border-bottom: 0;
       cursor: default !important;
       font-weight: 400 !important;
       padding: 10px 14px !important; }
@@ -3460,7 +3517,7 @@ table.arangoDataTable tr.even {
 
 .api-container #resources > li.resource:nth-child(odd),
 table.arangoDataTable tr.odd {
-  background-color: #F1F0EE; }
+  background-color: #f1f0ee; }
 
 #tableDiv table.dataTable td {
   padding: 12px 18px !important; }

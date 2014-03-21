@@ -1,8 +1,15 @@
 .modal-body {
   color: $c-btn-inverse;
+  font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
+  font-weight: 300;
 
-  //TODO Check if this might be removed
+  input,
+  select,
+  textarea {
+    margin-top: 10px;
+  }
+
   th {
     %cell-centered {
       text-align: center;
@@ -31,6 +38,36 @@
       }
     }
   }
+
+  .icon-info-sign {
+    margin-bottom: 10px;
+    margin-left: 10px;
+    opacity: .7;
+    padding-bottom: 5px;
+  }
+
+  .icon-info-sign:hover {
+    opacity: 1;
+  }
+
+  .accordion-inner {
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  input {
+    width: 320px;
+  }
+
+  select {
+    width: 334px;
+  }
+}
+
+.modal-text {
+  font-weight: 300;
+  padding-bottom: 3px;
+  padding-top: 3px;
 }
 
 .modal-backdrop,
@@ -44,6 +81,10 @@
   width: 70%;
 }
 
+.modal {
+  border-radius: 0 !important;
+}
+
 .waitModal {
   @include box-shadow(none);
   background: $c-transp;
@@ -51,52 +92,11 @@
   color: $c-white;
 }
 
-.collectionTh {
-  font-size: 14px;
-}
 
 .waitModalBackdrop {
   opacity: .7 !important;
 }
 
-.addCollection {
-  $inputwidth: 320px;
-
-  table tr {
-    border-bottom: 0 !important;
-    height: 53px;
-  }
-
-  .icon_arangodb_info {
-    margin-left: 20px !important;
-    position: relative;
-    top: 2px !important;
-  }
-
-  .accordion {
-    margin-top: 10px;
-  }
-
-  .collectionThSec {
-    width: $inputwidth !important;
-  }
-
-  .collectionTh {
-    width: 96px;
-  }
-
-  .modalInput {
-    width: $inputwidth;
-  }
-
-  .modalSelect {
-    width: $inputwidth + 14px;
-  }
-
-  .accordion-toggle {
-    width: $inputwidth + 137px !important;
-  }
-}
 
 .modalTooltips span {
   color: $c-btn-inverse;
@@ -107,19 +107,6 @@
   }
 }
 
-.change-collection {
-  //TODO Check if could be removed
-  .tab-content {
-    min-height: 230px;
-  }
-}
-
-.show-collection {
-  //TODO Check if could be removed
-  .tab-content {
-    min-height: 200px;
-  }
-}
 
 pre.gv-object-view {
   text-align: left;
@@ -129,4 +116,68 @@ pre.gv-object-view {
 
 .capitalize {
   text-transform: capitalize;
+}
+
+.modal-footer {
+  border-top: 0 !important;
+  padding-right: 17px;
+}
+
+.modal-header {
+  background-color: $c-bar-bg;
+  border-bottom: 0 !important;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px;
+}
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px;
+}
+
+.modal-header a {
+  top: 2px !important;
+}
+
+.modal-header .close {
+  color: $c-modal-header;
+  font-weight: 300;
+  opacity: .5;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
+}
+
+.modal-body .icon_arangodb_info {
+  color: $c-neutral-hover;
+  font-size: 18px;
+  margin-top: -10px;
+  position: absolute;
+  right: 12px;
+}
+
+.modal-body .icon_arangodb_info:hover {
+  color: $c-black;
+}
+
+.modal.fade.in {
+  top: 12.1% !important;
+}
+
+.modal table tr,
+.thBorderBottom {
+  border-bottom: 1px solid $c-modal-table-border-bottom !important;
+}
+
+.modal table tr:last-child {
+  border-bottom: 0 !important;
+}
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px;
 }
