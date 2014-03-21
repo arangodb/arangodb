@@ -103,8 +103,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
                                   TRI_idx_iid_t,
                                   TRI_vector_pointer_t*,
                                   TRI_vector_t*,
-                                  bool,
-                                  size_t);
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
