@@ -80,6 +80,7 @@ namespace triagens {
         enum HttpResponseCode {
           CONTINUE                        = 100,
           SWITCHING_PROTOCOLS             = 101,
+          PROCESSING                      = 102,
 
           OK                              = 200,
           CREATED                         = 201,
