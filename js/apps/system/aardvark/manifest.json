@@ -119,7 +119,6 @@
       "files": [
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
-        "frontend/css/bootstrap-glyphicons.css",
         "frontend/css/jquery-ui-1.9.2.custom.css",
         "frontend/css/jquery.contextmenu.css",
         "frontend/css/select2.css",
