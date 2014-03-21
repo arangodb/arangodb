@@ -15,7 +15,11 @@
         <table id="collectionEditTable">
           <tr>
             <th class="collectionTh">Name:</th>
+            <% if (isCoordinator) { %>
+            <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value="" readonly="readonly" /></th>
+            <% } else { %>
             <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+            <% } %>
             <th/>
           </tr>
           <tr id="collectionSizeBox" style="display:none">

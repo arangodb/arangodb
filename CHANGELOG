@@ -24,6 +24,10 @@ v2.1.0 (XXXX-XX-XX)
 v2.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed non-working "save" button in collection edit view of web interface
+  clicking the save button did nothing. one had to press enter in one of the input
+  fields to send modified form data
+
 * fixed V8 compile error on MacOS X
 
 * prevent `body length: -9223372036854775808` being logged in development mode for
