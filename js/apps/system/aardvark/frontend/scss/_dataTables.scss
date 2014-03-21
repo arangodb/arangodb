@@ -1,29 +1,29 @@
 .arangoDataTable {
-  width: 100% !important;
+  border-spacing: 0 0;
   position: relative;
-  table-layout:fixed !important;
-  border-spacing:0 0px;
+  table-layout: fixed !important;
+  width: 100% !important;
 
   thead {
-    background-color: #FFF !important;
+    background-color: #fff !important;
     font-weight: 400 !important;
     text-align: left;
 
     th {
+      border-bottom: 0;
+      cursor: default !important;
       font-weight: 400 !important;
       padding: 10px 14px !important;
-      border-bottom: none;
-      cursor: default !important;
     }
 
     tr {
-      border-bottom: 1px solid #C2C2C2;
+      border-bottom: 1px solid #c2c2c2;
     }
 
   }
 
   tr {
-      cursor: pointer;
+    cursor: pointer;
   }
 
   td {
@@ -41,20 +41,20 @@
   }
 }
 
-/* Odd / Even coloring */
-.api-container ul#resources > li.resource:nth-child(even),
+// Odd / Even coloring
+.api-container #resources > li.resource:nth-child(even),
 table.arangoDataTable tr.even {
-  background-color: #FFF;
+  background-color: #fff;
 }
 
-.api-container ul#resources > li.resource:nth-child(odd),
+.api-container #resources > li.resource:nth-child(odd),
 table.arangoDataTable tr.odd {
-  background-color: #F1F0EE;
+  background-color: #f1f0ee;
 }
 
 // TODO Hard cleanup
 #tableDiv table.dataTable td {
-  padding:12px 18px !important;
+  padding: 12px 18px !important;
 }
 
 #documentsTableID_length,
@@ -100,7 +100,7 @@ table.arangoDataTable tr.odd {
 }
 
 .prettify {
-  border: 0 !important;
+  border: none !important;
   font-size: 1em !important;
   margin: 0 !important;
   padding: 0 !important;
