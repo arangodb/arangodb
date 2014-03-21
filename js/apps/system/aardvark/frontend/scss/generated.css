@@ -2756,7 +2756,8 @@ div img.searchSubmitIcon {
     margin-top: 3px; }
     .editor-toolbar i:hover {
       cursor: pointer; }
-  .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
+  .editor-toolbar .fa-comment,
+  .editor-toolbar .fa-comment-o {
     font-size: 18px;
     position: relative;
     top: -2px; }
