@@ -139,6 +139,7 @@
       return this;
     },
     renderPagination: function (totalPages, currentPage) {
+
       var self = this;
       var target = $('#logPaginationDiv'),
       options = {
@@ -208,6 +209,7 @@
         this.renderPagination(this.totalPages, this.page);
       }
       catch (e) {
+        $('#logPaginationDiv').html('');
         //  $('#logPages').html('No logfiles available');
       }
     },
