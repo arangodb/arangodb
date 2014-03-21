@@ -97,6 +97,111 @@ describe ArangoDB do
       doc.headers["x-arango-async-id"].should match(/^\d+$/)
       doc.response.body.should eq ""
     end
+    
+    it "checks whether job api returns 200 for ready job" do
+      cmd = "/_api/version"
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+     
+      sleep 2
+ 
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
+      doc.code.should eq(200)
+      doc.response.body.should eq ""
+
+      # should be able to query the status again
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
+      doc.code.should eq(200)
+      doc.response.body.should eq ""
+
+      # should also be able to fetch the result of the job
+      doc = ArangoDB.log_put("#{prefix}-get-check-status-200", cmd)
+      doc.code.should eq(200)
+      doc.parsed_response["server"].should eq "arango"
+
+      # now it should be gone
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
+      doc.code.should eq(404)
+    end
+
+    it "checks whether job api returns 204 for non-ready job" do
+      cmd = "/_admin/sleep?duration=5"
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-204", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+      
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-204", cmd)
+      doc.code.should eq(204)
+      doc.response.body.should be_nil
+    end
+
+    it "checks whether job api returns 404 for non-existing job" do
+      cmd = "/_api/version"
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-404", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+ 
+      cmd = "/_api/job/123" + id + "123" # assume this id is invalid
+      doc = ArangoDB.log_get("#{prefix}-get-check-status-404", cmd)
+      doc.code.should eq(404)
+    end
+
+    it "checks whether job api returns done job in pending and done list" do
+      cmd = "/_admin/sleep?duration=5"
+      doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+      
+      cmd = "/_api/job/done"
+      doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd)
+      doc.code.should eq(200)
+      doc.parsed_response.should_not include(id)
+      
+      cmd = "/_api/job/pending"
+      doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd)
+      doc.code.should eq(200)
+      doc.parsed_response.should include(id)
+    end
+
+    it "checks whether job api returns non-ready job in pending and done lists" do
+      cmd = "/_admin/sleep?duration=5"
+      doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+      
+      cmd = "/_api/job/pending"
+      doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd)
+      doc.code.should eq(200)
+      doc.parsed_response.should include(id)
+      
+      cmd = "/_api/job/done"
+      doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd)
+      doc.code.should eq(200)
+      doc.parsed_response.should_not include(id)
+    end
 
   end
 

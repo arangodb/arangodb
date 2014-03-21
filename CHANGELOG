@@ -1,14 +1,15 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
-* fixed V8 compile error on MacOS X
+* added REST API method HTTP GET `/_api/job/job-id` to query the status of an
+  async job without potentially fetching it from the list of done jobs
 
-* prevent `body length: -9223372036854775808` being logged in development mode for
-  some Foxx HTTP responses
-
-* fixed several bugs in web interface dashboard
-
-* fixed issue #783: coffee script not working in manifest file
+* fixed non-intuitive behaviour in jobs API: previously, querying the status
+  of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
+  executing async job from the list of queryable jobs on the server.
+  Now, when querying the result of an async job that is still executing, 
+  the job is kept in the list of queryable jobs so its result can be fetched
+  by a subsequent request.
 
 * provide a size hint to indexes when initially filling them
     
@@ -22,6 +23,15 @@ v2.1.0 (XXXX-XX-XX)
 
 v2.0.1 (XXXX-XX-XX)
 -------------------
+
+* fixed V8 compile error on MacOS X
+
+* prevent `body length: -9223372036854775808` being logged in development mode for
+  some Foxx HTTP responses
+
+* fixed several bugs in web interface dashboard
+
+* fixed issue #783: coffee script not working in manifest file
 
 * fixed issue #781: Cant save current query from AQL editor ui
 
