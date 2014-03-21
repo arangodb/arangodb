@@ -5,17 +5,28 @@
   window.CollectionView = Backbone.View.extend({
     el: '#modalPlaceholder',
     initialize: function () {
+      var self = this;
+      $.ajax("cluster/amICoordinator", {
+       async: false  
+     }).done(function(d) {
+        self.isCoordinator = d;
+      });
     },
 
     template: templateEngine.createTemplate("collectionView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.render({}));
+      var self = this;
+      $(this.el).html(this.template.render({
+        isCoordinator: self.isCoordinator
+      }));
       $('#change-collection').modal('show');
       $('#change-collection').on('hidden', function () {
       });
       $('#change-collection').on('shown', function () {
-        $('#change-collection-name').focus();
+        if (! self.isCoordinator) {
+          $('#change-collection-name').focus();
+        }
       });
       this.fillModal();
 
@@ -24,7 +35,7 @@
       return this;
     },
     events: {
-      "click #save-modified-collection"       :    "saveModifiedCollection(true)",
+      "click #save-modified-collection"       :    "saveModifiedCollection",
       "hidden #change-collection"             :    "hidden",
       "click #delete-modified-collection"     :    "deleteCollection",
       "click #load-modified-collection"       :    "loadCollection",
@@ -36,7 +47,7 @@
     },
     listenKey: function(e) {
       if (e.keyCode === 13) {
-        this.saveModifiedCollection(true);
+        this.saveModifiedCollection();
       }
     },
     hidden: function () {
@@ -97,16 +108,17 @@
       $('#change-collection-size').val(calculatedSize);
       $('#change-collection').modal('show');
     },
-    saveModifiedCollection: function(run) {
-
-      if (run !== true) {
-        return 0;
+    saveModifiedCollection: function() {
+      var newname;
+      if (this.isCoordinator) {
+        newname = this.myCollection.name;
       }
-
-      var newname = $('#change-collection-name').val();
-      if (newname === '') {
-        arangoHelper.arangoError('No collection name entered!');
-        return 0;
+      else {
+        newname = $('#change-collection-name').val();
+        if (newname === '') {
+          arangoHelper.arangoError('No collection name entered!');
+          return 0;
+        }
       }
 
       var collid = this.getCollectionId();
