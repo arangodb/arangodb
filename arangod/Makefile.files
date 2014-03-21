@@ -118,6 +118,7 @@ bin_arangod_SOURCES = \
 	arangod/Wal/Configuration.cpp \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
+	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
 	arangod/Wal/SynchroniserThread.cpp 
 
