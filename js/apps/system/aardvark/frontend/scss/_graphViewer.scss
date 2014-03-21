@@ -1,0 +1,100 @@
+div.gv_zoom_widget {
+  height: 300px;
+  left: 95px;
+  position: absolute;
+  top: 20px;
+  width: 40px;
+  z-index: 1;
+
+  div.gv_zoom_buttons_bg {
+    background-image: url('../img/gv_button_bg_reverse.png');
+    background-size: contain;
+    height: 40px;
+    margin-bottom: 20px;
+  }
+
+  div.gv_zoom_slider {
+    background: $c-nav-bg;
+    height: 200px;
+    margin: 0 17px;
+    width: 4px;
+  }
+
+  a.ui-slider-handle {
+    background: $c-white;
+    border-color: $c-bar-bg;
+    height: .5em;
+    left: -.55em;
+    outline: none;
+
+    &.ui-state-hover {
+      outline-color: $c-nav-bg;
+    }
+  }
+
+  .ui-state-default, {
+    background: $c-slider-bg;
+  }
+
+}
+
+div.gv_colour_list {
+  @extend %pull-right;
+  max-height: 680px;
+  overflow: auto;
+  position: absolute;
+  right: 26px;
+  text-align: right;
+  top: 20px;
+  z-index: 1;
+
+  li {
+    background-color: $c-transp;
+    float: none;
+    padding: 2px 6px;
+  }
+}
+
+svg.graph-viewer {
+  background-color: $c-white;
+  border: 1px solid $c-viewer-border;
+  left: 74px;
+  position: absolute;
+  top: 12px;
+  z-index: 0;
+
+  text {
+    font-size: 16px;
+    pointer-events: none;
+  }
+}
+
+div.gv-background {
+  height: 685px;
+  position: relative;
+}
+
+.link > line {
+  @extend %clickable;
+  stroke-width: 2; 
+}
+
+.node {
+  @extend %clickable;
+}
+
+div.gv-colour-list {
+  max-height: 680px;
+  overflow: auto;
+  position: absolute;
+  right: 26px;
+  text-align: right;
+  top: 20px;
+  z-index: 1;
+
+  li {
+    float: none;
+    padding: 2px 6px;
+  }
+}
+
