@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global module, require, exports, ArangoServerState, SYS_TEST_PORT */
+/*global module, require, exports, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster kickstarting functionality using dispatchers
