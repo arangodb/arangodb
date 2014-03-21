@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log logfile
+/// @brief Write-ahead log slot
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Logfile.h"
+#include "Wal/Slot.h"
 
 using namespace triagens::wal;
 
@@ -34,23 +34,23 @@ using namespace triagens::wal;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the logfile
+/// @brief create a slot
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile::Logfile (TRI_datafile_t* df,
-                  SealStatusType sealStatus,
-                  CollectionStatusType collectionStatus) 
-  : _df(df),
-    _sealStatus(sealStatus),
-    _collectionStatus(collectionStatus) {
+Slot::Slot ()
+  : _tick(0),
+    _logfileId(0),
+    _mem(nullptr),
+    _size(0),
+    _status(StatusType::UNUSED) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the logfile
+/// @brief destroy a slot
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile::~Logfile () {
-  this->close();
+Slot::~Slot () {
 }
 
 // -----------------------------------------------------------------------------
@@ -58,71 +58,60 @@ Logfile::~Logfile () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new logfile
+/// @brief return the slot status as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile* Logfile::create (std::string const& filename,
-                          Logfile::IdType id,
-                          uint32_t size) {
-  TRI_datafile_t* df = TRI_CreateDatafile(filename.c_str(), id, static_cast<TRI_voc_size_t>(size));
-
-  if (df == nullptr) {
-    int res = TRI_errno();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to create logfile '%s': %s", 
-                filename.c_str(), 
-                TRI_errno_string(res));
-      return nullptr;
-    }
-  }
-
-  Logfile* logfile = new Logfile(df, SealStatusType::UNKNOWN, CollectionStatusType::UNCOLLECTED);
-  return logfile;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open an existing logfile
-////////////////////////////////////////////////////////////////////////////////
-
-Logfile* Logfile::open (std::string const& filename) {
-  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str());
-
-  if (df == nullptr) {
-    int res = TRI_errno();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to open logfile '%s': %s", 
-                filename.c_str(), 
-                TRI_errno_string(res));
-      return nullptr;
-    }
-  }
-
-  Logfile* logfile = new Logfile(df, SealStatusType::UNKNOWN, CollectionStatusType::UNCOLLECTED);
-  return logfile;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief close a logfile
-////////////////////////////////////////////////////////////////////////////////
-
-void Logfile::close () {
-  if (_df != nullptr) {
-    TRI_CloseDatafile(_df);
-    _df = nullptr;
+std::string Slot::statusText () const {
+  switch (_status) {
+    case StatusType::UNUSED:
+      return "unused";
+    case StatusType::USED:
+      return "used";
+    case StatusType::RETURNED:
+      return "returned";
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seal a logfile
+/// @brief mark as slot as used
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logfile::seal () {
-  LOG_INFO("sealing logfile %llu", 
-           (unsigned long long) id());
-  assert(_sealStatus == SealStatusType::UNSEALED);
-  _sealStatus = SealStatusType::REQUESTED;
+void Slot::setUnused () {
+  assert(isReturned());
+  _tick      = 0;
+  _logfileId = 0;
+  _mem       = nullptr;
+  _size      = 0;
+  _status    = StatusType::UNUSED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark as slot as used
+////////////////////////////////////////////////////////////////////////////////
+
+void Slot::setUsed (void* mem,
+                    uint32_t size,
+                    Logfile::IdType logfileId,
+                    Slot::TickType tick) {
+  assert(isUnused());
+  _tick = tick;
+  _logfileId = logfileId;
+  _mem = mem;
+  _size = size;
+  _status = StatusType::USED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark as slot as returned
+////////////////////////////////////////////////////////////////////////////////
+
+void Slot::setReturned () {
+  assert(isUsed());
+  _status = StatusType::RETURNED;
 }
 
 // Local Variables:
