@@ -178,7 +178,7 @@
         expect(valfield).toBeOfClass("searchInput");
         expect(valfield.placeholder).toEqual("Attribute value");
         expect(btn).toBeTag("img");
-        expect(btn.className).toEqual("search-submit-icon");
+        expect(btn.className).toEqual("gv-search-submit-icon");
       });
       
       it('should contain a position for the layout buttons', function() {
