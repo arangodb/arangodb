@@ -65,7 +65,7 @@ LogfileManager::LogfileManager (Configuration* configuration)
     _maxEntrySize(configuration->maxEntrySize()),
     _directory(configuration->directory()),
     _regex(),
-    _shutdown(false) {
+    _shutdown(0) {
   
   LOG_INFO("creating wal logfile manager");
 
@@ -142,15 +142,22 @@ int LogfileManager::startup () {
     res = readShutdownInfo();
   
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("could not open shutdown file '%s': %s", shutdownFile.c_str(), TRI_errno_string(res));
+      LOG_ERROR("could not open shutdown file '%s': %s", 
+                shutdownFile.c_str(), 
+                TRI_errno_string(res));
       return res;
     }
+
+    LOG_INFO("last tick: %llu, last collected: %llu", 
+             (unsigned long long) _slots->lastTick(),
+             (unsigned long long) _lastCollectedId);
   }
 
   res = openLogfiles();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not open wal logfiles: %s", TRI_errno_string(res));
+    LOG_ERROR("could not open wal logfiles: %s", 
+              TRI_errno_string(res));
     return res;
   }
 
@@ -193,11 +200,11 @@ int LogfileManager::startup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::shutdown () {
-  if (_shutdown) {
+  if (_shutdown > 0) {
     return;
   }
 
-  _shutdown = true;
+  _shutdown = 1;
 
   LOG_INFO("stopping collector thread");
   // stop threads
@@ -234,25 +241,21 @@ void LogfileManager::signalSync () {
 /// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-Slot* LogfileManager::allocate (uint32_t size, int ctx) {
-  /*
+SlotInfo LogfileManager::allocate (uint32_t size) {
   if (size > _maxEntrySize) {
     // entry is too big
-    return LogEntry(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
-  */
 
-  return _slots->nextUnused(size, ctx);
+  return _slots->nextUnused(size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::finalise (Slot* slot) {
-  _slots->returnUsed(slot);
-
-  return TRI_ERROR_NO_ERROR;
+void LogfileManager::finalise (SlotInfo& slotInfo) {
+  _slots->returnUsed(slotInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,22 +264,20 @@ int LogfileManager::finalise (Slot* slot) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::allocateAndWrite (void* mem,
-                                      uint32_t size,
-                                      int ctx) {
+                                      uint32_t size) {
 
-  Slot* slot = allocate(size, ctx);
+  SlotInfo slotInfo = allocate(size);
  
-  if (slot == nullptr) {
-    // TODO: return "real" error code
-    LOG_ERROR("no free slot!");
-    assert(false);
-    return TRI_ERROR_OUT_OF_MEMORY;
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    return slotInfo.errorCode;
   }
+
+  assert(slotInfo.slot != nullptr);
   
-  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(slot->mem());
+  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(slotInfo.slot->mem());
 
   // write tick into marker
-  marker->_tick = slot->tick();
+  marker->_tick = slotInfo.slot->tick();
 
   // set initial crc to 0
   marker->_crc = 0;
@@ -286,9 +287,10 @@ int LogfileManager::allocateAndWrite (void* mem,
   crc = TRI_BlockCrc32(crc, static_cast<char const*>(mem), static_cast<TRI_voc_size_t>(size));
   marker->_crc = TRI_FinalCrc32(crc);
 
-  memcpy(slot->mem(), mem, static_cast<TRI_voc_size_t>(size));
+  memcpy(slotInfo.slot->mem(), mem, static_cast<TRI_voc_size_t>(size));
 
-  return finalise(slot);
+  finalise(slotInfo);
+  return slotInfo.errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,10 +300,10 @@ int LogfileManager::allocateAndWrite (void* mem,
 int LogfileManager::sealLogfile (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  LOG_INFO("sealing logfile");
-
-  WRITE_LOCKER(_logfilesLock);
-  logfile->seal();
+  {
+    WRITE_LOCKER(_logfilesLock);
+    logfile->seal();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -616,25 +618,21 @@ int LogfileManager::inventory () {
 int LogfileManager::openLogfiles () {
   WRITE_LOCKER(_logfilesLock);
 
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
     Logfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
     assert((*it).second == nullptr);
 
-    TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str());
+    Logfile* logfile = Logfile::open(filename);
 
-    if (df == nullptr) {
-      int res = TRI_errno();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("unable to open logfile '%s': %s", filename.c_str(), TRI_errno_string(res));
-        return res;
-      }
+    if (logfile == nullptr) {
+      _logfiles.erase(it++);
     }
-    
-    // TODO: the last logfile is probably still a journal. must fix the "false" value
-    (*it).second = new Logfile(df);
+    else {
+      (*it).second = Logfile::open(filename);
+      ++it;
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -648,9 +646,9 @@ int LogfileManager::allocateDatafile () {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  TRI_datafile_t* df = TRI_CreateDatafile(filename.c_str(), id, static_cast<TRI_voc_size_t>(_configuration->filesize()));
+  Logfile* logfile = Logfile::create(filename.c_str(), id, _configuration->filesize());
 
-  if (df == nullptr) {
+  if (logfile == nullptr) {
     int res = TRI_errno();
 
     LOG_ERROR("unable to create datafile: %s", TRI_errno_string(res));
@@ -658,7 +656,7 @@ int LogfileManager::allocateDatafile () {
   }
                
   WRITE_LOCKER(_logfilesLock);
-  _logfiles.insert(make_pair(id, new Logfile(df)));
+  _logfiles.insert(make_pair(id, logfile));
 
   return TRI_ERROR_NO_ERROR;
 }

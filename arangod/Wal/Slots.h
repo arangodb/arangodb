@@ -41,6 +41,29 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   struct SlotInfo
+// -----------------------------------------------------------------------------
+
+    struct SlotInfo {
+      explicit SlotInfo (int errorCode) 
+        : slot(nullptr),
+          errorCode(errorCode) {
+      }
+      
+      explicit SlotInfo (Slot* slot) 
+        : slot(slot),
+          errorCode(TRI_ERROR_NO_ERROR) {
+      }
+
+      SlotInfo () 
+        : SlotInfo(TRI_ERROR_NO_ERROR) {
+      }
+
+      Slot* slot;
+      int   errorCode;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       class Slots
 // -----------------------------------------------------------------------------
 
@@ -96,13 +119,13 @@ namespace triagens {
 /// @brief return the next unused slot
 ////////////////////////////////////////////////////////////////////////////////
 
-        Slot* nextUnused (uint32_t, int);
+        SlotInfo nextUnused (uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a used slot, allowing its synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void returnUsed (Slot*);
+        void returnUsed (SlotInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next synchronisable region

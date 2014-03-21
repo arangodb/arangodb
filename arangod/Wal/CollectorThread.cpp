@@ -88,8 +88,6 @@ void CollectorThread::stop () {
 
 void CollectorThread::run () {
   while (_stop == 0) {
-    LOG_INFO("hello from collector thread");
-
     Logfile* logfile = _logfileManager->getCollectableLogfile();
 
     if (logfile != nullptr) {
