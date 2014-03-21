@@ -8,6 +8,7 @@ TOC {#HttpJobTOC}
     - @ref HttpJobAsync
     - @ref HttpJobOrder
   - @ref HttpJobHttp
-    - @ref HttpJobPut "PUT /_api/job"
-    - @ref HttpJobDelete "DELETE /_api/job"
-    - @ref HttpJobGet "GET /_api/job"
+    - @ref HttpJobPut "PUT /_api/job/job-id"
+    - @ref HttpJobDelete "DELETE /_api/job/job-id"
+    - @ref HttpJobGetId "GET /_api/job/job-id"
+    - @ref HttpJobGetType "GET /_api/job/job-type"
