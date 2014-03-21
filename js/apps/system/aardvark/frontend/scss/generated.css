@@ -2756,6 +2756,10 @@ div img.searchSubmitIcon {
     margin-top: 3px; }
     .editor-toolbar i:hover {
       cursor: pointer; }
+  .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
+    font-size: 18px;
+    position: relative;
+    top: -2px; }
   .editor-toolbar .arango-icon-disk {
     margin-top: 1px; }
 
@@ -3325,10 +3329,10 @@ table.dataTable thead th {
   white-space: nowrap !important; }
 
 .totalDocuments {
+  color: #000;
   float: left;
-  color: black;
-  padding-left: 10px;
-  margin-top: -54px !important; }
+  margin-top: -54px !important;
+  padding-left: 10px; }
 
 .prettify {
   border: 0 !important;
