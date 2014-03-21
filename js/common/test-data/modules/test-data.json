@@ -1,0 +1,10 @@
+{
+  "tags" : [ "foo", "bar", "baz" ],
+  "author" : {
+    "first" : "foo",
+    "last" : "bar" 
+  },
+  "number" : 42,
+  "sensible" : false,
+  "nullValue" : null
+}

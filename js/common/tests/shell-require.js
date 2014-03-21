@@ -64,6 +64,49 @@ function RequireTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test requiring JSON
+////////////////////////////////////////////////////////////////////////////////
+
+    testRequireJson : function () {
+      var test = createTestPackage();
+      var data = test.require("test-data");
+
+      assertTrue(data.hasOwnProperty("tags"));
+      assertEqual([ "foo", "bar", "baz" ], data.tags);
+      
+      assertTrue(data.hasOwnProperty("author"));
+      assertEqual({ "first" : "foo", "last" : "bar" }, data.author);
+      
+      assertTrue(data.hasOwnProperty("number"));
+      assertEqual(42, data.number);
+      
+      assertTrue(data.hasOwnProperty("sensible"));
+      assertFalse(data.sensible);
+      
+      assertTrue(data.hasOwnProperty("nullValue"));
+      assertNull(data.nullValue);
+      
+      assertFalse(data.hasOwnProperty("schabernack"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test coffee script execution
+////////////////////////////////////////////////////////////////////////////////
+
+    testRequireCoffeeScript : function () {
+      var test = createTestPackage();
+      var script = test.require("coffee-test");
+
+      assertTrue(script.hasOwnProperty("coffeeSquare"));
+      assertEqual("function", typeof script.coffeeSquare);
+      assertEqual(49, script.coffeeSquare(7));
+
+      assertTrue(script.hasOwnProperty("coffeeValue"));
+      assertEqual("string", typeof script.coffeeValue);
+      assertEqual("test", script.coffeeValue);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test package loading
 ////////////////////////////////////////////////////////////////////////////////
 
