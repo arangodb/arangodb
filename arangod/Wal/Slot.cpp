@@ -70,6 +70,13 @@ std::string Slot::statusText () const {
     case StatusType::RETURNED:
       return "returned";
   }
+
+  // listen, damn compilers!!
+  // _status is an enum class so it has a fixed amount of possible values,
+  // which are all covered in the above switch statement
+  // stop stelling me that the control flow will reach the end of a non-void
+  // function. this cannot happen!!!!!
+  assert(false); 
 }
 
 // -----------------------------------------------------------------------------
