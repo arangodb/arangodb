@@ -84,7 +84,9 @@
             requestsPatch: differenceBasedLineChartType,
             requestsDelete: differenceBasedLineChartType,
             requestsOptions: differenceBasedLineChartType,
-            requestsOther: differenceBasedLineChartType
+            requestsOther: differenceBasedLineChartType,
+            systemTime: differenceBasedLineChartType,
+            userTime: differenceBasedLineChartType
 
     };
     chartTypeExceptions[distributionChartType] = {
@@ -165,6 +167,9 @@
                         return y.toPrecision(3);
                     },
                     axisLabelFormatter: function(y) {
+                        if (y === 0) {
+                            return 0;
+                        }
                         y = y * 1000;
                         return y.toPrecision(3);
                     }
@@ -216,6 +221,9 @@
                         return y.toPrecision(3);
                     },
                     axisLabelFormatter: function(y) {
+                        if (y === 0) {
+                            return "0";
+                        }
                         y = y * 1000;
                         return y.toPrecision(3);
                     }
@@ -272,6 +280,7 @@
             showLabelsOnHighlight : false,
             strokeWidth: 2,
             strokeBorderWidth: 1,
+            includeZero: true,
             highlightCircleSize: 0,
             strokeBorderColor: '#ffffff',
             interactionModel :  {},
