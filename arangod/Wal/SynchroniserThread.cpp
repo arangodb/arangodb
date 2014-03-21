@@ -28,6 +28,7 @@
 #include "SynchroniserThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 #include "Wal/SyncRegion.h"
@@ -108,14 +109,35 @@ void SynchroniserThread::run () {
     }
 
     if (waiting > 0) {
-      SyncRegion region = _logfileManager->slots()->getReturned();
+      SyncRegion region = _logfileManager->slots()->getSyncRegion();
 
       if (region.logfileId != 0) {
-        // TODO: perform the actual syncing
+        void** mmHandle = NULL;
+
+        // now perform the actual syncing
+
+        // get the logfile's file descriptor
+        // TODO: we might cache the file descriptor here
+        int fd = _logfileManager->getLogfileDescriptor(region.logfileId);
+
+        if (fd < 0) {
+          // invalid file descriptor
+          LOG_FATAL_AND_EXIT("invalid wal logfile file descriptor");
+        }
+        else {
+          // LOG_INFO("Syncing from %p to %p, length: %d", region.mem, region.mem + region.size, (int) region.size);
+          bool res = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+
+          if (! res) {
+            LOG_ERROR("unable to sync wal logfile region");
+            // TODO: how to recover from this state?
+          }
+        }
+        
         _logfileManager->slots()->unuse(region);
-    
-        // TODO: seal logfile here if required
       }
+
+      _logfileManager->sealLogfiles();
     }
 
     CONDITION_LOCKER(guard, _condition);
