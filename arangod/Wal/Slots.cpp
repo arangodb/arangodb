@@ -58,7 +58,7 @@ Slots::Slots (LogfileManager* logfileManager,
     _readOnly(false) {
 
   for (size_t i = 0; i < _numberOfSlots; ++i) {
-    _slots[i] = new Slot(i);
+    _slots[i] = new Slot();
   }
 }
 
@@ -106,7 +106,7 @@ Slot::TickType Slots::lastTick () {
 /// @brief return the next unused slot
 ////////////////////////////////////////////////////////////////////////////////
 
-Slot* Slots::nextUnused (uint32_t size, int ctx) {
+SlotInfo Slots::nextUnused (uint32_t size) {
   // we need to use the aligned size for writing
   size = TRI_DF_ALIGN_BLOCK(size);
   
@@ -117,7 +117,7 @@ Slot* Slots::nextUnused (uint32_t size, int ctx) {
       MUTEX_LOCKER(_lock);
 
       if (_readOnly) {
-        return nullptr;
+        return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
       }
 
       Slot* slot = _slots[_handoutIndex];
@@ -155,12 +155,15 @@ Slot* Slots::nextUnused (uint32_t size, int ctx) {
         TRI_df_marker_t* mem;
         int res = TRI_ReserveElementDatafile(_logfile->df(), static_cast<TRI_voc_size_t>(size), &mem, 32 * 1024 * 1024);
 
-        if (res != TRI_ERROR_NO_ERROR || mem == nullptr) {
-          return nullptr;
+        if (res != TRI_ERROR_NO_ERROR) {
+          return SlotInfo(res);
         }
+ 
+        assert(mem != nullptr);
 
         assert(_freeSlots > 0);
         _freeSlots--;
+
         slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), ++_lastTick);
 
         if (++_handoutIndex ==_numberOfSlots) {
@@ -168,7 +171,7 @@ Slot* Slots::nextUnused (uint32_t size, int ctx) {
           _handoutIndex = 0;
         }
 
-        return slot;
+        return SlotInfo(slot);
       }
     }
 
@@ -195,12 +198,12 @@ Slot* Slots::nextUnused (uint32_t size, int ctx) {
 /// @brief return a used slot, allowing its synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::returnUsed (Slot* slot) {
-  assert(slot != nullptr);
+void Slots::returnUsed (SlotInfo& slotInfo) {
+  assert(slotInfo.slot != nullptr);
 
   {
     MUTEX_LOCKER(_lock);
-    slot->setReturned();
+    slotInfo.slot->setReturned();
   }
   
   _logfileManager->signalSync();
