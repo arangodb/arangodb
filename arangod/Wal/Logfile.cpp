@@ -37,10 +37,12 @@ using namespace triagens::wal;
 /// @brief create the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile::Logfile (TRI_datafile_t* df,
+Logfile::Logfile (Logfile::IdType id, 
+                  TRI_datafile_t* df,
                   SealStatusType sealStatus,
                   CollectionStatusType collectionStatus) 
-  : _df(df),
+  : _id(id),
+    _df(df),
     _sealStatus(sealStatus),
     _collectionStatus(collectionStatus) {
 }
@@ -50,7 +52,10 @@ Logfile::Logfile (TRI_datafile_t* df,
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile::~Logfile () {
-  this->close();
+  if (_df != nullptr) {
+    TRI_CloseDatafile(_df);
+    TRI_FreeDatafile(_df);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -77,7 +82,7 @@ Logfile* Logfile::create (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(df, SealStatusType::UNKNOWN, CollectionStatusType::UNCOLLECTED);
+  Logfile* logfile = new Logfile(id, df, SealStatusType::UNSEALED, CollectionStatusType::UNCOLLECTED);
   return logfile;
 }
 
@@ -85,7 +90,8 @@ Logfile* Logfile::create (std::string const& filename,
 /// @brief open an existing logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile* Logfile::open (std::string const& filename) {
+Logfile* Logfile::open (std::string const& filename,
+                        Logfile::IdType id) {
   TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str());
 
   if (df == nullptr) {
@@ -99,30 +105,30 @@ Logfile* Logfile::open (std::string const& filename) {
     }
   }
 
-  Logfile* logfile = new Logfile(df, SealStatusType::UNKNOWN, CollectionStatusType::UNCOLLECTED);
+  SealStatusType sealStatus = SealStatusType::UNSEALED;
+  if (df->_isSealed) {
+    sealStatus = SealStatusType::SEALED;
+  }
+
+  Logfile* logfile = new Logfile(id, df, sealStatus, CollectionStatusType::UNCOLLECTED);
   return logfile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief close a logfile
+/// @brief seals a logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logfile::close () {
-  if (_df != nullptr) {
-    TRI_CloseDatafile(_df);
-    _df = nullptr;
+int Logfile::seal () {
+  int res = TRI_SealDatafile(_df);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    LOG_INFO("sealed logfile %llu", (unsigned long long) id());
+
+    assert(_sealStatus == SealStatusType::REQUESTED);
+    _sealStatus = SealStatusType::SEALED;
   }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief seal a logfile
-////////////////////////////////////////////////////////////////////////////////
-
-void Logfile::seal () {
-  LOG_INFO("sealing logfile %llu", 
-           (unsigned long long) id());
-  assert(_sealStatus == SealStatusType::UNSEALED);
-  _sealStatus = SealStatusType::REQUESTED;
+  return res;
 }
 
 // Local Variables:
