@@ -2807,6 +2807,11 @@ pre.gv-object-view {
     margin-top: 3px; }
     .editor-toolbar i:hover {
       cursor: pointer; }
+  .editor-toolbar .fa-comment,
+  .editor-toolbar .fa-comment-o {
+    font-size: 18px;
+    position: relative;
+    top: -2px; }
   .editor-toolbar .arango-icon-disk {
     margin-top: 1px; }
 
