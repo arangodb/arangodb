@@ -163,7 +163,11 @@ a.headerButton {
 
 //Graph Viewer
 
-div.toolbox > {
+div.toolbox {
+  @include border-radius(2px);
+  border: 3px solid $c-nav-bg;
+  margin-right: 5px;
+  position: absolute;
 
   div.gv_action_button {
     @extend %clickable;
@@ -352,10 +356,6 @@ button {
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important;
-}
-
-.btn-group.open .btn-inverse.dropdown-toggle {
-  background-color: $c-btn-inverse;
 }
 
 // Cluster View

@@ -130,7 +130,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchValueField.type = "text";
       searchValueField.placeholder = "Attribute value";
       searchStart.id = "loadnode";
-      searchStart.className = "searchSubmit";
+      searchStart.className = "gv-search-submit-icon";
       equalsField.className = "searchEqualsLabel";
       equalsField.appendChild(document.createTextNode("=="));
 
@@ -246,7 +246,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "graphViewer")
+        .attr("class", "graph-viewer")
         .style("width", width + "px")
         .style("height", height + "px");
     },
@@ -413,12 +413,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     
     createColourList = function() {
       colourList = nodeShaperUI.createColourMappingList();
-      colourList.className = "gv_colour_list";
+      colourList.className = "gv-colour-list";
       background.insertBefore(colourList, svg[0][0]);
     };
   container.appendChild(menubar);
   container.appendChild(background);
-  background.className = "contentDiv gv_background ";
+  background.className = "contentDiv gv-background ";
   background.id = "background";
   
   viewerConfig = viewerConfig || {};
