@@ -2286,9 +2286,9 @@ div.queryline {
     margin-left: 5px !important;
     margin-top: 0 !important; }
   div.queryline div.searchByAttribute {
-    position: relative;
     margin-left: 6px;
-    margin-right: 6px; }
+    margin-right: 6px;
+    position: relative; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
@@ -2325,19 +2325,18 @@ select.filterSelect {
   margin-top: 1px; }
 
 div.input-append button.gv_example_toggle {
-  background-color: #8F8D8C;
+  -moz-border-radius: 0 4px 4px 0;
+  -webkit-border-radius: 0 4px 4px 0;
+  border-radius: 0 4px 4px 0;
+  background-color: #8f8d8c;
   height: 30px;
+  margin-left: -1px;
   padding-left: 10px;
   padding-right: 10px;
   padding-top: 12px;
-  margin-left: -1px;
-  vertical-align: top;
-  -webkit-border-radius: 0 4px 4px 0;
-  -moz-border-radius: 0 4px 4px 0;
-  border-radius: 0 4px 4px 0; }
-
-.gv_example_toggle:hover {
-  background-color: #8AA051; }
+  vertical-align: top; }
+  div.input-append button.gv_example_toggle:hover {
+    background-color: #8aa051; }
 
 .searchEqualsLabel {
   margin-left: 6px;
@@ -2350,9 +2349,9 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 0px;
-  -webkit-border-radius: 0px;
-  border-radius: 0px;
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  border-radius: 0;
   border: 0;
   height: 18px;
   line-height: 18px;
