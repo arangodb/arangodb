@@ -312,7 +312,7 @@
                                 '" type="text" placeholder="Attribute value" ' + 
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus"></i></a></div>');
+                                '<i class="icon icon-minus arangoicon"></i></a></div>');
       this.filters[num] = true;
     },
 
@@ -648,7 +648,8 @@
             total.html("Total: " + this.documentsCount + " documents");
           } else {
             $('#documentsToolbarFL').append(
-              '<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>'
+              '<a id="totalDocuments" class="totalDocuments">Total: ' + this.documentsCount +
+              ' document(s) </a>'
             );
           }
     },

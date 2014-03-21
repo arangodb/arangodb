@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log logger
+/// @brief Write-ahead log synchroniser thread
 ///
 /// @file
 ///
@@ -25,8 +25,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Logger.h"
+#include "SynchroniserThread.h"
+#include "BasicsC/logging.h"
+#include "Basics/ConditionLocker.h"
 #include "Wal/LogfileManager.h"
+#include "Wal/Slots.h"
+#include "Wal/SyncRegion.h"
 
 using namespace triagens::wal;
 
@@ -35,18 +39,24 @@ using namespace triagens::wal;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the logger
+/// @brief create the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Logger::Logger (LogfileManager* manager) 
-  : _manager(manager) {
+SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager)
+  : Thread("WalSynchroniser"),
+    _logfileManager(logfileManager),
+    _condition(),
+    _waiting(0),
+    _stop(0) {
+  
+  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the logger
+/// @brief destroy the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Logger::~Logger () {
+SynchroniserThread::~SynchroniserThread () {
 }
 
 // -----------------------------------------------------------------------------
@@ -54,18 +64,72 @@ Logger::~Logger () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space in a log file
+/// @brief stops the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-LogEntry Logger::reserve (size_t size) {
-  LogEntry entry(_manager->reserve(size));
+void SynchroniserThread::stop () {
+  if (_stop > 0) {
+    return;
+  }
 
-  return entry;
+  _stop = 1;
+  _condition.signal();
+
+  while (_stop != 2) {
+    usleep(1000);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal that we need a sync
+////////////////////////////////////////////////////////////////////////////////
+
+void SynchroniserThread::signalSync () {
+  CONDITION_LOCKER(guard, _condition);
+  ++_waiting;
+  _condition.signal();
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main loop
+////////////////////////////////////////////////////////////////////////////////
+
+void SynchroniserThread::run () {
+  while (_stop == 0) {
+    uint32_t waiting = 0;
+
+    {
+      CONDITION_LOCKER(guard, _condition);
+      waiting = _waiting;
+    }
+
+    if (waiting > 0) {
+      SyncRegion region = _logfileManager->slots()->getReturned();
+
+      if (region.logfileId != 0) {
+        // TODO: perform the actual syncing
+        _logfileManager->slots()->unuse(region);
+    
+        // TODO: seal logfile here if required
+      }
+    }
+
+    CONDITION_LOCKER(guard, _condition);
+    if (waiting > 0) {
+      assert(_waiting >= waiting);
+      _waiting -= waiting;
+    }
+    if (_waiting == 0) {
+      guard.wait(100000000);
+    }
+  }
+
+  _stop = 2;
+}
 
 // Local Variables:
 // mode: outline-minor

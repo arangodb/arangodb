@@ -1597,7 +1597,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seals a database, writes a footer, sets it to read-only
+/// @brief seals a datafile, writes a footer, sets it to read-only
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SealDatafile (TRI_datafile_t* datafile) {
