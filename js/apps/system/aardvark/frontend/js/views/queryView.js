@@ -136,15 +136,15 @@
         var token = session.getTokenAt(cursor.row, cursor.column);
         if (token) {
           if (token.type === "comment") {
-            $("#commentText")
-              .removeClass("arango-icon-comment")
-              .addClass("arango-icon-uncomment")
-              .attr("data-original-title", "Uncomment");
+            $("#commentText i")
+            .removeClass("fa-comment")
+            .addClass("fa-comment-o")
+            .attr("data-original-title", "Uncomment");
           } else {
-            $("#commentText")
-              .addClass("arango-icon-comment")
-              .removeClass("arango-icon-uncomment")
-              .attr("data-original-title", "Comment");
+            $("#commentText i")
+            .removeClass("fa-comment-o")
+            .addClass("fa-comment")
+            .attr("data-original-title", "Comment");
           }
         }
       });
