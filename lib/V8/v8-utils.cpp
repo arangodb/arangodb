@@ -841,7 +841,8 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   // extract arguments
   if (argv.Length() != 1) {
@@ -849,7 +850,7 @@ static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) 
   }
 
   v8g->ExecuteFileCallback
-  = v8::Persistent<v8::Function>::New(v8::Handle<v8::Function>::Cast(argv[0]));
+  = v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(argv[0]));
 
   return scope.Close(v8::Undefined());
 }
