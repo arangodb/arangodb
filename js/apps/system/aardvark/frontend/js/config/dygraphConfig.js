@@ -69,6 +69,7 @@
     var distributionChartType = "distribution";
     var accumulatedChartType = "accumulated";
     var distributionBasedLineChartType = "currentDistribution";
+    var distributionBasedSumLineChartType = "currentSumDistribution";
 
     // different time series types for charts
     var chartTypeExceptions = {};
@@ -93,8 +94,8 @@
             totalTime : distributionBasedLineChartType,
             requestTime: distributionBasedLineChartType,
             queueTime: distributionBasedLineChartType,
-            bytesSent: distributionBasedLineChartType,
-            bytesReceived: distributionBasedLineChartType
+            bytesSent: distributionBasedSumLineChartType,
+            bytesReceived: distributionBasedSumLineChartType
     };
     // figures supposed to be dispalyed in one chart
     var combinedCharts = {
@@ -414,7 +415,10 @@
                 showGraph = false;
             } else if (type === distributionBasedLineChartType)  {
                 type = regularLineChartType;
+            } else if (type === distributionBasedSumLineChartType)  {
+                type = regularLineChartType;
             }
+
             return new this.Chart(figure, type, showGraph, title);
         },
 
@@ -431,7 +435,8 @@
         regularLineChartType : regularLineChartType,
         distributionChartType : distributionChartType,
         accumulatedChartType : accumulatedChartType,
-        distributionBasedLineChartType : distributionBasedLineChartType
+        distributionBasedLineChartType : distributionBasedLineChartType,
+        distributionBasedSumLineChartType : distributionBasedSumLineChartType
 
     };
 }());
