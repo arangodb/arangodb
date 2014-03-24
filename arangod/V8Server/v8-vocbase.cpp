@@ -815,6 +815,8 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
                                     void* parameter) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) parameter;
+  
+  v8g->_hasDeadObjects = true;
 
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
@@ -3618,6 +3620,10 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
                                        v8::Persistent<v8::Value> object,
                                        void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  
+  v8g->_hasDeadObjects = true;
   
   TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) parameter;
   
@@ -9865,6 +9871,8 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
                                  void* parameter) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
   TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
+  
+  v8g->_hasDeadObjects = true;
 
   LOG_TRACE("weak-callback for barrier called");
 

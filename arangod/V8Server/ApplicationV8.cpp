@@ -331,7 +331,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
-
+  
   // set the current database
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
@@ -368,7 +368,10 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   context->handleGlobalContextMethods();
 
-  ++context->_dirt;
+  // update data for later garbage collection
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  context->_hasDeadObjects = v8g->_hasDeadObjects;
+  ++context->_numExecutions;
 
   // exit the context
   context->_context->Exit();
@@ -376,28 +379,26 @@ void ApplicationV8::exitContext (V8Context* context) {
   delete context->_locker;
 
 
-  bool performGarbageCollection;
+  // default is false
+  bool performGarbageCollection = false;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
     LOG_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
     performGarbageCollection = true;
   }
-  else if (context->_dirt >= _gcInterval) {
+  else if (context->_numExecutions >= _gcInterval) {
     LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
     performGarbageCollection = true;
-  }
-  else {
-    performGarbageCollection = false;
   }
 
   if (performGarbageCollection) {
     _dirtyContexts.push_back(context);
-    _busyContexts.erase(context);
   }
   else {
     _freeContexts.push_back(context);
-    _busyContexts.erase(context);
   }
+    
+  _busyContexts.erase(context);
 
   guard.broadcast();
 
@@ -424,8 +425,8 @@ bool ApplicationV8::addGlobalContextMethod (string const& method) {
 /// @brief determine which of the free contexts should be picked for the GC
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
-  const size_t n = _freeContexts.size();
+ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
+  int const n = (int) _freeContexts.size();
 
   if (n == 0) {
     // this is easy...
@@ -438,15 +439,26 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   V8Context* context = 0;
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
-  size_t pickedContextNr = 0; // index of context with lowest GC stamp
+  int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
 
-  for (size_t i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
+    // check if there's actually anything to clean up in the context
+    if (_freeContexts[i]->_numExecutions == 0 && ! _freeContexts[i]->_hasDeadObjects) {
+      continue;
+    }
+
     // compare last GC stamp
-    if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
+    if (pickedContextNr == -1 ||
+        _freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
       pickedContextNr = i;
     }
   }
   // we now have the context to clean up in pickedContextNr
+
+  if (pickedContextNr == -1) {
+    // no context found
+    return 0;
+  }
 
   // this is the context to clean up
   context = _freeContexts[pickedContextNr];
@@ -461,7 +473,7 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   // we'll pop the context from the vector. the context might be at any position in the vector
   // so we need to move the other elements around
   if (n > 1) {
-    for (size_t i = pickedContextNr; i < n - 1; ++i) {
+    for (int i = pickedContextNr; i < n - 1; ++i) {
       _freeContexts[i] = _freeContexts[i + 1];
     }
   }
@@ -518,12 +530,12 @@ void ApplicationV8::collectGarbage () {
         // we timed out waiting for a signal, so we have idle time that we can
         // spend on running the GC pro-actively
         // We'll pick one of the free contexts and clean it up
-        context = pickContextForGc();
+        context = pickFreeContextForGc();
 
         // there is no context to clean up, probably they all have been cleaned up
         // already. increase the wait time so we don't cycle too much in the GC loop
         // and waste CPU unnecessary
-        useReducedWait =  (context != 0);
+        useReducedWait = (context != 0);
       }
     }
 
@@ -546,8 +558,10 @@ void ApplicationV8::collectGarbage () {
       context->_isolate->Exit();
       delete context->_locker;
 
-      context->_dirt = 0;
-      context->_lastGcStamp = lastGc;
+      // update garbage collection statistics
+      context->_hasDeadObjects = false;
+      context->_numExecutions  = 0;
+      context->_lastGcStamp    = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -926,7 +940,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   context->_isolate->Exit();
   delete context->_locker;
 
-  context->_lastGcStamp = TRI_microtime();
+  // initialise garbage collection for context
+  context->_numExecutions   = 0;
+  context->_hasDeadObjects  = true;
+  context->_lastGcStamp     = TRI_microtime();
 
   LOG_TRACE("initialised V8 context #%d", (int) i);
 
