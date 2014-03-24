@@ -86,9 +86,7 @@ uint64_t TRI_NextPrime (uint64_t value) {
       return Primes[i];
     }
   }
-
-  assert(false);
-  return 0;
+  return value;
 }
 
 // Local Variables:
