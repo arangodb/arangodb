@@ -11,10 +11,12 @@
     modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
-      "click #startSymmetricPlan": "startPlan",
-      "click .add": "addEntry",
-      "click .delete": "removeEntry",
-      "click #cancel": "cancel"
+      "click #startSymmetricPlan" : "startPlan",
+      "click .add"                : "addEntry",
+      "click .delete"             : "removeEntry",
+      "click #cancel"             : "cancel",
+      "focusout .host"            : "autoCheckConnections",
+      "focusout .port"            : "autoCheckConnections"
     },
 
     cancel: function() {
@@ -95,6 +97,9 @@
     },
 
     addEntry: function() {
+      //disable launch button
+      this.disableLaunchButton();
+
       $("#server_list").append(this.entryTemplate.render({
         isSymmetric: this.isSymmetric,
         isFirst: false,
@@ -107,6 +112,7 @@
 
     removeEntry: function(e) {
       $(e.currentTarget).closest(".control-group").remove();
+      this.checkAllConnections();
     },
 
     render: function(isSymmetric) {
@@ -157,10 +163,94 @@
           port: ''
         }));
       }
+      //initially disable lunch button
+      this.disableLaunchButton();
+
       $(this.el).append(this.modal.render({}));
 
+    },
+
+    autoCheckConnections: function (e) {
+      var host,
+        port,
+        currentTarget = $(e.currentTarget);
+      //eval which field was left
+      if(currentTarget.attr('class').indexOf('host') !== -1) {
+        host = currentTarget.val();
+        //eval value of port
+        port = currentTarget.nextAll('.port').val();
+      } else {
+        port = currentTarget.val();
+        //eval value of port
+        host = currentTarget.prevAll('.host').val();
+      }
+      if (host !== '' && port !== '') {
+        this.checkAllConnections();
+      }
+    },
+
+    checkConnection: function(host, port, target) {
+      $(target).find('.cluster-connection-check-success').remove();
+      $(target).find('.cluster-connection-check-fail').remove();
+      var result = false;
+      try {
+        $.ajax({
+          async: false,
+          cache: false,
+          type: "GET",
+          url: "http://" + host + ":" + port + "/_api/version",
+          success: function() {
+            $(target).append(
+              '<span class="cluster-connection-check-success">Connection: ok</span>'
+            );
+            result = true;
+          },
+          error: function() {
+            $(target).append(
+              '<span class="cluster-connection-check-fail">Connection: fail</span>'
+            );
+          }
+        });
+      } catch (e) {
+        this.disableLaunchButton();
+      }
+      return result;
+    },
+
+    checkAllConnections: function() {
+      var self = this;
+      var hasError = false;
+      $('.dispatcher').each(
+        function(i, dispatcher) {
+          var target = $('.controls', dispatcher)[0];
+          var host = $('.host', dispatcher).val();
+          var port = $('.port', dispatcher).val();
+          if (!self.checkConnection(host, port, target)) {
+            hasError = true;
+          }
+        }
+      );
+      if (!hasError) {
+        this.enableLaunchButton();
+      } else {
+        this.disableLaunchButton();
+      }
+    },
+
+    disableLaunchButton: function() {
+      $('#startSymmetricPlan').attr('disabled', 'disabled');
+      $('#startSymmetricPlan').removeClass('button-success');
+      $('#startSymmetricPlan').addClass('button-neutral');
+    },
+
+    enableLaunchButton: function() {
+      $('#startSymmetricPlan').attr('disabled', false);
+      $('#startSymmetricPlan').removeClass('button-neutral');
+      $('#startSymmetricPlan').addClass('button-success');
     }
+
   });
 
 }());
+
 
