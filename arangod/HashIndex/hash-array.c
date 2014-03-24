@@ -202,7 +202,7 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 /// reallocations/repositionings necessary when the table grows
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INITIAL_SIZE    (256)
+#define INITIAL_SIZE    (251)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -257,7 +257,8 @@ static void AddNewElement (TRI_hash_array_t* array,
 /// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AllocateTable (TRI_hash_array_t* array, size_t numElements) {
+static int AllocateTable (TRI_hash_array_t* array, 
+                          size_t numElements) {
   TRI_hash_index_element_t* table;
 
   table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
@@ -278,7 +279,8 @@ static int AllocateTable (TRI_hash_array_t* array, size_t numElements) {
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ResizeHashArray (TRI_hash_array_t* array) {
+static int ResizeHashArray (TRI_hash_array_t* array,
+                           uint64_t targetSize) {
   TRI_hash_index_element_t* oldTable;
   uint64_t oldAlloc;
   uint64_t j;
@@ -287,7 +289,7 @@ static int ResizeHashArray (TRI_hash_array_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  res = AllocateTable(array, (size_t) (2 * oldAlloc + 1));
+  res = AllocateTable(array, (size_t) targetSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -323,7 +325,6 @@ static int ResizeHashArray (TRI_hash_array_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitHashArray (TRI_hash_array_t* array,
-                       size_t initialDocumentCount,
                        size_t numFields) {
   size_t initialSize;
   int res;
@@ -339,13 +340,7 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
   array->_nrUsed = 0;
   array->_nrAlloc = 0;
 
-  if (initialDocumentCount > 0) {
-    // use initial document count provided as initial size
-    initialSize = (size_t) (2.5 * initialDocumentCount);
-  }
-  else {
-    initialSize = INITIAL_SIZE;
-  }
+  initialSize = INITIAL_SIZE;
 
   res = AllocateTable(array, initialSize);
 
@@ -414,6 +409,15 @@ void TRI_FreeHashArray (TRI_hash_array_t* array) {
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the hash table
+////////////////////////////////////////////////////////////////////////////////
+  
+int TRI_ResizeHashArray (TRI_hash_array_t* array,
+                         size_t size) {
+  return ResizeHashArray(array, 2 * size + 1);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -580,7 +584,7 @@ int TRI_InsertElementHashArray (TRI_hash_array_t* array,
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     int res;
 
-    res = ResizeHashArray(array);
+    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -657,7 +661,7 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     int res;
 
-    res = ResizeHashArray(array);
+    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -982,7 +986,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     int res;
 
-    res = ResizeHashArray(array);
+    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1043,7 +1047,7 @@ int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     int res;
 
-    res = ResizeHashArray(array);
+    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

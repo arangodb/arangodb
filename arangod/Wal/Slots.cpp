@@ -136,18 +136,14 @@ SlotInfo Slots::nextUnused (uint32_t size) {
                _logfile->freeSize() < static_cast<uint64_t>(size)) {
 
           if (_logfile != nullptr) {
-            // close old logfile
-            _logfileManager->sealLogfile(_logfile);
-          }
-
-          if (_logfile == nullptr) {
-            LOG_WARNING("got no logfile!");
+            // seal existing logfile
+            _logfileManager->requestSealing(_logfile);
           }
 
           _logfile = _logfileManager->getWriteableLogfile(size);
 
           if (_logfile == nullptr) {
-            LOG_ERROR("no logfile!");
+            LOG_WARNING("unable to acquire writeable wal logfile!");
             usleep(1000);
           }
         }
@@ -213,7 +209,7 @@ void Slots::returnUsed (SlotInfo& slotInfo) {
 /// @brief get the next synchronisable region
 ////////////////////////////////////////////////////////////////////////////////
 
-SyncRegion Slots::getReturned () {
+SyncRegion Slots::getSyncRegion () {
   SyncRegion region;
 
   MUTEX_LOCKER(_lock);
