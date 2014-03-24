@@ -3177,6 +3177,12 @@ pre.gv-object-view {
 .collection-pagination {
   margin-left: 23px !important; }
 
+.arango-pagination i.fa, .pre-pagi i.fa,
+.las-pagi i.fa {
+  font-size: 19px;
+  position: relative;
+  top: -2px; }
+
 .arango-pagination li:first-child {
   margin-right: 20px; }
 .arango-pagination li:last-child {
@@ -3485,6 +3491,158 @@ input.gv-radio-button {
   display: block;
   margin-top: 3px;
   width: auto; }
+
+.collectionTh {
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 400 !important;
+  text-align: left;
+  width: 20% !important; }
+  .collectionTh input,
+  .collectionTh select,
+  .collectionTh textarea {
+    margin-top: 10px; }
+
+.collectionInfoTh {
+  min-width: 60px;
+  text-align: left;
+  width: 320px; }
+
+.addCollection table tr {
+  border-bottom: 0 !important;
+  height: 53px; }
+.addCollection .icon_arangodb_info {
+  margin-left: 20px !important;
+  position: relative;
+  top: 2px !important; }
+.addCollection .accordion {
+  margin-top: 10px; }
+.addCollection .collectionThSec {
+  width: 320px !important; }
+.addCollection .collectionTh {
+  width: 96px; }
+.addCollection .modalInput {
+  width: 320px; }
+.addCollection .modalSelect {
+  width: 334px; }
+.addCollection .accordion-toggle {
+  width: 457px !important; }
+
+.change-collection .tab-content {
+  min-height: 230px; }
+.change-collection input {
+  width: 384px !important; }
+.change-collection select {
+  width: 398px !important; }
+
+.show-collection .tab-content {
+  min-height: 200px; }
+
+.collectionInfoTh {
+  width: 320px; }
+
+.collectionInfoTh2 {
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400 !important;
+  text-align: left;
+  width: 150px; }
+
+.collection-info-figures table {
+  float: left;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  min-width: 200px;
+  padding: 3px;
+  text-align: left; }
+
+.figures1,
+.figures2 {
+  margin-bottom: 20px;
+  width: 255px; }
+
+.figures2 {
+  margin-left: 20px !important; }
+
+.figures3 {
+  margin-bottom: 0;
+  width: 100%; }
+
+.figuresHeader {
+  border-bottom: 1px solid #c2c2c2; }
+
+.figuresHeader th {
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400 !important; }
+
+#collectionIndexTable {
+  margin-left: 0;
+  width: 100%; }
+
+#infoTab,
+#collectionTab {
+  border-bottom: 0;
+  margin-bottom: 1px;
+  padding-bottom: 0;
+  padding-right: 10px; }
+
+#infoTab li,
+#collectionTab li {
+  float: right; }
+
+#infoTab a,
+#collectionTab a {
+  background-color: #f1f0ee;
+  border-bottom: 1px solid #888888;
+  border-radius: 0 !important;
+  color: black;
+  font-size: 13px !important;
+  height: 21px;
+  margin-bottom: -1px;
+  margin-right: 4px;
+  padding: 4px !important; }
+
+#infoTab .active > a,
+#collectionTab .active > a {
+  background-color: white;
+  border-color: #888888 #888888 transparent !important; }
+
+#tab-content-collection-info #info,
+#tab-content-collection-info .collection-info-figures,
+#tab-content-collection-info #index {
+  border-top: 1px solid #888888 !important;
+  margin-left: 0 !important;
+  padding-top: 10px; }
+
+#confirmCreateEdge {
+  margin-left: 20px; }
+
+.collection-info-figures .icon_arangodb_info {
+  position: relative !important;
+  right: -4px !important; }
+
+.snippet-wrap .snippet-num li {
+  list-style: decimal-leading-zero outside none; }
+
+.snippet-no-num {
+  list-style-type: none;
+  padding-left: 0; }
+  .snippet-no-num .prettify {
+    font-size: 1.2em; }
+  .snippet-no-num .sh_number {
+    color: #044; }
+  .snippet-no-num .sh_symbol {
+    color: #00f; }
+  .snippet-no-num .sh_cbracket {
+    color: #c7a317; }
+  .snippet-no-num .sh_keyword {
+    color: #c12dad; }
+  .snippet-no-num .sh_string {
+    color: #ce2f30; }
+  .snippet-no-num .sh_object {
+    color: #00f; }
+  .snippet-no-num .sh_array {
+    color: #00f; }
 
 .arangoDataTable {
   border-spacing: 0 0;

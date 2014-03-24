@@ -167,6 +167,11 @@ HttpHandler::status_t RestJobHandler::execute () {
 /// `x-arango-async-id`. If it is present, the response contains the original
 /// job's result. Otherwise the response is from the job manager.
 ///
+/// @RESTRETURNCODE{204}
+/// is returned if the job requested via `job-id` is still in the queue of
+/// pending (or not yet finished) jobs. In this case, no `x-arango-async-id`
+/// HTTP header will be returned. 
+///
 /// @RESTRETURNCODE{400}
 /// is returned if no `job-id` was specified in the request. In this case, no
 /// `x-arango-async-id` HTTP header will be returned.
@@ -251,16 +256,17 @@ void RestJobHandler::putJob () {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  HttpResponse* response = _jobManager->getJobResult(jobId, status);
+  HttpResponse* response = _jobManager->getJobResult(jobId, status, true);
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
+    // unknown or already fetched job
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
   
   if (status == AsyncJobResult::JOB_PENDING) {
-    // TODO: signal "job not ready"
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    // job is still pending
+    _response = createResponse(HttpResponse::NO_CONTENT);
     return;
   }
 
@@ -276,6 +282,123 @@ void RestJobHandler::putJob () {
   _response = response; 
   // plus a new header
   _response->setHeader("x-arango-async-id", value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trampoline function for HTTP GET requests
+////////////////////////////////////////////////////////////////////////////////
+
+void RestJobHandler::getJob () {
+  const vector<string> suffix = _request->suffix();
+    
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  const string type = suffix[0];
+
+  if (! type.empty() && type[0] >= '1' && type[0] <= '9') {
+    getJobId(type);
+  }
+  else {
+    getJobType(type);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Returns the status of a specific job
+///
+/// @RESTHEADER{GET /_api/job/`job-id`,Returns the status of the specified job}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{job-id,string,required}
+/// The async job id.
+///
+/// @RESTDESCRIPTION
+/// Returns the processing status of the specified job. The processing status
+/// can be determined by peeking into the HTTP response code of the response.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the job requested via `job-id` has been executed successfully
+/// and its result is ready to fetch.
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the job requested via `job-id` is still in the queue of
+/// pending (or not yet finished) jobs. 
+///
+/// @RESTRETURNCODE{400}
+/// is returned if no `job-id` was specified in the request. 
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the job was not found or already deleted or fetched from the 
+/// job result list. 
+///
+/// @EXAMPLES
+///
+/// Querying the status of a done job:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestJobHandlerGetIdDone}
+///     var url = "/_api/version";
+/// 
+///     var response = logCurlRequest('GET', url, "", { "x-arango-async": "store" });
+/// 
+///     assert(response.code === 202);
+///     var id = response.headers['x-arango-async-id'];
+///     logRawResponse(response);
+///
+///     require("internal").wait(1);
+///
+///     response = logCurlRequest('GET', "/_api/job/" + id);
+///     assert(response.code === 200 || response.code === 204);
+///     logRawResponse(response);
+///
+///     response = curlRequest('DELETE', "/_api/job/" + id);
+///     assert(response.code === 200);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Querying the status of a pending job:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestJobHandlerGetIdPending}
+///     var url = "/_admin/sleep?duration=3";
+/// 
+///     var response = logCurlRequest('GET', url, "", { "x-arango-async": "store" });
+/// 
+///     assert(response.code === 202);
+///     var id = response.headers['x-arango-async-id'];
+///     logRawResponse(response);
+///
+///     response = logCurlRequest('GET', "/_api/job/" + id);
+///     assert(response.code === 204);
+///     logRawResponse(response);
+///
+///     response = curlRequest('DELETE', "/_api/job/" + id);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///////////////////////////////////////////////////////////////////////////////
+
+void RestJobHandler::getJobId (std::string const& value) {
+  uint64_t jobId = StringUtils::uint64(value);
+
+  // numeric job id, just pull the job status and return it
+  AsyncJobResult::Status status;
+  _jobManager->getJobResult(jobId, status, false);
+
+  if (status == AsyncJobResult::JOB_UNDEFINED) {
+    // unknown or already fetched job
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+  
+  if (status == AsyncJobResult::JOB_PENDING) {
+    // job is still pending
+    _response = createResponse(HttpResponse::NO_CONTENT);
+    return;
+  }
+    
+  _response = createResponse(HttpResponse::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,15 +479,7 @@ void RestJobHandler::putJob () {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///////////////////////////////////////////////////////////////////////////////
 
-void RestJobHandler::getJob () {
-  const vector<string> suffix = _request->suffix();
-    
-  if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  const string type = suffix[0];
+void RestJobHandler::getJobType (std::string const& type) {
   size_t count = 100;
 
   // extract "count" parameter

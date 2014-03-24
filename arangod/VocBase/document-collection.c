@@ -2708,26 +2708,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FillInternalIndexes (TRI_document_collection_t* document) {
-  TRI_primary_collection_t* primary;
   size_t i;
   int res;
-
-  primary = (TRI_primary_collection_t*) document;
 
   res = TRI_ERROR_NO_ERROR;
   
   for (i = 0;  i < document->_allIndexes._length;  ++i) {
     TRI_index_t* idx = document->_allIndexes._buffer[i];
-
-    if (idx->sizeHint != NULL) {
-      // give the index a size hint
-      int r = idx->sizeHint(idx, primary->_primaryIndex._nrUsed);
-
-      if (r != TRI_ERROR_NO_ERROR) {
-        // return first error, but continue
-        res = r;
-      }
-    }
 
     if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
       int r = FillIndex(document, idx);
@@ -3760,6 +3747,12 @@ static int FillIndex (TRI_document_collection_t* document,
   // update index
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
+    
+  if (idx->sizeHint != NULL) {
+    // give the index a size hint
+    idx->sizeHint(idx, primary->_primaryIndex._nrUsed);
+  }
+
 
   inserted = 0;
 
@@ -5107,8 +5100,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             iid,
                             &fields,
                             &paths,
-                            unique,
-                            document->base._primaryIndex._nrUsed);
+                            unique);
   
   if (idx == NULL) {
     TRI_DestroyVector(&paths);
