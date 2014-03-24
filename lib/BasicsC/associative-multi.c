@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative-multi.h"
-
+#include "BasicsC/prime-numbers.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY
@@ -597,8 +597,7 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array,
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = (uint64_t) targetSize;
-
+  array->_nrAlloc = TRI_NextPrime((uint64_t) targetSize);
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
   if (array->_table == NULL) {
