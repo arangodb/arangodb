@@ -288,49 +288,6 @@ module.exports = function(karma) {
 
     preprocessors: {
       'frontend/js/**/**.js': ['coverage']
-      /*'frontend/js/models/**.js': ['coverage'],
-      'frontend/js/collections/**.js': ['coverage'],
-      'frontend/js/routers/**.js': ['coverage'],
-      'frontend/js/arango/**.js': ['coverage'],
-      'frontend/js/views/**.js': ['coverage']
-      //Views:
-      //'frontend/js/views/navigationView.js': ['coverage'],
-      /*'frontend/js/views/notificationView.js': ['coverage'],
-      'frontend/js/views/apiView.js': ['coverage'],
-      'frontend/js/views/footerView.js': ['coverage'],
-      'frontend/js/views/queryView.js': ['coverage'],
-      'frontend/js/views/shellView.js': ['coverage'],
-      'frontend/js/views/dashboardView.js': ['coverage'],
-      'frontend/js/views/collectionsView.js': ['coverage'],
-      'frontend/js/views/collectionView.js': ['coverage'],
-      'frontend/js/views/collectionInfoView.js': ['coverage'],
-      'frontend/js/views/newCollectionView.js': ['coverage'],
-      'frontend/js/views/collectionsItemView.js': ['coverage'],
-      'frontend/js/views/documentsView.js': ['coverage'],
-      'frontend/js/views/documentView.js': ['coverage'],
-      'frontend/js/views/logsView.js': ['coverage'],
-      'frontend/js/views/applicationsView.js': ['coverage'],
-      'frontend/js/views/foxxActiveView.js': ['coverage'],
-      'frontend/js/views/foxxInstalledView.js': ['coverage'],
-      'frontend/js/views/foxxEditView.js': ['coverage'],
-      'frontend/js/views/foxxMountView.js': ['coverage'],
-      'frontend/js/views/appDocumentationView.js': ['coverage'],
-      'frontend/js/views/graphView.js': ['coverage'],
-      'frontend/js/views/graphManagementView.js': ['coverage'],
-      'frontend/js/views/addNewGraphView.js': ['coverage'],
-      'frontend/js/views/deleteGraphView.js': ['coverage'],
-      'frontend/js/views/dbSelectionView.js': ['coverage'],
-      'frontend/js/views/editListEntryView.js': ['coverage'],
-      'frontend/js/views/loginView.js': ['coverage'],
-      //'frontend/js/views/clusterDashboardView.js': ['coverage'],
-      //'frontend/js/views/clusterOverviewView.js': ['coverage'],
-      //'frontend/js/views/clusterServerView.js': ['coverage'],
-      //'frontend/js/views/clusterCoordinatorView.js': ['coverage'],
-      //'frontend/js/views/clusterDatabaseView.js': ['coverage'],
-      //'frontend/js/views/clusterCollectionView.js': ['coverage'],
-      //'frontend/js/views/clusterShardsView.js': ['coverage'],
-      'frontend/js/views/statisticBarView.js': ['coverage'],
-      'frontend/js/views/userBarView.js': ['coverage']*/
     },
 
     // test results reporter to use
@@ -338,7 +295,7 @@ module.exports = function(karma) {
     reporters: ['dots', 'coverage'],
 
     coverageReporter: {
-      type : 'html',
+      type : 'cobertura',
       dir : 'coverage/'
     },
 
