@@ -78,7 +78,7 @@ static void AddNewElement (TRI_multi_array_t* array, void* element) {
   i = hash % array->_nrAlloc;
 
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
 #endif
@@ -252,7 +252,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
     }
 #endif
 
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -298,7 +298,7 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
     }
 #endif
 
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -336,7 +336,7 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -394,7 +394,7 @@ bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -438,7 +438,7 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -462,7 +462,7 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
     uint64_t j = array->hashElement(array, array->_table + k * array->_elementSize) % array->_nrAlloc;
@@ -473,7 +473,7 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   return true;
@@ -500,7 +500,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
   // search the table -- we can only match keys
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -524,7 +524,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
     uint64_t j = array->hashElement(array, array->_table + k * array->_elementSize) % array->_nrAlloc;
@@ -535,7 +535,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   return true;
@@ -573,7 +573,7 @@ static void AddNewElementPointer (TRI_multi_pointer_t* array, void* element) {
   i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
 #endif
@@ -744,7 +744,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
       array->_nrProbesF++;
     }
 #endif
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // return whatever we found
@@ -770,7 +770,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -812,8 +812,10 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // we use this flag to speed up initial insertion into the index, i.e. when the
   // index is built for a collection and we know for sure no duplicate elements
   // will be inserted
-  while (array->_table[i] != NULL && (! checkEquality || ! array->isEqualElementElement(array, element, array->_table[i]))) {
-    i = (i + 1) % array->_nrAlloc;
+  while (array->_table[i] != NULL && 
+         (! checkEquality || 
+          ! array->isEqualElementElement(array, element, array->_table[i]))) {
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -862,7 +864,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -879,7 +881,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != NULL) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
@@ -890,7 +892,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
