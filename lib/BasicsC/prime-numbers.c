@@ -79,7 +79,7 @@ static const uint64_t Primes[251] = {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_NextPrime (uint64_t value) {
-  int i;
+  unsigned int i;
 
   for (i = 0; i < sizeof(Primes); ++i) {
     if (Primes[i] >= value) {
