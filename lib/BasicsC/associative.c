@@ -78,7 +78,7 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
   i = hash % array->_nrAlloc;
 
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
 #endif
@@ -244,7 +244,7 @@ void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -292,7 +292,7 @@ void* TRI_LookupByElementAssociativeArray (TRI_associative_array_t* array, void*
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -346,7 +346,7 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -399,7 +399,7 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -446,7 +446,7 @@ bool TRI_RemoveElementAssociativeArray (TRI_associative_array_t* array, void* el
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -470,7 +470,7 @@ bool TRI_RemoveElementAssociativeArray (TRI_associative_array_t* array, void* el
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
     uint64_t j = array->hashElement(array, array->_table + k * array->_elementSize) % array->_nrAlloc;
@@ -481,7 +481,7 @@ bool TRI_RemoveElementAssociativeArray (TRI_associative_array_t* array, void* el
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
@@ -508,7 +508,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -532,7 +532,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! array->isEmptyElement(array, array->_table + k * array->_elementSize)) {
     uint64_t j = array->hashElement(array, array->_table + k * array->_elementSize) % array->_nrAlloc;
@@ -543,7 +543,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
@@ -590,7 +590,7 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
   i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
 #endif
@@ -796,7 +796,7 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -826,7 +826,7 @@ void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -864,7 +864,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -922,7 +922,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -984,7 +984,7 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -1011,7 +1011,7 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
     i = hash % array->_nrAlloc;
     // search the table
     while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-      i = (i + 1) % array->_nrAlloc;
+      i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
       array->_nrProbesA++;
 #endif
@@ -1046,7 +1046,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -1063,7 +1063,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != NULL) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
@@ -1074,7 +1074,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
@@ -1102,7 +1102,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -1119,7 +1119,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != NULL) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
@@ -1130,7 +1130,7 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
@@ -1179,7 +1179,7 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
   i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
 #endif
@@ -1343,7 +1343,7 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
   TRI_ReadLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -1380,7 +1380,7 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
   TRI_ReadLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
@@ -1423,7 +1423,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -1480,7 +1480,7 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -1530,7 +1530,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -1548,7 +1548,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != NULL) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
@@ -1559,7 +1559,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success
@@ -1590,7 +1590,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
 #endif
@@ -1608,7 +1608,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrUsed--;
 
   // and now check the following places for items to move here
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (array->_table[k] != NULL) {
     uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
@@ -1619,7 +1619,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // return success

@@ -239,7 +239,7 @@ static void AddNewElement (TRI_hash_array_t* array,
   i = hash % array->_nrAlloc;
 
   while (! IsEmptyElement(array, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -441,7 +441,7 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -490,7 +490,7 @@ TRI_hash_index_element_t* TRI_LookupByElementHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualElementElement(array, element, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -545,7 +545,7 @@ int TRI_InsertElementHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualElementElement(array, element, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -623,7 +623,7 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -696,7 +696,7 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualElementElement(array, element, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -723,7 +723,7 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
   // so that there are no gaps in the array
   // ...........................................................................
 
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! IsEmptyElement(array, &array->_table[k])) {
     uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
@@ -734,7 +734,7 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -765,7 +765,7 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -791,7 +791,7 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
   // and now check the following places for items to move here
   // ...........................................................................
 
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! IsEmptyElement(array, &array->_table[k])) {
     uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
@@ -802,7 +802,7 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -861,7 +861,7 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t* array,
       TRI_PushBackVectorPointer(&result, &array->_table[i]);
     }
 
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -904,7 +904,7 @@ TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hash_array_t* array,
       TRI_PushBackVectorPointer(&result, &array->_table[i]);
     }
 
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   // ...........................................................................
@@ -944,7 +944,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualElementElement(array, element, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -1023,7 +1023,7 @@ int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
   // ...........................................................................
 
   while (! IsEmptyElement(array, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -1082,7 +1082,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualElementElement(array, element, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -1108,7 +1108,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
   // and now check the following places for items to move here
   // ...........................................................................
 
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! IsEmptyElement(array, &array->_table[k])) {
     uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
@@ -1119,7 +1119,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1150,7 +1150,7 @@ int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t* array,
 
   while (! IsEmptyElement(array, &array->_table[i])
       && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = (i + 1) % array->_nrAlloc;
+    i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
   arrayElement = &array->_table[i];
@@ -1176,7 +1176,7 @@ int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t* array,
   // and now check the following places for items to move here
   // ...........................................................................
 
-  k = (i + 1) % array->_nrAlloc;
+  k = TRI_IncModU64(i, array->_nrAlloc);
 
   while (! IsEmptyElement(array, &array->_table[k])) {
     uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
@@ -1187,7 +1187,7 @@ int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t* array,
       i = k;
     }
 
-    k = (k + 1) % array->_nrAlloc;
+    k = TRI_IncModU64(k, array->_nrAlloc);
   }
 
   return TRI_ERROR_NO_ERROR;
