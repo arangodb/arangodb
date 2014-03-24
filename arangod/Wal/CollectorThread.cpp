@@ -88,22 +88,54 @@ void CollectorThread::stop () {
 
 void CollectorThread::run () {
   while (_stop == 0) {
-    Logfile* logfile = _logfileManager->getCollectableLogfile();
+    // collect a logfile if any qualifies
+    this->collect();
 
-    if (logfile != nullptr) {
-      _logfileManager->setCollectionRequested(logfile);
-      // TODO: implement collection
-      
-      LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
-
-      _logfileManager->setCollectionDone(logfile);
-    }
-
+    // delete a logfile if any qualifies
+    this->remove();
+    
     CONDITION_LOCKER(guard, _condition);
     guard.wait(1000000);
   }
 
   _stop = 2;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform collection of a logfile (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::collect () {
+  Logfile* logfile = _logfileManager->getCollectableLogfile();
+
+  if (logfile == nullptr) {
+    return;
+  }
+
+  _logfileManager->setCollectionRequested(logfile);
+  // TODO: implement collection
+      
+  LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
+
+  _logfileManager->setCollectionDone(logfile);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform removal of a logfile (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::remove () {
+  Logfile* logfile = _logfileManager->getRemovableLogfile();
+
+  if (logfile == nullptr) {
+    return;
+  }
+
+  _logfileManager->removeLogfile(logfile);
 }
 
 // Local Variables:

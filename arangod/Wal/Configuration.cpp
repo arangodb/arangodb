@@ -126,7 +126,7 @@ bool Configuration::open () {
     marker->_crc  = 0;
     marker->_tick = 0;
 
-if (i % 500000 == 0) {
+if (i % 50000 == 0) {
   LOG_INFO("now at: %d", (int) i);
 }
     memcpy(static_cast<char*>(p) + sizeof(TRI_df_marker_t), "the fox is brown\0", strlen("the fox is brown") + 1);

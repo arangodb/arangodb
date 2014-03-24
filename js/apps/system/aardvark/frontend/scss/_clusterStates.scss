@@ -58,3 +58,13 @@ a.dbserver {
     right: 60px;
   }
 }
+
+.cluster-connection-check-success {
+  color: $c-positive;
+  margin-left: 20px;
+}
+
+.cluster-connection-check-fail {
+  color: $c-negative;
+  margin-left: 20px;
+}

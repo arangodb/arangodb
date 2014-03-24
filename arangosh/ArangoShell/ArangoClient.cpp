@@ -276,10 +276,10 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 
   clientOptions
     ("server.database", &_databaseName, "database name to use when connecting")
-    ("server.disable-authentication", &_disableAuthentication, "disable the password prompt and authentication when connecting")
+    ("server.disable-authentication", &_disableAuthentication, "disable the password prompt and authentication when connecting (note: this doesn't control whether a server requires authentication)")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
-    ("server.password", &_password, "password to use when connecting. Don't specify this option to get a password prompt")
+    ("server.password", &_password, "password to use when connecting. Don't specify this option to be prompted for the password (note: this requires --server.disable-authentication to be 'false')")
     ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
     ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
@@ -380,6 +380,11 @@ void ArangoClient::parse (ProgramOptions& options,
   // set temp path
   if (options.has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
+  }
+
+  if (options.has("server.username")) {
+    // if a username is specified explicitly, assume authentication is desired
+    _disableAuthentication = false;
   }
 
   // check if have a password

@@ -5,17 +5,28 @@
   window.CollectionView = Backbone.View.extend({
     el: '#modalPlaceholder',
     initialize: function () {
+      var self = this;
+      $.ajax("cluster/amICoordinator", {
+       async: false  
+     }).done(function(d) {
+        self.isCoordinator = d;
+      });
     },
 
     template: templateEngine.createTemplate("collectionView.ejs"),
 
     render: function() {
-      $(this.el).html(this.template.render({}));
+      var self = this;
+      $(this.el).html(this.template.render({
+        isCoordinator: self.isCoordinator
+      }));
       $('#change-collection').modal('show');
       $('#change-collection').on('hidden', function () {
       });
       $('#change-collection').on('shown', function () {
-        $('#change-collection-name').focus();
+        if (! self.isCoordinator) {
+          $('#change-collection-name').focus();
+        }
       });
       this.fillModal();
 
@@ -98,11 +109,16 @@
       $('#change-collection').modal('show');
     },
     saveModifiedCollection: function() {
-
-      var newname = $('#change-collection-name').val();
-      if (newname === '') {
-        arangoHelper.arangoError('No collection name entered!');
-        return 0;
+      var newname;
+      if (this.isCoordinator) {
+        newname = this.myCollection.name;
+      }
+      else {
+        newname = $('#change-collection-name').val();
+        if (newname === '') {
+          arangoHelper.arangoError('No collection name entered!');
+          return 0;
+        }
       }
 
       var collid = this.getCollectionId();

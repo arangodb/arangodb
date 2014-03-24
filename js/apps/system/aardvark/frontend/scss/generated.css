@@ -3644,6 +3644,22 @@ input.gv-radio-button {
   .snippet-no-num .sh_array {
     color: #00f; }
 
+@media (max-width: 798px) {
+  .arango-collection-ul {
+    display: none; }
+
+  .collection-dropdown ul {
+    width: auto !important; }
+
+  .arango-collection-select {
+    display: inline-block; } }
+@media (min-width: 799px) and (max-width: 1041px) {
+  .arango-collection-ul a {
+    font-size: 11px;
+    padding: 7px 5px 10px; } }
+@media (min-width: 1042px) and (max-width: 1284px) {
+  .arango-collection-ul a {
+    font-size: 13px; } }
 .arangoDataTable {
   border-spacing: 0 0;
   position: relative;

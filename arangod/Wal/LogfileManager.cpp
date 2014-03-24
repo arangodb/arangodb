@@ -75,7 +75,7 @@ LogfileManager::LogfileManager (Configuration* configuration)
     THROW_INTERNAL_ERROR("could not compile regex"); 
   }
 
-  _slots = new Slots(this, 32, 0);
+  _slots = new Slots(this, 16384, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +238,40 @@ void LogfileManager::signalSync () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief seal logfiles that require sealing
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::sealLogfiles () {
+  std::vector<Logfile*> logfiles;
+
+  // create a copy of all logfiles that can be sealed
+  {
+    READ_LOCKER(_logfilesLock);
+    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      Logfile* logfile = (*it).second;
+
+      if (logfile != nullptr && logfile->canBeSealed()) {
+        logfiles.push_back(logfile);
+      }
+    }
+  }
+
+  // now seal them
+  for (auto it = logfiles.begin(); it != logfiles.end(); ++it) {
+    // remove the logfile from the list of logfiles temporarily
+    // this is required so any concurrent operations on the logfile are not
+    // affect
+    Logfile* logfile = (*it);
+    unlinkLogfile(logfile);
+
+    // TODO: handle return value
+    logfile->seal();
+
+    relinkLogfile(logfile);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,22 +328,99 @@ int LogfileManager::allocateAndWrite (void* mem,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seal a logfile
+/// @brief re-inserts a logfile back into the inventory only
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::sealLogfile (Logfile* logfile) {
+void LogfileManager::relinkLogfile (Logfile* logfile) {
+  Logfile::IdType const id = logfile->id();
+
+  WRITE_LOCKER(_logfilesLock);
+  _logfiles.insert(make_pair(id, logfile));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory only
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::unlinkLogfile (Logfile* logfile) {
+  Logfile::IdType const id = logfile->id();
+
+  {
+    WRITE_LOCKER(_logfilesLock);
+    auto it = _logfiles.find(id);
+
+    if (it == _logfiles.end()) {
+      return;
+    }
+
+    _logfiles.erase(it);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory and in the file system
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::removeLogfile (Logfile* logfile) {
+  assert(false);
+  unlinkLogfile(logfile);
+    
+  // old filename
+  Logfile::IdType const id = logfile->id();
+  std::string const filename = logfileName(id);
+  
+  LOG_INFO("removing logfile '%s'", filename.c_str());
+  
+  // now close the logfile
+  delete logfile;
+  
+  int res = TRI_ERROR_NO_ERROR;
+  // now physically remove the file
+  basics::FileUtils::remove(filename, &res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to remove logfile '%s': %s", filename.c_str(), TRI_errno_string(res));
+    return;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request sealing of a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::requestSealing (Logfile* logfile) {
   assert(logfile != nullptr);
 
   {
     WRITE_LOCKER(_logfilesLock);
-    logfile->seal();
+    logfile->setSealRequested();
+    signalSync();
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a logfile for writing
+/// @brief return the file descriptor of a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
+  READ_LOCKER(_logfilesLock);
+  auto it = _logfiles.find(id);
+
+  if (it == _logfiles.end()) {
+    // error
+    return -1;
+  }
+
+  Logfile* logfile = (*it).second;
+  assert(logfile != nullptr);
+
+  return logfile->fd();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
@@ -347,8 +458,36 @@ Logfile* LogfileManager::getCollectableLogfile () {
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
 
-    if (logfile != nullptr && logfile->canCollect()) {
+    if (logfile != nullptr && logfile->canBeCollected()) {
       return logfile;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile to remove. this may return nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getRemovableLogfile () {
+  size_t numberOfLogfiles = 0;
+  Logfile* first = nullptr;
+
+  READ_LOCKER(_logfilesLock);
+
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr && logfile->canBeRemoved()) {
+      if (first == nullptr) {
+        first = logfile;
+      }
+
+      if (++numberOfLogfiles >= 3) { 
+        assert(first != nullptr);
+        return first;
+      }
     }
   }
 
@@ -624,13 +763,13 @@ int LogfileManager::openLogfiles () {
 
     assert((*it).second == nullptr);
 
-    Logfile* logfile = Logfile::open(filename);
+    Logfile* logfile = Logfile::open(filename, id);
 
     if (logfile == nullptr) {
       _logfiles.erase(it++);
     }
     else {
-      (*it).second = Logfile::open(filename);
+      (*it).second = logfile;
       ++it;
     }
   }
@@ -703,19 +842,19 @@ int LogfileManager::ensureDirectory () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return an absolute filename for a logfile id
-////////////////////////////////////////////////////////////////////////////////
-
-std::string LogfileManager::logfileName (Logfile::IdType id) const {
-  return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) + std::string(".db");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute name of the shutdown file
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string LogfileManager::shutdownFilename () const {
   return _directory + std::string("SHUTDOWN");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an absolute filename for a logfile id
+////////////////////////////////////////////////////////////////////////////////
+
+std::string LogfileManager::logfileName (Logfile::IdType id) const {
+  return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) + std::string(".db");
 }
 
 // Local Variables:
