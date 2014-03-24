@@ -123,7 +123,7 @@ void AllocatorThread::run () {
     if (createRequests == 0 && 
         ! _logfileManager->hasReserveLogfiles()) {
       if (! createLogfile()) {
-        LOG_ERROR("unable to create new spare logfile");
+        LOG_ERROR("unable to create new reserve wal logfile");
       }
     }
     else if (createRequests > 0) {
