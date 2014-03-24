@@ -246,6 +246,7 @@ module.exports = function(karma) {
       'test/specs/collections/clusterDatabasesSpec.js',
       'test/specs/collections/clusterCollectionsSpec.js',
       'test/specs/collections/clusterShardsSpec.js',
+      'test/specs/collections/arangoCollectionsSpec.js',
 
 
       // Views
