@@ -2648,6 +2648,14 @@ a.dbserver.single {
 a.dbserver.double {
   right: 60px; }
 
+.cluster-connection-check-success {
+  color: #8aa051;
+  margin-left: 20px; }
+
+.cluster-connection-check-fail {
+  color: #da4f49;
+  margin-left: 20px; }
+
 .machineClass {
   background-color: #e1e1e1;
   margin-left: 31px;
