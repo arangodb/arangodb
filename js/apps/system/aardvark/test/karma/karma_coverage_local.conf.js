@@ -1,7 +1,7 @@
 // Karma configuration
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
-filesJSON = require("./files.json");
+filesJSON = require("./file.json");
 
 module.exports = function(karma) {
 
