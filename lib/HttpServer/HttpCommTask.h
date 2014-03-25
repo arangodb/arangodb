@@ -592,7 +592,7 @@ namespace triagens {
 
             // not found 
             else if (authResult == HttpResponse::NOT_FOUND) {
-              HttpResponse response(HttpResponse::NOT_FOUND);
+              HttpResponse response(authResult);
               response.setContentType("application/json; charset=utf-8");
   
               response.body().appendText("{\"error\":true,\"errorMessage\":\"")
@@ -607,6 +607,21 @@ namespace triagens {
               this->resetState();
             }
             
+            // forbidden
+            else if (authResult == HttpResponse::FORBIDDEN) {
+              HttpResponse response(authResult);
+              response.setContentType("application/json; charset=utf-8");
+
+              response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
+                             .appendInteger((int) authResult)
+                             .appendText(",\"errorNum\":")
+                             .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
+                             .appendText("}");
+               
+              this->handleResponse(&response);
+              this->resetState();
+            }
+
             // not authenticated
             else {
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
