@@ -47,13 +47,13 @@
     it("should getPosition for loaded documents sorted by type", function() {
 
       col.models = [
-        new window.arangoCollection({isSystem : true, name: "Heinz Herbert"}),
-        new window.arangoCollection({type : 'edge', name: "Heinz Herbert"}),
-        new window.arangoCollection({type: 'document', name: "Heinz Herbert Gustav"}),
-        new window.arangoCollection({type: 'document', name: "Heinz Herbert"}),
-        new window.arangoCollection({status: 'loaded', name: "Heinz Herbert Karl"}),
-        new window.arangoCollection({status: 'unloaded', name: "Heinz Herbert"}),
-        new window.arangoCollection({name: "Heinbert"})
+        new window.arangoCollectionModel({isSystem : true, name: "Heinz Herbert"}),
+        new window.arangoCollectionModel({type : 'edge', name: "Heinz Herbert"}),
+        new window.arangoCollectionModel({type: 'document', name: "Heinz Herbert Gustav"}),
+        new window.arangoCollectionModel({type: 'document', name: "Heinz Herbert"}),
+        new window.arangoCollectionModel({status: 'loaded', name: "Heinz Herbert Karl"}),
+        new window.arangoCollectionModel({status: 'unloaded', name: "Heinz Herbert"}),
+        new window.arangoCollectionModel({name: "Heinbert"})
       ];
       col.searchOptions = {
           searchPhrase: "Heinz Herbert",
@@ -73,13 +73,13 @@
     it("should getPosition for unloaded edges documents sorted by type", function() {
 
       col.models = [
-          new window.arangoCollection({isSystem : true, name: "Heinz Herbert"}),
-          new window.arangoCollection({type : 'edge', name: "Heinz Herbert"}),
-          new window.arangoCollection({type: 'document', name: "Heinz Herbert Gustav"}),
-          new window.arangoCollection({type: 'document', name: "Heinz Herbert"}),
-          new window.arangoCollection({status: 'loaded', name: "Heinz Herbert Karl"}),
-          new window.arangoCollection({status: 'unloaded', name: "Heinz Herbert"}),
-          new window.arangoCollection({name: "Heinbert"})
+          new window.arangoCollectionModel({isSystem : true, name: "Heinz Herbert"}),
+          new window.arangoCollectionModel({type : 'edge', name: "Heinz Herbert"}),
+          new window.arangoCollectionModel({type: 'document', name: "Heinz Herbert Gustav"}),
+          new window.arangoCollectionModel({type: 'document', name: "Heinz Herbert"}),
+          new window.arangoCollectionModel({status: 'loaded', name: "Heinz Herbert Karl"}),
+          new window.arangoCollectionModel({status: 'unloaded', name: "Heinz Herbert"}),
+          new window.arangoCollectionModel({name: "Heinbert"})
       ];
       col.searchOptions = {
           searchPhrase: "Heinz Herbert",
