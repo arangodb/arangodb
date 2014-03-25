@@ -459,12 +459,14 @@ static int WriteShutdownInfo (TRI_server_t* server) {
 static bool CanUseDatabase (TRI_vocbase_t* vocbase,
                             char const* username,
                             char const* password) {
+  bool mustChange;
+
   if (! vocbase->_settings.requireAuthentication) {
     // authentication is turned off
     return true;
   }
 
-  return TRI_CheckAuthenticationAuthInfo(vocbase, NULL, username, password);
+  return TRI_CheckAuthenticationAuthInfo(vocbase, NULL, username, password, &mustChange);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
