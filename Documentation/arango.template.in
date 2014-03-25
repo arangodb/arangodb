@@ -270,6 +270,7 @@ ALIASES += \
 # other aliases
 ALIASES += \
   "VERSION=@PACKAGE_VERSION@" \
+  "COMMENT{1}=" \
   "LIT{1}=<tt>\1</tt>" \
   "LIT{2}=<tt>\1, \2</tt>" \
   "LIT{3}=<tt>\1, \2, \3</tt>" \

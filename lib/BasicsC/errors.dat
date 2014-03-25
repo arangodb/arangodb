@@ -228,10 +228,11 @@ ERROR_TRANSACTION_DISALLOWED_OPERATION,1653,"disallowed operation inside transac
 ## User management
 ################################################################################
 
-ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used"
-ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used"
-ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists"
-ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist"
+ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used."
+ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used."
+ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
+ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
+ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 
 ################################################################################
 ## Application management
