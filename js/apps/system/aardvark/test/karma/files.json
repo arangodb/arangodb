@@ -212,6 +212,8 @@
   "test/specs/collections/clusterShardsSpec.js",
   "test/specs/collections/arangoCollectionsSpec.js",
   "test/specs/collections/arangoDatabaseSpec.js",
+  "test/specs/collections/arangoDocumentSpec.js",
+  "test/specs/collections/arangoDocumentsSpec.js",
 
 
   "test/specs/views/editListEntryViewSpec.js",
