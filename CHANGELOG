@@ -1,9 +1,14 @@
-v2.0.1-rc1 (XXXX-XX-XX)
------------------------
+v2.0.1 (XXXX-XX-XX)
+-------------------
 
-* automatically assume that `--server.disable-authentication` should be `false` when 
-  a username is specified on the command-line for one of the command-line tools
-  (arangosh, arangodump etc.)
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
 
 * fixed isses in arango-dfdb:
 
