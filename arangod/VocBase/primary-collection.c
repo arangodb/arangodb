@@ -192,7 +192,7 @@ static TRI_datafile_t* CreateCompactor (TRI_primary_collection_t* primary,
 
   if (collection->_info._isVolatile) {
     // in-memory collection
-    journal = TRI_CreateDatafile(NULL, fid, maximalSize);
+    journal = TRI_CreateDatafile(NULL, fid, maximalSize, true);
   }
   else {
     char* jname;
@@ -211,7 +211,7 @@ static TRI_datafile_t* CreateCompactor (TRI_primary_collection_t* primary,
       TRI_UnlinkFile(filename);
     }
 
-    journal = TRI_CreateDatafile(filename, fid, maximalSize);
+    journal = TRI_CreateDatafile(filename, fid, maximalSize, true);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
@@ -284,7 +284,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
   if (collection->_info._isVolatile) {
     // in-memory collection
-    journal = TRI_CreateDatafile(NULL, fid, maximalSize);
+    journal = TRI_CreateDatafile(NULL, fid, maximalSize, true);
   }
   else {
     char* jname;
@@ -299,7 +299,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-    journal = TRI_CreateDatafile(filename, fid, maximalSize);
+    journal = TRI_CreateDatafile(filename, fid, maximalSize, true);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 

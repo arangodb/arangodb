@@ -34,6 +34,16 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class CollectorThread
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait interval for the collector thread when idle
+////////////////////////////////////////////////////////////////////////////////
+
+const uint64_t CollectorThread::Interval = 1000000;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -89,13 +99,16 @@ void CollectorThread::stop () {
 void CollectorThread::run () {
   while (_stop == 0) {
     // collect a logfile if any qualifies
-    this->collect();
+    bool worked = this->collectLogfile();
 
     // delete a logfile if any qualifies
-    this->remove();
+    worked |= this->removeLogfile();
     
     CONDITION_LOCKER(guard, _condition);
-    guard.wait(1000000);
+    if (! worked) {
+      // sleep only if there was nothing to do
+      guard.wait(Interval);
+    }
   }
 
   _stop = 2;
@@ -109,11 +122,11 @@ void CollectorThread::run () {
 /// @brief perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::collect () {
+bool CollectorThread::collectLogfile () {
   Logfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
-    return;
+    return false;
   }
 
   _logfileManager->setCollectionRequested(logfile);
@@ -122,20 +135,22 @@ void CollectorThread::collect () {
   LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
 
   _logfileManager->setCollectionDone(logfile);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform removal of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::remove () {
+bool CollectorThread::removeLogfile () {
   Logfile* logfile = _logfileManager->getRemovableLogfile();
 
   if (logfile == nullptr) {
-    return;
+    return false;
   }
 
   _logfileManager->removeLogfile(logfile);
+  return true;
 }
 
 // Local Variables:

@@ -32,6 +32,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Wal/Logfile.h"
+#include "Wal/SyncRegion.h"
 
 namespace triagens {
   namespace wal {
@@ -106,6 +107,12 @@ namespace triagens {
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile descriptor (it caches the descriptor for performance)
+////////////////////////////////////////////////////////////////////////////////
+
+        int getLogfileDescriptor (SyncRegion const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -135,6 +142,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         volatile sig_atomic_t _stop;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logfile descriptor cache
+////////////////////////////////////////////////////////////////////////////////
+
+        struct {
+          Logfile::IdType  id;
+          int              fd;
+        }
+        _logfileCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait interval for the synchroniser thread when idle
+////////////////////////////////////////////////////////////////////////////////
+
+        static const uint64_t Interval;
 
     };
 
