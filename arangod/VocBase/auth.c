@@ -41,11 +41,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -242,6 +237,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   char* password;
   bool active;
   bool found;
+  bool mustChange;
   TRI_vocbase_auth_t* result;
 
   shaper = primary->_shaper;
@@ -273,6 +269,13 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
+  // extract must-change-password flag
+  mustChange = ExtractBooleanShapedJson(shaper, document, "changePassword", &found);
+
+  if (! found) {
+    mustChange = false;
+  }
+
   result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
 
   if (result == NULL) {
@@ -286,13 +289,15 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   result->_username = user;
   result->_password = password;
   result->_active = active;
+  result->_mustChange = mustChange;
 
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the authentication info
-/// the caller must acquire the lock itself
+///
+/// @note the caller must acquire the lock itself
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
@@ -333,18 +338,9 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
   vocbase->_authCache._nrUsed = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the authentication info
@@ -596,7 +592,8 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
-                              char const* hash) {
+                              char const* hash,
+                              bool* mustChange) {
   TRI_vocbase_auth_cache_t* cached;
   char* username;
 
@@ -607,6 +604,7 @@ char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
 
   if (cached != NULL) {
     username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
+    *mustChange = cached->_mustChange;
   }
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
@@ -622,7 +620,8 @@ char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
 bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
                                       char const* hash,
                                       char const* username,
-                                      char const* password) {
+                                      char const* password,
+                                      bool* mustChange) {
   TRI_vocbase_auth_t* auth;
   bool res;
   char* hex;
@@ -642,9 +641,12 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
     return false;
   }
 
+  *mustChange = auth->_mustChange;
+
   // convert password
   res = false;
 
+  // salted password
   if (TRI_IsPrefixString(auth->_password, "$1$")) {
     if (strlen(auth->_password) < 12 || auth->_password[11] != '$') {
       LOG_WARNING("found corrupted password for user '%s'", username);
@@ -673,6 +675,8 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
       TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
     }
   }
+
+  // unsalted password
   else {
     len = strlen(password);
     sha256 = TRI_SHA256String(password, len, &sha256Len);
@@ -700,8 +704,9 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
     if (cached != NULL) {
       void* old;
 
-      cached->_hash     = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
-      cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+      cached->_hash       = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
+      cached->_username   = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+      cached->_mustChange = auth->_mustChange;
 
       if (cached->_hash == NULL || cached->_username == NULL) {
         FreeAuthCacheInfo(cached);
@@ -722,10 +727,6 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   return res;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
