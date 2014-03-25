@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
-/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data */
 (function() {
   "use strict";
 
   window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
-      model: arangoCollection,
+      model: arangoCollectionModel,
 
       searchOptions : {
         searchPhrase: null,

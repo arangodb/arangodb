@@ -6,7 +6,7 @@
   "use strict";
 
   describe("Arango Collection Model", function() {
-    var myCollection = new window.arangoCollection();
+    var myCollection = new window.arangoCollectionModel();
     it("verifies urlRoot", function() {
       expect(myCollection.urlRoot).toEqual('/_api/collection');
     });
@@ -14,12 +14,12 @@
 
   describe("Arango Database Model", function() {
     it("verifies defaults", function() {
-      var myCollection = new window.arangoCollection();
+      var myCollection = new window.arangoCollectionModel();
       expect(myCollection.get('id')).toEqual('');
       expect(myCollection.get('name')).toEqual('');
       expect(myCollection.get('status')).toEqual('');
       expect(myCollection.get('type')).toEqual('');
-      expect(myCollection.isSystem).toBeFalsy();
+      expect(myCollection.get('isSystem')).toBeFalsy();
       expect(myCollection.get('picture')).toEqual('');
     });
   });
@@ -29,7 +29,7 @@
       var name = 'blub',
         status = 'active',
         type   = 'myType',
-        myCollection = new window.arangoCollection(
+        myCollection = new window.arangoCollectionModel(
           {
             name    : name,
             status  : status,
