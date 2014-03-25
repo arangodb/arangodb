@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase, btoa, _*/
+/*global window, $, Backbone, document, arangoCollectionModel,arangoHelper, arangoDatabase, btoa, _*/
 
 (function() {
   "use strict";

@@ -90,7 +90,7 @@
   "frontend/js/graphViewer/ui/graphViewerPreview.js",
 
   "frontend/js/models/currentDatabase.js",
-  "frontend/js/models/arangoCollection.js",
+  "frontend/js/models/arangoCollectionModel.js",
   "frontend/js/models/arangoDatabase.js",
   "frontend/js/models/arangoDocument.js",
   "frontend/js/models/arangoLog.js",
@@ -200,11 +200,13 @@
 
   "test/specs/models/currentDatabaseSpec.js",
   "test/specs/models/graphSpec.js",
-  "test/specs/models/arangoCollectionSpec.js",
+  "test/specs/models/arangoCollectionModelSpec.js",
   "test/specs/models/arangoDatabaseSpec.js",
   "test/specs/models/arangoDocumentSpec.js",
+  "test/specs/models/arangoLogModelSpec.js",
   "test/specs/models/arangoStatisticsDescriptionSpec.js",
   "test/specs/models/arangoStatisticsSpec.js",
+  "test/specs/models/foxxSpec.js",
 
   "test/specs/collections/clusterServersSpec.js",
   "test/specs/collections/clusterDatabasesSpec.js",
