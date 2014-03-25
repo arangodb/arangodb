@@ -180,9 +180,9 @@
       "test/specs/graphViewer/specAdapter/foxxAdapterSpec.js",
       "test/specs/graphViewer/specAdapter/previewAdapterSpec.js",
       "test/specs/graphViewer/specAdapter/arangoAdapterUISpec.js",
-      "test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js", 
+      "test/specs/graphViewer/specNodeShaper/nodeShaperSpec.js",
       "test/specs/graphViewer/specNodeShaper/nodeShaperUISpec.js",
-      "test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js", 
+      "test/specs/graphViewer/specEdgeShaper/edgeShaperSpec.js",
       "test/specs/graphViewer/specEdgeShaper/edgeShaperUISpec.js",
       "test/specs/graphViewer/specForceLayouter/forceLayouterSpec.js",
       "test/specs/graphViewer/specForceLayouter/forceLayouterUISpec.js",
@@ -195,7 +195,7 @@
       "test/specs/graphViewer/specGraphViewer/graphViewerWidgetSpec.js",
       "test/specs/graphViewer/specGraphViewer/graphViewerPreviewSpec.js",
       "test/specs/graphViewer/specNodeReducer/nodeReducerSpec.js",
-      "test/specs/graphViewer/specContextMenu/contextMenuSpec.js", 
+      "test/specs/graphViewer/specContextMenu/contextMenuSpec.js",
       "test/specs/arango/arangoSpec.js",
 
       "test/specs/models/currentDatabaseSpec.js",
@@ -205,6 +205,8 @@
       "test/specs/collections/clusterDatabasesSpec.js",
       "test/specs/collections/clusterCollectionsSpec.js",
       "test/specs/collections/clusterShardsSpec.js",
+      "test/specs/collections/arangoCollectionsSpec.js",
+      "test/specs/collections/arangoDatabaseSpec.js",
 
 
       "test/specs/views/editListEntryViewSpec.js",
