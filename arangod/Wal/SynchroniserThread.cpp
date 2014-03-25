@@ -36,6 +36,16 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                          class SynchroniserThread
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait interval for the synchroniser thread when idle
+////////////////////////////////////////////////////////////////////////////////
+
+const uint64_t SynchroniserThread::Interval = 500000;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -48,8 +58,9 @@ SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager)
     _logfileManager(logfileManager),
     _condition(),
     _waiting(0),
-    _stop(0) {
-  
+    _stop(0),
+    _logfileCache() {
+
   allowAsynchronousCancelation();
 }
 
@@ -108,25 +119,27 @@ void SynchroniserThread::run () {
       waiting = _waiting;
     }
 
+    // go on without the lock
     if (waiting > 0) {
+      // get region to sync
       SyncRegion region = _logfileManager->slots()->getSyncRegion();
 
       if (region.logfileId != 0) {
-        void** mmHandle = NULL;
-
         // now perform the actual syncing
 
         // get the logfile's file descriptor
         // TODO: we might cache the file descriptor here
-        int fd = _logfileManager->getLogfileDescriptor(region.logfileId);
+        int fd = getLogfileDescriptor(region);
 
         if (fd < 0) {
           // invalid file descriptor
           LOG_FATAL_AND_EXIT("invalid wal logfile file descriptor");
         }
         else {
-          // LOG_INFO("Syncing from %p to %p, length: %d", region.mem, region.mem + region.size, (int) region.size);
+          void** mmHandle = NULL;
           bool res = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+          
+        //  LOG_INFO("Syncing from %p to %p, length: %d", region.mem, region.mem + region.size, (int) region.size);
 
           if (! res) {
             LOG_ERROR("unable to sync wal logfile region");
@@ -134,23 +147,45 @@ void SynchroniserThread::run () {
           }
         }
         
-        _logfileManager->slots()->unuse(region);
+        _logfileManager->slots()->returnSyncRegion(region);
       }
 
+      // seal any logfiles that require sealing
       _logfileManager->sealLogfiles();
     }
 
+    // now wait until we are woken up or there is something to do
     CONDITION_LOCKER(guard, _condition);
+
     if (waiting > 0) {
       assert(_waiting >= waiting);
       _waiting -= waiting;
     }
     if (_waiting == 0) {
-      guard.wait(100000000);
+      guard.wait(Interval);
     }
   }
 
   _stop = 2;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile descriptor (it caches the descriptor for performance)
+////////////////////////////////////////////////////////////////////////////////
+
+int SynchroniserThread::getLogfileDescriptor (SyncRegion const& region) {
+  if (region.logfileId != _logfileCache.id || 
+      _logfileCache.id == 0) {
+
+    _logfileCache.id = region.logfileId;
+    _logfileCache.fd = _logfileManager->getLogfileDescriptor(region.logfileId);
+  }
+
+  return _logfileCache.fd;
 }
 
 // Local Variables:

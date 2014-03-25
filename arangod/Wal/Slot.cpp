@@ -42,7 +42,8 @@ Slot::Slot ()
     _logfileId(0),
     _mem(nullptr),
     _size(0),
-    _status(StatusType::UNUSED) {
+    _status(StatusType::UNUSED),
+    _waitForSync(false) {
 
 }
 
@@ -89,11 +90,12 @@ std::string Slot::statusText () const {
 
 void Slot::setUnused () {
   assert(isReturned());
-  _tick      = 0;
-  _logfileId = 0;
-  _mem       = nullptr;
-  _size      = 0;
-  _status    = StatusType::UNUSED;
+  _tick        = 0;
+  _logfileId   = 0;
+  _mem         = nullptr;
+  _size        = 0;
+  _status      = StatusType::UNUSED;
+  _waitForSync = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,9 +118,10 @@ void Slot::setUsed (void* mem,
 /// @brief mark as slot as returned
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slot::setReturned () {
+void Slot::setReturned (bool waitForSync) {
   assert(isUsed());
   _status = StatusType::RETURNED;
+  _waitForSync = waitForSync;
 }
 
 // Local Variables:

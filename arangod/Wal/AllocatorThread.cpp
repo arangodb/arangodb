@@ -33,6 +33,16 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class AllocatorThread
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait interval for the allocator thread when idle
+////////////////////////////////////////////////////////////////////////////////
+
+const uint64_t AllocatorThread::Interval = 1000000;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -84,21 +94,19 @@ void AllocatorThread::stop () {
 
 void AllocatorThread::signalLogfileCreation () {
   CONDITION_LOCKER(guard, _condition);
+
   if (_createRequests == 0) {
     ++_createRequests;
     guard.signal();
-    
-    LOG_INFO("got logfile creation signal");
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new logfile
+/// @brief creates a new reserve logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AllocatorThread::createLogfile () {
-  LOG_INFO("creating new logfile"); 
-  int res = _logfileManager->allocateDatafile();
+bool AllocatorThread::createReserveLogfile () {
+  int res = _logfileManager->createReserveLogfile();
 
   return (res == TRI_ERROR_NO_ERROR);
 }
@@ -120,26 +128,27 @@ void AllocatorThread::run () {
       createRequests = _createRequests;
     }
 
-    if (createRequests == 0 && 
-        ! _logfileManager->hasReserveLogfiles()) {
-      if (! createLogfile()) {
-        LOG_ERROR("unable to create new reserve wal logfile");
+    if (createRequests == 0 && ! _logfileManager->hasReserveLogfiles()) {
+      if (createReserveLogfile()) {
+        continue;
       }
+
+      LOG_ERROR("unable to create new wal reserve logfile");
     }
     else if (createRequests > 0) {
-      if (createLogfile()) {
+      if (createReserveLogfile()) {
         CONDITION_LOCKER(guard, _condition);
         --_createRequests;
 
         continue;
       }
       
-      LOG_ERROR("unable to create new wal logfile");
+      LOG_ERROR("unable to create new wal reserve logfile");
     }
     
     {  
       CONDITION_LOCKER(guard, _condition);
-      guard.wait(1000000);
+      guard.wait(Interval);
     }
   }
 

@@ -446,7 +446,8 @@ TRI_df_skip_marker_t;
 
 TRI_datafile_t* TRI_CreateDatafile (char const*,
                                     TRI_voc_fid_t fid,
-                                    TRI_voc_size_t);
+                                    TRI_voc_size_t,
+                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new anonymous datafile
@@ -502,6 +503,14 @@ void TRI_FreeDatafile (TRI_datafile_t*);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the initial datafile header marker
+////////////////////////////////////////////////////////////////////////////////
+ 
+int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t*,
+                                          TRI_voc_fid_t,
+                                          TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aligns in datafile blocks
