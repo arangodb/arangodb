@@ -336,9 +336,9 @@
 
     dashboard: function() {
       this.naviView.selectMenuItem('dashboard-menu');
-      if (this.statisticsDescription === undefined) {
-        this.statisticsDescription = new window.StatisticsDescription();
-        this.statisticsDescription.fetch({
+      if (this.statisticsDescriptionCollection === undefined) {
+        this.statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
+        this.statisticsDescriptionCollection.fetch({
           async:false
         });
       }
@@ -348,7 +348,7 @@
       if (this.dashboardView === undefined) {
         this.dashboardView = new dashboardView({
           collection: this.statisticsCollection,
-          description: this.statisticsDescription,
+          description: this.statisticsDescriptionCollection,
           documentStore: window.arangoDocumentsStore,
           dygraphConfig : window.dygraphConfig
         });
