@@ -213,7 +213,9 @@ static void CleanupExampleObject (TRI_memory_zone_t* zone,
 
   // clean shaped json objects
   for (size_t j = 0;  j < n;  ++j) {
-    TRI_FreeShapedJson(zone, values[j]);
+    if (values[j] != 0) {
+      TRI_FreeShapedJson(zone, values[j]);
+    }
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
@@ -264,6 +266,9 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = example->Get(key);
 
+    // property initialise the memory
+    values[i] = 0;
+
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
@@ -283,6 +288,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
       }
     }
     else {
+      CleanupExampleObject(shaper->_memoryZone, i, pids, values);
       *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                    "cannot convert attribute path to UTF8");
       return TRI_ERROR_BAD_PARAMETER;
@@ -845,6 +851,7 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
       if (parameters == 0) {
         return 0;
       }
+
       indexOperator = TRI_CreateIndexOperator(operatorType, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
       break;
     }
