@@ -202,6 +202,14 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t*, void* key, void* old);
 /// @brief associative multi array of pointers
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef struct TRI_multi_pointer_entry_s {
+  void* ptr;   // a pointer to the data stored in this slot
+  void* next;  // a pointer to the data following in the linked list of all
+               // items with the same key
+  void* prev;  // a pointer to the data preceding in the linked list of all
+               // items with the same key
+} TRI_multi_pointer_entry_t;
+
 typedef struct TRI_multi_pointer_s {
   uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const*);
   uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const*);
@@ -212,7 +220,7 @@ typedef struct TRI_multi_pointer_s {
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
 
-  void** _table;         // the table itself
+  TRI_multi_pointer_entry_t* _table;         // the table itself
 
 #ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
@@ -294,7 +302,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t*,
 void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
+/// @brief adds a key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*,

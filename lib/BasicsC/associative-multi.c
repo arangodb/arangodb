@@ -550,87 +550,6 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new element
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddNewElementPointer (TRI_multi_pointer_t* array, void* element) {
-  uint64_t hash;
-  uint64_t i;
-
-  // compute the hash
-  hash = array->hashElement(array, element);
-
-  // search the table
-  i = hash % array->_nrAlloc;
-
-  while (array->_table[i] != NULL) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesR++;
-#endif
-  }
-
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the array
-////////////////////////////////////////////////////////////////////////////////
-
-static int ResizeMultiPointer (TRI_multi_pointer_t* array,
-                               size_t targetSize) {
-  void** oldTable;
-  uint64_t oldAlloc;
-  uint64_t j;
-
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
-
-  array->_nrAlloc = TRI_NextPrime((uint64_t) targetSize);
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
-
-  if (array->_table == NULL) {
-    array->_nrAlloc = oldAlloc;
-    array->_table = oldTable;
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  array->_nrUsed = 0;
-#ifdef TRI_INTERNAL_STATS
-  array->_nrResizes++;
-#endif
-
-  // table is already clear by allocate, copy old data
-  for (j = 0; j < oldAlloc; j++) {
-    if (oldTable[j] != NULL) {
-      AddNewElementPointer(array, oldTable[j]);
-    }
-  }
-
-  if (oldTable != NULL) {
-    TRI_Free(array->_memoryZone, oldTable);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -658,7 +577,8 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrUsed  = 0;
   array->_nrAlloc = 0;
 
-  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+  if (NULL == (array->_table = TRI_Allocate(zone, 
+                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -702,6 +622,39 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
+                                         void* element,
+                                         bool checkEquality) {
+  // This either finds a place to store element or an entry in the table
+  // that is equal to element. If checkEquality is set to false, the caller
+  // guarantees that there is no entry that compares equal to element
+  // in the table, which saves a lot of element comparisons. This function
+  // always returns a pointer into the table, which is either empty or 
+  // points to an entry that compares equal to element.
+
+  uint64_t hash;
+  uint64_t i;
+
+  hash = array->hashElement(array, element);
+  i = hash % array->_nrAlloc;
+
+  while (array->_table[i].ptr != NULL && 
+         (! checkEquality || 
+          ! array->isEqualElementElement(array, element, 
+                                                array->_table[i].ptr))) {
+    i = TRI_IncModU64(i, array->_nrAlloc);
+#ifdef TRI_INTERNAL_STATS
+    array->_nrProbesA++;
+#endif
+  }
+  return i;
+}
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -709,6 +662,99 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key/element to the array
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
+                                     void* element,
+                                     const bool overwrite,
+                                     const bool checkEquality) {
+
+  // if the checkEquality flag is not set, we do not check for element
+  // equality we use this flag to speed up initial insertion into the
+  // index, i.e. when the index is built for a collection and we know
+  // for sure no duplicate elements will be inserted
+
+  uint64_t hash;
+  uint64_t i, j, k;
+  void* old;
+
+#ifdef TRI_INTERNAL_STATS
+  // update statistics
+  array->_nrAdds++;
+#endif
+
+  // compute the hash of the key first
+  hash = array->hashKey(array, element);
+  i = hash % array->_nrAlloc;
+
+  // If this slot is free, just use it:
+  if (NULL == array->_table[i].ptr) {
+    array->_table[i].ptr = element;
+    array->_table[i].next = NULL;
+    array->_table[i].prev = NULL;
+    return NULL;
+  }
+
+  // Now find the first slot with an entry with the same key or a free slot:
+  while (array->_table[i].ptr != NULL &&
+         ! array->isEqualKeyElement(array, element, array->_table[i].ptr)) {
+    i = TRI_IncModU64(i, array->_nrAlloc);
+  }
+
+  // If this is free, we are the first with this key:
+  if (NULL == array->_table[i].ptr) {
+    array->_table[i].ptr = element;
+    array->_table[i].next = NULL;
+    array->_table[i].prev = NULL;
+    return NULL;
+  }
+
+  // Otherwise, entry i points to the beginning of the linked list of which 
+  // we want to make element a member. Perhaps an equal element is right here:
+  if (checkEquality && array->isEqualElementElement(array, element,
+                                                    array->_table[i].ptr)) {
+    old = array->_table[i].ptr;
+    if (overwrite) {
+      array->_table[i].ptr = element;
+    }
+    return old;
+  }
+
+  // Now find a new home for element in this linked list:
+  j = FindElementPlace(array, element, checkEquality);
+
+  old = array->_table[j].ptr;
+
+  // if we found an element, return
+  if (old != NULL) {
+    if (overwrite) {
+      array->_table[i].ptr = element;
+    }
+    return old;
+  }
+
+  // add a new element to the associative array and linked list (in pos 2):
+  array->_table[j].ptr = element;
+  array->_table[j].next = array->_table[i].next;
+  array->_table[j].prev = array->_table[i].ptr;
+  array->_table[i].next = array->_table[j].ptr;
+  // Finally, we need to find the successor to patch it up:
+  if (array->_table[j].next != NULL) {
+    k = FindElementPlace(array, array->_table[j].next, true);
+    array->_table[k].prev = element;
+  }
+  array->_nrUsed++;
+
+  // if we were adding and the table is more than half full, extend it
+  if (array->_nrAlloc < 2 * array->_nrUsed) {
+    TRI_ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
+  }
+
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -721,6 +767,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
   uint64_t hash;
   uint64_t i;
 
+#if 0
   // initialises the result vector
   TRI_InitVectorPointer(&result, zone);
 
@@ -734,7 +781,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 #endif
 
   // search the table
-  while (array->_table[i] != NULL) {
+  while (array->_table[i].ptr != NULL) {
     if (array->isEqualKeyElement(array, key, array->_table[i])) {
       TRI_PushBackVectorPointer(&result, array->_table[i]);
     }
@@ -746,6 +793,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
     i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
+#endif
   // return whatever we found
   return result;
 }
@@ -758,6 +806,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
   uint64_t hash;
   uint64_t i;
 
+#if 0
   // compute the hash
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
@@ -774,72 +823,9 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
     array->_nrProbesF++;
 #endif
   }
-
   // return whatever we found
   return array->_table[i];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
-                                     void* element,
-                                     const bool overwrite,
-                                     const bool checkEquality) {
-  uint64_t hash;
-  uint64_t i;
-  void* old;
-
-  // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
-    return NULL;
-  }
-
-  // compute the hash
-  hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-#ifdef TRI_INTERNAL_STATS
-  // update statistics
-  array->_nrAdds++;
 #endif
-
-  // search the table
-
-  // if the checkEquality flag is not set, we do not check for element equality
-  // we use this flag to speed up initial insertion into the index, i.e. when the
-  // index is built for a collection and we know for sure no duplicate elements
-  // will be inserted
-  while (array->_table[i] != NULL && 
-         (! checkEquality || 
-          ! array->isEqualElementElement(array, element, array->_table[i]))) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesA++;
-#endif
-  }
-
-  old = array->_table[i];
-
-  // if we found an element, return
-  if (old != NULL) {
-    if (overwrite) {
-      array->_table[i] = element;
-    }
-
-    return old;
-  }
-
-  // add a new element to the associative array
-  array->_table[i] = element;
-  array->_nrUsed++;
-
-  // if we were adding and the table is more than half full, extend it
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
-  }
-
   return NULL;
 }
 
@@ -853,6 +839,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   uint64_t k;
   void* old;
 
+#if 0
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
@@ -896,6 +883,8 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 
   // return success
   return old;
+#endif
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +892,43 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
-  return ResizeMultiPointer(array, 2 * size + 1);
+  TRI_multi_pointer_entry_t* oldTable;
+  uint64_t oldAlloc;
+  uint64_t j;
+
+  if (size < 2*array->_nrUsed) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  oldTable = array->_table;
+  oldAlloc = array->_nrAlloc;
+
+  array->_nrAlloc = TRI_NextPrime((uint64_t) size*2);
+  array->_table = TRI_Allocate(array->_memoryZone, 
+                 array->_nrAlloc * sizeof(TRI_multi_pointer_t), true);
+
+  if (array->_table == NULL) {
+    array->_nrAlloc = oldAlloc;
+    array->_table = oldTable;
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  array->_nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
+  array->_nrResizes++;
+#endif
+
+  // table is already clear by allocate, copy old data
+  for (j = 0; j < oldAlloc; j++) {
+    if (oldTable[j].ptr != NULL) {
+      TRI_InsertElementMultiPointer(array, oldTable[j].ptr, true, false);
+    }
+  }
+
+  TRI_Free(array->_memoryZone, oldTable);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
