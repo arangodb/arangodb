@@ -140,6 +140,14 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status
+////////////////////////////////////////////////////////////////////////////////
+
+      inline Logfile::StatusType status () const {
+        return _status;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the allocated size of the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -265,10 +273,10 @@ namespace triagens {
             break;
         }
 
-        LOG_INFO("changing logfile status from %s to %s for logfile %llu", 
-                 statusText(_status).c_str(), 
-                 statusText(status).c_str(),
-                 (unsigned long long) id());
+        LOG_TRACE("changing logfile status from %s to %s for logfile %llu", 
+                  statusText(_status).c_str(), 
+                  statusText(status).c_str(),
+                  (unsigned long long) id());
         _status = status;
       }
 

@@ -281,8 +281,6 @@ SyncRegion Slots::getSyncRegion () {
       break;
     }
   }
-    
-  // LOG_INFO("returning region: %d - %d, %d", (int) region.firstSlotIndex, (int) region.lastSlotIndex, (int) region.logfileId);
   
   return region;
 }

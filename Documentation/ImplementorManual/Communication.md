@@ -130,9 +130,10 @@ password if supported. If the client is a browser, then sending back this header
 normally trigger the display of the browser-side HTTP authentication dialog.
 As showing the browser HTTP authentication dialog is undesired in AJAX requests, 
 ArangoDB can be told to not send the `WWW-Authenticate` header back to the client.
-Whenever a client sends the `X-Requested-With` HTTP header with a value of `XMLHttpRequest`
+Whenever a client sends the `X-Omit-WWW-Authenticate` HTTP header (with an arbitrary value)
 to ArangoDB, ArangoDB will only send status code 401, but no `WWW-Authenticate` header.
-This allows clients to implement their own credentials mechanism.
+This allows clients to implement credentials handling and bypassing the browser's
+built-in dialog.
 
 Error Handling {#CommunicationErrors}
 =====================================
