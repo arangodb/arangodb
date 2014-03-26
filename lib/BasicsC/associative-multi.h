@@ -223,12 +223,15 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t*, void* key, void* old);
 /// only ever store non-identical elements into the array.
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef uint64_t TRI_multi_pointer_index_t;
+#define TRI_MULTI_POINTER_INVALID_INDEX (((TRI_multi_pointer_index_t)0)-1)
+
 typedef struct TRI_multi_pointer_entry_s {
   void* ptr;   // a pointer to the data stored in this slot
-  void* next;  // a pointer to the data following in the linked list of all
-               // items with the same key
-  void* prev;  // a pointer to the data preceding in the linked list of all
-               // items with the same key
+  TRI_multi_pointer_index_t next;  // index of the data following in the linked
+                                   // list of all items with the same key
+  TRI_multi_pointer_index_t prev;  // index of the data preceding in the linked
+                                   // list of all items with the same key
 } TRI_multi_pointer_entry_t;
 
 typedef struct TRI_multi_pointer_s {
