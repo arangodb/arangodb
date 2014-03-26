@@ -80,7 +80,7 @@ Logfile* Logfile::create (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df, StatusType::OPEN);
+  Logfile* logfile = new Logfile(id, df, StatusType::EMPTY);
   return logfile;
 }
 
@@ -125,7 +125,7 @@ int Logfile::seal () {
   _df->_state = TRI_DF_STATE_READ;
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_INFO("sealed logfile %llu", (unsigned long long) id());
+    LOG_TRACE("sealed logfile %llu", (unsigned long long) id());
 
     setStatus(StatusType::SEALED);
   }
