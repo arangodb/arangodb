@@ -61,9 +61,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum class StatusType : uint32_t {
-          UNUSED   = 0,
-          USED     = 1,
-          RETURNED = 2
+          UNUSED        = 0,
+          USED          = 1,
+          RETURNED      = 2,
+          RETURNED_WFS  = 3
         };
 
 // -----------------------------------------------------------------------------
@@ -155,7 +156,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
         inline bool isReturned () const {
-          return _status == StatusType::RETURNED;
+          return (_status == StatusType::RETURNED ||
+                  _status == StatusType::RETURNED_WFS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +165,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
         inline bool waitForSync () const {
-          return _waitForSync;
+          return (_status == StatusType::RETURNED_WFS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,12 +224,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         StatusType _status;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a sync was requested explicitly
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _waitForSync;
 
     };
 
