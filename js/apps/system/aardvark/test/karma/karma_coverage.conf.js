@@ -27,7 +27,8 @@ module.exports = function(karma) {
 
     preprocessors: {
       'test/karma/files.json': ['html2js'],
-      'frontend/js/**/**.js': ['coverage']
+      'frontend/js/**/**.js': ['coverage'],
+      'clusterFrontend/js/**/**.js': ['coverage']
     },
 
     // test results reporter to use
