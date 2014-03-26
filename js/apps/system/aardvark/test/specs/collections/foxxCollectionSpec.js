@@ -4,15 +4,15 @@
 
     "use strict";
 
-    describe("FoxxCollection", function() {
+    describe("FoxxCollection", function () {
 
         var col;
 
-        beforeEach(function() {
+        beforeEach(function () {
             col = new window.FoxxCollection();
         });
 
-        it("FoxxCollection", function() {
+        it("FoxxCollection", function () {
             expect(col.model).toEqual(window.Foxx);
             expect(col.url).toEqual("/_admin/aardvark/foxxes");
         });

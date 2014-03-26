@@ -4,15 +4,15 @@
 
     "use strict";
 
-    describe("NotificationCollection", function() {
+    describe("NotificationCollection", function () {
 
         var col;
 
-        beforeEach(function() {
+        beforeEach(function () {
             col = new window.NotificationCollection();
         });
 
-        it("NotificationCollection", function() {
+        it("NotificationCollection", function () {
             expect(col.model).toEqual(window.Notification);
             expect(col.url).toEqual("");
         });
