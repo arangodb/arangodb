@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
-/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data */
 (function() {
   "use strict";
 
   window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
-      model: arangoCollection,
+      model: arangoCollectionModel,
 
       searchOptions : {
         searchPhrase: null,
@@ -264,8 +264,7 @@
         });
         return data2;
       },
-      checkCollectionName: function (name) {
-      },
+
       newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
         var returnobj = {};
         var data = {};
@@ -309,7 +308,6 @@
           processData: false,
           success: function(data) {
             result = true;
-            this.alreadyRenamed = true;
           },
           error: function(data) {
             try {
@@ -337,10 +335,7 @@
           processData: false,
           success: function(data) {
             result = true;
-            if (self.alreadyRenamed === true) {
-              self.alreadyRenamed = false;
-            }
-          },
+         },
           error: function(data) {
             try {
               var parsed = JSON.parse(data.responseText);
@@ -385,8 +380,7 @@
               }
             });
           },
-          error: function (data) {
-            var temp = JSON.parse(data.responseText);
+          error: function () {
             arangoHelper.arangoError('Collection error');
           }
         });
@@ -405,7 +399,6 @@
             });
           },
           error: function () {
-            var temp = JSON.parse(data.responseText);
             arangoHelper.arangoError('Collection error');
           }
         });
