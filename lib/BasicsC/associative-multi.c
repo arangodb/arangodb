@@ -564,10 +564,15 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
 
 int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                           TRI_memory_zone_t* zone,
-                          uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
-                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
-                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*)) {
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*, 
+                                               void const*),
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*, 
+                                                   void const*, bool),
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, 
+                                                     void const*, void const*),
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, 
+                                                         void const*, 
+                                                         void const*, bool)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
@@ -625,6 +630,9 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+uint64_t ALL_HASH_ADDS = 0;
+uint64_t ALL_HASH_COLLS = 0;
+
 static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
                                          void* element,
                                          bool checkEquality) {
@@ -638,14 +646,15 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
   uint64_t hash;
   uint64_t i;
 
-  hash = array->hashElement(array, element);
+  hash = array->hashElement(array, element, false);
   i = hash % array->_nrAlloc;
 
   while (array->_table[i].ptr != NULL && 
          (! checkEquality || 
           ! array->isEqualElementElement(array, element, 
-                                                array->_table[i].ptr))) {
+                                                array->_table[i].ptr, false))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
+    ALL_HASH_COLLS++;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -681,13 +690,15 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   uint64_t i, j, k;
   void* old;
 
+  ALL_HASH_ADDS++;
+
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
 #endif
 
-  // compute the hash of the key first
-  hash = array->hashKey(array, element);
+  // compute the hash by the key only first
+  hash = array->hashElement(array, element, true);
   i = hash % array->_nrAlloc;
 
   // If this slot is free, just use it:
@@ -698,10 +709,14 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     return NULL;
   }
 
-  // Now find the first slot with an entry with the same key or a free slot:
+  // Now find the first slot with an entry with the same key that is the
+  // start of a linked list, or a free slot:
   while (array->_table[i].ptr != NULL &&
-         ! array->isEqualKeyElement(array, element, array->_table[i].ptr)) {
+         (! array->isEqualElementElement(array, element, 
+                                                array->_table[i].ptr,true) ||
+          array->_table[i].prev != NULL)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
+    ALL_HASH_COLLS++;
   }
 
   // If this is free, we are the first with this key:
@@ -715,7 +730,8 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // Otherwise, entry i points to the beginning of the linked list of which 
   // we want to make element a member. Perhaps an equal element is right here:
   if (checkEquality && array->isEqualElementElement(array, element,
-                                                    array->_table[i].ptr)) {
+                                                    array->_table[i].ptr,
+                                                    false)) {
     old = array->_table[i].ptr;
     if (overwrite) {
       array->_table[i].ptr = element;
@@ -731,7 +747,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // if we found an element, return
   if (old != NULL) {
     if (overwrite) {
-      array->_table[i].ptr = element;
+      array->_table[j].ptr = element;
     }
     return old;
   }
@@ -740,7 +756,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   array->_table[j].ptr = element;
   array->_table[j].next = array->_table[i].next;
   array->_table[j].prev = array->_table[i].ptr;
-  array->_table[i].next = array->_table[j].ptr;
+  array->_table[i].next = element;
   // Finally, we need to find the successor to patch it up:
   if (array->_table[j].next != NULL) {
     k = FindElementPlace(array, array->_table[j].next, true);
@@ -764,10 +780,10 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
                                                   TRI_multi_pointer_t* array,
                                                   void const* key) {
   TRI_vector_pointer_t result;
+#if 0
   uint64_t hash;
   uint64_t i;
 
-#if 0
   // initialises the result vector
   TRI_InitVectorPointer(&result, zone);
 
@@ -803,10 +819,10 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
+#if 0
   uint64_t hash;
   uint64_t i;
 
-#if 0
   // compute the hash
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
@@ -834,12 +850,12 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
+#if 0
   uint64_t hash;
   uint64_t i;
   uint64_t k;
   void* old;
 
-#if 0
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 

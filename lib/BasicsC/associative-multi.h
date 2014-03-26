@@ -200,6 +200,27 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t*, void* key, void* old);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative multi array of pointers
+///
+/// This is a data structure that can store pointers to objects. Each object
+/// has a key and multiple objects in the associative array can have the
+/// same key. We want to offer constant time complexity for the following
+/// operations:
+///  - insert pointer to an object into array
+///  - lookup pointer to an object in array
+///  - delete pointer to an object from array
+///  - find one pointer to an object with a given key
+/// Furthermore, we want to offer O(k) complexity for the following
+/// operation:
+///  - find all pointers whose thingies have a given key, where k is
+///    the number of thingies in the array with this key
+/// To this end, we use a hash table and ask the user to provide the following:
+///  - a way to hash objects by keys, and to hash keys themselves, 
+///  - a way to hash objects by their full identity
+///  - a way to compare a key to the key of a given object
+///  - a way to compare two elements, either by their keys or by their full 
+///    identities.
+/// To avoid unnecessary comparisons the user can guarantee that s/he will
+/// only ever store non-identical elements into the array.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_multi_pointer_entry_s {
@@ -211,11 +232,14 @@ typedef struct TRI_multi_pointer_entry_s {
 } TRI_multi_pointer_entry_t;
 
 typedef struct TRI_multi_pointer_s {
-  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const*);
-  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const*);
+  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const* key);
+  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const* element, 
+                           bool byKey);
 
-  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const*, void const*);
-  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, void const*, void const*);
+  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const* key, 
+                             void const* element);
+  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, 
+                                 void const* el1, void const* el2, bool byKey);
 
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
@@ -257,10 +281,15 @@ TRI_multi_pointer_t;
 
 int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                           TRI_memory_zone_t*,
-                          uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
-                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
-                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*));
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*, 
+                                               void const*),
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*, 
+                                                   void const*, bool),
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, 
+                                                     void const*, void const*),
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, 
+                                                         void const*, 
+                                                         void const*, bool));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
@@ -299,7 +328,8 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t*,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, void const* element);
+void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, 
+                                       void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the array
@@ -307,8 +337,8 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, void const* element
 
 void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*,
                                      void*,
-                                     const bool,
-                                     const bool);
+                                     const bool overwrite,
+                                     const bool checkEquality);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
