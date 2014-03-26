@@ -35,6 +35,8 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "BasicsC/fasthash.h"
+#include "BasicsC/xxhash.h"
 #include "CapConstraint/cap-constraint.h"
 #include "GeoIndex/geo-index.h"
 #include "FulltextIndex/fulltext-index.h"
@@ -698,12 +700,9 @@ static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
 
   h = data;
 
-  if (h->_mptr != NULL) {
-    key = ((char*) h->_mptr->_data) + h->_searchKey._offsetKey;
-  }
-  else {
-    key = h->_searchKey._key;
-  }
+  assert(h->_mptr == NULL);
+
+  key = h->_searchKey._key;
 
   // only include directional bits for hashing, exclude special bits
   hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION);
@@ -717,20 +716,34 @@ static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
 /// @brief hashes an edge header
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
+uint64_t guck;
+
+static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data, bool byKey) {
   TRI_edge_header_t const* h;
-  uint64_t hash[3];
+  uint64_t hash[2];
+  char const* p;
 
   h = data;
 
   assert(h->_mptr != NULL);
 
   // only include directional bits for hashing, exclude special bits
-  hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION);
-  hash[1] = h->_cid;
-  hash[2] = (uint64_t) h->_mptr;
+  hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION) ^ h->_cid;
+  if (byKey) {
+    p = (char*) h->_mptr->_data + h->_searchKey._offsetKey;
+    //hash[1] = (uint64_t) TRI_FnvHashString(p);
+    hash[1] = (uint64_t) fasthash64(p, strlen(p), 0x87654321);
+    //hash[1] = (uint64_t) XXH32(p, strlen(p), 0x87654321);
+    //guck = (uint64_t) XXH32(p, strlen(p), 0x87654320);
+  }
+  else {
+    hash[1] = (uint64_t) h->_mptr;
+  }
 
-  return TRI_FnvHashPointer(hash, sizeof(hash));
+  //return TRI_FnvHashPointer(hash, sizeof(hash));
+  return fasthash64(&hash, sizeof(hash), 0x56781234);
+  //guck = XXH32(&hash, sizeof(hash), 0x56781233);
+  //return XXH32(&hash, sizeof(hash), 0x56781234);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -740,6 +753,8 @@ static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
 static bool IsEqualKeyEdge (TRI_multi_pointer_t* array,
                             void const* left,
                             void const* right) {
+  // left is a key, that is with NULL master pointer
+  // right is an element, that is, with non-NULL master pointer
   TRI_edge_header_t const* l;
   TRI_edge_header_t const* r;
   const char* lKey;
@@ -748,19 +763,11 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array,
   l = left;
   r = right;
 
-  if (l->_mptr != NULL) {
-    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + l->_searchKey._offsetKey;
-  }
-  else {
-    lKey = l->_searchKey._key;
-  }
+  assert(l->_mptr == NULL);
+  lKey = l->_searchKey._key;
 
-  if (r->_mptr != NULL) {
-    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
-  }
-  else {
-    rKey = r->_searchKey._key;
-  }
+  assert(r->_mptr != NULL);
+  rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
 
   // only include directional flags, exclude special bits
   return ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
@@ -774,9 +781,12 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array,
 
 static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
                                 void const* left,
-                                void const* right) {
+                                void const* right,
+                                bool byKey) {
   TRI_edge_header_t const* l;
   TRI_edge_header_t const* r;
+  const char* lKey;
+  const char* rKey;
 
   l = left;
   r = right;
@@ -784,10 +794,21 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
   assert(l->_mptr != NULL);
   assert(l->_mptr != NULL);
 
-  // only include directional flags, exclude special bits
-  return (l->_mptr == r->_mptr) &&
-         ((l->_flags & TRI_EDGE_BITS_DIRECTION) == 
-          (r->_flags & TRI_EDGE_BITS_DIRECTION));
+  if (byKey) {
+    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + l->_searchKey._offsetKey;
+    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
+    
+    return (strcmp(lKey, rKey) == 0) &&
+           ((l->_flags & TRI_EDGE_BITS_DIRECTION) ==
+            (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
+           (l->_cid == r->_cid);
+  }
+  else {
+    // only include directional flags, exclude special bits
+    return (l->_mptr == r->_mptr) &&
+           ((l->_flags & TRI_EDGE_BITS_DIRECTION) == 
+            (r->_flags & TRI_EDGE_BITS_DIRECTION));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

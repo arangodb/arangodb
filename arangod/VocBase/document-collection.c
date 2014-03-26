@@ -3742,6 +3742,8 @@ static int FillIndex (TRI_document_collection_t* document,
   void** ptr;
   int res;
   double starttime;
+  extern uint64_t ALL_HASH_ADDS;
+  extern uint64_t ALL_HASH_COLLS;
 
   primary = &document->base;
 
@@ -3785,9 +3787,7 @@ static int FillIndex (TRI_document_collection_t* document,
   printf("FillIndex _iid=%llu time spent: %f\n",(unsigned long long) idx->_iid,
          TRI_microtime()-starttime);
 
-  TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
-
-  printf("FillIndex _nrAdds=%llu _nrProbesA=%llu\n",(unsigned long long) edgesIndex->_nrAdds, (unsigned long long) edgesIndex->_nrProbesA);
+  printf("FillIndex adds=%llu colls=%llu\n",(unsigned long long) ALL_HASH_ADDS, (unsigned long long) ALL_HASH_COLLS);
 
   return TRI_ERROR_NO_ERROR;
 }
