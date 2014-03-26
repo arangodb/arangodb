@@ -634,7 +634,7 @@ uint64_t ALL_HASH_ADDS = 0;
 uint64_t ALL_HASH_COLLS = 0;
 
 static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
-                                         void* element,
+                                         void const* element,
                                          bool checkEquality) {
   // This either finds a place to store element or an entry in the table
   // that is equal to element. If checkEquality is set to false, the caller
@@ -687,7 +687,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // for sure no duplicate elements will be inserted
 
   uint64_t hash;
-  uint64_t i, j, k;
+  uint64_t i, j;
   void* old;
 
   ALL_HASH_ADDS++;
@@ -704,8 +704,8 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // If this slot is free, just use it:
   if (NULL == array->_table[i].ptr) {
     array->_table[i].ptr = element;
-    array->_table[i].next = NULL;
-    array->_table[i].prev = NULL;
+    array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
+    array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     return NULL;
   }
 
@@ -714,7 +714,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   while (array->_table[i].ptr != NULL &&
          (! array->isEqualElementElement(array, element, 
                                                 array->_table[i].ptr,true) ||
-          array->_table[i].prev != NULL)) {
+          array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
     ALL_HASH_COLLS++;
   }
@@ -722,8 +722,8 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // If this is free, we are the first with this key:
   if (NULL == array->_table[i].ptr) {
     array->_table[i].ptr = element;
-    array->_table[i].next = NULL;
-    array->_table[i].prev = NULL;
+    array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
+    array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     return NULL;
   }
 
@@ -755,12 +755,11 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // add a new element to the associative array and linked list (in pos 2):
   array->_table[j].ptr = element;
   array->_table[j].next = array->_table[i].next;
-  array->_table[j].prev = array->_table[i].ptr;
-  array->_table[i].next = element;
+  array->_table[j].prev = i;
+  array->_table[i].next = j;
   // Finally, we need to find the successor to patch it up:
-  if (array->_table[j].next != NULL) {
-    k = FindElementPlace(array, array->_table[j].next, true);
-    array->_table[k].prev = element;
+  if (array->_table[j].next != TRI_MULTI_POINTER_INVALID_INDEX) {
+    array->_table[array->_table[j].next].prev = i;
   }
   array->_nrUsed++;
 
@@ -780,7 +779,6 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
                                                   TRI_multi_pointer_t* array,
                                                   void const* key) {
   TRI_vector_pointer_t result;
-#if 0
   uint64_t hash;
   uint64_t i;
 
@@ -797,19 +795,23 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 #endif
 
   // search the table
-  while (array->_table[i].ptr != NULL) {
-    if (array->isEqualKeyElement(array, key, array->_table[i])) {
-      TRI_PushBackVectorPointer(&result, array->_table[i]);
-    }
-#ifdef TRI_INTERNAL_STATS
-    else {
-      array->_nrProbesF++;
-    }
-#endif
+  while (array->_table[i].ptr != NULL &&
+         (! array->isEqualKeyElement(array, key, array->_table[i].ptr) ||
+          array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
+#ifdef TRI_INTERNAL_STATS
+    array->_nrProbesF++;
+#endif
   }
 
-#endif
+  if (array->_table[i].ptr != NULL) {
+    // We found the beginning of the linked list:
+    do {
+      TRI_PushBackVectorPointer(&result, array->_table[i].ptr);
+      i = array->_table[i].next;
+    } while (i != TRI_MULTI_POINTER_INVALID_INDEX);
+  }
+
   // return whatever we found
   return result;
 }
@@ -818,13 +820,13 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
-#if 0
+void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, 
+                                       void const* element) {
   uint64_t hash;
-  uint64_t i;
+  uint64_t i, j;
 
   // compute the hash
-  hash = array->hashElement(array, element);
+  hash = array->hashElement(array, element, true);
   i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
@@ -832,16 +834,35 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
   array->_nrFinds++;
 #endif
 
-  // search the table
-  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
+  // Now find the first slot with an entry with the same key that is the
+  // start of a linked list, or a free slot:
+  while (array->_table[i].ptr != NULL &&
+         (! array->isEqualElementElement(array, element, 
+                                                array->_table[i].ptr, true) ||
+          array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
+    ALL_HASH_COLLS++;
   }
-  // return whatever we found
-  return array->_table[i];
-#endif
+
+  if (array->_table[i].ptr != NULL) {
+    // It might be right here!
+    if (array->isEqualElementElement(array, element,
+                                            array->_table[i].ptr, false)) {
+      return array->_table[i].ptr;
+    }
+
+    // Now we have to look for it in its hash position:
+    j = FindElementPlace(array, element, true);
+
+    // We have either found an equal element or nothing:
+    return array->_table[j].ptr;
+  }
+
+  // If we get here, no element with the same key is in the array, so
+  // we will not be able to find it anywhere!
   return NULL;
 }
 
@@ -851,6 +872,26 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
 
 void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
 #if 0
+  Plan:
+    First find it exactly as above
+    if not found, return NULL
+    if found as first of its linked list:
+      if there is a second one:
+        move second one here
+        heal hole there
+      else
+        remove
+        heal hole here
+    if found in the middle of a linked list:
+      remove from list
+      remove in array
+      heal hole here
+  heal hole:
+    look forwards until the next hole
+    if there is something whose rightful place is not between the hole
+      and its current place, then move it to the hole and heal the hole
+      there
+#endif
   uint64_t hash;
   uint64_t i;
   uint64_t k;

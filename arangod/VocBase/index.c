@@ -716,11 +716,9 @@ static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
 /// @brief hashes an edge header
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t guck;
-
 static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data, bool byKey) {
   TRI_edge_header_t const* h;
-  uint64_t hash[2];
+  uint64_t hash;
   char const* p;
 
   h = data;
@@ -728,22 +726,16 @@ static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data, b
   assert(h->_mptr != NULL);
 
   // only include directional bits for hashing, exclude special bits
-  hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION) ^ h->_cid;
+  hash = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION) ^ h->_cid;
   if (byKey) {
     p = (char*) h->_mptr->_data + h->_searchKey._offsetKey;
-    //hash[1] = (uint64_t) TRI_FnvHashString(p);
-    hash[1] = (uint64_t) fasthash64(p, strlen(p), 0x87654321);
-    //hash[1] = (uint64_t) XXH32(p, strlen(p), 0x87654321);
-    //guck = (uint64_t) XXH32(p, strlen(p), 0x87654320);
+    hash ^= (uint64_t) fasthash64(p, strlen(p), 0x87654321);
   }
   else {
-    hash[1] = (uint64_t) h->_mptr;
+    hash ^= (uint64_t) h->_mptr;
   }
 
-  //return TRI_FnvHashPointer(hash, sizeof(hash));
   return fasthash64(&hash, sizeof(hash), 0x56781234);
-  //guck = XXH32(&hash, sizeof(hash), 0x56781233);
-  //return XXH32(&hash, sizeof(hash), 0x56781234);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
