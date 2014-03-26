@@ -115,7 +115,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/vocbase-defaults.c \
 	arangod/Wal/AllocatorThread.cpp \
 	arangod/Wal/CollectorThread.cpp \
-	arangod/Wal/Configuration.cpp \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Slot.cpp \

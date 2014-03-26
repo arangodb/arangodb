@@ -123,6 +123,17 @@ server is configured to require HTTP authentication. Setting the option to `fals
 make the server require authentication only for requests to the internal functionality at
 `/_api/` or `/_admin` and will allow unauthenticated requests to all other URLs.
 
+Whenever authentication is required and the client has not yet authenticated, 
+ArangoDB will return `HTTP 401` (Unauthorized). It will also send the `WWW-Authenticate`
+response header, indicating that the client should prompt the user for username and 
+password if supported. If the client is a browser, then sending back this header will
+normally trigger the display of the browser-side HTTP authentication dialog.
+As showing the browser HTTP authentication dialog is undesired in AJAX requests, 
+ArangoDB can be told to not send the `WWW-Authenticate` header back to the client.
+Whenever a client sends the `X-Requested-With` HTTP header with a value of `XMLHttpRequest`
+to ArangoDB, ArangoDB will only send status code 401, but no `WWW-Authenticate` header.
+This allows clients to implement their own credentials mechanism.
+
 Error Handling {#CommunicationErrors}
 =====================================
 

@@ -149,7 +149,6 @@ add_executable(
     VocBase/vocbase-defaults.c
     Wal/AllocatorThread.cpp
     Wal/CollectorThread.cpp
-    Wal/Configuration.cpp 
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
     Wal/Slot.cpp

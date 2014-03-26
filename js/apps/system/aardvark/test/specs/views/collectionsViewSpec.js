@@ -16,21 +16,21 @@
       div = document.createElement("div");
       div.id = "content";
       document.body.appendChild(div);
-      edgeCol = new window.arangoCollection({
+      edgeCol = new window.arangoCollectionModel({
         id: "e",
         type: "edge",
         isSystem: false,
         name: "e",
         status: "loaded"
       });
-      docCol = new window.arangoCollection({
+      docCol = new window.arangoCollectionModel({
         id: "d",
         type: "document",
         isSystem: false,
         name: "d",
         status: "loaded"
       });
-      sysCol = new window.arangoCollection({
+      sysCol = new window.arangoCollectionModel({
         id: "s",
         type: "document",
         isSystem: true,

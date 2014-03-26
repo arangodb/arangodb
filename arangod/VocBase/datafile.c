@@ -820,11 +820,9 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
 TRI_datafile_t* TRI_CreateDatafile (char const* filename,
                                     TRI_voc_fid_t fid,
-                                    TRI_voc_size_t maximalSize) {
+                                    TRI_voc_size_t maximalSize,
+                                    bool withInitialMarkers) {
   TRI_datafile_t* datafile;
-  TRI_df_marker_t* position;
-  TRI_df_header_marker_t header;
-  int result;
 
   assert(PageSize >= 256);
 
@@ -860,30 +858,19 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
   datafile->_state = TRI_DF_STATE_WRITE;
 
-  // create the header
-  TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
-  header.base._tick = (TRI_voc_tick_t) fid;
+  if (withInitialMarkers) {
+    int res = TRI_WriteInitialHeaderMarkerDatafile(datafile, fid, maximalSize);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("cannot write header to datafile '%s'", datafile->getName(datafile));
+      TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
 
-  header._version     = TRI_DF_VERSION;
-  header._maximalSize = maximalSize;
-  header._fid         = fid;
+      datafile->close(datafile);
+      datafile->destroy(datafile);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 
-  // reserve space and write header to file
-  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
-
-  if (result == TRI_ERROR_NO_ERROR) {
-    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, false);
-  }
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot write header to datafile '%s'", datafile->getName(datafile));
-    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
-
-    datafile->close(datafile);
-    datafile->destroy(datafile);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
-
-    return NULL;
+      return NULL;
+    }
   }
 
   LOG_DEBUG("created datafile '%s' of size %u and page-size %u",
@@ -1058,6 +1045,35 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the initial datafile header marker
+////////////////////////////////////////////////////////////////////////////////
+ 
+int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t* datafile,
+                                          TRI_voc_fid_t fid,
+                                          TRI_voc_size_t maximalSize) {
+  TRI_df_marker_t* position;
+  TRI_df_header_marker_t header;
+  int res;
+
+  // create the header
+  TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  header.base._tick = (TRI_voc_tick_t) fid;
+
+  header._version     = TRI_DF_VERSION;
+  header._maximalSize = maximalSize;
+  header._fid         = fid;
+
+  // reserve space and write header to file
+  res = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, false);
+  }
+
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a marker is valid
