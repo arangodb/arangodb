@@ -42,9 +42,7 @@ Slot::Slot ()
     _logfileId(0),
     _mem(nullptr),
     _size(0),
-    _status(StatusType::UNUSED),
-    _waitForSync(false) {
-
+    _status(StatusType::UNUSED) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +68,8 @@ std::string Slot::statusText () const {
       return "used";
     case StatusType::RETURNED:
       return "returned";
+    case StatusType::RETURNED_WFS:
+      return "returned (wfs)";
   }
 
   // listen, damn compilers!!
@@ -95,7 +95,6 @@ void Slot::setUnused () {
   _mem         = nullptr;
   _size        = 0;
   _status      = StatusType::UNUSED;
-  _waitForSync = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,8 +119,12 @@ void Slot::setUsed (void* mem,
 
 void Slot::setReturned (bool waitForSync) {
   assert(isUsed());
-  _status = StatusType::RETURNED;
-  _waitForSync = waitForSync;
+  if (waitForSync) {
+    _status = StatusType::RETURNED_WFS;
+  }
+  else {
+    _status = StatusType::RETURNED;
+  }
 }
 
 // Local Variables:

@@ -88,6 +88,15 @@ void CollectorThread::stop () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal the thread that there is something to do
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::signal () {
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
@@ -99,10 +108,10 @@ void CollectorThread::stop () {
 void CollectorThread::run () {
   while (_stop == 0) {
     // collect a logfile if any qualifies
-    bool worked = this->collectLogfile();
+    bool worked = this->collectLogfiles();
 
     // delete a logfile if any qualifies
-    worked |= this->removeLogfile();
+    worked |= this->removeLogfiles();
     
     CONDITION_LOCKER(guard, _condition);
     if (! worked) {
@@ -122,7 +131,7 @@ void CollectorThread::run () {
 /// @brief perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CollectorThread::collectLogfile () {
+bool CollectorThread::collectLogfiles () {
   Logfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
@@ -130,9 +139,10 @@ bool CollectorThread::collectLogfile () {
   }
 
   _logfileManager->setCollectionRequested(logfile);
-  // TODO: implement collection
+
+  // TODO: implement the actual logfile collection
       
-  LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
+  LOG_TRACE("collecting logfile %llu", (unsigned long long) logfile->id());
 
   _logfileManager->setCollectionDone(logfile);
   return true;
@@ -142,7 +152,7 @@ bool CollectorThread::collectLogfile () {
 /// @brief perform removal of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CollectorThread::removeLogfile () {
+bool CollectorThread::removeLogfiles () {
   Logfile* logfile = _logfileManager->getRemovableLogfile();
 
   if (logfile == nullptr) {

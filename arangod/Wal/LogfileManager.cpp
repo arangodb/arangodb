@@ -45,6 +45,16 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              class LogfileManager
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum logfile size
+////////////////////////////////////////////////////////////////////////////////
+
+const uint32_t LogfileManager::MinFilesize = 8 * 1024 * 1024;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -56,8 +66,9 @@ LogfileManager::LogfileManager ()
   : ApplicationFeature("logfile-manager"),
     _directory(),
     _filesize(32 * 1024 * 1024),
-    _reserveLogfiles(3),
+    _reserveLogfiles(4),
     _historicLogfiles(10),
+    _maxOpenLogfiles(10),
     _slots(nullptr),
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
@@ -68,15 +79,13 @@ LogfileManager::LogfileManager ()
     _regex(),
     _shutdown(0) {
   
-  LOG_INFO("creating wal logfile manager");
+  LOG_TRACE("creating wal logfile manager");
 
   int res = regcomp(&_regex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
 
   if (res != 0) {
     THROW_INTERNAL_ERROR("could not compile regex"); 
   }
-
-  _slots = new Slots(this, 1048576, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +93,7 @@ LogfileManager::LogfileManager ()
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager::~LogfileManager () {
-  LOG_INFO("shutting down wal logfile manager");
+  LOG_TRACE("shutting down wal logfile manager");
 
   regfree(&_regex);
 
@@ -104,8 +113,9 @@ LogfileManager::~LogfileManager () {
 void LogfileManager::setupOptions (std::map<std::string, triagens::basics::ProgramOptionsDescription>& options) {
   options["Write-ahead log options:help-wal"]
     ("wal.logfile-size", &_filesize, "size of each logfile")
-    ("wal.historic-logfiles", &_historicLogfiles, "number of historic logfiles to keep after collection")
-    ("wal.reserve-logfiles", &_reserveLogfiles, "number of reserve logfiles to maintain")
+    ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
+    ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
+    ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
     ("wal.directory", &_directory, "logfile directory")
   ;
 }
@@ -124,6 +134,11 @@ bool LogfileManager::prepare () {
     _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
   }
 
+  if (_filesize < MinFilesize) {
+    // minimum filesize per logfile
+    LOG_FATAL_AND_EXIT("invalid logfile size. Please use a value of at least %lu", (unsigned long) MinFilesize);
+  }
+
   return true;
 }
 
@@ -132,6 +147,8 @@ bool LogfileManager::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::start () {
+  _slots = new Slots(this, 1048576, 0);
+
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -152,9 +169,9 @@ bool LogfileManager::start () {
       return false;
     }
 
-    LOG_INFO("last tick: %llu, last collected: %llu", 
-             (unsigned long long) _slots->lastAssignedTick(),
-             (unsigned long long) _lastCollectedId);
+    LOG_TRACE("logfile manager last tick: %llu, last collected: %llu", 
+              (unsigned long long) _slots->lastAssignedTick(),
+              (unsigned long long) _lastCollectedId);
   }
 
   res = openLogfiles();
@@ -194,10 +211,10 @@ bool LogfileManager::start () {
     }
   }
 
-  LOG_INFO("wal logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu",
-           (unsigned long) _historicLogfiles,
-           (unsigned long) _reserveLogfiles,
-           (unsigned long) _filesize);
+  LOG_TRACE("wal logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu",
+            (unsigned long) _historicLogfiles,
+            (unsigned long) _reserveLogfiles,
+            (unsigned long) _filesize);
 
   return true;
 }
@@ -248,20 +265,19 @@ void LogfileManager::stop () {
 
   _shutdown = 1;
 
-  LOG_INFO("stopping collector thread");
   // stop threads
+  
+  LOG_TRACE("stopping collector thread");
   stopCollectorThread();
   
-  LOG_INFO("stopping allocator thread");
+  LOG_TRACE("stopping allocator thread");
   stopAllocatorThread();
   
-  LOG_INFO("stopping synchroniser thread");
+  LOG_TRACE("stopping synchroniser thread");
   stopSynchroniserThread();
   
-  LOG_INFO("closing logfiles");
-  sleep(1);
-
   // close all open logfiles
+  LOG_TRACE("closing logfiles");
   closeLogfiles();
 
   int res = writeShutdownInfo();
@@ -276,6 +292,32 @@ void LogfileManager::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not it is currently allowed to create an additional 
+/// logfile
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::logfileCreationAllowed () {
+  uint32_t numberOfLogfiles = 0;
+
+  // note: this information could also be cached instead of being recalculated
+  // everytime
+  READ_LOCKER(_logfilesLock);
+     
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+  
+    assert(logfile != nullptr);
+
+    if (logfile->status() == Logfile::StatusType::OPEN ||
+        logfile->status() == Logfile::StatusType::SEAL_REQUESTED) { 
+      ++numberOfLogfiles;
+    }
+  }
+
+  return (numberOfLogfiles <= _maxOpenLogfiles);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not there are reserve logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -285,11 +327,14 @@ bool LogfileManager::hasReserveLogfiles () {
   // note: this information could also be cached instead of being recalculated
   // everytime
   READ_LOCKER(_logfilesLock);
-     
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+   
+  // reverse-scan the logfiles map  
+  for (auto it = _logfiles.rbegin(); it != _logfiles.rend(); ++it) {
     Logfile* logfile = (*it).second;
+  
+    assert(logfile != nullptr);
 
-    if (logfile != nullptr && logfile->freeSize() > 0 && ! logfile->isSealed()) {
+    if (logfile->freeSize() > 0 && ! logfile->isSealed()) {
       if (++numberOfLogfiles >= reserveLogfiles()) {
         return true;
       }
@@ -305,40 +350,6 @@ bool LogfileManager::hasReserveLogfiles () {
 
 void LogfileManager::signalSync () {
   _synchroniserThread->signalSync();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief seal logfiles that require sealing
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::sealLogfiles () {
-  std::vector<Logfile*> logfiles;
-
-  // create a copy of all logfiles that can be sealed
-  {
-    READ_LOCKER(_logfilesLock);
-    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-      Logfile* logfile = (*it).second;
-
-      if (logfile != nullptr && logfile->canBeSealed()) {
-        logfiles.push_back(logfile);
-      }
-    }
-  }
-
-  // now seal them
-  for (auto it = logfiles.begin(); it != logfiles.end(); ++it) {
-    // remove the logfile from the list of logfiles temporarily
-    // this is required so any concurrent operations on the logfile are not
-    // affect
-    Logfile* logfile = (*it);
-    unlinkLogfile(logfile);
-
-    // TODO: handle return value
-    logfile->seal();
-
-    relinkLogfile(logfile);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,19 +425,36 @@ void LogfileManager::relinkLogfile (Logfile* logfile) {
 /// @brief remove a logfile from the inventory only
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::unlinkLogfile (Logfile* logfile) {
+bool LogfileManager::unlinkLogfile (Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
-  {
-    WRITE_LOCKER(_logfilesLock);
-    auto it = _logfiles.find(id);
+  WRITE_LOCKER(_logfilesLock);
+  auto it = _logfiles.find(id);
 
-    if (it == _logfiles.end()) {
-      return;
-    }
-
-    _logfiles.erase(it);
+  if (it == _logfiles.end()) {
+    return false;
   }
+
+  _logfiles.erase(it);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory only
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::unlinkLogfile (Logfile::IdType id) {
+  WRITE_LOCKER(_logfilesLock);
+  auto it = _logfiles.find(id);
+
+  if (it == _logfiles.end()) {
+    return nullptr;
+  }
+
+  _logfiles.erase(it);
+  
+  return (*it).second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,14 +462,14 @@ void LogfileManager::unlinkLogfile (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::removeLogfile (Logfile* logfile) {
-  unlinkLogfile(logfile);
-    
   // old filename
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
   
-  LOG_INFO("removing logfile '%s'", filename.c_str());
-  
+  LOG_TRACE("removing logfile '%s'", filename.c_str());
+
+  unlinkLogfile(logfile);
+    
   // now close the logfile
   delete logfile;
   
@@ -453,6 +481,22 @@ void LogfileManager::removeLogfile (Logfile* logfile) {
     LOG_ERROR("unable to remove logfile '%s': %s", filename.c_str(), TRI_errno_string(res));
     return;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief seal a logfile 
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::sealLogfile (Logfile::IdType id) {
+  LOG_TRACE("sealing logfile '%llu", (unsigned long long) id);
+
+  Logfile* logfile = unlinkLogfile(id);
+  assert(logfile != nullptr);
+
+  logfile->seal();
+  relinkLogfile(logfile);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,6 +516,20 @@ int LogfileManager::requestSealing (Logfile* logfile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the status of a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile::StatusType LogfileManager::getLogfileStatus (Logfile::IdType id) {
+  READ_LOCKER(_logfilesLock);
+  auto it = _logfiles.find(id);
+
+  if (it == _logfiles.end()) {
+    return Logfile::StatusType::UNKNOWN;
+  }
+  return (*it).second->status();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the file descriptor of a logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -481,6 +539,7 @@ int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
 
   if (it == _logfiles.end()) {
     // error
+    LOG_ERROR("could not find logfile %llu", (unsigned long long) id);
     return -1;
   }
 
@@ -511,7 +570,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
     }
 
     // signal & sleep outside the lock
-    _allocatorThread->signalLogfileCreation();
+    _allocatorThread->signal();
     usleep(10000);
   }
   
@@ -571,8 +630,12 @@ Logfile* LogfileManager::getRemovableLogfile () {
 void LogfileManager::setCollectionRequested (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  WRITE_LOCKER(_logfilesLock);
-  logfile->setStatus(Logfile::StatusType::COLLECTION_REQUESTED);
+  {
+    WRITE_LOCKER(_logfilesLock);
+    logfile->setStatus(Logfile::StatusType::COLLECTION_REQUESTED);
+  }
+  
+  _collectorThread->signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -582,8 +645,12 @@ void LogfileManager::setCollectionRequested (Logfile* logfile) {
 void LogfileManager::setCollectionDone (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  WRITE_LOCKER(_logfilesLock);
-  logfile->setStatus(Logfile::StatusType::COLLECTED);
+  {
+    WRITE_LOCKER(_logfilesLock);
+    logfile->setStatus(Logfile::StatusType::COLLECTED);
+  }
+
+  _collectorThread->signal();
 }
 
 // -----------------------------------------------------------------------------
@@ -848,7 +915,7 @@ int LogfileManager::createReserveLogfile () {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG_INFO("creating empty logfile '%s'", filename.c_str());
+  LOG_TRACE("creating empty logfile '%s'", filename.c_str());
   Logfile* logfile = Logfile::create(filename.c_str(), id, filesize());
 
   if (logfile == nullptr) {

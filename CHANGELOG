@@ -2,7 +2,7 @@ v2.1.0 (XXXX-XX-XX)
 -------------------
 
 * make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
-  client sends the `X-Requested-With` header with a value of `XMLHttpRequest`
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
 
   This is done to prevent browsers from showing their built-in HTTP authentication 
   dialog for AJAX requests that require authentication.

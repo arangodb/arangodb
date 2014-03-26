@@ -92,7 +92,7 @@ void AllocatorThread::stop () {
 /// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-void AllocatorThread::signalLogfileCreation () {
+void AllocatorThread::signal () {
   CONDITION_LOCKER(guard, _condition);
 
   if (_createRequests == 0) {
@@ -135,7 +135,7 @@ void AllocatorThread::run () {
 
       LOG_ERROR("unable to create new wal reserve logfile");
     }
-    else if (createRequests > 0) {
+    else if (createRequests > 0 && _logfileManager->logfileCreationAllowed()) {
       if (createReserveLogfile()) {
         CONDITION_LOCKER(guard, _condition);
         --_createRequests;
