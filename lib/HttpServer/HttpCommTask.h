@@ -779,9 +779,8 @@ namespace triagens {
 
         bool sendWwwAuthenticateHeader () const {
           bool found;
-          string const value = this->_request->header("x-requested-with", found);
-
-          if (found && value == "XMLHttpRequest") {
+          string const value = this->_request->header("x-omit-www-authenticate", found);
+          if (found) {
             return false;
           }
             
