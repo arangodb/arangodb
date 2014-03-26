@@ -80,7 +80,7 @@ Logfile* Logfile::create (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df, StatusType::OPEN);
+  Logfile* logfile = new Logfile(id, df, StatusType::EMPTY);
   return logfile;
 }
 

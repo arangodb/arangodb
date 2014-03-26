@@ -40,7 +40,7 @@ using namespace triagens::wal;
 /// @brief wait interval for the allocator thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint64_t AllocatorThread::Interval = 1000000;
+const uint64_t AllocatorThread::Interval = 500000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -54,7 +54,7 @@ AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
   : Thread("WalAllocator"),
     _logfileManager(logfileManager),
     _condition(),
-    _createRequests(0),
+    _requestedSize(0),
     _stop(0) {
   
   allowAsynchronousCancelation();
@@ -92,21 +92,24 @@ void AllocatorThread::stop () {
 /// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-void AllocatorThread::signal () {
+void AllocatorThread::signal (uint32_t size) {
+  assert(size > 0);
+  
   CONDITION_LOCKER(guard, _condition);
 
-  if (_createRequests == 0) {
-    ++_createRequests;
-    guard.signal();
+  if (_requestedSize == 0 || size > _requestedSize) {
+    _requestedSize = size;
   }
+
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new reserve logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AllocatorThread::createReserveLogfile () {
-  int res = _logfileManager->createReserveLogfile();
+bool AllocatorThread::createReserveLogfile (uint32_t size) {
+  int res = _logfileManager->createReserveLogfile(size);
 
   return (res == TRI_ERROR_NO_ERROR);
 }
@@ -121,25 +124,23 @@ bool AllocatorThread::createReserveLogfile () {
 
 void AllocatorThread::run () {
   while (_stop == 0) {
-    uint32_t createRequests = 0;
+    uint32_t requestedSize = 0;
 
     {
       CONDITION_LOCKER(guard, _condition);
-      createRequests = _createRequests;
+      requestedSize = _requestedSize;
+      _requestedSize = 0;
     }
 
-    if (createRequests == 0 && ! _logfileManager->hasReserveLogfiles()) {
-      if (createReserveLogfile()) {
+    if (requestedSize == 0 && ! _logfileManager->hasReserveLogfiles()) {
+      if (createReserveLogfile(0)) {
         continue;
       }
 
       LOG_ERROR("unable to create new wal reserve logfile");
     }
-    else if (createRequests > 0 && _logfileManager->logfileCreationAllowed()) {
-      if (createReserveLogfile()) {
-        CONDITION_LOCKER(guard, _condition);
-        --_createRequests;
-
+    else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
+      if (createReserveLogfile(requestedSize)) {
         continue;
       }
       

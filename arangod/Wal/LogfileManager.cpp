@@ -62,13 +62,15 @@ const uint32_t LogfileManager::MinFilesize = 8 * 1024 * 1024;
 /// @brief create the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-LogfileManager::LogfileManager ()
+LogfileManager::LogfileManager (std::string* databasePath)
   : ApplicationFeature("logfile-manager"),
+    _databasePath(databasePath),
     _directory(),
     _filesize(32 * 1024 * 1024),
     _reserveLogfiles(4),
     _historicLogfiles(10),
     _maxOpenLogfiles(10),
+    _allowOversizeEntries(true),
     _slots(nullptr),
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
@@ -112,6 +114,7 @@ LogfileManager::~LogfileManager () {
 
 void LogfileManager::setupOptions (std::map<std::string, triagens::basics::ProgramOptionsDescription>& options) {
   options["Write-ahead log options:help-wal"]
+    ("wal.allow-oversize-entries", &_allowOversizeEntries, "allow entries that are bigger than --wal.logfile-size")
     ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
@@ -126,6 +129,18 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
 
 bool LogfileManager::prepare () {
   if (_directory.empty()) {
+    // use global configuration variable
+    _directory = *_databasePath;
+
+    // append "/journals"
+    if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+      // append a trailing slash to directory name
+      _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
+    }
+    _directory.append("journals");
+  }
+    
+  if (_directory.empty()) {
     LOG_FATAL_AND_EXIT("no directory specified for write-ahead logs. Please use the --wal.directory option");
   }
 
@@ -138,6 +153,8 @@ bool LogfileManager::prepare () {
     // minimum filesize per logfile
     LOG_FATAL_AND_EXIT("invalid logfile size. Please use a value of at least %lu", (unsigned long) MinFilesize);
   }
+  
+  _filesize = ((_filesize + PageSize - 1) / PageSize) * PageSize;
 
   return true;
 }
@@ -225,11 +242,18 @@ bool LogfileManager::start () {
 
 bool LogfileManager::open () {
   for (size_t i = 0; i < 50 * 1024 * 1024; ++i) {
-    void* p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 64, true);
+    size_t s;
+
+    s = 64;
+/*    if (i % 10000000 == 9999999) {
+      s = 1024 * 1024 * 8;
+    }
+    */
+    void* p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, s, true);
     TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(p);
 
     marker->_type = TRI_DF_MARKER_HEADER;
-    marker->_size = 64;
+    marker->_size = s;
     marker->_crc  = 0;
     marker->_tick = 0;
 
@@ -237,7 +261,7 @@ if (i % 500000 == 0) {
   LOG_INFO("now at: %d", (int) i);
 }
     memcpy(static_cast<char*>(p) + sizeof(TRI_df_marker_t), "the fox is brown\0", strlen("the fox is brown") + 1);
-    this->allocateAndWrite(p, static_cast<uint32_t>(64), false);
+    this->allocateAndWrite(p, static_cast<uint32_t>(s), false);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
   }
@@ -296,7 +320,13 @@ void LogfileManager::stop () {
 /// logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LogfileManager::logfileCreationAllowed () {
+bool LogfileManager::logfileCreationAllowed (uint32_t size) {
+  if (size + Logfile::overhead() > filesize()) {
+    // oversize entry. this is always allowed because otherwise everything would
+    // lock
+    return true;
+  }
+
   uint32_t numberOfLogfiles = 0;
 
   // note: this information could also be cached instead of being recalculated
@@ -359,6 +389,11 @@ void LogfileManager::signalSync () {
 SlotInfo LogfileManager::allocate (uint32_t size) {
   if (size > maxEntrySize()) {
     // entry is too big
+    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+  }
+
+  if (size > _filesize && ! _allowOversizeEntries) {
+    // entry is too big for a logfile
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
@@ -461,24 +496,29 @@ Logfile* LogfileManager::unlinkLogfile (Logfile::IdType id) {
 /// @brief remove a logfile from the inventory and in the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::removeLogfile (Logfile* logfile) {
+void LogfileManager::removeLogfile (Logfile* logfile,
+                                    bool unlink) {
+  if (unlink) {
+    unlinkLogfile(logfile);
+  }
+
   // old filename
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
   
   LOG_TRACE("removing logfile '%s'", filename.c_str());
+  LOG_INFO("removing logfile '%s'", filename.c_str());
 
-  unlinkLogfile(logfile);
-    
   // now close the logfile
   delete logfile;
   
   int res = TRI_ERROR_NO_ERROR;
   // now physically remove the file
-  basics::FileUtils::remove(filename, &res);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to remove logfile '%s': %s", filename.c_str(), TRI_errno_string(res));
+  if (! basics::FileUtils::remove(filename, &res)) {
+    LOG_ERROR("unable to remove logfile '%s': %s", 
+              filename.c_str(), 
+              TRI_errno_string(res));
     return;
   }
 }
@@ -559,18 +599,42 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
   while (++iterations < 1000) {
     {
       WRITE_LOCKER(_logfilesLock);
+      auto it = _logfiles.begin();
 
-      for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      while (it != _logfiles.end()) {
         Logfile* logfile = (*it).second;
 
-        if (logfile != nullptr && logfile->isWriteable(size)) {
+        assert(logfile != nullptr);
+        
+        if (logfile->isWriteable(size)) {
+          // found a logfile
+          if (logfile->status() == Logfile::StatusType::EMPTY) {
+            logfile->setStatus(Logfile::StatusType::OPEN);
+          }
+
           return logfile;
+        }
+
+        if (logfile->status() == Logfile::StatusType::EMPTY && 
+            ! logfile->isWriteable(size)) {
+          // we found an empty logfile, but the entry won't fit
+
+          // delete the logfile from the sequence of logfiles
+          _logfiles.erase(it++);
+
+          // and physically remove the file
+          // note: this will also delete the logfile object!
+          removeLogfile(logfile, false);
+
+        }
+        else {
+          ++it;
         }
       }
     }
 
     // signal & sleep outside the lock
-    _allocatorThread->signal();
+    _allocatorThread->signal(size);
     usleep(10000);
   }
   
@@ -911,12 +975,25 @@ int LogfileManager::openLogfiles () {
 /// @brief allocates a new reserve logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::createReserveLogfile () {
+int LogfileManager::createReserveLogfile (uint32_t size) {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG_TRACE("creating empty logfile '%s'", filename.c_str());
-  Logfile* logfile = Logfile::create(filename.c_str(), id, filesize());
+  LOG_TRACE("creating empty logfile '%s' with size %lu", 
+            filename.c_str(), 
+            (unsigned long) size);
+
+  uint32_t realsize;
+  if (size > 0 && size > filesize()) {
+    // create a logfile with the requested size
+    realsize = size + Logfile::overhead();
+  }
+  else {
+    // create a logfile with default size
+    realsize = filesize();
+  }
+    
+  Logfile* logfile = Logfile::create(filename.c_str(), id, realsize);
 
   if (logfile == nullptr) {
     int res = TRI_errno();

@@ -164,8 +164,7 @@ namespace triagens {
           return 0;
         }
 
-        // TODO: decide whether we need _footerSize
-        return static_cast<uint64_t>(allocatedSize() - _df->_footerSize - _df->_currentSize);
+        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,6 +215,14 @@ namespace triagens {
 
       inline bool canBeRemoved () const {
         return (_status == StatusType::COLLECTED);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile overhead
+////////////////////////////////////////////////////////////////////////////////
+
+      static inline uint32_t overhead () {
+        return TRI_JOURNAL_OVERHEAD;
       }
 
 ////////////////////////////////////////////////////////////////////////////////

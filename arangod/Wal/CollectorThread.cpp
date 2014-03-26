@@ -159,7 +159,7 @@ bool CollectorThread::removeLogfiles () {
     return false;
   }
 
-  _logfileManager->removeLogfile(logfile);
+  _logfileManager->removeLogfile(logfile, true);
   return true;
 }
 
