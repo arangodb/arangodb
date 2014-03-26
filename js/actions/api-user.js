@@ -191,10 +191,10 @@ function delete_api_user (req, res) {
 
   var user = decodeURIComponent(req.suffix[0]);
   try {
-    var doc = users.remove(user);
+    users.remove(user);
     users.reload();
 
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, doc);
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {});
   }
   catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
