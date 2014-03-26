@@ -190,6 +190,7 @@ static int fd_read(struct current *current);
 static int getWindowSize(struct current *current);
 static void set_current(struct current *current, const char *str);
 static void refreshLine(const char *prompt, struct current *current);
+static void refreshMultiLine(const char *prompt, struct current *current);
 static void refreshPage(const struct linenoiseCompletions * lc, struct current *current);
 static void initLinenoiseLine(struct current *current);
 static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
@@ -978,6 +979,7 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
 #ifndef USE_WINCONSOLE
 static void refreshLine(const char *prompt, struct current *current)
 {
+refreshMultiLine(prompt, current);return;
     size_t plen;
     size_t pchars;
     int backup = 0;
@@ -1072,6 +1074,64 @@ static void refreshLine(const char *prompt, struct current *current)
     /* Erase to right, move cursor to original position */
     eraseEol(current);
     setCursorPos(current, pos + pchars + backup );
+}
+
+static void showBuffer(struct current * current, size_t pchars) {
+    const char *buf = current->buf;
+    size_t buf_len = strlen(buf);
+    /**
+     * number of additional lines for displaying
+     * the complete buffer
+     */ 
+    size_t number_lines = new_line_numbers(current->pos, current->cols, pchars);
+    size_t free_chars = current->cols - pchars;
+    if(current->chars <= free_chars) { 
+        outputChars(current, buf, buf_len);
+    } else {
+        outputChars(current, buf, buf_len);
+        buf = buf + buf_len;
+        int i;
+        for(i=1; i<= number_lines-1; i++) {
+          outputChars(current, buf, current->cols);
+          buf = buf + current->cols;
+        }
+        buf_len = strlen(buf);
+        outputChars(current, buf, buf_len);
+    }
+}
+static void refreshMultiLine(const char *prompt, struct current *current)
+{
+    size_t plen;
+    size_t pchars;
+    int i;
+    const char *buf = current->buf;
+    size_t buf_len = strlen(buf);
+    size_t chars = current->chars;
+    size_t pos = current->pos;
+    
+    /* Should intercept SIGWINCH. For now, just get the size every time */
+    getWindowSize(current);
+
+    plen = strlen(prompt);
+    pchars = utf8_strlen(prompt, plen);
+    /* Scan the prompt for embedded ansi color control sequences and
+     * discount them as characters/columns.
+     */
+    pchars -= countColorControlChars(prompt);
+   
+    
+    /* Cursor to left edge, then the prompt */
+    cursorToLeft(current);
+    outputChars(current, prompt, plen);
+
+    /**
+     * show the buffer
+     */
+    showBuffer(current, pchars);
+
+    /* Erase to right, move cursor to original position */
+    // eraseEol(current);
+    setCursorPos(current, pos + pchars );
 }
 #endif
 
