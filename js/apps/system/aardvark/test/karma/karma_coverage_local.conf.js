@@ -1,7 +1,7 @@
 // Karma configuration
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
-filesJSON = require("./file.json");
+filesJSON = require("./files.json");
 
 module.exports = function(karma) {
 
@@ -25,7 +25,8 @@ module.exports = function(karma) {
     ],
 
     preprocessors: {
-      'frontend/js/**/**.js': ['coverage']
+      'frontend/js/**/**.js': ['coverage'],
+      'clusterFrontend/js/**/**.js': ['coverage']
     },
 
     // test results reporter to use
