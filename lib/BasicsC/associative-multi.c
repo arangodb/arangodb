@@ -662,6 +662,101 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
   return i;
 }
 
+static uint64_t LookupByElement (TRI_multi_pointer_t* array,
+                                 void const* element) {
+  // This performs a complete lookup for an element. It returns a slot
+  // number. This slot is either empty or contains an element that
+  // compares equal to element.
+  uint64_t hash;
+  uint64_t i, j;
+
+  // compute the hash
+  hash = array->hashElement(array, element, true);
+  i = hash % array->_nrAlloc;
+
+  // Now find the first slot with an entry with the same key that is the
+  // start of a linked list, or a free slot:
+  while (array->_table[i].ptr != NULL &&
+         (array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX ||
+          ! array->isEqualElementElement(array, element, 
+                                                array->_table[i].ptr, true))) {
+    i = TRI_IncModU64(i, array->_nrAlloc);
+#ifdef TRI_INTERNAL_STATS
+    array->_nrProbesF++;
+#endif
+    ALL_HASH_COLLS++;
+  }
+
+  if (array->_table[i].ptr != NULL) {
+    // It might be right here!
+    if (array->isEqualElementElement(array, element,
+                                            array->_table[i].ptr, false)) {
+      return i;
+    }
+
+    // Now we have to look for it in its hash position:
+    j = FindElementPlace(array, element, true);
+
+    // We have either found an equal element or nothing:
+    return j;
+  }
+
+  // If we get here, no element with the same key is in the array, so
+  // we will not be able to find it anywhere!
+  return i;
+}
+
+static inline bool IsBetween(uint64_t from, uint64_t x, uint64_t to) {
+  // returns whether or not x is behind from and before or equal to
+  // to in the cyclic order. If x is equal to from, then the result is
+  // always false. If from is equal to to, then the result is always
+  // true.
+  return (from < to) ? (from < x && x <= to)
+                     : (x > from || x <= to);
+}
+
+static inline void InvalidateEntry (TRI_multi_pointer_t* array, uint64_t i) {
+  array->_table[i].ptr = NULL;
+  array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
+  array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
+}
+
+static inline void MoveEntry (TRI_multi_pointer_t* array, 
+                              uint64_t from, uint64_t to) {
+  // Moves an entry, adjusts the linked lists, but does not take care
+  // for the hole. to must be unused. from can be any element in a
+  // linked list.
+  array->_table[to] = array->_table[from];
+  if (array->_table[to].prev != TRI_MULTI_POINTER_INVALID_INDEX) {
+    array->_table[array->_table[to].prev].next = to;
+  }
+  if (array->_table[to].next != TRI_MULTI_POINTER_INVALID_INDEX) {
+    array->_table[array->_table[to].next].prev = to;
+  }
+  InvalidateEntry(array, from);
+}
+
+static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
+  uint64_t j, k;
+  uint64_t hash;
+
+  j = TRI_IncModU64(i, array->_nrAlloc);
+  while (array->_table[j].ptr != NULL) {
+    // Find out where this element ought to be:
+    // If it is the start of one of the linked lists, we need to hash
+    // by key, otherwise, we hash by the full identity of the element:
+    hash = array->hashElement(array, array->_table[j].ptr, 
+                     array->_table[j].prev == TRI_MULTI_POINTER_INVALID_INDEX);
+    k = hash % array->_nrAlloc;
+    if (! IsBetween(i, k, j)) {
+      // we have to move j to i:
+      MoveEntry(array, j, i);
+      i = j;  // Now heal this hole at j, j will be incremented right away
+    }
+    j = TRI_IncModU64(j, array->_nrAlloc);
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -822,48 +917,15 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 
 void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, 
                                        void const* element) {
-  uint64_t hash;
-  uint64_t i, j;
-
-  // compute the hash
-  hash = array->hashElement(array, element, true);
-  i = hash % array->_nrAlloc;
+  uint64_t i;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
 #endif
 
-  // Now find the first slot with an entry with the same key that is the
-  // start of a linked list, or a free slot:
-  while (array->_table[i].ptr != NULL &&
-         (! array->isEqualElementElement(array, element, 
-                                                array->_table[i].ptr, true) ||
-          array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesF++;
-#endif
-    ALL_HASH_COLLS++;
-  }
-
-  if (array->_table[i].ptr != NULL) {
-    // It might be right here!
-    if (array->isEqualElementElement(array, element,
-                                            array->_table[i].ptr, false)) {
-      return array->_table[i].ptr;
-    }
-
-    // Now we have to look for it in its hash position:
-    j = FindElementPlace(array, element, true);
-
-    // We have either found an equal element or nothing:
-    return array->_table[j].ptr;
-  }
-
-  // If we get here, no element with the same key is in the array, so
-  // we will not be able to find it anywhere!
-  return NULL;
+  i = LookupByElement(array, element);
+  return (NULL != array->_table[i].ptr) ? array->_table[i].ptr : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -871,77 +933,50 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
-#if 0
-  Plan:
-    First find it exactly as above
-    if not found, return NULL
-    if found as first of its linked list:
-      if there is a second one:
-        move second one here
-        heal hole there
-      else
-        remove
-        heal hole here
-    if found in the middle of a linked list:
-      remove from list
-      remove in array
-      heal hole here
-  heal hole:
-    look forwards until the next hole
-    if there is something whose rightful place is not between the hole
-      and its current place, then move it to the hole and heal the hole
-      there
-#endif
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
+  uint64_t i, j;
   void* old;
-
-  hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
 #endif
 
-  // search the table
-  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-#ifdef TRI_INTERNAL_STATS
-    array->_nrProbesD++;
-#endif
-  }
-
-  // if we did not find such an item return 0
-  if (array->_table[i] == NULL) {
+  i = LookupByElement(array, element);
+  if (array->_table[i].ptr == NULL) {
     return NULL;
   }
-
-  // remove item
-  old = array->_table[i];
-  array->_table[i] = NULL;
-  array->_nrUsed--;
-
-  // and now check the following places for items to move here
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (array->_table[k] != NULL) {
-    uint64_t j = array->hashElement(array, array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      array->_table[k] = NULL;
-      i = k;
+  old = array->_table[i].ptr;
+  if (array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
+    j = array->_table[i].next;
+    if (j == TRI_MULTI_POINTER_INVALID_INDEX) {
+      // The only one in its linked list, simply remove it and heal
+      // the hole:
+      InvalidateEntry(array, i);
+      HealHole(array, i);
     }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
+    else {
+      MoveEntry(array, j, i);
+      array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
+      InvalidateEntry(array, j);
+      HealHole(array, j);
+    }
   }
-
+  else {
+    // This one is not the first in its linked list
+    j = array->_table[i].prev;
+    array->_table[j].next = array->_table[i].next;
+    j = array->_table[i].next;
+    if (j != TRI_MULTI_POINTER_INVALID_INDEX) {
+      // We are not the last in the linked list.
+      array->_table[j].prev = array->_table[i].prev;
+    }
+    InvalidateEntry(array, i);
+    HealHole(array, i);
+  }
+  array->_nrUsed--;
+  
   // return success
   return old;
-#endif
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
