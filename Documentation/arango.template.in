@@ -227,6 +227,7 @@ ALIASES += \
   "RESTRETURNCODES=@htmlonly<H3>Return codes</H3>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<p></p><div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
   "RESTDESCRIPTION=@htmlonly<H3 class=\"space-before\">Description</H3>@endhtmlonly" \
+  "RESTDONE="
 
 # navigation
 ALIASES += \

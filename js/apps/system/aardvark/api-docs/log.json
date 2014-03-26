@@ -8,59 +8,70 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if invalid values are specified for <em>upto</em> or <em>level</em>. ",
+                            "reason": "is returned if invalid values are specified for <em>upto</em> or <em>level</em>. <br><br>",
                             "code": "400"
                         },
                         {
-                            "reason": "is returned if the log is requested for any database other than <em>_system</em>. ",
+                            "reason": "is returned if the log is requested for any database other than <em>_system</em>. <br><br>",
                             "code": "403"
+                        },
+                        {
+                            "reason": "is returned if the server cannot generate the result due to an out-of-memory error.",
+                            "code": "500"
                         }
                     ],
                     "parameters": [
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "upto",
-                            "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be: - <em>fatal</em> or <em>0</em> - <em>error</em> or <em>1</em> - <em>warning</em> or <em>2</em> - <em>info</em> or <em>3</em> - <em>debug</em>  or <em>4</em> The default value is <em>info</em>. "
+                            "description": "Returns all log entries up to log level <em>upto</em>. Note that <em>upto</em> must be:  <ul class=\"swagger-list\"><li><em>fatal</em> or <em>0</em> <li><em>error</em> or <em>1</em> <li><em>warning</em> or <em>2</em> <li><em>info</em> or <em>3</em> <li><em>debug</em>  or <em>4</em> </ul> The default value is <em>info</em>. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "level",
-                            "description": "Returns all log entries of log level <em>level</em>. Note that the URL parameters <em>upto</em> and <em>level</em> are mutually exclusive. "
+                            "description": "Returns all log entries of log level <em>level</em>. Note that the URL parameters <em>upto</em> and <em>level</em> are mutually exclusive. <br><br>"
                         },
                         {
                             "dataType": "Number",
                             "paramType": "query",
+                            "required": "false",
                             "name": "start",
-                            "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value) is greater or equal to <em>start</em>. "
+                            "description": "Returns all log entries such that their log entry identifier (<em>lid</em> value) is greater or equal to <em>start</em>. <br><br>"
                         },
                         {
                             "dataType": "Number",
                             "paramType": "query",
+                            "required": "false",
                             "name": "size",
-                            "description": "Restricts the result to at most <em>size</em> log entries. "
+                            "description": "Restricts the result to at most <em>size</em> log entries. <br><br>"
                         },
                         {
                             "dataType": "Number",
                             "paramType": "query",
+                            "required": "false",
                             "name": "offset",
-                            "description": "Starts to return log entries skipping the first <em>offset</em> log entries. <em>offset</em> and <em>size</em> can be used for pagination. "
+                            "description": "Starts to return log entries skipping the first <em>offset</em> log entries. <em>offset</em> and <em>size</em> can be used for pagination. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "search",
-                            "description": "Only return the log entries containing the text specified in <em>search</em>. "
+                            "description": "Only return the log entries containing the text specified in <em>search</em>. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "sort",
-                            "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. "
+                            "description": "Sort the log entries either ascending (if <em>sort</em> is <em>asc</em>) or descending (if <em>sort</em> is <em>desc</em>) according to their <em>lid</em> values. Note that the <em>lid</em> imposes a chronological order. The default value is <em>asc</em>. <br><br>"
                         }
                     ],
-                    "notes": "Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes: <br><br>- <em>lid</em>: a list of log entry identifiers. Each log message is uniquely  identified by its <b>lid</b> and the identifiers are in ascending   order. <br><br>- <em>level</em>: a list of the log-levels for all log entries.<br><br>- <em>timestamp</em>: a list of the timestamps as seconds since 1970-01-01 for all log  entries. <br><br>- <em>text</em> a list of the texts of all log entries<br><br>- <em>totalAmount</em>: the total amount of log entries before pagination.<br><br>",
+                    "notes": "Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>lid</em>: a list of log entry identifiers. Each log message is uniquely identified by its <b>lid</b> and the identifiers are in ascending order.  <li><em>level</em>: a list of the log-levels for all log entries.  <li><em>timestamp</em>: a list of the timestamps as seconds since 1970-01-01 for all log entries.  <li><em>text</em> a list of the texts of all log entries  <li><em>totalAmount</em>: the total amount of log entries before pagination.",
                     "summary": "reads the global log from the server",
                     "httpMethod": "GET",
                     "examples": "",
