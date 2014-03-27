@@ -1375,12 +1375,14 @@ static int insert_char(struct current *current, size_t pos, int ch)
 
 #ifdef USE_TERMIOS
         /* optimise the case where adding a single char to the end and no scrolling is needed */
+        /*
         if (current->pos == pos && current->chars == pos) {
             if (ch >= ' ' && utf8_strlen(current->prompt, strlen(current->prompt)) + utf8_strlen(current->buf, current->len) < current->cols - 1) {
                 IGNORE_RC(write(current->fd, buf, n));
-                ret = 2;
+                ret = 1;
             }
         }
+        */
 #endif
 
         memmove(current->buf + p2, current->buf + p1, current->len - p1);
@@ -1563,11 +1565,11 @@ static void moveCursorToRight(struct current * current) {
 }
 #else
 static void moveCursorToLeft(struct current * current) {
+   size_t pchars = 20;
+   int x = next_allowed_x(current->pos, current->cols, pchars);
    if(current->pos==0) {
            return;
    } 
-   size_t pchars = 20;
-   int x = next_allowed_x(current->pos, current->cols, pchars);
    if(x==0) {
       fd_printf(current->fd, "\x1b[1A\x1b[%dG", current->cols);
    } else {
@@ -1575,11 +1577,11 @@ static void moveCursorToLeft(struct current * current) {
    }
 }
 static void moveCursorToRight(struct current * current) {
+   size_t pchars = 20;
+   int x = next_allowed_x(current->pos, current->cols, pchars);
    if(current->pos>=current->chars) {
            return;
    } 
-   size_t pchars = 20;
-   int x = next_allowed_x(current->pos, current->cols, pchars);
    if(x==current->cols-1) {
       fd_printf(current->fd, "\x1b[1B\x1b[0G");
    } else {
