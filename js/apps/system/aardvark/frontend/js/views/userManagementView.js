@@ -12,16 +12,20 @@
     template: templateEngine.createTemplate("userManagementView.ejs"),
 
     events: {
-      "click #createUser"                                     : "createUser",
-      "click #submitCreateUser"                               : "submitCreateUser",
-      "click #deleteUser"                                     : "removeUser",
-      "click #submitDeleteUser"                               : "submitDeleteUser",
-      "click .editUser"                                       : "editUser",
-      "click .icon"                                           : "editUser",
-      "click #submitEditUser"                                 : "submitEditUser",
-      "click #userManagementToggle"                           : "toggleView",
-      "keyup #userManagementSearchInput"                      : "search",
-      "click #userManagementSearchSubmit"                     : "search"
+      "click #createUser"                   : "createUser",
+      "click #submitCreateUser"             : "submitCreateUser",
+      "click #deleteUser"                   : "removeUser",
+      "click #submitDeleteUser"             : "submitDeleteUser",
+      "click .editUser"                     : "editUser",
+      "click .icon"                         : "editUser",
+      "click #submitEditUser"               : "submitEditUser",
+      "click #userManagementToggle"         : "toggleView",
+      "keyup #userManagementSearchInput"    : "search",
+      "click #userManagementSearchSubmit"   : "search",
+      "click #callEditUserPassword"         : "editUserPassword",
+      "click #submitEditUserPassword"       : "submitEditUserPassword",
+      "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile"
+
     },
 
     initialize: function() {
@@ -29,7 +33,7 @@
       this.collection.fetch({async:false});
     },
 
-    render: function () {
+    render: function (isProfile) {
       var dropdownVisible = false;
       if ($('#userManagementDropdown').is(':visible')) {
         dropdownVisible = true;
@@ -62,6 +66,9 @@
       $('#searchInput').val(val);
 */
 //      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+      if (!!isProfile) {
+        $('#editCurrentUserProfileModal').modal('show');
+      }
 
       return this;
     },
@@ -182,19 +189,22 @@
     },
 
     editUser : function(e) {
+      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
       this.collection.fetch();
       this.userToEdit = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
-      $('#editUserModal').modal('show');
+      if (this.userToEdit === '') {
+        this.userToEdit = $(e.currentTarget).attr('id');
+      }
       var user = this.collection.findWhere({user: this.userToEdit});
-      $('#editUsername').html(user.get("user"));
-      $('#editName').val(user.get("extra").name);
-      $('#editStatus').attr("checked", user.get("active"));
       if (user.get("loggedIn")) {
-        $('#editStatus').attr("disabled", true);
-        $('#deleteUser').attr("disabled", true);
-        $('#deleteUser').removeClass("button-danger");
-        $('#deleteUser').addClass("button-inactive");
+        $('#editCurrentUserProfileModal').modal('show');
+        $('#editCurrentUsername').html(user.get("user"));
+        $('#editCurrentName').val(user.get("extra").name);
+        $('#editCurrentUserProfileImg').val(user.get("extra").img);
       } else {
+        $('#editUserModal').modal('show');
+        $('#editUsername').html(user.get("user"));
+        $('#editName').val(user.get("extra").name);
         $('#editStatus').attr("disabled", false);
         $('#deleteUser').attr("disabled", false);
         $('#deleteUser').removeClass("button-inactive");
@@ -285,9 +295,93 @@
     evaluateUserName : function(str, substr) {
       var index = str.lastIndexOf(substr);
       return str.substring(0, index);
+    },
+
+
+    editUserPassword : function () {
+      $('#editCurrentUserProfileModal').modal('hide');
+      $('#editUserPasswordModal').modal('show');
+    },
+
+    submitEditUserPassword : function () {
+      var self        = this,
+        oldPasswd     = $('#oldCurrentPassword').val(),
+        newPasswd     = $('#newCurrentPassword').val(),
+        confirmPasswd = $('#confirmCurrentPassword').val();
+      $('#oldCurrentPassword').val('');
+      $('#newCurrentPassword').val('');
+      $('#confirmCurrentPassword').val('');
+      //check input
+      //clear all "errors"
+      $('#oldCurrentPassword').closest("th").css("backgroundColor", "white");
+      $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
+      $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
+
+
+      //check
+      var hasError = false;
+      //Check old password
+      if (!this.validateCurrentPassword(oldPasswd)) {
+        $('#oldCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check confirmation
+      if (newPasswd !== confirmPasswd) {
+        $('#confirmCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check new password
+      if (!this.validatePassword(newPasswd)) {
+        $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+
+      if (hasError) {
+        return;
+      }
+      this.currentUser.setPassword(newPasswd);
+//      this.showModal('#editUserProfileModal');
+      $('#editUserPasswordModal').modal('hide');
+    },
+
+    validateCurrentPassword : function (pwd) {
+      return this.currentUser.checkPassword(pwd);
+    },
+
+
+    submitEditCurrentUserProfile: function() {
+      var self = this;
+      var name      = $('#editCurrentName').val();
+      var img       = $('#editCurrentUserProfileImg').val();
+
+      img = this.parseImgString(img);
+      /*      if (!this.validateName(name)) {
+       $('#editName').closest("th").css("backgroundColor", "red");
+       return;
+       }*/
+
+      this.currentUser.save({"extra": {"name":name, "img":img}});
+      $('#editCurrentUserProfileModal').modal('hide');
+      this.updateUserProfile();
+    },
+
+    updateUserProfile: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.render();
+        }
+      });
+    },
+
+    parseImgString : function(img) {
+      //if already md5
+      if (img.indexOf("@") === -1) {
+        return img;
+      }
+      //else generate md5
+      return CryptoJS.MD5(img).toString();
     }
-
-
 
 
   });
