@@ -1,6 +1,15 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
+
 * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
   async job without potentially fetching it from the list of done jobs
 
@@ -26,6 +35,8 @@ v2.1.0 (XXXX-XX-XX)
 
 v2.0.1 (XXXX-XX-XX)
 -------------------
+
+* added `changePassword` attribute for users
 
 * fixed non-working "save" button in collection edit view of web interface
   clicking the save button did nothing. one had to press enter in one of the input

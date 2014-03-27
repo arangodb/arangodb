@@ -592,7 +592,7 @@ namespace triagens {
 
             // not found 
             else if (authResult == HttpResponse::NOT_FOUND) {
-              HttpResponse response(HttpResponse::NOT_FOUND);
+              HttpResponse response(authResult);
               response.setContentType("application/json; charset=utf-8");
   
               response.body().appendText("{\"error\":true,\"errorMessage\":\"")
@@ -607,12 +607,29 @@ namespace triagens {
               this->resetState();
             }
             
+            // forbidden
+            else if (authResult == HttpResponse::FORBIDDEN) {
+              HttpResponse response(authResult);
+              response.setContentType("application/json; charset=utf-8");
+
+              response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
+                             .appendInteger((int) authResult)
+                             .appendText(",\"errorNum\":")
+                             .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
+                             .appendText("}");
+               
+              this->handleResponse(&response);
+              this->resetState();
+            }
+
             // not authenticated
             else {
+              HttpResponse response(HttpResponse::UNAUTHORIZED);
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
-              HttpResponse response(HttpResponse::UNAUTHORIZED);
-              response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
+              if (sendWwwAuthenticateHeader()) {
+                response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
+              }
 
               this->handleResponse(&response);
               this->resetState();
@@ -756,6 +773,19 @@ namespace triagens {
           return true;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decide whether or not we should send back a www-authenticate header
+////////////////////////////////////////////////////////////////////////////////
+
+        bool sendWwwAuthenticateHeader () const {
+          bool found;
+          string const value = this->_request->header("x-omit-www-authenticate", found);
+          if (found) {
+            return false;
+          }
+            
+          return true;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

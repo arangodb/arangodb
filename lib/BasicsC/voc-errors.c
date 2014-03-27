@@ -168,6 +168,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
+  REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
   REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
   REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");

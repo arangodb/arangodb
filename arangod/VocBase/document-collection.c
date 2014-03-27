@@ -3741,7 +3741,7 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end;
   void** ptr;
   int res;
-  double starttime;
+  // double starttime;
 
   primary = &document->base;
 
@@ -3755,7 +3755,7 @@ static int FillIndex (TRI_document_collection_t* document,
   }
 
 
-  starttime = TRI_microtime();
+  // starttime = TRI_microtime();
   //printf("FillIndex _iid=%llu start time: %f\n",(unsigned long long) idx->_iid,
   //       starttime);
   inserted = 0;

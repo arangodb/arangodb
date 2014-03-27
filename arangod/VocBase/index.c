@@ -820,14 +820,14 @@ static int InsertEdge (TRI_index_t* idx,
   entryIn->_cid = edge->_toCid;
   entryIn->_searchKey._offsetKey = edge->_offsetToKey;
   TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, isRollback);
-
+    
   // second slot: OUT
   entryOut->_mptr = mptr;
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
   entryOut->_searchKey._offsetKey = edge->_offsetFromKey;
   TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, isRollback);
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -937,14 +937,14 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
   if (edgeIndex == NULL) {
     return NULL;
   }
-  
+ 
   res = TRI_InitMultiPointer(&edgeIndex->_edges,
                              TRI_UNKNOWN_MEM_ZONE,
                              HashElementEdge,
                              HashElementEdge,
                              IsEqualKeyEdge,
                              IsEqualElementEdge);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
 
@@ -983,16 +983,26 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
   // free all elements in the edges index
   n = (size_t) edgesIndex->_edges._nrAlloc;
+  
+  // deletion from the index is done in two steps as memory was only allocated for IN edges
+  // the OUT edges are at memory position IN + sizeof(edge_header) and 
+  // must not be freed themselves
 
+  // step 1: zero out all the out edges (we must not free them directly)
+  for (i = 0; i < n; ++i) {
+    TRI_edge_header_t* element = edgesIndex->_edges._table[i];
+  
+    if (element != NULL && (element->_flags & TRI_EDGE_BIT_DIRECTION_OUT)) {
+      edgesIndex->_edges._table[i] = NULL;
+    }
+  }
+  
+  // step 2: free the allocated memory
   for (i = 0; i < n; ++i) {
     TRI_edge_header_t* element = edgesIndex->_edges._table[i];
 
-    if (element != NULL && (element->_flags & TRI_EDGE_BIT_DIRECTION_IN)) {
-      // memory was only allocated for IN edges
+    if (element != NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      
-      // the OUT edges are at memory position IN + sizeof(edge_header) and 
-      // must not be freed themselves
     }
   }
 

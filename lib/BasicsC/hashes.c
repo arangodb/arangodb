@@ -585,7 +585,7 @@ uint32_t TRI_Crc32HashPointer (void const* data, size_t length) {
 /// @brief computes a CRC32 for strings
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_Crc32HashString (char const* data) {
+uint32_t TRI_Crc32HashString (char const* data) {
   uint32_t crc;
   uint8_t const* ptr;
 

@@ -80,7 +80,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
-#include "Wal/Configuration.h"
+#include "Wal/LogfileManager.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
@@ -290,7 +290,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
-    _walConfiguration(0),
+    _logfileManager(0),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -386,9 +386,10 @@ void ArangoServer::buildApplicationServer () {
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
-/* 
-  _walConfiguration = new wal::Configuration(); 
-  _applicationServer->addFeature(_walConfiguration);
+
+/*
+  _logfileManager = new wal::LogfileManager(&_databasePath); 
+  _applicationServer->addFeature(_logfileManager);
 */
   // .............................................................................
   // dispatcher
