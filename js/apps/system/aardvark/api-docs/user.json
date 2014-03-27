@@ -8,42 +8,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "The user was found. ",
-                            "code": "200"
-                        },
-                        {
-                            "reason": "The user with <em>user</em> does not exist. ",
-                            "code": "404"
-                        }
-                    ],
-                    "parameters": [
-                        {
-                            "dataType": "String",
-                            "paramType": "path",
-                            "required": "true",
-                            "name": "user",
-                            "description": "The name of the user. "
-                        }
-                    ],
-                    "notes": "<br><br>Fetches data about the specified user. <br><br>The call will return a JSON document with at least the following attributes on success: <br><br>- <em>user</em>: The name of the user as a string.<br><br>- <em>active</em>: an optional flag that specifies whether the user is active.<br><br>- <em>extra</em>: an optional JSON object with arbitrary extra data about the  user. <br><br>",
-                    "summary": "fetches a user",
-                    "httpMethod": "GET",
-                    "examples": "",
-                    "nickname": "fetchesAUser"
-                }
-            ],
-            "path": "/_api/user/{user}"
-        },
-        {
-            "operations": [
-                {
-                    "errorResponses": [
-                        {
-                            "reason": "returned if the user can be added by the server. ",
+                            "reason": "returned if the user can be added by the server. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "If the JSON representation is malformed or mandatory data is missing from the request. ",
+                            "reason": "If the JSON representation is malformed or mandatory data is missing from the request. <br><br>",
                             "code": "400"
                         }
                     ],
@@ -53,10 +22,10 @@
                             "paramType": "body",
                             "required": "true",
                             "name": "body",
-                            "description": ""
+                            "description": "<br><br>"
                         }
                     ],
-                    "notes": "<br><br>The following data need to be passed in a JSON representation in the body of the POST request: <br><br>- <em>user</em>: The name of the user as a string. This is mandatory.<br><br>- <em>passwd</em>: The user password as a string. If no password is specified,  the empty string will be used. <br><br>- <em>active</em>: an optional flag that specifies whether the user is active.  If not specified, this will default to <em>true</em>. <br><br>- <em>extra</em>: an optional JSON object with arbitrary extra data about the  user. <br><br>If the user can be added by the server, the server will respond with  <em>HTTP 201</em>. <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. <br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> The following data need to be passed in a JSON representation in the body of the POST request: <br><br>  <ul class=\"swagger-list\"><li><em>user</em>: The name of the user as a string. This is mandatory.  <li><em>passwd</em>: The user password as a string. If no password is specified, the empty string will be used.  <li><em>active</em>: an optional flag that specifies whether the user is active.  If not specified, this will default to <em>true</em>.  <li><em>extra</em>: an optional JSON object with arbitrary extra data about the user.  <li><em>changePassword</em>: an optional flag that specifies whethers the user must change the password or not. If not specified, this will default to <em>false</em>.  If set to <em>true</em>, the only operations allowed are <em>PUT /_api/user</em> or <em>PATCH /_api/user</em>. All other operations will result in a <em>HTTP 403</em>.  </ul> If the user can be added by the server, the server will respond with <em>HTTP 201</em>. <br><br> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. <br><br> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "creates user",
                     "httpMethod": "POST",
                     "examples": "",
@@ -70,12 +39,16 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "Is returned if the user data can be replaced by the server. ",
+                            "reason": "Is returned if the user data can be replaced by the server. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "The JSON representation is malformed or mandatory data is missing from the request. ",
+                            "reason": "The JSON representation is malformed or mandatory data is missing from the request. <br><br>",
                             "code": "400"
+                        },
+                        {
+                            "reason": "The specified user does not exist. <br><br>",
+                            "code": "404"
                         }
                     ],
                     "parameters": [
@@ -84,17 +57,17 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "user",
-                            "description": "The name of the user. "
+                            "description": "The name of the user. <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "body",
-                            "description": ""
+                            "description": "<br><br>"
                         }
                     ],
-                    "notes": "<br><br>Replaces the data of an existing user. The name of an existing user must be specified in <em>user</em>. <br><br>The following data can to be passed in a JSON representation in the body of the POST request: <br><br>- <em>passwd</em>: The user password as a string. Specifying a password is  mandatory, but the empty string is allowed for passwords. <br><br>- <em>active</em>: an optional flag that specifies whether the user is active.  If not specified, this will default to <em>true</em>. <br><br>- <em>extra</em>: an optional JSON object with arbitrary extra data about the  user. <br><br>If the user can be replaced by the server, the server will respond with  <em>HTTP 200</em>.  <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. If the specified user does not exist, the server will respond with <em>HTTP 404</em>. <br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> Replaces the data of an existing user. The name of an existing user must be specified in <em>user</em>. <br><br> The following data can to be passed in a JSON representation in the body of the POST request: <br><br>  <ul class=\"swagger-list\"><li><em>passwd</em>: The user password as a string. Specifying a password is mandatory, but the empty string is allowed for passwords.  <li><em>active</em>: an optional flag that specifies whether the user is active.  If not specified, this will default to <em>true</em>.  <li><em>extra</em>: an optional JSON object with arbitrary extra data about the user.  <li><em>changePassword</em>: an optional flag that specifies whether the user must change the password or not.  If not specified, this will default to <em>false</em>.  </ul> If the user can be replaced by the server, the server will respond with `HTTP 200`. <br><br> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. If the specified user does not exist, the server will respond with <em>HTTP 404</em>. <br><br> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "replaces user",
                     "httpMethod": "PUT",
                     "examples": "",
@@ -108,15 +81,15 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "Is returned if the user data can be replaced by the server. ",
+                            "reason": "Is returned if the user data can be replaced by the server. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "The JSON representation is malformed or mandatory data is missing from the request. ",
+                            "reason": "The JSON representation is malformed or mandatory data is missing from the request. <br><br>",
                             "code": "400"
                         },
                         {
-                            "reason": "The specified user does not exist. ",
+                            "reason": "The specified user does not exist. <br><br>",
                             "code": "404"
                         }
                     ],
@@ -126,17 +99,17 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "user",
-                            "description": "The name of the user. "
+                            "description": "The name of the user. <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "body",
-                            "description": ""
+                            "description": "<br><br>"
                         }
                     ],
-                    "notes": "<br><br>Partially updates the data of an existing user. The name of an existing user  must be specified in <em>user</em>. <br><br>The following data can be passed in a JSON representation in the body of the POST request: <br><br>- <em>passwd</em>: The user password as a string. Specifying a password is  optional. If not specified, the previously existing value will not be   modified. <br><br>- <em>active</em>: an optional flag that specifies whether the user is active.  If not specified, the previously existing value will not be modified. <br><br>- <em>extra</em>: an optional JSON object with arbitrary extra data about the  user. If not specified, the previously existing value will not be modified. <br><br>If the user can be updated by the server, the server will respond with  <em>HTTP 200</em>.  <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. If the specified user does not exist, the server will respond with <em>HTTP 404</em>. <br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> Partially updates the data of an existing user. The name of an existing user must be specified in <em>user</em>. <br><br> The following data can be passed in a JSON representation in the body of the POST request: <br><br>  <ul class=\"swagger-list\"><li><em>passwd</em>: The user password as a string. Specifying a password is optional. If not specified, the previously existing value will not be modified.  <li><em>active</em>: an optional flag that specifies whether the user is active.  If not specified, the previously existing value will not be modified.  <li><em>extra</em>: an optional JSON object with arbitrary extra data about the user. If not specified, the previously existing value will not be modified.  <li><em>changePassword</em>: an optional flag that specifies whether the user must change the password or not. If not specified, the previously existing value will not be modified.  </ul> If the user can be updated by the server, the server will respond with `HTTP 200`. <br><br> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. If the specified user does not exist, the server will respond with <em>HTTP 404</em>. <br><br> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "updates user",
                     "httpMethod": "PATCH",
                     "examples": "",
@@ -150,11 +123,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "Is returned if the user was removed by the server. ",
+                            "reason": "Is returned if the user was removed by the server. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "The specified user does not exist. ",
+                            "reason": "The specified user does not exist. <br><br>",
                             "code": "404"
                         }
                     ],
@@ -164,14 +137,45 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "user",
-                            "description": "The name of the user. "
+                            "description": "The name of the user. <br><br>"
                         }
                     ],
-                    "notes": "<br><br>Removes an existing user, identified by <em>user</em>. <br><br>If the user can be removed, the server will respond with <em>HTTP 202</em>.  <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>If the specified user does not exist, the server will respond with  <em>HTTP 404</em>. <br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> Removes an existing user, identified by <em>user</em>. <br><br> If the user can be removed, the server will respond with <em>HTTP 202</em>. <br><br> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> If the specified user does not exist, the server will respond with <em>HTTP 404</em>. <br><br> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "removes a user",
                     "httpMethod": "DELETE",
                     "examples": "",
                     "nickname": "removesAUser"
+                }
+            ],
+            "path": "/_api/user/{user}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "The user was found. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The user with <em>user</em> does not exist. <br><br>",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "user",
+                            "description": "The name of the user. <br><br>"
+                        }
+                    ],
+                    "notes": "<br><br> Fetches data about the specified user. <br><br> The call will return a JSON document with at least the following attributes on success: <br><br>  <ul class=\"swagger-list\"><li><em>user</em>: The name of the user as a string.  <li><em>active</em>: an optional flag that specifies whether the user is active.  <li><em>extra</em>: an optional JSON object with arbitrary extra data about the user.  <li><em>changePassword</em>: an optional flag that specifies whether the user must change the password or not.",
+                    "summary": "fetches a user",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "fetchesAUser"
                 }
             ],
             "path": "/_api/user/{user}"

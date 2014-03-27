@@ -45,6 +45,7 @@ POST request:
 
 - `changePassword`: an optional flag that specifies whethers the user must
   change the password or not. If not specified, this will default to `false`.
+
   If set to `true`, the only operations allowed are `PUT /_api/user` or
   `PATCH /_api/user`. All other operations will result in a `HTTP 403`.
 
@@ -79,6 +80,8 @@ returned if the user can be added by the server.
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing from the
 request.
+
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
@@ -147,6 +150,8 @@ request.
 
 @RESTRETURNCODE{404}
 The specified user does not exist.
+
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
@@ -218,6 +223,8 @@ request.
 @RESTRETURNCODE{404}
 The specified user does not exist.
 
+@RESTDONE
+
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserRemove
@@ -262,6 +269,8 @@ Is returned if the user was removed by the server.
 @RESTRETURNCODE{404}
 The specified user does not exist.
 
+@RESTDONE
+
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserDocument
@@ -295,6 +304,8 @@ The user was found.
 
 @RESTRETURNCODE{404}
 The user with `user` does not exist.
+
+@RESTDONE
 
 @COMMENT{######################################################################}
 @BNAVIGATE_HttpUser
