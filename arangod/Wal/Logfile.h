@@ -140,6 +140,14 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status
+////////////////////////////////////////////////////////////////////////////////
+
+      inline Logfile::StatusType status () const {
+        return _status;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the allocated size of the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,8 +164,7 @@ namespace triagens {
           return 0;
         }
 
-        // TODO: decide whether we need _footerSize
-        return static_cast<uint64_t>(allocatedSize() - _df->_footerSize - _df->_currentSize);
+        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,13 +218,19 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile overhead
+////////////////////////////////////////////////////////////////////////////////
+
+      static inline uint32_t overhead () {
+        return TRI_JOURNAL_OVERHEAD;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the logfile status as a string
 ////////////////////////////////////////////////////////////////////////////////
 
       static std::string statusText (StatusType status) {
         switch (status) {
-          case StatusType::UNKNOWN:
-            return "unknown";
           case StatusType::EMPTY:
             return "empty";
           case StatusType::OPEN:
@@ -230,6 +243,9 @@ namespace triagens {
             return "collection-requested";
           case StatusType::COLLECTED:
             return "collected";
+          case StatusType::UNKNOWN:
+          default:
+            return "unknown";
         }
       }
 
@@ -265,10 +281,10 @@ namespace triagens {
             break;
         }
 
-        LOG_INFO("changing logfile status from %s to %s for logfile %llu", 
-                 statusText(_status).c_str(), 
-                 statusText(status).c_str(),
-                 (unsigned long long) id());
+        LOG_TRACE("changing logfile status from %s to %s for logfile %llu", 
+                  statusText(_status).c_str(), 
+                  statusText(status).c_str(),
+                  (unsigned long long) id());
         _status = status;
       }
 

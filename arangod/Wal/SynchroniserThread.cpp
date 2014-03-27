@@ -123,12 +123,14 @@ void SynchroniserThread::run () {
     if (waiting > 0) {
       // get region to sync
       SyncRegion region = _logfileManager->slots()->getSyncRegion();
+      Logfile::IdType const id = region.logfileId;
 
-      if (region.logfileId != 0) {
+      if (id != 0) {
         // now perform the actual syncing
+        Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
+        assert(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
 
         // get the logfile's file descriptor
-        // TODO: we might cache the file descriptor here
         int fd = getLogfileDescriptor(region);
 
         if (fd < 0) {
@@ -139,19 +141,26 @@ void SynchroniserThread::run () {
           void** mmHandle = NULL;
           bool res = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
           
-        //  LOG_INFO("Syncing from %p to %p, length: %d", region.mem, region.mem + region.size, (int) region.size);
+          LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
+                    (unsigned long long) id,
+                    region.mem, 
+                    region.mem + region.size, 
+                    (unsigned long) region.size,
+                    region.waitForSync ? "true" : "false");
 
           if (! res) {
             LOG_ERROR("unable to sync wal logfile region");
             // TODO: how to recover from this state?
           }
+
+          if (status == Logfile::StatusType::SEAL_REQUESTED) {
+            // additionally seal the logfile
+            _logfileManager->sealLogfile(id);
+          }
         }
         
         _logfileManager->slots()->returnSyncRegion(region);
       }
-
-      // seal any logfiles that require sealing
-      _logfileManager->sealLogfiles();
     }
 
     // now wait until we are woken up or there is something to do
@@ -161,7 +170,9 @@ void SynchroniserThread::run () {
       assert(_waiting >= waiting);
       _waiting -= waiting;
     }
+
     if (_waiting == 0) {
+      // sleep if nothing to do
       guard.wait(Interval);
     }
   }

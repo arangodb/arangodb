@@ -625,9 +625,9 @@ namespace triagens {
             // not authenticated
             else {
               HttpResponse response(HttpResponse::UNAUTHORIZED);
+              const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               if (sendWwwAuthenticateHeader()) {
-                const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
                 response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
               }
 
@@ -777,11 +777,10 @@ namespace triagens {
 /// @brief decide whether or not we should send back a www-authenticate header
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool sendWwwAuthenticateHeader () {
+        bool sendWwwAuthenticateHeader () const {
           bool found;
-          string const& value = this->_request->header("x-requested-with", found);
-
-          if (found && value == "XMLHttpRequest") {
+          string const value = this->_request->header("x-omit-www-authenticate", found);
+          if (found) {
             return false;
           }
             

@@ -85,13 +85,13 @@ namespace triagens {
 /// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        void signalLogfileCreation ();
+        void signal (uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new reserve logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool createReserveLogfile ();
+        bool createReserveLogfile (uint32_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
@@ -130,10 +130,10 @@ namespace triagens {
         basics::ConditionVariable _condition;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of pending logfile creation requests
+/// @brief requested logfile size
 ////////////////////////////////////////////////////////////////////////////////
         
-        uint32_t _createRequests;
+        uint32_t _requestedSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag

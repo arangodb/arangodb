@@ -182,7 +182,7 @@
               ) {
                 this.currentPage = 1;
               }
-              if (this.totalPages === 0) {
+              if (this.totalPages === 0 || this.totalPages === undefined) {
                 this.totalPages = 1;
               }
 
