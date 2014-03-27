@@ -1,6 +1,10 @@
 v2.0.1-rc1 (XXXX-XX-XX)
 -----------------------
 
+* automatically assume that `--server.disable-authentication` should be `false` when 
+  a username is specified on the command-line for one of the command-line tools
+  (arangosh, arangodump etc.)
+
 * fixed isses in arango-dfdb:
 
   the dfdb was not able to unload certain system collections, so these couldn't be
