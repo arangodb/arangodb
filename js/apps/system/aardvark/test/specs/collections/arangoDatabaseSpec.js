@@ -52,9 +52,46 @@
             ]);
         });
 
+        it("initialize", function () {
+            spyOn(col, "fetch").andCallFake(function () {
+                col.models = [
+                    new window.DatabaseModel({name : "heinz"}),
+                    new window.DatabaseModel({name : "fritz"}),
+                    new window.DatabaseModel({name : "anton"})
+                ]
+                return {
+                    done: function (a) {
+                        a();
+                    }
+                }
+            });
+            col.initialize();
+            expect(col.models[0].get("name")).toEqual("anton");
+            expect(col.models[1].get("name")).toEqual("fritz");
+            expect(col.models[2].get("name")).toEqual("heinz");
+        });
+
 
         it("getDatabases", function () {
-            expect(col.getDatabases()).toEqual([]);
+            col.add(new window.DatabaseModel({name : "heinz"}));
+            col.add(new window.DatabaseModel({name : "fritz"}));
+            col.add(new window.DatabaseModel({name : "anton"}));
+            spyOn(col, "fetch").andCallFake(function () {
+                col.models = [
+                    new window.DatabaseModel({name : "heinz"}),
+                    new window.DatabaseModel({name : "fritz"}),
+                    new window.DatabaseModel({name : "anton"})
+                ]
+                return {
+                    done: function (a) {
+                        a();
+                    }
+                }
+            });
+            var result = col.getDatabases();
+            expect(result[0].get("name")).toEqual("anton");
+            expect(result[1].get("name")).toEqual("fritz");
+            expect(result[2].get("name")).toEqual("heinz");
         });
 
         it("createDatabaseURL", function () {
