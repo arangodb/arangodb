@@ -86,6 +86,8 @@ var PortFinder = require("org/arangodb/cluster").PortFinder;
 var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
 
+var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+
 var optionsDefaults = { "cluster": false,
                         "valgrind": false,
                         "force": true,
@@ -111,6 +113,7 @@ function findTopDir () {
 function makeTestingArgs () {
   var topDir = findTopDir();
   return [ "--configuration",                  "none",
+           "--server.keyfile",       fs.join(topDir,"UnitTests","server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
            "--javascript.gc-interval",         "1",
@@ -154,7 +157,7 @@ function startInstance (protocol, options, addArgs) {
   var pos;
   var dispatcher;
   if (options.cluster) {
-    // FIXME: protocol and valgrind currently ignored!
+    // FIXME: valgrind currently ignored!
     dispatcher = {"endpoint":"tcp://localhost:",
                   "arangodExtraArgs":makeTestingArgs(),
                   "username": "root",
@@ -166,7 +169,8 @@ function startInstance (protocol, options, addArgs) {
                          "numberOfCoordinators":1,
                          "dispatchers": {"me": dispatcher},
                          "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir});
+                         "logPath": tmpDataDir,
+                         "useSSLonCoordinators": protocol === "ssl"});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -206,15 +210,7 @@ function startInstance (protocol, options, addArgs) {
   }
 
   // Wait until the server/coordinator is up:
-  var url;
-  if (protocol === "ssl") {
-    url = "https";
-  }
-  else {
-    url = "http";
-  }
-  pos = endpoint.indexOf("://");
-  url += endpoint.substr(pos);
+  var url = endpointToURL(endpoint);
   while (true) {
     wait(0.5);
     var r = download(url+"/_api/version","",makeAuthorisationHeaders(options));
@@ -557,7 +553,6 @@ function rubyTests (options, ssl) {
       }
     }
   }
-  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
@@ -643,6 +638,11 @@ var impTodo = [
 ];
 
 testFuncs.importing = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
+    
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
@@ -735,6 +735,10 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.dump = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -786,7 +790,7 @@ testFuncs.arangob = function (options) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
-         benchTodo[i].indexOf("multitdx") === -1)) {
+         benchTodo[i].indexOf("multitrx") === -1)) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
       if (r !== 0 && !options.force) {
@@ -944,6 +948,7 @@ function UnitTest (which, options) {
     var results = {};
     var allok = true;
     for (n = 0;n < allTests.length;n++) {
+      print("Doing test",allTests[n],"with options",options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
       for (i in r) {

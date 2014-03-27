@@ -314,24 +314,6 @@ actions.defineHttp({
                           "Posted body was not valid JSON.");
       return;
     }
-    // Did we get an HTTP authorization header?
-    if (req.headers.hasOwnProperty("authorization")) {
-      var userpwd = parseAuthorization(req.headers.authorization);
-      var d;
-      // Now let's forward it to the planner:
-      if (userconfig.hasOwnProperty("dispatchers")) {
-        for (d in userconfig.dispatchers) {
-          if (userconfig.dispatchers.hasOwnProperty(d)) {
-            var dd = userconfig.dispatchers[d];
-            if (!dd.hasOwnProperty("username") ||
-                !dd.hasOwnProperty("passwd")) {
-              dd.username = userpwd.username;
-              dd.passwd = userpwd.passwd;
-            }
-          }
-        }
-      }
-    }
     var Planner = require("org/arangodb/cluster/planner").Planner;
     try {
       var p = new Planner(userconfig);
@@ -425,24 +407,6 @@ actions.defineHttp({
       actions.resultError(req, res, actions.HTTP_BAD,
                           'Posted body needs a "myname" property.');
       return;
-    }
-    // Did we get an HTTP authorization header?
-    if (req.headers.hasOwnProperty("authorization")) {
-      var userpwd = parseAuthorization(req.headers.authorization);
-      var d;
-      // Now let's forward it to the kickstarter:
-      if (input.clusterPlan.hasOwnProperty("dispatchers")) {
-        for (d in input.clusterPlan.dispatchers) {
-          if (input.clusterPlan.dispatchers.hasOwnProperty(d)) {
-            var dd = input.clusterPlan.dispatchers[d];
-            if (!dd.hasOwnProperty("username") ||
-                !dd.hasOwnProperty("passwd")) {
-              dd.username = userpwd.username;
-              dd.passwd = userpwd.passwd;
-            }
-          }
-        }
-      }
     }
     var action = input.action;
     var Kickstarter, k, r;
