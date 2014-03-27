@@ -4,20 +4,20 @@
 
     "use strict";
 
-    describe("GraphCollection", function() {
+    describe("GraphCollection", function () {
 
         var col;
 
-        beforeEach(function() {
+        beforeEach(function () {
             col = new window.GraphCollection();
         });
 
-        it("parse", function() {
+        it("parse", function () {
             expect(col.model).toEqual(window.Graph);
             expect(col.comparator).toEqual("_key");
             expect(col.url).toEqual("/_api/graph");
-            expect(col.parse({error: false, graphs : "blub"})).toEqual("blub");
-            expect(col.parse({error: true, graphs : "blub"})).toEqual(undefined);
+            expect(col.parse({error: false, graphs: "blub"})).toEqual("blub");
+            expect(col.parse({error: true, graphs: "blub"})).toEqual(undefined);
         });
 
     })
