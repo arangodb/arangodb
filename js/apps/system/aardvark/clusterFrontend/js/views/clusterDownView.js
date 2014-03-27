@@ -53,10 +53,12 @@
         window.App.navigate("planTest", {trigger : true});
         return;
       }
+/*
       if (plan.isSymmetricSetup()) {
         window.App.navigate("planSymmetrical", {trigger : true});
         return;
       }
+*/
       window.App.navigate("planAsymmetrical", {trigger : true});
     },
 

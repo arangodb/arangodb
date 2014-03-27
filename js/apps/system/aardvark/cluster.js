@@ -116,8 +116,8 @@
           _.each(input.dispatchers, function(d) {
             i++;
             var inf = {};
-            inf.username = uname;
-            inf.passwd = pwd;
+            inf.username = d.username;
+            inf.passwd = d.passwd;
             inf.endpoint = "tcp://" + d.host;
             if (d.isCoordinator) {
               config.numberOfCoordinators++;

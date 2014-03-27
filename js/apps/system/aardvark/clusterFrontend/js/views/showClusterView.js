@@ -107,16 +107,21 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+//        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "dbserver " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "dbserver " + type + " " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "coordinator " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "coordinator " + type + " " + stat);
       });
     },
 
