@@ -11,12 +11,15 @@
     modal: templateEngine.createTemplate("waitModal.ejs"),
 
     events: {
-      "click #startSymmetricPlan" : "startPlan",
-      "click .add"                : "addEntry",
-      "click .delete"             : "removeEntry",
-      "click #cancel"             : "cancel",
-      "focusout .host"            : "autoCheckConnections",
-      "focusout .port"            : "autoCheckConnections"
+      "click #startSymmetricPlan"   : "startPlan",
+      "click .add"                  : "addEntry",
+      "click .delete"               : "removeEntry",
+      "click #cancel"               : "cancel",
+      "click #test-all-connections" : "checkAllConnections",
+      "focusout .host"              : "autoCheckConnections",
+      "focusout .port"              : "autoCheckConnections",
+      "focusout .user"              : "autoCheckConnections",
+      "focusout .passwd"            : "autoCheckConnections"
     },
 
     cancel: function() {
@@ -34,24 +37,29 @@
       var foundDBServer = false;
       /*jslint unparam: true*/
       $(".dispatcher").each(function(i, dispatcher) {
-          var host = $(".host", dispatcher).val();
-          var port = $(".port", dispatcher).val();
-          if (!host || 0 === host.length || !port || 0 === port.length) {
-              return true;
-          }
-          var hostObject = {host :  host + ":" + port};
-          if (!self.isSymmetric) {
-              hostObject.isDBServer = !!$(".isDBServer", dispatcher).prop('checked');
-              hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).prop('checked');
-          } else {
-            hostObject.isDBServer = true;
-            hostObject.isCoordinator = true;
-          }
+        var host = $(".host", dispatcher).val();
+        var port = $(".port", dispatcher).val();
+        var user = $(".user", dispatcher).val();
+        var passwd = $(".passwd", dispatcher).val();
+        if (!host || 0 === host.length || !port || 0 === port.length) {
+          return true;
+        }
+        var hostObject = {host :  host + ":" + port};
+        if (!self.isSymmetric) {
+          hostObject.isDBServer = !!$(".isDBServer", dispatcher).prop('checked');
+          hostObject.isCoordinator = !!$(".isCoordinator", dispatcher).prop('checked');
+        } else {
+          hostObject.isDBServer = true;
+          hostObject.isCoordinator = true;
+        }
 
-          foundCoordinator = foundCoordinator || hostObject.isCoordinator;
-          foundDBServer = foundDBServer || hostObject.isDBServer;
+        hostObject.username = user;
+        hostObject.passwd = passwd;
 
-          data.dispatchers.push(hostObject);
+        foundCoordinator = foundCoordinator || hostObject.isCoordinator;
+        foundDBServer = foundDBServer || hostObject.isDBServer;
+
+        data.dispatchers.push(hostObject);
       });
       /*jslint unparam: false*/
       if (!self.isSymmetric) {
@@ -77,6 +85,7 @@
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       delete window.App.clusterPlan._coord;
       /*jslint unparam: true*/
+
       window.App.clusterPlan.save(
         data,
         {
@@ -100,13 +109,18 @@
       //disable launch button
       this.disableLaunchButton();
 
+      var lastUser = $("#server_list div.control-group.dispatcher:last .user").val();
+      var lastPasswd = $("#server_list div.control-group.dispatcher:last .passwd").val();
+
       $("#server_list").append(this.entryTemplate.render({
         isSymmetric: this.isSymmetric,
         isFirst: false,
         isCoordinator: true,
         isDBServer: true,
         host: '',
-        port: ''
+        port: '',
+        user: lastUser,
+        passwd: lastPasswd
       }));
     },
 
@@ -142,13 +156,17 @@
           var host = dispatcher.endpoint;
           host = host.split("//")[1];
           host = host.split(":");
+          var user = dispatcher.username;
+          var passwd = dispatcher.passwd;
           var template = self.entryTemplate.render({
             isSymmetric: isSymmetric,
             isFirst: isFirst,
             host: host[0],
             port: host[1],
             isCoordinator: isCoordinator,
-            isDBServer: isDBServer
+            isDBServer: isDBServer,
+            user: user,
+            passwd: passwd
           });
           $("#server_list").append(template);
           isFirst = false;
@@ -160,7 +178,9 @@
           isCoordinator: true,
           isDBServer: true,
           host: '',
-          port: ''
+          port: '',
+          user: '',
+          passwd: ''
         }));
       }
       //initially disable lunch button
@@ -173,23 +193,20 @@
     autoCheckConnections: function (e) {
       var host,
         port,
-        currentTarget = $(e.currentTarget);
-      //eval which field was left
-      if(currentTarget.attr('class').indexOf('host') !== -1) {
-        host = currentTarget.val();
-        //eval value of port
-        port = currentTarget.nextAll('.port').val();
-      } else {
-        port = currentTarget.val();
-        //eval value of port
-        host = currentTarget.prevAll('.host').val();
-      }
+        user,
+        passwd,
+        parentElement = $(e.currentTarget).parent();
+      host = $(parentElement).children('.host').val();
+      port = $(parentElement).children('.port').val();
+      user = $(parentElement).children('.user').val();
+      passwd = $(parentElement).children('.passwd').val();
+
       if (host !== '' && port !== '') {
         this.checkAllConnections();
       }
     },
 
-    checkConnection: function(host, port, target) {
+    checkConnection: function(host, port, user, passwd, target) {
       $(target).find('.cluster-connection-check-success').remove();
       $(target).find('.cluster-connection-check-fail').remove();
       var result = false;
@@ -198,6 +215,9 @@
           async: false,
           cache: false,
           type: "GET",
+          xhrFields: {
+            withCredentials: true
+          },
           url: "http://" + host + ":" + port + "/_api/version",
           success: function() {
             $(target).append(
@@ -205,10 +225,15 @@
             );
             result = true;
           },
-          error: function() {
+          error: function(p) {
             $(target).append(
               '<span class="cluster-connection-check-fail">Connection: fail</span>'
             );
+          },
+          beforeSend: function(xhr) {
+            xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + passwd));
+            //send this header to prevent the login box
+            xhr.setRequestHeader("X-Omit-Www-Authenticate", "content");
           }
         });
       } catch (e) {
@@ -225,7 +250,9 @@
           var target = $('.controls', dispatcher)[0];
           var host = $('.host', dispatcher).val();
           var port = $('.port', dispatcher).val();
-          if (!self.checkConnection(host, port, target)) {
+          var user = $('.user', dispatcher).val();
+          var passwd = $('.passwd', dispatcher).val();
+          if (!self.checkConnection(host, port, user, passwd, target)) {
             hasError = true;
           }
         }
