@@ -466,10 +466,20 @@
           collection: window.userCollection
         });
       }
-      this.userManagementView.render();
+      this.userManagementView.render(false);
       this.naviView.selectMenuItem('tools-menu');
     },
 
+    userProfile: function() {
+      if (!this.userManagementView) {
+        this.userManagementView = new window.userManagementView({
+          collection: window.userCollection
+        });
+      }
+      this.userManagementView.render(true);
+      this.naviView.selectMenuItem('tools-menu');
+    }
+/*
     userProfile: function() {
       if (!this.userProfileView) {
         this.userProfileView = new window.userProfileView({
@@ -479,6 +489,7 @@
       this.userProfileView.render();
       this.naviView.selectMenuItem('user-menu');
     }
+*/
 
   });
 
