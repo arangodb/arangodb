@@ -231,8 +231,6 @@ namespace triagens {
 
       static std::string statusText (StatusType status) {
         switch (status) {
-          case StatusType::UNKNOWN:
-            return "unknown";
           case StatusType::EMPTY:
             return "empty";
           case StatusType::OPEN:
@@ -245,6 +243,9 @@ namespace triagens {
             return "collection-requested";
           case StatusType::COLLECTED:
             return "collected";
+          case StatusType::UNKNOWN:
+          default:
+            return "unknown";
         }
       }
 
