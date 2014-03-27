@@ -880,8 +880,10 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                                                 bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
- // int loc;
- //  int opts;
+#ifndef _WIN32
+   int loc;
+   int opts;
+#endif
   size_t i;
 
   TRI_LockMutex(&ExternalProcessesLock);
@@ -1024,8 +1026,10 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
   bool ok = true;
-  // bool success;
-  // int loc;
+#ifndef _WIN32
+   int loc;
+   bool success;
+#endif
 
   TRI_LockMutex(&ExternalProcessesLock);
 
