@@ -269,7 +269,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   off_t offset;
   void* data;
   void* mmHandle;
-
+    
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
 
@@ -338,7 +338,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
+    
     return TRI_errno();
   }
 
@@ -366,11 +366,16 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   datafile->_data = data;
   datafile->_next = (char*)(data) + vocSize;
+  datafile->_currentSize = vocSize; 
   datafile->_maximalSize = maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
   datafile->_state = TRI_DF_STATE_CLOSED;
-
+  datafile->_full = false;
+  datafile->_isSealed = false;
+  datafile->_synced = data;
+  datafile->_written = datafile->_next;
+  
   // rename files
   oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
 
@@ -395,6 +400,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
 
+  // need to reset the datafile state here to write, otherwise the following call will return an error
+  datafile->_state = TRI_DF_STATE_WRITE;
+    
   return TRI_SealDatafile(datafile);
 }
 
@@ -1713,6 +1721,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a datafile and seals it
+/// this is called from the recovery procedure only
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_TruncateDatafile (char const* path, 

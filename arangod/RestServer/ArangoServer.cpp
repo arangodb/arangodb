@@ -701,6 +701,15 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationEndpointServer->setBasePath(_databasePath);
 
+
+  // disable certain options in unittest or script mode
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+
+  if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
+    _dispatcherThreads = 1;
+    _disableAuthentication = true;
+  }
+
   // .............................................................................
   // now run arangod
   // .............................................................................
