@@ -382,6 +382,11 @@ void ArangoClient::parse (ProgramOptions& options,
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
+  if (options.has("server.username")) {
+    // if a username is specified explicitly, assume authentication is desired
+    _disableAuthentication = false;
+  }
+
   // check if have a password
   _hasPassword = options.has("server.password") 
               || _disableAuthentication

@@ -213,7 +213,9 @@ static void CleanupExampleObject (TRI_memory_zone_t* zone,
 
   // clean shaped json objects
   for (size_t j = 0;  j < n;  ++j) {
-    TRI_FreeShapedJson(zone, values[j]);
+    if (values[j] != 0) {
+      TRI_FreeShapedJson(zone, values[j]);
+    }
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, values);
@@ -264,30 +266,31 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = example->Get(key);
 
+    // property initialise the memory
+    values[i] = 0;
+
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
       pids[i] = shaper->lookupAttributePathByName(shaper, *keyStr);
-      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
 
-      if (pids[i] == 0 || values[i] == 0) {
+      if (pids[i] == 0) {
         // no attribute path found. this means the result will be empty 
         CleanupExampleObject(shaper->_memoryZone, i, pids, values);
         return TRI_RESULT_ELEMENT_NOT_FOUND;
       }
+      
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
+
+      if (values[i] == 0) {
+        CleanupExampleObject(shaper->_memoryZone, i, pids, values);
+        return TRI_RESULT_ELEMENT_NOT_FOUND;
+      }
     }
-
-    if (*keyStr == 0 || pids[i] == 0 || values[i] == 0) {
+    else {
       CleanupExampleObject(shaper->_memoryZone, i, pids, values);
-
-      if (*keyStr == 0) {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot convert attribute path to UTF8");
-      }
-      else {
-        *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot convert value to JSON");
-      }
+      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot convert attribute path to UTF8");
       return TRI_ERROR_BAD_PARAMETER;
     }
   }
@@ -605,8 +608,6 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
 
   v8::Handle<v8::Value> value;
   TRI_index_operator_type_e operatorType;
-  TRI_index_operator_t* indexOperator = 0;
-
 
   // ........................................................................
   // Check the various operator conditions
@@ -736,6 +737,8 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
     return 0;
   }
 
+  TRI_index_operator_t* indexOperator = 0;
+
   // ........................................................................
   // Since we have a valid condition, act upon it
   // may require recursion
@@ -848,13 +851,9 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
       if (parameters == 0) {
         return 0;
       }
+
       indexOperator = TRI_CreateIndexOperator(operatorType, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
       break;
-    }
-
-
-    default: {
-      return 0;
     }
 
   } // end of switch (operatorType)
