@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global require, describe, beforeEach, it, expect, exports, Backbone, window, $, arangoLog */
 (function () {
 
     "use strict";
@@ -17,6 +17,6 @@
             expect(col.url).toEqual("/_admin/aardvark/foxxes");
         });
 
-    })
+    });
 }());
 
