@@ -228,6 +228,16 @@
                 new Date(time),
                   graphVal
               ]);
+            } else if (valueList === self.dygraphConfig.distributionBasedSumLineChartType)  {
+              if (val === null) {
+                val = {sum : null};
+              }
+              graphVal = val.sum;
+              self.LastValues[figure] = {value : val,  time: 0, graphVal : graphVal};
+              valueLists[valueList].data.push([
+                  new Date(time),
+                  graphVal
+              ]);
             }
           });
         });

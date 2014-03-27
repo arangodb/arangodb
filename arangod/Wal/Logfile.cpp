@@ -39,12 +39,10 @@ using namespace triagens::wal;
 
 Logfile::Logfile (Logfile::IdType id, 
                   TRI_datafile_t* df,
-                  SealStatusType sealStatus,
-                  CollectionStatusType collectionStatus) 
+                  StatusType status)
   : _id(id),
     _df(df),
-    _sealStatus(sealStatus),
-    _collectionStatus(collectionStatus) {
+    _status(status) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +67,7 @@ Logfile::~Logfile () {
 Logfile* Logfile::create (std::string const& filename,
                           Logfile::IdType id,
                           uint32_t size) {
-  TRI_datafile_t* df = TRI_CreateDatafile(filename.c_str(), id, static_cast<TRI_voc_size_t>(size));
+  TRI_datafile_t* df = TRI_CreateDatafile(filename.c_str(), id, static_cast<TRI_voc_size_t>(size), true);
 
   if (df == nullptr) {
     int res = TRI_errno();
@@ -82,7 +80,7 @@ Logfile* Logfile::create (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df, SealStatusType::UNSEALED, CollectionStatusType::UNCOLLECTED);
+  Logfile* logfile = new Logfile(id, df, StatusType::EMPTY);
   return logfile;
 }
 
@@ -105,12 +103,13 @@ Logfile* Logfile::open (std::string const& filename,
     }
   }
 
-  SealStatusType sealStatus = SealStatusType::UNSEALED;
+  StatusType status = StatusType::OPEN;
+
   if (df->_isSealed) {
-    sealStatus = SealStatusType::SEALED;
+    status = StatusType::SEALED;
   }
 
-  Logfile* logfile = new Logfile(id, df, sealStatus, CollectionStatusType::UNCOLLECTED);
+  Logfile* logfile = new Logfile(id, df, status);
   return logfile;
 }
 
@@ -119,13 +118,16 @@ Logfile* Logfile::open (std::string const& filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Logfile::seal () {
-  int res = TRI_SealDatafile(_df);
+  // we're not really sealing the logfile as this isn't required
+  int res = TRI_ERROR_NO_ERROR; // TRI_SealDatafile(_df);
+  
+  _df->_isSealed = true;
+  _df->_state = TRI_DF_STATE_READ;
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_INFO("sealed logfile %llu", (unsigned long long) id());
+    LOG_TRACE("sealed logfile %llu", (unsigned long long) id());
 
-    assert(_sealStatus == SealStatusType::REQUESTED);
-    _sealStatus = SealStatusType::SEALED;
+    setStatus(StatusType::SEALED);
   }
 
   return res;

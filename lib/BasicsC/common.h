@@ -204,6 +204,31 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
   return i < len ? i : dummy;
 }
 
+static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
+  if ((i--) != 0) {
+    return i;
+  }
+  return len-1;
+}
+
+// The following two possibilities are equivalent, but seem to produce 
+// a branch instruction in the assembler code rather than a conditional move:
+
+#if 0
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  if ((++i) == len) {
+    return 0;
+  }
+  return i;
+}
+#endif
+
+#if 0
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  return (++i) == len ? 0 : i;
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper for assert()
 ///

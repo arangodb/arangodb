@@ -47,7 +47,6 @@ Slots::Slots (LogfileManager* logfileManager,
   : _logfileManager(logfileManager),
     _condition(),
     _lock(),
-    _lastTick(tick),
     _slots(numberOfSlots),
     _numberOfSlots(numberOfSlots),
     _freeSlots(numberOfSlots),
@@ -55,6 +54,8 @@ Slots::Slots (LogfileManager* logfileManager,
     _handoutIndex(0),
     _recycleIndex(0), 
     _logfile(nullptr),
+    _lastAssignedTick(tick),
+    _lastCommittedTick(0),
     _readOnly(false) {
 
   for (size_t i = 0; i < _numberOfSlots; ++i) {
@@ -83,23 +84,32 @@ Slots::~Slots () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the last tick
+/// @brief sets the last assigned tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::setLastTick (Slot::TickType tick) {
+void Slots::setLastAssignedTick (Slot::TickType tick) {
   MUTEX_LOCKER(_lock);
-  assert(_lastTick == 0);
+  assert(_lastAssignedTick == 0);
   
-  _lastTick = tick;
+  _lastAssignedTick = tick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the last assigned tick
 ////////////////////////////////////////////////////////////////////////////////
 
-Slot::TickType Slots::lastTick () {
+Slot::TickType Slots::lastAssignedTick () {
   MUTEX_LOCKER(_lock);
-  return _lastTick;
+  return _lastAssignedTick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the last committed tick
+////////////////////////////////////////////////////////////////////////////////
+
+Slot::TickType Slots::lastCommittedTick () {
+  MUTEX_LOCKER(_lock);
+  return _lastCommittedTick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +170,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
         assert(_freeSlots > 0);
         _freeSlots--;
 
-        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), ++_lastTick);
+        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), ++_lastAssignedTick);
 
         if (++_handoutIndex ==_numberOfSlots) {
           // wrap around
@@ -194,15 +204,30 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 /// @brief return a used slot, allowing its synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::returnUsed (SlotInfo& slotInfo) {
+void Slots::returnUsed (SlotInfo& slotInfo,
+                        bool waitForSync) {
   assert(slotInfo.slot != nullptr);
+  Slot::TickType tick = slotInfo.slot->tick();
 
   {
     MUTEX_LOCKER(_lock);
-    slotInfo.slot->setReturned();
+    slotInfo.slot->setReturned(waitForSync);
   }
   
   _logfileManager->signalSync();
+
+  if (waitForSync) {
+    // wait until data has been committed to disk
+    while (true) {
+      CONDITION_LOCKER(guard, _condition);
+      
+      if (lastCommittedTick() >= tick) {
+        return;
+      }
+      
+      guard.wait(10000000);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,6 +256,7 @@ SyncRegion Slots::getSyncRegion () {
       region.size           = slot->size();
       region.firstSlotIndex = slotIndex;
       region.lastSlotIndex  = slotIndex;
+      region.waitForSync    = slot->waitForSync();
     }
     else {
       if (slot->logfileId() != region.logfileId) {
@@ -243,6 +269,7 @@ SyncRegion Slots::getSyncRegion () {
       // update the region
       region.size += static_cast<char*>(slot->mem()) - (region.mem + region.size) + slot->size();
       region.lastSlotIndex = slotIndex;
+      region.waitForSync |= slot->waitForSync();
     }
 
     if (++slotIndex >= _numberOfSlots) {
@@ -254,17 +281,15 @@ SyncRegion Slots::getSyncRegion () {
       break;
     }
   }
-    
-  // LOG_INFO("returning region: %d - %d, %d", (int) region.firstSlotIndex, (int) region.lastSlotIndex, (int) region.logfileId);
   
   return region;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a slot for synchronisation
+/// @brief return a region to the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::unuse (SyncRegion const& region) {
+void Slots::returnSyncRegion (SyncRegion const& region) {
   assert(region.logfileId != 0);
     
   size_t slotIndex = region.firstSlotIndex;
@@ -275,7 +300,12 @@ void Slots::unuse (SyncRegion const& region) {
     while (true) {
       Slot* slot = _slots[slotIndex];
       assert(slot != nullptr);
-   
+      
+      // note last tick        
+      Slot::TickType tick = slot->tick();
+      assert(tick >= _lastCommittedTick);
+      _lastCommittedTick = tick;
+
       slot->setUnused();
       ++_freeSlots; 
  
@@ -297,7 +327,7 @@ void Slots::unuse (SyncRegion const& region) {
   // signal that we have done something
   CONDITION_LOCKER(guard, _condition);
   
-  if (_waiting > 0) {
+  if (_waiting > 0 || region.waitForSync) {
     _condition.broadcast();
   }
 }

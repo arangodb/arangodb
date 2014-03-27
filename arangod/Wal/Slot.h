@@ -41,6 +41,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class Slot {
+
       friend class Slots;
 
 // -----------------------------------------------------------------------------
@@ -60,9 +61,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum class StatusType : uint32_t {
-          UNUSED   = 0,
-          USED     = 1,
-          RETURNED = 2
+          UNUSED        = 0,
+          USED          = 1,
+          RETURNED      = 2,
+          RETURNED_WFS  = 3
         };
 
 // -----------------------------------------------------------------------------
@@ -154,7 +156,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
         inline bool isReturned () const {
-          return _status == StatusType::RETURNED;
+          return (_status == StatusType::RETURNED ||
+                  _status == StatusType::RETURNED_WFS);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a sync was requested for the slot
+////////////////////////////////////////////////////////////////////////////////
+      
+        inline bool waitForSync () const {
+          return (_status == StatusType::RETURNED_WFS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +187,7 @@ namespace triagens {
 /// @brief mark as slot as returned
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setReturned ();
+        void setReturned (bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

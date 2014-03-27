@@ -46,7 +46,7 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
-        this.updateUrl();
+        self.updateUrl();
         self.fetch({
           beforeSend: window.App.addAuth.bind(window.App)
         });

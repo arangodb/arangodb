@@ -6,7 +6,7 @@
 
   window.ArangoDatabase = Backbone.Collection.extend({
 
-    model: window.Database,
+    model: window.DatabaseModel,
 
     comparator: function(item) { return item.get('name').toLowerCase(); },
 

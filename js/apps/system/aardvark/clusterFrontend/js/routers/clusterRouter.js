@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase, btoa, _*/
+/*global window, $, Backbone, document, arangoCollectionModel,arangoHelper, arangoDatabase, btoa, _*/
 
 (function() {
   "use strict";
@@ -171,8 +171,8 @@
       if (!server) {
         this.navigate("", {trigger: true});
       }
-      var statisticsDescription = new window.StatisticsDescription();
-      statisticsDescription.fetch({
+      var statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
+      statisticsDescriptionCollection.fetch({
         async: false,
         beforeSend: this.addAuth.bind(this)
       });
@@ -184,7 +184,7 @@
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
         collection: statisticsCollection,
-        description: statisticsDescription,
+        description: statisticsDescriptionCollection,
         documentStore: new window.arangoDocuments(),
         server : server,
         dygraphConfig : this.dygraphConfig

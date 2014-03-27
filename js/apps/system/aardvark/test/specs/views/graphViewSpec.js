@@ -36,7 +36,7 @@
       beforeEach(function() {
 
         var createCol = function(name, type, isSystem) {
-          return new window.arangoCollection({
+          return new window.arangoCollectionModel({
             id: name,
             type: type,
             isSystem: isSystem || false,
