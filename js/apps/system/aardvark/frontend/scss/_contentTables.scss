@@ -1,80 +1,98 @@
-//.databaseButtons => .contentButtons
 .contentButtons {
-  clear:both;
-  width: 100%;
+  clear: both;
   margin-bottom: 10px;
-  #createDatabase, #createUser {
+  width: 100%;
+
+  #createDatabase,
+  #createUser {
     margin-left: 0;
   }
 }
 
-// #databaseTable => .contentTables
 .contentTables {
-  width: 100%;
   margin-bottom: 10px;
+  width: 100%;
+
   thead {
     text-align: left;
+
     tr {
-      border-bottom: 1px solid $c_c2grey;
-      background-color: $c_white;
+      background-color: $c-white;
+      border-bottom: 1px solid $c-c2grey;
     }
   }
+
   tbody {
+
     tr {
-      &:nth-child(odd){
-        background-color: $c_odd;
+
+      &:nth-child(odd) {
+        background-color: $c-odd;
       };
-      &:nth-child(even){
-          background-color: $c_even;
+
+      &:nth-child(even) {
+        background-color: $c-even;
       };
+
     }
   }
+
   tr {
+
     &.contentRowActive {
-      background-color: $c_contentRowActive !important;
+      background-color: $c-content-row-active !important;
       font-weight: 400;
+
       a {
-        color: $c_black !important;
+        color: $c-black !important;
       }
+
       span {
-        display:none;
+        display: none;
       }
     }
-    //.databaseInactive => .contentRowInactive
+
     &.contentRowInactive {
       a {
         @extend %clickable;
-        color: $c_black !important;
+        color: $c-black !important;
       }
     }
 
   }
+
   .dbThFirst {
     width: 90%;
   }
+
   .dbThSecond {
     width: 10%;
   }
+
   td {
-    padding:12px 18px;
+    padding: 12px 18px;
+
     span {
-      float: right;
       @extend %icon-negative;
+      float: right;
       font-size: 22px;
     }
+
     &.dbThSecond {
       span {
         @extend %icon-positive;
       }
     }
   }
+
   .collectionThSec {
+    margin-right: 0;
     width: 80%;
-    margin-right: 0;
   }
+
   .collectionTh {
-    width: 5%;
     margin-right: 0;
+    width: 5%;
   }
 }
 

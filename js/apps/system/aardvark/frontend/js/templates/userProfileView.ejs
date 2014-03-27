@@ -42,8 +42,16 @@
           <th><input type="text" id="editName" name="name" value="" placeholder="Name"/></th>
         </tr>
         <tr>
-          <th>Gravatar-Link:</th>
-          <th><input type="text" id="editUserProfileImg" name="img" value="" placeholder="Gravatar"/></th>
+          <th>Gravatar account (Mail):</th>
+          <th><input type="text" id="editUserProfileImg" name="img" value="" placeholder="myAccount@gravatar.com"/></th>
+          <th class="tooltipInfoTh">
+            <div>
+              <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left"
+                 title="Mailaddress or its md5 representation of your gravatar account. The address will be converted into a md5 string. Only the md5 string will be stored, not the mailaddress.">
+                <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+              </a>
+            </div>
+          </th>
         </tr>
       </table>
     </div>

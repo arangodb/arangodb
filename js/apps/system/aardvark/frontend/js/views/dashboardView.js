@@ -90,17 +90,16 @@
             });
             this.calculateSeries();
       }
-      $('#' + this.detailChart.figure + "LineChart").empty();
-      this.detailChart.chart.graphCreated = false;
-      this.detailChart.chart.graph.destroy();
-      this.detailChart.chart.defaultConfig();
-      this.detailChart.chart.updateLabels();
+      var dc = this.detailChart,
+          chart = dc.chart;
+      $('#' + dc.figure + "LineChart").empty();
+      chart.graphCreated = false;
+      chart.graph.destroy();
+      chart.defaultConfig();
+      chart.updateLabels();
       this.description = this.options.description.models[0];
-      this.detailChart.chart.options.title = this.detailChart.title;
-      this.createLineChart(this.detailChart.chart, 
-                           this.detailChart.figure, 
-                           this.detailChart.figure, 
-                           true);
+      chart.options.title = dc.title;
+      this.createLineChart(chart, dc.figure, dc.figure, true);
       this.detailChart = {};
      window.App.navigate("#", {trigger: true});
     },
@@ -146,7 +145,7 @@
       var self = this;
       var time = entry.time * 1000;
       var newUptime = entry.server.uptime;
-      if (newUptime !== null && self.uptime && newUptime < self.uptime) {
+      if (newUptime !== null  && self.uptime && newUptime < self.uptime) {
         var e = {time : (time-(newUptime+0.01)* 1000 ) /1000};
         var itList;
         if (self.detailChart.neededFigures && self.detailChart.neededFigures.length > 0) {
@@ -227,6 +226,16 @@
               self.LastValues[figure] = {value : val,  time: 0, graphVal : graphVal};
               valueLists[valueList].data.push([
                 new Date(time),
+                  graphVal
+              ]);
+            } else if (valueList === self.dygraphConfig.distributionBasedSumLineChartType)  {
+              if (val === null) {
+                val = {sum : null};
+              }
+              graphVal = val.sum;
+              self.LastValues[figure] = {value : val,  time: 0, graphVal : graphVal};
+              valueLists[valueList].data.push([
+                  new Date(time),
                   graphVal
               ]);
             }
@@ -430,9 +439,7 @@
   },
 
   render: function() {
-    var self = this;
     var header = "Request Statistics";
-    var addBackbutton = false;
     if (this.options.server) {
       header += " for Server ";
       header += this.options.server.raw + " (";
@@ -451,18 +458,16 @@
   createDistributionSeries: function(name) {
     var cuts = [];
 
-    _.each(this.description.attributes.figures, function(k, v) {
+    _.each(this.description.attributes.figures, function(k) {
       if (k.identifier === name) {
-        var c;
+        var c = 0;
         if (k.units === "bytes") {
-            c = 0;
             _.each(k.cuts, function() {
                 k.cuts[c] = k.cuts[c] / 1000;
                 c++;
             });
             k.units = "kilobytes";
         } else if (k.units === "seconds") {
-            c = 0;
             _.each(k.cuts, function() {
                 k.cuts[c] = k.cuts[c] * 1000;
                 c++;
@@ -485,8 +490,9 @@
     _.each(distributionValues, function() {
       values.push({
         //"label" : (sum / areaLength) * counter,
-        "label" : (counter === cuts.length - 1) ? "> " + cuts[counter] : 
-                  cuts[counter] + " - " + cuts[counter + 1],
+        "label" : counter === cuts.length-1 ? "> "
+          + cuts[counter] : cuts[counter]
+          + " - " + cuts[counter+1],
         "value" : distributionValues[counter]
       });
       counter++;
@@ -500,7 +506,7 @@
     _.each(this.dygraphConfig.chartTypeExceptions.distribution, function(k, v) {
       var title;
       var valueData = self.createDistributionSeries(v);
-      _.each(self.description.attributes.figures, function(a, b) {
+      _.each(self.description.attributes.figures, function(a) {
             if (a.identifier === v) {
                 title = a.name + " in " + a.units;
             }

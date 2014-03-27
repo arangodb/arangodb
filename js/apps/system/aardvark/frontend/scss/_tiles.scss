@@ -1,86 +1,112 @@
-ul.tileList {
+div.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
+
+  & legend {
+    padding-left: 5px;
+  }
 }
 
-li.tile {
-  $iconSize: 50px;
+$iconsize: 50px;
+
+%tile {
   @extend %pull-left;
   @include box-shadow(none);
 
-  position:relative;
-  text-align:center;
-  height:100px;
-  width: 230px;
+  background-color: $c-very-transp;
+  font-size: 14px;
   list-style: none;
-  background-color: $c_very_transp;
   margin: {
+    bottom: 13px;
     left: 6px;
     right: 6px;
-    bottom: 13px;
   }
+  position: relative;
+  text-align: center;
 
   img {
     &.icon {
-      height: $iconSize;
-      width: $iconSize;
+      height: $iconsize;
+      width: $iconsize;
     }
   }
 
   a {
+
     span {
+
       &.add-Icon {
         @extend %pull-left;
-        position: relative;
-        margin-left: 22px;
         font-size: 22px;
-        margin-top: -5px;
+        margin-left: 22px;
         margin-right: 10px;
+        margin-top: -5px;
+        position: relative;
+        right: 4px;
+        top: 2px;
       }
+
       &.icon {
         @extend %clickable;
-        font-size: $iconSize;
+        font-size: $iconsize;
       }
     }
+
     svg {
       @extend %clickable;
+
       &.icon {
-        height: $iconSize;
-        width: $iconSize;
+        height: $iconsize;
+        width: $iconsize;
       }
     }
+  }
+
+  svg.tile-icon-svg {
+    fill: $c-icon-grey;
+    height: $iconsize;
+    margin-left: 90px;
+    margin-top: 10px;
+    width: $iconsize;
+  }
+
+  span.tile-icon {
+    color: $c-icon-grey;
+    font-size: $iconsize;
+    line-height: 1.2;
   }
 
   h5 {
+    background: $c-bar-bg;
+    color: $c-white;
     font-size: 12px;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    color: $c_white;
-    background: $c_bar_bg;
-    padding: 4px 8px;
     margin: 0;
+    overflow: hidden !important;
+    padding: 4px 8px;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   div.iconSet {
-    position: absolute; 
-    top: 5px;
+    position: absolute;
     right: 5px;
+    top: 5px;
 
     span {
       @extend %clickable;
       @extend %pull-right;
-      opacity: 0.5;
       font-size: 18px;
+      opacity: .5;
       padding-left: 7px;
 
       &:hover {
         opacity: 1.0;
       }
+
       &.disabled {
-        opacity: 0.2;
         cursor: default;
+        opacity: .2;
       }
     }
   }
@@ -90,24 +116,23 @@ li.tile {
   }
 
   .unloaded div {
-    border-bottom: 16px solid #FF8F35;
+    border-bottom: 16px solid $c-unloaded;
   }
 
   .deleted div {
-    border-bottom: 16px solid red;
+    border-bottom: 16px solid $c-state-critical;
   }
 
   div.tileBadge {
-    position: absolute;
-    right: 0px;
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
-    color: $c_white;
+    position: absolute;
+    right: 0;
 
     button {
       margin: {
-        left: 0px;
+        left: 0;
         right: 5px;
       }
     }
@@ -117,52 +142,59 @@ li.tile {
       line-height: 13px;
 
       div.corneredBadge {
-        padding-left: 4px;
-        padding-right: 9px;
-        height: 0px;
         border: {
-          left: 17px solid transparent;
+          left: 17px solid $c-transp;
           bottom: {
-            width: 17px;
             style: solid;
+            width: 17px;
           }
         }
+        height: 0;
+        padding-left: 4px;
+        padding-right: 9px;
+
         &.loaded {
-          border-bottom-color: $c_positive;
+          border-bottom-color: $c-positive;
         }
+
         &.unloaded {
-          border-bottom-color: $c_unloaded;
+          border-bottom-color: $c-unloaded;
         }
       }
     }
   }
 }
 
-.searchField {
- // @extend %pull-left;
-  margin-left: 25px;
-}
+div {
 
-.collectionName {
-  text-align:left;
-  font-weight: 300;
-  position: absolute;
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-}
+  & .tile {
+    @extend %tile;
+    height: 100px;
+    width: 230px;
+  }
 
-li.bigtile {
-  @extend %clickable;
-  @extend li.tile;
-  height: 309px;
-  width: 460px;
+  & .bigtile {
+    @extend %clickable;
+    @extend %tile;
+    height: 309px;
+    width: 460px;
 
-  div.shardContainer {
-    font-size: 30px;
+    div.shardContainer {
+      font-size: 30px;
 
-    span {
-      padding: 2px;
+      span {
+        padding: 2px;
+      }
     }
   }
 }
+
+.collectionName {
+  bottom: 0;
+  font-weight: 300;
+  left: 0;
+  position: absolute;
+  right: 0;
+  text-align: left;
+}
+

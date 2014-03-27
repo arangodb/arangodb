@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, */
+/*global describe, beforeEach, afterEach, it, jasmine*/
 /*global spyOn, runs, expect, waitsFor*/
 /*global templateEngine, GraphView, _, $*/
 (function() {
@@ -11,6 +11,7 @@
       div;  
     
     beforeEach(function() {
+      window.App = {navigate : function(){}};
       div = document.createElement("div");
       div.id = "content"; 
       document.body.appendChild(div);
@@ -30,12 +31,12 @@
     describe("after view creation", function() {
       
       var graphs, g1, g2, v1, v2, e1, e2,
-      myStore, sys1, cols, called;
+      myStore, sys1, cols, fakeStartNode;
 
       beforeEach(function() {
 
         var createCol = function(name, type, isSystem) {
-          return new window.arangoCollection({
+          return new window.arangoCollectionModel({
             id: name,
             type: type,
             isSystem: isSystem || false,
@@ -43,7 +44,6 @@
             status: "loaded"
           });
         };
-        called = false;
         v1 = createCol("z1", "document");
         v2 = createCol("a2", "document");
         e1 = createCol("y1", "edge");
@@ -76,7 +76,17 @@
           collection: myStore,
           graphs: graphs
         });
+        fakeStartNode = "vertices/123";
         spyOn($, "ajax").andCallFake(function(opts) {
+          if (opts.url === "/_api/simple/any"
+            && _.isFunction(opts.success)) {
+            opts.success({
+              document: {
+                _id: fakeStartNode
+              }
+            });
+            return;
+          }
           throw "Test not implemented";
         });
         view.render();
@@ -142,7 +152,14 @@
           spyOn(window, "GraphViewerUI");
           $("#createViewer").click();
           // Once load graphs, but never load random node
-          expect($.ajax).not.toHaveBeenCalled();
+          expect($.ajax).toHaveBeenCalledWith({
+            cache: false,
+            type: 'PUT',
+            url: '/_api/simple/any',
+            contentType: "application/json",
+            data: JSON.stringify({collection: v2.get("name")}),
+            success: jasmine.any(Function)
+          });
           defaultAdapterConfig.nodeCollection = v2.get("name");
           defaultAdapterConfig.edgeCollection = e2.get("name");
           expect(window.GraphViewerUI).toHaveBeenCalledWith(
@@ -150,7 +167,8 @@
             defaultAdapterConfig,
             $("#content").width(),
             680,
-            defaultGVConfig
+            defaultGVConfig,
+            fakeStartNode
           );
         });
 
@@ -161,7 +179,14 @@
           spyOn(window, "GraphViewerUI");
           $("#createViewer").click();
           // Once load graphs, but never load random node
-          expect($.ajax).not.toHaveBeenCalled();
+          expect($.ajax).toHaveBeenCalledWith({
+            cache: false,
+            type: 'PUT',
+            url: '/_api/simple/any',
+            contentType: "application/json",
+            data: JSON.stringify({collection: g2.vertices}),
+            success: jasmine.any(Function)
+          });
           defaultAdapterConfig.graph = g2._key;
           defaultAdapterConfig.nodeCollection = g2.vertices;
           defaultAdapterConfig.edgeCollection = g2.edges;
@@ -170,7 +195,8 @@
             defaultAdapterConfig,
             $("#content").width(),
             680,
-            defaultGVConfig
+            defaultGVConfig,
+            fakeStartNode
           );
         });
 

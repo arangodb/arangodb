@@ -1,43 +1,51 @@
 div.resizecontainer {
   @extend %clear-float; 
-  margin: 0px auto;
+  margin: 0 auto;
 }
 
 @media (max-width: 798px) {
+
   #arangoCollectionUl {
     display: none;
   }
+
   #collectionsDropdown ul {
     width: auto !important;
   }
+
   #arangoCollectionSelect {
     display: inline-block;
   }
 }
 
 @media (min-width: 799px) and (max-width: 1041px) {
+
   #arangoCollectionUl a {
     font-size: 12px;
-    padding: 10px 5px 10px;
+    padding: 10px 5px;
   }
 }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
+
   #arangoCollectionUl a {
     font-size: 14px;
   }
+
 }
 
 @for $i from 0 through 11 {
   $min: 242px * $i;
   @media (min-width: $min + 6) and (max-width: $min + 242 + 5) {
+
     div.resizecontainer {
       width: $min;
     }
+
     div.modalChartDetail {
-      width: $min;
       left: 50%;
       margin-left: -$min/2;
+      width: $min;
     }
   }
 }
@@ -50,49 +58,37 @@ div.centralRow {
 }
 
 div.centralContent {
-  padding: 5px;
+  @extend %pull-left;
+  background-color: $c-content-transp;
+  height: 100%;
   margin-left: -5px;
   margin-right: -5px;
-  width: 100%;
-  height: 100%;
-  background-color: $c_content_transp;
   min-height: 80px;
-  float: left;
+  padding: 5px;
+  width: 100%;
 }
 
-
-//#databaseDiv => .contentDiv
 .contentDiv {
-  // margin-left:0px;
-  // margin-left: -20px;
-  // padding-bottom: 5px;
-
-  padding: 13px 0px 0px 0px;
-
   list-style: none;
-  *zoom: 1;
-  li {
-    background-color: rgba(0, 0, 0, 0.05);
-    // #f4f3f3;
+  padding: 13px 0 0;
 
-    // From Bootstrap thumbnails
-    float: left;
-    // margin-bottom: 20px;
-    // margin-left: 20px;
+  li {
+    @extend %pull-left;
+    background-color: $c-very-transp;
   }
 
   a.add {
-    padding: 40px 0;
     display: block;
     font-weight: 400;
+    padding: 40px 0;
     text-align: left;
   }
 
   .icon {
     @extend %clickable;
     padding: {
-      right:5px;
       left: 5px;
+      right:5px;
       top: 10px;
     }
   }
@@ -100,9 +96,11 @@ div.centralContent {
   &:after {
     clear: both;
   }
-  &:after, &:before {
+
+  &:after,
+  &:before {
+    content: '';
     display: table;
     line-height: 0;
-    content: "";
   }
 }

@@ -1,31 +1,29 @@
-.navlogo .stat_cpu {
-  margin-top: 1px;
-  width: 26px;
-  height: 26px;
-}
+.navlogo {
+  .stat_cpu {
+    height: 26px;
+    margin-top: 1px;
+    width: 26px;
 
-.navlogo .stat_ram {
-  width: 26px;
-  height: 26px;
-}
+    path {
+      fill: $c-state-ok;
+    }
+  }
 
-.navlogo .stat_req {
-  width: 22px;
-  height: 22px;
-}
+  .stat_ram {
+    height: 26px;
+    width: 26px;
 
-.navlogo .stat_cpu path {
-  fill: #770000;
-}
+    path {
+      fill: $c-state-warning;
+    }
+  }
 
-.navlogo .stat_ram path {
-  fill: #007700;
-}
+  .stat_req {
+    height: 22px;
+    width: 22px;
 
-.navlogo .stat_req path {
-  fill: #aaaa00;
-}
-
-.statisticbar {
-  display: none;
+    path {
+      fill: $c-state-ok;
+    }
+  }
 }

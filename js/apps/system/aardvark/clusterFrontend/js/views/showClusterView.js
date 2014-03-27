@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, templateEngine, alert */
+/*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
 
 (function() {
   "use strict";
@@ -101,22 +101,27 @@
       var list = this.shards.getList(dbName, colName);
       $(".shardCounter").html("0");
       _.each(list, function(s) {
-        $("#" + s.server + "Shards").html(s.shards.length)
+        $("#" + s.server + "Shards").html(s.shards.length);
       });
     },
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+//        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "dbserver " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "dbserver " + type + " " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "coordinator " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "coordinator " + type + " " + stat);
       });
     },
 
@@ -202,7 +207,9 @@
           + coord.get("address");
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
+            if (self.knownServers.indexOf(dbserver.id) === -1) {
+              self.knownServers.push(dbserver.id);
+            }
             var server = {
               raw: dbserver.get("address"),
               isDBServer: true,
@@ -210,31 +217,38 @@
               endpoint: endpoint,
               addAuth: window.App.addAuth.bind(window.App)
             };
-            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
+            self.documentStore.getStatisticsHistory({
+              server: server,
+              figures: ["client.totalTime"]
+            });
             self.history = self.documentStore.history;
             self.hist[dbserver.id] = {};
             self.history.forEach(function(e) {
                 var date = new Date(e.time * 1000);
                 date.setMilliseconds(0);
                 date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                var uptime = e.server.uptime * 1000
+                var uptime = e.server.uptime * 1000;
                 var time = date.getTime();
-                if (self.hist[dbserver.id].lastTime && (time - self.hist[dbserver.id].lastTime) > uptime) {
+                if (self.hist[dbserver.id].lastTime 
+                  && (time - self.hist[dbserver.id].lastTime) > uptime) {
                     self.hist[dbserver.id][
                         self.hist[dbserver.id].lastTime +
                             (time-self.hist[dbserver.id].lastTime) / 2] = null;
                 }
                 self.hist[dbserver.id].lastTime = time;
                 if (e.client.totalTime.count === 0) {
-                    self.hist[dbserver.id][time] = 0;
+                  self.hist[dbserver.id][time] = 0;
                 } else {
-                    self.hist[dbserver.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                  self.hist[dbserver.id][time] = e.client.totalTime.sum
+                    / e.client.totalTime.count;
                 }
             });
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
+            if (self.knownServers.indexOf(coordinator.id) === -1) {
+              self.knownServers.push(coordinator.id);
+            }
             var server = {
               raw: coordinator.get("address"),
               isDBServer: false,
@@ -242,16 +256,20 @@
               endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
               addAuth: window.App.addAuth.bind(window.App)
             };
-            self.documentStore.getStatisticsHistory({server: server, figures : ["client.totalTime"]});
+            self.documentStore.getStatisticsHistory({
+              server: server,
+              figures: ["client.totalTime"]
+            });
             self.history = self.documentStore.history;
             self.hist[coordinator.id] = {};
             self.history.forEach(function(e) {
                 var date = new Date(e.time * 1000);
                 date.setMilliseconds(0);
                 date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                var uptime = e.server.uptime * 1000
+                var uptime = e.server.uptime * 1000;
                 var time = date.getTime();
-                if (self.hist[coordinator.id].lastTime && (time - self.hist[coordinator.id].lastTime) > uptime) {
+                if (self.hist[coordinator.id].lastTime
+                  && (time - self.hist[coordinator.id].lastTime) > uptime) {
                     self.hist[coordinator.id][
                         self.hist[coordinator.id].lastTime +
                             (time-self.hist[coordinator.id].lastTime) / 2] = null;
@@ -260,7 +278,8 @@
                 if (e.client.totalTime.count === 0) {
                     self.hist[coordinator.id][time] = 0;
                 } else {
-                    self.hist[coordinator.id][time] = e.client.totalTime.sum / e.client.totalTime.count;
+                  self.hist[coordinator.id][time] = e.client.totalTime.sum
+                    / e.client.totalTime.count;
                 }
             });
         });
@@ -273,7 +292,9 @@
         var coord = this.coordinators.first();
         this.dbservers.forEach(function (dbserver) {
             if (dbserver.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(dbserver.id) === -1) {self.knownServers.push(dbserver.id);}
+            if (self.knownServers.indexOf(dbserver.id) === -1) {
+              self.knownServers.push(dbserver.id);
+            }
             var stat = new window.Statistics({name: dbserver.id});
             stat.url = coord.get("protocol") + "://"
               + coord.get("address")
@@ -283,7 +304,9 @@
         });
         this.coordinators.forEach(function (coordinator) {
             if (coordinator.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(coordinator.id) === -1) {self.knownServers.push(coordinator.id);}
+            if (self.knownServers.indexOf(coordinator.id) === -1) {
+              self.knownServers.push(coordinator.id);
+            }
             var stat = new window.Statistics({name: coordinator.id});
             stat.url = coordinator.get("protocol") + "://"
               + coordinator.get("address")
@@ -295,16 +318,17 @@
           async: false
         });
         statCollect.forEach(function(m) {
-          var uptime = m.get("server").uptime * 1000
+          var uptime = m.get("server").uptime * 1000;
           var time = self.serverTime;
           var name = m.get("name");
           var totalTime = m.get("client").totalTime;
           if (self.hist[name].lastTime
             && (time - self.hist[name].lastTime) > uptime) {
-            self.hist[name][
-                self.hist[name].lastTime +
-                    (time-self.hist[name].lastTime) / 2] = null;
+              self.hist[name][
+                  self.hist[name].lastTime +
+                      (time-self.hist[name].lastTime) / 2] = null;
           }
+          self.hist[name].lastTime = time;
           if (totalTime.count === 0) {
             self.hist[name][time] = 0;
           } else {
@@ -347,17 +371,19 @@
             .enter().append("g")
             .attr("class", "slice");
 
+        /*jslint unparam: true*/
         slices.append("path")
             .attr("d", arc)
-            .style("fill", function (d, i) {
-                return color(i);
+            .style("fill", function (item, i) {
+              return color(i);
             });
+        /*jslint unparam: false*/
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
             .attr("dy", ".35em")
             .style("text-anchor", "middle")
             .text(function(d) {
-                var v = d.data.value / 1000000000
+                var v = d.data.value / 1000000000;
                 return v.toFixed(2) + "GB"; });
 
         slices.append("text")
@@ -384,7 +410,7 @@
                         return;
                     }
                     if (!data[date]) {
-                        data[date] = {}
+                        data[date] = {};
                         Object.keys(self.hist).forEach(function(s) {
                             data[date][s] = null;
                         });
@@ -400,7 +426,7 @@
                         i++;
                         sum = sum + data[d][server];
                     }
-                    data[d]["ClusterAverage"] = sum/i;
+                    data[d].ClusterAverage = sum / i;
                   });
               });
               Object.keys(data).sort().forEach(function (time) {
@@ -432,16 +458,20 @@
                   if (i > 0) {
                       if ("ClusterAverage" === self.chartData.labelsShowAll[i]) {
                           self.chartData.visibilityNormal.push(true);
-                          self.chartData.labelsNormal.push(self.chartData.labelsShowAll[i] + " (avg)");
+                          self.chartData.labelsNormal.push(
+                            self.chartData.labelsShowAll[i] + " (avg)"
+                          );
                       } else if (e === self.max ) {
                           self.chartData.visibilityNormal.push(true);
-                          self.chartData.labelsNormal.push(self.chartData.labelsShowAll[i] + " (max)");
+                          self.chartData.labelsNormal.push(
+                            self.chartData.labelsShowAll[i] + " (max)"
+                          );
                       } else {
                           self.chartData.visibilityNormal.push(false);
                           self.chartData.labelsNormal.push(self.chartData.labelsShowAll[i]);
                       }
                   }
-                  i++
+                  i++;
               });
           };
           if (this.graph !== undefined && !remake) {
@@ -539,10 +569,12 @@
         window.App.dashboard();
       },
 
-      showDetail : function(e) {
+      showDetail : function() {
           var self = this;
           delete self.graph;
-          $(self.detailEl).html(this.detailTemplate.render({figure: "Average request time in milliseconds"}));
+          $(self.detailEl).html(this.detailTemplate.render({
+            figure: "Average request time in milliseconds"
+          }));
           self.setShowAll();
           self.renderLineChart(true);
           $('#lineChartDetail').modal('show');

@@ -11,18 +11,6 @@ window.arangoDocumentModel = Backbone.Model.extend({
     _rev: "",
     _key: ""
   },
-  internalAttributeChanged: function (model) {
-    'use strict';
-    var a;
-    for (a in this.attributes) {
-      if (this.attributes.hasOwnProperty(a) && arangoHelper.isSystemAttribute(a)) {
-        if (this.attributes[a] !== model[a]) {
-          return true;
-        }  
-      }
-    }
-    return false;
-  },
   getSorted: function () {
     'use strict';
     var self = this;

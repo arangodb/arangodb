@@ -1,45 +1,97 @@
+input.search-input {
+  @include border-radius(0);
+  border: 0;
+  height: 18px;
+  line-height: 18px;
+  margin-top: 5px;
+  width: 214px;
+
+  &:focus {
+    @include box-shadow(0 0 10px $c-positive);
+    border-color: $c-positive;
+    outline: none;
+  }
+}
+
+.search-field {
+  @extend %pull-left;
+  margin-left: 15px;
+}
+
+%search-submit-icon {
+  @extend %clickable;
+  background-image: url('../img/enter_icon.png');
+  background-size: 14px;
+  height: 14px;
+  margin-left: -18px;
+  opacity: .2;
+  position: absolute;
+  width: 14px;
+
+  &:hover {
+    opacity: .8;
+  }
+}
+
+.search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 11px;
+}
+
+.gv-search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 6px;
+}
+
+// To be cleaned up from here on!
+
 // The bar on top of each page
 div.headerBar {
-  position: relative;
-  margin-bottom: 5px;
-  background-color: $c_bar_bg;
-  color: $c_white;
-  height: 36px;
+  background-color: $c-bar-bg;
+  color: $c-white;
   font-size: 16px;
+  height: 36px;
+  margin-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
   position: relative;
+
   input[type=checkbox].css-checkbox {
-    display:none;
+    display: none;
+
     & + label.css-label {
-      padding-left:20px;
-      margin-top: 0px;
-      height:15px;
-      display:inline-block;
-      background-repeat:no-repeat;
       background-position: 0 0;
-      font-size:15px;
-      vertical-align:middle;
-      cursor:pointer;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      display: inline-block;
+      font-size: 15px;
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
+      vertical-align: middle;
     }
   }
+
   input[type=checkbox].css-checkbox:checked + label.css-label {
     background-position: 0 -15px;
   }
+
   input[type="radio"] {
-    display:none;
+    display: none;
+
     & + label span {
-      display:inline-block;
-      width:19px;
-      height:19px;
-      margin:-1px 4px 0 0;
-      vertical-align:middle;
-      background:url(../img/check_radio_sheet.png) -38px top no-repeat;
-      cursor:pointer;
+      background: url('../img/check_radio_sheet.png') -38px top no-repeat;
+      cursor: pointer;
+      display: inline-block;
+      height: 19px;
+      margin: -1px 4px 0 0;
+      vertical-align: middle;
+      width: 19px;
     }
   }
+
   input[type="radio"]:checked + label span {
-    background:url(../img/check_radio_sheet.png) -57px top no-repeat;
+    background: url('../img/check_radio_sheet.png') -57px top no-repeat;
   }
 }
 
@@ -49,17 +101,19 @@ div.headerBar {
 
 div.headerBar a.arangoHeader,
 .modal-header .arangoHeader {
-  color: $c_white;
+  color: $c-white;
+  font-size: 16px;
+  left: 5px;
   position: relative;
   top: 7px;
-  left: 5px;
-  font-size: 16px;
 }
 
 // The buttons on the right side
 
 div.headerBar > div.headerButtonBar {
-  margin: 4px 0px;
+  @extend %clear-float;
+  @extend %pull-right;
+  margin: 4px 0;
   margin-bottom: 0 !important;
 }
 
@@ -71,7 +125,7 @@ div.headerBar > div.breadcrumb {
 
 // Disabled breadcrumb
 div.breadcrumb a.disabledBread {
-  color: $c_white;
+  color: $c-white;
 }
 
 // arangoHeader
@@ -80,5 +134,5 @@ div.breadcrumb a.disabledBread {
 }
 
 #transparentHeader input[type=checkbox].css-checkbox {
-  display:none;
+  display: none;
 }
