@@ -4,15 +4,15 @@
 
     "use strict";
 
-    describe("StatisticsDescriptionCollection", function() {
+    describe("StatisticsDescriptionCollection", function () {
 
         var col;
 
-        beforeEach(function() {
+        beforeEach(function () {
             col = new window.StatisticsDescriptionCollection();
         });
 
-        it("StatisticsDescriptionCollection", function() {
+        it("StatisticsDescriptionCollection", function () {
             expect(col.model).toEqual(window.StatisticsDescription);
             expect(col.url).toEqual('/_admin/statistics-description');
             expect(col.parse("ee")).toEqual("ee");

@@ -4,17 +4,17 @@
 
     "use strict";
 
-    describe("ArangoReplication", function() {
+    describe("ArangoReplication", function () {
 
         var col;
 
-        beforeEach(function() {
+        beforeEach(function () {
             col = new window.ArangoReplication();
         });
 
-        it("getLogState with success", function() {
+        it("getLogState with success", function () {
             expect(col.url).toEqual('../api/user');
-            spyOn($, "ajax").andCallFake(function(opt) {
+            spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/replication/logger-state");
                 expect(opt.type).toEqual("GET");
                 expect(opt.contentType).toEqual("application/json");
@@ -24,9 +24,9 @@
             });
             expect(col.getLogState()).toEqual("success");
         });
-        it("getLogState with error", function() {
+        it("getLogState with error", function () {
             expect(col.url).toEqual('../api/user');
-            spyOn($, "ajax").andCallFake(function(opt) {
+            spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/replication/logger-state");
                 expect(opt.type).toEqual("GET");
                 expect(opt.contentType).toEqual("application/json");
@@ -37,9 +37,9 @@
             expect(col.getLogState()).toEqual("error");
         });
 
-        it("getApplyState with success", function() {
+        it("getApplyState with success", function () {
             expect(col.url).toEqual('../api/user');
-            spyOn($, "ajax").andCallFake(function(opt) {
+            spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/replication/applier-state");
                 expect(opt.type).toEqual("GET");
                 expect(opt.contentType).toEqual("application/json");
@@ -49,9 +49,9 @@
             });
             expect(col.getApplyState()).toEqual("success");
         });
-        it("getApplyState with error", function() {
+        it("getApplyState with error", function () {
             expect(col.url).toEqual('../api/user');
-            spyOn($, "ajax").andCallFake(function(opt) {
+            spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/replication/applier-state");
                 expect(opt.type).toEqual("GET");
                 expect(opt.contentType).toEqual("application/json");
