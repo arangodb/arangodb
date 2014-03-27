@@ -926,8 +926,9 @@ int main (int argc, char* argv[]) {
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-    
+   
   // successfully connected
+  cout << "Server version: " << versionString << endl;
 
   // validate server version 
   int major = 0;

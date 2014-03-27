@@ -911,6 +911,7 @@ int main (int argc, char* argv[]) {
   }
 
   // successfully connected
+  cout << "Server version: " << versionString << endl;
 
   // validate server version 
   int major = 0;
