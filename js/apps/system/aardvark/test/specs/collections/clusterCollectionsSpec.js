@@ -69,7 +69,9 @@
 
             it("startUpdating while", function () {
                 col.isUpdating = false;
-                spyOn(window, "setInterval");
+                spyOn(window, "setInterval").andCallFake(function(a) {
+                    a();
+                });
                 col.startUpdating();
                 expect(window.setInterval).toHaveBeenCalled();
             });
