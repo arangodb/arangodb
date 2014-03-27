@@ -380,7 +380,7 @@ static void eraseEol(struct current *current)
 
 static void setCursorPos(struct current *current, int x)
 {
-    fd_printf(current->fd, "\r\x1b[%dC", x);
+    fd_printf(current->fd, "\r\x1b[%dG", x);
 }
 
 /**
