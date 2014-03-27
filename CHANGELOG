@@ -36,6 +36,12 @@ v2.1.0 (XXXX-XX-XX)
 v2.0.1 (XXXX-XX-XX)
 -------------------
 
+* fixed isses in arango-dfdb:
+
+  the dfdb was not able to unload certain system collections, so these couldn't be
+  inspected with the dfdb sometimes. Additionally, it did not truncate corrupt
+  markers from datafiles under some circumstances
+
 * added `changePassword` attribute for users
 
 * fixed non-working "save" button in collection edit view of web interface

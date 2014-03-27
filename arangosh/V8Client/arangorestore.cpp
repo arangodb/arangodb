@@ -911,6 +911,7 @@ int main (int argc, char* argv[]) {
   }
 
   // successfully connected
+  cout << "Server version: " << versionString << endl;
 
   // validate server version 
   int major = 0;
@@ -923,11 +924,12 @@ int main (int argc, char* argv[]) {
 
   if (major < 1 || 
       major > 2 ||
-      (major == 1 && minor < 4) ||
-      (major == 2 && minor > 0)) {
+      (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
     cerr << "Got an incompatible server version '" << versionString << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    if (! Force) {
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    }
   }
 
 

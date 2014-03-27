@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, jasmine, expect*/
 /*global $*/
 
 (function () {
@@ -10,7 +10,8 @@
         var col;
 
         beforeEach(function () {
-            window.App = jasmine.createSpyObj(window.Router, ["getNewRoute", "registerForUpdate",  "addAuth"]);
+            window.App = jasmine.createSpyObj(window.Router,
+                ["getNewRoute", "registerForUpdate",  "addAuth"]);
             col = new window.ClusterCoordinators();
         });
 
@@ -31,10 +32,15 @@
         });
 
         it("getStatuses", function () {
-            var m = new window.ClusterCoordinator({name: "a", status : "undefined", address: "localhost:8529"})
-            var m1 = new window.ClusterCoordinator({name: "b", status : "critical", address: "localhost:8529"})
-            var m2 = new window.ClusterCoordinator({name: "c", status : "warning", address: "localhost:8529"})
-            var m3 = new window.ClusterCoordinator({name: "d", status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator({name: "a",
+                status : "undefined", address: "localhost:8529"}),
+                m1 = new window.ClusterCoordinator({name: "b",
+                    status : "critical", address: "localhost:8529"}),
+                m2 = new window.ClusterCoordinator({name: "c",
+                    status : "warning", address: "localhost:8529"}),
+                m3 = new window.ClusterCoordinator({name: "d",
+                    status : "ok", address: "localhost:8529"}),
+                self = this;
             col.add(m);
             col.add(m1);
             col.add(m2);
@@ -45,20 +51,21 @@
                         done: function(cb) {
                             cb();
                         }
-                    }
+                    };
                 }
             );
             this.res = [];
-            var self = this;
             col.getStatuses(function(a, b) {
                 self.res.push(a+b);
             });
             expect(this.res).toEqual(
-                ['undefinedlocalhost:8529', 'dangerlocalhost:8529', 'warninglocalhost:8529', 'successlocalhost:8529']);
+                ['undefinedlocalhost:8529', 'dangerlocalhost:8529',
+                    'warninglocalhost:8529', 'successlocalhost:8529']);
         });
 
         it("byAddress", function () {
-            var m = new window.ClusterCoordinator({status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator(
+                {status : "ok", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -71,7 +78,8 @@
         });
 
         it("getList", function () {
-            var m = new window.ClusterCoordinator({status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator(
+                {status : "ok", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -84,7 +92,8 @@
         });
 
         it("getOverview with ok", function () {
-            var m = new window.ClusterCoordinator({status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator(
+                {status : "ok", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -97,7 +106,8 @@
         });
 
         it("getOverview with critical", function () {
-            var m = new window.ClusterCoordinator({status : "critical", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator(
+                {status : "critical", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -111,7 +121,8 @@
 
 
         it("getOverview with warning", function () {
-            var m = new window.ClusterCoordinator({status : "warning", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator({
+                status : "warning", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -124,10 +135,14 @@
         });
 
         it("getOverview with undefined state", function () {
-            var m = new window.ClusterCoordinator({name: "a", status : "undefined", address: "localhost:8529"})
-            var m1 = new window.ClusterCoordinator({name: "b", status : "critical", address: "localhost:8529"})
-            var m2 = new window.ClusterCoordinator({name: "c", status : "warning", address: "localhost:8529"})
-            var m3 = new window.ClusterCoordinator({name: "d", status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterCoordinator({name: "a",
+                status : "undefined", address: "localhost:8529"}),
+                m1 = new window.ClusterCoordinator({name: "b",
+                status : "critical", address: "localhost:8529"}),
+                m2 = new window.ClusterCoordinator({name: "c",
+                status : "warning", address: "localhost:8529"}),
+                m3 = new window.ClusterCoordinator({name: "d",
+                status : "ok", address: "localhost:8529"});
             col.add(m);
             col.add(m1);
             col.add(m2);
