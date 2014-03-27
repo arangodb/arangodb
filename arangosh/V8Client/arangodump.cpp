@@ -119,6 +119,12 @@ static bool Overwrite = false;
 static bool Progress = true;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief go on even in the face of errors
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Force = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief save data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,6 +183,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
     ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("dump-data", &DumpData, "dump collection data")
+    ("force", &Force, "continue dumping even in the face of some server-side errors")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("output-directory", &OutputDirectory, "output directory")
     ("overwrite", &Overwrite, "overwrite data in output directory")
@@ -385,6 +392,9 @@ static int StartBatch (string& errorMsg) {
       delete response;
     }
 
+    if (Force) {
+      return TRI_ERROR_NO_ERROR;
+    }
     return TRI_ERROR_INTERNAL;
   }
  
@@ -930,11 +940,12 @@ int main (int argc, char* argv[]) {
 
   if (major < 1 || 
       major > 2 ||
-      (major == 1 && minor < 4) ||
-      (major == 2 && minor > 0)) {
+      (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
     cerr << "Got an incompatible server version '" << versionString << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    if (! Force) {
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    }
   }
   
   
@@ -961,6 +972,9 @@ int main (int argc, char* argv[]) {
   string errorMsg = "";
 
   int res = StartBatch(errorMsg);
+  if (res != TRI_ERROR_NO_ERROR && Force) {
+    res = TRI_ERROR_NO_ERROR;
+  }
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = RunDump(errorMsg);
