@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, arangoHelper, beforeEach, afterEach, it, spyOn, expect*/
 /*global $*/
 
 (function () {
@@ -66,7 +66,7 @@
                 includeUnloaded: false,
                 sortBy: 'type',
                 sortOrder: 1
-            }
+            };
             var result = col.getPosition("Heinz Herbert");
             expect(result.prev).not.toBe(null);
             expect(result.next).not.toBe(null);
@@ -92,7 +92,7 @@
                 includeUnloaded: true,
                 sortBy: 'name',
                 sortOrder: 1
-            }
+            };
             var result = col.getPosition("Heinz Herbert");
             expect(result.prev).not.toBe(null);
             expect(result.next).not.toBe(null);
@@ -278,7 +278,7 @@
         });
 
         it("should create a Collection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection");
                 expect(opt.type).toEqual("POST");
@@ -294,14 +294,14 @@
                 expect(opt.async).toEqual(false);
                 opt.success("success");
             });
-            var result = col.newCollection("heinz", true, true, 2, 3, 3, ["a", "b", "c"]);
+            result = col.newCollection("heinz", true, true, 2, 3, 3, ["a", "b", "c"]);
             expect(result.data).toEqual("success");
             expect(result.status).toEqual(true);
 
         });
 
         it("should create a Collection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection");
                 expect(opt.type).toEqual("POST");
@@ -317,14 +317,14 @@
                 expect(opt.async).toEqual(false);
                 opt.error({responseText: '{ "errorMessage" : "went wrong"}'});
             });
-            var result = col.newCollection("heinz", true, true, 2, 3, 3, ["a", "b", "c"]);
+            result = col.newCollection("heinz", true, true, 2, 3, 3, ["a", "b", "c"]);
             expect(result.errorMessage).toEqual("went wrong");
             expect(result.status).toEqual(false);
         });
 
 
         it("should renameCollection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/rename");
                 expect(opt.type).toEqual("PUT");
@@ -337,13 +337,13 @@
                 expect(opt.async).toEqual(false);
                 opt.success("success");
             });
-            var result = col.renameCollection(12345, "newName");
+            result = col.renameCollection(12345, "newName");
             expect(result).toEqual(true);
 
         });
 
         it("should renameCollection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/rename");
                 expect(opt.type).toEqual("PUT");
@@ -356,12 +356,12 @@
                 expect(opt.async).toEqual(false);
                 opt.error({responseText: '{ "errorMessage" : "went wrong"}'});
             });
-            var result = col.renameCollection(12345, "newName");
+            result = col.renameCollection(12345, "newName");
             expect(result).toEqual("went wrong");
         });
 
         it("should renameCollection and fail with unparseable message", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/rename");
                 expect(opt.type).toEqual("PUT");
@@ -374,12 +374,12 @@
                 expect(opt.async).toEqual(false);
                 opt.error(["otto"]);
             });
-            var result = col.renameCollection(12345, "newName");
+            result = col.renameCollection(12345, "newName");
             expect(result).toEqual(false);
         });
 
         it("should changeCollection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
                 expect(opt.type).toEqual("PUT");
@@ -392,13 +392,13 @@
                 expect(opt.async).toEqual(false);
                 opt.success("success");
             });
-            var result = col.changeCollection(id, false, 4);
+            result = col.changeCollection(id, false, 4);
             expect(result).toEqual(true);
 
         });
 
         it("should changeCollection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
                 expect(opt.type).toEqual("PUT");
@@ -411,13 +411,13 @@
                 expect(opt.async).toEqual(false);
                 opt.error({responseText: '{ "errorMessage" : "went wrong"}'});
             });
-            var result = col.changeCollection(id, false, 4);
+            result = col.changeCollection(id, false, 4);
             expect(result).toEqual("went wrong");
 
         });
 
         it("should changeCollection and fail with nonparseable message", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
                 expect(opt.type).toEqual("PUT");
@@ -430,14 +430,14 @@
                 expect(opt.async).toEqual(false);
                 opt.error(["otto"]);
             });
-            var result = col.changeCollection(id, false, 4);
+            result = col.changeCollection(id, false, 4);
             expect(result).toEqual(false);
 
         });
 
 
         it("should deleteCollection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id);
                 expect(opt.type).toEqual("DELETE");
@@ -446,14 +446,14 @@
                 opt.success("success");
             });
             spyOn(window.collectionsView, "render");
-            var result = col.deleteCollection(id);
+            result = col.deleteCollection(id);
             expect(window.collectionsView.render).toHaveBeenCalled();
             expect(result).toEqual(true);
 
         });
 
         it("should deleteCollection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id);
                 expect(opt.type).toEqual("DELETE");
@@ -461,13 +461,13 @@
                 expect(opt.async).toEqual(false);
                 opt.error();
             });
-            var result = col.deleteCollection(id);
+            result = col.deleteCollection(id);
             expect(result).toEqual(false);
 
         });
 
         it("should loadCollection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/load");
                 expect(opt.type).toEqual("PUT");
@@ -479,12 +479,12 @@
             spyOn(window.arangoCollectionsStore, "fetch").andCallFake(function (o) {
                 o.success();
             });
-            var result = col.loadCollection(id);
+            result = col.loadCollection(id);
             expect(arangoHelper.arangoNotification).toHaveBeenCalledWith('Collection loaded');
             expect(window.collectionsView.render).toHaveBeenCalled();
         });
         it("should loadCollection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/load");
                 expect(opt.type).toEqual("PUT");
@@ -492,13 +492,13 @@
                 opt.error();
             });
             spyOn(arangoHelper, "arangoError");
-            var result = col.loadCollection(id);
+            result = col.loadCollection(id);
             expect(arangoHelper.arangoError).toHaveBeenCalledWith('Collection error');
 
         });
 
         it("should unloadCollection and succeed", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/unload");
                 expect(opt.type).toEqual("PUT");
@@ -510,12 +510,12 @@
             spyOn(window.arangoCollectionsStore, "fetch").andCallFake(function (o) {
                 o.success();
             });
-            var result = col.unloadCollection(id);
+            result = col.unloadCollection(id);
             expect(arangoHelper.arangoNotification).toHaveBeenCalledWith('Collection unloaded');
             expect(window.collectionsView.render).toHaveBeenCalled();
         });
         it("should unloadCollection and fail", function () {
-            var id = "12345";
+            var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/unload");
                 expect(opt.type).toEqual("PUT");
@@ -523,7 +523,7 @@
                 opt.error();
             });
             spyOn(arangoHelper, "arangoError");
-            var result = col.unloadCollection(id);
+            result = col.unloadCollection(id);
             expect(arangoHelper.arangoError).toHaveBeenCalledWith('Collection error');
 
         });

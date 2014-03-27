@@ -11,7 +11,8 @@
         var col, list, prim1, prim2, prim3, sec1, sec2, sec3, oldRouter;
 
         beforeEach(function () {
-            window.App = jasmine.createSpyObj(window.Router, ["getNewRoute", "registerForUpdate",  "addAuth", "requestAuth"]);
+            window.App = jasmine.createSpyObj(window.Router, ["getNewRoute",
+                "registerForUpdate",  "addAuth", "requestAuth"]);
             col = new window.ClusterServers();
         });
 
@@ -28,10 +29,15 @@
         });
 
         it("getStatuses", function () {
-            var m = new window.ClusterServer({name: "a", status : "undefined", address: "localhost:8529"})
-            var m1 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529"})
-            var m2 = new window.ClusterServer({name: "c", status : "warning", address: "localhost:8529"})
-            var m3 = new window.ClusterServer({name: "d", status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529"}),
+                m1 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529"}),
+                m2 = new window.ClusterServer({name: "c",
+                status : "warning", address: "localhost:8529"}),
+                m3 = new window.ClusterServer({name: "d",
+                status : "ok", address: "localhost:8529"}),
+                self = this;
             col.add(m);
             col.add(m1);
             col.add(m2);
@@ -48,16 +54,16 @@
 
                             };
                         }
-                    }
+                    };
                 }
             );
             this.res = [];
-            var self = this;
             col.getStatuses(function(a, b) {
                 self.res.push(a+b);
             });
             expect(this.res).toEqual(
-                ['undefinedlocalhost:8529', 'dangerlocalhost:8529', 'warninglocalhost:8529', 'successlocalhost:8529']);
+                ['undefinedlocalhost:8529', 'dangerlocalhost:8529',
+                    'warninglocalhost:8529', 'successlocalhost:8529']);
         });
 
        /* getStatuses: function(cb) {
@@ -82,7 +88,7 @@
 */
 
         it("byAddress", function () {
-            var m = new window.ClusterServer({status : "ok", address: "localhost:8529"})
+            var m = new window.ClusterServer({status : "ok", address: "localhost:8529"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -96,7 +102,8 @@
 
 
         it("getOverview with ok", function () {
-            var m = new window.ClusterServer({status : "ok", address: "localhost:8529", role: "primary"})
+            var m = new window.ClusterServer({status : "ok",
+                address: "localhost:8529", role: "primary"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -109,7 +116,8 @@
         });
 
         it("getOverview with critical", function () {
-            var m = new window.ClusterServer({status : "critical", address: "localhost:8529", role: "primary"})
+            var m = new window.ClusterServer({status : "critical",
+                address: "localhost:8529", role: "primary"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -123,7 +131,8 @@
 
 
         it("getOverview with warning", function () {
-            var m = new window.ClusterServer({status : "warning", address: "localhost:8529", role: "primary"})
+            var m = new window.ClusterServer({status : "warning",
+                address: "localhost:8529", role: "primary"});
             col.add(m);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
@@ -136,12 +145,18 @@
         });
 
         it("getOverview with undefined state", function () {
-            var m = new window.ClusterServer({name: "a", status : "undefined", address: "localhost:8529", role: "primary"})
-            var m2 = new window.ClusterServer({name: "c", status : "warning", address: "localhost:8529", role: "primary"})
-            var m3 = new window.ClusterServer({name: "d", status : "ok", address: "localhost:8529", role: "primary"})
-            var mc1 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary", secondary : m3})
-            var mc2 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary", secondary : mc1})
-            var mc3 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary"})
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name: "c",
+                status : "warning", address: "localhost:8529", role: "primary"}),
+                m3 = new window.ClusterServer({name: "d",
+                status : "ok", address: "localhost:8529", role: "primary"}),
+                mc1 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary", secondary : m3}),
+                mc2 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary", secondary : mc1}),
+                mc3 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary"});
 
             col.add(m);
             col.add(mc1);
@@ -156,12 +171,18 @@
         });
 
         it("getOverview with very critical state", function () {
-            var m = new window.ClusterServer({name: "a", status : "undefined", address: "localhost:8529", role: "primary"})
-            var m2 = new window.ClusterServer({name: "c", status : "warning", address: "localhost:8529", role: "primary"})
-            var m3 = new window.ClusterServer({name: "d", status : "ok", address: "localhost:8529", role: "primary"})
-            var mc1 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary"})
-            var mc2 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary"})
-            var mc3 = new window.ClusterServer({name: "b", status : "critical", address: "localhost:8529", role: "primary"})
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name: "c",
+                    status : "warning", address: "localhost:8529", role: "primary"}),
+                m3 = new window.ClusterServer({name: "d",
+                    status : "ok", address: "localhost:8529", role: "primary"}),
+                mc1 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"}),
+                mc2 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"}),
+                mc3 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"});
 
             col.add(m);
             col.add(mc1);
@@ -176,16 +197,20 @@
         });
 
         it("getList", function () {
-            var m = new window.ClusterServer({name : "a", status : "ok", address: "localhost:8529", role: "primary"})
-            var m2 = new window.ClusterServer({name : "b", status : "ok", address: "localhost:8529", role: "primary", secondary : m})
+            var m = new window.ClusterServer({name : "a",
+                    status : "ok", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name : "b",
+                    status : "ok", address: "localhost:8529", role: "primary", secondary : m});
             col.add(m);
             col.add(m2);
             spyOn(col, "fetch").andCallFake(function(param) {
                 expect(param.async).toEqual(false);
             });
-            expect(col.getList({})).toEqual( [ { primary : { name : 'a', address : 'localhost:8529', status : 'ok' } },
-                { primary : { name : 'b', address : 'localhost:8529', status : 'ok' },
-                    secondary : { name : 'a', address : 'localhost:8529', status : 'ok' } } ]);
+            expect(col.getList({})).toEqual( [ { primary :
+                { name : 'a', address : 'localhost:8529', status : 'ok' } },
+                { primary :
+                { name : 'b', address : 'localhost:8529', status : 'ok' },
+                secondary : { name : 'a', address : 'localhost:8529', status : 'ok' } } ]);
         });
 
 

@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global describe, beforeEach, afterEach, it, spyOn, expect,
+ require, jasmine,  exports, Backbone, window, $, arangoLog */
 (function () {
 
     "use strict";
@@ -61,5 +62,5 @@
             });
             expect(col.getApplyState()).toEqual("error");
         });
-    })
+    });
 }());

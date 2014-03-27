@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global describe, beforeEach, afterEach, it, spyOn, expect,
+ require, jasmine,  exports, window, $ */
 (function () {
 
     "use strict";
@@ -23,12 +24,12 @@
             });
             expect(col.url).toEqual("/_api/user");
             expect(col.comparator({get: function (val) {
-                return "Herbert"
+                return "Herbert";
             }})).toEqual("herbert");
         });
 
         it("login", function () {
-            col.login("user", "pw")
+            col.login("user", "pw");
             expect(col.activeUser).toEqual("user");
         });
         it("logout", function () {
@@ -41,9 +42,9 @@
                     error: function (callback) {
                         callback();
                     }
-                }
+                };
             });
-            col.logout()
+            col.logout();
             expect(col.activeUser).toEqual(undefined);
             expect(col.reset).toHaveBeenCalled();
             expect(window.App.navigate).toHaveBeenCalledWith("");
@@ -52,7 +53,7 @@
 
         it("setUserSettings", function () {
             col.setUserSettings("bad", true);
-            expect(col.activeUserSettings["identifier"]).toEqual(true);
+            expect(col.activeUserSettings.identifier).toEqual(true);
         });
 
         it("loadUserSettings with success", function () {
@@ -156,7 +157,7 @@
                     done: function (callback) {
                         callback({name: "heinz"});
                     }
-                }
+                };
             });
             expect(col.whoAmI()).toEqual("heinz");
         });
@@ -167,6 +168,6 @@
         });
 
 
-    })
+    });
 }());
 
