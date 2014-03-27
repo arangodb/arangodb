@@ -37,6 +37,26 @@ var printf = internal.printf;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unload a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function UnloadCollection (collection) {
+  var last = Math.round(internal.time());
+
+  // unload collection if not yet unloaded (2) & not corrupted (0)
+  while (collection.status() !== 2 && collection.status() !== 0) {
+    collection.unload();
+
+    var next = Math.round(internal.time());
+
+    if (next != last) {
+      printf("Trying to unload collection '%s'\n", collection.name());
+      last = next;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -55,6 +75,7 @@ function RemoveDatafile (collection, type, datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function WipeDatafile (collection, type, datafile, lastGoodPos) {
+  UnloadCollection(collection);
   collection.truncateDatafile(datafile, lastGoodPos);
 
   printf("Truncated and sealed datafile\n");
@@ -514,7 +535,7 @@ function main (argv) {
   }
   
   printf("\n");
-  printf("Prints details (yes/no)? ");
+  printf("Prints details (Y/N)? ");
 
   var details = false;
   while (true) {
@@ -538,20 +559,7 @@ function main (argv) {
     printf("Checking collection #%d: %s\n", a[i], collection.name());
     printf("-------------------------------------------------------------------\n");
 
-    var last = Math.round(internal.time());
-
-    // unload all collections not yet unloaded (2) & not corrupted (0)
-    while (collection.status() !== 2 && collection.status() !== 0) {
-      collection.unload();
-
-      var next = Math.round(internal.time());
-
-      if (next != last) {
-        printf("Trying to unload collection '%s'\n", collection.name());
-        last = next;
-      }
-    }
-
+    UnloadCollection(collection);
     printf("\n");
 
     CheckCollection(collection, issues, details);
