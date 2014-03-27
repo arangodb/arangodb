@@ -194,6 +194,7 @@ static void refreshMultiLine(const char *prompt, struct current *current);
 static void refreshPage(const struct linenoiseCompletions * lc, struct current *current);
 static void initLinenoiseLine(struct current *current);
 static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
+static int next_allowed_x(size_t pos, int cols, int pchars);
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -312,7 +313,22 @@ static void clearScreen(struct current *current)
 
 static void cursorToLeft(struct current *current)
 {
-    fd_printf(current->fd, "\r");
+    size_t pchars = 20;
+    /**
+     * how many lines are need to display the current->pos characters of the
+     * current buffer 
+     */
+    size_t number_lines = new_line_numbers(current->pos, current->cols, pchars);
+    /**
+     * move cursor number_lines above
+     */ 
+    if(number_lines>0) {
+     fd_printf(current->fd, "\x1b[%dA", number_lines);
+    }
+    /**
+     * move cursor to initial poisition in line
+     */
+    fd_printf(current->fd, "\x1b[0G");
 }
 
 static int outputChars(struct current *current, const char *buf, int len)
@@ -332,7 +348,34 @@ static void outputControlChar(struct current *current, char ch)
 
 static void eraseEol(struct current *current)
 {
+   size_t pchars = 20;
+    /**
+     * number of additional lines to display chars characters (the quite buffer)
+     */ 
+    size_t number_lines = new_line_numbers(current->chars, current->cols, pchars);
+
+    int i;
+   /**
+    * save original cursor position
+    */   
+    // fd_printf(current->fd, "\x1b[s");
+
+
+    cursorToLeft(current);
+    fd_printf(current->fd, "\x1b[s");
+    /**
+     * delete the first line with the prompt
+     */
     fd_printf(current->fd, "\x1b[0K");
+    /**
+     * move cursor to next line and delete it
+     */
+    for(i=1; i<=number_lines; i++) {
+      fd_printf(current->fd, "\x1b[1B");
+      fd_printf(current->fd, "\x1b[0K");
+    }
+
+    fd_printf(current->fd, "\x1b[u");
 }
 
 static void setCursorPos(struct current *current, int x)
@@ -912,20 +955,22 @@ static int get_char(struct current *current, size_t pos)
 }
 static void displayItems(const struct linenoiseCompletions * lc, struct current *current, int max_len)
 { 
-  getWindowSize(current);
   size_t wcols = current->cols; 
   int cols = max_len > wcols ? 1 : wcols/(max_len+2);
   int rows = (int)ceil((float)lc->len/cols);
   int i, j;
+  size_t idx;
+   const char * row_content;
+  getWindowSize(current);
   for(i=0;i<rows; i++) {
     newLine(current);
     for(j=0; j<cols; j++){
       setCursorPos(current, j * (max_len + 2));
-      size_t idx = j*rows +i;
+      idx = j*rows +i;
       if(idx>=lc->len) {
          break;
       }
-      const char * row_content = lc->cvec[j * rows + i];
+      row_content = lc->cvec[j * rows + i];
       outputChars(current, row_content, strlen(row_content)); 
     }
   }
@@ -1083,16 +1128,18 @@ static void showBuffer(struct current * current, size_t pchars) {
      * number of additional lines for displaying
      * the complete buffer
      */ 
-    size_t number_lines = new_line_numbers(current->pos, current->cols, pchars);
     size_t free_chars = current->cols - pchars;
     if(current->chars <= free_chars) { 
         outputChars(current, buf, buf_len);
     } else {
-        outputChars(current, buf, buf_len);
-        buf = buf + buf_len;
+        size_t number_lines = new_line_numbers(current->pos, current->cols, pchars);
         int i;
+        outputChars(current, buf, buf_len);
+//        newLine(current);
+        buf = buf + buf_len;
         for(i=1; i<= number_lines-1; i++) {
           outputChars(current, buf, current->cols);
+//         newLine(current);
           buf = buf + current->cols;
         }
         buf_len = strlen(buf);
@@ -1103,11 +1150,6 @@ static void refreshMultiLine(const char *prompt, struct current *current)
 {
     size_t plen;
     size_t pchars;
-    int i;
-    const char *buf = current->buf;
-    size_t buf_len = strlen(buf);
-    size_t chars = current->chars;
-    size_t pos = current->pos;
     
     /* Should intercept SIGWINCH. For now, just get the size every time */
     getWindowSize(current);
@@ -1121,7 +1163,8 @@ static void refreshMultiLine(const char *prompt, struct current *current)
    
     
     /* Cursor to left edge, then the prompt */
-    cursorToLeft(current);
+    // cursorToLeft(current);
+    setCursorPos(current, 0);
     outputChars(current, prompt, plen);
 
     /**
@@ -1129,9 +1172,15 @@ static void refreshMultiLine(const char *prompt, struct current *current)
      */
     showBuffer(current, pchars);
 
-    /* Erase to right, move cursor to original position */
-    // eraseEol(current);
-    setCursorPos(current, pos + pchars );
+    int x = next_allowed_x(current->pos, current->cols, pchars);
+    /* move cursor to: */
+    if(x == current->cols-1) { 
+      /* next line */
+      fd_printf(current->fd, "\x1b[1E");
+    } else {
+      /* next next character after current->pos */
+      setCursorPos(current, x+1);
+    }
 }
 #endif
 
@@ -1146,7 +1195,7 @@ static size_t new_line_numbers(size_t pos, int cols, size_t pchars)
   }
 }
 
-int next_allowed_x(size_t pos, int cols, int pchars)
+static int next_allowed_x(size_t pos, int cols, int pchars)
 {
   if (pos < cols - pchars)
   {
@@ -1432,12 +1481,13 @@ static int completeLine(struct current *current) {
     if (lc.len == 0) {
         beep();
     } else {
+        size_t stop = 0, i = 0;
         if(lc.len>1 && lc.multiLine) {
            refreshPage(&lc, current);
            freeCompletions(&lc);
             return c;
         }
-        size_t stop = 0, i = 0;
+        stop = 0, i = 0;
 
         while(!stop) {
             /* Show completion or original buffer */
@@ -1513,10 +1563,28 @@ static void moveCursorToRight(struct current * current) {
 }
 #else
 static void moveCursorToLeft(struct current * current) {
-    refreshLine(current->prompt, current);
+   if(current->pos==0) {
+           return;
+   } 
+   size_t pchars = 20;
+   int x = next_allowed_x(current->pos, current->cols, pchars);
+   if(x==0) {
+      fd_printf(current->fd, "\x1b[1A\x1b[%dG", current->cols);
+   } else {
+      fd_printf(current->fd, "\x1b[1D");
+   }
 }
 static void moveCursorToRight(struct current * current) {
-    refreshLine(current->prompt, current);
+   if(current->pos>=current->chars) {
+           return;
+   } 
+   size_t pchars = 20;
+   int x = next_allowed_x(current->pos, current->cols, pchars);
+   if(x==current->cols-1) {
+      fd_printf(current->fd, "\x1b[1B\x1b[0G");
+   } else {
+      fd_printf(current->fd, "\x1b[1C");
+   }
 }
 #endif
 
