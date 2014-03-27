@@ -1013,10 +1013,10 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
   // step 1: zero out all the out edges (we must not free them directly)
   for (i = 0; i < n; ++i) {
-    TRI_edge_header_t* element = edgesIndex->_edges._table[i];
+    TRI_edge_header_t* element = edgesIndex->_edges._table[i].ptr;
   
     if (element != NULL && (element->_flags & TRI_EDGE_BIT_DIRECTION_OUT)) {
-      edgesIndex->_edges._table[i] = NULL;
+      edgesIndex->_edges._table[i].ptr = NULL;
     }
   }
   
