@@ -163,7 +163,7 @@
         "clusterFrontend/js/collections/**",
         "frontend/js/views/footerView.js",
         "frontend/js/views/dashboardView.js",
-        "frontend/js/collections/arangoStatisticsCollectionSpec.js",
+        "frontend/js/collections/arangoStatisticsCollection.js",
         "frontend/js/collections/arangoDocuments.js",
         "frontend/js/models/arangoDocument.js",
         "frontend/js/config/dygraphConfig.js",
