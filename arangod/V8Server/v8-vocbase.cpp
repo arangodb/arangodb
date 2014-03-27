@@ -8074,7 +8074,8 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
