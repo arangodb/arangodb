@@ -1,61 +1,183 @@
-.modalChartDetail {
-  height : 70%;
-  width : 70%;
-  margin-left: 0px;
-}
+.modal-body {
+  color: $c-btn-inverse;
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 300;
 
-.waitModal {
-  background: transparent;
-  color: $c_white;
-  box-shadow: none;
-  border: none;
-}
-
-.waitModalBackdrop {
-  opacity: 0.7 !important;
-}
-
-.addCollection {
-  $inputWidth: 320px;
-  table tr {
-    height: 53px;
-    border-bottom: 0 !important;
-  }
-  .icon_arangodb_info {
-    top: 2px !important;
-    position: relative;
-    margin-left: 20px !important;
-  }
-
-  .accordion {
+  input,
+  select,
+  textarea {
     margin-top: 10px;
   }
 
-  .collectionThSec {
-    width: $inputWidth !important;
+  th {
+    %cell-centered {
+      text-align: center;
+    }
+
+    &.actionCell {
+      @extend %cell-centered;
+      width: 30px;
+    }
+
+    &.keyCell {
+      @extend %cell-centered;
+      width: 170px;
+
+      input {
+        width: 150px;
+      }
+    }
+
+    .valueCell {
+      @extend %cell-centered;
+      width: 300px;
+
+      input {
+        width: 290px;
+      }
+    }
   }
 
-  .collectionTh {
-    width: 96px;
+  .icon-info-sign {
+    margin-bottom: 10px;
+    margin-left: 10px;
+    opacity: .7;
+    padding-bottom: 5px;
   }
 
-  .modalInput {
-    width: $inputWidth;
+  .icon-info-sign:hover {
+    opacity: 1;
   }
 
-  .modalSelect {
-    width: $inputWidth + 14px;
+  .accordion-inner {
+    margin-left: 0;
+    padding-left: 0;
   }
 
-  .accordion-toggle {
-    width: $inputWidth + 137px !important;
+  input {
+    width: 320px;
+  }
+
+  select {
+    width: 334px;
   }
 }
 
+.modal-text {
+  font-weight: 300;
+  padding-bottom: 3px;
+  padding-top: 3px;
+}
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4;
+}
+
+.modalChartDetail {
+  height: 70%;
+  margin-left: 0;
+  width: 70%;
+}
+
+.modal {
+  border-radius: 0 !important;
+}
+
+.waitModal {
+  @include box-shadow(none);
+  background: $c-transp;
+  border: 0;
+  color: $c-white;
+}
+
+
+.waitModalBackdrop {
+  opacity: .7 !important;
+}
+
+
 .modalTooltips span {
+  color: $c-btn-inverse;
   font-size: 20px;
-  color: $c_btn_inverse;
+
   &:hover {
-    color: $c_black;
+    color: $c-black;
   }
+}
+
+
+pre.gv-object-view {
+  text-align: left;
+  white-space: pre;
+}
+
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.modal-footer {
+  border-top: 0 !important;
+  padding-right: 17px;
+}
+
+.modal-header {
+  background-color: $c-bar-bg;
+  border-bottom: 0 !important;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px;
+}
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px;
+}
+
+.modal-header a {
+  top: 2px !important;
+}
+
+.modal-header .close {
+  color: $c-modal-header;
+  font-weight: 300;
+  opacity: .5;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
+}
+
+.modal-body .icon_arangodb_info {
+  color: $c-neutral-hover;
+  font-size: 18px;
+  margin-top: -10px;
+  position: absolute;
+  right: 12px;
+}
+
+.modal-body .icon_arangodb_info:hover {
+  color: $c-black;
+}
+
+.modal.fade.in {
+  top: 12.1% !important;
+}
+
+.modal table tr,
+.thBorderBottom {
+  border-bottom: 1px solid $c-modal-table-border-bottom !important;
+}
+
+.modal table tr:last-child {
+  border-bottom: 0 !important;
+}
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px;
 }

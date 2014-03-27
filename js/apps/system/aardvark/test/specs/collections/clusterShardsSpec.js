@@ -1,63 +1,111 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, */
+/*global describe, beforeEach, afterEach, it, jasmine, */
 /*global spyOn, expect*/
 /*global _*/
-(function() {
+(function () {
 
-  "use strict";
+    "use strict";
 
-  describe("Cluster Shards Collection", function() {
+    describe("ClusterShards Collection", function () {
 
-    var col, list, s1, s2, s3;
+        var col, list, c1, c2, c3, oldRouter;
 
-    beforeEach(function() {
-      list = [];
-      s1 = {id: "Shard 1"};
-      s2 = {id: "Shard 2"};
-      s3 = {id: "Shard 3"};
-      col = new window.ClusterShards();
-      spyOn(col, "fetch").andCallFake(function() {
-        _.each(list, function(s) {
-          col.add(s);
+        beforeEach(function () {
+            oldRouter = window.App;
+            window.App = {
+                registerForUpdate: function () {
+                },
+                addAuth: function () {
+                },
+                getNewRoute: function () {
+                }
+            };
+            list = [];
+            c1 = {name: "Documents", shards: "123"};
+            c2 = {name: "Edges", shards: "321"};
+            c3 = {name: "_graphs", shards: "222"};
+            col = new window.ClusterShards();
+            spyOn(col, "fetch").andCallFake(function () {
+                _.each(list, function (s) {
+                    col.add(s);
+                });
+            });
         });
-      });
+
+        afterEach(function () {
+            window.App = oldRouter;
+        });
+
+        describe("list overview", function () {
+
+            it("should fetch the result sync", function () {
+                col.fetch.reset();
+                col.getList();
+                expect(col.fetch).toHaveBeenCalledWith({
+                    async: false,
+                    beforeSend: jasmine.any(Function)
+                });
+            });
+
+
+            it("url", function () {
+                col.dbname = "db";
+                col.colname = "col";
+                expect(col.url()).toEqual("/_admin/aardvark/cluster/"
+                    + col.dbname + "/"
+                    + col.colname + "/"
+                    + "Shards");
+            });
+
+
+            it("stopUpdating", function () {
+                col.timer = 4;
+                spyOn(window, "clearTimeout");
+                col.stopUpdating();
+                expect(col.isUpdating).toEqual(false);
+                expect(window.clearTimeout).toHaveBeenCalledWith(4);
+            });
+
+            it("startUpdating while already updating", function () {
+                col.isUpdating = true;
+                spyOn(window, "setInterval");
+                col.startUpdating();
+                expect(window.setInterval).not.toHaveBeenCalled();
+            });
+
+            it("startUpdating while", function () {
+                col.isUpdating = false;
+                spyOn(window, "setInterval").andCallFake(function(a) {
+                    a();
+                });
+                col.startUpdating();
+                expect(window.setInterval).toHaveBeenCalled();
+            });
+
+
+            it("should return a list with default ok status", function () {
+                list.push(c1);
+                list.push(c2);
+                list.push(c3);
+                var expected = [];
+                expected.push({
+                    server: c1.name,
+                    shards: c1.shards
+                });
+                expected.push({
+                    server: c2.name,
+                    shards: c2.shards
+                });
+                expected.push({
+                    server: c3.name,
+                    shards: c3.shards
+                });
+                expect(col.getList()).toEqual(expected);
+            });
+
+        });
+
     });
-
-    describe("list overview", function() {
-
-      it("should fetch the result sync", function() {
-        col.fetch.reset();
-        col.getList();
-        expect(col.fetch).toHaveBeenCalledWith({
-          async: false
-        });
-      });
-      
-
-      it("should return a list with default ok status", function() {
-        list.push(s1);
-        list.push(s2);
-        list.push(s3);
-        var expected = [];
-        expected.push({
-          id: s1.id,
-          status: "ok"
-        });
-        expected.push({
-          id: s2.id,
-          status: "ok"
-        });
-        expected.push({
-          id: s3.id,
-          status: "ok"
-        });
-        expect(col.getList()).toEqual(expected);
-      });
-
-    });
-
-  });
 
 }());
-
 

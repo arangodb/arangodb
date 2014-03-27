@@ -102,10 +102,10 @@
         "frontend/js/lib/ColVis.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
-        "frontend/js/lib/splitter.js",
         "frontend/js/lib/swagger.js",
         "frontend/js/lib/swagger-ui.js",
-        "frontend/js/lib/highlight.7.3.pack.js"
+        "frontend/js/lib/highlight.7.3.pack.js",
+        "frontend/js/lib/md5.js"
       ]
     },
 
@@ -117,39 +117,15 @@
 
     "css/style.css": {
       "files": [
-        "frontend/css/openSansFont.css",
         "frontend/css/swagger/hightlight.default.css",
         "frontend/css/bootstrap.css",
-        "frontend/css/arangodbIcons.css",
-        "frontend/css/font-awesome.css",
-        "frontend/css/bootstrap-glyphicons.css",
         "frontend/css/jquery-ui-1.9.2.custom.css",
         "frontend/css/jquery.contextmenu.css",
         "frontend/css/select2.css",
-        "frontend/css/layout.css",
         "frontend/css/jquery.dataTables.css",
         "frontend/css/nv.d3.css",
-        "frontend/css/shellView.css",
-        "frontend/css/queryView.css",
-        "frontend/css/logsView.css",
-        "frontend/css/collectionsView.css",
-        "frontend/css/collectionsItemView.css",
-        "frontend/css/collectionView.css",
-        "frontend/css/documentsView.css",
-        "frontend/css/documentView.css",
         "frontend/css/swaggerView.css",
-        "frontend/css/foxxView.css",
-        "frontend/css/graphView.css",
-        "frontend/css/loginView.css",
-        "frontend/css/dbSelectionView.css",
-        "frontend/css/jquery.snippet.css",
-        "frontend/css/modal.css",
         "frontend/css/ansi.css",
-        "frontend/css/graphlayout.css",
-        "frontend/css/datatables.css",
-        "frontend/css/api.css",
-        "frontend/css/general.css",
-        "frontend/css/screenSizes.css",
         "frontend/css/jsoneditor.css",
         "frontend/ttf/arangofont/style.css"
       ]

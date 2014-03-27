@@ -8,11 +8,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if no <em>job-id</em> was specified in the request. In this case, no <em>x-arango-async-id</em> HTTP header will be returned. <br><br>",
+                            "reason": "is returned if no <em>job-id</em> was specified in the request. In this case, no <em>x-arango-async-id</em> HTTP header will be returned. ",
                             "code": "400"
                         },
                         {
-                            "reason": "is returned if the job was not found or already deleted or fetched from the  job result list. In this case, no <em>x-arango-async-id</em> HTTP header will be  returned. <br><br>",
+                            "reason": "is returned if the job was not found or already deleted or fetched from the  job result list. In this case, no <em>x-arango-async-id</em> HTTP header will be  returned. ",
                             "code": "404"
                         }
                     ],
@@ -22,13 +22,13 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "job-id",
-                            "description": "The async job id. <br><br>"
+                            "description": "The async job id. "
                         }
                     ],
-                    "notes": "Returns the result of an async job identified by <em>job-id</em>. If the async job result is present on the server, the result will be removed from the list of result. That means this method can be called for each <em>job-id</em> once. <br><br> The method will return the original job result's headers and body, plus the additional HTTP header <em>x-arango-async-job-id</em>. If this header is  present, then the job was found and the response contains the original job's result. If the header is not present, the job was not found and the response contains status information from the job amanger. <br><br>",
+                    "notes": "Returns the result of an async job identified by <em>job-id</em>. If the async job result is present on the server, the result will be removed from the list of result. That means this method can be called for each <em>job-id</em> once. <br><br>The method will return the original job result's headers and body, plus the additional HTTP header <em>x-arango-async-job-id</em>. If this header is  present, then the job was found and the response contains the original job's result. If the header is not present, the job was not found and the response contains status information from the job amanger. <br><br>",
                     "summary": "Returns the result of an async job",
                     "httpMethod": "PUT",
-                    "examples": "<br><br> Not providing a job-id: <br><br><br><br><pre><code class=\"json\">unix> curl -X PUT --dump - http://localhost:8529/_api/job/\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{\"error\":true,\"errorMessage\":\"bad parameter\",\"code\":400,\"errorNum\":400}\n\n</code></pre><br><br><br> Providing a job-id for a non-existing job: <br><br><br><br><pre><code class=\"json\">unix> curl -X PUT --dump - http://localhost:8529/_api/job/foobar\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{\"error\":true,\"errorMessage\":\"not found\",\"code\":404,\"errorNum\":404}\n\n</code></pre><br><br><br> Fetching the result of an HTTP GET job: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331497895\n\nunix> curl -X PUT --dump - http://localhost:8529/_api/job/331497895\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\nx-arango-async-id: 331497895\n\n{\"server\":\"arango\",\"version\":\"2.0.1-rc1\"}\n\n</code></pre><br><br><br> Fetching the result of an HTTP POST job that failed: <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection\n{\"name\":\" this name is invalid \"}\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331563431\n\nunix> curl -X PUT --dump - http://localhost:8529/_api/job/331563431\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\nx-arango-async-id: 331563431\n\n{\"error\":true,\"code\":400,\"errorNum\":1208,\"errorMessage\":\"cannot create collection: illegal name\"}\n\n</code></pre><br>",
+                    "examples": "Not providing a job-id: <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/job/\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{\"error\":true,\"errorMessage\":\"bad parameter\",\"code\":400,\"errorNum\":400}\n\n</code></pre><br>Providing a job-id for a non-existing job: <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/job/foobar\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{\"error\":true,\"errorMessage\":\"not found\",\"code\":404,\"errorNum\":404}\n\n</code></pre><br>Fetching the result of an HTTP GET job: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332096590\n\nunix> curl -X PUT --dump - http://localhost:8529/_api/job/332096590\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\nx-arango-async-id: 332096590\n\n{\"server\":\"arango\",\"version\":\"2.0.0-rc1\"}\n\n</code></pre><br>Fetching the result of an HTTP POST job that failed: <br><br><pre><code class=\"json\" >unix> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection\n{\"name\":\" this name is invalid \"}\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332162126\n\nunix> curl -X PUT --dump - http://localhost:8529/_api/job/332162126\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\nx-arango-async-id: 332162126\n\n{\"error\":true,\"code\":400,\"errorNum\":1208,\"errorMessage\":\"cannot create collection: illegal name\"}\n\n</code></pre><br>",
                     "nickname": "ReturnsTheResultOfAnAsyncJob"
                 }
             ],
@@ -39,11 +39,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the list can be compiled successfully. Note: the list might be empty. <br><br>",
+                            "reason": "is returned if the list can be compiled successfully. Note: the list might be empty. ",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if <em>type</em> is not specified or has an invalid value. <br><br>",
+                            "reason": "is returned if <em>type</em> is not specified or has an invalid value. ",
                             "code": "400"
                         }
                     ],
@@ -53,20 +53,19 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "type",
-                            "description": "The type of jobs to return. The type can be either <em>done</em> or <em>pending</em>.  Setting the type to <em>done</em> will make the method return the ids of already completed async jobs for which results can be fetched. Setting the type to <em>pending</em> will return the ids of not yet finished async jobs. <br><br>"
+                            "description": "The type of jobs to return. The type can be either <em>done</em> or <em>pending</em>.  Setting the type to <em>done</em> will make the method return the ids of already completed async jobs for which results can be fetched. Setting the type to <em>pending</em> will return the ids of not yet finished async jobs. "
                         },
                         {
                             "dataType": "Number",
                             "paramType": "query",
-                            "required": "false",
                             "name": "count",
-                            "description": "The maximum number of ids to return per call. If not specified, a server-defined maximum value will be used. <br><br>"
+                            "description": "The maximum number of ids to return per call. If not specified, a server-defined maximum value will be used. "
                         }
                     ],
                     "notes": "Returns the list of ids of async jobs with a specific status (either done or pending). The list can be used by the client to get an overview of the job system status and to retrieve completed job results later. <br><br>",
                     "summary": "Returns the list of job result ids with a specific status",
                     "httpMethod": "GET",
-                    "examples": "<br><br> Fetching the list of done jobs: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331628967\n\nunix> curl --dump - http://localhost:8529/_api/job/done\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ \n  \"331628967\" \n]\n\n</code></pre><br><br><br> Fetching the list of pending jobs: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331694503\n\nunix> curl --dump - http://localhost:8529/_api/job/pending\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ ]\n\n</code></pre><br>",
+                    "examples": "Fetching the list of done jobs: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332227662\n\nunix> curl --dump - http://localhost:8529/_api/job/done\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ \n  \"332227662\" \n]\n\n</code></pre><br>Fetching the list of pending jobs: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332293198\n\nunix> curl --dump - http://localhost:8529/_api/job/pending\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ ]\n\n</code></pre><br>",
                     "nickname": "ReturnsTheListOfJobResultIdsWithASpecificStatus"
                 }
             ],
@@ -77,15 +76,15 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the deletion operation was carried out successfully. This code will also be returned if no results were deleted. <br><br>",
+                            "reason": "is returned if the deletion operation was carried out successfully. This code will also be returned if no results were deleted. ",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if <em>type</em> is not specified or has an invalid value. <br><br>",
+                            "reason": "is returned if <em>type</em> is not specified or has an invalid value. ",
                             "code": "400"
                         },
                         {
-                            "reason": "is returned if <em>type</em> is a job-id but no async job with the specified id was found. <br><br>",
+                            "reason": "is returned if <em>type</em> is a job-id but no async job with the specified id was found. ",
                             "code": "404"
                         }
                     ],
@@ -95,20 +94,19 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "type",
-                            "description": "The type of jobs to delete. <em>type</em> can be:  <ul class=\"swagger-list\"><li><em>all</em>: deletes all jobs results. Currently executing or queued async jobs  will not be stopped by this call. <li><em>expired</em>: deletes expired results. To determine the expiration status of a result, pass the <em>stamp</em> URL parameter. <em>stamp</em> needs to be a UNIX timestamp, and all async job results created at a lower timestamp will be deleted. <li>an actual job-id: in this case, the call will remove the result of the specified async job. If the job is currently executing or queued, it will not be aborted."
+                            "description": "The type of jobs to delete. <em>type</em> can be: - <em>all</em>: deletes all jobs results. Currently executing or queued async jobs    will not be stopped by this call. - <em>expired</em>: deletes expired results. To determine the expiration status of   a result, pass the <em>stamp</em> URL parameter. <em>stamp</em> needs to be a UNIX   timestamp, and all async job results created at a lower timestamp will be   deleted. - an actual job-id: in this case, the call will remove the result of the   specified async job. If the job is currently executing or queued, it will   not be aborted. "
                         },
                         {
                             "dataType": "Number",
                             "paramType": "query",
-                            "required": "false",
                             "name": "stamp",
-                            "description": "A UNIX timestamp specifying the expiration threshold when type is <em>expired</em>. <br><br>"
+                            "description": "A UNIX timestamp specifying the expiration threshold when type is <em>expired</em>. "
                         }
                     ],
                     "notes": "Deletes either all job results, expired job results, or the result of a  specific job. Clients can use this method to perform an eventual garbage  collection of job results. <br><br>",
                     "summary": "Deletes the result of async jobs",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br> Deleting all jobs: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331760039\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/all\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br><br><br> Deleting expired jobs: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331825575\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/expired?stamp=1395239120\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br><br><br> Deleting the result of a specific job: <br><br><br><br><pre><code class=\"json\">unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 331891111\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/331891111\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br><br><br> Deleting the result of a non-existing job: <br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/job/foobar\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"not found\", \n  \"code\" : 404, \n  \"errorNum\" : 404 \n}\n\n</code></pre><br>",
+                    "examples": "Deleting all jobs: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332358734\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/all\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br>Deleting expired jobs: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332424270\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/expired?stamp=1393856538\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br>Deleting the result of a specific job: <br><br><pre><code class=\"json\" >unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version\n\nHTTP/1.1 202 Accepted\ncontent-type: text/plain; charset=utf-8\nx-arango-async-id: 332489806\n\nunix> curl -X DELETE --dump - http://localhost:8529/_api/job/332489806\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true \n}\n\n</code></pre><br>Deleting the result of a non-existing job: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/job/foobar\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"not found\", \n  \"code\" : 404, \n  \"errorNum\" : 404 \n}\n\n</code></pre><br>",
                     "nickname": "DeletesTheResultOfAsyncJobs"
                 }
             ],

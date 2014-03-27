@@ -1,9 +1,10 @@
 .dashboardDistribution {
-  width: 270px;
   float: left;
+  width: 270px;
+
+  svg {
+    height: 220px;
+    width: 250px;
+  }
 }
 
-.dashboardDistribution svg {
-  width: 250px;
-  height: 220px;
-}

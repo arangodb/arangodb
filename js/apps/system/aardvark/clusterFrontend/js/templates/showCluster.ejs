@@ -11,6 +11,13 @@
         return "inactive";
     }
   };
+
+  var createID = function (input) {
+    var id = input.replace(/\./g,'-');
+    id = id.replace(/\:/g,'_');
+    id = "id" + id;
+    return id;
+  }
 %>
 <div class="headerBar">
   <a class="arangoHeader">Cluster Dashboard</a>
@@ -24,18 +31,21 @@
     </select>
   </div>
 </div>
-<ul id="clusterLayout" class="tileList">
-  <% if(type === "testPlan") { 
-    _.each(byAddress, function(s, a) { 
+<div id="clusterLayout" class="tileList">
+  <% if(type === "testPlan") {
+    _.each(byAddress, function(s, a) {
+      var id;
       _.each(s.coords, function(c) {
         var url = c.get("protocol")
           + "://"
           + c.get("address")
           + "/_db/_system/_admin/aardvark/standalone.html"
           + "#collections";
+        id = createID(c.get("address"));
+
     %>
       <li class="tile">
-        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
+        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <span class="fa fa-compass icon"></span>
         </a>
         <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui">GUI</a></h5>
@@ -43,9 +53,10 @@
     <%
       });
       _.each(s.dbs, function(c) {
+        id = createID(c.get("address"));
     %>
       <li class="tile">
-        <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
+        <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
         </a>
         <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
@@ -56,6 +67,7 @@
     } else { 
       _.each(byAddress, function(s, a) { 
         var url;
+        var id;
         var type = "single";
         if (s.coords && s.dbs) {
           type = "double";
@@ -68,16 +80,18 @@
             + c.get("address")
             + "/_db/_system/_admin/aardvark/standalone.html"
             + "#collections";
+            id = createID(c.get("address"));
         %>
-          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">
+          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
             <span class="fa fa-compass icon"></span>
           </a>
         <% });
           var dbName = "";
           _.each(s.dbs, function(c) {
             dbName = c.get("name");
+            id = createID(c.get("address"));
         %>
-          <a class="dbserver <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">
+          <a class="dbserver <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
@@ -87,7 +101,7 @@
     });
   }
   %>
-</ul>
+</div>
 
 <div class="headerBar">
   <a class="arangoHeader">Cluster Statistics</a>

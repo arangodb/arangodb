@@ -1,0 +1,137 @@
+<script id="graphManagementView.ejs" type="text/template">
+  <div class="headerBar">
+    <!--  <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="graphManagementToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>-->
+    <div class="pull-left">
+      <a class="arangoHeader">Graph Management</a>
+    </div>
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/><img id="graphManagementSearchSubmit" class="search-submit-icon">
+    </div>
+  </div>
+
+
+  <div id="graphManagementDropdown2" class="headerDropdown">
+
+    <div id="graphManagementDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortName">
+            <label class="css-label css-label-round"></label>Sort by ?
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortType">
+            <label class="css-label css-label-round"></label>Sort by ?
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortOrder">
+            <label class="css-label"></label>Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="graphManagementThumbnailsIn" class="tileList">
+      <div class="tile">
+        <a href="#" id="createGraph" class="add">
+          <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add Graph
+        </a>
+      </div>
+
+
+      <% graphs.forEach(function(graph) {
+        var graphName = graph.get("_key");
+      %>
+
+      <div class="tile">
+      <div class="iconSet">
+        <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+        <span class="icon_arangodb_info" id="<%=graphName %>_info" alt="Show graph properties" title="Show graph properties"></span>
+      </div>
+      <span class="icon_arangodb_edge5 tile-icon"></span>
+        <div class="tileBadge">
+    </div>
+
+      <h5 class="collectionName"><%=graphName %></h5>
+    </div>
+      <%});%>
+     </div>
+  </div>
+
+  <div id="editGraphModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Edit Graph</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Name:</th>
+          <th id="editGraphName"></th>
+        </tr>
+        <tr>
+          <th>Vertices:</th>
+          <th id="editVertices"></th>
+        </tr>
+        <tr>
+          <th>Edges:</th>
+          <th id="editEdges"></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="deleteGraph" class="button-danger pull-right">Delete</button>
+    </div>
+  </div>
+
+  <div id="infoGraphModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Graph properties</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Name:</th>
+          <th id="infoGraphName"></th>
+        </tr>
+        <tr>
+          <th>Vertices:</th>
+          <th id="infoVertices"></th>
+        </tr>
+        <tr>
+          <th>Edges:</th>
+          <th id="infoEdges"></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    </div>
+  </div>
+
+</script>

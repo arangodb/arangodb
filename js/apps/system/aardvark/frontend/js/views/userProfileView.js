@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine */
+/*global window, document, Backbone, EJS, SwaggerUi */
+/*global hljs, $, arangoHelper, templateEngine, CryptoJS */
 (function() {
 
   "use strict";
@@ -29,6 +30,13 @@
         username : this.user.get("user")
 
       }));
+
+      $("[data-toggle=tooltip]").tooltip();
+
+      $('.modalInfoTooltips').tooltip({
+        placement: "left"
+      });
+
       return this;
     },
 
@@ -123,16 +131,12 @@
     },
 
     parseImgString : function(img) {
-      var strings;
-      if (img.search("avatar/") !== -1) {
-        strings = img.split("avatar/");
-        img = strings[1];
+      //if already md5
+      if (img.indexOf("@") === -1) {
+        return img;
       }
-      if (img.search("\\?") !== -1) {
-        strings = img.split("?");
-        img = strings[0];
-      }
-      return img;
+      //else generate md5
+      return CryptoJS.MD5(img).toString();
     },
 
     validateCurrentPassword : function (pwd) {

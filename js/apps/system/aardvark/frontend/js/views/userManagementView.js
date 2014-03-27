@@ -94,6 +94,12 @@
 
     createUser : function(e) {
       e.preventDefault();
+      //reset modal (e.g. if opened, filled in and closed its not empty)
+      $('#newUsername').val('');
+      $('#newName').val('');
+      $('#newPassword').val('');
+      $('#newStatus').prop('checked', true);
+
       this.showModal();
     },
 
@@ -177,7 +183,7 @@
 
     editUser : function(e) {
       this.collection.fetch();
-      this.userToEdit = $(e.currentTarget).attr("id");
+      this.userToEdit = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
       $('#editUserModal').modal('show');
       var user = this.collection.findWhere({user: this.userToEdit});
       $('#editUsername').html(user.get("user"));
@@ -274,7 +280,13 @@
       $('#sortType').attr('checked', searchOptions.sortBy === 'type');
       $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);
       */
+    },
+
+    evaluateUserName : function(str, substr) {
+      var index = str.lastIndexOf(substr);
+      return str.substring(0, index);
     }
+
 
 
 

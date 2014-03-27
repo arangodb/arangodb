@@ -1,6 +1,6 @@
 <script id="userManagementView.ejs" type="text/template">
 <div class="headerBar">
-<!--  <div class="headerButtonBar pull-right">
+<!--  <div class="headerButtonBar">
     <ul class="headerButtonList">
       <li class="enabled">
         <a id="userManagementToggle" class="headerButton">
@@ -13,10 +13,8 @@
   <div class="pull-left">
     <a class="arangoHeader">User Management</a>
   </div>
-  <div class="searchField pull-left">
-    <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="searchInput" placeholder="Search..."/><img id="userManagementSearchSubmit"
-                                                                                                                                  width="16" height="16"
-                                                                                                                                  src="img/enter_icon.png" class="searchSubmitIcon">
+  <div class="search-field">
+    <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/><img id="userManagementSearchSubmit" class="search-submit-icon">
   </div>
 </div>
 
@@ -54,14 +52,13 @@
 
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div class="containerdivNewLine"/>
-    <ul id="userManagementThumbnailsIn" class="tileList">
-      <li class="tile">
+    <div id="userManagementThumbnailsIn" class="tileList">
+      <div class="tile">
         <a href="#" id="createUser" class="add">
           <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
           Add User
         </a>
-      </li>
+      </div>
 
 
             <% collection.forEach(function(user) {
@@ -87,9 +84,9 @@
               }
       %>
 
-      <li class="tile">
+      <div class="tile">
         <div class="iconSet">
-          <span class="icon_arangodb_settings2 editUser" id="<%=username %>" alt="Edit user" title="Edit user"></span>
+          <span class="icon_arangodb_settings2 editUser" id="<%=username %>_edit-user" alt="Edit user" title="Edit user"></span>
         </div>
         <%=avatar %>
         <div class="tileBadge">
@@ -107,9 +104,9 @@
         </div>
 
         <h5 class="collectionName"><%=username %> <% if (name !== ' ') { %>(<%=name %>)<%}%></h5>
-      </li>
+      </div>
       <%});%>
-     </ul>
+     </div>
   </div>
 
 
