@@ -1132,11 +1132,11 @@ static void showBuffer(struct current * current, size_t pchars) {
     if(current->chars <= free_chars) { 
         outputChars(current, buf, buf_len);
     } else {
-        size_t number_lines = new_line_numbers(current->pos, current->cols, pchars);
+        size_t number_lines = new_line_numbers(current->chars, current->cols, pchars);
         int i;
-        outputChars(current, buf, buf_len);
+        outputChars(current, buf, free_chars);
 //        newLine(current);
-        buf = buf + buf_len;
+        buf = buf + free_chars;
         for(i=1; i<= number_lines-1; i++) {
           outputChars(current, buf, current->cols);
 //         newLine(current);
