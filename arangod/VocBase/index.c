@@ -695,7 +695,7 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 
 static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
   TRI_edge_header_t const* h;
-  uint64_t hash[3];
+  uint64_t hash;
   char* key;
 
   h = data;
@@ -705,18 +705,18 @@ static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
   key = h->_searchKey._key;
 
   // only include directional bits for hashing, exclude special bits
-  hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION);
-  hash[1] = h->_cid;
-  hash[2] = TRI_FnvHashString(key);
+  hash = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION) ^ h->_cid;
+  hash ^=  (uint64_t) fasthash64(key, strlen(key), 0x87654321);
 
-  return TRI_FnvHashPointer(hash, sizeof(hash));
+  return fasthash64(&hash, sizeof(hash), 0x56781234);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge header
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data, bool byKey) {
+static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data,
+                                 bool byKey) {
   TRI_edge_header_t const* h;
   uint64_t hash;
   char const* p;
@@ -759,12 +759,14 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array,
   lKey = l->_searchKey._key;
 
   assert(r->_mptr != NULL);
-  rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
+  rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + 
+         r->_searchKey._offsetKey;
 
   // only include directional flags, exclude special bits
-  return ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
-         (l->_cid == r->_cid) &&
-         (strcmp(lKey, rKey) == 0);
+  return (strcmp(lKey, rKey) == 0) &&
+         ((l->_flags & TRI_EDGE_BITS_DIRECTION) ==
+          (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
+         (l->_cid == r->_cid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -787,8 +789,10 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
   assert(l->_mptr != NULL);
 
   if (byKey) {
-    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + l->_searchKey._offsetKey;
-    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
+    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + 
+           l->_searchKey._offsetKey;
+    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + 
+           r->_searchKey._offsetKey;
     
     return (strcmp(lKey, rKey) == 0) &&
            ((l->_flags & TRI_EDGE_BITS_DIRECTION) ==

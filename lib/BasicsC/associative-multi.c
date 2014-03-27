@@ -305,6 +305,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].ptr = element;
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
+    array->_nrUsed++;
     return NULL;
   }
 
@@ -323,6 +324,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].ptr = element;
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
+    array->_nrUsed++;
     return NULL;
   }
 
