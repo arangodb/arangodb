@@ -1,5 +1,5 @@
-v2.0.1 (XXXX-XX-XX)
--------------------
+v2.0.1-rc2 (2014-03-28)
+-----------------------
 
 * make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
   client sends the `X-Omit-WWW-Authenticate` HTTP header.

@@ -8,15 +8,15 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if it failed. The response body contains an error document in this case. ",
+                            "reason": "is returned if it failed. The response body contains an error document in this case. <br><br>",
                             "code": "400"
                         }
                     ],
@@ -24,21 +24,22 @@
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until document has been sync to disk. "
+                            "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "graph",
-                            "description": "The call expects a JSON hash array as body with the following attributes: <em>_key</em>: The name of the new graph. <em>vertices</em>: The name of the vertices collection. <em>edges</em>: The name of the egde collection. "
+                            "description": "The call expects a JSON hash array as body with the following attributes: <em>_key</em>: The name of the new graph. <em>vertices</em>: The name of the vertices collection. <em>edges</em>: The name of the egde collection. <br><br>"
                         }
                     ],
-                    "notes": "Creates a new graph. <br><br>Returns an object with an attribute <em>graph</em> containing a list of all graph properties. <br><br>",
+                    "notes": "Creates a new graph. <br><br> Returns an object with an attribute <em>graph</em> containing a list of all graph properties. <br><br>",
                     "summary": "create graph",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/\n{\"_key\":\"graph\",\"vertices\":\"vertices\",\"edges\":\"edges\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: 137126990\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"137126990\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/\n{\"_key\":\"graph\",\"vertices\":\"vertices\",\"edges\":\"edges\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: 140394919\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"140394919\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "createGraph"
                 }
             ],
@@ -49,19 +50,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was found (in case <em>graph-name</em> was specified) or the list of graphs was assembled successfully (in case <em>graph-name</em>  was not specified). ",
+                            "reason": "is returned if the graph was found (in case <em>graph-name</em> was specified) or the list of graphs was assembled successfully (in case <em>graph-name</em>  was not specified). <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the graph was not found. This response code may only be returned if <em>graph-name</em> is specified in the request. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph was not found. This response code may only be returned if <em>graph-name</em> is specified in the request. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-None-Match\" header is given and the current graph has not a different  version. This response code may only be returned if <em>graph-name</em> is specified in the request. ",
+                            "reason": "\"If-None-Match\" header is given and the current graph has not a different  version. This response code may only be returned if <em>graph-name</em> is specified in the request. <br><br>",
                             "code": "304"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current graph has  a different version. This response code may only be returned if <em>graph-name</em> is specified in the request. ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current graph has  a different version. This response code may only be returned if <em>graph-name</em> is specified in the request. <br><br>",
                             "code": "412"
                         }
                     ],
@@ -71,25 +72,25 @@
                             "paramType": "path",
                             "required": "false",
                             "name": "graph-name",
-                            "description": "The name of the graph. "
+                            "description": "The name of the graph. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-None-Match",
-                            "description": "If <em>graph-name</em> is specified, then this header can be used to check  whether a specific graph has changed or not. "
+                            "description": "If <em>graph-name</em> is specified, then this header can be used to check  whether a specific graph has changed or not. <br><br> If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-Match",
-                            "description": "If <em>graph-name</em> is specified, then this header can be used to check  whether a specific graph has changed or not. "
+                            "description": "If <em>graph-name</em> is specified, then this header can be used to check  whether a specific graph has changed or not. <br><br> If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "<br><br>If <em>graph-name</em> is specified, returns an object with an attribute <em>graph</em>  containing a JSON hash with all properties of the specified graph. <br><br>If <em>graph-name</em> is not specified, returns a list of graph objects. <br><br>",
+                    "notes": "<br><br> If <em>graph-name</em> is specified, returns an object with an attribute <em>graph</em>  containing a JSON hash with all properties of the specified graph. <br><br> If <em>graph-name</em> is not specified, returns a list of graph objects. <br><br>",
                     "summary": "get the properties of a specific or all graphs",
                     "httpMethod": "GET",
-                    "examples": "get graph by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 138568782\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"138568782\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>get all graphs <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"graphs\" : [ \n    { \n      \"_id\" : \"_graphs/graph2\", \n      \"_rev\" : \"141321294\", \n      \"_key\" : \"graph2\", \n      \"edges\" : \"edges2\", \n      \"vertices\" : \"vertices2\" \n    }, \n    { \n      \"_id\" : \"_graphs/graph1\", \n      \"_rev\" : \"140076110\", \n      \"_key\" : \"graph1\", \n      \"edges\" : \"edges1\", \n      \"vertices\" : \"vertices1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> get graph by name <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 141836711\n\n{ \n  \"graph\" : { \n    \"_id\" : \"_graphs/graph\", \n    \"_rev\" : \"141836711\", \n    \"_key\" : \"graph\", \n    \"edges\" : \"edges\", \n    \"vertices\" : \"vertices\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br><br><br> get all graphs <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"graphs\" : [ \n    { \n      \"_id\" : \"_graphs/graph2\", \n      \"_rev\" : \"144589223\", \n      \"_key\" : \"graph2\", \n      \"edges\" : \"edges2\", \n      \"vertices\" : \"vertices2\" \n    }, \n    { \n      \"_id\" : \"_graphs/graph1\", \n      \"_rev\" : \"143344039\", \n      \"_key\" : \"graph1\", \n      \"edges\" : \"edges1\", \n      \"vertices\" : \"vertices1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getThePropertiesOfASpecificOrAllGraphs"
                 }
             ],
@@ -100,19 +101,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was deleted and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the graph was deleted and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the graph was deleted and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the graph was deleted and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current graph has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current graph has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -122,19 +123,19 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-Match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
                     "notes": "Deletes graph, edges and vertices <br><br>",
                     "summary": "delete graph",
                     "httpMethod": "DELETE",
-                    "examples": "delete graph by name <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> delete graph by name <br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "deleteGraph"
                 }
             ],
@@ -145,11 +146,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the graph was created successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         }
                     ],
@@ -159,26 +160,27 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until document has been sync to disk. "
+                            "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "vertex",
-                            "description": "The call expects a JSON hash array as body with the vertex properties: - <em>_key</em>: The name of the vertex (optional). - further optional attributes. "
+                            "description": "The call expects a JSON hash array as body with the vertex properties:  <ul class=\"swagger-list\"><li><em>_key</em>: The name of the vertex (optional). <li>further optional attributes."
                         }
                     ],
-                    "notes": "Creates a vertex in a graph. <br><br>Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
+                    "notes": "Creates a vertex in a graph. <br><br> Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "create vertex",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex\n{\"_key\":\"v1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 145646670\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"145646670\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex\n{\"_key\":\"v1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 148914599\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"148914599\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "createVertex"
                 }
             ],
@@ -189,19 +191,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the graph was found ",
+                            "reason": "is returned if the graph was found <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "\"If-Match\" header is given and the current graph has not a different  version ",
+                            "reason": "\"If-Match\" header is given and the current graph has not a different  version <br><br>",
                             "code": "304"
                         },
                         {
-                            "reason": "is returned if the graph or vertex was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or vertex was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-None-Match\" header or <em>rev</em> is given and the current graph has  a different version ",
+                            "reason": "\"If-None-Match\" header or <em>rev</em> is given and the current graph has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -211,38 +213,39 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "path",
                             "required": "true",
                             "name": "vertex-name",
-                            "description": "The name of the vertex "
+                            "description": "The name of the vertex <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of a vertex "
+                            "description": "Revision of a vertex <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-None-Match",
-                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. "
+                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-Match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
                     "notes": "Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "get vertex",
                     "httpMethod": "GET",
-                    "examples": "get vertex properties by name <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 147612750\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"147612750\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> get vertex properties by name <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 151077287\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"151077287\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getVertex"
                 }
             ],
@@ -253,19 +256,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the vertex was deleted and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the vertex was deleted and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the vertex was deleted and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the vertex was deleted and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -275,31 +278,33 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until document has been sync to disk. "
+                            "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of a vertex "
+                            "description": "Revision of a vertex <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "If-Match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
                     "notes": "Deletes vertex and all in and out edges of the vertex <br><br>",
                     "summary": "delete vertex",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "deleteVertex"
                 }
             ],
@@ -310,19 +315,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -332,38 +337,40 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until vertex has been sync to disk. "
+                            "description": "Wait until vertex has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of a vertex "
+                            "description": "Revision of a vertex <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "vertex",
-                            "description": "The call expects a JSON hash array as body with the new vertex properties. "
+                            "description": "The call expects a JSON hash array as body with the new vertex properties. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "Replaces the vertex properties. <br><br>Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
+                    "notes": "Replaces the vertex properties. <br><br> Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "update vertex",
                     "httpMethod": "PUT",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 152462414\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"152462414\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 155926951\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"155926951\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateVertex"
                 }
             ],
@@ -374,19 +381,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the vertex was updated successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the vertex was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current vertex has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -396,44 +403,47 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until vertex has been sync to disk. "
+                            "description": "Wait until vertex has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of a vertex "
+                            "description": "Revision of a vertex <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "keepNull",
-                            "description": "Modify the behavior of the patch command to remove any attribute "
+                            "description": "Modify the behavior of the patch command to remove any attribute <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "graph",
-                            "description": "The call expects a JSON hash array as body with the properties to patch. "
+                            "description": "The call expects a JSON hash array as body with the properties to patch. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "Partially updates the vertex properties. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>. <br><br>Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
+                    "notes": "Partially updates the vertex properties. <br><br> Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>. <br><br> Returns an object with an attribute <em>vertex</em> containing a list of all vertex properties. <br><br>",
                     "summary": "update vertex",
                     "httpMethod": "PATCH",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"vertexPatch\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 154887246\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"154887246\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"vertexPatch\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\nunix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":null}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 155345998\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"155345998\", \n    \"_key\" : \"v1\", \n    \"optional1\" : null \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":\"vertexPatch\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 158351783\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"158351783\", \n    \"_key\" : \"v1\", \n    \"optional1\" : \"vertexPatch\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\nunix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1\n{\"optional1\":null}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 158810535\n\n{ \n  \"vertex\" : { \n    \"_id\" : \"vertices/v1\", \n    \"_rev\" : \"158810535\", \n    \"_key\" : \"v1\", \n    \"optional1\" : null \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateVertex"
                 }
             ],
@@ -444,7 +454,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the cursor was created ",
+                            "reason": "is returned if the cursor was created <br><br>",
                             "code": "201"
                         }
                     ],
@@ -454,20 +464,20 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "filter",
-                            "description": "The call expects a JSON hash array as body to filter the result: "
+                            "description": "The call expects a JSON hash array as body to filter the result: <br><br>"
                         }
                     ],
-                    "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>properties</em>: filter by an array of vertex properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
+                    "notes": "Returns a cursor. <br><br> The call expects a JSON hash array as body to filter the result: <br><br>  <ul class=\"swagger-list\"><li><em>batchSize</em>: the batch size of the returned cursor <li><em>limit</em>: limit the result size <li><em>count</em>: return the total number of results (default \"false\") <li><em>filter</em>: a optional filter  </ul> The attributes of filter  <ul class=\"swagger-list\"><li><em>properties</em>: filter by an array of vertex properties  </ul> The attributes of a property filter  <ul class=\"swagger-list\"><li><em>key</em>: filter the result vertices by a key value pair <li><em>value</em>: the value of the <em>key</em> <li><em>compare</em>: a compare operator",
                     "summary": "get vertices",
                     "httpMethod": "POST",
-                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v5\", \n      \"_rev\" : \"158622798\", \n      \"_key\" : \"v5\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"158295118\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"157312078\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v3\", \n      \"_rev\" : \"157967438\", \n      \"_key\" : \"v3\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v2\", \n      \"_rev\" : \"157639758\", \n      \"_key\" : \"v2\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Select all vertices <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v5\", \n      \"_rev\" : \"162087335\", \n      \"_key\" : \"v5\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"161759655\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"160776615\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v3\", \n      \"_rev\" : \"161431975\", \n      \"_key\" : \"v3\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v2\", \n      \"_rev\" : \"161104295\", \n      \"_key\" : \"v2\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getVertices"
                 }
             ],
@@ -478,7 +488,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the cursor was created ",
+                            "reason": "is returned if the cursor was created <br><br>",
                             "code": "201"
                         }
                     ],
@@ -488,20 +498,20 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "graph",
-                            "description": "The call expects a JSON hash array as body to filter the result: "
+                            "description": "The call expects a JSON hash array as body to filter the result: <br><br>"
                         }
                     ],
-                    "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\")  neighbors. Default value is \"any\". - <em>labels</em>: filter by an array of edge labels (empty array means no restriction)- <em>properties</em>: filter neighbors by an array of edge properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
+                    "notes": "Returns a cursor. <br><br> The call expects a JSON hash array as body to filter the result: <br><br>  <ul class=\"swagger-list\"><li><em>batchSize</em>: the batch size of the returned cursor <li><em>limit</em>: limit the result size <li><em>count</em>: return the total number of results (default \"false\") <li><em>filter</em>: a optional filter  </ul> The attributes of filter  <ul class=\"swagger-list\"><li><em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\") neighbors. Default value is \"any\". <li><em>labels</em>: filter by an array of edge labels (empty array means no restriction) <li><em>properties</em>: filter neighbors by an array of edge properties  </ul> The attributes of a property filter  <ul class=\"swagger-list\"><li><em>key</em>: filter the result vertices by a key value pair <li><em>value</em>: the value of the <em>key</em> <li><em>compare</em>: a compare operator",
                     "summary": "get vertices",
                     "httpMethod": "POST",
-                    "examples": "Select all vertices <br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"any\", \"properties\":[] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"160719950\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"161702990\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Select vertices by direction and property filter <br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"out\", \"properties\":[ { \"key\": \"optional1\", \"value\": \"val2\", \"compare\" : \"==\" }, ] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"167208014\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val2\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"166224974\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Select all vertices <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"any\", \"properties\":[] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"164184487\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"165167527\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br><br><br> Select vertices by direction and property filter <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2\n{\"batchSize\" : 100, \"filter\" : {\"direction\" : \"out\", \"properties\":[ { \"key\": \"optional1\", \"value\": \"val2\", \"compare\" : \"==\" }, ] }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"vertices/v4\", \n      \"_rev\" : \"170672551\", \n      \"_key\" : \"v4\", \n      \"optional1\" : \"val2\" \n    }, \n    { \n      \"_id\" : \"vertices/v1\", \n      \"_rev\" : \"169689511\", \n      \"_key\" : \"v1\", \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getVertices"
                 }
             ],
@@ -512,11 +522,11 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was created successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         }
                     ],
@@ -526,26 +536,27 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until edge has been sync to disk. "
+                            "description": "Wait until edge has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "edge",
-                            "description": "The call expects a JSON hash array as body with the edge properties: "
+                            "description": "The call expects a JSON hash array as body with the edge properties: <br><br>"
                         }
                     ],
-                    "notes": "Creates an edge in a graph. <br><br>The call expects a JSON hash array as body with the edge properties: <br><br>- <em>_key</em>: The name of the edge (optional, if edge collection allows user defined keys).- <em>_from</em>: The name of the from vertex.- <em>_to</em>: The name of the to vertex.- <em>$label</em>: A label for the edge (optional).- further optional attributes.<br><br>Returns an object with an attribute <em>edge</em> containing the list of all edge properties. <br><br>",
+                    "notes": "Creates an edge in a graph. <br><br> The call expects a JSON hash array as body with the edge properties: <br><br>  <ul class=\"swagger-list\"><li><em>_key</em>: The name of the edge (optional, if edge collection allows user defined keys). <li><em>_from</em>: The name of the from vertex. <li><em>_to</em>: The name of the to vertex. <li><em>$label</em>: A label for the edge (optional). <li>further optional attributes.  </ul> Returns an object with an attribute <em>edge</em> containing the list of all edge properties. <br><br>",
                     "summary": "create edge",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge\n{\"_key\":\"edge1\",\"_from\":\"vert2\",\"_to\":\"vert1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 172713038\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"172713038\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert2\", \n    \"_to\" : \"vertices/vert1\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge\n{\"_key\":\"edge1\",\"_from\":\"vert2\",\"_to\":\"vert1\",\"optional1\":\"val1\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 176177575\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"176177575\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert2\", \n    \"_to\" : \"vertices/vert1\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "createEdge"
                 }
             ],
@@ -556,19 +567,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was found ",
+                            "reason": "is returned if the edge was found <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "\"If-Match\" header is given and the current edge has not a different  version ",
+                            "reason": "\"If-Match\" header is given and the current edge has not a different  version <br><br>",
                             "code": "304"
                         },
                         {
-                            "reason": "is returned if the graph or edge was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or edge was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-None-Match\" header or <em>rev</em> is given and the current edge has  a different version ",
+                            "reason": "\"If-None-Match\" header or <em>rev</em> is given and the current edge has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -578,38 +589,39 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "path",
                             "required": "true",
                             "name": "edge-name",
-                            "description": "The name of the edge "
+                            "description": "The name of the edge <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of an edge "
+                            "description": "Revision of an edge <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-none-match",
-                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. "
+                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
                     "notes": "Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "get edge",
                     "httpMethod": "GET",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 175662158\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"175662158\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: 179126695\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"179126695\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "getEdge"
                 }
             ],
@@ -620,19 +632,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was deletd successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was deletd successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the edge was deleted successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was deleted successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -642,31 +654,33 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until edge has been sync to disk. "
+                            "description": "Wait until edge has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of an edge "
+                            "description": "Revision of an edge <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
                     "notes": "Deletes an edge of the graph <br><br>",
                     "summary": "delete edge",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : true, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "deleteEdge"
                 }
             ],
@@ -677,19 +691,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -699,38 +713,40 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until edge has been sync to disk. "
+                            "description": "Wait until edge has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of an edge "
+                            "description": "Revision of an edge <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "edge",
-                            "description": "The call expects a JSON hash array as body with the new edge properties. "
+                            "description": "The call expects a JSON hash array as body with the new edge properties. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "Replaces the optional edge properties. <br><br>The call expects a JSON hash array as body with the new edge properties. <br><br>Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
+                    "notes": "Replaces the optional edge properties. <br><br> The call expects a JSON hash array as body with the new edge properties. <br><br> Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "update edge",
                     "httpMethod": "PUT",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 182805582\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"182805582\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional1\":\"val2\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 186073511\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"186073511\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val2\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateEdge"
                 }
             ],
@@ -741,19 +757,19 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>true</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "reason": "is returned if the edge was updated successfully and <em>waitForSync</em> was <em>false</em>. <br><br>",
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. ",
+                            "reason": "is returned if the graph or the edge was not found. The response body contains an error document in this case. <br><br>",
                             "code": "404"
                         },
                         {
-                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version ",
+                            "reason": "\"If-Match\" header or <em>rev</em> is given and the current edge has  a different version <br><br>",
                             "code": "412"
                         }
                     ],
@@ -763,44 +779,47 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
-                            "description": "Wait until edge has been sync to disk. "
+                            "description": "Wait until edge has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "rev",
-                            "description": "Revision of an edge "
+                            "description": "Revision of an edge <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
+                            "required": "false",
                             "name": "keepNull",
-                            "description": "Modify the behavior of the patch command to remove any attribute "
+                            "description": "Modify the behavior of the patch command to remove any attribute <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "edge-properties",
-                            "description": "The call expects a JSON hash array as body with the properties to patch. "
+                            "description": "The call expects a JSON hash array as body with the properties to patch. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "header",
                             "name": "if-match",
-                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "Partially updates the edge properties. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>. <br><br>Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
+                    "notes": "Partially updates the edge properties. <br><br> Setting an attribute value to <em>null</em> in the patch document will cause a value  of <em>null</em> be saved for the attribute by default. If the intention is to  delete existing attributes with the patch command, the URL parameter  <em>keepNull</em> can be used with a value of <em>false</em>.  This will modify the behavior of the patch command to remove any attributes  from the existing document that are contained in the patch document  with an attribute value of <em>null</em>. <br><br> Returns an object with an attribute <em>edge</em> containing a list of all edge properties. <br><br>",
                     "summary": "update edge",
                     "httpMethod": "PATCH",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional3\":\"val3\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 186344526\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"186344526\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\", \n    \"optional3\" : \"val3\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1\n{\"optional3\":\"val3\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: 189612455\n\n{ \n  \"edge\" : { \n    \"_id\" : \"edges/edge1\", \n    \"_rev\" : \"189612455\", \n    \"_key\" : \"edge1\", \n    \"_from\" : \"vertices/vert1\", \n    \"_to\" : \"vertices/vert2\", \n    \"$label\" : null, \n    \"optional1\" : \"val1\", \n    \"optional3\" : \"val3\" \n  }, \n  \"error\" : false, \n  \"code\" : 202 \n}\n\n</code></pre><br>",
                     "nickname": "updateEdge"
                 }
             ],
@@ -811,7 +830,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the cursor was created ",
+                            "reason": "is returned if the cursor was created <br><br>",
                             "code": "201"
                         }
                     ],
@@ -821,20 +840,20 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "edge-properties",
-                            "description": "The call expects a JSON hash array as body to filter the result: "
+                            "description": "The call expects a JSON hash array as body to filter the result: <br><br>"
                         }
                     ],
-                    "notes": "Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>labels</em>: filter by an array of edge labels- <em>properties</em>: filter by an array of edge properties<br><br>The attributes of a property filter - <em>key</em>: filter the result edges by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
+                    "notes": "Returns a cursor. <br><br> The call expects a JSON hash array as body to filter the result: <br><br>  <ul class=\"swagger-list\"><li><em>batchSize</em>: the batch size of the returned cursor <li><em>limit</em>: limit the result size <li><em>count</em>: return the total number of results (default \"false\") <li><em>filter</em>: a optional filter  </ul> The attributes of filter  <ul class=\"swagger-list\"><li><em>labels</em>: filter by an array of edge labels <li><em>properties</em>: filter by an array of edge properties  </ul> The attributes of a property filter  <ul class=\"swagger-list\"><li><em>key</em>: filter the result edges by a key value pair <li><em>value</em>: the value of the <em>key</em> <li><em>compare</em>: a compare operator",
                     "summary": "get edges",
                     "httpMethod": "POST",
-                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge4\", \n      \"_rev\" : \"191718478\", \n      \"_key\" : \"edge4\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v5\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"190342222\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge2\", \n      \"_rev\" : \"190800974\", \n      \"_key\" : \"edge2\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v3\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"191259726\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Select all edges <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges\n{\"batchSize\":100}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge4\", \n      \"_rev\" : \"194986407\", \n      \"_key\" : \"edge4\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v5\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"193610151\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge2\", \n      \"_rev\" : \"194068903\", \n      \"_key\" : \"edge2\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v3\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"194527655\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getEdges"
                 }
             ],
@@ -845,7 +864,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the cursor was created ",
+                            "reason": "is returned if the cursor was created <br><br>",
                             "code": "201"
                         }
                     ],
@@ -855,27 +874,27 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "graph-name",
-                            "description": "The name of the graph "
+                            "description": "The name of the graph <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "path",
                             "required": "true",
                             "name": "vertex-name",
-                            "description": "The name of the vertex "
+                            "description": "The name of the vertex <br><br>"
                         },
                         {
                             "dataType": "Json",
                             "paramType": "body",
                             "required": "true",
                             "name": "edge-properties",
-                            "description": "The call expects a JSON hash array as body to filter the result: "
+                            "description": "The call expects a JSON hash array as body to filter the result: <br><br>"
                         }
                     ],
-                    "notes": "<br><br>Returns a cursor. <br><br>The call expects a JSON hash array as body to filter the result: <br><br>- <em>batchSize</em>: the batch size of the returned cursor- <em>limit</em>: limit the result size- <em>count</em>: return the total number of results (default \"false\")- <em>filter</em>: a optional filter<br><br>The attributes of filter - <em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\")  neighbors. Default value is \"any\". - <em>labels</em>: filter by an array of edge labels- <em>properties</em>: filter neighbors by an array of properties<br><br>The attributes of a property filter - <em>key</em>: filter the result vertices by a key value pair- <em>value</em>: the value of the <em>key</em>- <em>compare</em>: a compare operator<br><br>",
+                    "notes": "<br><br> Returns a cursor. <br><br> The call expects a JSON hash array as body to filter the result: <br><br>  <ul class=\"swagger-list\"><li><em>batchSize</em>: the batch size of the returned cursor <li><em>limit</em>: limit the result size <li><em>count</em>: return the total number of results (default \"false\") <li><em>filter</em>: a optional filter  </ul> The attributes of filter  <ul class=\"swagger-list\"><li><em>direction</em>: Filter for inbound (value \"in\") or outbound (value \"out\") neighbors. Default value is \"any\". <li><em>labels</em>: filter by an array of edge labels <li><em>properties</em>: filter neighbors by an array of properties  </ul> The attributes of a property filter  <ul class=\"swagger-list\"><li><em>key</em>: filter the result vertices by a key value pair <li><em>value</em>: the value of the <em>key</em> <li><em>compare</em>: a compare operator",
                     "summary": "get edges",
                     "httpMethod": "POST",
-                    "examples": "Select all edges <br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges/v2\n{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"any\" }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"195847246\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"196764750\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Select all edges <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges/v2\n{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"any\" }}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"edges/edge1\", \n      \"_rev\" : \"199115175\", \n      \"_key\" : \"edge1\", \n      \"_from\" : \"vertices/v1\", \n      \"_to\" : \"vertices/v2\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    }, \n    { \n      \"_id\" : \"edges/edge3\", \n      \"_rev\" : \"200032679\", \n      \"_key\" : \"edge3\", \n      \"_from\" : \"vertices/v2\", \n      \"_to\" : \"vertices/v4\", \n      \"$label\" : null, \n      \"optional1\" : \"val1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "getEdges"
                 }
             ],

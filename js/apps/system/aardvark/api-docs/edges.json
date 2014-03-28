@@ -13,26 +13,27 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "collection-id",
-                            "description": "The id of the collection. "
+                            "description": "The id of the collection. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "True",
+                            "required": "true",
                             "name": "vertex",
-                            "description": "The id of the start vertex. "
+                            "description": "The id of the start vertex. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "direction",
-                            "description": "Selects <em>in</em> or <em>out</em> direction for edges. If not set, any edges are returned. "
+                            "description": "Selects <em>in</em> or <em>out</em> direction for edges. If not set, any edges are returned. <br><br>"
                         }
                     ],
                     "notes": "Returns the list of edges starting or ending in the vertex identified by <em>vertex-handle</em>. <br><br>",
                     "summary": "reads in- or outbound edges",
                     "httpMethod": "GET",
-                    "examples": "Any direction <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/6\", \n      \"_rev\" : \"125592654\", \n      \"_key\" : \"6\", \n      \"_from\" : \"vertices/2\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v2 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/7\", \n      \"_rev\" : \"126051406\", \n      \"_key\" : \"7\", \n      \"_from\" : \"vertices/4\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v4 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/5\", \n      \"_rev\" : \"125133902\", \n      \"_key\" : \"5\", \n      \"_from\" : \"vertices/1\", \n      \"_to\" : \"vertices/3\", \n      \"$label\" : \"v1 -> v3\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>In edges <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=in\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/6\", \n      \"_rev\" : \"130114638\", \n      \"_key\" : \"6\", \n      \"_from\" : \"vertices/2\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v2 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/7\", \n      \"_rev\" : \"130573390\", \n      \"_key\" : \"7\", \n      \"_from\" : \"vertices/4\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v4 -> v1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Out edges <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=out\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/5\", \n      \"_rev\" : \"134177870\", \n      \"_key\" : \"5\", \n      \"_from\" : \"vertices/1\", \n      \"_to\" : \"vertices/3\", \n      \"$label\" : \"v1 -> v3\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Any direction <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/6\", \n      \"_rev\" : \"129057191\", \n      \"_key\" : \"6\", \n      \"_from\" : \"vertices/2\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v2 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/7\", \n      \"_rev\" : \"129515943\", \n      \"_key\" : \"7\", \n      \"_from\" : \"vertices/4\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v4 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/5\", \n      \"_rev\" : \"128598439\", \n      \"_key\" : \"5\", \n      \"_from\" : \"vertices/1\", \n      \"_to\" : \"vertices/3\", \n      \"$label\" : \"v1 -> v3\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br><br><br> In edges <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=in\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/6\", \n      \"_rev\" : \"133579175\", \n      \"_key\" : \"6\", \n      \"_from\" : \"vertices/2\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v2 -> v1\" \n    }, \n    { \n      \"_id\" : \"edges/7\", \n      \"_rev\" : \"134037927\", \n      \"_key\" : \"7\", \n      \"_from\" : \"vertices/4\", \n      \"_to\" : \"vertices/1\", \n      \"$label\" : \"v4 -> v1\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br><br><br> Out edges <br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=out\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"edges\" : [ \n    { \n      \"_id\" : \"edges/5\", \n      \"_rev\" : \"137642407\", \n      \"_key\" : \"5\", \n      \"_from\" : \"vertices/1\", \n      \"_to\" : \"vertices/3\", \n      \"$label\" : \"v1 -> v3\" \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
                     "nickname": "readsIn-OrOutboundEdges"
                 }
             ],
