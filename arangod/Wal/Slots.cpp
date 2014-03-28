@@ -28,7 +28,10 @@
 #include "Slots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
+#include "VocBase/datafile.h"
+#include "VocBase/marker.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -146,36 +149,54 @@ SlotInfo Slots::nextUnused (uint32_t size) {
                _logfile->freeSize() < static_cast<uint64_t>(size)) {
 
           if (_logfile != nullptr) {
-            // seal existing logfile
-            _logfileManager->requestSealing(_logfile);
+            // seal existing logfile by creating a footer marker
+            int res = writeFooter(slot);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            _logfileManager->setLogfileSealRequested(_logfile);
+
+            // advance to next slot 
+            slot = _slots[_handoutIndex];
           }
 
-          _logfile = _logfileManager->getWriteableLogfile(size);
+          // fetch the next free logfile (this may create a new one)
+          Logfile::StatusType status = Logfile::StatusType::UNKNOWN;
+          _logfile = _logfileManager->getWriteableLogfile(size, status);
 
           if (_logfile == nullptr) {
             LOG_WARNING("unable to acquire writeable wal logfile!");
             usleep(1000);
           }
+          else if (status == Logfile::StatusType::EMPTY) {
+            // inititialise the empty logfile by writing a header marker
+            int res = writeHeader(slot);
+            
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            _logfileManager->setLogfileOpen(_logfile);
+
+            // advance to next slot 
+            slot = _slots[_handoutIndex];
+          }
+          else {
+            assert(status == Logfile::StatusType::OPEN);
+          }
         }
 
-        TRI_df_marker_t* mem;
-        int res = TRI_ReserveElementDatafile(_logfile->df(), static_cast<TRI_voc_size_t>(size), &mem, 32 * 1024 * 1024);
+        // if we get here, we got a free slot for the actual data...
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          return SlotInfo(res);
+        char* mem = _logfile->reserve(size);
+
+        if (mem == nullptr) {
+          return SlotInfo(TRI_ERROR_INTERNAL);
         }
- 
-        assert(mem != nullptr);
 
-        assert(_freeSlots > 0);
-        _freeSlots--;
-
-        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), ++_lastAssignedTick);
-
-        if (++_handoutIndex ==_numberOfSlots) {
-          // wrap around
-          _handoutIndex = 0;
-        }
+        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
 
         return SlotInfo(slot);
       }
@@ -330,6 +351,62 @@ void Slots::returnSyncRegion (SyncRegion const& region) {
   if (_waiting > 0 || region.waitForSync) {
     _condition.broadcast();
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a header marker
+////////////////////////////////////////////////////////////////////////////////
+
+int Slots::writeHeader (Slot* slot) {            
+  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+  size_t const size = header.base._size;
+  
+  TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
+  assert(mem != nullptr);
+
+  slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+  slot->fill(&header.base, size);
+  slot->setReturned(false); // sync
+
+  return TRI_ERROR_NO_ERROR;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a footer marker
+////////////////////////////////////////////////////////////////////////////////
+
+int Slots::writeFooter (Slot* slot) {            
+  TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
+  size_t const size = footer.base._size;
+  
+  TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
+  assert(mem != nullptr);
+
+  slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+  slot->fill(&footer.base, size);
+  slot->setReturned(true); // sync
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handout a region and advance the handout index
+////////////////////////////////////////////////////////////////////////////////
+
+Slot::TickType Slots::handout () { 
+  assert(_freeSlots > 0);
+  _freeSlots--;
+
+  if (++_handoutIndex ==_numberOfSlots) {
+    // wrap around
+    _handoutIndex = 0;
+  }
+
+  return ++_lastAssignedTick;
 }
 
 // Local Variables:

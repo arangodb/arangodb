@@ -55,7 +55,8 @@ ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be
 ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
-ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when the datafile is unreadable."
+ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
+ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
 
 ################################################################################
 ## ArangoDB storage errors
