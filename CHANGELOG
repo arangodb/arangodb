@@ -1,6 +1,17 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* simplified usage of `db._createStatement()`
+
+  Previously, the function could not be called with a query string parameter as 
+  follows:
+
+      db._createStatement(queryString);
+
+  Calling it as above resulted in an error because the function expected an
+  object as its parameter. From now on, it's possible to call the function with 
+  just the query string.
+
 * make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
   client sends the `X-Omit-WWW-Authenticate` HTTP header.
 
