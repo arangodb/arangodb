@@ -189,8 +189,8 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*,
 
 void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*,
                                      void*,
-                                     const bool overwrite,
-                                     const bool checkEquality);
+                                     bool const overwrite,
+                                     bool const checkEquality);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
@@ -348,8 +348,8 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointerKey (
 void* TRI_InsertElementMultiPointerKey (TRI_multi_pointer_key_t*,
                                      void* element,
                                      void* key,
-                                     const bool overwrite,
-                                     const bool checkEquality);
+                                     bool const overwrite,
+                                     bool const checkEquality);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array

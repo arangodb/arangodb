@@ -283,8 +283,8 @@ static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
 
 void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
                                      void* element,
-                                     const bool overwrite,
-                                     const bool checkEquality) {
+                                     bool const overwrite,
+                                     bool const checkEquality) {
 
   // if the checkEquality flag is not set, we do not check for element
   // equality we use this flag to speed up initial insertion into the
