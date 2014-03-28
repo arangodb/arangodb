@@ -519,14 +519,14 @@ uint32_t TRI_BlockCrc32 (uint32_t value, char const* data, size_t length) {
     uint32_t one = *current++ ^ value;
     uint32_t two = *current++;
 
-    value = Crc32Lookup[7][ one      & 0xFF] ^
-      Crc32Lookup[6][(one>> 8) & 0xFF] ^
-      Crc32Lookup[5][(one>>16) & 0xFF] ^
-      Crc32Lookup[4][ one>>24        ] ^
-      Crc32Lookup[3][ two      & 0xFF] ^
-      Crc32Lookup[2][(two>> 8) & 0xFF] ^
-      Crc32Lookup[1][(two>>16) & 0xFF] ^
-      Crc32Lookup[0][ two>>24        ];
+    value = Crc32Lookup[0][(two>>24) & 0xFF] ^
+            Crc32Lookup[1][(two>>16) & 0xFF] ^
+            Crc32Lookup[2][(two>> 8) & 0xFF] ^
+            Crc32Lookup[3][ two      & 0xFF] ^
+            Crc32Lookup[4][(one>>24) & 0xFF] ^
+            Crc32Lookup[5][(one>>16) & 0xFF] ^
+            Crc32Lookup[6][(one>> 8) & 0xFF] ^
+            Crc32Lookup[7][ one      & 0xFF];
     length -= 8;
   }
 
