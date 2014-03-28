@@ -123,8 +123,8 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-uint64_t ALL_HASH_ADDS = 0;
-uint64_t ALL_HASH_COLLS = 0;
+//uint64_t ALL_HASH_ADDS = 0;
+//uint64_t ALL_HASH_COLLS = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find an element or its place using the element hash function
@@ -151,7 +151,7 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
           ! array->isEqualElementElement(array, element, 
                                                 array->_table[i].ptr, false))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
-    ALL_HASH_COLLS++;
+    //ALL_HASH_COLLS++;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
 #endif
@@ -185,7 +185,7 @@ static uint64_t LookupByElement (TRI_multi_pointer_t* array,
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
 #endif
-    ALL_HASH_COLLS++;
+    //ALL_HASH_COLLS++;
   }
 
   if (array->_table[i].ptr != NULL) {
@@ -297,7 +297,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   uint64_t i, j;
   void* old;
 
-  ALL_HASH_ADDS++;
+  //ALL_HASH_ADDS++;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -324,7 +324,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
                                                 array->_table[i].ptr,true) ||
           array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
-    ALL_HASH_COLLS++;
+    //ALL_HASH_COLLS++;
   }
 
   // If this is free, we are the first with this key:
