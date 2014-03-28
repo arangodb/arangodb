@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine */
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+  CryptoJS */
 (function() {
 
   "use strict";
