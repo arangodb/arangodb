@@ -43,6 +43,12 @@
 
 #define INITIAL_SIZE (64)
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declaration
+////////////////////////////////////////////////////////////////////////////////
+
+static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size); 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -366,7 +372,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    TRI_ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
+    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
   }
 
   return NULL;
@@ -486,22 +492,18 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resize the array
+/// @brief resize the array, internal version taking the size as given
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
+static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   TRI_multi_pointer_entry_t* oldTable;
   uint64_t oldAlloc;
   uint64_t j;
 
-  if (size < 2*array->_nrUsed) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = TRI_NextPrime((uint64_t) size*2);
+  array->_nrAlloc = TRI_NextPrime((uint64_t) size);
   array->_table = TRI_Allocate(array->_memoryZone, 
                  array->_nrAlloc * sizeof(TRI_multi_pointer_t), true);
 
@@ -527,6 +529,18 @@ int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   TRI_Free(array->_memoryZone, oldTable);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resize the array, adds a reserve of a factor of 2
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
+  if (2*size+1 < array->_nrUsed) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  return ResizeMultiPointer(array, 2*size+1);
 }
 
 // Local Variables:
