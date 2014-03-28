@@ -70,6 +70,24 @@ static TRI_edge_index_t* FindEdgesIndex (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the _from and _to end of an edge are identical
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
+  TRI_doc_edge_key_marker_t const* edge;
+  char* fromKey;
+  char* toKey;
+
+  edge = mptr->_data;
+  if (edge->_toCid == edge->_fromCid) {
+    fromKey = (char*) edge + edge->_offsetFromKey;
+    toKey = (char*) edge + edge->_offsetToKey;
+    return strcmp(fromKey, toKey) == 0;
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find edges matching search criteria and add them to the result
 /// this function is called two times for each edge query:
 /// the first call (with matchType 1) will query the index with the originally
@@ -88,12 +106,12 @@ static bool FindEdges (const TRI_edge_direction_e direction,
   if (direction == TRI_EDGE_OUT) {
     found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
                                         &idx->_edges_from, 
-                                        &entry);
+                                        entry);
   }
   else if (direction == TRI_EDGE_IN) {
     found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
                                         &idx->_edges_to, 
-                                        &entry);
+                                        entry);
   }
   else {
     assert(false);   // TRI_EDGE_ANY not supported here
@@ -131,14 +149,16 @@ static bool FindEdges (const TRI_edge_direction_e direction,
       // loop edges now (we already got them in iteration 1)
 
       if (matchType > 1) {
+        
         // if the edge is a loop, we have already found it in iteration 1
         // we must skip it here, otherwise we would produce duplicates
-        //if (IsReflexive(edge)) {
-        //  continue;
-        //}
+        if (IsReflexive(edge)) {
+          continue;
+        }
       }
-
+      
       TRI_PushBackVectorPointer(result, CONST_CAST(edge));
+
     }
   }
 

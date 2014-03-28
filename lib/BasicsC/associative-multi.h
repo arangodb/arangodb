@@ -114,7 +114,8 @@ typedef struct TRI_multi_pointer_s {
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
 
-  TRI_multi_pointer_entry_t* _table;         // the table itself
+  TRI_multi_pointer_entry_t* _table_alloc;   // the table itself
+  TRI_multi_pointer_entry_t* _table;         // the table itself, 64 aligned
 
 #ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
