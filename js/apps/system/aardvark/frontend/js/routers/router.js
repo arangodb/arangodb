@@ -179,11 +179,13 @@
             }
 
             if (update !== undefined) {
+              /*
               var msg = "A newer version of ArangoDB (" + update.version + 
                         ") has become available. You may want to check the " +
                         "changelog at <a href=\"" + update.changes + "\">" + 
                         update.changes + "</a>";
               arangoHelper.arangoNotification(msg, 15000);
+              */
 
             }
           },
