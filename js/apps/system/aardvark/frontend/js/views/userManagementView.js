@@ -31,6 +31,7 @@
     initialize: function() {
       //fetch collection defined in router
       this.collection.fetch({async:false});
+      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
     },
 
     render: function (isProfile) {
@@ -67,8 +68,7 @@
 */
 //      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
       if (!!isProfile) {
-        var user = this.collection.findWhere({user: this.collection.whoAmI()});
-        this.editCurrentUser(user);
+        this.editCurrentUser();
       }
 
       return this;
@@ -190,7 +190,6 @@
     },
 
     editUser : function(e) {
-      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
       this.collection.fetch();
       this.userToEdit = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
       if (this.userToEdit === '') {
@@ -198,7 +197,7 @@
       }
       var user = this.collection.findWhere({user: this.userToEdit});
       if (user.get("loggedIn")) {
-        this.editCurrentUser(user);
+        this.editCurrentUser();
       } else {
         $('#editUserModal').modal('show');
         $('#editUsername').html(user.get("user"));
@@ -210,11 +209,11 @@
       }
     },
 
-    editCurrentUser: function(user) {
+    editCurrentUser: function() {
       $('#editCurrentUserProfileModal').modal('show');
-      $('#editCurrentUsername').html(user.get("user"));
-      $('#editCurrentName').val(user.get("extra").name);
-      $('#editCurrentUserProfileImg').val(user.get("extra").img);
+      $('#editCurrentUsername').html(this.currentUser.get("user"));
+      $('#editCurrentName').val(this.currentUser.get("extra").name);
+      $('#editCurrentUserProfileImg').val(this.currentUser.get("extra").img);
     },
 
     submitEditUser : function() {
