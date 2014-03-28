@@ -775,6 +775,11 @@ int ArangoServer::startupServer () {
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  if (vocbase == 0) {
+    LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
+  }
+
   assert(vocbase != 0);
 
   // initialise V8

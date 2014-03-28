@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Wal/Slot.h"
+#include "BasicsC/hashes.h"
 
 using namespace triagens::wal;
 
@@ -78,6 +79,29 @@ std::string Slot::statusText () const {
   // stop stelling me that the control flow will reach the end of a non-void
   // function. this cannot happen!!!!!
   assert(false); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the CRC value for the source region (this will modify
+/// the source region) and copy the calculated marker data into the slot
+////////////////////////////////////////////////////////////////////////////////
+
+void Slot::fill (void* src,
+                 size_t size) {
+  assert(size == _size);         
+
+  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
+  
+  // set tick
+  marker->_tick = _tick;
+  
+  // calculate the crc
+  marker->_crc = 0;
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_BlockCrc32(crc, (char const*) marker, static_cast<TRI_voc_size_t>(size));
+  marker->_crc = TRI_FinalCrc32(crc);
+  
+  memcpy(_mem, src, size);
 }
 
 // -----------------------------------------------------------------------------

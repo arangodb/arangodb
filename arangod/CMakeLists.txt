@@ -154,6 +154,7 @@ add_executable(
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
+    Wal/TestThread.cpp
     ${ARANGOD_MRUBY_SOURCE}
 )
 

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log synchroniser thread
+/// @brief Write-ahead log garbage collection thread
 ///
 /// @file
 ///
@@ -25,14 +25,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_SYNCHRONISER_THREAD_H
-#define TRIAGENS_WAL_SYNCHRONISER_THREAD_H 1
+#ifndef TRIAGENS_WAL_TEST_THREAD_H
+#define TRIAGENS_WAL_TEST_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Wal/Logfile.h"
-#include "Wal/SyncRegion.h"
 
 namespace triagens {
   namespace wal {
@@ -40,18 +38,14 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class SynchroniserThread
+// --SECTION--                                             class CollectorThread
 // -----------------------------------------------------------------------------
 
-    class SynchroniserThread : public basics::Thread {
+    class TestThread : public basics::Thread {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SynchroniserThread
+/// @brief CollectorThread
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
-        SynchroniserThread (SynchroniserThread const&);
-        SynchroniserThread& operator= (SynchroniserThread const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,16 +54,16 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the synchroniser thread
+/// @brief create the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        SynchroniserThread (LogfileManager*);
+        TestThread (LogfileManager*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the synchroniser thread
+/// @brief destroy the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SynchroniserThread ();
+        ~TestThread ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -78,16 +72,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the synchroniser thread
+/// @brief stops the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
         void stop ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief signal that a sync is needed
-////////////////////////////////////////////////////////////////////////////////
-
-        void signalSync ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
@@ -102,62 +90,24 @@ namespace triagens {
         void run ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a logfile descriptor (it caches the descriptor for performance)
-////////////////////////////////////////////////////////////////////////////////
-
-        int getLogfileDescriptor (Logfile::IdType);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the logfile manager
-////////////////////////////////////////////////////////////////////////////////
-
         LogfileManager* _logfileManager;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief condition variable for the thread
+/// @brief condition variable for the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ConditionVariable _condition;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of requests waiting 
-////////////////////////////////////////////////////////////////////////////////
-
-        uint32_t _waiting;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag
 ////////////////////////////////////////////////////////////////////////////////
         
         volatile sig_atomic_t _stop;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logfile descriptor cache
-////////////////////////////////////////////////////////////////////////////////
-
-        struct {
-          Logfile::IdType  id;
-          int              fd;
-        }
-        _logfileCache;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait interval for the synchroniser thread when idle
-////////////////////////////////////////////////////////////////////////////////
-
-        static const uint64_t Interval;
 
     };
 
