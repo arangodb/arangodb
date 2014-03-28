@@ -925,8 +925,8 @@ static int SizeHintEdge (TRI_index_t* idx,
   // we assume this is called when setting up the index and the index is still empty
   assert(edgesIndex->_nrUsed == 0);
 
-  // set an initial size for the index and allow for some new nodes to be created
-  // without resizing
+  // set an initial size for the index for some new nodes to be created
+  // without resizing, note we will put in two edge ends for each end.
   return TRI_ResizeMultiPointer(edgesIndex, 2 * size + 2049);
 }
 
