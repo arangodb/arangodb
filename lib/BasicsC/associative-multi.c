@@ -77,10 +77,12 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrUsed  = 0;
   array->_nrAlloc = 0;
 
-  if (NULL == (array->_table = TRI_Allocate(zone, 
-                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE, true))) {
+  if (NULL == (array->_table_alloc = TRI_Allocate(zone, 
+                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE+64, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  array->_table = (TRI_multi_pointer_entry_t*) 
+                  (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
 
   array->_nrAlloc = INITIAL_SIZE;
 
@@ -104,7 +106,7 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
 
 void TRI_DestroyMultiPointer (TRI_multi_pointer_t* array) {
   if (array->_table != NULL) {
-    TRI_Free(array->_memoryZone, array->_table);
+    TRI_Free(array->_memoryZone, array->_table_alloc);
   }
 }
 
@@ -496,16 +498,20 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
+  TRI_multi_pointer_entry_t* oldTable_alloc;
   TRI_multi_pointer_entry_t* oldTable;
   uint64_t oldAlloc;
   uint64_t j;
 
+  oldTable_alloc = array->_table_alloc;
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = TRI_NextPrime((uint64_t) size);
-  array->_table = TRI_Allocate(array->_memoryZone, 
-                 array->_nrAlloc * sizeof(TRI_multi_pointer_t), true);
+  array->_table_alloc = TRI_Allocate(array->_memoryZone, 
+                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t), true);
+  array->_table = (TRI_multi_pointer_entry_t*) 
+                  (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -526,7 +532,7 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
     }
   }
 
-  TRI_Free(array->_memoryZone, oldTable);
+  TRI_Free(array->_memoryZone, oldTable_alloc);
 
   return TRI_ERROR_NO_ERROR;
 }
