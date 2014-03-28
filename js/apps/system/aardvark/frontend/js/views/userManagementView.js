@@ -67,7 +67,8 @@
 */
 //      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
       if (!!isProfile) {
-        $('#editCurrentUserProfileModal').modal('show');
+        var user = this.collection.findWhere({user: this.collection.whoAmI()});
+        this.editCurrentUser(user);
       }
 
       return this;
@@ -197,10 +198,7 @@
       }
       var user = this.collection.findWhere({user: this.userToEdit});
       if (user.get("loggedIn")) {
-        $('#editCurrentUserProfileModal').modal('show');
-        $('#editCurrentUsername').html(user.get("user"));
-        $('#editCurrentName').val(user.get("extra").name);
-        $('#editCurrentUserProfileImg').val(user.get("extra").img);
+        this.editCurrentUser(user);
       } else {
         $('#editUserModal').modal('show');
         $('#editUsername').html(user.get("user"));
@@ -210,6 +208,13 @@
         $('#deleteUser').removeClass("button-inactive");
         $('#deleteUser').addClass("button-danger");
       }
+    },
+
+    editCurrentUser: function(user) {
+      $('#editCurrentUserProfileModal').modal('show');
+      $('#editCurrentUsername').html(user.get("user"));
+      $('#editCurrentName').val(user.get("extra").name);
+      $('#editCurrentUserProfileImg').val(user.get("extra").img);
     },
 
     submitEditUser : function() {
