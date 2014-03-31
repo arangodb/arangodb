@@ -123,10 +123,11 @@ typedef struct TRI_multi_pointer_s {
   uint64_t _nrRems;      // statistics: number of remove calls
   uint64_t _nrResizes;   // statistics: number of resizes
 
+  uint64_t _nrProbes;    // statistics: number of misses in FindElementPlace
+                         // and LookupByElement, used by insert, lookup and
+                         // remove
   uint64_t _nrProbesF;   // statistics: number of misses while looking up
-  uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
-  uint64_t _nrProbesR;   // statistics: number of misses while adding
 #endif
 
   TRI_memory_zone_t* _memoryZone;
@@ -216,33 +217,35 @@ int TRI_ResizeMultiPointer (TRI_multi_pointer_t*, size_t);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative multi array of pointers with multiple keys
 ///
-/// This is a data structure that can store pairs (p,k) where p is a
-/// pointer to an object and k is a pointer to one of the keys of the
-/// object. Each object has one ore more keys (for example multiple
-/// values in a list in a certain attribute) and multiple objects in the
-/// associative array can have the same key. Every pair (p,k) can be at
-/// most once in the array.
+/// This is a data structure that can store pairs (p,h) where p is a
+/// pointer to an object and h is a pointer to something identifying
+/// one of the keys of the object. Each object has one ore more keys
+/// (for example multiple values in a list in a certain attribute) and
+/// multiple objects in the associative array can have the same key.
+/// Every pair (p,h) can be at most once in the array.
 /// We want to offer constant time complexity for the following
 /// operations:
 ///  - insert a pair into the array
 ///  - delete a pair from the array
-///  - find one pair (p,k) with a given key k
+///  - find one pair (p,h) with a given key k
 /// Furthermore, we want to offer O(n) complexity for the following
 /// operation:
 ///  - find the list of pointers p for which there is at least one pair
-///    (p,k) in the array, where n is the number of objects in the array
-///    with this key
+///    (p,h) in the array, where n is the number of objects in the array
+///    with the given key k
 /// To this end, we use a hash table and ask the user to provide the following:
-///  - a way to hash a pair (p,k)
-///  - a way to hash a key k
-///  - a way to compare two keys
-///  - a way to compare two elements
+///  - a way to hash a pair (p,h) by its full identity
+///  - a way to hash a pair (p,h) but only with respect to its key k
+///  - a way to hash a given key k
+///  - a way to compare the key of a pair (p,h) with an external key k
+///  - a way to compare the keys of two pairs (p,h) and (p',h') 
+///  - a way to compare two pairs (p,h) and (p',h')
 /// To avoid unnecessary comparisons the user can guarantee that s/he will
 /// only try to store non-identical pairs into the array. This enables
 /// the code to skip comparisons which would otherwise be necessary to
 /// ensure uniqueness.
 /// The idea of the algorithm is as follows: Each slot in the hash table
-/// contains a pointer to the actual object, a pointer to its key, as
+/// contains a pointer to the actual object, a pointer to its key helper, as
 /// well as two unsigned integers "prev" and "next" (being indices in
 /// the hash table) to organise a linked list of entries, *within the
 /// same hash table*. All pairs with the same key are kept in a doubly
@@ -256,28 +259,36 @@ int TRI_ResizeMultiPointer (TRI_multi_pointer_t*, size_t);
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_multi_pointer_key_entry_s {
+typedef struct TRI_multi_pair_entry_s {
   void* ptr;   // a pointer to the data stored in this slot
-  void* key;   // a pointer to the key stored in this slot
+  void* key;   // a pointer to the helper to find the key stored in this slot
   TRI_multi_pointer_index_t next;  // index of the data following in the linked
                                    // list of all items with the same key
   TRI_multi_pointer_index_t prev;  // index of the data preceding in the linked
                                    // list of all items with the same key
-} TRI_multi_pointer_key_entry_t;
+} TRI_multi_pair_entry_t;
 
-typedef struct TRI_multi_pointer_key_s {
-  uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const* key);
-  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const* element);
+typedef struct TRI_multi_pair_s {
+  uint64_t (*hashKeyKey) (struct TRI_multi_pair_s*, void const* key);
+  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*, 
+                           void const* element, void const* keyhelper);
+  uint64_t (*hashPair) (struct TRI_multi_pair_s*,
+                        void const* element, void const* keyhelper);
 
-  bool (*isEqualKeyKey) (struct TRI_multi_pointer_s*, void const* key1, 
-                         void const* key2);
-  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, 
-                                 void const* el1, void const* el2);
+  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*, 
+                             void const* element, void const* keyhelper, 
+                             void const* key);
+  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*, 
+                              void const* element1, void const* keyhelper1, 
+                              void const* element2, void const* keyhelper2);
+  bool (*isEqualPairPair) (struct TRI_multi_pair_s*, 
+                           void const* element1, void const* keyhelper1, 
+                           void const* element2, void const* keyhelper2);
 
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
 
-  TRI_multi_pointer_key_entry_t* _table;         // the table itself
+  TRI_multi_pair_entry_t* _table;         // the table itself
 
 #ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
@@ -285,15 +296,16 @@ typedef struct TRI_multi_pointer_key_s {
   uint64_t _nrRems;      // statistics: number of remove calls
   uint64_t _nrResizes;   // statistics: number of resizes
 
+  uint64_t _nrProbes;    // statistics: number of misses in FindPairPlace
+                         // and LookupByPair, used by insert, lookup and
+                         // remove
   uint64_t _nrProbesF;   // statistics: number of misses while looking up
-  uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
-  uint64_t _nrProbesR;   // statistics: number of misses while adding
 #endif
 
   TRI_memory_zone_t* _memoryZone;
 }
-TRI_multi_pointer_key_t;
+TRI_multi_pair_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -303,31 +315,35 @@ TRI_multi_pointer_key_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitMultiPointerKey (
-                          TRI_multi_pointer_key_t* array,
-                          TRI_memory_zone_t*,
-                          uint64_t (*hashKey) (TRI_multi_pointer_key_t*, 
-                                               void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_key_t*, 
-                                                   void const*),
-                          bool (*isEqualKeyKey) (TRI_multi_pointer_key_t*, 
-                                                 void const*, void const*),
-                          bool (*isEqualElementElement) (
-                                                 TRI_multi_pointer_key_t*, 
-                                                 void const*, 
-                                                 void const*));
+int TRI_InitMultiPair (
+  TRI_multi_pair_t* array,
+  TRI_memory_zone_t*,
+  uint64_t (*hashKeyKey) (struct TRI_multi_pair_s*, void const* key),
+  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*, 
+                           void const* element, void const* keyhelper),
+  uint64_t (*hashPair) (struct TRI_multi_pair_s*,
+                        void const* element, void const* keyhelper),
+  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*, 
+                             void const* element, void const* keyhelper, 
+                             void const* key),
+  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*, 
+                              void const* element1, void const* keyhelper1, 
+                              void const* element2, void const* keyhelper2),
+  bool (*isEqualPairPair) (struct TRI_multi_pair_s*, 
+                           void const* element1, void const* keyhelper1, 
+                           void const* element2, void const* keyhelper2));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyMultiPointerKey (TRI_multi_pointer_key_t*);
+void TRI_DestroyMultiPair (TRI_multi_pair_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeMultiPointerKey (TRI_memory_zone_t*, TRI_multi_pointer_key_t*);
+void TRI_FreeMultiPair (TRI_memory_zone_t*, TRI_multi_pair_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -337,34 +353,41 @@ void TRI_FreeMultiPointerKey (TRI_memory_zone_t*, TRI_multi_pointer_key_t*);
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyMultiPointerKey (
-                                                  TRI_memory_zone_t*,
-                                                  TRI_multi_pointer_key_t*,
-                                                  void const* key);
+TRI_vector_pointer_t TRI_LookupByKeyMultiPair (TRI_memory_zone_t*,
+                                               TRI_multi_pair_t*,
+                                               void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key/element to the array
+/// @brief adds a pair to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementMultiPointerKey (TRI_multi_pointer_key_t*,
-                                     void* element,
-                                     void* key,
-                                     bool const overwrite,
-                                     bool const checkEquality);
+void* TRI_InsertPairMultiPair (TRI_multi_pair_t*,
+                               void* element,
+                               void* keyhelper,
+                               bool const overwrite,
+                               bool const checkEquality);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
+/// @brief looks up a pair in the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementMultiPointerKey (TRI_multi_pointer_key_t*, 
-                                        void const* element,
-                                        void const* key);
+void* TRI_LookupPairMultiPair (TRI_multi_pair_t*,
+                               void* element,
+                               void* keyhelper);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes pair from the array
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_RemovePairMultiPair (TRI_multi_pair_t*, 
+                               void const* element,
+                               void const* keyhelper);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resize the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeMultiPointerKey (TRI_multi_pointer_key_t*, size_t);
+int TRI_ResizeMultiPair (TRI_multi_pair_t*, size_t);
 
 #ifdef __cplusplus
 }
