@@ -131,7 +131,7 @@ void SynchroniserThread::run () {
         assert(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
 
         // get the logfile's file descriptor
-        int fd = getLogfileDescriptor(region);
+        int fd = getLogfileDescriptor(region.logfileId);
 
         if (fd < 0) {
           // invalid file descriptor
@@ -155,7 +155,7 @@ void SynchroniserThread::run () {
 
           if (status == Logfile::StatusType::SEAL_REQUESTED) {
             // additionally seal the logfile
-            _logfileManager->sealLogfile(id);
+            _logfileManager->setLogfileSealed(id);
           }
         }
         
@@ -188,12 +188,12 @@ void SynchroniserThread::run () {
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchroniserThread::getLogfileDescriptor (SyncRegion const& region) {
-  if (region.logfileId != _logfileCache.id || 
+int SynchroniserThread::getLogfileDescriptor (Logfile::IdType id) {
+  if (id != _logfileCache.id || 
       _logfileCache.id == 0) {
 
-    _logfileCache.id = region.logfileId;
-    _logfileCache.fd = _logfileManager->getLogfileDescriptor(region.logfileId);
+    _logfileCache.id = id;
+    _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);
   }
 
   return _logfileCache.fd;

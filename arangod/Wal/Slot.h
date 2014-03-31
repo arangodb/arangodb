@@ -31,6 +31,10 @@
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
+extern "C" {
+  struct TRI_df_marker_s;
+}
+
 namespace triagens {
   namespace wal {
 
@@ -128,6 +132,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::string statusText () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the CRC value for the source region (this will modify
+/// the source region) and copy the calculated marker data into the slot
+////////////////////////////////////////////////////////////////////////////////
+
+        void fill (void*,
+                   size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, Backbone, it, spyOn, expect*/
 /*global $*/
 
 (function () {
@@ -18,7 +18,7 @@
                 get: function () {
                     return "ABCDE";
                 }
-            }
+            };
             expect(col.comparator(a)).toEqual("abcde");
         });
 
@@ -26,9 +26,9 @@
             spyOn(Backbone, "sync");
             var result = col.sync("read", {url: function () {
                 return "abc";
-            }}, {url: "default"});
+            }}, {url: "default"}),  objectArg;
             expect(Backbone.sync).toHaveBeenCalled();
-            var objectArg = Backbone.sync.mostRecentCall.args[2];
+            objectArg = Backbone.sync.mostRecentCall.args[2];
             expect(objectArg.url).toEqual('abcuser');
 
 
@@ -52,9 +52,46 @@
             ]);
         });
 
+        it("initialize", function () {
+            spyOn(col, "fetch").andCallFake(function () {
+                col.models = [
+                    new window.DatabaseModel({name : "heinz"}),
+                    new window.DatabaseModel({name : "fritz"}),
+                    new window.DatabaseModel({name : "anton"})
+                ];
+                return {
+                    done: function (a) {
+                        a();
+                    }
+                };
+            });
+            col.initialize();
+            expect(col.models[0].get("name")).toEqual("anton");
+            expect(col.models[1].get("name")).toEqual("fritz");
+            expect(col.models[2].get("name")).toEqual("heinz");
+        });
+
 
         it("getDatabases", function () {
-            expect(col.getDatabases()).toEqual([]);
+            col.add(new window.DatabaseModel({name : "heinz"}));
+            col.add(new window.DatabaseModel({name : "fritz"}));
+            col.add(new window.DatabaseModel({name : "anton"}));
+            spyOn(col, "fetch").andCallFake(function () {
+                col.models = [
+                    new window.DatabaseModel({name : "heinz"}),
+                    new window.DatabaseModel({name : "fritz"}),
+                    new window.DatabaseModel({name : "anton"})
+                ];
+                return {
+                    done: function (a) {
+                        a();
+                    }
+                };
+            });
+            var result = col.getDatabases();
+            expect(result[0].get("name")).toEqual("anton");
+            expect(result[1].get("name")).toEqual("fritz");
+            expect(result[2].get("name")).toEqual("heinz");
         });
 
         it("createDatabaseURL", function () {
