@@ -356,16 +356,16 @@
 
     submitEditCurrentUserProfile: function() {
       var self = this;
-      var name      = $('#editCurrentName').val();
-      var img       = $('#editCurrentUserProfileImg').val();
-
+      var name    = $('#editCurrentName').val();
+      var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
+
       /*      if (!this.validateName(name)) {
        $('#editName').closest("th").css("backgroundColor", "red");
        return;
        }*/
 
-      this.currentUser.save({"extra": {"name":name, "img":img}});
+      this.currentUser.setExtras(name, img);
       $('#editCurrentUserProfileModal').modal('hide');
       this.updateUserProfile();
     },

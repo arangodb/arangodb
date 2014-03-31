@@ -79,6 +79,25 @@ window.Users = Backbone.Model.extend({
       error: function(data) {
       }
     });
+  },
+
+  setExtras: function(name, img) {
+    var self = this,
+      result = false;
+
+    $.ajax({
+      cache: false,
+      type: "PATCH",
+      async: false, // sequential calls!
+      url: "/_api/user/" + this.get("user"),
+      data: JSON.stringify({"extra": {"name":name, "img":img}}),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+      },
+      error: function(data) {
+      }
+    });
   }
 
 });
