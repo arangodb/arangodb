@@ -23,7 +23,7 @@
             expect(col.documentsCount).toEqual(1);
             expect(col.offset).toEqual(0);
             col.currentPage = 2;
-            window.location.hash = "a/b/c"
+            window.location.hash = "a/b/c";
             col.getFirstDocuments();
             expect(window.location.hash).toEqual("#a/b/c/1");
         });
@@ -31,13 +31,13 @@
         it("should getLastDocuments", function () {
             col.currentPage = 2;
             col.totalPages = 5;
-            window.location.hash = "a/b/c"
+            window.location.hash = "a/b/c";
             col.getLastDocuments();
             expect(window.location.hash).toEqual("#a/b/c/5");
         });
         it("should getPrevDocuments", function () {
             col.currentPage = 2;
-            window.location.hash = "a/b/c"
+            window.location.hash = "a/b/c";
             col.getPrevDocuments();
             expect(window.location.hash).toEqual("#a/b/c/1");
         });
@@ -45,14 +45,13 @@
         it("should getNextDocuments", function () {
             col.currentPage = 2;
             col.totalPages = 5;
-            window.location.hash = "a/b/c"
+            window.location.hash = "a/b/c";
             col.getNextDocuments();
             expect(window.location.hash).toEqual("#a/b/c/3");
         });
 
         it("should getDocuments starting on first page and succeed", function () {
-            var colid = "12345";
-            var currpage = "0";
+            var colid = "12345", currpage = "0", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 if (opt.type === "GET") {
                     expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
@@ -87,12 +86,12 @@
             spyOn(window.documentsView, "drawTable");
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
-            var result = col.getDocuments(colid, currpage);
+            result = col.getDocuments(colid, currpage);
             expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10);
         });
 
         it("should getDocuments starting on undefined page and succeed", function () {
-            var colid = "12345";
+            var colid = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 if (opt.type === "GET") {
                     expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
@@ -127,13 +126,12 @@
             spyOn(window.documentsView, "drawTable");
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
-            var result = col.getDocuments(colid);
+            result = col.getDocuments(colid);
             expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10);
         });
 
         it("should getDocuments with exceeding sort count", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 if (opt.type === "GET") {
                     expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
@@ -167,13 +165,12 @@
             spyOn(window.documentsView, "drawTable");
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
-            var result = col.getDocuments(colid, currpage);
+            result = col.getDocuments(colid, currpage);
             expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10000);
         });
 
         it("should getDocuments with initial draw", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 if (opt.type === "GET") {
                     expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
@@ -208,14 +205,13 @@
             spyOn(window.documentsView, "drawTable");
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
-            var result = col.getDocuments(colid, currpage);
+            result = col.getDocuments(colid, currpage);
             expect(window.documentsView.initTable).toHaveBeenCalled();
         });
 
 
         it("should getDocuments with exceeding sort count", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 if (opt.type === "GET") {
                     expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
@@ -249,13 +245,12 @@
             spyOn(window.documentsView, "drawTable");
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
-            var result = col.getDocuments(colid, currpage);
+            result = col.getDocuments(colid, currpage);
             expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10000);
         });
 
         it("should sorted getFilteredDocuments with empty filter", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.type).toEqual("POST");
                 expect(opt.url).toEqual('/_api/cursor');
@@ -263,7 +258,8 @@
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
                 expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
+                    query: "FOR u in @@collection SORT " +
+                        "TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
                         " LIMIT @offset, @count RETURN u",
                     bindVars: {
                         "@collection": "12345", "count": 10, "offset": 10
@@ -285,13 +281,12 @@
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
             col.documentsCount = 100;
-            var result = col.getFilteredDocuments(colid, currpage, [], []);
+            result = col.getFilteredDocuments(colid, currpage, [], []);
             expect(window.documentsView.renderPagination).toHaveBeenCalled();
         });
 
         it("should sorted getFilteredDocuments with empty filter and empty result", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.type).toEqual("POST");
                 expect(opt.url).toEqual('/_api/cursor');
@@ -299,7 +294,8 @@
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
                 expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
+                    query: "FOR u in @@collection " +
+                        "SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
                         " LIMIT @offset, @count RETURN u",
                     bindVars: {
                         "@collection": "12345", "count": 10, "offset": 10
@@ -321,13 +317,12 @@
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
             col.documentsCount = 100;
-            var result = col.getFilteredDocuments(colid, currpage, [], []);
+            result = col.getFilteredDocuments(colid, currpage, [], []);
             expect(window.documentsView.initTable).toHaveBeenCalled();
         });
 
         it("should sorted getFilteredDocuments with filter", function () {
-            var colid = "12345";
-            var currpage = "2";
+            var colid = "12345", currpage = "2", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.type).toEqual("POST");
                 expect(opt.url).toEqual('/_api/cursor');
@@ -335,7 +330,8 @@
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
                 expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection FILTER u.NAME = @@name &&  u.AGE > @age SORT TO_NUMBER(u._key) == 0" +
+                    query: "FOR u in @@collection FILTER u.NAME = " +
+                        "@@name &&  u.AGE > @age SORT TO_NUMBER(u._key) == 0" +
                         " ? u._key : TO_NUMBER(u._key)" +
                         " LIMIT @offset, @count RETURN u",
                     bindVars: {
@@ -362,7 +358,8 @@
             spyOn(window.documentsView, "renderPagination");
             spyOn(window.documentsView, "initTable");
             col.documentsCount = 100;
-            var result = col.getFilteredDocuments(colid, currpage, [' u.NAME = @@name', ' u.AGE > @age'],
+            result = col.getFilteredDocuments(
+                colid, currpage, [' u.NAME = @@name', ' u.AGE > @age'],
                 {name: "Heinz", age: 4});
             expect(window.documentsView.renderPagination).toHaveBeenCalled();
         });
@@ -374,8 +371,9 @@
                 expect(opt.contentType).toEqual("application/json");
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
-                expect(opt.beforeSend).toNotBe(undefined),
-                    expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]}));
+                expect(opt.beforeSend).toNotBe(undefined);
+                expect(opt.data).toEqual(JSON.stringify(
+                        {startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]}));
                 opt.success({result: [
                     {bytesSend: 1, totalTime: 2, time: 4},
                     {bytesSend: 2, totalTime: 2, time: 4},
@@ -383,7 +381,8 @@
                 ]
                 });
             });
-            var result = col.getStatisticsHistory({startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]});
+            var result = col.getStatisticsHistory(
+                {startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]});
             expect(JSON.stringify(col.history)).toEqual(JSON.stringify([
                 {bytesSend: 1, totalTime: 2, time: 4},
                 {bytesSend: 2, totalTime: 2, time: 4},
@@ -399,8 +398,8 @@
                 expect(opt.contentType).toEqual("application/json");
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
-                expect(opt.beforeSend).toNotBe(undefined),
-                    expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
+                expect(opt.beforeSend).toNotBe(undefined);
+                expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
                         figures: ["bytesSend, totalTime"]}));
                 opt.error();
             });
@@ -418,8 +417,8 @@
                 expect(opt.contentType).toEqual("application/json");
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
-                expect(opt.beforeSend).toNotBe(undefined),
-                    expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
+                expect(opt.beforeSend).toNotBe(undefined);
+                expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
                         figures: ["bytesSend, totalTime"]}));
                 opt.error();
             });

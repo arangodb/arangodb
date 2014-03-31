@@ -41,6 +41,7 @@
 #include "Wal/CollectorThread.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
+#include "Wal/TestThread.h"
 
 using namespace triagens::wal;
 
@@ -191,7 +192,7 @@ bool LogfileManager::start () {
               (unsigned long long) _lastCollectedId);
   }
 
-  res = openLogfiles();
+  res = openLogfiles(shutdownFileExists);
   
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not open wal logfiles: %s", 
@@ -241,29 +242,18 @@ bool LogfileManager::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open () {
-  for (size_t i = 0; i < 50 * 1024 * 1024; ++i) {
-    size_t s;
+  TestThread* threads[4];
+  for (size_t i = 0; i < 4; ++i) {
+    threads[i] = new TestThread(this);
+    threads[i]->start();
+  }
 
-    s = 64;
-/*    if (i % 10000000 == 9999999) {
-      s = 1024 * 1024 * 8;
-    }
-    */
-    void* p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, s, true);
-    TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(p);
+  LOG_INFO("sleeping");
+  sleep(60);
 
-    marker->_type = TRI_DF_MARKER_HEADER;
-    marker->_size = s;
-    marker->_crc  = 0;
-    marker->_tick = 0;
-
-if (i % 500000 == 0) {
-  LOG_INFO("now at: %d", (int) i);
-}
-    memcpy(static_cast<char*>(p) + sizeof(TRI_df_marker_t), "the fox is brown\0", strlen("the fox is brown") + 1);
-    this->allocateAndWrite(p, static_cast<uint32_t>(s), false);
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
+  for (size_t i = 0; i < 4; ++i) {
+    threads[i]->stop();
+    delete threads[i];
   }
 
   LOG_INFO("done");
@@ -414,7 +404,7 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::allocateAndWrite (void* mem,
+int LogfileManager::allocateAndWrite (void* src,
                                       uint32_t size,
                                       bool waitForSync) {
 
@@ -425,21 +415,8 @@ int LogfileManager::allocateAndWrite (void* mem,
   }
 
   assert(slotInfo.slot != nullptr);
-  
-  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(slotInfo.slot->mem());
 
-  // write tick into marker
-  marker->_tick = slotInfo.slot->tick();
-
-  // set initial crc to 0
-  marker->_crc = 0;
-  
-  // now calculate crc  
-  TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, static_cast<char const*>(mem), static_cast<TRI_voc_size_t>(size));
-  marker->_crc = TRI_FinalCrc32(crc);
-
-  memcpy(slotInfo.slot->mem(), mem, static_cast<TRI_voc_size_t>(size));
+  slotInfo.slot->fill(src, size);
 
   finalise(slotInfo, waitForSync);
   return slotInfo.errorCode;
@@ -507,7 +484,6 @@ void LogfileManager::removeLogfile (Logfile* logfile,
   std::string const filename = logfileName(id);
   
   LOG_TRACE("removing logfile '%s'", filename.c_str());
-  LOG_INFO("removing logfile '%s'", filename.c_str());
 
   // now close the logfile
   delete logfile;
@@ -524,35 +500,53 @@ void LogfileManager::removeLogfile (Logfile* logfile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seal a logfile 
+/// @brief sets the status of a logfile to open
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::sealLogfile (Logfile::IdType id) {
-  LOG_TRACE("sealing logfile '%llu", (unsigned long long) id);
-
-  Logfile* logfile = unlinkLogfile(id);
+void LogfileManager::setLogfileOpen (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  logfile->seal();
-  relinkLogfile(logfile);
-
-  return TRI_ERROR_NO_ERROR;
+  WRITE_LOCKER(_logfilesLock);
+  logfile->setStatus(Logfile::StatusType::OPEN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request sealing of a logfile
+/// @brief sets the status of a logfile to seal-requested
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::requestSealing (Logfile* logfile) {
+void LogfileManager::setLogfileSealRequested (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  {
-    WRITE_LOCKER(_logfilesLock);
-    logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
-    signalSync();
+  WRITE_LOCKER(_logfilesLock);
+  logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
+  signalSync();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the status of a logfile to sealed
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::setLogfileSealed (Logfile* logfile) {
+  assert(logfile != nullptr);
+
+  WRITE_LOCKER(_logfilesLock);
+  logfile->setStatus(Logfile::StatusType::SEALED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the status of a logfile to sealed
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::setLogfileSealed (Logfile::IdType id) {
+  WRITE_LOCKER(_logfilesLock);
+
+  auto it = _logfiles.find(id);
+
+  if (it == _logfiles.end()) {
+    return;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  (*it).second->setStatus(Logfile::StatusType::SEALED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,7 +587,8 @@ int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
+Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
+                                              Logfile::StatusType& status) {
   size_t iterations = 0;
 
   while (++iterations < 1000) {
@@ -607,11 +602,8 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size) {
         assert(logfile != nullptr);
         
         if (logfile->isWriteable(size)) {
-          // found a logfile
-          if (logfile->status() == Logfile::StatusType::EMPTY) {
-            logfile->setStatus(Logfile::StatusType::OPEN);
-          }
-
+          // found a logfile, update the status variable and return the logfile
+          status = logfile->status();
           return logfile;
         }
 
@@ -948,7 +940,7 @@ int LogfileManager::inventory () {
 /// @brief scan the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::openLogfiles () {
+int LogfileManager::openLogfiles (bool wasCleanShutdown) {
   WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
@@ -957,15 +949,25 @@ int LogfileManager::openLogfiles () {
 
     assert((*it).second == nullptr);
 
-    Logfile* logfile = Logfile::open(filename, id);
+    int res = Logfile::judge(filename);
+
+    if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
+      if (basics::FileUtils::remove(filename, 0)) {
+        LOG_INFO("removing empty wal logfile '%s'", filename.c_str());
+      }
+      _logfiles.erase(it++);
+      continue;
+    }
+
+    Logfile* logfile = Logfile::openExisting(filename, id, id <= _lastCollectedId);
 
     if (logfile == nullptr) {
       _logfiles.erase(it++);
+      continue;
     }
-    else {
-      (*it).second = logfile;
-      ++it;
-    }
+      
+    (*it).second = logfile;
+    ++it;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -993,7 +995,7 @@ int LogfileManager::createReserveLogfile (uint32_t size) {
     realsize = filesize();
   }
     
-  Logfile* logfile = Logfile::create(filename.c_str(), id, realsize);
+  Logfile* logfile = Logfile::createNew(filename.c_str(), id, realsize);
 
   if (logfile == nullptr) {
     int res = TRI_errno();

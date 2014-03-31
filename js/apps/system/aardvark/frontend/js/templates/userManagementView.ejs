@@ -192,4 +192,73 @@
     </div>
   </div>
 
+
+<div id="editCurrentUserProfileModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Edit User Profile</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>Username:</th>
+        <th id="editCurrentUsername"></th>
+      </tr>
+      <tr>
+        <th>Name:</th>
+        <th><input type="text" id="editCurrentName" name="name" value="" placeholder="Name"/></th>
+      </tr>
+      <tr>
+        <th>Gravatar account (Mail):</th>
+        <th><input type="text" id="editCurrentUserProfileImg" name="img" value="" placeholder="myAccount@gravatar.com"/></th>
+        <th class="tooltipInfoTh">
+          <div>
+            <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left"
+               title="Mailaddress or its md5 representation of your gravatar account. The address will be converted into a md5 string. Only the md5 string will be stored, not the mailaddress.">
+              <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+            </a>
+          </div>
+        </th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="callEditUserPassword" class="button-danger pull-right">Change Password</button>
+    <button id="submitEditCurrentUserProfile" class="button-success pull-right">Save</button>
+  </div>
+</div>
+
+<div id="editUserPasswordModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Edit User Password</a>
+  </div>
+
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th>Old Password:</th>
+        <th><input type="password" id="oldCurrentPassword" name="oldPassword" value="" placeholder="old password"/></th>
+      </tr>
+      <tr>
+        <th>New Password:</th>
+        <th><input type="password" id="newCurrentPassword" name="newPassword" value="" placeholder="new password"/></th>
+      </tr>
+      <tr>
+        <th>Confirm New Password:</th>
+        <th><input type="password" id="confirmCurrentPassword" name="confirmPassword" value="" placeholder="confirm password"/></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="submitEditUserPassword" class="button-success pull-right">Save</button>
+  </div>
+</div>
+
+
 </script>
