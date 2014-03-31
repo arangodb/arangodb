@@ -1636,9 +1636,10 @@ process_char:
         case 127:   /* backspace */
         case ctrl('H'):
           eraseEol(current);
-            if (remove_char(current, current->pos - 1) == 1) {
+//            if (remove_char(current, current->pos - 1) == 1) {
+                remove_char(current, current->pos - 1);
                 refreshLine(current->prompt, current);
-            }
+//            }
             break;
         case ctrl('D'):     /* ctrl-d */
             if (current->len == 0) {
@@ -1894,9 +1895,10 @@ history_navigation:
             /* Only tab is allowed without ^V */
             if (c == '\t' || c >= ' ') {
               eraseEol(current);
-                if (insert_char(current, current->pos, c) == 1) {
-                    refreshLine(current->prompt, current);
-                }
+//                if (insert_char(current, current->pos, c) == 1) {
+                insert_char(current, current->pos, c); 
+                refreshLine(current->prompt, current);
+//                }
             }
             break;
         }
