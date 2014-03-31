@@ -294,6 +294,11 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   uint64_t i, j;
   void* old;
 
+  // if we were adding and the table is more than half full, extend it
+  if (array->_nrAlloc < 2 * array->_nrUsed) {
+    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
+  }
+
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
@@ -370,11 +375,6 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[array->_table[j].next].prev = i;
   }
   array->_nrUsed++;
-
-  // if we were adding and the table is more than half full, extend it
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
-  }
 
   return NULL;
 }
@@ -508,13 +508,14 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
 
   array->_nrAlloc = TRI_NextPrime((uint64_t) size);
   array->_table_alloc = TRI_Allocate(array->_memoryZone, 
-                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t), true);
+                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
   array->_table = (TRI_multi_pointer_entry_t*) 
                   (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
     array->_table = oldTable;
+    array->_table_alloc = oldTable_alloc;
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
