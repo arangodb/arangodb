@@ -195,6 +195,7 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
 static void initLinenoiseLine(struct current *current);
 static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
 static int next_allowed_x(size_t pos, int cols, int pchars);
+static void setCursorPosXY(struct current *current, int x, int y);
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -1124,6 +1125,8 @@ refreshMultiLine(prompt, current);return;
 static void showBuffer(struct current * current, size_t pchars) {
     const char *buf = current->buf;
     size_t buf_len = strlen(buf);
+    outputChars(current, buf, buf_len);
+    return;
     /**
      * number of additional lines for displaying
      * the complete buffer
@@ -1165,24 +1168,26 @@ static void refreshMultiLine(const char *prompt, struct current *current)
     /* Cursor to left edge, then the prompt */
     // cursorToLeft(current);
     setCursorPos(current, 0);
+    fd_printf(current->fd, "\x1b[s");
     outputChars(current, prompt, plen);
 
     /**
      * show the buffer
      */
     showBuffer(current, pchars);
+    fd_printf(current->fd, "\x1b[u");
 
     int x = next_allowed_x(current->pos, current->cols, pchars);
+    /**
+     * y is the relative position of the line
+     */
+    int y = new_line_numbers(current->pos, current->cols, pchars);
     /* move cursor to: */
     if(x == 0) { 
-      /* go to begin of next line in the way:*/
-      /* go to next row (1B)
-       * and the go to first col (current->cols D)
-       */ 
-      fd_printf(current->fd, "\x1b[1B\x1b[%dD", current->cols);
+      setCursorPosXY(current, x, y);
     } else {
       /* next next character after current->pos */
-      setCursorPos(current, x+1);
+      setCursorPosXY(current, x+1, y);
     }
 }
 #endif
@@ -1208,6 +1213,8 @@ static int next_allowed_x(size_t pos, int cols, int pchars)
     return (pos - (cols - pchars)) % (cols);
   }
 }
+
+
 #ifdef USE_WINCONSOLE
 static void setCursorPosXY(struct current *current, int x, int y)
 {
@@ -1305,6 +1312,14 @@ static void refreshLine(const char *prompt, struct current *current)
   }
 
   setCursorPosXY(current, new_x, new_y);
+}
+#else 
+static void setCursorPosXY(struct current *current, int x, int y) {
+    if(y>0) {
+      fd_printf(current->fd, "\x1b[%dG\x1b[%dB", x, y);
+    } else {
+      fd_printf(current->fd, "\x1b[%dG", x);
+    }
 }
 #endif
 
@@ -1869,9 +1884,8 @@ history_navigation:
             break;
         case ctrl('U'): /* Ctrl+u, delete to beginning of line, save deleted chars. */
           eraseEol(current);
-          if (remove_chars(current, 0, current->pos)) {
-                refreshLine(current->prompt, current);
-            }
+            remove_chars(current, 0, current->pos);
+            refreshLine(current->prompt, current);
             break;
         case ctrl('K'): /* Ctrl+k, delete from current to end of line, save deleted chars. */
           eraseEol(current);
