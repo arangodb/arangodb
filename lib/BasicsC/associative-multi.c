@@ -91,10 +91,9 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrAdds = 0;
   array->_nrRems = 0;
   array->_nrResizes = 0;
+  array->_nrProbes = 0;
   array->_nrProbesF = 0;
-  array->_nrProbesA = 0;
   array->_nrProbesD = 0;
-  array->_nrProbesR = 0;
 #endif
 
   return TRI_ERROR_NO_ERROR;
@@ -123,9 +122,6 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-//uint64_t ALL_HASH_ADDS = 0;
-//uint64_t ALL_HASH_COLLS = 0;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find an element or its place using the element hash function
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,9 +147,8 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
           ! array->isEqualElementElement(array, element, 
                                                 array->_table[i].ptr, false))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
-    //ALL_HASH_COLLS++;
 #ifdef TRI_INTERNAL_STATS
-    array->_nrProbesA++;
+    array->_nrProbes++;
 #endif
   }
   return i;
@@ -183,9 +178,8 @@ static uint64_t LookupByElement (TRI_multi_pointer_t* array,
                                                 array->_table[i].ptr, true))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
-    array->_nrProbesF++;
+    array->_nrProbes++;
 #endif
-    //ALL_HASH_COLLS++;
   }
 
   if (array->_table[i].ptr != NULL) {
@@ -271,6 +265,9 @@ static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
       i = j;  // Now heal this hole at j, j will be incremented right away
     }
     j = TRI_IncModU64(j, array->_nrAlloc);
+#ifdef TRI_INTERNAL_STATS
+    array->_nrProbesD++;
+#endif
   }
 }
 
@@ -297,7 +294,10 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   uint64_t i, j;
   void* old;
 
-  //ALL_HASH_ADDS++;
+  // if we were adding and the table is more than half full, extend it
+  if (array->_nrAlloc < 2 * array->_nrUsed) {
+    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
+  }
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -324,7 +324,11 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
                                                 array->_table[i].ptr,true) ||
           array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
-    //ALL_HASH_COLLS++;
+#ifdef TRI_INTERNAL_STATS
+  // update statistics
+    array->_ProbesA++;
+#endif
+
   }
 
   // If this is free, we are the first with this key:
@@ -371,11 +375,6 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[array->_table[j].next].prev = i;
   }
   array->_nrUsed++;
-
-  // if we were adding and the table is more than half full, extend it
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
-  }
 
   return NULL;
 }
@@ -509,13 +508,14 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
 
   array->_nrAlloc = TRI_NextPrime((uint64_t) size);
   array->_table_alloc = TRI_Allocate(array->_memoryZone, 
-                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t), true);
+                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
   array->_table = (TRI_multi_pointer_entry_t*) 
                   (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
     array->_table = oldTable;
+    array->_table_alloc = oldTable_alloc;
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
