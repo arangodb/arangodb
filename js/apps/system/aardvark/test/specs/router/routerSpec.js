@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, arangoHelper, afterEach, it, console, spyOn, expect*/
 /*global $, jasmine, _*/
 
 (function () {
@@ -89,12 +89,12 @@
                 id: "statisticsDescription",
                 fetch: function () {
                 }
-            }
+            };
             statisticsCollectionDummy = {
                 id: "statisticsCollection",
                 fetch: function () {
                 }
-            }
+            };
             fakeDB = {
                 id: "fakeDB",
                 fetch: function () {
@@ -150,14 +150,15 @@
 
             spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
             spyOn(window, "DocumentView").andReturn(documentViewDummy);
-            ;
             spyOn(window, "arangoCollections").andReturn(storeDummy);
             spyOn(window, "ArangoUsers").andReturn(sessionDummy);
             spyOn(window, "arangoDocuments").andReturn(documentsDummy);
             spyOn(window, "arangoDocument").andReturn(documentDummy);
             spyOn(window, "GraphCollection").andReturn(graphsDummy);
             spyOn(window, "FoxxCollection").andReturn(foxxDummy);
-            spyOn(window, "StatisticsDescriptionCollection").andReturn(statisticsDescriptionCollectionDummy);
+            spyOn(window, "StatisticsDescriptionCollection").andReturn(
+                statisticsDescriptionCollectionDummy
+            );
             spyOn(window, "StatisticsCollection").andReturn(statisticsCollectionDummy);
             spyOn(window, "CollectionsView").andReturn(collectionsViewDummy);
             spyOn(window, "LogsView").andReturn(logsViewDummy);
@@ -275,7 +276,9 @@
 
             beforeEach(function () {
                 r = new window.Router();
-                simpleNavigationCheck = function (url, viewName, navTo, initObject, funcList, shouldNotRender, shouldNotCache) {
+                simpleNavigationCheck =
+                    function (url, viewName, navTo, initObject,
+                              funcList, shouldNotRender, shouldNotCache) {
                     var route,
                         view = {},
                         checkFuncExec = function () {
@@ -419,8 +422,6 @@
                             return msg;
                         };
                         return true;
-                        return leftDiff.length === 0
-                            && rightDiff.length === 0;
                     }
                 });
                 expect(available).toDefineTheRoutes(expected);
@@ -881,44 +882,46 @@
 
             });
 
-            it("initVersionCheck with installed Version 2.0.1, latest 2.0.1, stablee 2.0.1", function () {
-                spyOn(window, "setTimeout").andCallFake(function (a, int) {
-                    if (int === 5000) {
-                        a();
-                    }
-                });
-                spyOn($, "ajax").andCallFake(function (opt) {
-                    expect(opt.url).toEqual(
-                        "https://www.arangodb.org/repositories/versions." +
-                            "php?callback=parseVersions");
-                    expect(opt.dataType).toEqual("jsonp");
-                    expect(opt.crossDomain).toEqual(true);
-                    expect(opt.async).toEqual(true);
-                    opt.success({
-                            "1.4": {"stable": false, "versions": {
-                                "1.4.7": {"changes": "https:\/\/www.arangodb.org\/1.4.7"},
-                                "1.4.8": {"changes": "https:\/\/www.arangodb.org\/1.4.8"}}
-                            },
-                            "1.5": {"stable": false, "versions": {
-                                "1.5.0": {"changes": "https:\/\/www.arangodb.org\/1.5"},
-                                "1.5.1": {"changes": "https:\/\/www.arangodb.org\/1.5"}
-                            }
-                            },
-                            "2.0": {"stable": true, "versions": {
-                                "2.0.0": {"changes": "https:\/\/www.arangodb.org\/2.0"},
-                                "2.0.1": {"changes": "https:\/\/www.arangodb.org\/2.0.1"}
-                            }
-                            }
+            it("initVersionCheck with installed Version 2.0.1, latest 2.0.1, stablee 2.0.1",
+                function () {
+                    spyOn(window, "setTimeout").andCallFake(function (a, int) {
+                        if (int === 5000) {
+                            a();
                         }
-                    );
+                    });
+                    spyOn($, "ajax").andCallFake(function (opt) {
+                        expect(opt.url).toEqual(
+                            "https://www.arangodb.org/repositories/versions." +
+                                "php?callback=parseVersions");
+                        expect(opt.dataType).toEqual("jsonp");
+                        expect(opt.crossDomain).toEqual(true);
+                        expect(opt.async).toEqual(true);
+                        opt.success({
+                                "1.4": {"stable": false, "versions": {
+                                    "1.4.7": {"changes": "https:\/\/www.arangodb.org\/1.4.7"},
+                                    "1.4.8": {"changes": "https:\/\/www.arangodb.org\/1.4.8"}}
+                                },
+                                "1.5": {"stable": false, "versions": {
+                                    "1.5.0": {"changes": "https:\/\/www.arangodb.org\/1.5"},
+                                    "1.5.1": {"changes": "https:\/\/www.arangodb.org\/1.5"}
+                                }
+                                },
+                                "2.0": {"stable": true, "versions": {
+                                    "2.0.0": {"changes": "https:\/\/www.arangodb.org\/2.0"},
+                                    "2.0.1": {"changes": "https:\/\/www.arangodb.org\/2.0.1"}
+                                }
+                                }
+                            }
+                        );
+                    });
+                    footerDummy.system.version = "2.0.1";
+                    spyOn(arangoHelper, "arangoNotification");
+                    r.initVersionCheck();
+                    expect(arangoHelper.arangoNotification).not.toHaveBeenCalled();
                 });
-                footerDummy.system.version = "2.0.1";
-                spyOn(arangoHelper, "arangoNotification");
-                r.initVersionCheck();
-                expect(arangoHelper.arangoNotification).not.toHaveBeenCalled();
-            });
 
-            it("initVersionCheck with installed Version 1.4.5, latest 2.0.1, stable 2.0.1", function () {
+            it("initVersionCheck with installed Version 1.4.5, " +
+                "latest 2.0.1, stable 2.0.1", function () {
                 spyOn(window, "setTimeout").andCallFake(function (a, int) {
                     if (int === 5000) {
                         a();
@@ -957,50 +960,53 @@
                 spyOn(arangoHelper, "arangoNotification");
                 r.initVersionCheck();
                 var changes = "https:\/\/www.arangodb.org\/2.0.1";
-                expect(arangoHelper.arangoNotification).toHaveBeenCalledWith("A newer version of ArangoDB (2.0.1" +
-                    ") has become available. You may want to check the " +
-                    "changelog at <a href=\"" + changes + "\">" +
-                    changes + "</a>", 15000);
+                expect(arangoHelper.arangoNotification).toHaveBeenCalledWith(
+                    "A newer version of ArangoDB (2.0.1" +
+                        ") has become available. You may want to check the " +
+                        "changelog at <a href=\"" + changes + "\">" +
+                        changes + "</a>", 15000);
             });
 
-            it("initVersionCheck with installed Version 2.0.0, latest 2.0.2, stable 2.0.1", function () {
-                spyOn(window, "setTimeout").andCallFake(function (a, int) {
-                    if (int === 5000) {
-                        a();
-                    }
-                });
-                spyOn($, "ajax").andCallFake(function (opt) {
-                    expect(opt.url).toEqual(
-                        "https://www.arangodb.org/repositories/versions." +
-                            "php?callback=parseVersions");
-                    expect(opt.dataType).toEqual("jsonp");
-                    expect(opt.crossDomain).toEqual(true);
-                    expect(opt.async).toEqual(true);
-                    opt.success({
-                            "2.0": {stable: false,
-                                versions: {
-                                    "2.0.0": {changes: "https:\/\/www.arangodb.org\/2.0.0"},
-                                    "2.0.1": {changes: "https:\/\/www.arangodb.org\/2.0.1"}
-                                }
-                            },
-                            "2.1": {stable: true,
-                                versions: {
-                                    "2.1.0": {changes: "https:\/\/www.arangodb.org\/2.1.0"},
-                                    "2.1.1": {changes: "https:\/\/www.arangodb.org\/2.1.1"}
+            it("initVersionCheck with installed Version 2.0.0, latest 2.0.2, stable 2.0.1",
+                function () {
+                    spyOn(window, "setTimeout").andCallFake(function (a, int) {
+                        if (int === 5000) {
+                            a();
+                        }
+                    });
+                    spyOn($, "ajax").andCallFake(function (opt) {
+                        expect(opt.url).toEqual(
+                            "https://www.arangodb.org/repositories/versions." +
+                                "php?callback=parseVersions");
+                        expect(opt.dataType).toEqual("jsonp");
+                        expect(opt.crossDomain).toEqual(true);
+                        expect(opt.async).toEqual(true);
+                        opt.success({
+                                "2.0": {stable: false,
+                                    versions: {
+                                        "2.0.0": {changes: "https:\/\/www.arangodb.org\/2.0.0"},
+                                        "2.0.1": {changes: "https:\/\/www.arangodb.org\/2.0.1"}
+                                    }
+                                },
+                                "2.1": {stable: true,
+                                    versions: {
+                                        "2.1.0": {changes: "https:\/\/www.arangodb.org\/2.1.0"},
+                                        "2.1.1": {changes: "https:\/\/www.arangodb.org\/2.1.1"}
+                                    }
                                 }
                             }
-                        }
-                    );
+                        );
+                    });
+                    footerDummy.system.version = "2.1.0";
+                    spyOn(arangoHelper, "arangoNotification");
+                    r.initVersionCheck();
+                    var changes = "https:\/\/www.arangodb.org\/2.1.1";
+                    expect(arangoHelper.arangoNotification).toHaveBeenCalledWith(
+                        "A newer version of ArangoDB (2.1.1" +
+                            ") has become available. You may want to check the " +
+                            "changelog at <a href=\"" + changes + "\">" +
+                            changes + "</a>", 15000);
                 });
-                footerDummy.system.version = "2.1.0";
-                spyOn(arangoHelper, "arangoNotification");
-                r.initVersionCheck();
-                var changes = "https:\/\/www.arangodb.org\/2.1.1";
-                expect(arangoHelper.arangoNotification).toHaveBeenCalledWith("A newer version of ArangoDB (2.1.1" +
-                    ") has become available. You may want to check the " +
-                    "changelog at <a href=\"" + changes + "\">" +
-                    changes + "</a>", 15000);
-            });
 
 
             it("initVersionCheck with error", function () {
