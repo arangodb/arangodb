@@ -1874,11 +1874,13 @@ history_navigation:
             break;
         case ctrl('A'): /* Ctrl+a, go to the start of the line */
         case SPECIAL_HOME:
+            eraseEol(current);
             current->pos = 0;
             refreshLine(current->prompt, current);
             break;
         case ctrl('E'): /* ctrl+e, go to the end of the line */
         case SPECIAL_END:
+            eraseEol(current);
             current->pos = current->chars;
             refreshLine(current->prompt, current);
             break;
