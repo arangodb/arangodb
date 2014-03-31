@@ -354,7 +354,7 @@ static void eraseEol(struct current *current)
      */ 
     size_t number_lines = new_line_numbers(current->chars, current->cols, pchars);
 
-    int i;
+    size_t i;
    /**
     * save original cursor position
     */   
@@ -956,8 +956,8 @@ static int get_char(struct current *current, size_t pos)
 static void displayItems(const struct linenoiseCompletions * lc, struct current *current, int max_len)
 { 
   size_t wcols = current->cols; 
-  int cols = max_len > wcols ? 1 : wcols/(max_len+2);
-  int rows = (int)ceil((float)lc->len/cols);
+  size_t cols = max_len > wcols ? 1 : wcols/(max_len+2);
+  size_t rows = (int)ceil((float)lc->len/cols);
   int i, j;
   size_t idx;
    const char * row_content;
@@ -1174,9 +1174,12 @@ static void refreshMultiLine(const char *prompt, struct current *current)
 
     int x = next_allowed_x(current->pos, current->cols, pchars);
     /* move cursor to: */
-    if(x == current->cols-1) { 
-      /* next line */
-      fd_printf(current->fd, "\x1b[1E");
+    if(x == 0) { 
+      /* go to begin of next line in the way:*/
+      /* go to next row (1B)
+       * and the go to first col (current->cols D)
+       */ 
+      fd_printf(current->fd, "\x1b[1B\x1b[%dD", current->cols);
     } else {
       /* next next character after current->pos */
       setCursorPos(current, x+1);
@@ -1661,9 +1664,9 @@ process_char:
         case ctrl('W'):    /* ctrl-w, delete word at left. save deleted chars */
             /* eat any spaces on the left */
         {   
+                eraseEol(current);
                 size_t pos = current->pos;
                 current->pos = current->chars;
-                eraseEol(current);
                 current->pos = pos;
                 while (pos > 0 && get_char(current, pos - 1) == ' ') {
                     pos--;
