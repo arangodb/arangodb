@@ -3,79 +3,79 @@
 
 filesJSON = require("./files.json");
 
-module.exports = function (karma) {
+module.exports = function(karma) {
 
-    karma.set({
+  karma.set({
 
-        // base path, that will be used to resolve files and exclude
-        basePath: '../../',
-
-
-        // frameworks to use
-        //frameworks: ['jasmine', 'junit-reporter'],
-        frameworks: ['jasmine'],
+    // base path, that will be used to resolve files and exclude
+    basePath: '../../',
 
 
-        // list of files / patterns to load in the browser
-
-        files: filesJSON.files,
-
-        // list of files to exclude
-        exclude: [
-
-        ],
-
-        preprocessors: {
-            'test/karma/files.json': ['html2js'],
-            'frontend/js/**/**.js': ['coverage'],
-            'clusterFrontend/js/**/**.js': ['coverage']
-        },
-
-        // test results reporter to use
-        // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
-        reporters: ['dots', 'coverage'],
-
-        coverageReporter: {
-            type: 'cobertura',
-            dir: 'coverage/'
-        },
-
-        // web server port
-        port: 9876,
+    // frameworks to use
+    //frameworks: ['jasmine', 'junit-reporter'],
+    frameworks: ['jasmine'],
 
 
-        // cli runner port
-        runnerPort: 9100,
+    // list of files / patterns to load in the browser
 
-        // enable / disable colors in the output (reporters and logs)
-        colors: false,
+    files: filesJSON.files,
 
+    // list of files to exclude
+    exclude: [
 
-        // level of logging
-        // possible values: karma.LOG_DISABLE || karma.LOG_ERROR || karma.LOG_WARN || karma.LOG_INFO || karma.LOG_DEBUG
-        logLevel: karma.LOG_INFO,
+    ],
 
+    preprocessors: {
+      'test/karma/files.json': ['html2js'],
+      'frontend/js/**/**.js': ['coverage'],
+      'clusterFrontend/js/**/**.js': ['coverage']
+    },
 
-        // enable / disable watching file and executing tests whenever any file changes
-        autoWatch: false,
+    // test results reporter to use
+    // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
+    reporters: ['dots', 'coverage'],
 
+    coverageReporter: {
+      type : 'cobertura',
+      dir : 'coverage/'
+    },
 
-        // Start these browsers, currently available:
-        // - Chrome
-        // - ChromeCanary
-        // - Firefox
-        // - Opera
-        // - Safari (only Mac)
-        // - PhantomJS
-        // - IE (only Windows)
-        browsers: ["PhantomJS"],
-
-        // If browser does not capture in given timeout [ms], kill it
-        captureTimeout: 60000,
+    // web server port
+    port: 9876,
 
 
-        // Continuous Integration mode
-        // if true, it capture browsers, run tests and exit
-        singleRun: true
-    });
+    // cli runner port
+    runnerPort: 9100,
+
+    // enable / disable colors in the output (reporters and logs)
+    colors: false,
+
+
+    // level of logging
+    // possible values: karma.LOG_DISABLE || karma.LOG_ERROR || karma.LOG_WARN || karma.LOG_INFO || karma.LOG_DEBUG
+    logLevel: karma.LOG_INFO,
+
+
+    // enable / disable watching file and executing tests whenever any file changes
+    autoWatch: false,
+
+
+    // Start these browsers, currently available:
+    // - Chrome
+    // - ChromeCanary
+    // - Firefox
+    // - Opera
+    // - Safari (only Mac)
+    // - PhantomJS
+    // - IE (only Windows)
+    browsers: ["PhantomJS"],
+
+    // If browser does not capture in given timeout [ms], kill it
+    captureTimeout: 60000,
+
+
+    // Continuous Integration mode
+    // if true, it capture browsers, run tests and exit
+    singleRun: true
+  });
 };
