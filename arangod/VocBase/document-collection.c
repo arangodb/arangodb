@@ -3741,7 +3741,9 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end;
   void** ptr;
   int res;
-  // double starttime;
+  //double starttime;
+  //extern uint64_t ALL_HASH_ADDS;
+  //extern uint64_t ALL_HASH_COLLS;
 
   primary = &document->base;
 
@@ -3755,9 +3757,7 @@ static int FillIndex (TRI_document_collection_t* document,
   }
 
 
-  // starttime = TRI_microtime();
-  //printf("FillIndex _iid=%llu start time: %f\n",(unsigned long long) idx->_iid,
-  //       starttime);
+  //starttime = TRI_microtime();
   inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
@@ -3786,6 +3786,8 @@ static int FillIndex (TRI_document_collection_t* document,
   }
   //printf("FillIndex _iid=%llu time spent: %f\n",(unsigned long long) idx->_iid,
   //       TRI_microtime()-starttime);
+
+  //printf("FillIndex adds=%llu colls=%llu\n",(unsigned long long) ALL_HASH_ADDS, (unsigned long long) ALL_HASH_COLLS);
 
   return TRI_ERROR_NO_ERROR;
 }

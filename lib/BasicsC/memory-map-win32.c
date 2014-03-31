@@ -277,7 +277,7 @@ int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, int fileDescrip
 int TRI_ProtectMMFile(void* memoryAddress,  size_t numOfBytesToProtect, int flags, int fileDescriptor, void** mmHandle) {
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection   = FILE_MAP_READ;
-  LARGE_INTEGER mmLength;
+//  LARGE_INTEGER mmLength;
 
 
   // ...........................................................................

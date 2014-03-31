@@ -12,9 +12,7 @@
 
     events: {
       "click #profileContent" : "editUserProfile",
-      "click #callEditUserPassword" : "editUserPassword",
-      "click #submitEditUserProfile" : "submitEditUserProfile",
-      "click #submitEditUserPassword" : "submitEditUserPassword"
+      "click #submitEditUserProfile" : "submitEditUserProfile"
     },
 
     initialize: function() {
@@ -74,52 +72,6 @@
       });
     },
 
-    editUserPassword : function () {
-      this.hideModal('#editUserProfileModal');
-      this.showModal('#editUserPasswordModal');
-    },
-
-    submitEditUserPassword : function () {
-      var self        = this,
-        oldPasswd     = $('#oldPassword').val(),
-        newPasswd     = $('#newPassword').val(),
-        confirmPasswd = $('#confirmPassword').val();
-      $('#oldPassword').val('');
-      $('#newPassword').val('');
-      $('#confirmPassword').val('');
-
-      //check input
-      //clear all "errors"
-      $('#oldPassword').closest("th").css("backgroundColor", "white");
-      $('#newPassword').closest("th").css("backgroundColor", "white");
-      $('#confirmPassword').closest("th").css("backgroundColor", "white");
-
-
-      //check
-      var hasError = false;
-      //Check old password
-      if (!this.validateCurrentPassword(oldPasswd)) {
-        $('#oldPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check confirmation
-      if (newPasswd !== confirmPasswd) {
-        $('#confirmPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check new password
-      if (!this.validatePassword(newPasswd)) {
-        $('#newPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-
-      if (hasError) {
-        return;
-      }
-      this.user.setPassword(newPasswd);
-//      this.showModal('#editUserProfileModal');
-      this.hideModal('#editUserPasswordModal');
-    },
 
 
     showModal: function(dialog) {
@@ -130,22 +82,6 @@
       $(dialog).modal('hide');
     },
 
-    parseImgString : function(img) {
-      //if already md5
-      if (img.indexOf("@") === -1) {
-        return img;
-      }
-      //else generate md5
-      return CryptoJS.MD5(img).toString();
-    },
-
-    validateCurrentPassword : function (pwd) {
-      return this.user.checkPassword(pwd);
-    },
-
-    validatePassword : function (pwd) {
-        return true;
-    },
 
     getAvatarSource: function(img) {
       var result = '<img src="';

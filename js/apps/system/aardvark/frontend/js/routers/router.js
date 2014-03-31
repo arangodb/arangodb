@@ -181,8 +181,7 @@
                         ") has become available. You may want to check the " +
                         "changelog at <a href=\"" + update.changes + "\">" + 
                         update.changes + "</a>";
-              arangoHelper.arangoNotification(msg, 15000);
-
+              // arangoHelper.arangoNotification(msg, 15000);
             }
           },
           error: function () {  
@@ -456,10 +455,20 @@
           collection: window.userCollection
         });
       }
-      this.userManagementView.render();
+      this.userManagementView.render(false);
       this.naviView.selectMenuItem('tools-menu');
     },
 
+    userProfile: function() {
+      if (!this.userManagementView) {
+        this.userManagementView = new window.userManagementView({
+          collection: window.userCollection
+        });
+      }
+      this.userManagementView.render(true);
+      this.naviView.selectMenuItem('tools-menu');
+    }
+/*
     userProfile: function() {
       if (!this.userProfileView) {
         this.userProfileView = new window.userProfileView({
@@ -469,6 +478,7 @@
       this.userProfileView.render();
       this.naviView.selectMenuItem('user-menu');
     }
+*/
 
   });
 

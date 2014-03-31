@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
 #include "VocBase/datafile.h"
+#include "VocBase/marker.h"
 
 namespace triagens {
   namespace wal {
@@ -97,23 +98,34 @@ namespace triagens {
         ~Logfile ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* create (std::string const&,
-                              Logfile::IdType,
-                              uint32_t);
+      static Logfile* createNew (std::string const&,
+                                 Logfile::IdType,
+                                 uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open an existing logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* open (std::string const&,
-                            Logfile::IdType);
+      static Logfile* openExisting (std::string const&,
+                                    Logfile::IdType,
+                                    bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a logfile is empty
+////////////////////////////////////////////////////////////////////////////////
+
+      static int judge (std::string const&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the datafile pointer
@@ -164,7 +176,7 @@ namespace triagens {
           return 0;
         }
 
-        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize);
+        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize - overhead());
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +200,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool isSealed () const {
-        return (_status == StatusType::SEALED ||
+        return (_status == StatusType::SEAL_REQUESTED ||
+                _status == StatusType::SEALED ||
                 _status == StatusType::COLLECTION_REQUESTED ||
                 _status == StatusType::COLLECTED);
       }
@@ -289,10 +302,22 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seal the logfile
+/// @brief reserve space and update the current write position
 ////////////////////////////////////////////////////////////////////////////////
 
-      int seal ();
+      char* reserve (size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a header marker
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_df_header_marker_t getHeaderMarker () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a footer marker
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_df_footer_marker_t getFooterMarker () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
