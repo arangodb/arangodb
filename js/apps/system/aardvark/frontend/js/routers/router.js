@@ -40,15 +40,15 @@
     },
 
     initialize: function () {
-      self = this;
       this.bind('all', function(trigger, args) {
+          var routeData = trigger.split(":");
           if (trigger === "route") {
-              if (self.currentRoute === "dashboard" && self.dashboardView) {
-                  self.dashboardView.stopUpdating();
+              if (this.currentRoute === "dashboard" && this.dashboardView) {
+                this.dashboardView.stopUpdating();
               } else if (args === "dashboard") {
-                delete self.dashboardView;
+                delete this.dashboardView;
               }
-              self.currentRoute = args;
+              this.currentRoute = args;
           }
       });
       this.graphs = new window.GraphCollection();
@@ -112,7 +112,7 @@
 
       var self = this;
       var versionCheck = function () {
-      $.ajax({
+        $.ajax({ 
           async: true,
           crossDomain: true,
           dataType: "jsonp",
@@ -127,6 +127,7 @@
  
             // get our mainline version
             var mainLine = window.versionHelper.toStringMainLine(currentVersion);
+            
             var mainLines = Object.keys(json).sort(window.versionHelper.compareVersionStrings);
             var latestMainLine;
             mainLines.forEach(function (l) {
@@ -141,7 +142,7 @@
             var mainLineVersions;
             var latest;
             if (latestMainLine !== undefined &&
-                   Object.keys(latestMainLine.versions).length > 0) {
+                Object.keys(latestMainLine.versions.length > 0)) {
               mainLineVersions = Object.keys(latestMainLine.versions);
               mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
               latest = mainLineVersions[mainLineVersions.length - 1];
@@ -152,8 +153,9 @@
                 changes: latestMainLine.versions[latest].changes
               }; 
             }
+
             // check which stable mainline versions are available remotely
-            if (update === undefined &&
+            if (update === undefined && 
                 json.hasOwnProperty(mainLine) && 
                 json[mainLine].stable &&
                 json[mainLine].hasOwnProperty("versions") &&
@@ -340,11 +342,11 @@
           async:false
         });
       }
-      if (this.statisticsCollection === undefined) {
+      if (this.statistics === undefined) {
         this.statisticsCollection = new window.StatisticsCollection();
       }
       if (this.dashboardView === undefined) {
-        this.dashboardView = new window.dashboardView ({
+        this.dashboardView = new dashboardView({
           collection: this.statisticsCollection,
           description: this.statisticsDescriptionCollection,
           documentStore: window.arangoDocumentsStore,
@@ -438,12 +440,20 @@
           this.dashboardView.resize();
       }
       var oldWidth = $('#content').width();
-
       var containerWidth = $(window).width() - 70;
+      /*var spanWidth = 242;*/
       var spanWidth = 243;
       var divider = containerWidth / spanWidth;
       var roundDiv = parseInt(divider, 10);
       var newWidth = roundDiv*spanWidth -2;
+      var marginWidth = ((containerWidth+30) - newWidth)/2;
+      /*
+      $('#content').width(newWidth)
+      .css('margin-left', marginWidth)
+      .css('margin-right', marginWidth);
+      */
+      // $('.footer-right p').css('margin-right', marginWidth + 20);
+      // $('.footer-left p').css('margin-left', marginWidth + 20);
       if (newWidth !== oldWidth) {
         this.graphView.handleResize(newWidth);
       }
