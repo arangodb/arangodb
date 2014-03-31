@@ -40,15 +40,16 @@
     },
 
     initialize: function () {
+      var self = this;
       this.bind('all', function(trigger, args) {
           var routeData = trigger.split(":");
           if (trigger === "route") {
-              if (this.currentRoute === "dashboard" && this.dashboardView) {
-                this.dashboardView.stopUpdating();
+              if (self.currentRoute === "dashboard" && self.dashboardView) {
+                  self.dashboardView.stopUpdating();
               } else if (args === "dashboard") {
-                delete this.dashboardView;
+                delete self.dashboardView;
               }
-              this.currentRoute = args;
+              self.currentRoute = args;
           }
       });
       this.graphs = new window.GraphCollection();
@@ -142,7 +143,7 @@
             var mainLineVersions;
             var latest;
             if (latestMainLine !== undefined &&
-                Object.keys(latestMainLine.versions.length > 0)) {
+                Object.keys(latestMainLine.versions).length > 0) {
               mainLineVersions = Object.keys(latestMainLine.versions);
               mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
               latest = mainLineVersions[mainLineVersions.length - 1];
@@ -183,7 +184,8 @@
                         ") has become available. You may want to check the " +
                         "changelog at <a href=\"" + update.changes + "\">" + 
                         update.changes + "</a>";
-              // arangoHelper.arangoNotification(msg, 15000);
+              arangoHelper.arangoNotification(msg, 15000);
+
             }
           },
           error: function () {  
@@ -465,20 +467,10 @@
           collection: window.userCollection
         });
       }
-      this.userManagementView.render(false);
+      this.userManagementView.render();
       this.naviView.selectMenuItem('tools-menu');
     },
 
-    userProfile: function() {
-      if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
-          collection: window.userCollection
-        });
-      }
-      this.userManagementView.render(true);
-      this.naviView.selectMenuItem('tools-menu');
-    }
-/*
     userProfile: function() {
       if (!this.userProfileView) {
         this.userProfileView = new window.userProfileView({
@@ -488,7 +480,6 @@
       this.userProfileView.render();
       this.naviView.selectMenuItem('user-menu');
     }
-*/
 
   });
 
