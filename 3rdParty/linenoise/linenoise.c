@@ -1569,10 +1569,7 @@ static void moveCursorToRight(struct current * current) {
 #else
 static void moveCursorToLeft(struct current * current) {
    size_t pchars = 20;
-   int x = next_allowed_x(current->pos, current->cols, pchars);
-   if(current->pos==0) {
-           return;
-   } 
+   int x = next_allowed_x(current->pos + 1, current->cols, pchars);
    if(x==0) {
       fd_printf(current->fd, "\x1b[1A\x1b[%dG", current->cols);
    } else {
@@ -1581,8 +1578,8 @@ static void moveCursorToLeft(struct current * current) {
 }
 static void moveCursorToRight(struct current * current) {
    size_t pchars = 20;
-   int x = next_allowed_x(current->pos, current->cols, pchars);
-   if(current->pos>=current->chars) {
+   int x = next_allowed_x(current->pos-1, current->cols, pchars);
+   if(current->pos>current->chars) {
            return;
    } 
    if(x==current->cols-1) {
