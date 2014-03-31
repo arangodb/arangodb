@@ -42,6 +42,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/csv.c \
 	lib/BasicsC/debugging.c \
 	lib/BasicsC/error.c \
+	lib/BasicsC/fasthash.c \
 	lib/BasicsC/files.c \
 	lib/BasicsC/hashes.c \
 	lib/BasicsC/init.c \
@@ -71,6 +72,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/BasicsC/voc-mimetypes.c \
+	lib/BasicsC/xxhash.c \
 	lib/BasicsC/tri-zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/ProgramOptions/program-options.c \
