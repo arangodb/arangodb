@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE (tst_init) {
 /// @brief test unique insertion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_insert_many_keys) {
+BOOST_AUTO_TEST_CASE (tst_insert_few) {
   INIT_MULTI
 
   void* r = 0;
@@ -156,13 +156,15 @@ BOOST_AUTO_TEST_CASE (tst_insert_many_keys) {
   DESTROY_MULTI
 }
 
-#define NUMBER_OF_ELEMENTS 100
-#define MODULUS 10
+// Note MODULUS must be a divisor of NUMBER_OF_ELEMENTS
+// and NUMBER_OF_ELEMENTS must be a multiple of 3.
+#define NUMBER_OF_ELEMENTS 24
+#define MODULUS 4
 
-BOOST_AUTO_TEST_CASE (tst_insert_key_unique) {
+BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   INIT_MULTI
 
-  int i;
+  unsigned int i, j;
   ELEMENT(e, 0, 0);
   vector<data_container_t*> v;
 
@@ -192,9 +194,41 @@ BOOST_AUTO_TEST_CASE (tst_insert_key_unique) {
   
   // Now check by key:
   TRI_vector_pointer_t res;
+
   for (i = 0;i < MODULUS;i++) {
-    
+    int* space = static_cast<int*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                                    sizeof(int) * NUMBER_OF_ELEMENTS / MODULUS,
+                                    true));
+    res = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &a1, &i);
+    BOOST_CHECK_EQUAL(TRI_LengthVectorPointer(&res),
+                      NUMBER_OF_ELEMENTS/MODULUS);
+    // Now check its contents:
+    for (j = 0;j < TRI_LengthVectorPointer(&res);j++) {
+      data_container_t* q = static_cast<data_container_t*>
+                                       (TRI_AtVectorPointer(&res, j));
+      BOOST_CHECK_EQUAL(q->value % MODULUS, i);
+      BOOST_CHECK_EQUAL(space[(q->value - i) / MODULUS],0);
+      space[(q->value - i) / MODULUS] = 1;
+    }
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
+    TRI_DestroyVectorPointer(&res);
   }
+
+  // Delete some data:
+  for (i = 0;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
+
+  // Delete some more:
+  for (i = 1;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
+
+  // Delete the rest:
+  for (i = 2;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
+
   // Pull down data again:
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     delete v[i];
