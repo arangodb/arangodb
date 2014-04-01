@@ -272,6 +272,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/hashes-test.cpp \
 	UnitTests/Basics/mersenne-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
+	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
 	UnitTests/Basics/string-utf8-normalize-test.cpp \
