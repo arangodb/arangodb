@@ -768,6 +768,25 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes a FNV hash for strings with a length
+/// this function has an influence on how keys are distributed to shards
+/// change with caution!
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashBlock (uint64_t hash, char const* buffer, size_t length) {
+  uint64_t nMagicPrime;
+  size_t   j;
+
+  nMagicPrime = 0x00000100000001b3ULL;
+
+  for (j = 0; j < length; ++j) {
+    hash ^= buffer[j];
+    hash *= nMagicPrime;
+  }
+  return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document, starting with a given
 /// initial hash value. Note that a NULL pointer for json hashes to the
 /// same value as a json pointer that points to a JSON value `null`.
@@ -780,7 +799,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
   TRI_json_t const* subjson;
 
   if (0 == object) {
-    return TRI_FnvHashBlock(hash, "null", 4);   // strlen("null")
+    return HashBlock(hash, "null", 4);   // strlen("null")
   }
   switch (object->_type) {
     case TRI_JSON_UNUSED: {
@@ -788,31 +807,31 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
     }
 
     case TRI_JSON_NULL: {
-      return TRI_FnvHashBlock(hash, "null", 4);   // strlen("null")
+      return HashBlock(hash, "null", 4);   // strlen("null")
     }
 
     case TRI_JSON_BOOLEAN: {
       if (object->_value._boolean) {
-        return TRI_FnvHashBlock(hash, "true", 4);  // strlen("true")
+        return HashBlock(hash, "true", 4);  // strlen("true")
       }
       else {
-        return TRI_FnvHashBlock(hash, "false", 5);  // strlen("true")
+        return HashBlock(hash, "false", 5);  // strlen("true")
       }
     }
 
     case TRI_JSON_NUMBER: {
-      return TRI_FnvHashBlock(hash, (char const*) &(object->_value._number),
-                                    sizeof(object->_value._number));
+      return HashBlock(hash, (char const*) &(object->_value._number), sizeof(object->_value._number));
     }
 
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      return TRI_FnvHashBlock(hash, object->_value._string.data,
-                                    object->_value._string.length);
+      return HashBlock(hash, 
+                       object->_value._string.data,
+                       object->_value._string.length);
     }
 
     case TRI_JSON_ARRAY: {
-      hash = TRI_FnvHashBlock(hash, "array", 5);   // strlen("array")
+      hash = HashBlock(hash, "array", 5);   // strlen("array")
       n = object->_value._objects._length;
       tmphash = hash;
       for (i = 0;  i < n;  i += 2) {
@@ -827,7 +846,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
     }
 
     case TRI_JSON_LIST: {
-      hash = TRI_FnvHashBlock(hash, "list", 4);   // strlen("list")
+      hash = HashBlock(hash, "list", 4);   // strlen("list")
       n = object->_value._objects._length;
       for (i = 0;  i < n;  ++i) {
         subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
