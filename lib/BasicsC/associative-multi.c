@@ -454,7 +454,10 @@ static bool CHECK (TRI_multi_pointer_t* array) {
       ii = i;
       j = array->_table[ii].next;
       while (j != TRI_MULTI_POINTER_INVALID_INDEX) {
-        if (array->_table[j].prev != i) {
+        if (array->_table[j].prev != ii) {
+          printf("Alarm: %llu %llu %llu\n",(unsigned long long) i,
+                                           (unsigned long long) ii,
+                                           (unsigned long long) j);
           return true;
         }
         ii = j;
@@ -481,6 +484,10 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   if (array->_table[i].ptr == NULL) {
     return NULL;
   }
+  printf("Removing %llu with links %llu %llu\n",
+         (unsigned long long) i,
+         (unsigned long long) array->_table[i].prev,
+         (unsigned long long) array->_table[i].next);
   old = array->_table[i].ptr;
   // We have to delete entry i
   if (array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
@@ -520,6 +527,8 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       // We are not the last in the linked list.
       array->_table[j].prev = array->_table[i].prev;
     }
+    printf("prev=%llu next=%llu\n",(unsigned long long) array->_table[i].prev,
+                                   (unsigned long long) array->_table[i].next);
     InvalidateEntry(array, i);
   if (CHECK(array)) {
     printf("Alarm 6\n");
