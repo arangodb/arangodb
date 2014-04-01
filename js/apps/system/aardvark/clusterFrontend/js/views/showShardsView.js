@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, templateEngine, alert */
+/*global window, $, Backbone, templateEngine, _, alert */
 
 (function() {
   "use strict";
@@ -27,7 +27,7 @@
         interval: this.interval
       });
       this.cols = new window.ClusterCollections();
-      this.shards = new window.ClusterShards()
+      this.shards = new window.ClusterShards();
     },
 
     updateCollections: function() {
@@ -47,7 +47,7 @@
       $(".shardContainer").empty();
       _.each(list, function(s) {
         var item = $("#" + s.server + "Shards");
-        $(".collectionName", item).html(s.server + ": " + s.shards.length)
+        $(".collectionName", item).html(s.server + ": " + s.shards.length);
         /* Will be needed in future
         _.each(s.shards, function(shard) {
           var shardIcon = document.createElement("span");

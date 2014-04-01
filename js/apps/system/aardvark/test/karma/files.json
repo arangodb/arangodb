@@ -103,6 +103,10 @@
   "clusterFrontend/js/models/clusterDatabase.js",
   "clusterFrontend/js/models/clusterCollection.js",
   "clusterFrontend/js/models/clusterShard.js",
+  "clusterFrontend/js/models/clusterPlan.js",
+  "clusterFrontend/js/models/clusterType.js",
+
+  "frontend/js/config/dygraphConfig.js",
 
   "frontend/js/collections/arangoCollections.js",
   "frontend/js/collections/arangoDocuments.js",
@@ -122,6 +126,7 @@
   "clusterFrontend/js/collections/clusterDatabases.js",
   "clusterFrontend/js/collections/clusterCollections.js",
   "clusterFrontend/js/collections/clusterShards.js",
+  "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
   "frontend/js/collections/notificationCollection.js",
 
   "frontend/js/views/navigationView.js",
@@ -168,9 +173,16 @@
   "frontend/js/views/statisticBarView.js",
   "frontend/js/views/userBarView.js",
 
+  "clusterFrontend/js/views/clusterDownView.js",
+  "clusterFrontend/js/views/downloadView.js",
+  "clusterFrontend/js/views/loginModalView.js",
   "clusterFrontend/js/views/planScenarioSelectorView.js",
   "clusterFrontend/js/views/planSymmetricView.js",
   "clusterFrontend/js/views/planTestView.js",
+  "clusterFrontend/js/views/shutdownButtonView.js",
+  "clusterFrontend/js/views/showShardsView.js",
+  "clusterFrontend/js/views/showClusterView.js",
+  "clusterFrontend/js/views/dbServerDashboardView.js",
 
   "clusterFrontend/js/views/showClusterView.js",
 
@@ -233,6 +245,7 @@
   "test/specs/collections/foxxCollectionSpec.js",
   "test/specs/collections/graphCollectionSpec.js",
   "test/specs/collections/notificationCollectionSpec.js",
+  "test/specs/collections/ClusterStatisticsCollectionSpec.js",
 
 
   "test/specs/views/editListEntryViewSpec.js",
@@ -244,6 +257,7 @@
   "test/specs/views/graphViewSpec.js",
   "test/specs/views/graphManagementViewSpec.js",
   "test/specs/views/addNewGraphViewSpec.js",
-  "test/specs/router/routerSpec.js"
+  "test/specs/router/routerSpec.js",
+  "test/specs/router/clusterRouterSpec.js"
 ]
 }
