@@ -445,6 +445,26 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool CHECK (TRI_multi_pointer_t* array) {
+  uint64_t i,ii,j;
+
+  for (i = 0;i < array->_nrAlloc;i++) {
+    if (array->_table[i].ptr != NULL && 
+        array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
+      ii = i;
+      j = array->_table[ii].next;
+      while (j != TRI_MULTI_POINTER_INVALID_INDEX) {
+        if (array->_table[j].prev != i) {
+          return true;
+        }
+        ii = j;
+        j = array->_table[ii].next;
+      }
+    }
+  }
+  return false;
+}
+
 void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
   uint64_t i, j;
   void* old;
@@ -454,6 +474,9 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   array->_nrRems++;
 #endif
 
+  if (CHECK(array)) {
+    printf("Alarm 1\n");
+  }
   i = LookupByElement(array, element);
   if (array->_table[i].ptr == NULL) {
     return NULL;
@@ -467,14 +490,25 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       // The only one in its linked list, simply remove it and heal
       // the hole:
       InvalidateEntry(array, i);
+  if (CHECK(array)) {
+    printf("Alarm 2\n");
+  }
       HealHole(array, i);
+  if (CHECK(array)) {
+    printf("Alarm 3\n");
+  }
     }
     else {
       // There is at least one successor in position j.
       array->_table[j].prev = TRI_MULTI_POINTER_INVALID_INDEX;
       MoveEntry(array, j, i);
-      InvalidateEntry(array, j);
+  if (CHECK(array)) {
+    printf("Alarm 4\n");
+  }
       HealHole(array, j);
+  if (CHECK(array)) {
+    printf("Alarm 5\n");
+  }
     }
   }
   else {
@@ -487,7 +521,13 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       array->_table[j].prev = array->_table[i].prev;
     }
     InvalidateEntry(array, i);
+  if (CHECK(array)) {
+    printf("Alarm 6\n");
+  }
     HealHole(array, i);
+  if (CHECK(array)) {
+    printf("Alarm 7\n");
+  }
   }
   array->_nrUsed--;
   
