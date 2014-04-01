@@ -78,7 +78,7 @@ static const uint64_t Primes[251] = {
 /// @brief return a prime number not lower than value
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_NextPrime (uint64_t value) {
+uint64_t TRI_NearPrime (uint64_t value) {
   unsigned int i;
 
   for (i = 0; i < sizeof(Primes); ++i) {
