@@ -459,7 +459,9 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
     return NULL;
   }
   old = array->_table[i].ptr;
+  // We have to delete entry i
   if (array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
+    // This is the first in its linked list.
     j = array->_table[i].next;
     if (j == TRI_MULTI_POINTER_INVALID_INDEX) {
       // The only one in its linked list, simply remove it and heal
@@ -468,8 +470,9 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       HealHole(array, i);
     }
     else {
+      // There is at least one successor in position j.
+      array->_table[j].prev = TRI_MULTI_POINTER_INVALID_INDEX;
       MoveEntry(array, j, i);
-      array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
       InvalidateEntry(array, j);
       HealHole(array, j);
     }
