@@ -104,7 +104,10 @@ BOOST_AUTO_TEST_CASE (tst_1) {
   char* uni2 = TRI_EscapeUtf8StringZ (TRI_CORE_MEM_ZONE, (const char*) composed, strlen((const char*) composed), true, &outLength);
   printf("\nOriginal: %s\nEscaped: %s\n", composed, uni2);
 */  
-  BOOST_CHECK_EQUAL((const char*) composed, (const char*) result);
+  size_t l1 = sizeof(composed) - 1;
+  size_t l2 = strlen(result);
+  BOOST_CHECK_EQUAL(l1, l2);
+  BOOST_CHECK_EQUAL_COLLECTIONS((char*) composed, (char*) composed + l1, result, result + l2);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
 
@@ -132,7 +135,10 @@ BOOST_AUTO_TEST_CASE (tst_2) {
 
 
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
-  BOOST_CHECK_EQUAL((const char*) lower, (const char*) result);
+  size_t l1 = sizeof(lower) - 1;
+  size_t l2 = strlen(result);
+  BOOST_CHECK_EQUAL(l1, l2);
+  BOOST_CHECK_EQUAL_COLLECTIONS((char*) lower, (char*) lower + l1, result, result + l2);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);  
 
   std::string testString((const char*) gruessgott1);
@@ -143,7 +149,9 @@ BOOST_AUTO_TEST_CASE (tst_2) {
   len = 0;
   result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, strlen((const char*) gruessgott2), &len);
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott2, result, len);
-  BOOST_CHECK_EQUAL((const char*) lower, (const char*) result);
+  l2 = strlen(result);
+  BOOST_CHECK_EQUAL(l1, l2);
+  BOOST_CHECK_EQUAL_COLLECTIONS((char*) lower, (char*) lower + l1, result, result + l2);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);    
 }
 

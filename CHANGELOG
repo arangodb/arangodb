@@ -1,7 +1,104 @@
+v2.1.0 (XXXX-XX-XX)
+-------------------
+
+* simplified usage of `db._createStatement()`
+
+  Previously, the function could not be called with a query string parameter as 
+  follows:
+
+      db._createStatement(queryString);
+
+  Calling it as above resulted in an error because the function expected an
+  object as its parameter. From now on, it's possible to call the function with 
+  just the query string.
+
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
+
+* added REST API method HTTP GET `/_api/job/job-id` to query the status of an
+  async job without potentially fetching it from the list of done jobs
+
+* fixed non-intuitive behaviour in jobs API: previously, querying the status
+  of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
+  executing async job from the list of queryable jobs on the server.
+  Now, when querying the result of an async job that is still executing, 
+  the job is kept in the list of queryable jobs so its result can be fetched
+  by a subsequent request.
+
+* use half the number of malloc operations when filling edge indexes
+
+* provide a size hint to edge and hash indexes when initially filling them
+  this will lead to less re-allocations when populating these indexes
+    
+  this may speed up building indexes when opening an existing collection
+
+* don't requeue identical context methods in V8 threads in case a method is 
+  already registered
+
+* removed arangod command line option `--database.remove-on-compacted`
+
+
+v2.0.1 (XXXX-XX-XX)
+-------------------
+
+* fixed isses in arango-dfdb:
+
+  the dfdb was not able to unload certain system collections, so these couldn't be
+  inspected with the dfdb sometimes. Additionally, it did not truncate corrupt
+  markers from datafiles under some circumstances
+
+* added `changePassword` attribute for users
+
+* fixed non-working "save" button in collection edit view of web interface
+  clicking the save button did nothing. one had to press enter in one of the input
+  fields to send modified form data
+
+* fixed V8 compile error on MacOS X
+
+* prevent `body length: -9223372036854775808` being logged in development mode for
+  some Foxx HTTP responses
+
+* fixed several bugs in web interface dashboard
+
+* fixed issue #783: coffee script not working in manifest file
+
+* fixed issue #781: Cant save current query from AQL editor ui
+
+* bumped version in `X-Arango-Version` compatibility header sent by arangosh and other
+  client tools from `1.5` to `2.0`.
+
+* fixed startup options for arango-dfdb, added details option for arango-dfdb
+
+* fixed display of missing error messages and codes in arangosh
+
+* when creating a collection via the web interface, the collection type was always 
+  "document", regardless of the user's choice
+
+
+v2.0.0 (2014-03-10)
+-------------------
+
+* first 2.0 release
+
+
+v2.0.0-rc2 (2014-03-07)
+-----------------------
+
+* fixed cluster authorization
+
+
 v2.0.0-rc1 (2014-02-28)
 -----------------------
 
 * added sharding :-)
+
+* added collection._dbName attribute to query the name of the database from a collection
 
   more detailed documentation on the sharding and cluster features can be found in the user 
   manual, section **Sharding**
@@ -47,7 +144,7 @@ v2.0.0-rc1 (2014-02-28)
   Previously, when creating a new user via HTTP POST, the username needed to be 
   passed in an attribute `username`. When users were returned via this API,
   the usernames were returned in an attribute named `user`. This was slightly
-  confusing and was changed in 1.5 as follows:
+  confusing and was changed in 2.0 as follows:
 
   - when adding a user via HTTP POST, the username can be specified in an attribute 
   `user`. If this attribute is not used, the API will look into the attribute `username`
@@ -58,8 +155,6 @@ v2.0.0-rc1 (2014-02-28)
   This change should be fully downwards-compatible with the previous version of the API.
 
 * added AQL SLICE function to extract slices from lists
-
-* removed check-server binary
 
 * made module loader more node compatible
 
@@ -132,9 +227,7 @@ v2.0.0-rc1 (2014-02-28)
 
 * fixed issue #695: arangosh server.password error
 
-* use pretty-printing in `--console` mode by defaul
-
-* added `check-server` binary for testing
+* use pretty-printing in `--console` mode by default
 
 * simplified ArangoDB startup options
 
@@ -177,7 +270,7 @@ v2.0.0-rc1 (2014-02-28)
 
 * removed separate shape collections
 
-  When upgrading to ArangoDB 1.5, existing collections will be converted to include
+  When upgrading to ArangoDB 2.0, existing collections will be converted to include
   shapes and attribute markers in the datafiles instead of using separate files for
   shapes.
 
@@ -219,7 +312,38 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
+v1.4.13 (XXXX-XX-XX)
+--------------------
+
+* added diagnostic output for Foxx application upload
+
+* allow dump & restore from ArangoDB 1.4 with an ArangoDB 2.0 server
+
+* allow startup options `temp-path` and `default-language` to be specified from the arangod
+  configuration file and not only from the command line
+
+* fixed too eager compaction
+  
+  The compaction will now wait for several seconds before trying to re-compact the same
+  collection. Additionally, some other limits have been introduced for the compaction.
+ 
+
+v1.4.12 (2014-03-05)
+--------------------
+
+* fixed display bug in web interface which caused the following problems:
+  - documents were displayed in web interface as being empty
+  - document attributes view displayed many attributes with content "undefined"
+  - document source view displayed many attributes with name "TYPEOF" and value "undefined"
+  - an alert popping up in the browser with message "Datatables warning..."
+  
+* re-introduced old-style read-write locks to supports Windows versions older than
+  Windows 2008R2 and Windows 7. This should re-enable support for Windows Vista and
+  Windows 2008.
+
+
 v1.4.11 (2014-02-27)
+--------------------
 
 * added SHORTEST_PATH AQL function 
 
@@ -620,7 +744,7 @@ v1.4.1-rc1 (2013-11-07)
   It is not necessary anymore to send the batch boundary in the HTTP `Content-Type`
   header. Previously, the batch API expected the client to send a Content-Type header
   of`multipart/form-data; boundary=<some boundary value>`. This is still supported in
-  ArangoDB 1.5, but clients can now also omit this header. If the header is not 
+  ArangoDB 2.0, but clients can now also omit this header. If the header is not 
   present in a client request, ArangoDB will ignore the request content type and
   read the MIME boundary from the beginning of the request body.
 

@@ -1,10 +1,12 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
+/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data */
+(function() {
+  "use strict";
 
-window.arangoCollections = Backbone.Collection.extend({
+  window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
-      model: arangoCollection,
+      model: arangoCollectionModel,
 
       searchOptions : {
         searchPhrase: null,
@@ -262,23 +264,24 @@ window.arangoCollections = Backbone.Collection.extend({
         });
         return data2;
       },
-      checkCollectionName: function (name) {
-      },
-      newCollection: function (collName, wfs, isSystem, journalSize, collType) {
+
+      newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
         var returnobj = {};
+        var data = {};
+        data.name = collName;
+        data.waitForSync = wfs;
+        data.isSystem = isSystem;
+        data.type = parseInt(collType, 10);
+        if (shards) {
+          data.numberOfShards = shards;
+          data.shardKeys = keys;
+        }
         returnobj.status = false;
         $.ajax({
           cache: false,
           type: "POST",
           url: "/_api/collection",
-          data:
-            '{"name":' + JSON.stringify(collName) +
-            ',"waitForSync":'+
-            JSON.stringify(wfs)+
-            ',"isSystem":'+
-            JSON.stringify(isSystem)+
-            ',"type":'+
-            collType + '}',
+          data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,
           async: false,
@@ -305,7 +308,6 @@ window.arangoCollections = Backbone.Collection.extend({
           processData: false,
           success: function(data) {
             result = true;
-            this.alreadyRenamed = true;
           },
           error: function(data) {
             try {
@@ -333,10 +335,7 @@ window.arangoCollections = Backbone.Collection.extend({
           processData: false,
           success: function(data) {
             result = true;
-            if (self.alreadyRenamed === true) {
-              self.alreadyRenamed = false;
-            }
-          },
+         },
           error: function(data) {
             try {
               var parsed = JSON.parse(data.responseText);
@@ -381,8 +380,7 @@ window.arangoCollections = Backbone.Collection.extend({
               }
             });
           },
-          error: function (data) {
-            var temp = JSON.parse(data.responseText);
+          error: function () {
             arangoHelper.arangoError('Collection error');
           }
         });
@@ -401,9 +399,9 @@ window.arangoCollections = Backbone.Collection.extend({
             });
           },
           error: function () {
-            var temp = JSON.parse(data.responseText);
             arangoHelper.arangoError('Collection error');
           }
         });
       }
-});
+  });
+}());

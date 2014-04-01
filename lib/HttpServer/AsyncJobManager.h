@@ -238,11 +238,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the result of an async job, and remove it from the list
+/// @brief get the result of an async job, and optionally remove it from the
+/// list of done jobs if it is completed
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse* getJobResult (AsyncJobResult::IdType jobId,
-                                    AsyncJobResult::Status& status) { 
+                                    AsyncJobResult::Status& status,
+                                    bool removeFromList) { 
           WRITE_LOCKER(_lock);
 
           JobList::iterator it = _jobs.find(jobId); 
@@ -254,6 +256,14 @@ namespace triagens {
 
           HttpResponse* response = (*it).second._response;
           status = (*it).second._status;
+
+          if (status == AsyncJobResult::JOB_PENDING) {
+            return 0; 
+          }
+
+          if (! removeFromList) {
+            return 0;
+          }
 
           // remove the job from the list
           _jobs.erase(it);

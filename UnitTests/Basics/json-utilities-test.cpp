@@ -491,6 +491,30 @@ BOOST_AUTO_TEST_CASE (tst_duplicate_keys) {
 /// @brief test hashing
 ////////////////////////////////////////////////////////////////////////////////
 
+BOOST_AUTO_TEST_CASE (tst_json_hash_utf8) {
+  TRI_json_t* json;
+
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "\"äöüßÄÖÜ€µ\"");
+  BOOST_CHECK_EQUAL(17926322495289827824ULL, TRI_HashJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "\"코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기\"");
+  BOOST_CHECK_EQUAL(11647939066062684691ULL, TRI_HashJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "\"بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن التونسي تنديد بقتل الجيش السوري مصورا تلفزيونيا 14 قتيلا وعشرات الجرحى بانفجار بالصومال\"");
+  BOOST_CHECK_EQUAL(9773937585298648628ULL, TRI_HashJson(json));
+  FREE_JSON
+  
+  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, "\"中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服务。\"");
+  BOOST_CHECK_EQUAL(5348732066920102360ULL, TRI_HashJson(json));
+  FREE_JSON
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hashing
+////////////////////////////////////////////////////////////////////////////////
+
 BOOST_AUTO_TEST_CASE (tst_json_hash) {
   TRI_json_t* json;
 

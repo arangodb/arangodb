@@ -1,104 +1,104 @@
 .fixedDropdown {
+  @include border-radius(0 !important);
   margin: 37px 0 0 0 !important;
-  border-radius: 0 !important;
   width: 210px;
-}
 
-.fixedDropdown:after {
-  visibility: hidden;
-}
+  &:after {
+    visibility: hidden;
+  }
 
-.fixedDropdown .dropdown-item {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-}
+  .dropdown-item {
+    border-bottom: 1px solid $c-semi-transp;
+  }
 
-.fixedDropdown .dropdown-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-  padding: 0 !important;
-}
+  .dropdown-header {
+    border-bottom: 1px solid $c-semi-transp;
+    padding: 0 !important;
+  }
 
-.fixedDropdown a {
-  padding-left: 5px !important;
-}
+  a {
+    padding-left: 5px !important;
+  }
 
-.fixedDropdown .notificationItemContent {
-  width: 155px;
-  float: left;
-  margin-left: 15px;
-  max-width: 155px;
-  white-space: normal;
-  word-wrap: break-word;
-}
+  .notificationItemContent {
+    @extend %pull-left;
+    font-weight: 300;
+    margin-left: 15px;
+    max-width: 155px;
+    min-height: 15px;
+    white-space: normal;
+    width: 155px;
+    word-wrap: break-word;
+  }
 
-.fixedDropdown button {
-  float:right;
-  margin-right: 5px;
+  button {
+    @extend %pull-right;
+    margin-right: 5px;
+  }
+
+  .notificationItem {
+    color: $c-black;
+
+    i {
+      @extend %pull-left;
+      @extend %clickable;
+      color: $c-semi-transp;
+      font-size: 20px;
+      position: relative;
+      right: 4px;
+      top: -9px;
+
+      &:hover {
+        color: $c-black;
+      }
+
+    }
+
+  }
+
 }
 
 .innerDropdownInnerUL {
-  min-height: 220px;
+  @extend %pull-left;
+  border-bottom: 1px solid $c-semi-transp;
   height: 220px !important;
-  width: 100%;
-  overflow-y: scroll;
+  min-height: 220px;
   overflow-x: hidden;
-  float: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-}
+  overflow-y: scroll;
+  width: 100%;
 
-.innerDropdownInnerUL .dropdown-item:hover {
-  background-color: #E1E1E1 !important;
-}
+  .dropdown-item:hover {
+    background-color: $c-e1grey !important;
+  }
 
-.innerDropdownInnerUL li {
-  width: auto !important;
-}
+  li {
+    width: auto !important;
+  }
 
-.innerDropdownInnerUL li:last-child {
-}
-
-.fixedDropdown .notificationItem {
-  color: black;
-}
-
-.notificationItem i {
-  color: rgba(0, 0, 0, 0.2);
-  float: left;
-  font-size: 20px;
-  position: relative;
-  right: 4px;
-  top: -9px;
-}
-
-.notificationItem i:hover {
-  color: rgba(0, 0, 0, 1);
-  cursor: pointer;
 }
 
 #stat_hd {
-  width: 24px;
+  @include border-radius(3px);
+  background-color: $c-nav-bg;
+  border: 2px solid $c-positive;
   height: 24px;
   margin-top: 2px;
-  background-color: #333232;
-  border-radius: 3px;
-  border: 2px solid #8AA051;
   text-align: center;
-}
+  width: 24px;
 
-.notificationItemContent {
-  font-weight: 300;
-}
-
-.fullNotification:hover {
-  cursor:pointer;
+  #stat_hd_counter {
+    color: $c-white;
+    line-height: 24px;
+    margin-left: 0;
+  }
 }
 
 .fullNotification {
-  border: 2px solid $c_notification_red !important;
-  background-color: $c_notification_red !important;
+  background-color: $c-notification-red !important;
+  border: 2px solid $c-notification-red !important;
+
+  &:hover {
+    @extend %clickable;
+  }
 }
 
-#stat_hd #stat_hd_counter {
-  color: white;
-  margin-left: 0px;
-  line-height: 24px;
-}

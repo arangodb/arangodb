@@ -459,12 +459,14 @@ static int WriteShutdownInfo (TRI_server_t* server) {
 static bool CanUseDatabase (TRI_vocbase_t* vocbase,
                             char const* username,
                             char const* password) {
+  bool mustChange;
+
   if (! vocbase->_settings.requireAuthentication) {
     // authentication is turned off
     return true;
   }
 
-  return TRI_CheckAuthenticationAuthInfo(vocbase, NULL, username, password);
+  return TRI_CheckAuthenticationAuthInfo(vocbase, NULL, username, password, &mustChange);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -803,7 +805,7 @@ static int OpenDatabases (TRI_server_t* server,
                               databaseName, 
                               &defaults,
                               isUpgrade, 
-                              server->_wasShutdownCleanly);
+                              ! server->_wasShutdownCleanly);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -1863,8 +1865,12 @@ int TRI_StartServer (TRI_server_t* server,
     return TRI_ERROR_INTERNAL;
   }
 
+
   server->_wasShutdownCleanly = (res == TRI_ERROR_NO_ERROR);
 
+  if (! server->_wasShutdownCleanly) {
+    LOG_INFO("server was not shut down cleanly. scanning datafile markers");
+  }
 
   // .............................................................................
   // verify existence of "databases" subdirectory
@@ -2122,6 +2128,8 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
   TRI_UnlockMutex(&server->_createLock);
+  
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
 
@@ -2271,7 +2279,8 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
 
 #ifdef TRI_ENABLE_CLUSTER
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
-                                           TRI_voc_tick_t id) {
+                                           TRI_voc_tick_t id,
+                                           bool force) {
   size_t i, n;
   int res;
   
@@ -2292,7 +2301,7 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
     if (vocbase != NULL && 
         vocbase->_id == id &&
-        ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
+        (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
       TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name);
     
       if (TRI_DropVocBase(vocbase)) {

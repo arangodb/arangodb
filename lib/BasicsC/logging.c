@@ -511,7 +511,7 @@ static int GenerateMessage (char* buffer,
   m += n;
 
   // .............................................................................
-  // check if we must disply the line number
+  // check if we must display the line number
   // .............................................................................
 
   sln = ShowLineNumber;
@@ -1543,13 +1543,13 @@ static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
 
 static char* LogAppenderFile_Details (TRI_log_appender_t* appender) {
   log_appender_file_t* self;
-  char buffer[1024];
 
   self = (log_appender_file_t*) appender;
 
   if (self->_filename != NULL && 
       self->_fd != STDOUT_FILENO && 
       self->_fd != STDERR_FILENO) {
+    char buffer[1024];
 
     snprintf(buffer, sizeof(buffer), "More error details may be provided in the logfile '%s'", self->_filename);
 

@@ -11,41 +11,52 @@
         return "inactive";
     }
   };
+
+  var createID = function (input) {
+    var id = input.replace(/\./g,'-');
+    id = id.replace(/\:/g,'_');
+    id = "id" + id;
+    return id;
+  }
 %>
-<ul class="thumbnails2">
-  <div class="headerBar">
-    <a class="arangoHeader">Cluster Dashboard</a>
-    <div class="headerButtonBar pull-right">
-      <select id="selectDB">
-        <% _.each(dbs, function(d) { %>
-          <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
-        <% }); %>
-      </select>
-      <select id="selectCol">
-      </select>
-    </div>
+<div class="headerBar">
+  <a class="arangoHeader">Cluster Dashboard</a>
+  <div class="headerButtonBar pull-right">
+    <select id="selectDB">
+      <% _.each(dbs, function(d) { %>
+        <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
+      <% }); %>
+    </select>
+    <select id="selectCol">
+    </select>
   </div>
-</ul>
-<ul id="clusterLayout" class="tileList">
-  <% if(type === "testPlan") { 
-    _.each(byAddress, function(s, a) { 
+</div>
+<div id="clusterLayout" class="tileList">
+  <% if(type === "testPlan") {
+    _.each(byAddress, function(s, a) {
+      var id;
       _.each(s.coords, function(c) {
         var url = c.get("protocol")
           + "://"
-          + c.get("address");
+          + c.get("address")
+          + "/_db/_system/_admin/aardvark/standalone.html"
+          + "#collections";
+        id = createID(c.get("address"));
+
     %>
       <li class="tile">
-        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank">
+        <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <span class="fa fa-compass icon"></span>
         </a>
-        <h5 class="collectionName"><%=c.get("name")%></h5>
+        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui">GUI</a></h5>
       </li>
     <%
       });
       _.each(s.dbs, function(c) {
+        id = createID(c.get("address"));
     %>
       <li class="tile">
-        <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>">
+        <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
         </a>
         <h5 class="collectionName"><%=c.get("name")%> (Shards: <span id="<%=c.get("name")%>Shards" class="shardCounter"/>)</h5>
@@ -55,6 +66,8 @@
       });
     } else { 
       _.each(byAddress, function(s, a) { 
+        var url;
+        var id;
         var type = "single";
         if (s.coords && s.dbs) {
           type = "double";
@@ -62,42 +75,46 @@
   %>
       <li class="tile">
         <% _.each(s.coords, function(c) {
-          var url = c.get("protocol")
+          url = c.get("protocol")
             + "://"
-            + c.get("address");
+            + c.get("address")
+            + "/_db/_system/_admin/aardvark/standalone.html"
+            + "#collections";
+            id = createID(c.get("address"));
         %>
-          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" href="<%=url%>" target="_blank" title="<%=c.get('name')%>">
+          <a class="coordinator <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
             <span class="fa fa-compass icon"></span>
           </a>
         <% });
           var dbName = "";
           _.each(s.dbs, function(c) {
             dbName = c.get("name");
+            id = createID(c.get("address"));
         %>
-          <a class="dbserver <%=type%> <%=statusClass(c.get('status'))%>" id="<%=c.get('address')%>" title="<%=c.get('name')%>">
+          <a class="dbserver <%=type%> <%=statusClass(c.get('status'))%>" id="<%=id%>" title="<%=c.get('name')%>">
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\"/>)":""%></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui" href="<%=url%>" target="_blank">GUI</a></h5>
       </li>
     <%
     });
   }
   %>
-</ul>
+</div>
 
 <div class="headerBar">
   <a class="arangoHeader">Cluster Statistics</a>
 </div>
 <div class="resizecontainer">
-	<div class="dashboardChart">
-		<div id="clusterGraphs" class="innerDashboardChart">
+  <div class="dashboardChart">
+    <div id="clusterGraphs" class="innerDashboardChart">
       <div>Virtual Memory Size</div>
-	  </div>
+    </div>
   </div>
-	<div class="dashboardChart">
-		<div id="lineGraph" class="innerDashboardChart">
-	  </div>
+  <div class="dashboardChart">
+    <div id="lineGraph" class="innerDashboardChart">
+    </div>
   </div>
 </div>
 </script>

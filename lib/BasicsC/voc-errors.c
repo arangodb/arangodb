@@ -30,6 +30,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CANNOT_OVERWRITE_FILE, "cannot overwrite file");
   REG_ERROR(ERROR_TYPE_ERROR, "type error");
   REG_ERROR(ERROR_LOCK_TIMEOUT, "lock timeout");
+  REG_ERROR(ERROR_CANNOT_CREATE_DIRECTORY, "cannot create directory");
+  REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -46,6 +48,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_IDENTIFIER, "duplicate identifier");
   REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
+  REG_ERROR(ERROR_ARANGO_DATAFILE_EMPTY, "datafile empty");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE, "illegal parameter file");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_COLLECTION, "corrupted collection");
@@ -166,6 +169,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
+  REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
   REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
   REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");

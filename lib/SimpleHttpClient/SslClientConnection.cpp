@@ -162,7 +162,7 @@ bool SslClientConnection::connectSocket () {
     return false;
   }
 
-  if (SSL_set_fd(_ssl, TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
+  if (SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;

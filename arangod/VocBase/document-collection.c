@@ -400,6 +400,12 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
+
   // copy shaped json into the marker
   memcpy(mem + baseLength, (char*) shaped->_data.data, shaped->_data.length);
   
@@ -522,6 +528,12 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (marker->_shape == 0) {
+    LOG_WARNING("creating marker with shape id 0");
+  }
+#endif
 
   *keyBody = mem + markerSize;
 
@@ -3729,13 +3741,23 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end;
   void** ptr;
   int res;
+  //double starttime;
+  //extern uint64_t ALL_HASH_ADDS;
+  //extern uint64_t ALL_HASH_COLLS;
 
   primary = &document->base;
 
   // update index
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
+    
+  if (idx->sizeHint != NULL) {
+    // give the index a size hint
+    idx->sizeHint(idx, primary->_primaryIndex._nrUsed);
+  }
 
+
+  //starttime = TRI_microtime();
   inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
@@ -3762,6 +3784,10 @@ static int FillIndex (TRI_document_collection_t* document,
       }
     }
   }
+  //printf("FillIndex _iid=%llu time spent: %f\n",(unsigned long long) idx->_iid,
+  //       TRI_microtime()-starttime);
+
+  //printf("FillIndex adds=%llu colls=%llu\n",(unsigned long long) ALL_HASH_ADDS, (unsigned long long) ALL_HASH_COLLS);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -5082,8 +5108,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             iid,
                             &fields,
                             &paths,
-                            unique,
-                            document->base._primaryIndex._nrUsed);
+                            unique);
   
   if (idx == NULL) {
     TRI_DestroyVector(&paths);

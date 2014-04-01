@@ -6,9 +6,9 @@
 
   window.ArangoDatabase = Backbone.Collection.extend({
 
-    model: window.Database,
+    model: window.DatabaseModel,
 
-    comparator: "name",
+    comparator: function(item) { return item.get('name').toLowerCase(); },
 
     sync: function(method, model, options) {
       if (method === "read") {
@@ -66,7 +66,7 @@
         + port
         + "/_db/"
         + encodeURIComponent(name)
-        + "/_admin/aardvark/index.html";
+        + "/_admin/aardvark/standalone.html";
       if (hash) {
         var base = hash.split("/")[0];
         if (base.indexOf("#collection") === 0) {

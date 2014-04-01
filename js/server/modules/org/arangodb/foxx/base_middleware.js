@@ -211,7 +211,15 @@ BaseMiddleware = function () {
       if (response.hasOwnProperty("body")) {
         var bodyLength = 0;
         if (response.body !== undefined) {
-          bodyLength = parseInt(response.body.length, 10);
+          if (typeof response.body === "string") {
+            bodyLength = parseInt(response.body.length, 10);
+          } else {
+            try {
+              bodyLength = String(response.body).length;
+            } catch (err) {
+              // ignore if this fails
+            }
+          }
         }
         console.log("%s, outgoing response with status %s of type %s, body length: %d",
                     options.mount,

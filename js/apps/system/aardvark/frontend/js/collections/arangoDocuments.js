@@ -182,7 +182,7 @@
               ) {
                 this.currentPage = 1;
               }
-              if (this.totalPages === 0) {
+              if (this.totalPages === 0 || this.totalPages === undefined) {
                 this.totalPages = 1;
               }
 
@@ -212,52 +212,33 @@
           window.arangoDocumentsStore.reset();
         },
         getStatisticsHistory: function(params) {
-            var startDate = params.startDate;
-            var endDate = params.endDate;
-            var server = params.server;
-            var url = "";
-            var figures = params.figures;
             var self = this;
-            var filterString = "";
-            if (startDate) {
-                filterString += " filter u.time > " + startDate;
-            } else {
-                endDate = startDate;
-            }
-            if (endDate) {
-                filterString += " filter u.time < " + endDate;
-            }
-            var returnValue = " return u";
-            if (figures) {
-                returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ,";
-                var groups = {};
-                figures.forEach(function(f) {
-                    var g = f.split(".")[0];
-                    if (!groups[g]) {
-                        groups[g] = [];
-                    }
-                    groups[g].push(f.split(".")[1] + " : u." + f);
-                });
-                Object.keys(groups).forEach(function(key) {
-                   returnValue += key + " : {" + groups[key]  +"}";
-                });
-                returnValue += "}";
-            }
-            var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
+            var body = {
+                startDate : params.startDate,
+                endDate   : params.endDate,
+                figures   : params.figures
+            };
+            var server = params.server;
+            var addAuth = function(){};
+            var url = "";
             if (server) {
               url = server.endpoint;
-              url += "/_admin/clusterHistory";
-              url += "?DBserver=" + server.target;
+              url += "/_admin/history";
+              if (server.isDBServer) {
+                url += "?DBserver=" + server.target;
+              }
+              addAuth = server.addAuth;
             } else {
-              url = "/_api/cursor";
+              url = "/_admin/history";
             }
             $.ajax({
                 cache: false,
                 type: 'POST',
                 async: false,
                 url: url,
-                data: JSON.stringify({query: myQueryVal, batchSize: 10000}),
+                data: JSON.stringify(body),
                 contentType: "application/json",
+                beforeSend: addAuth,
                 success: function(data) {
                   self.history =  data.result;
                 },

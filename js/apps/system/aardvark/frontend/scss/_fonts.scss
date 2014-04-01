@@ -1,5 +1,46 @@
-body, input, textarea, .page-title span, .pingback a.url {
-  /*font-family: "Helvetica",sans-serif;*/
+body,
+input,
+textarea,
+.page-title span,
+.pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400;
 }
+
+
+// Font definitions
+
+// Open Sans
+@mixin sans($style, $weight, $fimp, $simp, $timp) {
+  font-family: 'Open Sans';
+  font-style: $style;
+  font-weight: $weight;
+  src: local('Open Sans' + $fimp), local('OpenSans' + $simp), url('../fonts/opensans/OpenSans' + $timp + '.woff') format('woff');
+}
+
+@font-face {
+  @include sans(normal, 300, ' Light', '-Light', 'Light');
+}
+
+@font-face {
+  @include sans(normal, 400, '', '', '');
+}
+
+@font-face {
+  @include sans(normal, 700, ' Bold', '-Bold', 'Bold');
+}
+
+@font-face {
+  @include sans(italic, 300, ' Light Italic', 'Light-Italic', 'LightItalic');
+}
+
+@font-face {
+  @include sans(italic, 400, ' Italic', '-Italic', 'Italic');
+}
+
+@font-face {
+  @include sans(italic, 700, ' Bold Italic', '-BoldItalic', 'BoldItalic');
+}
+
+// Font Awesome
+@import 'font-awesome/font-awesome';

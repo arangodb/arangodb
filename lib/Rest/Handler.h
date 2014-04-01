@@ -98,10 +98,9 @@ namespace triagens {
                 }
 
                 case Handler::HANDLER_FAILED:
+                default:
                   return Job::status_t(Job::JOB_FAILED);
               }
-
-              return Job::status_t(Job::JOB_FAILED);
             }
 
             status_e status;
@@ -163,13 +162,13 @@ namespace triagens {
         virtual status_t execute () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle error and delete
+/// @brief handles error
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleError (basics::TriagensError const&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a job
+/// @brief creates a job
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual Job* createJob (AsyncJobServer*, bool) = 0;

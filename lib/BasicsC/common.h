@@ -192,6 +192,44 @@ static inline void* CONST_CAST (void const* ptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementing a uint64_t modulo a number with wraparound
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  // Note that the dummy variable gives the compiler a (good) chance to
+  // use a conditional move instruction instead of a branch. This actually
+  // works on modern gcc.
+  uint64_t dummy;
+  dummy = (++i) - len;
+  return i < len ? i : dummy;
+}
+
+static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
+  if ((i--) != 0) {
+    return i;
+  }
+  return len-1;
+}
+
+// The following two possibilities are equivalent, but seem to produce 
+// a branch instruction in the assembler code rather than a conditional move:
+
+#if 0
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  if ((++i) == len) {
+    return 0;
+  }
+  return i;
+}
+#endif
+
+#if 0
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  return (++i) == len ? 0 : i;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper for assert()
 ///
 /// This wrapper maps TRI_ASSERT_MAINTAINER() to (void) 0 for non-maintainers. 

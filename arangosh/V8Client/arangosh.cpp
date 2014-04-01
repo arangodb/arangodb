@@ -107,7 +107,7 @@ V8ClientConnection* ClientConnection = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static int CodePage = 65001;
+static int CodePage = -1;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +205,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
     string str = TRI_ObjectToString(val);
 
-    BaseClient.internalPrint(str.c_str());
+    BaseClient.internalPrint(str);
   }
 
   return v8::Undefined();
@@ -221,7 +221,7 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
   }
   else {
     BaseClient.setUsePager(true);
-    BaseClient.internalPrint("Using pager '%s' for output buffering.\n", BaseClient.outputPager().c_str());
+    BaseClient.internalPrint(string(string("Using pager ") + BaseClient.outputPager() + " for output buffering.\n"));
   }
 
   return v8::Undefined();
@@ -1579,19 +1579,36 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
   ok = true;
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Function> func = v8g->ExecuteFileCallback;
+
+  if (func.IsEmpty()) {
+    string msg = "no execute function has been registered";
+
+    BaseClient.printErrLine(msg.c_str());
+    BaseClient.log("%s", msg.c_str());
+
+    BaseClient.flushLog();
+
+    return false;
+  }
+
   for (size_t i = 0;  i < scripts.size();  ++i) {
     if (! FileUtils::exists(scripts[i])) {
-      ostringstream s;
-      s << "error: Javascript file not found: '" << scripts[i].c_str() << "'";
-      BaseClient.printErrLine(s.str());
-  
-      BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
+      string msg = "error: Javascript file not found: '" + scripts[i] + "'";
+
+      BaseClient.printErrLine(msg.c_str());
+      BaseClient.log("%s", msg.c_str());
+
       ok = false;
       break;
     }
 
     if (execute) {
-      TRI_ExecuteLocalJavaScriptFile(scripts[i].c_str());
+      v8::Handle<v8::String> name = v8::String::New(scripts[i].c_str());
+      v8::Handle<v8::Value> args[] = { name };
+
+      func->Call(func, 1, args);
     }
     else {
       TRI_ParseJavaScriptFile(scripts[i].c_str());
@@ -1599,9 +1616,10 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
-      BaseClient.printErrLine(exception);
 
+      BaseClient.printErrLine(exception);
       BaseClient.log("%s\n", exception.c_str());
+
       ok = false;
       break;
     }
@@ -1667,8 +1685,8 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
   }
 
-  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
-  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
+  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
   // run tests
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
@@ -1929,10 +1947,14 @@ int main (int argc, char* argv[]) {
       if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
-
+     
       // not sure about the code page. let user set code page by command-line argument if required
       if (CodePage > 0) {
         SetConsoleOutputCP((UINT) CodePage);
+      }
+      else {
+        UINT cp = GetConsoleOutputCP();
+        SetConsoleOutputCP(cp);
       }
 
       // TODO we should have a special "printf" which can handle the color escape sequences!
@@ -2001,7 +2023,7 @@ int main (int argc, char* argv[]) {
     ostringstream s;
     s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
 
-    BaseClient.printLine(s.str());
+    BaseClient.printLine(s.str(), true);
 
     ostringstream info;
     info << "Using ";
@@ -2020,8 +2042,8 @@ int main (int argc, char* argv[]) {
     info << ", ICU " << TRI_ICU_VERSION;
 #endif
 
-    BaseClient.printLine(info.str()); 
-    BaseClient.printLine("");
+    BaseClient.printLine(info.str(), true); 
+    BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();
 
@@ -2032,7 +2054,7 @@ int main (int argc, char* argv[]) {
            << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
            << "', username: '" << BaseClient.username() << "'";
 
-        BaseClient.printLine(is.str());
+        BaseClient.printLine(is.str(), true);
       }
       else {
         ostringstream is;
@@ -2049,7 +2071,7 @@ int main (int argc, char* argv[]) {
         promptError = true;
       }
 
-      BaseClient.printLine("");
+      BaseClient.printLine("", true);
     }
   }
 

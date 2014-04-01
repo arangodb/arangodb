@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase*/
+/*global window, $, Backbone, document, arangoCollectionModel,arangoHelper,
+arangoDatabase, btoa, _*/
 
 (function() {
   "use strict";
@@ -8,13 +9,36 @@
 
     routes: {
       ""                       : "initialRoute",
+      "planScenario"           : "planScenario",
       "planTest"               : "planTest",
-      "planSymmetrical"        : "planSymmetric",
       "planAsymmetrical"       : "planAsymmetric",
       "shards"                 : "showShards",
       "showCluster"            : "showCluster",
-      "dashboard"              : "dashboard",
       "handleClusterDown"      : "handleClusterDown"
+    },
+
+    // Quick fix for server authentication
+    addAuth: function (xhr) {
+      var u = this.clusterPlan.get("user");
+      if (!u) {
+        xhr.abort();
+        if (!this.isCheckingUser) {
+          this.requestAuth();
+        }
+        return;
+      }
+      var user = u.name;
+      var pass = u.passwd;
+      var token = user.concat(":", pass);
+      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
+    },
+
+    requestAuth: function() {
+      this.isCheckingUser = true;
+      this.clusterPlan.set({"user": null});
+      var self = this;
+      var modalLogin = new window.LoginModalView();
+      modalLogin.render();
     },
 
     getNewRoute: function(last) {
@@ -45,11 +69,12 @@
 
     initialize: function () {
       var self = this;
+      this.dygraphConfig = window.dygraphConfig;
       this.initial = this.planScenario;
+      this.isCheckingUser = false;
       this.bind('all', function(trigger, args) {
         var routeData = trigger.split(":");
         if (trigger === "route") {
-          console.log(args);
           if (args !== "showCluster") {
             if (self.showClusterView) {
               self.showClusterView.stopUpdating();
@@ -68,11 +93,16 @@
       });
       this.footerView = new window.FooterView();
       this.footerView.render();
+      $(window).resize(function() {
+        self.handleResize();
+      });
     },
 
     showCluster: function() {
       if (!this.showClusterView) {
-        this.showClusterView = new window.ShowClusterView();
+        this.showClusterView = new window.ShowClusterView(
+            {dygraphConfig : this.dygraphConfig}
+      );
       }
       if (!this.shutdownView) {
         this.shutdownView = new window.ShutdownButtonView({
@@ -91,7 +121,9 @@
     },
 
     handleResize: function() {
-     // Not needed here
+        if (this.dashboardView) {
+            this.dashboardView.resize();
+        }
     },
 
     planTest: function() {
@@ -140,21 +172,23 @@
       if (!server) {
         this.navigate("", {trigger: true});
       }
-      var statisticsDescription = new window.StatisticsDescription();
-      statisticsDescription.fetch({
-        async:false
+      var statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
+      statisticsDescriptionCollection.fetch({
+        async: false,
+        beforeSend: this.addAuth.bind(this)
       });
       var statisticsCollection = new window.StatisticsCollection();
       if (this.dashboardView) {
         this.dashboardView.stopUpdating();
       }
       this.dashboardView = null;
-      // this.dashboardView = new window.ServerDashboardView({
-      this.dashboardView = new window.dashboardView({
+      server.addAuth = this.addAuth.bind(this);
+      this.dashboardView = new window.ServerDashboardView({
         collection: statisticsCollection,
-        description: statisticsDescription,
+        description: statisticsDescriptionCollection,
         documentStore: new window.arangoDocuments(),
-        server : server
+        server : server,
+        dygraphConfig : this.dygraphConfig
       });
       this.dashboardView.render();
     }

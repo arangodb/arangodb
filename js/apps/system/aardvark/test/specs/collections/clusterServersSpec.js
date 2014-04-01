@@ -1,196 +1,219 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, */
+/*global describe, beforeEach, afterEach, it, jasmine, */
 /*global spyOn, expect*/
 /*global templateEngine, $, _, uiMatchers*/
-(function() {
+(function () {
 
-  "use strict";
+    "use strict";
 
-  describe("Cluster Servers Collection", function() {
+    describe("Cluster Servers Collection", function () {
 
-    var col, list, prim1, prim2, prim3, sec1, sec2, sec3;
+        var col, list, prim1, prim2, prim3, sec1, sec2, sec3, oldRouter;
 
-    beforeEach(function() {
-      list = [];
-      sec1 = {
-        role: "secondary",
-        address: "tcp://192.168.1.1:1337",
-        name: "Sally"
-      };
-      sec2 = {
-        role: "secondary",
-        address: "tcp://192.168.1.2:1337",
-        name: "Sandy"
-      };
-      sec3 = {
-        role: "secondary",
-        address: "tcp://192.168.1.2:1337",
-        name: "Sammy"
-      };
-      prim1 = {
-        role: "primary",
-        secondary: sec1.name,
-        address: "tcp://192.168.0.1:1337",
-        name: "Pavel"
-      };
-      prim2 = {
-        role: "primary",
-        secondary: sec2.name,
-        address: "tcp://192.168.0.2:1337",
-        name: "Pancho"
-      };
-      prim3 = {
-        role: "primary",
-        secondary: sec3.name,
-        address: "tcp://192.168.0.3:1337",
-        name: "Pepe"
-      };
-      col = new window.ClusterServers();
-      spyOn(col, "fetch").andCallFake(function() {
-        _.each(list, function(s) {
-          col.add(s);
+        beforeEach(function () {
+            window.App = jasmine.createSpyObj(window.Router, ["getNewRoute",
+                "registerForUpdate",  "addAuth", "requestAuth"]);
+            col = new window.ClusterServers();
         });
-      });
+
+        it("updateUrl", function () {
+            col.updateUrl();
+            expect(window.App.getNewRoute).toHaveBeenCalledWith("DBServers");
+        });
+        it("statusClass", function () {
+            expect(col.statusClass("ok")).toEqual("success");
+            expect(col.statusClass("warning")).toEqual("warning");
+            expect(col.statusClass("critical")).toEqual("danger");
+            expect(col.statusClass("missing")).toEqual("inactive");
+            expect(col.statusClass("a")).toEqual(undefined);
+        });
+
+        it("getStatuses", function () {
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529"}),
+                m1 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529"}),
+                m2 = new window.ClusterServer({name: "c",
+                status : "warning", address: "localhost:8529"}),
+                m3 = new window.ClusterServer({name: "d",
+                status : "ok", address: "localhost:8529"}),
+                self = this;
+            col.add(m);
+            col.add(m1);
+            col.add(m2);
+            col.add(m3);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                    expect(param.async).toEqual(false);
+                    return {
+                        done: function(cb) {
+                            cb();
+                            return {
+                                fail : function (a) {
+                                    a({status : 401});
+                                }
+
+                            };
+                        }
+                    };
+                }
+            );
+            this.res = [];
+            col.getStatuses(function(a, b) {
+                self.res.push(a+b);
+            });
+            expect(this.res).toEqual(
+                ['undefinedlocalhost:8529', 'dangerlocalhost:8529',
+                    'warninglocalhost:8529', 'successlocalhost:8529']);
+        });
+
+       /* getStatuses: function(cb) {
+            var self = this,
+                completed = function() {
+                    self.forEach(function(m) {
+                        cb(self.statusClass(m.get("status")), m.get("address"));
+                    });
+                };
+            // This is the first function called in
+            // Each update loop
+            this.fetch({
+                async: false,
+                beforeSend: window.App.addAuth.bind(window.App)
+            }).done(completed)
+                .fail(function(d) {
+                    if (d.status === 401) {
+                        window.App.requestAuth();
+                    }
+                });
+        },
+*/
+
+        it("byAddress", function () {
+            var m = new window.ClusterServer({status : "ok", address: "localhost:8529"});
+            col.add(m);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.byAddress({})).toEqual({
+                localhost:  {
+                    dbs : [m]
+                }
+            });
+        });
+
+
+        it("getOverview with ok", function () {
+            var m = new window.ClusterServer({status : "ok",
+                address: "localhost:8529", role: "primary"});
+            col.add(m);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getOverview({})).toEqual({
+                plan: 1,
+                having: 1,
+                status: "ok"
+            });
+        });
+
+        it("getOverview with critical", function () {
+            var m = new window.ClusterServer({status : "critical",
+                address: "localhost:8529", role: "primary"});
+            col.add(m);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getOverview({})).toEqual({
+                plan: 1,
+                having: 0,
+                status: "critical"
+            });
+        });
+
+
+        it("getOverview with warning", function () {
+            var m = new window.ClusterServer({status : "warning",
+                address: "localhost:8529", role: "primary"});
+            col.add(m);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getOverview({})).toEqual({
+                plan: 1,
+                having: 1,
+                status: "warning"
+            });
+        });
+
+        it("getOverview with undefined state", function () {
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name: "c",
+                status : "warning", address: "localhost:8529", role: "primary"}),
+                m3 = new window.ClusterServer({name: "d",
+                status : "ok", address: "localhost:8529", role: "primary"}),
+                mc1 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary", secondary : m3}),
+                mc2 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary", secondary : mc1}),
+                mc3 = new window.ClusterServer({name: "b",
+                status : "critical", address: "localhost:8529", role: "primary"});
+
+            col.add(m);
+            col.add(mc1);
+            col.add(mc2);
+            col.add(mc3);
+            col.add(m2);
+            col.add(m3);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getOverview({})).toEqual({ plan : 4, having : 3, status : 'warning' } );
+        });
+
+        it("getOverview with very critical state", function () {
+            var m = new window.ClusterServer({name: "a",
+                status : "undefined", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name: "c",
+                    status : "warning", address: "localhost:8529", role: "primary"}),
+                m3 = new window.ClusterServer({name: "d",
+                    status : "ok", address: "localhost:8529", role: "primary"}),
+                mc1 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"}),
+                mc2 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"}),
+                mc3 = new window.ClusterServer({name: "b",
+                    status : "critical", address: "localhost:8529", role: "primary"});
+
+            col.add(m);
+            col.add(mc1);
+            col.add(mc2);
+            col.add(mc3);
+            col.add(m2);
+            col.add(m3);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getOverview({})).toEqual({ plan : 4, having : 2, status : 'critical' } );
+        });
+
+        it("getList", function () {
+            var m = new window.ClusterServer({name : "a",
+                    status : "ok", address: "localhost:8529", role: "primary"}),
+                m2 = new window.ClusterServer({name : "b",
+                    status : "ok", address: "localhost:8529", role: "primary", secondary : m});
+            col.add(m);
+            col.add(m2);
+            spyOn(col, "fetch").andCallFake(function(param) {
+                expect(param.async).toEqual(false);
+            });
+            expect(col.getList({})).toEqual( [ { primary :
+                { name : 'a', address : 'localhost:8529', status : 'ok' } },
+                { primary :
+                { name : 'b', address : 'localhost:8529', status : 'ok' },
+                secondary : { name : 'a', address : 'localhost:8529', status : 'ok' } } ]);
+        });
+
+
     });
-
-    describe("list overview", function() {
-
-      it("should fetch the result sync", function() {
-        col.fetch.reset();
-        col.getOverview();
-        expect(col.fetch).toHaveBeenCalledWith({
-          async: false
-        });
-      });
-      
-
-      it("should return a status ok if all servers are running", function() {
-        prim1.status = "ok";
-        prim2.status = "ok";
-        prim3.status = "ok";
-        sec1.status = "ok";
-        sec2.status = "ok";
-        sec3.status = "ok";
-        list.push(prim1);
-        list.push(prim2);
-        list.push(prim3);
-        list.push(sec1);
-        list.push(sec2);
-        list.push(sec3);
-        var expected = {
-          having: 3,
-          plan: 3,
-          status: "ok"
-        };
-        expect(col.getOverview()).toEqual(expected);
-      });
-
-      it("should return a status ok if all primary servers are running", function() {
-        prim1.status = "ok";
-        prim2.status = "ok";
-        list.push(prim1);
-        list.push(prim2);
-        var expected = {
-          having: 2,
-          plan: 2,
-          status: "ok"
-        };
-        expect(col.getOverview()).toEqual(expected);
-      });
-
-      it("should return a status warning if there was a failover", function() {
-        prim1.status = "critical";
-        prim2.status = "ok";
-        sec1.status = "ok";
-        sec2.status = "ok";
-        list.push(prim1);
-        list.push(prim2);
-        list.push(sec1);
-        list.push(sec2);
-        var expected = {
-          having: 2,
-          plan: 2,
-          status: "warning"
-        };
-        expect(col.getOverview()).toEqual(expected);
-      });
-
-      it("should return a status critical if one pair is missing", function() {
-        prim1.status = "critical";
-        prim2.status = "ok";
-        sec1.status = "critical";
-        sec2.status = "ok";
-        list.push(prim1);
-        list.push(prim2);
-        list.push(sec1);
-        list.push(sec2);
-        var expected = {
-          having: 1,
-          plan: 2,
-          status: "critical"
-        };
-        expect(col.getOverview()).toEqual(expected);
-      });
-
-    });
-
-    describe("the pair list", function() {
-
-      it("should fetch the result sync", function() {
-        col.fetch.reset();
-        col.getList();
-        expect(col.fetch).toHaveBeenCalledWith({
-          async: false
-        });
-      });
-      
-      it("should combine all pairs", function() {
-        prim1.status = "ok";
-        prim2.status = "warning";
-        prim3.status = "critical";
-        sec1.status = "critical";
-        sec2.status = "ok";
-        delete prim3.secondary;
-        list.push(prim1);
-        list.push(prim2);
-        list.push(prim3);
-        list.push(sec1);
-        list.push(sec2);
-        var expected = [];
-        expected.push({
-          primary: {
-            name: prim1.name,
-            status: prim1.status,
-            address: prim1.address
-          },
-          secondary: {
-            name: sec1.name,
-            status: sec1.status,
-            address: sec1.address
-          }
-        });
-        expected.push({
-          primary: {
-            name: prim2.name,
-            status: prim2.status,
-            address: prim2.address
-          },
-          secondary: {
-            name: sec2.name,
-            status: sec2.status,
-            address: sec2.address
-          }
-        });
-        expected.push({
-          primary: {
-            name: prim3.name,
-            status: prim3.status,
-            address: prim3.address
-          }
-        });
-        expect(col.getList()).toEqual(expected);
-      });
-    });
-  });
 
 }());

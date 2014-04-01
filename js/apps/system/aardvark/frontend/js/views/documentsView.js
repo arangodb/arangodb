@@ -216,6 +216,9 @@
     },
 
     filterCollection : function () {
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#filterCollection').toggleClass('activated');
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
       $('#indexHeader').hide();
@@ -230,12 +233,18 @@
     },
 
     importCollection: function () {
+      $('#filterCollection').removeClass('activated');
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').toggleClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
       $('#indexHeader').hide();
     },
 
     indexCollection: function () {
+      $('#filterCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
       $('#indexEditView').show();
       $('#indexHeader').slideToggle(200);
@@ -303,7 +312,7 @@
                                 '" type="text" placeholder="Attribute value" ' + 
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus"></i></a></div>');
+                                '<i class="icon icon-minus arangoicon"></i></a></div>');
       this.filters[num] = true;
     },
 
@@ -557,12 +566,6 @@
       this.totalPages = window.arangoDocumentsStore.totalPages;
       this.currentPage = window.arangoDocumentsStore.currentPage;
       this.documentsCount = window.arangoDocumentsStore.documentsCount;
-      if (this.documentsCount !== 0) {
-        $('#documentsStatus').html(
-          'Showing Page '+this.currentPage+' of '+this.totalPages+
-          ', '+this.documentsCount+' entries'
-        );
-      }
     },
 
 
@@ -581,6 +584,8 @@
       }
 
       this.uploadSetup();
+
+      $("[data-toggle=tooltip]").tooltip();
 
       $('.modalImportTooltips').tooltip({
         placement: "left"
@@ -633,17 +638,18 @@
       };
       target.pagination(options);
       $('#documentsToolbarF').prepend(
-        '<ul class="prePagi"><li><a id="documents_first" class="paginationButton">'+
-        '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>');
+        '<ul class="pre-pagi"><li><a id="documents_first" class="pagination-button">'+
+        '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
         $('#documentsToolbarF').append(
-          '<ul class="lasPagi"><li><a id="documents_last" class="paginationButton">'+
-          '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>');
+          '<ul class="las-pagi"><li><a id="documents_last" class="pagination-button">'+
+          '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
           var total = $('#totalDocuments');
           if (total.length > 0) {
             total.html("Total: " + this.documentsCount + " documents");
           } else {
             $('#documentsToolbarFL').append(
-              '<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>'
+              '<a id="totalDocuments" class="totalDocuments">Total: ' + this.documentsCount +
+              ' document(s) </a>'
             );
           }
     },

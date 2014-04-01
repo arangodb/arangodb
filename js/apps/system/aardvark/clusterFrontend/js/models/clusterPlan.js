@@ -18,6 +18,10 @@
       }
       var i,j,r;
       r = this.get("runInfo");
+      if (!r) {
+        console.log(this);
+        return;
+      }
       j = r.length-1;
       while (j > 0) {
         if(r[j].isStartServers) {
@@ -51,6 +55,21 @@
         }
       });
       return result;
+    },
+
+    storeCredentials: function(name, passwd) {
+      var self = this;
+      $.ajax({
+        url: "cluster/plan/credentials",
+        type: "PUT",
+        data: JSON.stringify({
+          user: name,
+          passwd: passwd
+        }),
+        async: false
+      }).done(function() {
+        self.fetch();
+      });
     },
 
     isSymmetricSetup: function() {

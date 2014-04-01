@@ -1,27 +1,30 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine*/
-/*global $, arangoCollection*/
+/*global $, arangoCollectionModel*/
 (function() {
   "use strict";
 
   describe("Collection View", function() {
 
-    var myView;
-    window.App = function() {};
-    window.App.navigate = function() {};
+    var myView, oldRouter;
+
 
     beforeEach(function() {
+      oldRouter = window.App;
+      window.App = function() {};
+      window.App.navigate = function() {};
       $('body').append('<div id="content" class="removeMe"></div>');
 
       myView = new window.CollectionView({
-        model: arangoCollection
+        model: arangoCollectionModel
       });
 
     });
 
     afterEach(function() {
       $('.removeMe').remove();
+      window.App = oldRouter;
     });
 
 

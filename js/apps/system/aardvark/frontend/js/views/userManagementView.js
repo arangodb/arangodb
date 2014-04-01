@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine */
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+  CryptoJS */
 (function() {
 
   "use strict";
@@ -12,24 +13,29 @@
     template: templateEngine.createTemplate("userManagementView.ejs"),
 
     events: {
-      "click #createUser"                                     : "createUser",
-      "click #submitCreateUser"                               : "submitCreateUser",
-      "click #deleteUser"                                     : "removeUser",
-      "click #submitDeleteUser"                               : "submitDeleteUser",
-      "click .editUser"                                       : "editUser",
-      "click .icon"                                           : "editUser",
-      "click #submitEditUser"                                 : "submitEditUser",
-      "click #userManagementToggle"                           : "toggleView",
-      "keyup #userManagementSearchInput"                      : "search",
-      "click #userManagementSearchSubmit"                     : "search"
+      "click #createUser"                   : "createUser",
+      "click #submitCreateUser"             : "submitCreateUser",
+      "click #deleteUser"                   : "removeUser",
+      "click #submitDeleteUser"             : "submitDeleteUser",
+      "click .editUser"                     : "editUser",
+      "click .icon"                         : "editUser",
+      "click #submitEditUser"               : "submitEditUser",
+      "click #userManagementToggle"         : "toggleView",
+      "keyup #userManagementSearchInput"    : "search",
+      "click #userManagementSearchSubmit"   : "search",
+      "click #callEditUserPassword"         : "editUserPassword",
+      "click #submitEditUserPassword"       : "submitEditUserPassword",
+      "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile"
+
     },
 
     initialize: function() {
       //fetch collection defined in router
       this.collection.fetch({async:false});
+      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
     },
 
-    render: function () {
+    render: function (isProfile) {
       var dropdownVisible = false;
       if ($('#userManagementDropdown').is(':visible')) {
         dropdownVisible = true;
@@ -62,6 +68,9 @@
       $('#searchInput').val(val);
 */
 //      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+      if (!!isProfile) {
+        this.editCurrentUser();
+      }
 
       return this;
     },
@@ -94,6 +103,12 @@
 
     createUser : function(e) {
       e.preventDefault();
+      //reset modal (e.g. if opened, filled in and closed its not empty)
+      $('#newUsername').val('');
+      $('#newName').val('');
+      $('#newPassword').val('');
+      $('#newStatus').prop('checked', true);
+
       this.showModal();
     },
 
@@ -177,23 +192,29 @@
 
     editUser : function(e) {
       this.collection.fetch();
-      this.userToEdit = $(e.currentTarget).attr("id");
-      $('#editUserModal').modal('show');
+      this.userToEdit = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
+      if (this.userToEdit === '') {
+        this.userToEdit = $(e.currentTarget).attr('id');
+      }
       var user = this.collection.findWhere({user: this.userToEdit});
-      $('#editUsername').html(user.get("user"));
-      $('#editName').val(user.get("extra").name);
-      $('#editStatus').attr("checked", user.get("active"));
       if (user.get("loggedIn")) {
-        $('#editStatus').attr("disabled", true);
-        $('#deleteUser').attr("disabled", true);
-        $('#deleteUser').removeClass("button-danger");
-        $('#deleteUser').addClass("button-inactive");
+        this.editCurrentUser();
       } else {
+        $('#editUserModal').modal('show');
+        $('#editUsername').html(user.get("user"));
+        $('#editName').val(user.get("extra").name);
         $('#editStatus').attr("disabled", false);
         $('#deleteUser').attr("disabled", false);
         $('#deleteUser').removeClass("button-inactive");
         $('#deleteUser').addClass("button-danger");
       }
+    },
+
+    editCurrentUser: function() {
+      $('#editCurrentUserProfileModal').modal('show');
+      $('#editCurrentUsername').html(this.currentUser.get("user"));
+      $('#editCurrentName').val(this.currentUser.get("extra").name);
+      $('#editCurrentUserProfileImg').val(this.currentUser.get("extra").img);
     },
 
     submitEditUser : function() {
@@ -263,7 +284,8 @@
     },
 
     setFilterValues: function () {
-/*      var searchOptions = this.collection.searchOptions;
+      /*    
+      var searchOptions = this.collection.searchOptions;
       $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
       $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
       $('#checkSystem').attr('checked', searchOptions.includeSystem);
@@ -271,9 +293,100 @@
       $('#checkDocument').attr('checked', searchOptions.includeDocument);
       $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
       $('#sortType').attr('checked', searchOptions.sortBy === 'type');
-      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);*/
-    }
+      $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);
+      */
+    },
 
+    evaluateUserName : function(str, substr) {
+      var index = str.lastIndexOf(substr);
+      return str.substring(0, index);
+    },
+
+
+    editUserPassword : function () {
+      $('#editCurrentUserProfileModal').modal('hide');
+      $('#editUserPasswordModal').modal('show');
+    },
+
+    submitEditUserPassword : function () {
+      var self        = this,
+        oldPasswd     = $('#oldCurrentPassword').val(),
+        newPasswd     = $('#newCurrentPassword').val(),
+        confirmPasswd = $('#confirmCurrentPassword').val();
+      $('#oldCurrentPassword').val('');
+      $('#newCurrentPassword').val('');
+      $('#confirmCurrentPassword').val('');
+      //check input
+      //clear all "errors"
+      $('#oldCurrentPassword').closest("th").css("backgroundColor", "white");
+      $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
+      $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
+
+
+      //check
+      var hasError = false;
+      //Check old password
+      if (!this.validateCurrentPassword(oldPasswd)) {
+        $('#oldCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check confirmation
+      if (newPasswd !== confirmPasswd) {
+        $('#confirmCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+      //check new password
+      if (!this.validatePassword(newPasswd)) {
+        $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
+        hasError = true;
+      }
+
+      if (hasError) {
+        return;
+      }
+      this.currentUser.setPassword(newPasswd);
+//      this.showModal('#editUserProfileModal');
+      $('#editUserPasswordModal').modal('hide');
+    },
+
+    validateCurrentPassword : function (pwd) {
+      return this.currentUser.checkPassword(pwd);
+    },
+
+
+    submitEditCurrentUserProfile: function() {
+      var self = this;
+      var name    = $('#editCurrentName').val();
+      var img     = $('#editCurrentUserProfileImg').val();
+      img = this.parseImgString(img);
+
+      /*      if (!this.validateName(name)) {
+       $('#editName').closest("th").css("backgroundColor", "red");
+       return;
+       }*/
+
+      this.currentUser.setExtras(name, img);
+      $('#editCurrentUserProfileModal').modal('hide');
+      this.updateUserProfile();
+    },
+
+    updateUserProfile: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.render();
+        }
+      });
+    },
+
+    parseImgString : function(img) {
+      //if already md5
+      if (img.indexOf("@") === -1) {
+        return img;
+      }
+      //else generate md5
+      return CryptoJS.MD5(img).toString();
+    }
 
 
   });

@@ -26,7 +26,8 @@
       this.dbname = db;
       this.updateUrl();
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       return this.map(function(m) {
         return m.forList();
@@ -45,8 +46,10 @@
       this.isUpdating = true;
       var self = this;
       this.timer = window.setInterval(function() {
-        this.updateUrl();
-        self.fetch();
+        self.updateUrl();
+        self.fetch({
+          beforeSend: window.App.addAuth.bind(window.App)
+        });
       }, this.interval);
     }
 

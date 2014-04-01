@@ -1,18 +1,17 @@
 <script id="applicationsView.ejs" type="text/template">
-<ul class="thumbnails2">
   <div class="headerBar">
     <a class="arangoHeader">Applications</a>
 
-    <div class="headerButtonBar pull-right">
+    <div class="headerButtonBar">
       <ul class="headerButtonList">
-        <li>
-          <a id="importFoxxToggle" class="headerButton">
-            <span class="icon_arangodb_import" title="Upload foxx from ZIP file"></span>
-          </a>
-        </li>
         <li>
           <a id="foxxToggle" class="headerButton">
             <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+        <li>
+          <a id="importFoxxToggle" class="headerButton">
+            <span class="icon_arangodb_import" title="Upload foxx from ZIP file"></span>
           </a>
         </li>
       </ul>
@@ -53,29 +52,26 @@
 
   <div id="foxxDropdownImport" class="dropdownImport">
     <div class="queryline">
-      <input id="importFoxx" name="importFoxx" type="file" accept="application/zip" />
+      <input id="importFoxx" name="importFoxx" type="file" accept="application/zip"/>
       <button id="confirmFoxxImport" class="button-success btn-old-padding" style="float:right">
-        <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import Foxx
+        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import Foxx
       </button>
     </div>
   </div>
-</ul>
 
 
-<div class="contentDiv">
-  <div id="installed">
-    <div class="headerBar">
-      <!-- <i id="toggleInstalled" class="pull-right icon-minus icon-white toggle-icon"></i> -->
-      <a class="arangoHeader">Active</a>
+  <div class="contentDiv">
+    <div id="installed">
+      <div class="headerBar">
+        <a class="arangoHeader">Active</a>
+      </div>
+      <div id="installedList" class="tileList"></div>
     </div>
-    <ul id="installedList" class="tileList"></ul>
-  </div>
-  <div id="available">
-    <div class="headerBar">
-      <!-- <i id="toggleAvailable" class="pull-right icon-minus icon-white toggle-icon"></i> -->
-      <a class="arangoHeader">Available</a>
+    <div id="available">
+      <div class="headerBar">
+        <a class="arangoHeader">Available</a>
+      </div>
+      <div id="availableList" class="tileList"></div>
     </div>
-    <ul id="availableList" class="tileList"></ul>
   </div>
-</div>
 </script>

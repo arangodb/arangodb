@@ -55,11 +55,75 @@ namespace triagens {
     class ApplicationScheduler;
   }
 
+  namespace arango {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        class GlobalContextMethods
+// -----------------------------------------------------------------------------
+
+    class GlobalContextMethods {
+  
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief method type
+////////////////////////////////////////////////////////////////////////////////
+
+        enum MethodType {
+          TYPE_UNKNOWN = 0,
+          TYPE_RELOAD_ROUTING,
+          TYPE_FLUSH_MODULE_CACHE,
+          TYPE_RELOAD_AQL
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a method type number from a type string
+////////////////////////////////////////////////////////////////////////////////
+
+        static MethodType getType (std::string const& type) {
+          if (type == "reloadRouting") {
+            return TYPE_RELOAD_ROUTING;
+          }
+          if (type == "flushModuleCache") {
+            return TYPE_FLUSH_MODULE_CACHE;
+          }
+          if (type == "reloadAql") {
+            return TYPE_RELOAD_AQL;
+          }
+
+          return TYPE_UNKNOWN;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get code for a method
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const getCode (MethodType type) {
+          switch (type) {
+            case TYPE_RELOAD_ROUTING:
+              return CodeReloadRouting;
+            case TYPE_FLUSH_MODULE_CACHE:
+              return CodeFlushModuleCache;
+            case TYPE_RELOAD_AQL:
+              return CodeReloadAql;
+            case TYPE_UNKNOWN:
+            default:
+              return "";
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static strings with the code for each method
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const CodeReloadRouting;
+        static std::string const CodeFlushModuleCache;
+        static std::string const CodeReloadAql;
+    };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ApplicationV8
 // -----------------------------------------------------------------------------
-
-  namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application simple user and session management feature
@@ -112,7 +176,7 @@ namespace triagens {
 /// Caller must hold the _contextCondition.
 ////////////////////////////////////////////////////////////////////////////////
 
-          void addGlobalContextMethod (string const&);
+          bool addGlobalContextMethod (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all global methods
@@ -132,19 +196,25 @@ namespace triagens {
 /// @brief open global methods
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::vector<std::string> _globalMethods;
+          std::vector<GlobalContextMethods::MethodType> _globalMethods;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of requests since last GC of the context
+/// @brief number of executions since last GC of the context
 ////////////////////////////////////////////////////////////////////////////////
 
-          size_t _dirt;
+          size_t _numExecutions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timestamp of last GC for the context
 ////////////////////////////////////////////////////////////////////////////////
 
           double _lastGcStamp;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the context has dead (ex-v8 wrapped) objects
+////////////////////////////////////////////////////////////////////////////////
+
+          bool _hasDeadObjects;
         };
 
 // -----------------------------------------------------------------------------
@@ -230,7 +300,7 @@ namespace triagens {
 /// @brief adds a global context functions to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addGlobalContextMethod (string const&);
+        bool addGlobalContextMethod (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection
@@ -304,7 +374,7 @@ namespace triagens {
 /// @brief determine which of the free contexts should be picked for the GC
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Context* pickContextForGc ();
+        V8Context* pickFreeContextForGc ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares a V8 instance

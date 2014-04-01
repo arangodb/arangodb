@@ -1,73 +1,166 @@
 <script id="databaseView.ejs" type="text/template">
-<ul class="thumbnails2" id="databaseHeader">
   <div class="headerBar">
-    <a class="arangoHeader">Databases</a>
-  </div>
-</ul>
+    <!--  <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="databaseToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>-->
 
-<div class="contentDiv">
-  <table id="databaseTable" class="arangoDataTable contentTables">
-    <thead>
-      <tr>
-        <td class="dbThFirst">Name</td>
-        <td class="dbThSecond">
-          <span id="createDatabase" class="icon_arangodb_roundplus" data-original-title="Create a database"></span>
-        </td>
-      </tr>
-    </thead>
-    <tbody id="databaseTableBody">
-    </tbody>
-  </table>
-</div>
-
-<div id="createDatabaseModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Create Database</a>
+    <div class="pull-left">
+      <a class="arangoHeader">Databases</a>
+    </div>
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/><img id="databaseSearchSubmit" class="search-submit-icon">
+    </div>
   </div>
 
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th>Name:</th>
-        <th><input type="text" id="newDatabaseName" name="databasename" value="" placeholder="Database Name"/></th>
-      </tr>
-      <tr>
-        <td colspan="2">Please define the owner of this database. This will be the only user having initial access to this database. If the user is different to your account you will not be able to see the database. If there is a failure you will be informed.</td>
-      </tr>
-      <tr>
-        <th>Username:</th>
-        <th><input type="text" id="newUser" name="username" value="" placeholder="Database Owner"/></th>
-      </tr>
-      <tr>
-        <th>Password:</th>
-        <th><input type="password" id="newPassword" name="password" value=""/></th>
-      </tr>
-    </table>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitCreateDatabase" class="button-success pull-right">Create</button>
-  </div>
-</div>
 
-<div id="deleteDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Delete Database</a>
+  <div id="databaseDropdown2" class="headerDropdown">
+
+    <div id="databaseDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortName">
+            <label class="css-label css-label-round"></label>Sort by ?
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortType">
+            <label class="css-label css-label-round"></label>Sort by ?
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortOrder">
+            <label class="css-label"></label>Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
   </div>
 
-  <div class="modal-body">
-    <table>
-      <tr>
-        <th>Really delete?</th>
-        <th></th>
-      </tr>
-    </table>
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="userManagementThumbnailsIn" class="tileList">
+      <div class="tile">
+        <a href="#" id="createDatabase" class="add">
+          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add Database
+        </a>
+      </div>
+      <% collection.forEach(function(db) {
+          var name = db.get("name");
+      %>
+
+      <div class="tile">
+      <div class="iconSet">
+        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+      </div>
+      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+      <div class="tileBadge">
+          <span>
+          <%
+          if(name === currentDB) {
+          %>
+              <div class="corneredBadge loaded">active</div>
+          <%
+          } else {
+          %>
+              <div class="corneredBadge unloaded">inactive</div>
+          <%
+          }
+          %>
+            </span>
+    </div>
+
+      <h5 class="collectionName"><%=name %></h5>
+    </div>
+      <%});%>
+     </div>
   </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="submitDeleteDatabase" class="button-danger pull-right">Delete</button>
+
+
+  <div id="createDatabaseModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Create Database</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Name:</th>
+          <th><input type="text" id="newDatabaseName" name="databasename" value="" placeholder="Database Name"/></th>
+        </tr>
+        <tr>
+          <td colspan="2">Please define the owner of this database. This will be the only user having initial access to this database. If the user is different to your account you will not be able to see the database. If there is a failure you will be informed.</td>
+        </tr>
+        <tr>
+          <th>Username:</th>
+          <th><input type="text" id="newUser" name="username" value="" placeholder="Database Owner"/></th>
+        </tr>
+        <tr>
+          <th>Password:</th>
+          <th><input type="password" id="newPassword" name="password" value=""/></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="submitCreateDatabase" class="button-success pull-right">Create</button>
+    </div>
   </div>
-</div>
+
+  <div id="editDatabaseModal" class="modal hide fade createModalDialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Edit database</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Name:</th>
+          <th id="editDatabaseName"></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="deleteDatabase" class="button-danger pull-right" >Delete</button>
+    </div>
+  </div>
+
+  <div id="deleteDatabaseModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Delete Database</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tr>
+          <th>Really delete?</th>
+          <th></th>
+        </tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+      <button id="submitDeleteDatabase" class="button-danger pull-right">Delete</button>
+    </div>
+  </div>
+
+
 </script>

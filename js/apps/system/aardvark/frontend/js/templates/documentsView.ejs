@@ -1,41 +1,39 @@
 <script id="documentsView.ejs" type="text/template">
-<ul class="thumbnails2">
-  <div id="transparentHeader" class="headerBar">
-    <div id="documentsToolbar" class="headerButtonBar pull-right">
+<div id="transparentHeader" class="headerBar">
+  <div id="documentsToolbar" class="headerButtonBar">
 
 
-    <!-- remove marker for docupdiv--!>
-    <ul class="headerButtonList">
-      <li class="enabled">
-        <a id="indexCollection" class="headerButton">
-          <span class="icon_arangodb_checklist" title="Index collection"></span>
-        </a>
-      </li>
-      <li class="enabled">
-        <a id="filterCollection" class="headerButton">
-          <span class="icon_arangodb_filter" title="Filter collection"></span>
-        </a>
-      </li>
-      <li class="enabled">
-        <a id="importCollection" class="headerButton">
-          <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
-        </a>
-      </li>
-      <li class="enabled">
-        <a id="collectionPrev" class="headerButton">
-          <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
-        </a>
-      </li>
-      <li class="enabled">
-        <a id="collectionNext" class="headerButton">
-          <span class="icon_arangodb_arrowright" title="Next collection"></span>
-        </a>
-      </li>
-    </ul>
+  <!-- remove marker for docupdiv-->
+  <ul class="headerButtonList">
+    <li class="enabled">
+      <a id="collectionNext" class="headerButton">
+        <span class="icon_arangodb_arrowright" title="Next collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="collectionPrev" class="headerButton collection-pagination">
+        <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="importCollection" class="headerButton">
+        <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="filterCollection" class="headerButton">
+        <span class="icon_arangodb_filter" title="Filter collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="indexCollection" class="headerButton">
+        <span class="icon_arangodb_checklist" title="Index collection"></span>
+      </a>
+    </li>
+  </ul>
 
-    </div>
   </div>
-</ul>
+</div>
 
 <div class="arangoDropdown">
   <div id="filterHeader" class="headerDropdown">
@@ -48,7 +46,7 @@
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
-        <a id="addFilterItem"><i class="icon-plus"></i></a>
+        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
         <button id="resetView" class="button-warning btn-old-padding">Reset</button>
         <button id="filterSend" class="button-success btn-old-padding">Filter</button>
     </div>
@@ -58,7 +56,7 @@
     <div class="queryline">
       <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
-        <img id="uploadIndicator" style="display: none;" src="img/ajax-loader.gif"/>Import JSON
+        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
       </button>
     </div>
   </div>
@@ -66,8 +64,8 @@
   <div id="indexHeader" class="headerDropdown">
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
-          <a>Indexes:</a>
-          <table id="collectionEditIndexTable" class="">
+          <span class="arangoHeader">Indexes:</span>
+          <table id="collectionEditIndexTable" class="edit-index-table">
             <tr class="figuresHeader">
               <th class="collectionInfoTh">ID</th>
               <th class="collectionInfoTh">Type</th>
@@ -76,11 +74,13 @@
               <th class="collectionInfoTh">Action</th>
             </tr>
           </table>
-          <button id="addIndex" class="button-success">Add Index</button>
+          <div class="index-button-bar">
+            <button id="addIndex" class="button-success">Add Index</button>
+          </div>
       </div>
 
-        <div id="newIndexView" style="display:none">
-          <a id="newIndexHeader" class="arangoHeader">Add Index:</a>
+        <div id="newIndexView" class="new-index-view" style="display:none">
+          <span id="newIndexHeader" class="arangoHeader">Add Index:</span>
           <table>
             <tr>
               <th class="collectionTh">Type:</th>
@@ -102,12 +102,24 @@
               <tr>
                 <th class="collectionTh">Size:</th>
                 <th><input type="text" id="newCapSize" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal number of documents for the collection."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Bytesize:</th>
                 <th><input type="text" id="newCapByteSize" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="The maximal size of the active document data in the collection."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection. (min = 16384)">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
           </div>
@@ -116,28 +128,51 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newGeoFields" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list with one or two attribute paths."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list with one or two attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Geo JSON:</th>
                 <th>
                   <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
                 </th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Constraint:</th>
                 <th>
                   <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
                 </th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If constraint is true, then a geo-spatial constraint is created.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Ignore Null:</th>
                 <th>
                   <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
                 </th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
                 </th>
               </tr>
             </table>
@@ -148,14 +183,25 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newHashFields" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute paths."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Unique:</th>
                 <th>
                   <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
                 </th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="If true, then create a unique index."/>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
                 </th>
               </tr>
             </table>
@@ -165,12 +211,24 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newFulltextFields" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title='A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].'>
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Min. length:</th>
                 <th><input type="text" id="newFulltextMinLength" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
 
@@ -181,29 +239,41 @@
               <tr>
                 <th class="collectionTh">Fields:</th>
                 <th><input type="text" id="newSkiplistFields" value=""/></th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="A list of attribute paths."/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
               <tr>
                 <th class="collectionTh">Unique:</th>
                 <th>
                   <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
                 </th>
-                <th><span class="icon_arangodb_info arangoicon" data-original-title="If true, then create a unique index."/>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
                 </th>
               </tr>
             </table>
           </div>
 
-          <button id="createIndex" class="button-success">Save</button>
-          <button id="cancelIndex" class="button-danger">Cancel</button>
-
+          <div class="index-button-bar">
+            <button id="createIndex" class="button-success">Save</button>
+            <button id="cancelIndex" class="button-danger">Cancel</button>
+          </div>
+      </div>
     </div>
-  </div>
   </div>
 
 </div>
 
-<div id="documentsDiv">
+<div id="documentsDiv" class="innerContent">
 
 <div id="uploadMessages"></div>
 <table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable" id="documentsTableID">
@@ -219,8 +289,8 @@
 </table>
 
     <div id="documentsToolbarFL">
-        <div id="documentsToolbarF" class="pagination pagination-small pagination-centered">
-        </div>
+      <div id="documentsToolbarF" class="pagination-line">
+      </div>
     </div>
 
 <!-- Delete Modal -->
@@ -233,7 +303,7 @@
     <p>There is no way back…</p>
   </div>
   <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
   </div>
 </div>
@@ -248,7 +318,7 @@
     <p>There is no way back…</p>
   </div>
   <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
   </div>
 </div>
@@ -275,7 +345,7 @@
     </table>
   </div>
   <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmCreateEdge" class="button-success" style="float:right">Create</button>
   </div>
 </div>

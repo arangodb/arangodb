@@ -1,5 +1,4 @@
 <script id="symmetricPlan.ejs" type="text/template">
-<ul class="thumbnails2">
   <div class="headerBar">
     <% if (isSymmetric) { %>
       <a class="arangoHeader">Plan a symmetric cluster</a>
@@ -7,16 +6,18 @@
       <a class="arangoHeader">Plan a asymmetric cluster</a>
     <% } %>
   </div>
-</ul>
+  <div class="innerContent">
 
-<form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
-  <fieldset id="server_list">
-  </fieldset>              
-  <div class="control-group">
-    <div class="controls">
-      <button class="button-success" id="startSymmetricPlan">Launch Cluster</button>
-      <button class="button-close" id="cancel">Cancel</button>
-    </div>
+    <form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+      <fieldset id="server_list">
+      </fieldset>
+      <div class="control-group">
+        <div class="controls">
+          <button class="button-close" id="cancel">Cancel</button>
+          <button class="button-notification" id="test-all-connections">Test all connections</button>
+          <button class="button-neutral" id="startSymmetricPlan">Launch Cluster</button>
+        </div>
+      </div>
+    </form>
   </div>
-</form>
 </script>

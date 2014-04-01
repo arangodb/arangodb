@@ -668,7 +668,6 @@ char* TRI_Dirname (char const* path) {
 
 char* TRI_Basename (char const* path) {
   size_t n;
-  char const* p;
 
   n = strlen(path);
 
@@ -690,6 +689,8 @@ char* TRI_Basename (char const* path) {
     }
   }
   else {
+    char const* p;
+
     for (p = path + (n - 2);  path < p;  --p) {
       if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
         break;
@@ -1883,7 +1884,7 @@ int TRI_GetTempName (char const* directory,
 
   if (! TRI_IsDirectory(dir)) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_CANNOT_CREATE_DIRECTORY; 
   }
 
   tries = 0;
@@ -1933,7 +1934,7 @@ int TRI_GetTempName (char const* directory,
 
   TRI_Free(TRI_CORE_MEM_ZONE, dir);
 
-  return TRI_ERROR_INTERNAL;
+  return TRI_ERROR_CANNOT_CREATE_TEMP_FILE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1970,7 +1971,8 @@ void TRI_SetUserTempPath (char* path) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory in the given rootKey
-/// @param rootKey should be: either HKEY_CURRENT_USER or HKEY_LOCAL_MASCHINE
+///
+/// rootKey should be: either HKEY_CURRENT_USER or HKEY_LOCAL_MASCHINE
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2010,15 +2012,16 @@ char * __LocateInstallDirectory_In(HKEY rootKey) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory 
-/// we look for the configuration first in HKEY_CURRENT_USER (arango was installed 
-/// for a single user)
-/// when we don't find  anything when look in HKEY_LOCAL_MACHINE (arango was 
-/// installed as service)
+//
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
 #if _WIN32
 char* TRI_LocateInstallDirectory () {
+  // We look for the configuration first in HKEY_CURRENT_USER (arango was 
+  // installed for a single user). When we don't find  anything when look in 
+  // HKEY_LOCAL_MACHINE (arango was installed as service).
+
   char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
 
   if (!directory) {

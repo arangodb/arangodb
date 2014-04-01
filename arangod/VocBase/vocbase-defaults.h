@@ -54,7 +54,6 @@ struct TRI_vocbase_s;
 typedef struct TRI_vocbase_defaults_s {
   TRI_voc_size_t    defaultMaximalSize;
   bool              removeOnDrop;
-  bool              removeOnCompacted;
   bool              defaultWaitForSync;
   bool              forceSyncProperties;
   bool              requireAuthentication;

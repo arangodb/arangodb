@@ -1,0 +1,181 @@
+.collectionTh {
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 400 !important;
+  text-align: left;
+  width: 20% !important;
+
+  input,
+  select,
+  textarea {
+    margin-top: 10px;
+  }
+}
+
+.collectionInfoTh {
+  min-width: 60px;
+  text-align: left;
+  width: 320px;
+}
+
+.addCollection {
+  $inputwidth: 320px;
+
+  table tr {
+    border-bottom: 0 !important;
+    height: 53px;
+  }
+
+  .icon_arangodb_info {
+    margin-left: 20px !important;
+    position: relative;
+    top: 2px !important;
+  }
+
+  .accordion {
+    margin-top: 10px;
+  }
+
+  .collectionThSec {
+    width: $inputwidth !important;
+  }
+
+  .collectionTh {
+    width: 96px;
+  }
+
+  .modalInput {
+    width: $inputwidth;
+  }
+
+  .modalSelect {
+    width: $inputwidth + 14px;
+  }
+
+  .accordion-toggle {
+    width: $inputwidth + 137px !important;
+  }
+}
+
+.change-collection {
+
+  .tab-content {
+    min-height: 230px;
+  }
+
+  input {
+    width: 384px !important;
+  }
+
+  select {
+    width: 398px !important;
+  }
+}
+
+.show-collection {
+
+  .tab-content {
+    min-height: 200px;
+  }
+}
+
+.collectionInfoTh {
+  width: 320px;
+}
+
+.collectionInfoTh2 {
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400 !important;
+  text-align: left;
+  width: 150px;
+}
+
+.collection-info-figures table {
+  float: left;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  min-width: 200px;
+  padding: 3px;
+  text-align: left;
+}
+
+.figures1,
+.figures2 {
+  margin-bottom: 20px;
+  width: 255px;
+}
+
+.figures2 {
+  margin-left: 20px !important;
+}
+
+.figures3 {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.figuresHeader {
+  border-bottom: 1px solid  $c-c2grey;
+}
+
+.figuresHeader th {
+  font-family: 'Open Sans', sans-serif !important;
+  font-weight: 400 !important;
+}
+
+#collectionIndexTable {
+  margin-left: 0;
+  width: 100%;
+}
+
+#infoTab,
+#collectionTab {
+  border-bottom: 0;
+  margin-bottom: 1px;
+  padding-bottom: 0;
+  padding-right: 10px;
+}
+
+#infoTab li,
+#collectionTab li {
+  float: right;
+}
+
+#infoTab a,
+#collectionTab a {
+  background-color: $c-tab-inactive;
+  border-bottom: 1px solid $c-collection-tab-border-bottom;
+  border-radius: 0 !important;
+  color: $c-black;
+  font-size: 13px !important;
+  height: 21px;
+  margin-bottom: -1px;
+  margin-right: 4px;
+  padding: 4px !important;
+}
+
+#infoTab .active > a,
+#collectionTab .active > a {
+  background-color: $c-modal-header;
+  border-color: $c-collection-tab-border-bottom $c-collection-tab-border-bottom transparent !important;
+}
+
+#tab-content-collection-info #info,
+#tab-content-collection-info .collection-info-figures,
+#tab-content-collection-info #index {
+  border-top: 1px solid $c-collection-tab-border-bottom !important;
+  margin-left: 0 !important;
+  padding-top: 10px;
+}
+
+#confirmCreateEdge {
+  margin-left: 20px;
+}
+
+.collection-info-figures .icon_arangodb_info {
+  position: relative !important;
+  right: -4px !important;
+}
+
+

@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine */
+/*global window, document, Backbone, EJS, SwaggerUi */
+/*global hljs, $, arangoHelper, templateEngine, CryptoJS */
 (function() {
 
   "use strict";
@@ -11,9 +12,7 @@
 
     events: {
       "click #profileContent" : "editUserProfile",
-      "click #callEditUserPassword" : "editUserPassword",
-      "click #submitEditUserProfile" : "submitEditUserProfile",
-      "click #submitEditUserPassword" : "submitEditUserPassword"
+      "click #submitEditUserProfile" : "submitEditUserProfile"
     },
 
     initialize: function() {
@@ -29,6 +28,13 @@
         username : this.user.get("user")
 
       }));
+
+      $("[data-toggle=tooltip]").tooltip();
+
+      $('.modalInfoTooltips').tooltip({
+        placement: "left"
+      });
+
       return this;
     },
 
@@ -66,52 +72,6 @@
       });
     },
 
-    editUserPassword : function () {
-      this.hideModal('#editUserProfileModal');
-      this.showModal('#editUserPasswordModal');
-    },
-
-    submitEditUserPassword : function () {
-      var self        = this,
-        oldPasswd     = $('#oldPassword').val(),
-        newPasswd     = $('#newPassword').val(),
-        confirmPasswd = $('#confirmPassword').val();
-      $('#oldPassword').val('');
-      $('#newPassword').val('');
-      $('#confirmPassword').val('');
-
-      //check input
-      //clear all "errors"
-      $('#oldPassword').closest("th").css("backgroundColor", "white");
-      $('#newPassword').closest("th").css("backgroundColor", "white");
-      $('#confirmPassword').closest("th").css("backgroundColor", "white");
-
-
-      //check
-      var hasError = false;
-      //Check old password
-      if (!this.validateCurrentPassword(oldPasswd)) {
-        $('#oldPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check confirmation
-      if (newPasswd !== confirmPasswd) {
-        $('#confirmPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check new password
-      if (!this.validatePassword(newPasswd)) {
-        $('#newPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-
-      if (hasError) {
-        return;
-      }
-      this.user.setPassword(newPasswd);
-//      this.showModal('#editUserProfileModal');
-      this.hideModal('#editUserPasswordModal');
-    },
 
 
     showModal: function(dialog) {
@@ -122,26 +82,6 @@
       $(dialog).modal('hide');
     },
 
-    parseImgString : function(img) {
-      var strings;
-      if (img.search("avatar/") !== -1) {
-        strings = img.split("avatar/");
-        img = strings[1];
-      }
-      if (img.search("\\?") !== -1) {
-        strings = img.split("?");
-        img = strings[0];
-      }
-      return img;
-    },
-
-    validateCurrentPassword : function (pwd) {
-      return this.user.checkPassword(pwd);
-    },
-
-    validatePassword : function (pwd) {
-        return true;
-    },
 
     getAvatarSource: function(img) {
       var result = '<img src="';
