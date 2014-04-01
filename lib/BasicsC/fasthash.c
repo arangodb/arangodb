@@ -24,6 +24,7 @@
 */
 
 #include "fasthash.h"
+#include "BasicsC/common.h"
 
 // Compression function for Merkle-Damgard construction.
 // This function is generated using the framework provided.

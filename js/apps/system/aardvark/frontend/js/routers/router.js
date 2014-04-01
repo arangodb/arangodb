@@ -487,7 +487,6 @@
             this.userProfileView.render();
             this.naviView.selectMenuItem('user-menu');
         }
-
     });
 
 }());

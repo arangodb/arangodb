@@ -36,7 +36,6 @@ arangoDatabase, btoa, _*/
     requestAuth: function() {
       this.isCheckingUser = true;
       this.clusterPlan.set({"user": null});
-      var self = this;
       var modalLogin = new window.LoginModalView();
       modalLogin.render();
     },
@@ -135,15 +134,6 @@ arangoDatabase, btoa, _*/
       this.planTestView.render();
     },
 
-    planSymmetric: function() {
-      if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView(
-          {model : this.clusterPlan}
-        );
-      }
-      this.planSymmetricView.render(true);
-    },
-
     planAsymmetric: function() {
       if (!this.planSymmetricView) {
         this.planSymmetricView = new window.PlanSymmetricView(
@@ -171,7 +161,9 @@ arangoDatabase, btoa, _*/
       var server = this.serverToShow;
       if (!server) {
         this.navigate("", {trigger: true});
+        return;
       }
+
       var statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
       statisticsDescriptionCollection.fetch({
         async: false,
