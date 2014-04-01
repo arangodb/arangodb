@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, plannerTemplateEngine, alert */
+/*global window, $, Backbone, templateEngine, _, plannerTemplateEngine, alert */
 
 (function() {
   "use strict";
