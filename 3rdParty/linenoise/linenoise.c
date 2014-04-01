@@ -1025,101 +1025,7 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
 #ifndef USE_WINCONSOLE
 static void refreshLine(const char *prompt, struct current *current)
 {
-refreshMultiLine(prompt, current);return;
-    size_t plen;
-    size_t pchars;
-    int backup = 0;
-    int i;
-    const char *buf = current->buf;
-    size_t chars = current->chars;
-    size_t pos = current->pos;
-    int b;
-    int ch;
-    int n;
-
-    /* Should intercept SIGWINCH. For now, just get the size every time */
-    getWindowSize(current);
-
-    plen = strlen(prompt);
-    pchars = utf8_strlen(prompt, plen);
-    /* Scan the prompt for embedded ansi color control sequences and
-     * discount them as characters/columns.
-     */
-    pchars -= countColorControlChars(prompt);
-
-    /* Account for a line which is too long to fit in the window.
-     * Note that control chars require an extra column
-     */
-
-    /* How many cols are required to the left of 'pos'?
-     * The prompt, plus one extra for each control char
-     */
-    n = pchars + utf8_strlen(buf, current->len);
-    b = 0;
-    for (i = 0; i < pos; i++) {
-        b += utf8_tounicode(buf + b, &ch);
-        if (ch < ' ') {
-            n++;
-        }
-    }
-
-    /* If too many are needed, strip chars off the front of 'buf'
-     * until it fits. Note that if the current char is a control character,
-     * we need one extra col.
-     */
-    if (current->pos < current->chars && get_char(current, current->pos) < ' ') {
-        n++;
-    }
-
-    while (n >= current->cols && pos > 0) {
-        b = utf8_tounicode(buf, &ch);
-        if (ch < ' ') {
-            n--;
-        }
-        n--;
-        buf += b;
-        pos--;
-        chars--;
-    }
-
-    /* Cursor to left edge, then the prompt */
-    cursorToLeft(current);
-    outputChars(current, prompt, plen);
-
-    /* Now the current buffer content */
-
-    /* Need special handling for control characters.
-     * If we hit 'cols', stop.
-     */
-    b = 0; /* unwritted bytes */
-    n = 0; /* How many control chars were written */
-    for (i = 0; i < chars; i++) {
-        int ch2;
-        int w = utf8_tounicode(buf + b, &ch2);
-        if (ch2 < ' ') {
-            n++;
-        }
-        if (pchars + i + n >= current->cols) {
-            break;
-        }
-        if (ch2 < ' ') {
-            /* A control character, so write the buffer so far */
-            outputChars(current, buf, b);
-            buf += b + w;
-            b = 0;
-            outputControlChar(current, ch2 + '@');
-            if (i < pos) {
-                backup++;
-            }
-        }
-        else {
-            b += w;
-        }
-    }
-    outputChars(current, buf, b);
-    /* Erase to right, move cursor to original position */
-    eraseEol(current);
-    setCursorPos(current, pos + pchars + backup );
+  refreshMultiLine(prompt, current);
 }
 
 static void showBuffer(struct current * current, size_t pchars) {
@@ -1127,27 +1033,6 @@ static void showBuffer(struct current * current, size_t pchars) {
     size_t buf_len = strlen(buf);
     outputChars(current, buf, buf_len);
     return;
-    /**
-     * number of additional lines for displaying
-     * the complete buffer
-     */ 
-    size_t free_chars = current->cols - pchars;
-    if(current->chars <= free_chars) { 
-        outputChars(current, buf, buf_len);
-    } else {
-        size_t number_lines = new_line_numbers(current->chars, current->cols, pchars);
-        int i;
-        outputChars(current, buf, free_chars);
-//        newLine(current);
-        buf = buf + free_chars;
-        for(i=1; i<= number_lines-1; i++) {
-          outputChars(current, buf, current->cols);
-//         newLine(current);
-          buf = buf + current->cols;
-        }
-        buf_len = strlen(buf);
-        outputChars(current, buf, buf_len);
-    }
 }
 static void refreshMultiLine(const char *prompt, struct current *current)
 {
@@ -1665,9 +1550,9 @@ process_char:
             }
             /* Otherwise fall through to delete char to right of cursor */
         case SPECIAL_DELETE:
-            if (remove_char(current, current->pos) == 1) {
-                refreshLine(current->prompt, current);
-            }
+              eraseEol(current);
+              remove_char(current, current->pos);
+              refreshLine(current->prompt, current);
             break;
         case SPECIAL_INSERT:
             /* Ignore. Expansion Hook.
@@ -1690,9 +1575,9 @@ process_char:
                     pos--;
                 }
 
-                if (remove_chars(current, pos, current->pos - pos)) {
-                    refreshLine(current->prompt, current);
-                }
+                remove_chars(current, pos, current->pos - pos);
+                refreshLine(current->prompt, current);
+                
             }
             break;
         case ctrl('R'):    /* ctrl-r */
