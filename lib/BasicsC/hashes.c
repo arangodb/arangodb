@@ -32,6 +32,20 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         private functions for FNV
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the FNV hash work horse
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint64_t FnvWork (uint8_t value, uint64_t hash) {
+  static const uint64_t MagicPrime = 0x00000100000001b3ULL;
+
+  return (hash ^ value) * MagicPrime;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                          public functions for FNV
 // -----------------------------------------------------------------------------
 
@@ -41,11 +55,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for blobs
+/// @brief computes a FNV hash for strings with a length
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
-  return TRI_FnvHashPointer(blob->data, blob->length);
+uint64_t TRI_FnvHashBlock (uint64_t hash, void const* buffer, size_t length) {
+  uint8_t const* p = (uint8_t const*) buffer;
+  uint8_t const* end = p + length;
+
+  while (p < end) {
+    hash = FnvWork(*p++, hash);
+  }
+
+  return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,23 +74,15 @@ uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_FnvHashPointer (void const* buffer, size_t length) {
-  uint64_t nMagicPrime;
-  uint64_t nHashVal;
-  uint8_t const* pFirst;
-  uint8_t const* pLast;
+  return TRI_FnvHashBlock(0xcbf29ce484222325ULL, buffer, length);
+}
 
-  nMagicPrime = 0x00000100000001b3ULL;
-  nHashVal = 0xcbf29ce484222325ULL;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes a FNV hash for blobs
+////////////////////////////////////////////////////////////////////////////////
 
-  pFirst = (uint8_t const*) buffer;
-  pLast = pFirst + length;
-
-  while (pFirst < pLast) {
-    nHashVal ^= *pFirst++;
-    nHashVal *= nMagicPrime;
-  }
-
-  return nHashVal;
+uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
+  return TRI_FnvHashPointer(blob->data, blob->length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,23 +105,6 @@ uint64_t TRI_FnvHashString (char const* buffer) {
   }
 
   return nHashVal;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for strings with a length
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FnvHashBlock (uint64_t hash, char const* buffer, size_t length) {
-  uint64_t nMagicPrime;
-  size_t   j;
-
-  nMagicPrime = 0x00000100000001b3ULL;
-
-  for (j = 0; j < length; ++j) {
-    hash ^= buffer[j];
-    hash *= nMagicPrime;
-  }
-  return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

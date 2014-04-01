@@ -42,7 +42,7 @@ extern "C" {
 /// @brief return a prime number not lower than value
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_NextPrime (uint64_t);
+uint64_t TRI_NearPrime (uint64_t);
 
 #ifdef __cplusplus
 }

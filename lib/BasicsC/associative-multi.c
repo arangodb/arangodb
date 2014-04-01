@@ -438,7 +438,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
 #endif
 
   i = LookupByElement(array, element);
-  return (NULL != array->_table[i].ptr) ? array->_table[i].ptr : NULL;
+  return array->_table[i].ptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,7 +506,7 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = TRI_NextPrime((uint64_t) size);
+  array->_nrAlloc = TRI_NearPrime((uint64_t) size);
   array->_table_alloc = TRI_Allocate(array->_memoryZone, 
                  array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
   array->_table = (TRI_multi_pointer_entry_t*) 
