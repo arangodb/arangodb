@@ -843,6 +843,10 @@ your controller:
 
 @copydetails JSF_foxx_controller_register
 
+### Adding a change password route
+
+@copydetails JSF_foxx_controller_changePassword
+
 ### Restricting routes
 
 To restrict routes, see the documentation for Documenting and Restraining the routes.
