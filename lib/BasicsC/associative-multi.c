@@ -438,7 +438,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
 #endif
 
   i = LookupByElement(array, element);
-  return (NULL != array->_table[i].ptr) ? array->_table[i].ptr : NULL;
+  return array->_table[i].ptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
