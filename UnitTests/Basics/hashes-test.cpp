@@ -71,96 +71,114 @@ BOOST_AUTO_TEST_CASE (tst_fnv64_simple) {
   buffer = "";
   BOOST_CHECK_EQUAL((uint64_t) 14695981039346656037ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 14695981039346656037ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 14695981039346656037ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = " ";
   BOOST_CHECK_EQUAL((uint64_t) 12638117931323064703ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638117931323064703ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638117931323064703ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "  ";
   BOOST_CHECK_EQUAL((uint64_t) 560038479724991597ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 560038479724991597ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 560038479724991597ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "a";
   BOOST_CHECK_EQUAL((uint64_t) 12638187200555641996ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638187200555641996ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638187200555641996ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "A";
   BOOST_CHECK_EQUAL((uint64_t) 12638222384927744748ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638222384927744748ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
-
+  BOOST_CHECK_EQUAL((uint64_t) 12638222384927744748ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = " a";
   BOOST_CHECK_EQUAL((uint64_t) 559967011469157882ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 559967011469157882ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 559967011469157882ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = " a ";
   BOOST_CHECK_EQUAL((uint64_t) 14038824050427892078ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 14038824050427892078ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 14038824050427892078ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "a ";
   BOOST_CHECK_EQUAL((uint64_t) 620373080799520836ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 620373080799520836ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 620373080799520836ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "A ";
   BOOST_CHECK_EQUAL((uint64_t) 650913115778654372ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 650913115778654372ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 650913115778654372ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = " A";
   BOOST_CHECK_EQUAL((uint64_t) 560002195841260634ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 560002195841260634ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 560002195841260634ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = " A ";
   BOOST_CHECK_EQUAL((uint64_t) 14069504822895436622ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 14069504822895436622ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 14069504822895436622ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "0";
   BOOST_CHECK_EQUAL((uint64_t) 12638135523509116079ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638135523509116079ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638135523509116079ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "1";
   BOOST_CHECK_EQUAL((uint64_t) 12638134423997487868ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638134423997487868ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638134423997487868ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "11";
   BOOST_CHECK_EQUAL((uint64_t) 574370613795883607ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 574370613795883607ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 574370613795883607ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "111";
   BOOST_CHECK_EQUAL((uint64_t) 5002439360283388754ULL,  TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 5002439360283388754ULL,  TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 5002439360283388754ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "2";
   BOOST_CHECK_EQUAL((uint64_t) 12638137722532372501ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638137722532372501ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638137722532372501ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "3";
   BOOST_CHECK_EQUAL((uint64_t) 12638136623020744290ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 12638136623020744290ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 12638136623020744290ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "the quick brown fox jumped over the lazy dog";
   BOOST_CHECK_EQUAL((uint64_t) 5742411339260295416ULL,  TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 5742411339260295416ULL,  TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 5742411339260295416ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "The Quick Brown Fox Jumped Over The Lazy Dog";
   BOOST_CHECK_EQUAL((uint64_t) 11643291398347681368ULL, TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 11643291398347681368ULL, TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 11643291398347681368ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,51 +191,61 @@ BOOST_AUTO_TEST_CASE (tst_fnv64_utf8) {
   buffer = "ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド・ ... を構築していった。 日本では初来日でいきなり武道館での公演を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型的な「ビッグ・イン・ジャパン」状態であった。日本最大級のポータルサイト。検索、オークション、ニュース、メール、コミュニティ、ショッピング、など80以上のサービスを展開。あなたの生活をより豊かにする「ライフ・エンジン」を目指していきます。デヴィッド・シルヴィアンとその弟スティーヴ・ジャンセン、デヴィッドの親友であったミック・カーンを中心に結成。ミック・カーンの兄の結婚式にバンドとして最初のお披露目をした。当初はミック・カーンをリードボーカルとして練習していたが、本番直前になって怖じ気づいたミックがデヴィッド・シルヴィアンに無理矢理頼み込んでボーカルを代わってもらい、以降デヴィッドがリードボーカルとなった。その後高校の同級であったリチャード・バルビエリを誘い、更にオーディションでロブ・ディーンを迎え入れ、デビュー当初のバンドの形態となった。デビュー当初はアイドルとして宣伝されたグループだったが、英国の音楽シーンではほとんど人気が無かった。初期のサウンドは主に黒人音楽やグラムロックをポスト・パンク的に再解釈したものであったが、作品を重ねるごとに耽美的な作風、退廃的な歌詞やシンセサイザーの利用など独自のスタイルを構築していった。日本では初来日でいきなり武道館での公演を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型的な「ビッグ・イン・ジャパン」状態であった。";
   BOOST_CHECK_EQUAL((uint64_t) 211184911024797733ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 211184911024797733ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 211184911024797733ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
  
 
   buffer = "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기";
   BOOST_CHECK_EQUAL((uint64_t) 270676307504294177ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 270676307504294177ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 270676307504294177ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服务。";
   BOOST_CHECK_EQUAL((uint64_t) 14670566365397374664ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 14670566365397374664ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 14670566365397374664ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "כפי שסופיה קופולה היטיבה לבטא בסרטה אבודים בטוקיו, בתי מלון יוקרתיים בערים גדולות אמנם מציעים אינספור פינוקים, אבל הם גם עלולים לגרום לנו להרגיש בודדים ואומללים מאי פעם. לעומת זאת, B&B, בתים פרטיים שבהם אפשר לישון ולאכול ארוחת בוקר, הם דרך נהדרת להכיר עיר אירופאית כמו מקומיים ולפגוש אנשים מרתקים מרחבי העולם. לטובת מי שנוסע לממלכה בחודשים הקרובים, הגרדיאן הבריטי קיבץ את עשרת ה-B&B המומלצים ביותר בלונדון. כל שנותר הוא לבחור, ולהזמין מראש";
   BOOST_CHECK_EQUAL((uint64_t) 16145169633099782595ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 16145169633099782595ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 16145169633099782595ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن التونسي تنديد بقتل الجيش السوري مصورا تلفزيونيا 14 قتيلا وعشرات الجرحى بانفجار بالصومال";
   BOOST_CHECK_EQUAL((uint64_t) 7398242043026945788ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 7398242043026945788ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 7398242043026945788ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
   
 
   buffer = "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров сосредоточить все мысли на предстоящем дерби с «Атлетико»";
   BOOST_CHECK_EQUAL((uint64_t) 10412552537249637418ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 10412552537249637418ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 10412552537249637418ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 
 
   buffer = "   ";
   BOOST_CHECK_EQUAL((uint64_t) 4095843978425089933ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 4095843978425089933ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 4095843978425089933ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
   
 
   buffer = "अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह";
   BOOST_CHECK_EQUAL((uint64_t) 2927729442665428350ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2927729442665428350ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2927729442665428350ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
   
 
   buffer = "tɜt kɐː mɔj ŋɨɜj siŋ za ɗew ɗɨɜk tɨɰ zɔ vɐː ɓiŋ ɗɐŋ vej ɲɜn fɜm vɐː kɨɜn. mɔj kɔn ŋɨɜj ɗeu ɗɨɜk tɐːw huɜ ɓɐːn cɔ li ci vɐː lɨɜŋ tɜm vɐː kɜn fɐːj ɗoj sɨ vɜj ɲɐw cɔŋ tiŋ ɓɐŋ hɨw.";
   BOOST_CHECK_EQUAL((uint64_t) 15359789603011345030ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 15359789603011345030ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 15359789603011345030ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
   
 
   buffer = "äöüßÄÖÜ€µ";
   BOOST_CHECK_EQUAL((uint64_t) 2954195900047086928ULL,   TRI_FnvHashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2954195900047086928ULL,   TRI_FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2954195900047086928ULL, TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), buffer.c_str(), strlen(buffer.c_str())));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,51 +360,61 @@ BOOST_AUTO_TEST_CASE (tst_crc32_utf8) {
   buffer = "ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド・ ... を構築していった。 日本では初来日でいきなり武道館での公演を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型的な「ビッグ・イン・ジャパン」状態であった。日本最大級のポータルサイト。検索、オークション、ニュース、メール、コミュニティ、ショッピング、など80以上のサービスを展開。あなたの生活をより豊かにする「ライフ・エンジン」を目指していきます。デヴィッド・シルヴィアンとその弟スティーヴ・ジャンセン、デヴィッドの親友であったミック・カーンを中心に結成。ミック・カーンの兄の結婚式にバンドとして最初のお披露目をした。当初はミック・カーンをリードボーカルとして練習していたが、本番直前になって怖じ気づいたミックがデヴィッド・シルヴィアンに無理矢理頼み込んでボーカルを代わってもらい、以降デヴィッドがリードボーカルとなった。その後高校の同級であったリチャード・バルビエリを誘い、更にオーディションでロブ・ディーンを迎え入れ、デビュー当初のバンドの形態となった。デビュー当初はアイドルとして宣伝されたグループだったが、英国の音楽シーンではほとんど人気が無かった。初期のサウンドは主に黒人音楽やグラムロックをポスト・パンク的に再解釈したものであったが、作品を重ねるごとに耽美的な作風、退廃的な歌詞やシンセサイザーの利用など独自のスタイルを構築していった。日本では初来日でいきなり武道館での公演を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型的な「ビッグ・イン・ジャパン」状態であった。";
   BOOST_CHECK_EQUAL((uint64_t) 4162027650ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 4162027650ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 4162027650ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기";
   BOOST_CHECK_EQUAL((uint64_t) 2360481044ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2360481044ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2360481044ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服务。";
   BOOST_CHECK_EQUAL((uint64_t) 644060807ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 644060807ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 644060807ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "כפי שסופיה קופולה היטיבה לבטא בסרטה אבודים בטוקיו, בתי מלון יוקרתיים בערים גדולות אמנם מציעים אינספור פינוקים, אבל הם גם עלולים לגרום לנו להרגיש בודדים ואומללים מאי פעם. לעומת זאת, B&B, בתים פרטיים שבהם אפשר לישון ולאכול ארוחת בוקר, הם דרך נהדרת להכיר עיר אירופאית כמו מקומיים ולפגוש אנשים מרתקים מרחבי העולם. לטובת מי שנוסע לממלכה בחודשים הקרובים, הגרדיאן הבריטי קיבץ את עשרת ה-B&B המומלצים ביותר בלונדון. כל שנותר הוא לבחור, ולהזמין מראש";
   BOOST_CHECK_EQUAL((uint64_t) 1177579087ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 1177579087ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 1177579087ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن التونسي تنديد بقتل الجيش السوري مصورا تلفزيونيا 14 قتيلا وعشرات الجرحى بانفجار بالصومال";
   BOOST_CHECK_EQUAL((uint64_t) 1650013020ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 1650013020ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 1650013020ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
   
 
   buffer = "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров сосредоточить все мысли на предстоящем дерби с «Атлетико»";
   BOOST_CHECK_EQUAL((uint64_t) 1084564896ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 1084564896ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 1084564896ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "   ";
   BOOST_CHECK_EQUAL((uint64_t) 2342474570ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2342474570ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2342474570ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
   
 
   buffer = "अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह";
   BOOST_CHECK_EQUAL((uint64_t) 2714476779ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2714476779ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2714476779ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
   
 
   buffer = "tɜt kɐː mɔj ŋɨɜj siŋ za ɗew ɗɨɜk tɨɰ zɔ vɐː ɓiŋ ɗɐŋ vej ɲɜn fɜm vɐː kɨɜn. mɔj kɔn ŋɨɜj ɗeu ɗɨɜk tɐːw huɜ ɓɐːn cɔ li ci vɐː lɨɜŋ tɜm vɐː kɜn fɐːj ɗoj sɨ vɜj ɲɐw cɔŋ tiŋ ɓɐŋ hɨw.";
   BOOST_CHECK_EQUAL((uint64_t) 3194095589ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 3194095589ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 3194095589ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
   
 
   buffer = "äöüßÄÖÜ€µ";
   BOOST_CHECK_EQUAL((uint64_t) 2590070434ULL,   TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 2590070434ULL,   TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 2590070434ULL,   TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
