@@ -30,6 +30,7 @@
 #include "Basics/JsonHelper.h"
 #include "BasicsC/logging.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -104,6 +105,8 @@ HeartbeatThread::~HeartbeatThread () {
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
   
+  uint64_t oldUserVersion = 0;
+
   // convert timeout to seconds  
   const double interval = (double) _interval / 1000.0 / 1000.0;
   
@@ -162,13 +165,79 @@ void HeartbeatThread::run () {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
-
+ 
           if (planVersion > lastPlanVersion) {
             handlePlanChangeCoordinator(planVersion, lastPlanVersion);
           }
         }
       }
 
+      result.clear();
+
+      result = _agency.getValues("Sync/UserVersion", false);
+      if (result.successful()) {
+        result.parse("", false);
+        std::map<std::string, AgencyCommResultEntry>::iterator it 
+            = result._values.begin();
+        if (it != result._values.end()) {
+          // there is a UserVersion
+          uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+          if (userVersion != oldUserVersion) {
+            // reload user cache for all databases
+            vector<DatabaseID> dbs 
+                = ClusterInfo::instance()->listDatabases(true);
+            vector<DatabaseID>::iterator i;
+            bool allOK = true;
+            for (i = dbs.begin(); i != dbs.end(); i++) {
+              TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
+                                                    i->c_str());
+
+              if (vocbase != NULL) {
+                LOG_INFO("Reloading users for database %s.",vocbase->_name);
+                TRI_json_t* json = 0;
+
+                int res = usersOnCoordinator(string(vocbase->_name), 
+                                             json);
+
+                if (res == TRI_ERROR_NO_ERROR) {
+                  // we were able to read from the _users collection
+                  assert(TRI_IsListJson(json));
+
+                  if (json->_value._objects._length == 0) {
+                    // no users found, now insert initial default user
+                    TRI_InsertInitialAuthInfo(vocbase);
+                  }
+                  else {
+                    // users found in collection, insert them into cache
+                    TRI_PopulateAuthInfo(vocbase, json);
+                  }
+                }
+                else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+                  // could not access _users collection, probably the cluster
+                  // was just created... insert initial default user
+                  TRI_InsertInitialAuthInfo(vocbase);
+                }
+                else if (res == TRI_ERROR_INTERNAL) {
+                  // something is wrong... probably the database server
+                  // with the _users collection is not yet available
+                  TRI_InsertInitialAuthInfo(vocbase);
+                  allOK = false;
+                  // we will not set oldUserVersion such that we will try this
+                  // very same exercise again in the next heartbeat
+                }
+                  
+                if (json != 0) {
+                  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+                }
+                TRI_ReleaseVocBase(vocbase);
+              }
+            }
+            if (allOK) {
+              oldUserVersion = userVersion;
+            }
+          }
+        }
+      }
     }
     else {
       // ! isCoordinator
@@ -321,6 +390,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       result = _agency.getValues(prefix, true);
     }
   }
+
+  bool mustRetry = false;
   
   if (result.successful()) {
     result.parse(prefix + "/", false);
@@ -359,10 +430,43 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
   
-        if (vocbase != 0 &&
-            name == TRI_VOC_SYSTEM_DATABASE) {
-          // insert initial user for system database
-          TRI_InsertInitialAuthInfo(vocbase);
+        if (vocbase != 0) {
+          // insert initial user(s) for system database
+
+          TRI_json_t* json = 0;
+          int res = usersOnCoordinator(string(vocbase->_name), json);
+
+          if (res == TRI_ERROR_NO_ERROR) {
+            // we were able to read from the _users collection
+            assert(TRI_IsListJson(json));
+
+            if (json->_value._objects._length == 0) {
+              // no users found, now insert initial default user
+              TRI_InsertInitialAuthInfo(vocbase);
+            }
+            else {
+              // users found in collection, insert them into cache
+              TRI_PopulateAuthInfo(vocbase, json);
+            }
+          }
+          else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            // could not access _users collection, probably the cluster
+            // was just created... insert initial default user
+            TRI_InsertInitialAuthInfo(vocbase);
+          }
+          else if (res == TRI_ERROR_INTERNAL) {
+            // something is wrong... probably the database server with the 
+            // _users collection is not yet available
+            // delete the database again (and try again next time)
+            TRI_ReleaseVocBase(vocbase);
+            TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
+
+            mustRetry = true;
+          }
+
+          if (json != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          }
         }
       }
       else {
@@ -382,7 +486,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
         vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
 
         if (r == ids.end()) {
-          TRI_DropByIdCoordinatorDatabaseServer(_server, *p);
+          TRI_DropByIdCoordinatorDatabaseServer(_server, *p, false);
         }
 
         ++p;
@@ -390,10 +494,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, localIds);
     }
+  }
+  else {
+    mustRetry = true;
   }  
-  
-  remotePlanVersion = currentPlanVersion;
+ 
+  if (mustRetry) {
+    return false;
+  }
 
+  remotePlanVersion = currentPlanVersion;
   return true;
 }
 
@@ -462,7 +572,7 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
 
 bool HeartbeatThread::sendState () {
   const AgencyCommResult result = _agency.sendServerState(
-                 3.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
+                 8.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
 
   if (result.successful()) {
     _numFails = 0;

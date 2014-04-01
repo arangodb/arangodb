@@ -17,10 +17,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     return obj.get("user").toLowerCase();
   },
 
-  initialize: function() {
-    //check cookies / local storage
-  },
-
   login: function (username, password) {
     this.activeUser = username;
     return true;
@@ -46,7 +42,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/user/" + self.activeUser,
+      url: "/_api/user/" + encodeURIComponent(self.activeUser),
       contentType: "application/json",
       processData: false,
       async: false,
@@ -64,7 +60,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       cache: false,
       type: "PUT",
       async: false, // sequential calls!
-      url: "/_api/user/" + self.activeUser,
+      url: "/_api/user/" + encodeURIComponent(self.activeUser),
       data: JSON.stringify({ extra: self.activeUserSettings }),
       contentType: "application/json",
       processData: false,
@@ -84,8 +80,8 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   whoAmI: function() {
-    if (this.currentUser) {
-      return this.currentUser;
+    if (this.activeUser) {
+      return this.activeUser;
     }
     var result;
     $.ajax("whoAmI", {async:false}).done(
@@ -93,8 +89,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         result = data.name;
       }
     );
-    this.currentUser = result;
-    return this.currentUser;
+    this.activeUser = result;
+    return this.activeUser;
   }
 
 

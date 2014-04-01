@@ -1,15 +1,16 @@
 <script id="documentView.ejs" type="text/template">
-<div class="thumbnails2" id="documentviewMain">
   <div id="transparentHeader" class="headerBar">
 
   </div>
 
 
-	<div id="tableDiv">
-    <div id="documentEditor"></div>
+  <div id="tableDiv" class="innerContent">
+    <div id="documentEditor" class="document-editor"></div>
     <button id="saveDocumentButton" class="button-success pull-right">Save</button>
-    <div id="showSaveState">Saved...</div>
+    <div class="pull-left shortcuts">
+      <b>Insert:</b> Ctrl + Ins<b>Append:</b> Ctrl + Shift + Ins<b>Duplicate:</b> Ctrl + D<b>Remove:</b> Ctrl + Del
+    </div>
+    <div id="showSaveState" class="show-save-state">Saved...</div>
 	</div>
 
-</div>
 </script>

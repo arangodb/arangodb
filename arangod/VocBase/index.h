@@ -124,6 +124,9 @@ typedef struct TRI_index_s {
 
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
+
+  // give index a hint about the expected size
+  int (*sizeHint) (struct TRI_index_s*, size_t);
   
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
@@ -182,7 +185,8 @@ TRI_geo_index_t;
 typedef struct TRI_edge_index_s {
   TRI_index_t base;
 
-  TRI_multi_pointer_t _edges;
+  TRI_multi_pointer_t _edges_from;
+  TRI_multi_pointer_t _edges_to;
 }
 TRI_edge_index_t;
 

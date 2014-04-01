@@ -8,9 +8,6 @@
     resizing: false,
 
     el: '#content',
-    events: {
-      'click #editor-run'     : 'submitEditor'
-    },
 
     template: templateEngine.createTemplate("shellView.ejs"),
 
@@ -44,8 +41,8 @@
     },
 
     executeJs: function (data) {
+      var internal = require("internal");
       try {
-        var internal = require("internal");
         var result = window.eval(data);
         if (result !== undefined) {
           internal.browserOutputBuffer = "";
@@ -54,7 +51,12 @@
         }
         internal.browserOutputBuffer = "";
       } catch (e) {
-        jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
+        if (e instanceof internal.ArangoError) {
+          jqconsole.Write(e.message + '\n', 'jserror');
+        }
+        else {
+          jqconsole.Write(e.name + ': ' + e.message + '\n', 'jserror');
+        }
       }
     },
 

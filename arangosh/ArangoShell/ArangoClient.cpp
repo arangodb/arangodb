@@ -45,6 +45,46 @@ double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
+namespace {
+#ifdef _WIN32
+void _newLine() {
+    COORD pos;
+    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
+      // when we are at the last visible line of the console
+      // the first line of console is deleted (the content of the console 
+      // is scrolled one line above
+      SMALL_RECT srctScrollRect;
+      srctScrollRect.Top = 0;
+      srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
+      srctScrollRect.Left = 0;
+      srctScrollRect.Right = bufferInfo.dwSize.X;
+      COORD coordDest;
+      coordDest.X = 0;
+      coordDest.Y = -1;
+      CONSOLE_SCREEN_BUFFER_INFO  consoleScreenBufferInfo;
+      CHAR_INFO chiFill;
+      chiFill.Char.AsciiChar = (char)' ';
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleScreenBufferInfo)) {
+        chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
+      }
+      else {
+        // Fill the bottom row with green blanks.
+        chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
+      }
+      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
+         pos.Y = bufferInfo.dwCursorPosition.Y;
+         pos.X = 0;
+    } else {
+        pos.Y = bufferInfo.dwCursorPosition.Y + 1;
+        pos.X = 0;
+    }
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+  }
+
+#endif
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
 // -----------------------------------------------------------------------------
@@ -236,10 +276,10 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 
   clientOptions
     ("server.database", &_databaseName, "database name to use when connecting")
-    ("server.disable-authentication", &_disableAuthentication, "disable the password prompt and authentication when connecting")
+    ("server.disable-authentication", &_disableAuthentication, "disable the password prompt and authentication when connecting (note: this doesn't control whether a server requires authentication)")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
-    ("server.password", &_password, "password to use when connecting. Don't specify this option to get a password prompt")
+    ("server.password", &_password, "password to use when connecting. Don't specify this option to be prompted for the password (note: this requires --server.disable-authentication to be 'false')")
     ("server.connect-timeout", &_connectTimeout, "connect timeout in seconds")
     ("server.request-timeout", &_requestTimeout, "request timeout in seconds")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
@@ -342,6 +382,11 @@ void ArangoClient::parse (ProgramOptions& options,
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
+  if (options.has("server.username")) {
+    // if a username is specified explicitly, assume authentication is desired
+    _disableAuthentication = false;
+  }
+
   // check if have a password
   _hasPassword = options.has("server.password") 
               || _disableAuthentication
@@ -425,39 +470,86 @@ void ArangoClient::parse (ProgramOptions& options,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print a string and a newline to stderr
+/// @brief prints a string and a newline to stderr
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::printErrLine (const string& s) {
 #ifdef _WIN32
   // no, we can use std::cerr as this doesn't support UTF-8 on Windows
-  fprintf(stderr, "%s\r\n", s.c_str());
+  //fprintf(stderr, "esteban: %s\r\n", s.c_str());
+  printLine(s);
 #else
   fprintf(stderr, "%s\n", s.c_str());
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print a string and a newline to stdout
+/// @brief prints a string and a newline to stdout
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::printLine (const string& s) {
+void ArangoClient::_printLine(const string &s) {
+#ifdef _WIN32
+  LPWSTR wBuf = (LPWSTR)TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
+  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (sizeof WCHAR)* (s.size() + 1));
+
+  if (wLen) {
+    DWORD n;
+    COORD pos;
+    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    pos = bufferInfo.dwCursorPosition;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
+    // Workaround recomended by 
+    // http://social.msdn.microsoft.com/Forums/de-DE/c16846a3-eb27-4698-80a5-6c4ecf92a799/aus-der-msdnhotline-deutsche-umlaute-in-der-console-anzeigen-standard-c?forum=visualcplusde
+    // but it does not work
+    // std::locale::global(std::locale("German_germany"));
+    // std::cout << "esteban: " << s;
+  }
+  else {
+    fprintf(stdout, "window error: '%d' \r\n", GetLastError());
+    fprintf(stdout, "%s\r\n", s.c_str());
+  }
+
+  if (wBuf) {
+    TRI_Free(TRI_CORE_MEM_ZONE, wBuf);
+  }
+#endif
+}
+
+void ArangoClient::printLine (const string& s, bool forceNewLine) {
 #ifdef _WIN32
   // no, we can use std::cout as this doesn't support UTF-8 on Windows
-  fprintf(stdout, "%s\r\n", s.c_str());
+  //fprintf(stdout, "%s\r\n", s.c_str());
+  TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
+  bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
+  if (hasNewLines) {
+    for (int i = 0; i < subStrings._length; i++) {
+      _printLine(subStrings._buffer[i]);
+      _newLine();
+    }
+  }
+  else {
+    _printLine(s);
+  }
+  TRI_DestroyVectorString(&subStrings);
 #else
   fprintf(stdout, "%s\n", s.c_str());
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print a string to stdout, without a newline
+/// @brief prints a string to stdout, without a newline
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::printContinuous (const string& s) {
   // no, we can use std::cout as this doesn't support UTF-8 on Windows
+#ifdef _WIN32
+  printLine(s);
+#else
   fprintf(stdout, "%s", s.c_str());
   fflush(stdout);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,6 +566,7 @@ void ArangoClient::startPager () {
 }
 
 #else
+
 void ArangoClient::startPager () {
   if (! _usePager || _outputPager == "" || _outputPager == "stdout" || _outputPager == "-") {
     _pager = stdout;
@@ -488,11 +581,13 @@ void ArangoClient::startPager () {
     _usePager = false;
   }
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops pager
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifdef _WIN32
 
 void ArangoClient::stopPager () {
@@ -511,7 +606,7 @@ void ArangoClient::stopPager () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief strip binary data from string
+/// @brief strips binary data from string
 /// this is done before sending the string to a pager or writing it to the log
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -542,34 +637,35 @@ static std::string StripBinary (const char* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print to pager
+/// @brief prints to pager
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::internalPrint (const char* format, const char* str) {
-  if (str == 0) {
-    str = format;
-    format = "%s";
-  }
-
+void ArangoClient::internalPrint (const string & str) {
+  
   if (_pager == stdout) {
-    fprintf(_pager, format, str);
+#ifdef _WIN32
+// at moment the formating is ignored in windows
+    printLine(str);
+#else
+    fprintf(_pager, "%s", str.c_str());
+#endif
     if (_log) {
-      string sanitised = StripBinary(str);
-      log(format, sanitised.c_str());
+      string sanitised = StripBinary(str.c_str());
+      log("%s", sanitised.c_str());
     }
   }
   else {
-    string sanitised = StripBinary(str);
+    string sanitised = StripBinary(str.c_str());
 
     if (! sanitised.empty()) {
-      fprintf(_pager, format, sanitised.c_str());
-      log(format, sanitised.c_str());
+      fprintf(_pager, "%s", sanitised.c_str());
+      log("%s", sanitised.c_str());
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open the log file
+/// @brief opens the log file
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::openLog () {
@@ -579,17 +675,17 @@ void ArangoClient::openLog () {
     ostringstream s;
     if (_log == 0) {
       s << "Cannot open file '" << _logFile << "' for logging.";
-	  printErrLine(s.str());
+      printErrLine(s.str());
     }
     else {
       s << "Logging input and output to '" << _logFile << "'.";
-	  printLine(s.str());
+      printLine(s.str());
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief close the log file
+/// @brief closes the log file
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::closeLog () {
@@ -600,24 +696,24 @@ void ArangoClient::closeLog () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print info message
+/// @brief prints info message
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::printWelcomeInfo () {
   if (_usePager) {
-	ostringstream s;
-	s << "Using pager '" << _outputPager << "' for output buffering.";
+     ostringstream s;
+     s << "Using pager '" << _outputPager << "' for output buffering.";
 
-	printLine(s.str());
+     printLine(s.str());
   }
 
   if (_prettyPrint) {
-	printLine("Pretty printing values.");
+     printLine("Pretty printing values.");
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print bye-bye
+/// @brief prints bye-bye
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::printByeBye () {
@@ -628,7 +724,7 @@ void ArangoClient::printByeBye () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log output, without prompt
+/// @brief logs output, without prompt
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::log (const char* format, 
@@ -644,7 +740,7 @@ void ArangoClient::log (const char* format,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log output, with prompt
+/// @brief logs output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::log (const char* format, 
@@ -661,7 +757,7 @@ void ArangoClient::log (const char* format,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush log output
+/// @brief flushes log output
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::flushLog () {
@@ -701,7 +797,7 @@ bool ArangoClient::quiet () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut up arangosh
+/// @brief shuts up arangosh
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::shutup () {
@@ -709,7 +805,7 @@ void ArangoClient::shutup () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deactivate colors
+/// @brief deactivates colors
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoClient::colors () const {
@@ -805,7 +901,7 @@ string const& ArangoClient::password () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set database name
+/// @brief sets database name
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::setDatabaseName (string const& databaseName) {
@@ -813,7 +909,7 @@ void ArangoClient::setDatabaseName (string const& databaseName) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set username
+/// @brief sets username
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::setUsername (string const& username) {
@@ -821,7 +917,7 @@ void ArangoClient::setUsername (string const& username) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set password
+/// @brief sets password
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::setPassword (string const& password) {

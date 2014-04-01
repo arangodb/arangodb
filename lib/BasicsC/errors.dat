@@ -21,6 +21,8 @@ ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file canno
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
 ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
 ERROR_LOCK_TIMEOUT,18,"lock timeout","Will be raised when there's a timeout waiting for a lock."
+ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when an attempt to create a directory fails."
+ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 
 ################################################################################
 ## HTTP standard errors
@@ -53,7 +55,8 @@ ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be
 ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
-ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when the datafile is unreadable."
+ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
+ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -226,10 +229,11 @@ ERROR_TRANSACTION_DISALLOWED_OPERATION,1653,"disallowed operation inside transac
 ## User management
 ################################################################################
 
-ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used"
-ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used"
-ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists"
-ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist"
+ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used."
+ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used."
+ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
+ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
+ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 
 ################################################################################
 ## Application management

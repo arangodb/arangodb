@@ -1,70 +1,84 @@
 .machineClass {
   @extend %clear-float;
+  @extend %pull-left;
+
+  background-color: $c-e1grey;
+  margin-left: 31px;
+  margin-right: 31px;
   padding: 10px;
-  float: left;
-  background-color: #E1E1E1;
-  width: 311px;
-  height: 175px;
-  margin-left: 8px;
 }
 
 .scenarioBox {
-  position: absolute;
-  margin-top: 10px;
-  width: auto;
+  @include border-radius(3px);
+
+  background-color: $c-scenario-bg-transp;
+  border: 1px solid $c-scenario-border-transp;
   height: 65px;
   left: 10px;
+  margin-top: 30px;
+  position: absolute;
   right: 10px;
-  @include border-radius(3px 3px 0 0);
-  border: 1px solid rgba(0, 0, 0, 0.19);
-  background-color: white;
+  width: auto;
 
   &.bottomBox {
-    bottom: 10px;
+    bottom: 30px;
   }
 }
 
 .scenarioBoxHeader {
+  border-bottom: 1px solid $c-scenario-border-transp;
+  height: 18px;
+  line-height: 18px;
+  margin-top: 0;
+  padding-bottom: 0;
+  text-align: center;
   width: auto;
-  height: 5px;
-  line-height: 5px;
-  text-align: right;
-  margin-top: -5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.19);
 }
 
 .scenarioBoxText {
-  width: auto;
-  font-size: 30px;
-  font-weight: 700;
-  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
   margin-top: 17px;
+  text-align: center;
+  width: auto;
 }
 
 .scenarioMachine {
   @extend %pull-left;
-  position: relative;
-  margin-right: 20px;
-  height: 177px;
-  width: 87px;
   @include border-radius(3px 3px 0 0);
-  border: 1px solid rgba(0, 0, 0, 0.19);
-  background-color: white;
+
+  background-color: $c-white;
+  border: 1px solid $c-scenario-border-transp;
+  height: 257px;
+  margin-right: 20px;
+  position: relative;
+  width: 110px;
+
   &:last-child {
-    margin-right: 0px;
+    margin-right: 0;
   }
 }
-
 
 .scenarioSingleMachine {
   @extend %clear-float;
-  border-radius: 3px 3px 0 0;
-  border: 1px solid rgba(0, 0, 0, 0.19);
-  background-color: white;
+  @include border-radius(3px 3px 0 0);
+  background-color: $c-white;
+  border: 1px solid $c-scenario-border-transp;
 
   .scenarioMachine {
-    border: 1px solid transparent;
+    border: 1px solid $c-transp;
+    height: 238px;
   }
 }
 
+.bigtile.informationtile {
+  cursor: auto;
+}
+
+.informationText {
+  background: $c-white;
+  font-size: 12px;
+  margin: 10px;
+  padding: 5px;
+  text-align: left;
+}

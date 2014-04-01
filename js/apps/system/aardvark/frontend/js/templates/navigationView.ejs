@@ -1,5 +1,5 @@
 <script id="navigationView.ejs" type="text/template">
-  <ul class="navlist" id="arangoCollectionUl">
+  <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
@@ -48,7 +48,7 @@
         <li class="divider"></li>
         <li class="dropdown-header">Social</li>
         <li class="dropdown-item"><a href="https://twitter.com/arangodb" target="_blank">Twitter</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.org/connect" target="_blank">Announcement List</a>
+        <li class="dropdown-item"><a href="https://www.arangodb.org/community" target="_blank">Contact</a>
         </li>
         <li class="dropdown-item"><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank">StackOverflow</a>
         </li>
@@ -58,7 +58,7 @@
     </li>
   </ul>
 
-  <select id="arangoCollectionSelect">
+  <select id="arangoCollectionSelect" class="arango-collection-select">
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 

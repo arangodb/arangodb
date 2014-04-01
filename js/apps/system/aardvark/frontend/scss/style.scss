@@ -1,24 +1,68 @@
+//colorScheme
+@import 'colors';
+//THE body
+@import 'body';
 //shared
-@import "shared";
+@import 'shared';
+// All Abstract classes
 // Navbar
-@import "statisticBar";
+@import 'statisticBar';
 // Notifications
-@import "notification";
+@import 'notification';
 //contentTables
-@import "contentTables";
+@import 'contentTables';
 // Dropdown menu
-@import "userMenu";
+@import 'userMenu';
 // Tooltips
-@import "tooltips";
+@import 'tooltips';
 // dbSelection
-@import "dbSelection";
+@import 'dbSelection';
 // dashboard http group
-@import "dashboard";
+@import 'dashboard';
 // dashboard http group
-@import "dashboardHttpGroup";
+@import 'dashboardHttpGroup';
 // dashboard distribution charts
-@import "dashboardDistribution";
-// modals
-@import "modals";
+@import 'dashboardDistribution';
 // dbSelection
-@import "searchBar";
+@import 'searchBar';
+// shortcuts info boxes
+@import 'shortcuts';
+// login view
+//@import 'login';
+// query view
+@import 'queryView';
+// some general stuff
+@import 'general';
+// The views containing tabs
+@import 'tabViews';
+// The json editor overwrites
+@import 'jsonEditor';
+// Pagination
+@import 'pagination';
+// accordion
+@import 'accordion';
+// shell view
+@import 'shellView';
+// api docs
+@import 'api';
+// alerts
+@import 'alert';
+// logs
+@import 'logs';
+// Graph Viewer
+@import 'graphViewer';
+// General Dialogs
+@import 'dialogs';
+// Collections
+@import 'collection';
+// Snippet coloring (docs view)
+@import 'snippet';
+// screen sizes
+@import 'screenSizes';
+
+// Data Tables, TODO: might all be superflous
+@import 'dataTables';
+
+
+// Temporary:
+@import 'documentsView';

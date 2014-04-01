@@ -1,11 +1,12 @@
+// All Abstract classes
+@import 'colors';
 //shared
-@import "shared";
-
+@import 'shared';
 //cluster Charts
-@import "clusterCharts";
-
+@import 'clusterCharts';
 //cluster state tiles
-@import "clusterStates";
-
+@import 'clusterStates';
 // the images used in the planner
-@import "plannerImages";
+@import 'plannerImages';
+// tiles
+@import 'tiles';

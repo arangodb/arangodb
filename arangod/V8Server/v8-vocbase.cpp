@@ -815,6 +815,8 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
                                     void* parameter) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) parameter;
+  
+  v8g->_hasDeadObjects = true;
 
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
@@ -3619,6 +3621,10 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
                                        void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
   
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  
+  v8g->_hasDeadObjects = true;
+  
   TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) parameter;
   
   TRI_ReleaseGeneralCursor(cursor);
@@ -6076,6 +6082,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   result->Set(v8::String::New("endPosition"), v8::Number::New(scan._endPosition));
   result->Set(v8::String::New("numberMarkers"), v8::Number::New(scan._numberMarkers));
   result->Set(v8::String::New("status"), v8::Number::New(scan._status));
+  result->Set(v8::String::New("isSealed"), v8::Boolean::New(scan._isSealed));
 
   v8::Handle<v8::Array> entries = v8::Array::New();
   result->Set(v8::String::New("entries"), entries);
@@ -6668,11 +6675,12 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// - @LIT{journals.fileSize}: The total filesize of the journal files.
 /// - @LIT{compactors.count}: The number of compactor files.
 /// - @LIT{compactors.fileSize}: The total filesize of the compactor files.
-/// - @LIT{shapefiles.count}: The number of shape files.
-/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files.
-/// - @LIT{shapes.count}: The total number of shapes used in the collection
-///   (this includes shapes that are not in use anymore)
-/// - @LIT{shapes.fileSize}: The total filesize of the shapes files.
+/// - @LIT{shapefiles.count}: The number of shape files. This will always be 0.
+/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files. This will always be 0.
+/// - @LIT{shapes.count}: The total number of shapes used in the collection.
+///   Tthis includes shapes that are not in use anymore.
+/// - @LIT{shapes.size}: The total size of all shapes (in bytes). This includes
+///   shapes that are not in use anymore.
 /// - @LIT{attributes.count}: The total number of attributes used in the 
 ///   collection (this includes attributes that are not in use anymore)
 ///
@@ -6912,7 +6920,7 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
     string const databaseName(collection->_dbName);
     string const cid = StringUtils::itoa(collection->_cid);
     
-    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(vocbase->_name, cid, TRI_VOC_COL_STATUS_LOADED);
+    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
@@ -7017,6 +7025,12 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///     Not used for other key generator types.
 ///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
 ///     Not used for other key generator types.
+///
+/// In a cluster setup, the result will also contain the following attributes:
+/// - `numberOfShards`: the number of shards of the collection.
+///
+/// - `shardKeys`: contains the names of document attributes that are used to 
+///   determine the target shard for documents. 
 ///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
@@ -8066,7 +8080,8 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
@@ -8680,7 +8695,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   enforce any synchronisation to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles).
 ///
-/// - @LIT{keyOptions} (optional) additional options for key generation. If
+/// - @LIT{keyOptions} (optional): additional options for key generation. If
 ///   specified, then @LIT{keyOptions} should be a JSON array containing the
 ///   following attributes (note: some of them are optional):
 ///   - @LIT{type}: specifies the type of the key generator. The currently
@@ -8694,6 +8709,19 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///     Not used for other key generator types.
 ///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
 ///     Not used for other key generator types.
+///
+/// - @LIT{numberOfShards} (optional, default is @LIT{1}): in a cluster, this value
+///   determines the number of shards to create for the collection. In a single
+///   server setup, this option is meaningless.
+///
+/// - @LIT{shardKeys} (optional, default is @LIT{[ "_key" ]}): in a cluster, this
+///   attribute determines which document attributes are used to determine the
+///   target shard for documents. Documents are sent to shards based on the
+///   values they have in their shard key attributes. The values of all shard
+///   key attributes in a document are hashed, and the hash value is used to 
+///   determine the target shard. Note that values of shard key attributes cannot
+///   be changed once set.
+///   This option is meaningless in a single server setup.
 ///
 /// @EXAMPLES
 ///
@@ -9470,7 +9498,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
   
   v8::Local<v8::String> keyRemoveOnDrop = v8::String::New("removeOnDrop");
-  v8::Local<v8::String> keyRemoveOnCompacted = v8::String::New("removeOnCompacted");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
@@ -9484,10 +9511,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyRemoveOnDrop)) {
       defaults.removeOnDrop = options->Get(keyRemoveOnDrop)->BooleanValue();
-    }
-
-    if (options->Has(keyRemoveOnCompacted)) {
-      defaults.removeOnCompacted = options->Get(keyRemoveOnCompacted)->BooleanValue();
     }
 
     if (options->Has(keyDefaultMaximalSize)) {
@@ -9849,6 +9872,8 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
                                  void* parameter) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
   TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
+  
+  v8g->_hasDeadObjects = true;
 
   LOG_TRACE("weak-callback for barrier called");
 
@@ -10072,6 +10097,14 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+
+  if (sid == 0) {
+    // invalid shape
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_WARNING("invalid shape id '%llu' found for key '%s'", (unsigned long long) sid, key.c_str());
+#endif
+    return scope.Close(v8::Handle<v8::Integer>());
+  }
 
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
@@ -10437,7 +10470,7 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;      
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require('internal').executeGlobalContextFunction('require(\\'org/arangodb/actions\\').reloadRouting()')"),
+                              v8::String::New("require('internal').executeGlobalContextFunction('reloadRouting')"),
                               v8::String::New("reload routing"),
                               false);
 }

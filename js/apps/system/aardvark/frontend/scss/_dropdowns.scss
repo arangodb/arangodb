@@ -1,30 +1,24 @@
 div.headerDropdown {
-  background-color: $c_white;
-  position:relative;
-  display:none;
+  background-color: $c-white;
+  display: none;
   padding: 10px;
+  position: relative;
   width: auto;
 
-  & > div.dropdownInner {
-    position: relative;
-    min-height: 125px;
-    width: auto;
-    box-shadow: 0;
-  }
-
   &.headerDropdown input[type=checkbox].css-checkbox {
-    display:none;
+    display: none;
 
     & + label.css-label {
       @extend %clickable;
-      padding-left:20px;
-      margin-top: 0px;
-      height:15px;
-      display:inline-block;
-      background-repeat:no-repeat;
+
       background-position: 0 0;
-      font-size:15px;
-      vertical-align:middle;
+      background-repeat: no-repeat;
+      display: inline-block;
+      font-size: 15px;
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
+      vertical-align: middle;
     }
 
     &:checked + label.css-label {
@@ -33,69 +27,144 @@ div.headerDropdown {
   }
 }
 
+div.dropdownInner {
+  @include box-shadow(0);
+  min-height: 125px;
+  position: relative;
+  width: auto;
+
+  & > .nav-header {
+    color: $c-black;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  & > label {
+    color: $c-black;
+    font-weight: 300;
+  }
+
+  & ul {
+    @extend %pull-left;
+    border-left: 1px solid $c-black;
+    display: inline;
+    margin-top: 10px;
+    min-height: 105px;
+    width: 238px;
+
+    &:first-of-type {
+      border: 0;
+    }
+
+    label {
+      color: $c-black;
+      padding-left: 35px;
+    }
+  }
+
+}
+
 div.queryline {
-  color: $c_black;
+  color: $c-black;
   height: 35px;
 
-  select, input {
+  select,
+  input {
+
     margin-bottom: 5px;
   }
 
   &.querylineAdd span {
+    color: $c-white;
+    padding-left: 10px;
     position: relative;
     top: -21px;
-    color: $c_white;
-    padding-left: 10px;
   }
 
   .removeFilterItem i {
-    margin-top: 0px !important;
     margin-left: 5px !important;
+    margin-top: 0 !important;
   }
 
   div.searchByAttribute {
+    margin-left: 6px;
+    margin-right: 6px;
     position: relative;
 
     & > ul.gv-dropdown-menu {
-      position: absolute;
-      border-radius: 0px;
-      top: 20px;
-      left: 0px;
-      width: 247px;
-      background-color: $c_nav_bg;
-      color: $c_white;
+      @include border-radius(0);
+
+      background-color: $c-nav-bg;
+      color: $c-white;
       display: none;
+      left: 0;
+      position: absolute;
+      top: 20px;
+      width: 247px;
     }
   }
 
 }
 
 div.dropdownImport {
-  display:none;
-  background-color: $c_white;
-  padding-top: 10px;
-  padding-left: 10px;
-  padding-right: 10px;
-  padding-bottom: 5px;
-  position:relative;
+  background-color: $c-white;
+  display: none;
+  padding: {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 5px;
+  }
+  position: relative;
   
   input {
-    line-height: 0px;
-    margin-top: 5px;
+    line-height: 0;
     margin-bottom: -15px;
+    margin-top: 5px;
   }
 }
 
 select.filterSelect {
-  width: 100px;
   margin-left: 10px;
   margin-right: 10px;
+  width: 100px;
 }
 
 //TODO Le fix
 #filterHeader button {
   float: right;
-  margin-top: 1px;
   margin-left: 10px !important;
+  margin-top: 1px;
 }
 
+div.input-append {
+
+  button.gv_example_toggle {
+    @include border-radius(0 4px 4px 0);
+    background-color: $c-neutral;
+    height: 30px;
+    margin-left: -1px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 12px;
+    vertical-align: top;
+    
+    &:hover {
+      background-color: $c-positive;
+    }
+  }
+
+}
+
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+img.gv-throbber {
+  background-image: url('../img/swagger/throbber.gif');
+}
+
+span.gv_caret {
+  margin-top: 2px !important;
+}

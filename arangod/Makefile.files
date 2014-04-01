@@ -77,6 +77,9 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/Transaction/IdGenerator.cpp \
+	arangod/Transaction/Manager.cpp \
+	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
@@ -109,7 +112,15 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/update-policy.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
-	arangod/VocBase/vocbase-defaults.c
+	arangod/VocBase/vocbase-defaults.c \
+	arangod/Wal/AllocatorThread.cpp \
+	arangod/Wal/CollectorThread.cpp \
+	arangod/Wal/LogfileManager.cpp \
+	arangod/Wal/Logfile.cpp \
+	arangod/Wal/Slot.cpp \
+	arangod/Wal/Slots.cpp \
+	arangod/Wal/TestThread.cpp \
+	arangod/Wal/SynchroniserThread.cpp 
 
 if ENABLE_CLUSTER
 

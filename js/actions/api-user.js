@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
@@ -37,42 +37,7 @@ var users = require("org/arangodb/users");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch a user
-///
-/// @RESTHEADER{GET /_api/user/{user},fetches a user}
-///
-/// @RESTURLPARAMETERS
-///
-/// @RESTURLPARAM{user,string,required}
-/// The name of the user.
-///
-/// @RESTDESCRIPTION
-///
-/// Fetches data about the specified user.
-///
-/// The call will return a JSON document with at least the following attributes
-/// on success:
-///
-/// - `user`: The name of the user as a string.
-///
-/// - `active`: an optional flag that specifies whether the user is active.
-///
-/// - `extra`: an optional JSON object with arbitrary extra data about the
-///   user.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// The user was found.
-///
-/// @RESTRETURNCODE{404}
-/// The user with `user` does not exist.
-///
+/// @brief fetches a user
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_user (req, res) {
@@ -89,8 +54,7 @@ function get_api_user (req, res) {
   var user = decodeURIComponent(req.suffix[0]);
 
   try {
-    var result = users.document(user);
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    actions.resultOk(req, res, actions.HTTP_OK, users.document(user));
   }
   catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
@@ -103,61 +67,7 @@ function get_api_user (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new user
-///
-/// @RESTHEADER{POST /_api/user,creates user}
-///
-/// @RESTBODYPARAM{body,json,required}
-///
-/// @RESTDESCRIPTION
-///
-/// The following data need to be passed in a JSON representation in the body of
-/// the POST request:
-///
-/// - `user`: The name of the user as a string. This is mandatory.
-///
-/// - `passwd`: The user password as a string. If no password is specified,
-///   the empty string will be used.
-///
-/// - `active`: an optional flag that specifies whether the user is active.
-///   If not specified, this will default to `true`.
-///
-/// - `extra`: an optional JSON object with arbitrary extra data about the
-///   user.
-///
-/// If the user can be added by the server, the server will respond with 
-/// `HTTP 201`.
-///
-/// In case of success, the returned JSON object has the following properties:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
-///   in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with `HTTP 400`.
-///
-/// The body of the response will contain a JSON object with additional error
-/// details. The object has the following attributes:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// - `errorNum`: the server error number
-///
-/// - `errorMessage`: a descriptive error message
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// returned if the user can be added by the server.
-///
-/// @RESTRETURNCODE{400}
-/// If the JSON representation is malformed or mandatory data is missing from the
-/// request.
-///
+/// @brief creates a new user
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_user (req, res) {
@@ -166,8 +76,9 @@ function post_api_user (req, res) {
   if (json === undefined) {
     return;
   }
- 
-  var user; 
+
+  var user;
+
   if (req.suffix.length === 1) {
     // validate if a combination or username / password is valid
     user = decodeURIComponent(req.suffix[0]);
@@ -189,82 +100,20 @@ function post_api_user (req, res) {
   }
 
   user = json.user;
+
   if (user === undefined && json.hasOwnProperty("username")) {
     // deprecated usage
     user = json.username;
   }
 
-  users.save(user, json.passwd, json.active, json.extra);
+  var doc = users.save(user, json.passwd, json.active, json.extra, json.changePassword);
   users.reload();
 
-  actions.resultOk(req, res, actions.HTTP_CREATED, { });
+  actions.resultOk(req, res, actions.HTTP_CREATED, doc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace an existing user
-///
-/// @RESTHEADER{PUT /_api/user/{user},replaces user}
-///
-/// @RESTURLPARAMETERS
-///
-/// @RESTURLPARAM{user,string,required}
-/// The name of the user.
-///
-/// @RESTBODYPARAM{body,json,required}
-///
-/// @RESTDESCRIPTION
-///
-/// Replaces the data of an existing user. The name of an existing user must
-/// be specified in `user`.
-///
-/// The following data can to be passed in a JSON representation in the body of
-/// the POST request:
-///
-/// - `passwd`: The user password as a string. Specifying a password is
-///   mandatory, but the empty string is allowed for passwords.
-///
-/// - `active`: an optional flag that specifies whether the user is active.
-///   If not specified, this will default to `true`.
-///
-/// - `extra`: an optional JSON object with arbitrary extra data about the
-///   user.
-///
-/// If the user can be replaced by the server, the server will respond with 
-/// `HTTP 200`. 
-///
-/// In case of success, the returned JSON object has the following properties:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
-///   in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with `HTTP 400`. If the specified user
-/// does not exist, the server will respond with `HTTP 404`.
-///
-/// The body of the response will contain a JSON object with additional error
-/// details. The object has the following attributes:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// - `errorNum`: the server error number
-///
-/// - `errorMessage`: a descriptive error message
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Is returned if the user data can be replaced by the server.
-///
-/// @RESTRETURNCODE{400}
-/// The JSON representation is malformed or mandatory data is missing from the
-/// request.
-///
-/// @RESTRETURNCODE{404}
-/// The specified user does not exist.
+/// @brief replaces an existing user
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_user (req, res) {
@@ -276,16 +125,16 @@ function put_api_user (req, res) {
   var user = decodeURIComponent(req.suffix[0]);
 
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-  
+
   if (json === undefined) {
     return;
   }
-  
+
   try {
-    users.replace(user, json.passwd, json.active, json.extra);
+    var doc = users.replace(user, json.passwd, json.active, json.extra, json.changePassword);
     users.reload();
-  
-    actions.resultOk(req, res, actions.HTTP_OK, { });
+
+    actions.resultOk(req, res, actions.HTTP_OK, doc);
   }
   catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
@@ -298,72 +147,7 @@ function put_api_user (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief partially update an existing user
-///
-/// @RESTHEADER{PATCH /_api/user/{user},updates user}
-///
-/// @RESTURLPARAMETERS
-///
-/// @RESTURLPARAM{user,string,required}
-/// The name of the user.
-///
-/// @RESTBODYPARAM{body,json,required}
-///
-/// @RESTDESCRIPTION
-///
-/// Partially updates the data of an existing user. The name of an existing user 
-/// must be specified in `user`.
-///
-/// The following data can be passed in a JSON representation in the body of
-/// the POST request:
-///
-/// - `passwd`: The user password as a string. Specifying a password is
-///   optional. If not specified, the previously existing value will not be
-///   modified.
-///
-/// - `active`: an optional flag that specifies whether the user is active.
-///   If not specified, the previously existing value will not be modified.
-///
-/// - `extra`: an optional JSON object with arbitrary extra data about the
-///   user. If not specified, the previously existing value will not be modified.
-///
-/// If the user can be updated by the server, the server will respond with 
-/// `HTTP 200`. 
-///
-/// In case of success, the returned JSON object has the following properties:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
-///   in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with `HTTP 400`. If the specified user
-/// does not exist, the server will respond with `HTTP 404`.
-///
-/// The body of the response will contain a JSON object with additional error
-/// details. The object has the following attributes:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// - `errorNum`: the server error number
-///
-/// - `errorMessage`: a descriptive error message
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Is returned if the user data can be replaced by the server.
-///
-/// @RESTRETURNCODE{400}
-/// The JSON representation is malformed or mandatory data is missing from the
-/// request.
-///
-/// @RESTRETURNCODE{404}
-/// The specified user does not exist.
-///
+/// @brief partially updates an existing user
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_api_user (req, res) {
@@ -374,15 +158,16 @@ function patch_api_user (req, res) {
 
   var user = decodeURIComponent(req.suffix[0]);
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-  
+
   if (json === undefined) {
     return;
   }
-  
+
   try {
-    users.update(user, json.passwd, json.active, json.extra);
+    var doc = users.update(user, json.passwd, json.active, json.extra, json.changePassword);
     users.reload();
-    actions.resultOk(req, res, actions.HTTP_OK, { });
+
+    actions.resultOk(req, res, actions.HTTP_OK, doc);
   }
   catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
@@ -395,50 +180,7 @@ function patch_api_user (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an existing user
-///
-/// @RESTHEADER{DELETE /_api/user/{user},removes a user}
-///
-/// @RESTURLPARAMETERS
-///
-/// @RESTURLPARAM{user,string,required}
-/// The name of the user.
-///
-/// @RESTDESCRIPTION
-///
-/// Removes an existing user, identified by `user`.
-///
-/// If the user can be removed, the server will respond with `HTTP 202`. 
-///
-/// In case of success, the returned JSON object has the following properties:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
-///   in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// If the specified user does not exist, the server will respond with 
-/// `HTTP 404`.
-///
-/// The body of the response will contain a JSON object with additional error
-/// details. The object has the following attributes:
-///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
-///
-/// - `code`: the HTTP status code
-///
-/// - `errorNum`: the server error number
-///
-/// - `errorMessage`: a descriptive error message
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{202}
-/// Is returned if the user was removed by the server.
-///
-/// @RESTRETURNCODE{404}
-/// The specified user does not exist.
-///
+/// @brief removes an existing user
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_user (req, res) {
@@ -449,8 +191,9 @@ function delete_api_user (req, res) {
 
   var user = decodeURIComponent(req.suffix[0]);
   try {
-    users.remove(user);
+    var doc = users.remove(user);
     users.reload();
+
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { });
   }
   catch (err) {
@@ -468,7 +211,7 @@ function delete_api_user (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief user actions gateway 
+/// @brief user actions gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -478,24 +221,24 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.GET: 
-          get_api_user(req, res); 
+        case actions.GET:
+          get_api_user(req, res);
           break;
 
-        case actions.POST: 
-          post_api_user(req, res); 
+        case actions.POST:
+          post_api_user(req, res);
           break;
 
-        case actions.PUT:  
-          put_api_user(req, res); 
-          break;
-        
-        case actions.PATCH:  
-          patch_api_user(req, res); 
+        case actions.PUT:
+          put_api_user(req, res);
           break;
 
-        case actions.DELETE:  
-          delete_api_user(req, res); 
+        case actions.PATCH:
+          patch_api_user(req, res);
+          break;
+
+        case actions.DELETE:
+          delete_api_user(req, res);
           break;
 
         default:
@@ -508,11 +251,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:

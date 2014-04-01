@@ -20,7 +20,8 @@
 
     getList: function() {
       this.fetch({
-        async: false
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
       });
       return this.map(function(m) {
         return m.forList();

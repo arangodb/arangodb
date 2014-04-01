@@ -38,9 +38,6 @@ set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
-set(SCRIPT_ARANGO_DFDB  arango-dfdb)
-set(SCRIPT_FOXX_MANAGER foxx-manager)
-
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
@@ -96,7 +93,7 @@ if (MSVC)
 
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /ignore:4099")
 endif ()
 
 ################################################################################
@@ -136,6 +133,16 @@ option(USE_MRUBY "Do you want to use MRUBY" OFF)
 
 if (USE_MRUBY)
   add_definitions("-DTRI_ENABLE_MRUBY=1")
+endif ()
+
+################################################################################
+### @brief VISTA LOCKS
+################################################################################
+
+option(USE_VISTA_LOCKS "Do you want to use Windows Vista R/W locks" OFF)
+
+if (USE_VISTA_LOCKS)
+  add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
 endif ()
 
 ################################################################################
@@ -251,19 +258,26 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
-  SET(SHARE_DIR "@ROOTDIR@/share/arangodb") 
-  SET(VAR_DIR "@ROOTDIR@/var") 
-  if (MSVC) 
-    SET(SHARE_DIR "@ROOTDIR@/share/arangodb") 
-    SET(VAR_DIR "@ROOTDIR@/var") 
-  endif ()
-  STRING(REPLACE "@PKGDATADIR@" ${SHARE_DIR} 
+
+  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb" 
          FileContent "${FileContent}")
 
-  STRING(REPLACE "@LOCALSTATEDIR@" ${VAR_DIR}
+  STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"
+         FileContent "${FileContent}")
+
+  STRING(REPLACE "@SBINDIR@" "@ROOTDIR@/bin"
+         FileContent "${FileContent}")
+
+  STRING(REPLACE "@LIBEXECDIR@/arangodb" "@ROOTDIR@/bin"
+         FileContent "${FileContent}")
+
+  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/etc/arangodb"
          FileContent "${FileContent}")
 
   if (MSVC)
+    STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
+           FileContent "${FileContent}")
+
     STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
            FileContent "${FileContent}")
   endif ()
@@ -749,27 +763,28 @@ endif ()
 if (MSVC)
 
   ##############################################################################
-  # Initializing variables
+  ## Initializing variables
   ##############################################################################
 
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
   set(BITS 64)
 
-  IF(CMAKE_CL_64)
+  if(CMAKE_CL_64)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
     SET(BITS 64)
-  ELSE()
+  else()
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
     SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
     SET(BITS 32)
-  ENDIF()
+  endif()
 
   SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView ${BITS}")
+
   # SetRegView controlls where die regkeys are written to
   # SetRegView 32 writes the keys into Wow6432
-    # this variable was defined by eld and included in NSIS.template.in
+  # this variable was defined by eld and included in NSIS.template.in
   SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  
       "  SetRegView ${BITS}
          SimpleSC::StopService  'ArangoDB' 0 30
@@ -798,12 +813,12 @@ if (MSVC)
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
   
   set(CPACK_NSIS_CREATE_ICONS_EXTRA 
-    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
-     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
+    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
+     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
     ")
 
-# Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-# they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  # Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+  # they are deleted from '$SMPROGRAMS\$MUI_TEMP
   set(CPACK_NSIS_DELETE_ICONS_EXTRA 
     "Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Server.lnk'
      Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Shell.lnk'
@@ -813,6 +828,19 @@ if (MSVC)
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")
   set(CPACK_NSIS_CONTACT "hackers@arangodb.org")
+
+  ##############################################################################
+  ## etcd
+  ##############################################################################
+
+  if(CMAKE_CL_64)
+    install(PROGRAMS 3rdParty-Windows/64/bin/etcd-arango.exe
+            DESTINATION ${TRI_SBINDIR_INSTALL})
+  else()
+    install(PROGRAMS 3rdParty-Windows/32/bin/etcd-arango.exe
+            DESTINATION ${TRI_SBINDIR_INSTALL})
+  endif()
+
 endif ()
 
 ################################################################################

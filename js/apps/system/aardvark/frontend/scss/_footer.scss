@@ -1,19 +1,45 @@
+.footer {
+  background-color: $c-nav-bg;
+  bottom: 0;
+  font-size: 14px;
+  left: 0;
+  position: fixed;
+  right: 0;
+  text-align: center;
+  z-index: 1000;
+}
+
 footer.footer {
   @extend %fixedbar;
-  bottom: 0px;
+  bottom: 0;
   height: 40px;
 
   p {
-    padding-top: 10px;
+    margin-bottom: 0;
     padding-bottom: 10px;
-    margin-bottom:0;
+    padding-top: 10px;
   }
 }
 
 div.footer-left {
   @extend %pull-left;
+  background: none repeat scroll 0 0 $c-nav-bg;
+  color: $c-white;
+  width: 45%;
+
+  p {
+    @extend %pull-left;
+  }
 }
 
 div.footer-right {
   @extend %pull-right;
+  background: none repeat scroll 0 0 $c-nav-bg;
+  color: $c-nav-bg;
+  width: 45%;
+
+  p {
+    @extend %pull-right;
+    color: $c-white;
+  }
 }

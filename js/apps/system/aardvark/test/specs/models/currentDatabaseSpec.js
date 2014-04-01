@@ -21,6 +21,9 @@
       model.fetch();
     });
 
+    it("should request /_api/database/current on fetch", function() {
+      expect(model.parse({result : "a"})).toEqual("a");
+    });
   });
 
 }());

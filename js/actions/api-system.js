@@ -32,6 +32,7 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
 var console = require("console");
+var users = require("org/arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -132,7 +133,27 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current server role
+/// @fn JSF_get_admin_server_role
+/// @brief returns the role of a server in a cluster
+///
+/// @RESTHEADER{GET /_admin/server/role,returns the role of a server in a cluster}
+///
+/// @RESTDESCRIPTION
+///
+/// Returns the role of a server in a cluster.
+/// The role is returned in the `role` attribute of the result.
+/// Possible return values for `role` are:
+/// - `COORDINATOR`: the server is a coordinator in a cluster
+/// - `PRIMARY`: the server is a primary database server in a cluster
+/// - `SECONDARY`: the server is a secondary database server in a cluster
+/// - `UNKNOWN`: in a cluster, `UNKNOWN` is returned if the server role cannot be 
+///    determined. On a single server, `UNKNOWN` is the only possible return
+///    value.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned in all cases.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -155,7 +176,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.reloadAuth();
+    users.reload();
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
@@ -198,7 +219,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    internal.executeGlobalContextFunction("reloadRouting");
     console.warn("about to flush the routing cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
@@ -242,7 +263,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"internal\").flushModuleCache()");
+    internal.executeGlobalContextFunction("flushModuleCache");
     console.warn("about to flush the modules cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }

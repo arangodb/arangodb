@@ -7,14 +7,17 @@
 
   window.ServerDashboardView = window.dashboardView.extend({
     el: "#dbServerModal",
+    modal : true,
 
-    events: {
-      
+    hide: function() {
+      window.App.showClusterView.startUpdating();
+      this.stopUpdating();
     },
 
     render: function() {
       window.dashboardView.prototype.render.bind(this)();
       $(this.el).modal("show");
+      $(this.el).on("hidden", this.hide.bind(this));
     }
   });
 

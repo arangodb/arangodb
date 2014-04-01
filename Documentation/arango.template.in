@@ -227,6 +227,7 @@ ALIASES += \
   "RESTRETURNCODES=@htmlonly<H3>Return codes</H3>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<p></p><div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
   "RESTDESCRIPTION=@htmlonly<H3 class=\"space-before\">Description</H3>@endhtmlonly" \
+  "RESTDONE="
 
 # navigation
 ALIASES += \
@@ -270,6 +271,7 @@ ALIASES += \
 # other aliases
 ALIASES += \
   "VERSION=@PACKAGE_VERSION@" \
+  "COMMENT{1}=" \
   "LIT{1}=<tt>\1</tt>" \
   "LIT{2}=<tt>\1, \2</tt>" \
   "LIT{3}=<tt>\1, \2, \3</tt>" \
@@ -724,7 +726,8 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = @srcdir@/Documentation/DbaManual \
+INPUT                  = @srcdir@/Documentation/Cookbooks \
+                         @srcdir@/Documentation/DbaManual \
                          @srcdir@/Documentation/ImplementorManual \
                          @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \
@@ -819,7 +822,7 @@ EXAMPLE_RECURSIVE      = NO
 # directories that contain image that are included in the documentation (see
 # the \image command).
 
-IMAGE_PATH             =
+IMAGE_PATH             = Documentation/images
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program

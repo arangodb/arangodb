@@ -213,6 +213,8 @@ pkglibexec_SCRIPTS =
 
 if ENABLE_ALL_IN_ONE_ETCD
 pkglibexec_SCRIPTS += bin/etcd-arango$(PROGRAM_SUFFIX)
+
+CLEANUP += bin/etcd-arango$(PROGRAM_SUFFIX)
 endif
 
 ################################################################################
@@ -515,6 +517,64 @@ include 3rdParty/Makefile.zlib
 if ENABLE_ALL_IN_ONE_ETCD
 include 3rdParty/Makefile.etcd
 endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       CMAKE SETUP
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief cmake build
+################################################################################
+
+.PHONY: cmake-setup
+
+cmake-setup:
+	test -d Build || mkdir Build
+
+	cd Build && cmake \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "VARDIR=${localstatedir}" \
+		\
+		-D ARANGODB_VERSION=${VERSION} \
+		-D USE_MRUBY=${tr_MRUBY} \
+		\
+		-D ICU_INCLUDE="${CMAKE_ICU_INCLUDE}" \
+		-D ICU_LIB_PATH="${CMAKE_ICU_LIB_PATH}" \
+		-D ICU_LIBS="${CMAKE_ICU_LIBS}" \
+		-D ICU_VERSION="${CMAKE_ICU_VERSION}" \
+		\
+		-D LIBEV_INCLUDE="${CMAKE_LIBEV_INCLUDE}" \
+		-D LIBEV_LIB_PATH="${CMAKE_LIBEV_LIB_PATH}" \
+		-D LIBEV_LIBS="${CMAKE_LIBEV_LIBS}" \
+		-D LIBEV_VERSION="${CMAKE_LIBEV_VERSION}" \
+		\
+		-D MRUBY_INCLUDE= \
+		-D MRUBY_LIB_PATH= \
+		-D MRUBY_LIBS= \
+		-D MRUBY_VERSION= \
+		\
+		-D OPENSSL_INCLUDE= \
+		-D OPENSSL_LIB_PATH= \
+		-D OPENSSL_LIBS= \
+		-D OPENSSL_VERSION= \
+		\
+		-D READLINE_INCLUDE= \
+		-D READLINE_LIB_PATH= \
+		-D READLINE_LIBS= \
+		-D READLINE_VERSION= \
+		\
+		-D V8_INCLUDE= \
+		-D V8_LIB_PATH= \
+		-D V8_LIBS= \
+		-D V8_VERSION= \
+		\
+		-D ZLIB_INCLUDE= \
+		-D ZLIB_LIB_PATH= \
+		-D ZLIB_LIBS= \
+		-D ZLIB_VERSION= \
+		\
+		..
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
