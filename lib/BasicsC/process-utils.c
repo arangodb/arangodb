@@ -46,6 +46,11 @@
 #include <sys/wait.h>
 #endif
 
+#ifdef WIN32
+#include <Psapi.h>
+#include <TlHelp32.h>
+#endif
+
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/locks.h"
@@ -644,8 +649,38 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 
 TRI_process_info_t TRI_ProcessInfoSelf () {
   TRI_process_info_t result;
-
+  PROCESS_MEMORY_COUNTERS_EX  pmc;
   memset(&result, 0, sizeof(result));
+  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
+   
+  if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
+    result._majorPageFaults = pmc.PageFaultCount;
+    result._minorPageFaults = pmc.PeakWorkingSetSize;
+
+    result._numberThreads = 0;
+    result._residentSize = pmc.WorkingSetSize;
+    result._scClkTck = -1;
+    result._systemTime = -1;
+    result._userTime = -1;
+    result._virtualSize = pmc.PrivateUsage;
+    DWORD myPID = GetCurrentProcessId();
+    HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
+    THREADENTRY32 te32;
+    te32.dwSize = sizeof(THREADENTRY32);
+    if (!Thread32First(snapShot, &te32))
+    {
+      CloseHandle(snapShot);     // Must clean up the snapshot object!
+      return;
+    }
+    result._numberThreads++;
+    while (Thread32Next(snapShot, &te32)) {
+      if (te32.th32OwnerProcessID == myPID) {
+        result._numberThreads++;
+      }
+    }
+    CloseHandle(snapShot);
+  }
+  
   return result;
 }
 #endif
