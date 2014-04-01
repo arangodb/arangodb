@@ -122,6 +122,99 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t* zone, TRI_multi_pointer_t* array) 
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+#if 0
+// Activate for additional debugging:
+#define TRI_CHECK_MULTI_POINTER_HASH 1
+#endif
+
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+bool TRI_CheckMultiPointerHash (TRI_multi_pointer_t* array, bool checkCount,
+                                bool checkPositions) {
+  uint64_t i,ii,j,k;
+  bool ok;
+  uint64_t count;
+  uint64_t hash;
+
+  ok = true;
+  count = 0;
+  for (i = 0;i < array->_nrAlloc;i++) {
+    if (array->_table[i].ptr != NULL) {
+      count++;
+      if (array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX) {
+        if (array->_table[array->_table[i].prev].next != i) {
+          printf("Alarm prev %llu\n",(unsigned long long) i);
+          ok = false;
+        }
+      }
+      if (array->_table[i].next != TRI_MULTI_POINTER_INVALID_INDEX) {
+        if (array->_table[array->_table[i].next].prev != i) {
+          printf("Alarm next %llu\n",(unsigned long long) i);
+          ok = false;
+        }
+      }
+      ii = i;
+      j = array->_table[ii].next;
+      while (j != TRI_MULTI_POINTER_INVALID_INDEX) {
+        if (j == i) {
+          printf("Alarm cycle %llu\n",(unsigned long long) i);
+          ok = false;
+          break;
+        }
+        ii = j;
+        j = array->_table[ii].next;
+      }
+    }
+  }
+  if (checkCount && count != array->_nrUsed) {
+    printf("Alarm nrUsed wrong %llu != %llu!\n",
+           (unsigned long long) array->_nrUsed,
+           (unsigned long long) count);
+    ok = false;
+  }
+  if (checkPositions) {
+    for (i = 0;i < array->_nrAlloc;i++) {
+      if (array->_table[i].ptr != NULL) {
+        if (array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
+          // We are the first in a linked list.
+          hash = array->hashElement(array, array->_table[i].ptr,true);
+          j = hash % array->_nrAlloc;
+          for (k = j; k != i; ) {
+            if (array->_table[k].ptr == NULL ||
+                (array->_table[k].prev == TRI_MULTI_POINTER_INVALID_INDEX &&
+                 array->isEqualElementElement(array, array->_table[i].ptr,
+                                                     array->_table[k].ptr,
+                                                     true))) {
+              ok = false;
+              printf("Alarm pos bykey: %llu\n", (unsigned long long) i);
+            }
+            k = TRI_IncModU64(k, array->_nrAlloc);
+          }
+        }
+        else {
+          // We are not the first in a linked list.
+          hash = array->hashElement(array, array->_table[i].ptr, false);
+          j = hash % array->_nrAlloc;
+          for (k = j; k != i; ) {
+            if (array->_table[k].ptr == NULL ||
+                array->isEqualElementElement(array, array->_table[i].ptr,
+                                             array->_table[k].ptr, false)) {
+              ok = false;
+              printf("Alarm unique: %llu, %llu\n", (unsigned long long) k,
+                                                   (unsigned long long) i);
+            }
+            k = TRI_IncModU64(k, array->_nrAlloc);
+          }
+        }
+      }
+    }
+  }
+  if (!ok) {
+    printf("Something is wrong!");
+  }
+  return ok;
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find an element or its place using the element hash function
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,6 +387,10 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   uint64_t i, j;
   void* old;
 
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+  TRI_CheckMultiPointerHash(array, true, true); 
+#endif
+
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
@@ -314,6 +411,9 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+    TRI_CheckMultiPointerHash(array, true, true); 
+#endif
     return NULL;
   }
 
@@ -337,6 +437,9 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+    TRI_CheckMultiPointerHash(array, true, true); 
+#endif
     return NULL;
   }
 
@@ -349,6 +452,9 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     if (overwrite) {
       array->_table[i].ptr = element;
     }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+    TRI_CheckMultiPointerHash(array, true, true); 
+#endif
     return old;
   }
 
@@ -362,6 +468,9 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     if (overwrite) {
       array->_table[j].ptr = element;
     }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+    TRI_CheckMultiPointerHash(array, true, true); 
+#endif
     return old;
   }
 
@@ -372,10 +481,13 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   array->_table[i].next = j;
   // Finally, we need to find the successor to patch it up:
   if (array->_table[j].next != TRI_MULTI_POINTER_INVALID_INDEX) {
-    array->_table[array->_table[j].next].prev = i;
+    array->_table[array->_table[j].next].prev = j;
   }
   array->_nrUsed++;
 
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+  TRI_CheckMultiPointerHash(array, true, true); 
+#endif
   return NULL;
 }
 
@@ -445,29 +557,6 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CHECK (TRI_multi_pointer_t* array) {
-  uint64_t i,ii,j;
-
-  for (i = 0;i < array->_nrAlloc;i++) {
-    if (array->_table[i].ptr != NULL && 
-        array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
-      ii = i;
-      j = array->_table[ii].next;
-      while (j != TRI_MULTI_POINTER_INVALID_INDEX) {
-        if (array->_table[j].prev != ii) {
-          printf("Alarm: %llu %llu %llu\n",(unsigned long long) i,
-                                           (unsigned long long) ii,
-                                           (unsigned long long) j);
-          return true;
-        }
-        ii = j;
-        j = array->_table[ii].next;
-      }
-    }
-  }
-  return false;
-}
-
 void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* element) {
   uint64_t i, j;
   void* old;
@@ -477,17 +566,14 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   array->_nrRems++;
 #endif
 
-  if (CHECK(array)) {
-    printf("Alarm 1\n");
-  }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+  TRI_CheckMultiPointerHash(array, true, true); 
+#endif
   i = LookupByElement(array, element);
   if (array->_table[i].ptr == NULL) {
     return NULL;
   }
-  printf("Removing %llu with links %llu %llu\n",
-         (unsigned long long) i,
-         (unsigned long long) array->_table[i].prev,
-         (unsigned long long) array->_table[i].next);
+
   old = array->_table[i].ptr;
   // We have to delete entry i
   if (array->_table[i].prev == TRI_MULTI_POINTER_INVALID_INDEX) {
@@ -497,25 +583,19 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       // The only one in its linked list, simply remove it and heal
       // the hole:
       InvalidateEntry(array, i);
-  if (CHECK(array)) {
-    printf("Alarm 2\n");
-  }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+      TRI_CheckMultiPointerHash(array, false, false); 
+#endif
       HealHole(array, i);
-  if (CHECK(array)) {
-    printf("Alarm 3\n");
-  }
     }
     else {
       // There is at least one successor in position j.
       array->_table[j].prev = TRI_MULTI_POINTER_INVALID_INDEX;
       MoveEntry(array, j, i);
-  if (CHECK(array)) {
-    printf("Alarm 4\n");
-  }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+      TRI_CheckMultiPointerHash(array, false, false); 
+#endif
       HealHole(array, j);
-  if (CHECK(array)) {
-    printf("Alarm 5\n");
-  }
     }
   }
   else {
@@ -527,19 +607,16 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       // We are not the last in the linked list.
       array->_table[j].prev = array->_table[i].prev;
     }
-    printf("prev=%llu next=%llu\n",(unsigned long long) array->_table[i].prev,
-                                   (unsigned long long) array->_table[i].next);
     InvalidateEntry(array, i);
-  if (CHECK(array)) {
-    printf("Alarm 6\n");
-  }
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+    TRI_CheckMultiPointerHash(array, false, false); 
+#endif
     HealHole(array, i);
-  if (CHECK(array)) {
-    printf("Alarm 7\n");
-  }
   }
   array->_nrUsed--;
-  
+#ifdef TRI_CHECK_MULTI_POINTER_HASH
+  TRI_CheckMultiPointerHash(array, true, true); 
+#endif  
   // return success
   return old;
 }
