@@ -342,11 +342,13 @@ static int newLine(struct current *current)
     return outputChars(current, "\n", 1);
 }
 
+/*
+ * commented out because it is not used at moment
 static void outputControlChar(struct current *current, char ch)
 {
     fd_printf(current->fd, "\x1b[7m^%c\x1b[0m", ch);
 }
-
+*/
 static void eraseEol(struct current *current)
 {
     /**
@@ -958,7 +960,7 @@ static void displayItems(const struct linenoiseCompletions * lc, struct current 
   size_t wcols = current->cols; 
   size_t cols = max_len > wcols ? 1 : wcols/(max_len+2);
   size_t rows = (int)ceil((float)lc->len/cols);
-  int i, j;
+  size_t i, j;
   size_t idx;
    const char * row_content;
   getWindowSize(current);
@@ -1037,6 +1039,16 @@ static void refreshMultiLine(const char *prompt, struct current *current)
 {
     size_t plen;
     size_t pchars;
+     
+    /**
+     * is the absolute cordinate of the cursor position 
+     */
+    int x;
+    /**
+     * the relative relative (to the position of the prompt)
+     * coorditnate of the cursor position
+     */
+    int y;
     
     /* Should intercept SIGWINCH. For now, just get the size every time */
     getWindowSize(current);
@@ -1056,11 +1068,8 @@ static void refreshMultiLine(const char *prompt, struct current *current)
     showBuffer(current, pchars);
     fd_printf(current->fd, "\x1b[u");
 
-    int x = next_allowed_x(current->pos, current->cols, pchars);
-    /**
-     * y is the relative position of the line
-     */
-    int y = new_line_numbers(current->pos, current->cols, pchars);
+    x = next_allowed_x(current->pos, current->cols, pchars);
+    y = (int)new_line_numbers(current->pos, current->cols, pchars);
     /* move cursor to: */
     if(x == 0) { 
       setCursorPosXY(current, x, y);
