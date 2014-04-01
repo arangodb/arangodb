@@ -3,6 +3,7 @@
   "test/lib/jslint.js",
   { "pattern": "frontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
   "frontend/js/lib/jquery-2.1.0.min.js",
+  "test/mocks/overwriteAjax.js",
   "frontend/js/lib/jquery-ui-1.9.2.custom.js",
   "frontend/js/lib/jquery.dataTables.js",
   "frontend/js/lib/jquery.autogrow.js",
