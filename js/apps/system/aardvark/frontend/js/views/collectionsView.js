@@ -136,7 +136,6 @@
       var oldValue = searchOptions.sortBy;
 
       searchOptions.sortBy = (($('#sortName').is(":checked") === true) ? 'name' : 'type');
-
       if (oldValue !== searchOptions.sortBy) {
         this.render();
       }
@@ -146,7 +145,6 @@
       var oldValue = searchOptions.sortBy;
 
       searchOptions.sortBy = (($('#sortType').is(":checked") === true) ? 'type' : 'name');
-
       if (oldValue !== searchOptions.sortBy) {
         this.render();
       }
@@ -156,7 +154,6 @@
       var oldValue = searchOptions.sortOrder;
 
       searchOptions.sortOrder = (($('#sortOrder').is(":checked") === true) ? -1 : 1);
-
       if (oldValue !== searchOptions.sortOrder) {
         this.render();
       }
@@ -177,7 +174,6 @@
     search: function () {
       var searchOptions = this.collection.searchOptions;
       var searchPhrase = $('#searchInput').val();
-
       if (searchPhrase === searchOptions.searchPhrase) {
         return;
       }

@@ -52,8 +52,38 @@ v2.1.0 (XXXX-XX-XX)
 * export the sort attribute for graph traversals to the HTTP interface
 
 
+v2.0.2 (XXXX-XX-XX)
+-------------------
+
+* during cluster startup, do not log (somewhat expected) connection errors with
+  log level error, but with log level info
+
+* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
+  
+  The issue is described in detail here:
+  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
+
+* fixed dashboard modals
+
+* fixed connection check for cluster planning front end: firefox does 
+  not support async:false
+
+* document how to persist a cluster plan in order to relaunch an existing
+  cluster later
+
+
 v2.0.1 (XXXX-XX-XX)
 -------------------
+
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
 
 * fixed isses in arango-dfdb:
 
