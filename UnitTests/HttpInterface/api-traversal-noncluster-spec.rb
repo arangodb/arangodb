@@ -221,7 +221,7 @@ describe ArangoDB do
 ################################################################################
 
       it "visits nodes in a graph, outbound, pre-order, forward" do
-          body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-preorder-forward", api, :body => body)
 
         doc.code.should eq(200)
@@ -702,7 +702,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, own expander" do
-          body = "{ \"edgeCollection\" : \"#{@ce}\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"expander\" : \"var connections = [ ]; config.edgeCollection.outEdges(vertex).forEach(function(c) { connections.push({ vertex: require('internal').db._document(c._to), edge: c }); }); connections = connections.sort( function(l,r) { if (l.edge._key < r.edge._key) { return -1; } else if (l.edge._key > r.edge._key) { return 1; } else { return 0; }}); return connections;\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"expander\" : \"var connections = [ ]; config.edgeCollection.outEdges(vertex).forEach(function(c) { connections.push({ vertex: require('internal').db._document(c._to), edge: c }); }); connections = connections.sort( function(l,r) { if (l.edge._key < r.edge._key) { return -1; } else if (l.edge._key > r.edge._key) { return 1; } else { return 0; }}); return connections;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-expander", api, :body => body)
 
         doc.code.should eq(200)
