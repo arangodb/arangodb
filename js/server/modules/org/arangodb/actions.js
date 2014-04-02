@@ -1100,8 +1100,9 @@ function reloadRouting () {
   // .............................................................................
   // clear the routing cache
   // .............................................................................
-  
-  var routingCache = RoutingCache[arangodb.db._name()] = {};
+ 
+  // work with a local variable first 
+  var routingCache = { };
           
   routingCache.flat = {};
   routingCache.routes = {};
@@ -1205,7 +1206,7 @@ function reloadRouting () {
         for (i = 0;  i < r.length;  ++i) {
           var context = { appModule: appModule };
 
-          installRoute(RoutingCache[arangodb.db._name()][key], 
+          installRoute(routingCache[key], 
                        urlPrefix, 
                        modulePrefix, 
                        context, 
@@ -1256,6 +1257,11 @@ function reloadRouting () {
 
     routingCache.flat[method] = b.concat(a);
   }
+ 
+  // once we're done, we can set the complete routing cache for database
+  // doing this here instead of above ensures we don't have a half-updated routing
+  // cache if this function fails somewhere in the middle
+  RoutingCache[arangodb.db._name()] = routingCache;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
