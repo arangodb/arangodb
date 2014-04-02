@@ -384,7 +384,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
       }
       appendChar(buf, *q);
     }
-	p = ++q;
+    p = ++q;
   }
   appendChar(buf, '"');
   return TRI_ERROR_NO_ERROR;
@@ -646,41 +646,81 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 }
 
 #else
+/// --------------------------------------------
+/// transform a file time to timestamp
+/// Particularities:
+/// 1. FileTime can save a date at Jan, 1 1601
+///    timestamp saves dates at 1970
+/// --------------------------------------------
+
+static uint64_t _TimeAmount(FILETIME *ft) {
+  uint64_t ts, help;
+  ts = ft->dwLowDateTime;
+  help = ft->dwHighDateTime;
+  help = help << 32;
+  ts |= help;
+  /// at moment without transformation
+  return ts;
+}
+
+static time_t _FileTime_to_POSIX(FILETIME * ft) {
+  LONGLONG ts, help;
+  ts = ft->dwLowDateTime;
+  help = ft->dwHighDateTime;
+  help = help << 32;
+  ts |= help;
+  
+  return (ts - 116444736000000000) / 10000000;
+}
+
 
 TRI_process_info_t TRI_ProcessInfoSelf () {
   TRI_process_info_t result;
   PROCESS_MEMORY_COUNTERS_EX  pmc;
   memset(&result, 0, sizeof(result));
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
-   
+  // compiler warning wird in kauf genommen, see 
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
     result._minorPageFaults = pmc.PeakWorkingSetSize;
 
-    result._numberThreads = 0;
     result._residentSize = pmc.WorkingSetSize;
-    result._scClkTck = -1;
-    result._systemTime = -1;
-    result._userTime = -1;
     result._virtualSize = pmc.PrivateUsage;
-    DWORD myPID = GetCurrentProcessId();
-    HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
-    THREADENTRY32 te32;
-    te32.dwSize = sizeof(THREADENTRY32);
-    if (!Thread32First(snapShot, &te32))
-    {
-      CloseHandle(snapShot);     // Must clean up the snapshot object!
-      return;
-    }
+  }
+  /// computing times
+  FILETIME creationTime, exitTime, kernelTime, userTime;
+  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
+    // see remarks in http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
+    // value in seconds
+    result._scClkTck = 10000000;//1e7
+    result._systemTime = _TimeAmount(&kernelTime);
+    result._userTime = _TimeAmount(&userTime);
+    // for computing  the timestamps of creation and exit time
+    // the function '_FileTime_to_POSIX' should be called
+  }
+  /// computing number of threads
+  DWORD myPID = GetCurrentProcessId();
+  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
+  THREADENTRY32 te32;
+  te32.dwSize = sizeof(THREADENTRY32);
+  if (!Thread32First(snapShot, &te32))
+  {
+    /// computation of number of threads is no posible
+    CloseHandle(snapShot);     // Must clean up the snapshot object!
+  }
+  else {
     result._numberThreads++;
     while (Thread32Next(snapShot, &te32)) {
       if (te32.th32OwnerProcessID == myPID) {
         result._numberThreads++;
       }
     }
+  }
+  if (snapShot) {
     CloseHandle(snapShot);
   }
-  
+
   return result;
 }
 #endif
