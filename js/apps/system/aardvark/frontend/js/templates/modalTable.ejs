@@ -2,7 +2,7 @@
   <table>
     <tbody>
     <%
-    _.each(model, function(row) {
+    _.each(content, function(row) {
     %>
     <tr>
       <th class="collectionTh"><%=row.label%>:</th>
@@ -44,7 +44,7 @@
     <%
           _.each(row.options, function(opt) {
     %>
-          <option value="<%=opt.value%>"><%=opt.label%></option>
+      <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
     <%
           });
     %>

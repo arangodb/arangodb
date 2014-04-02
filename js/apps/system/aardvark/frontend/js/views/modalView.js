@@ -18,12 +18,21 @@
       DELETE: "danger",
       NEUTRAL: "neutral"
     },
+    tables: {
+      READONLY: "readonly",
+      TEXT: "text",
+      PASSWORD: "password",
+      SELECT: "select",
+      CHECKBOX: "checkbox"
+    },
     closeButton: {
       type: "close",
       title: "Cancel"
     },
 
     initialize: function() {
+      Object.freeze(this.buttons);
+      Object.freeze(this.tables);
       var self = this;
       this.closeButton.callback = function() {
         self.hide(); 
@@ -48,9 +57,7 @@
 
       var template = templateEngine.createTemplate(templateName),
         model = {};
-      if (tableContent) {
-        model.content = tableContent;
-      }
+      model.content = tableContent || [];
       $(".modal-body").html(template.render(model));
     },
 
