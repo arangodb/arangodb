@@ -504,6 +504,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   }
 
   remotePlanVersion = currentPlanVersion;
+
+  // turn on error logging now
+  if (! ClusterComm::instance()->enableConnectionErrorLogging(true)) {
+    LOG_INFO("created coordinator databases for the first time");
+  }
+
   return true;
 }
 
