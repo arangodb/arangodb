@@ -1428,15 +1428,15 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   // start synchroniser thread
   TRI_InitThread(&vocbase->_synchroniser);
-  TRI_StartThread(&vocbase->_synchroniser, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
+  TRI_StartThread(&vocbase->_synchroniser, NULL, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
 
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
+  TRI_StartThread(&vocbase->_compactor, NULL, "[compactor]", TRI_CompactorVocBase, vocbase);
 
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
+  TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
