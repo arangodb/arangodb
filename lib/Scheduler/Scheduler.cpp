@@ -215,7 +215,6 @@ void Scheduler::shutdown () {
 
   taskRegistered.clear();
   task2thread.clear();
-  current.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,14 +224,14 @@ void Scheduler::shutdown () {
 void Scheduler::registerTask (Task* task) {
   SchedulerThread* thread = 0;
 
+  string const name = task->getName();
+  LOG_TRACE("registerTask for task %p (%s)", (void*)task, name.c_str());
+
   {
+    size_t n = 0;
     MUTEX_LOCKER(schedulerLock);
 
-    LOG_TRACE("registerTask for task %p (%s)", (void*) task, task->getName().c_str());
-
-    size_t n = 0;
-
-    if (multiThreading && ! task->needsMainEventLoop()) {
+    if (multiThreading && ! task->needsMainEventLoop()) {      
       n = (++nextLoop) % nrThreads;
     }
 
@@ -240,7 +239,6 @@ void Scheduler::registerTask (Task* task) {
 
     task2thread[task] = thread;
     taskRegistered.insert(task);
-    ++current[task->getName()];
   }
 
   thread->registerTask(this, task);
@@ -270,7 +268,6 @@ void Scheduler::unregisterTask (Task* task) {
 
       if (taskRegistered.count(task) > 0) {
         taskRegistered.erase(task);
-        --current[task->getName()];
       }
 
       task2thread.erase(i);
@@ -304,7 +301,6 @@ void Scheduler::destroyTask (Task* task) {
 
       if (taskRegistered.count(task) > 0) {
         taskRegistered.erase(task);
-        --current[task->getName()];
       }
 
       task2thread.erase(i);
