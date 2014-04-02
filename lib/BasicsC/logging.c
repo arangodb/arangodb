@@ -1911,7 +1911,7 @@ void TRI_InitialiseLogging (bool threaded) {
     TRI_InitVector(&LogMessageQueue, TRI_CORE_MEM_ZONE, sizeof(log_message_t));
 
     TRI_InitThread(&LoggingThread);
-    TRI_StartThread(&LoggingThread, "[logging]", MessageQueueWorker, 0);
+    TRI_StartThread(&LoggingThread, NULL, "[logging]", MessageQueueWorker, 0);
 
     while (LoggingThreadActive == 0) {
       usleep(1000);
