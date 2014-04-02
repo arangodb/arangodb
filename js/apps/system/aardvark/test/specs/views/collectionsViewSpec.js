@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine, waits*/
-/*global $, console */
+/*global $, console, arangoHelper */
 (function () {
     "use strict";
     describe("Collections View", function () {
@@ -185,17 +185,17 @@
             });
 
             it("Check if Name Sort is active", function () {
-                var old = myView.collection.searchOptions;
-                myView.render();
-                myView.collection.searchOptions = {sortBy : [1,2,3]};
-                var wasRendered;
+              var old = myView.collection.searchOptions,
+                wasRendered;
+              myView.render();
+              myView.collection.searchOptions = {sortBy : [1,2,3]};
 
-                spyOn(myView, 'render').andCallFake(function (request) {
-                    wasRendered = true;
-                });
-                myView.sortName();
-                expect(wasRendered).toBeTruthy();
-                myView.collection.searchOptions = old;
+              spyOn(myView, 'render').andCallFake(function () {
+                wasRendered = true;
+              });
+              myView.sortName();
+              expect(wasRendered).toBeTruthy();
+              myView.collection.searchOptions = old;
             });
 
             it("Check if Type is inactive", function () {
@@ -210,12 +210,12 @@
             });
 
             it("Check if Type is active", function () {
-                var old = myView.collection.searchOptions;
+                var old = myView.collection.searchOptions,
+                  wasRendered;
                 myView.render();
                 myView.collection.searchOptions = {sortBy : [1,2,3]};
-                var wasRendered;
 
-                spyOn(myView, 'render').andCallFake(function (request) {
+                spyOn(myView, 'render').andCallFake(function () {
                     wasRendered = true;
                 });
                 myView.sortType();
@@ -235,10 +235,10 @@
             });
 
             it("Check if sortOrder is active", function () {
-                var old = myView.collection.searchOptions;
+                var old = myView.collection.searchOptions,
+                  wasRendered;
                 myView.render();
                 myView.collection.searchOptions = {sortOrder : [1,2,3]};
-                var wasRendered;
 
                 spyOn(myView, 'render').andCallFake(function (request) {
                     wasRendered = true;
@@ -267,12 +267,13 @@
 
             it("Check if search needs to be executed (false)", function () {
                 myView.render();
-                var wasRendered = false;
+                var wasRendered = false,
+                  old;
 
                 spyOn(myView, 'render').andCallFake(function (request) {
                     wasRendered = true;
                 });
-                var old = myView.collection.searchOptions;
+                old = myView.collection.searchOptions;
                 $('#searchInput').val("HalloPeter");
                 myView.collection.searchOptions.searchPhrase = "HalloPeter";
                 myView.search();
@@ -334,11 +335,11 @@
             it("test toggleView", function () {
                 myView.render();
                 var a = {
-                    toggleClass : function() {},
-                    slideToggle : function() {}
-                }
+                  toggleClass : function() {},
+                  slideToggle : function() {}
+                };
 
-                spyOn(window, "$").andReturn(a)
+                spyOn(window, "$").andReturn(a);
 
                 spyOn(a, 'toggleClass');
                 spyOn(a, 'slideToggle');
@@ -355,17 +356,19 @@
                     }
                 },
                 a = {
-                    click : function() {}
-                }
+                  click : function() {}
+                };
 
-                spyOn(window, "$").andReturn(a)
+                spyOn(window, "$").andReturn(a);
 
                 spyOn(a, 'click');
                 myView.checkBoxes(e);
                 expect(a.click).toHaveBeenCalled();
             });
 
-            it("test set #collectionsToggle is deactivated when #collectionsDropdown2 is invisible", function () {
+            it(
+              "test set #collectionsToggle is deactivated when #collectionsDropdown2 is invisible",
+              function () {
                 var a = {
                     css : function() {
                         return 'none';
@@ -377,7 +380,7 @@
                             render : function() {
                                 return {el: 1};
                             }
-                        }
+                        };
                     },
                     removeClass : function() {},
                     val : function(){},
