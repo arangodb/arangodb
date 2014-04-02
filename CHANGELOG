@@ -31,7 +31,13 @@ v2.1.0 (XXXX-XX-XX)
   the job is kept in the list of queryable jobs so its result can be fetched
   by a subsequent request.
 
-* use half the number of malloc operations when filling edge indexes
+* use a new data structure for the edge index of an edge collection. This
+  improves the performance for the creation of the edge index and in 
+  particular speeds up removal of edges in graphs. Note however that
+  this change might change the order in which edges starting at 
+  or ending in a vertex are returned. However, this order was never
+  guaranteed anyway and it is not sensible to guarantee any particular 
+  order.
 
 * provide a size hint to edge and hash indexes when initially filling them
   this will lead to less re-allocations when populating these indexes
@@ -42,6 +48,8 @@ v2.1.0 (XXXX-XX-XX)
   already registered
 
 * removed arangod command line option `--database.remove-on-compacted`
+
+* export the sort attribute for graph traversals to the HTTP interface
 
 
 v2.0.1 (XXXX-XX-XX)
