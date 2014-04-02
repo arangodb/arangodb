@@ -1,6 +1,11 @@
 v2.0.2 (XXXX-XX-XX)
 -------------------
 
+* fixed dashboard modals
+
+* fixed connection check for cluster planning front end: firefox does 
+  not support async:false
+
 * document how to persist a cluster plan in order to relaunch an existing
   cluster later
 
