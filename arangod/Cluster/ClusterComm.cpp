@@ -60,7 +60,8 @@ void triagens::arango::ClusterCommRestCallback(string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm () :
-  _backgroundThread(0) {
+  _backgroundThread(0),
+  _logConnectionErrors(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,7 +298,12 @@ ClusterCommResult* ClusterComm::syncRequest (
   string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
   if (endpoint == "") {
     res->status = CL_COMM_ERROR;
-    LOG_ERROR("cannot find endpoint of server '%s'", res->serverID.c_str());
+    if (logConnectionErrors()) {
+      LOG_ERROR("cannot find endpoint of server '%s'", res->serverID.c_str());
+    }
+    else {
+      LOG_INFO("cannot find endpoint of server '%s'", res->serverID.c_str());
+    }
   }
   else {
     httpclient::ConnectionManager* cm 
@@ -306,8 +312,12 @@ ClusterCommResult* ClusterComm::syncRequest (
         = cm->leaseConnection(endpoint);
     if (0 == connection) {
       res->status = CL_COMM_ERROR;
-      LOG_ERROR("cannot create connection to server '%s'", 
-                res->serverID.c_str());
+      if (logConnectionErrors()) {
+        LOG_ERROR("cannot create connection to server '%s'", res->serverID.c_str());
+      }
+      else {
+        LOG_INFO("cannot create connection to server '%s'", res->serverID.c_str());
+      }
     }
     else {
       LOG_DEBUG("sending %s request to DB server '%s': %s",
@@ -669,8 +679,14 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
   string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
-    LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'", 
-              coordinatorID.c_str());
+    if (logConnectionErrors()) {
+      LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'", 
+                coordinatorID.c_str());
+    }
+    else {
+      LOG_INFO("asyncAnswer: cannot find endpoint for server '%s'", 
+               coordinatorID.c_str());
+    }
     return;
   }
   
@@ -947,8 +963,15 @@ void ClusterCommThread::run () {
               = ClusterInfo::instance()->getServerEndpoint(op->serverID);
           if (endpoint == "") {
             op->status = CL_COMM_ERROR;
-            LOG_ERROR("cannot find endpoint for server '%s'",
-                      op->serverID.c_str());
+
+            if (cc->logConnectionErrors()) {
+              LOG_ERROR("cannot find endpoint for server '%s'",
+                        op->serverID.c_str());
+            }
+            else {
+              LOG_INFO("cannot find endpoint for server '%s'",
+                       op->serverID.c_str());
+            }
           }
           else {
             httpclient::ConnectionManager* cm
@@ -957,8 +980,12 @@ void ClusterCommThread::run () {
                 = cm->leaseConnection(endpoint);
             if (0 == connection) {
               op->status = CL_COMM_ERROR;
-              LOG_ERROR("cannot create connection to server '%s'", 
-                        op->serverID.c_str());
+              if (cc->logConnectionErrors()) {
+                LOG_ERROR("cannot create connection to server '%s'", op->serverID.c_str());
+              }
+              else {
+                LOG_INFO("cannot create connection to server '%s'", op->serverID.c_str());
+              }
             }
             else {
               if (0 != op->body) {
