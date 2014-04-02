@@ -183,6 +183,9 @@ bool ApplicationCluster::prepare () {
   // initialise ClusterComm library
   ClusterComm::initialise();
 
+  // disable error logging for a while
+  ClusterComm::instance()->enableConnectionErrorLogging(false);
+
   return true;
 }
 
