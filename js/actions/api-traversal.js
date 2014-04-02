@@ -116,6 +116,19 @@ function notFound (req, res, code, message) {
 ///           function signature: (config, vertex, path) -> array
 ///           expander must return an array of the connections for `vertex`
 ///           each connection is an object with the attributes `edge` and `vertex`
+/// - `sort` (optional): body (JavaScript) code of a custom comparison function
+///           for the edges. The signature of this function is 
+///           (l, r) -> integer (where l and r are edges) and must
+///           return -1 if l is smaller than, +1 if l is greater than,
+///           and 0 if l and r are equal. The reason for this is the
+///           following: The order of edges returned for a certain
+///           vertex is undefined. This is because there is no natural
+///           order of edges for a vertex with multiple connected edges.
+///           To explicitly define the order in which edges on the
+///           vertex are followed, you can specify an edge comparator
+///           function with this attribute. Note that the value here has
+///           to be a string to conform to the JSON standard, which in
+///           turn is parsed as function body on the server side.
 ///
 /// - `strategy` (optional): traversal strategy
 ///           can be `"depthfirst"` or `"breadthfirst"`
@@ -809,6 +822,19 @@ function post_api_traversal(req, res) {
     return badParam(req, res, "missing or invalid expander");
   }
 
+  // set up sort
+  // -----------------------------------------
+
+  var sort;
+
+  if (json.sort !== undefined) {
+    try {
+      sort = new Function('l', 'r', json.sort);
+    }
+    catch (err6) {
+      return badParam(req, res, "invalid sort function");
+    }
+  }
   
   // assemble config object
   // -----------------------------------------
@@ -821,6 +847,7 @@ function post_api_traversal(req, res) {
     order: json.order,
     itemOrder: json.itemOrder,
     expander: expander,
+    sort: sort,
     visitor: visitor,
     filter: filters,
     minDepth: json.minDepth,
