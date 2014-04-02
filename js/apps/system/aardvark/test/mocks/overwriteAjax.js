@@ -3,7 +3,7 @@
 
 (function () {
     "use strict";
-    
+
     var oldAjax = $.ajax;
     $.ajax = function (url, obj) {
         var oldURL,
