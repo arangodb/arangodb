@@ -8,6 +8,7 @@
   window.ModalView = Backbone.View.extend({
 
     baseTemplate: templateEngine.createTemplate("modalBase.ejs"),
+    tableTemplate: templateEngine.createTemplate("modalTable.ejs"),
     el: "#modalPlaceholder",
     contentEl: "#modalContent",
 
@@ -45,18 +46,12 @@
         $("#modalButton" + i).bind("click", b.callback);
       });
 
-      /*
-      var model = {
-          title: title
-        },
-        template = templateEngine.createTemplate(templateName);
-      if (buttons) {
-        model.buttons = buttons;
-      }
+      var template = templateEngine.createTemplate(templateName),
+        model = {};
       if (tableContent) {
-        model.table = buttons;
+        model.content = tableContent;
       }
-      */
+      $(".modal-body").html(template.render(model));
     },
 
     hide: function() {
