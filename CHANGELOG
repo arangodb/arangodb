@@ -1,3 +1,10 @@
+v2.0.2 (XXXX-XX-XX)
+-------------------
+
+* document how to persist a cluster plan in order to relaunch an existing
+  cluster later
+
+
 v2.0.1 (2014-03-31)
 -------------------
 
