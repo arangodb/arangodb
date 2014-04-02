@@ -679,13 +679,14 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
   PROCESS_MEMORY_COUNTERS_EX  pmc;
   memset(&result, 0, sizeof(result));
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
-  // compiler warning wird in kauf genommen, see 
+  // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
-    result._minorPageFaults = pmc.PeakWorkingSetSize;
+    // there is not any corresponce to minflt in linux
+    result._minorPageFaults = 0;
 
-    result._residentSize = pmc.WorkingSetSize;
+    result._residentSize = pmc.PeakWorkingSetSize;
     result._virtualSize = pmc.PrivateUsage;
   }
   /// computing times

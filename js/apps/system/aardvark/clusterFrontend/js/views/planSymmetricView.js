@@ -212,7 +212,7 @@
       var result = false;
       try {
         $.ajax({
-          async: false,
+          async: true,
           cache: false,
           type: "GET",
           xhrFields: {
