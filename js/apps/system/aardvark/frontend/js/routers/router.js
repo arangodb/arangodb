@@ -40,9 +40,10 @@
         },
 
         initialize: function () {
+          // This should be the only global object
+          window.modalView = new window.ModalView();
             var self = this;
             this.bind('all', function (trigger, args) {
-                var routeData = trigger.split(":");
                 if (trigger === "route") {
                     if (self.currentRoute === "dashboard" && self.dashboardView) {
                         self.dashboardView.stopUpdating();
