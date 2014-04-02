@@ -128,7 +128,10 @@ function notFound (req, res, code, message) {
 ///           vertex are followed, you can specify an edge comparator
 ///           function with this attribute. Note that the value here has
 ///           to be a string to conform to the JSON standard, which in
-///           turn is parsed as function body on the server side.
+///           turn is parsed as function body on the server side. Furthermore
+///           note that this attribute is only used for the standard
+///           expanders. If you use your custom expander you have to
+///           do the sorting yourself within the expander code.
 ///
 /// - `strategy` (optional): traversal strategy
 ///           can be `"depthfirst"` or `"breadthfirst"`
