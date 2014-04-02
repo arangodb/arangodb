@@ -1,6 +1,15 @@
 v2.0.2 (XXXX-XX-XX)
 -------------------
 
+* during cluster startup, do not log (somewhat expected) connection errors with
+  log level error, but with log level info
+
+* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
+  
+  The issue is described in detail here:
+  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
+
 * fixed dashboard modals
 
 * fixed connection check for cluster planning front end: firefox does 
