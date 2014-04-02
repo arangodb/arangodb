@@ -12,14 +12,14 @@
       <%
       _.each(buttons, function(value, key){
         var type = value.type,
-          title = value.type,
+          title = value.title,
           disabled = '';
           if (value.disabled) {
             disabled = 'disabled';
           }
         %>
-      <button id="modalButton<%=key%>" class="<%=type%>" <%=disabled%>><%=title%></button>
-      });
+      <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
+      <%});%>
     </div>
   </div>
 </script>
