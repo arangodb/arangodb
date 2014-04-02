@@ -158,8 +158,8 @@ BOOST_AUTO_TEST_CASE (tst_insert_few) {
 
 // Note MODULUS must be a divisor of NUMBER_OF_ELEMENTS
 // and NUMBER_OF_ELEMENTS must be a multiple of 3.
-#define NUMBER_OF_ELEMENTS 24
-#define MODULUS 4
+#define NUMBER_OF_ELEMENTS 3000
+#define MODULUS 10
 
 BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   INIT_MULTI
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
     BOOST_CHECK_EQUAL(p,v[i]);
   }
   // This should not be there:
-    p = static_cast<data_container_t*>
+  p = static_cast<data_container_t*>
                    (TRI_LookupByElementMultiPointer(&a1, one_more));
   BOOST_CHECK_EQUAL(n, p);
   
@@ -218,17 +218,68 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   for (i = 0;i < v.size();i += 3) {
     BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
   }
+  for (i = 0;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
 
+  // Now check which are there (by element):
+  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+    p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    if (i % 3 == 0) {
+      BOOST_CHECK_EQUAL(p,n);
+    }
+    else {
+      BOOST_CHECK_EQUAL(p,v[i]);
+    }
+  }
+  // This should not be there:
+  p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  BOOST_CHECK_EQUAL(n, p);
+  
   // Delete some more:
   for (i = 1;i < v.size();i += 3) {
     BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
   }
+  for (i = 1;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
 
+  // Now check which are there (by element):
+  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+    p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    if (i % 3 == 2) {
+      BOOST_CHECK_EQUAL(p,v[i]);
+    }
+    else {
+      BOOST_CHECK_EQUAL(p,n);
+    }
+  }
+  // This should not be there:
+  p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  BOOST_CHECK_EQUAL(n, p);
+  
   // Delete the rest:
   for (i = 2;i < v.size();i += 3) {
     BOOST_CHECK_EQUAL(v[i], TRI_RemoveElementMultiPointer(&a1, v[i]));
   }
+  for (i = 2;i < v.size();i += 3) {
+    BOOST_CHECK_EQUAL(n, TRI_RemoveElementMultiPointer(&a1, v[i]));
+  }
 
+  // Now check which are there (by element):
+  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+    p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, v[i]));
+    BOOST_CHECK_EQUAL(p,n);
+  }
+  // This should not be there:
+  p = static_cast<data_container_t*>
+                   (TRI_LookupByElementMultiPointer(&a1, one_more));
+  BOOST_CHECK_EQUAL(n, p);
   // Pull down data again:
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     delete v[i];

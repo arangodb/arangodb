@@ -30,6 +30,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
       end
       
+      count = 1000
       cmd = "/_api/edge?collection=#{@ce}" 
       [
         ["World", "Europe"],
@@ -48,9 +49,10 @@ describe ArangoDB do
         ["Blackhole", "Blackhole2"],
         ["Blackhole2", "Blackhole"]
       ].each do|pair|
+        count = count + 1
         from = pair[0]
         to = pair[1]
-        body = "{ }"
+        body = "{ \"_key\" : \"#{count}\" }"
         doc = ArangoDB.post(cmd + "&from=#{@cv}%2F#{from}&to=#{@cv}%2F#{to}", :body => body)
       end
     end
@@ -207,7 +209,7 @@ describe ArangoDB do
 ################################################################################
 
       it "visits nodes in a graph, outbound, pre-order, forward" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-preorder-forward", api, :body => body)
 
         doc.code.should eq(200)
@@ -255,7 +257,7 @@ describe ArangoDB do
 ################################################################################
 
       it "visits nodes in a graph, outbound, pre-order, backward" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-preorder-backward", api, :body => body)
 
         doc.code.should eq(200)
@@ -303,7 +305,7 @@ describe ArangoDB do
 ################################################################################
 
       it "visits nodes in a graph, outbound, post-order, forward" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"postorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"depthfirst\", \"order\" : \"postorder\", \"itemOrder\" : \"forward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-postorder-forward", api, :body => body)
 
         doc.code.should eq(200)
@@ -351,7 +353,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, outbound, breadth-first pre-order, backward" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"breadthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"breadthfirst\", \"order\" : \"preorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-breadthfirst-preorder-backward", api, :body => body)
 
         doc.code.should eq(200)
@@ -399,7 +401,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, outbound, breadth-first post-order, backward" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"breadthfirst\", \"order\" : \"postorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"strategy\" : \"breadthfirst\", \"order\" : \"postorder\", \"itemOrder\" : \"backward\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-breadthfirst-postorder-backward", api, :body => body)
 
         doc.code.should eq(200)
@@ -447,7 +449,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, outbound, minDepth 2" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"minDepth\" : 2, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"minDepth\" : 2, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-outbound-maxdepth2", api, :body => body)
 
         doc.code.should eq(200)
@@ -485,7 +487,7 @@ describe ArangoDB do
 ################################################################################
 
       it "visits nodes in a graph, outbound, maxDepth 0" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"maxDepth\" : 0, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"maxDepth\" : 0, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-outbound-maxdepth0", api, :body => body)
 
         doc.code.should eq(200)
@@ -507,7 +509,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, outbound, maxDepth 1" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"maxDepth\" : 1, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"maxDepth\" : 1, \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-outbound-maxdepth1", api, :body => body)
 
         doc.code.should eq(200)
@@ -537,7 +539,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, outbound, no connections" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/AU\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/AU\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-outbound-noconnections", api, :body => body)
 
         doc.code.should eq(200)
@@ -567,7 +569,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, inbound" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"inbound\", \"startVertex\" : \"#{@cv}/AU\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"inbound\", \"startVertex\" : \"#{@cv}/AU\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-inbound-simple", api, :body => body)
 
         doc.code.should eq(200)
@@ -593,7 +595,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, inbound, no connections" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"inbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"inbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-inbound-noconnections", api, :body => body)
 
         doc.code.should eq(200)
@@ -623,7 +625,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, own filter" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/World') { return 'prune'; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/World') { return 'prune'; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id); result.visited.paths.push(function() { var paths = [ ]; for (var i = 0; i < path.vertices.length; ++i) { paths.push(path.vertices[i]._id); } return paths;}());\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-filter1", api, :body => body)
 
         doc.code.should eq(200)
@@ -645,7 +647,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, own filter" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe' || vertex._id === '#{@cv}/US') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe' || vertex._id === '#{@cv}/US') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-filter2", api, :body => body)
 
         doc.code.should eq(200)
@@ -671,7 +673,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, custom init" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.myCounter++; result.myVar += 'a';\", \"init\" : \"result.myCounter = 13; result.myVar = 'a'; \" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"direction\" : \"outbound\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.myCounter++; result.myVar += 'a';\", \"init\" : \"result.myCounter = 13; result.myVar = 'a'; \", \"sort\" : \"if (l._key < r._key) { return -1; } else if (l._key > r._key) { return 1; } return 0;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-custom-init", api, :body => body)
 
         doc.code.should eq(200)
@@ -688,7 +690,7 @@ describe ArangoDB do
 ################################################################################
       
       it "visits nodes in a graph, own expander" do
-        body = "{ \"edgeCollection\" : \"#{@ce}\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"expander\" : \"var connections = [ ]; config.edgeCollection.outEdges(vertex).forEach(function(c) { connections.push({ vertex: require('internal').db._document(c._to), edge: c }); }); return connections;\" }"
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"filter\" : \"if (vertex._id === '#{@cv}/Europe') { return [ 'prune', 'exclude' ]; }\", \"startVertex\" : \"#{@cv}/World\", \"visitor\" : \"result.visited.vertices.push(vertex._id);\", \"expander\" : \"var connections = [ ]; config.edgeCollection.outEdges(vertex).forEach(function(c) { connections.push({ vertex: require('internal').db._document(c._to), edge: c }); }); connections = connections.sort( function(l,r) { if (l.edge._key < r.edge._key) { return -1; } else if (l.edge._key > r.edge._key) { return 1; } else { return 0; }}); return connections;\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-expander", api, :body => body)
 
         doc.code.should eq(200)

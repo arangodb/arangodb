@@ -29,18 +29,6 @@ window.Users = Backbone.Model.extend({
     return "/_api/user";
   },
 
-  initialize: function () {
-  },
-
-  isAuthorized: function () {
-    //return Boolean(this.get("sessionId");
-    return true;
-  },
-
-  isNotAuthorized: function () {
-    return false;
-  },
-
   checkPassword: function(passwd) {
     var self = this,
       result = false;

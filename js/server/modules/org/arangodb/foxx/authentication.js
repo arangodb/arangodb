@@ -39,6 +39,7 @@ var db = require("org/arangodb").db,
   createStandardLoginHandler,
   createStandardLogoutHandler,
   createStandardRegistrationHandler,
+  createStandardChangePasswordHandler,
   createAuthenticationMiddleware,
   createSessionUpdateMiddleware,
   createAuthObject,
@@ -240,6 +241,46 @@ createStandardRegistrationHandler = function (auth, users, opts) {
     req.user = users.add(username, password, true, data);
     req.currentSession = auth.beginSession(req, res, username, {});
     options.onSuccess(req, res);
+  };
+};
+
+defaultsFor.changePassword = {
+  passwordField: "password",
+
+  onSuccess: function (req, res) {
+    'use strict';
+    res.json({
+      notice: "Changed password!"
+    });
+  },
+
+  onError: function (req, res) {
+    'use strict';
+    res.status(401);
+    res.json({
+      error: "No session was found"
+    });
+  }
+};
+
+createStandardChangePasswordHandler = function (users, opts) {
+  'use strict';
+  var options = _.defaults(opts || {}, defaultsFor.changePassword);
+
+  return function (req, res) {
+    var password = req.body()[options.passwordField],
+      successfull = false;
+
+    if (is.existy(req.currentSession)) {
+      successfull = users.setPassword(req.currentSession.identifier, password);
+      if (successfull) {
+        options.onSuccess(req, res);
+      } else {
+        options.onError(req, res);
+      }
+    } else {
+      options.onError(req, res);
+    }
   };
 };
 
@@ -1350,18 +1391,19 @@ UnauthorizedError.prototype = new Error();
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Users                             = Users;
-exports.Sessions                          = Sessions;
-exports.CookieAuthentication              = CookieAuthentication;
-exports.Authentication                    = Authentication;
-exports.UnauthorizedError                 = UnauthorizedError;
-exports.UserAlreadyExistsError            = UserAlreadyExistsError;
-exports.createStandardLoginHandler        = createStandardLoginHandler;
-exports.createStandardLogoutHandler       = createStandardLogoutHandler;
-exports.createStandardRegistrationHandler = createStandardRegistrationHandler;
-exports.createAuthenticationMiddleware    = createAuthenticationMiddleware;
-exports.createSessionUpdateMiddleware     = createSessionUpdateMiddleware;
-exports.createAuthObject                  = createAuthObject;
+exports.Users                               = Users;
+exports.Sessions                            = Sessions;
+exports.CookieAuthentication                = CookieAuthentication;
+exports.Authentication                      = Authentication;
+exports.UnauthorizedError                   = UnauthorizedError;
+exports.UserAlreadyExistsError              = UserAlreadyExistsError;
+exports.createStandardLoginHandler          = createStandardLoginHandler;
+exports.createStandardLogoutHandler         = createStandardLogoutHandler;
+exports.createStandardRegistrationHandler   = createStandardRegistrationHandler;
+exports.createStandardChangePasswordHandler = createStandardChangePasswordHandler;
+exports.createAuthenticationMiddleware      = createAuthenticationMiddleware;
+exports.createSessionUpdateMiddleware       = createSessionUpdateMiddleware;
+exports.createAuthObject                    = createAuthObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
