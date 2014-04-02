@@ -136,6 +136,7 @@ TRI_tid_t TRI_CurrentThreadId () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StartThread (TRI_thread_t* thread,
+                      TRI_tid_t* threadId, 
                       char const* name,
                       void (*starter)(void*),
                       void* data) {
@@ -156,6 +157,10 @@ bool TRI_StartThread (TRI_thread_t* thread,
 
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
+  }
+
+  if (threadId != NULL) {
+    *threadId = *thread;
   }
 
   return true;

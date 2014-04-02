@@ -480,7 +480,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
   
   TRI_InitThread(&applier->_thread);
 
-  if (! TRI_StartThread(&applier->_thread, "[applier]", ApplyThread, fetcher)) {
+  if (! TRI_StartThread(&applier->_thread, NULL, "[applier]", ApplyThread, fetcher)) {
     TRI_DeleteContinuousSyncerReplication(fetcher);
 
     return TRI_ERROR_INTERNAL;
