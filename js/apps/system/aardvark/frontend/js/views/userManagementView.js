@@ -198,11 +198,6 @@
         name = $('#editName42').val(),
         status = $('#editStatus').is(':checked');
 
-      console.log("############");
-      console.log(name);
-      console.log(status);
-      console.log("############");
-
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
         return;
@@ -446,7 +441,9 @@
           "editCurrentUserProfileImg",
           "Gravatar account (Mail)",
           img,
-          "Mailaddress or its md5 representation of your gravatar account. The address will be converted into a md5 string. Only the md5 string will be stored, not the mailaddress.",
+          "Mailaddress or its md5 representation of your gravatar account."
+            + " The address will be converted into a md5 string. "
+            + "Only the md5 string will be stored, not the mailaddress.",
           "myAccount(at)gravatar.com"
         )
       );
