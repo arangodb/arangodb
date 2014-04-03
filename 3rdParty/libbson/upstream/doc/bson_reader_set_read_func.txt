@@ -1,0 +1,35 @@
+bson_reader_set_read_func(3)
+============================
+
+
+NAME
+----
+
+bson_reader_set_read_func - set custom read function for bson_reader_t.
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_reader_set_read_func (bson_reader_t          *reader,
+                           bson_reader_read_func_t func);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_reader_set_read_func()_ function provides the caller the ability to change the function used to read from an underlying socket.
+The system _read()_ function is used by default.
+This is only used when working with an underlying file-descriptor.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

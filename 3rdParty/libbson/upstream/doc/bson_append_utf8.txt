@@ -1,0 +1,63 @@
+bson_append_utf8(3)
+===================
+
+
+NAME
+----
+
+bson_append_utf8 - append a UTF-8 encoded string to a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_append_utf8 (bson_t     *bson,
+                  const char *key,
+                  int         key_length,
+                  const char *value,
+                  int         length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_append_utf8()_ function shall append a UTF-8 encoded string to _bson_.
+
+If _key_ is NULL terminated, -1 may be supplied for _key_length_.
+
+If _value_ is NULL terminated, -1 may be supplied for _length_.
+
+_value_ *MUST* be valid UTF-8.
+Some UTF-8 implementations allow for '\0' to be contained within the string (excluding the termination '\0').
+This is allowed, but remember that it could cause issues with communicating with external systems that do not support it.
+We suggest using modified UTF-8 which uses a 2 byte representation for embedded '\0' within the string.
+
+
+RETURN VALUE
+------------
+
+TRUE if successful. Otherwise FALSE and no modifications are made.
+
+
+ERRORS
+------
+
+FALSE is returned if there was insufficient space to append the element.
+
+
+SEE ALSO
+--------
+
+http://bsonspec.org/#/specification
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

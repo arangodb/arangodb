@@ -1,0 +1,55 @@
+bson_iter_visit_all(3)
+======================
+
+
+NAME
+----
+
+bson_iter_visit_all - callback based visitor for all elements of a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_iter_visit_all (bson_iter_t          *iter,
+                     const bson_visitor_t *visitor,
+                     void                 *data);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_visit_all()_ function shall visit all elements of a bson document starting from the current position of _iter_.
+
+See _bson_visitor_t_ for the vtable of the visitor.
+
+
+RETURN VALUE
+------------
+
+TRUE if the visitor was pre-maturely ended.
+Otherwise FALSE.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_visitor_t[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

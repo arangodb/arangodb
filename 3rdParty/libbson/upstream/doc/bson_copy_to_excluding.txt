@@ -1,0 +1,52 @@
+bson_copy_to_excluding(3)
+=========================
+
+
+NAME
+----
+
+bson_copy_to_excluding - copies all fields from and to a bson document excluding some fields
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_copy_to_excluding (const bson_t *src,
+                        bson_t       *dst,
+                        const char   *first_exclude,
+                        ...) BSON_GNUC_NULL_TERMINATED;
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_copy_to_excluding()_ function shall copy all fields from _src_ to _dst_ except those speified by the variadic, NULL terminated list of keys starting from _first_exclude_.
+
+This is generally not needed except in specific situations.
+
+
+EXAMPLE
+-------
+
+[source, c]
+-----------------------
+bson_copy_to_excluding (src, dst, "_id", "foo", "bar", NULL);
+-----------------------
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

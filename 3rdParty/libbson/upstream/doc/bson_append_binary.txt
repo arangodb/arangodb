@@ -1,0 +1,63 @@
+bson_append_binary(3)
+=====================
+
+
+NAME
+----
+
+bson_append_binary - append a binary element to a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+typedef enum
+{
+   BSON_SUBTYPE_BINARY            = 0x00,
+   BSON_SUBTYPE_FUNCTION          = 0x01,
+   BSON_SUBTYPE_BINARY_DEPRECATED = 0x02,
+   BSON_SUBTYPE_UUID_DEPRECATED   = 0x03,
+   BSON_SUBTYPE_UUID              = 0x04,
+   BSON_SUBTYPE_MD5               = 0x05,
+   BSON_SUBTYPE_USER              = 0x80,
+} bson_subtype_t;
+
+bool
+bson_append_binary (bson_t        *bson,
+                    const char    *key,
+                    int            key_length,
+                    bson_subtype_t subtype,
+                    const uint8_t *binary,
+                    uint32_t       length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_append_binary()_ function shall append a new element to _bson_ containing the binary data provided.
+
+_length_ is the length of _binary_ in bytes.
+
+You may specify -1 for _key_length_ if _key_ is NULL terminated.
+
+RETURN VALUE
+------------
+
+TRUE if the element was appended to _bson_. Otherwise FALSE.
+
+
+ERRORS
+------
+
+If appending the element would cause _bson_ to grow past it's maximum size, FALSE is returned and no modifications are made.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

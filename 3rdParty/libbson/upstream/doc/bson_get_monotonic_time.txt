@@ -1,0 +1,45 @@
+bson_get_monotonic_time(3)
+==========================
+
+
+NAME
+----
+
+bson_get_monotonic_time - fetch the system monotonic clock in microseconds
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+int64_t
+bson_get_monotonic_time (void);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_get_monotonic_time()_ function shall return the system monotonic clock if available, in microseconds.
+If a monotonic clock is not available, the realtime clock may be used.
+
+
+RETURN VALUE
+------------
+
+The monotonic clock in microseconds.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

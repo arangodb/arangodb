@@ -1,0 +1,58 @@
+bson_context_new(3)
+===================
+
+
+NAME
+----
+
+bson_context_new - create a new bson_context_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+typedef enum
+{
+   BSON_CONTEXT_NONE               = 0,
+   BSON_CONTEXT_THREAD_SAFE        = (1 << 0),
+   BSON_CONTEXT_DISABLE_HOST_CACHE = (1 << 1),
+   BSON_CONTEXT_DISABLE_PID_CACHE  = (1 << 2),
+#if defined(__linux__)
+   BSON_CONTEXT_USE_TASK_ID        = (1 << 3),
+#endif
+} bson_context_flags_t;
+
+bson_context_t *
+bson_context_new (bson_context_flags_t flags);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+This is primarily useful if the default bson_context_t is insufficient for your purposes.
+
+The _bson_context_new()_ function shall create a new _bson_context_t_ based on the flags provided.
+Based on your needs, you can get better performance or more correctness in OID generation using a custom _bson_context_t_.
+
+
+RETURN VALUE
+------------
+
+A newly allocated _bson_context_t_ that should be freed with _bson_context_destroy()_.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.
