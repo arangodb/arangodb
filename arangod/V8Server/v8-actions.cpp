@@ -181,7 +181,7 @@ class v8_action_t : public TRI_action_t {
         GlobalV8Dealer->exitContext(context);
 
         result.isValid = true;
-        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -481,7 +481,8 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
-                                      v8::Handle<v8::Object> res) {
+                                      v8::Handle<v8::Object> res, 
+                                      uint32_t compatibility) {
   HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
   if (res->Has(v8g->ResponseCodeKey)) {
@@ -490,7 +491,7 @@ static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
            ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
   }
 
-  HttpResponse* response = new HttpResponse(code);
+  HttpResponse* response = new HttpResponse(code, compatibility);
 
   if (res->Has(v8g->ContentTypeKey)) {
     response->setContentType(
@@ -669,7 +670,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     else {
       string msg = TRI_StringifyV8Exception(&tryCatch);
 
-      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
       response->body().appendText(msg);
 
       result.response = response;
@@ -677,7 +678,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   else {
-    result.response = ResponseV8ToCpp(v8g, res);
+    result.response = ResponseV8ToCpp(v8g, res, request->compatibility());
   }
 
   return result;

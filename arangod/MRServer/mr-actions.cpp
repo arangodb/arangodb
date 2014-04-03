@@ -128,7 +128,7 @@ class mr_action_t : public TRI_action_t {
         LOG_WARNING("no callback function for Ruby action '%s'", _url.c_str());
 
         result.isValid = true;
-        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -305,7 +305,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   if (mrb->exc) {
     TRI_LogRubyException(mrb, mrb->exc);
     mrb->exc = 0;
-    return new HttpResponse(HttpResponse::SERVER_ERROR);
+    return new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
   }
 
   // set status code
@@ -318,7 +318,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   // generate response
-  HttpResponse* response = new HttpResponse(code);
+  HttpResponse* response = new HttpResponse(code, request->compatibility());
 
   // set content type
   id = mrb_intern(mrb, "@content_type");
