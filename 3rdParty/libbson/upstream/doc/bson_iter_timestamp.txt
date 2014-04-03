@@ -1,0 +1,63 @@
+bson_iter_timestamp(3)
+======================
+
+
+NAME
+----
+
+bson_iter_timestamp - retrieve a timestamp element from a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+#define BSON_ITER_HOLDS_TIMESTAMP(iter) \
+   (bson_iter_type ((iter)) == BSON_TYPE_TIMESTAMP)
+
+void
+bson_iter_timestamp (const bson_iter_t *iter,
+                     uint32_t          *timestamp,
+                     uint32_t          *increment);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The BSON_TYPE_TIMESTAMP type is not a date/time and is typically used for intra-server communication.
+
+You probably want _bson_iter_date_time()_.
+
+The _bson_iter_timestamp()_ function shall return the contents of a BSON_TYPE_TIMESTAMP element.
+It is invalid to call this function while observing an element that is not of type BSON_TYPE_TIMESTAMP.
+
+
+RETURN VALUE
+------------
+
+_timestamp_ and _increment_ are set.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_append_timestamp[3]
+linkbson:bson_iter_date_time[3]
+linkbson:bson_iter_time_t[3]
+linkbson:bson_iter_timeval[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

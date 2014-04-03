@@ -1,0 +1,45 @@
+bson_free(3)
+============
+
+
+NAME
+----
+
+bson_free - free memory allocated by libbson
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_free (void *mem);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_free()_ function shall free the memory supplied by _mem_. This should be used by functions that require you free the result with bson_free().
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_malloc[3]
+linkbson:bson_malloc0[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

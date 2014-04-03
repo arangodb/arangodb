@@ -21,6 +21,7 @@
             logsDummy,
             statisticBarDummy,
             collectionsViewDummy,
+            databaseDummy,
             userBarDummy,
             documentViewDummy,
             statisticsDescriptionCollectionDummy,
@@ -95,6 +96,11 @@
                 fetch: function () {
                 }
             };
+            databaseDummy = {
+                id: "databaseCollection",
+                fetch: function () {
+                }
+            };
             fakeDB = {
                 id: "fakeDB",
                 fetch: function () {
@@ -154,6 +160,7 @@
             spyOn(window, "ArangoUsers").andReturn(sessionDummy);
             spyOn(window, "arangoDocuments").andReturn(documentsDummy);
             spyOn(window, "arangoDocument").andReturn(documentDummy);
+            spyOn(window, "ArangoDatabase").andReturn(databaseDummy);
             spyOn(window, "GraphCollection").andReturn(graphsDummy);
             spyOn(window, "FoxxCollection").andReturn(foxxDummy);
             spyOn(window, "StatisticsDescriptionCollection").andReturn(
@@ -186,6 +193,12 @@
 
             beforeEach(function () {
                 spyOn(storeDummy, "fetch");
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    if (opt.url ==="https://www.arangodb.org/repositories/versions." +
+                        "php?callback=parseVersions") {
+                        opt.success("success");
+                    }
+                });
                 r = new window.Router();
             });
             it("should create a Foxx Collection", function () {
@@ -312,8 +325,6 @@
                     } catch (e) {
                         if (e.message !== viewName + ' has already been spied upon') {
                             throw e;
-                        } else {
-                            console.log(e.message);
                         }
                     }
                     route();
@@ -519,7 +530,7 @@
                     "databaseView",
                     "databases-menu",
                     {
-                        collection: new window.ArangoDatabase()
+                        collection: databaseDummy
                     }
                 );
             });
@@ -736,8 +747,8 @@
                 var key = 5;
                 simpleNavigationCheck(
                     "userProfile",
-                    "userProfileView",
-                    "user-menu",
+                    "userManagementView",
+                    "tools-menu",
                     {
                         collection: window.userCollection
                     },
@@ -1039,6 +1050,12 @@
 
 
             beforeEach(function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    if (opt.url ==="https://www.arangodb.org/repositories/versions." +
+                        "php?callback=parseVersions") {
+                        opt.success("success");
+                    }
+                });
                 r = new window.Router();
             });
 

@@ -15,8 +15,8 @@
     events: {
       "click #createUser"                   : "createUser",
       "click #submitCreateUser"             : "submitCreateUser",
-      "click #deleteUser"                   : "removeUser",
-      "click #submitDeleteUser"             : "submitDeleteUser",
+//      "click #deleteUser"                   : "removeUser",
+//      "click #submitDeleteUser"             : "submitDeleteUser",
       "click .editUser"                     : "editUser",
       "click .icon"                         : "editUser",
       "click #submitEditUser"               : "submitEditUser",
@@ -103,21 +103,7 @@
 
     createUser : function(e) {
       e.preventDefault();
-      //reset modal (e.g. if opened, filled in and closed its not empty)
-      $('#newUsername').val('');
-      $('#newName').val('');
-      $('#newPassword').val('');
-      $('#newStatus').prop('checked', true);
-
-      this.showModal();
-    },
-
-    showModal: function() {
-      $('#createUserModal').modal('show');
-    },
-
-    hideModal: function() {
-      $('#createUserModal').modal('hide');
+      this.createCreateUserModal();
     },
 
     submitCreateUser: function() {
@@ -141,8 +127,8 @@
           self.handleError(err.status, err.statusText, name);
         },
         success: function(data) {
-          self.hideModal();
           self.updateUserManagement();
+          window.modalView.hide();
         }
       });
     },
@@ -174,69 +160,58 @@
       });
     },
 
-    removeUser : function(e) {
-      $('#editUserModal').modal('hide');
-      this.userToDelete = $("#editUsername").html();
-      $('#deleteUserModal').modal('show');
-      e.stopPropagation();
-    },
-
-    submitDeleteUser : function(e) {
-      var toDelete = this.collection.findWhere({user: this.userToDelete});
+    submitDeleteUser: function(username) {
+      var toDelete = this.collection.findWhere({user: username});
       toDelete.destroy({wait: true});
-//      arangoHelper.arangoNotification("User " + this.userToDelete + " deleted.");
-      this.userToDelete = '';
-      $('#deleteUserModal').modal('hide');
+      window.modalView.hide();
       this.updateUserManagement();
     },
 
     editUser : function(e) {
       this.collection.fetch();
-      this.userToEdit = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
-      if (this.userToEdit === '') {
-        this.userToEdit = $(e.currentTarget).attr('id');
+      var username = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
+      if (username === '') {
+        username = $(e.currentTarget).attr('id');
       }
-      var user = this.collection.findWhere({user: this.userToEdit});
+      var user = this.collection.findWhere({user: username});
       if (user.get("loggedIn")) {
         this.editCurrentUser();
       } else {
-        $('#editUserModal').modal('show');
-        $('#editUsername').html(user.get("user"));
-        $('#editName').val(user.get("extra").name);
-        $('#editStatus').attr("disabled", false);
-        $('#deleteUser').attr("disabled", false);
-        $('#deleteUser').removeClass("button-inactive");
-        $('#deleteUser').addClass("button-danger");
+        this.createEditUserModal(
+          user.get("user"),
+          user.get("extra").name,
+          user.get("active")
+        );
       }
     },
 
     editCurrentUser: function() {
-      $('#editCurrentUserProfileModal').modal('show');
-      $('#editCurrentUsername').html(this.currentUser.get("user"));
-      $('#editCurrentName').val(this.currentUser.get("extra").name);
-      $('#editCurrentUserProfileImg').val(this.currentUser.get("extra").img);
+      this.createEditCurrentUserModal(
+        this.currentUser.get("user"),
+        this.currentUser.get("extra").name,
+        this.currentUser.get("extra").img
+      );
     },
 
-    submitEditUser : function() {
-      var self = this;
-      var userName      = this.userToEdit;
-      var name          = $('#editName').val();
-      var status        = $('#editStatus').is(':checked');
+    submitEditUser : function(username) {
+      var self = this,
+        name = $('#editName42').val(),
+        status = $('#editStatus').is(':checked');
+
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
         return;
       }
       if (!this.validateName(name)) {
-        $('#editName').closest("th").css("backgroundColor", "red");
+        $('#editName42').closest("th").css("backgroundColor", "red");
         return;
       }
-      var user = this.collection.findWhere({"user":this.userToEdit});
+      var user = this.collection.findWhere({"user": username});
       //img may not be set, so keep the value
-      var img = user.get("extra").img;
-      user.set({"extra": {"name":name, "img":img}, "active":status});
-      user.save();
-      this.userToEdit = '';
-      $('#editUserModal').modal('hide');
+//      var img = user.get("extra").img;
+//      user.set({"extra": {"name":name, "img":img}, "active":status});
+      user.save({"extra": {"name":name}, "active":status}, {type: "PATCH"});
+      window.modalView.hide();
       this.updateUserManagement();
     },
 
@@ -304,8 +279,8 @@
 
 
     editUserPassword : function () {
-      $('#editCurrentUserProfileModal').modal('hide');
-      $('#editUserPasswordModal').modal('show');
+      window.modalView.hide();
+      this.createEditUserPasswordModal();
     },
 
     submitEditUserPassword : function () {
@@ -345,8 +320,7 @@
         return;
       }
       this.currentUser.setPassword(newPasswd);
-//      this.showModal('#editUserProfileModal');
-      $('#editUserPasswordModal').modal('hide');
+      window.modalView.hide();
     },
 
     validateCurrentPassword : function (pwd) {
@@ -366,8 +340,8 @@
        }*/
 
       this.currentUser.setExtras(name, img);
-      $('#editCurrentUserProfileModal').modal('hide');
       this.updateUserProfile();
+      window.modalView.hide();
     },
 
     updateUserProfile: function() {
@@ -386,6 +360,138 @@
       }
       //else generate md5
       return CryptoJS.MD5(img).toString();
+    },
+
+
+    //modal dialogs
+
+    createEditUserModal: function(username, name, active) {
+      var buttons, tableContent;
+      tableContent = [
+        {
+          type: window.modalView.tables.READONLY,
+          label: "Username",
+          value: username
+        },
+        {
+          type: window.modalView.tables.TEXT,
+          label: "Name",
+          value: name,
+          id: "editName42",
+          placeholder: "Name"
+        },
+        {
+          type: window.modalView.tables.CHECKBOX,
+          label: "Active",
+          value: "active",
+          checked: active,
+          id: "editStatus"
+        }
+      ];
+      buttons = [
+        {
+          title: "Delete",
+          type: window.modalView.buttons.DELETE,
+          callback: this.submitDeleteUser.bind(this, username)
+        },
+        {
+          title: "Save",
+          type: window.modalView.buttons.SUCCESS,
+          callback: this.submitEditUser.bind(this, username)
+        }
+      ];
+        window.modalView.show("modalTable.ejs", "Edit User", buttons, tableContent);
+    },
+
+    createCreateUserModal: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry("newUsername", "Username", "", false, "Username", true)
+      );
+      tableContent.push(
+        window.modalView.createTextEntry("newName", "Name", "", false, "Name", false)
+      );
+      tableContent.push(
+        window.modalView.createPasswordEntry("newPassword", "Password", "", false, "", false)
+      );
+      tableContent.push(
+        window.modalView.createCheckboxEntry("newStatus", "Active", "active", false, true)
+      );
+      buttons.push(
+        window.modalView.createSuccessButton("Create", this.submitCreateUser.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Create New User", buttons, tableContent);
+    },
+
+    createEditCurrentUserModal: function(username, name, img) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry("Username", username)
+      );
+      tableContent.push(
+        window.modalView.createTextEntry("editCurrentName", "Name", name, false, "Name", false)
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "editCurrentUserProfileImg",
+          "Gravatar account (Mail)",
+          img,
+          "Mailaddress or its md5 representation of your gravatar account."
+            + " The address will be converted into a md5 string. "
+            + "Only the md5 string will be stored, not the mailaddress.",
+          "myAccount(at)gravatar.com"
+        )
+      );
+
+      buttons.push(
+        window.modalView.createNotificationButton(
+          "Change Password",
+          this.editUserPassword.bind(this)
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton(
+          "Save",
+          this.submitEditCurrentUserProfile.bind(this)
+        )
+      );
+
+      window.modalView.show("modalTable.ejs", "Edit User Profile", buttons, tableContent);
+    },
+
+    createEditUserPasswordModal: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry("oldCurrentPassword", "Old Password", "", false, "", false)
+      );
+      tableContent.push(
+        window.modalView.createTextEntry("newCurrentPassword", "New Password", "", false, "", false)
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "confirmCurrentPassword",
+          "Confirm New Password",
+          "",
+          false,
+          "",
+          false)
+      );
+
+      buttons.push(
+        window.modalView.createSuccessButton(
+          "Save",
+          this.submitEditUserPassword.bind(this)
+        )
+      );
+
+      window.modalView.show("modalTable.ejs", "Edit User Password", buttons, tableContent);
     }
 
 

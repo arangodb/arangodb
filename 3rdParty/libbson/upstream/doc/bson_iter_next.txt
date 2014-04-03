@@ -1,0 +1,53 @@
+bson_iter_next(3)
+=================
+
+
+NAME
+----
+
+bson_iter_next - advance iter to the next element of a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_iter_next (bson_iter_t *iter);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_next()_ function shall advance _iter_ to the next element of the underlying document.
+
+If all elements have been exhausted, FALSE is returned and _iter_ should be considered invalid.
+
+
+RETURN VALUE
+------------
+
+TRUE if _iter_ was advanced to the next element.
+FALSE if _iter_ is now invalid.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

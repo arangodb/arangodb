@@ -43,10 +43,12 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 static char const* EMPTY_STR = "";
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
+
+const int32_t HttpRequest::MinCompatibility = 10300L;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -561,8 +563,6 @@ int32_t HttpRequest::compatibility () {
     return result;
   }
 
-  static const int32_t minCompatibility = 10300L;
-    
   char const* p = apiVersion;
 
   // read major version
@@ -578,8 +578,8 @@ int32_t HttpRequest::compatibility () {
       if (*p == '\0') {
         result = major;
 
-        if (result < minCompatibility) {
-          result = minCompatibility;
+        if (result < MinCompatibility) {
+          result = MinCompatibility;
         }
         else {
           // set patch-level to 0
@@ -605,9 +605,9 @@ int32_t HttpRequest::compatibility () {
     }
   }
 
-  if (result < minCompatibility) {
+  if (result < MinCompatibility) {
     // minimum value
-    result = minCompatibility;
+    result = MinCompatibility;
   }
 
   return result;

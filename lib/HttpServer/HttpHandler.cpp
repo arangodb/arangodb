@@ -177,8 +177,16 @@ HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) 
   // avoid having multiple responses. this would be a memleak
   removePreviousResponse();
 
+  int32_t apiCompatibility;
+  if (this->_request != 0) {
+    apiCompatibility = this->_request->compatibility();
+  }
+  else {
+    apiCompatibility = HttpRequest::MinCompatibility;
+  }
+
   // otherwise, we return a "standard" (standalone) Http response
-  return new HttpResponse(code);
+  return new HttpResponse(code, apiCompatibility);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

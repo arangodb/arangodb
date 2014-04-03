@@ -1,0 +1,56 @@
+bson_iter_recurse(3)
+====================
+
+
+NAME
+----
+
+bson_iter_recurse - recurse into a sub-document or sub-array of a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_iter_recurse (const bson_iter_t *iter,
+                   bson_iter_t       *child);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_recurse()_ function shall initialize _child_ using the embedded document or array currently observed by _iter_.
+
+If there was a failure to initialize the _iter_, FALSE is returned and both _iter_ and _child_ should be considered invalid.
+
+This should only be called when observing an element of type BSON_TYPE_ARRAY or BSON_TYPE_DOCUMENT.
+
+
+RETURN VALUE
+------------
+
+TRUE if _child_ has been intialized.
+Otherwise, both _child_ and _iter_ should be considered invalid.
+
+
+ERRORS
+------
+
+FALSE could be returned if the sub-document length does not match what is expected by the parent document. This could happen if the document is corrupt or malicious.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

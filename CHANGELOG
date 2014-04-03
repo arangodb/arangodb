@@ -1,6 +1,19 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* issue #798: Lower case http headers from arango
+        
+  This change allows returning capitalized HTTP headers, e.g.
+  `Content-Length` instead of `content-length`.
+  The HTTP spec says that headers are case-insensitive, but
+  in fact several clients rely on a specific case in response
+  headers.
+  This change will capitalize HTTP headers if the `X-Arango-Version`
+  request header is sent by the client and contains a value of at
+  least `20100` (for version 2.1). The default value for the
+  compatibility can also be set at server start, using the
+  `--server.default-api-compatibility` option.
+
 * simplified usage of `db._createStatement()`
 
   Previously, the function could not be called with a query string parameter as 
