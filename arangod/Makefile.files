@@ -93,8 +93,8 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/collection.c \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/edge-collection.c \
+	arangod/VocBase/document-collection.cpp \
+	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
