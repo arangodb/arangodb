@@ -5,6 +5,28 @@
 (function () {
   "use strict";
 
+  var createButtonStub = function(type, title, cb) {
+    return {
+      type: type,
+      title: title,
+      callback: cb
+    };
+  };
+
+  var createTextStub = function(type, label, value, info) {
+    var obj = {
+      type: type,
+      label: label
+    };
+    if (value) {
+      obj.value = value;
+    }
+    if (info) {
+      obj.info = info;
+    }
+    return obj;
+  };
+
   window.ModalView = Backbone.View.extend({
 
     baseTemplate: templateEngine.createTemplate("modalBase.ejs"),
@@ -45,6 +67,31 @@
       //this.hide.bind(this);
     },
 
+    createSuccessButton: function(title, cb) {
+      return createButtonStub(this.buttons.SUCCESS, title, cb);
+    },
+
+    createNotificationButton: function(title, cb) {
+      return createButtonStub(this.buttons.NOTIFICATION, title, cb);
+    },
+
+    createDeleteButton: function(title, cb) {
+      return createButtonStub(this.buttons.DELETE, title, cb);
+    },
+
+    createNeutralButton: function(title, cb) {
+      return createButtonStub(this.buttons.NEUTRAL, title, cb);
+    },
+
+    createReadOnlyEntry: function(label, value, info) {
+      return createTextStub(this.tables.READONLY, label, value, info);
+    },
+
+    createTextEntry: function(id, label, value, info) {
+      var obj = createTextStub(this.tables.TEXT, label, value, info);
+      obj.id = id;
+      return obj;
+    },
 
     show: function(templateName, title, buttons, tableContent) {
       var self = this, lastBtn;
@@ -86,6 +133,8 @@
       $('.modalTooltips').tooltip({
         placement: "left"
       });
+      var ind = buttons.indexOf(this.closeButton);
+      buttons.splice(ind, 1);
 
       $("#modal-dialog").modal("show");
     },
