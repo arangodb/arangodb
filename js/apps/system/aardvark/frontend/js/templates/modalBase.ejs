@@ -1,9 +1,9 @@
 <script id="modalBase.ejs" type="text/template">
-  <div class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
-       aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-      <a class="arangoHeader"><%=title%>></a>
+      <a class="arangoHeader"><%=title%></a>
     </div>
 
     <div class="modal-body">
@@ -20,6 +20,11 @@
         %>
       <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
       <%});%>
+    </div>
+    <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
+      <strong>Really delete?</strong>
+      <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
+      <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
     </div>
   </div>
 </script>

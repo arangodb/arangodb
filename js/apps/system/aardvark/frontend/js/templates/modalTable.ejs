@@ -3,9 +3,13 @@
     <tbody>
     <%
     _.each(content, function(row) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
     %>
     <tr>
-      <th class="collectionTh"><%=row.label%>:</th>
+      <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
       <th class="collectionTh">
     <%
       switch(row.type) {
@@ -31,7 +35,7 @@
           if (row.checked) {
             checked = 'checked';
           }
-          if (row.checked) {
+          if (row.disabled) {
             disabled = 'disabled';
           }
     %>
