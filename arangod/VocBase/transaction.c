@@ -1850,7 +1850,7 @@ int TRI_CreateMarkerAbortTransaction (TRI_transaction_t* trx,
   TRI_doc_abort_transaction_marker_t* marker;
 
   *result = NULL;
-  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_commit_transaction_marker_t), false);
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_abort_transaction_marker_t), false);
 
   if (marker == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
