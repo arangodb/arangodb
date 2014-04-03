@@ -3,6 +3,16 @@
 
 (function() {
   "use strict";
+  var checkMount = function(mount) {
+    /*jslint regexp: true*/
+    var regex = /^(\/[^\/\s]+)+$/;
+    /*jslint regexp: false*/
+    if (!regex.test(mount)){
+      arangoHelper.arangoError("Please give a valid mount point, e.g.: /myPath");
+      return false;
+    }
+    return true;
+  };
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'div',
@@ -11,11 +21,25 @@
 
     events: {
       'click .icon_arangodb_info' : 'showDocu',
-      'click'                      : 'editFoxx'
+      'click'                      : 'editFoxxDialog'
     },
 
     initialize: function(){
       this._show = true;
+      this.buttonConfig = [
+        window.modalView.createDeleteButton(
+          "Uninstall", this.uninstall.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Save", this.changeFoxx.bind(this)
+        )
+      ];
+      this.showMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Modify Application"
+      );
+      this.appsView = this.options.appsView;
       _.bindAll(this, 'render');
     },
 
@@ -39,16 +63,100 @@
       }
     },
 
-    editFoxx: function(event) {
-      event.stopPropagation();
-      window.App.navigate(
-        "application/installed/" + encodeURIComponent(this.model.get("_key")),
-        {
-          trigger: true
-        }
-      );
+    fillValues: function() {
+      var list = [],
+        appInfos = this.model.get("app").split(":"),
+        name = appInfos[1],
+//        versOptions = [],
+        isSystem,
+        active,
+        modView = window.modalView;
+      if (this.model.get("isSystem")) {
+        isSystem = "Yes";
+      } else {
+        isSystem = "No";
+      }
+      if (this.model.get("active")) {
+        active = "Active";
+      } else {
+        active = "Inactive";
+      }
+      list.push(modView.createReadOnlyEntry(
+        "Name", name
+      ));
+      list.push(modView.createTextEntry(
+        "change-mount-point", "Mount", this.model.get("mount"),
+        "The path where the app can be reached.",
+        "mount-path",
+        true
+      ));
+      /*
+       * For the future, update apps to available newer versions
+       * versOptions.push(modView.createOptionEntry(appInfos[2]));
+       * list.push(modView.createSelectEntry()
+       */
+      list.push(modView.createReadOnlyEntry(
+        "Version", appInfos[2]
+      ));
+      list.push(modView.createReadOnlyEntry(
+        "System", isSystem
+      ));
+      list.push(modView.createReadOnlyEntry(
+        "Status", active
+      ));
+      return list;
     },
 
+    editFoxxDialog: function(event) {
+      event.stopPropagation();
+      if (this.model.get("isSystem") || this.model.get("development")) {
+        this.buttonConfig[0].disabled = true;
+      } else {
+        delete this.buttonConfig[0].disabled;
+      }
+      this.showMod(this.buttonConfig, this.fillValues());
+    },
+
+    changeFoxx: function() {
+      var mount = $("#change-mount-point").val();
+      var failed = false;
+      var app = this.model.get("app");
+      var prefix = this.model.get("options").collectionPrefix;
+      if (mount !== this.model.get("mount")) {
+        if (checkMount(mount)) {
+          $.ajax("foxx/move/" + this.model.get("_key"), {
+            async: false,
+            type: "PUT",
+            data: JSON.stringify({
+              mount: mount,
+              app: app,
+              prefix: prefix
+            }),
+            dataType: "json",
+            error: function(data) {
+              failed = true;
+              arangoHelper.arangoError(data.responseText);
+            }
+          });
+        } else {
+          return;
+        }
+      }
+      // TO_DO change version
+      if (!failed) {
+        window.modalView.hide();
+        this.appsView.reload();
+      }
+    },
+
+    uninstall: function () {
+      if (!this.model.get("isSystem")) { 
+        this.model.destroy({ wait: true });
+        window.modalView.hide();
+        this.appsView.reload();
+      }
+    },
+   
     showDocu: function(event) {
       event.stopPropagation();
       window.App.navigate(
