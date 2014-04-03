@@ -260,16 +260,13 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char* pos1;
-  char* pos2;
-
-  pos1 = strrchr(filename, '.');
+  const char* pos1 = strrchr(filename, '.');
 
   if (pos1 == NULL) {
     return 0;
   }
 
-  pos2 = strrchr(filename, '-');
+  const char* pos2 = strrchr(filename, '-');
 
   if (pos2 == NULL || pos2 > pos1) {
     return 0;
