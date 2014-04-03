@@ -265,8 +265,6 @@
                         } catch (e) {
                             if (e.message !== viewName + ' has already been spied upon') {
                                 throw e;
-                            } else {
-                                console.log(e.message);
                             }
                         }
                         route();
