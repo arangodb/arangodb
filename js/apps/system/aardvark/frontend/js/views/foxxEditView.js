@@ -29,6 +29,7 @@
     checkMount: function(mount) {
       /*jslint regexp: true*/
       var regex = /^(\/[^\/\s]+)+$/;
+      /*jslint regexp: false*/
       if (!regex.test(mount)){
         arangoHelper.arangoError("Please give a valid mount point, e.g.: /myPath");
         return false;

@@ -21,8 +21,8 @@
             "logs": "logs",
             "api": "api",
             "databases": "databases",
-            "application/installed/:key": "applicationEdit",
-            "application/available/:key": "applicationInstall",
+            "application/installed/:key": "applicationEdit", //Tobe removed
+            "application/available/:key": "applicationInstall", //Tobe removed
             "applications": "applications",
             "application/documentation/:key": "appDocumentation",
             "graph": "graph",
@@ -429,6 +429,7 @@
             editAppView.render();
         },
 
+        // To Be Removed
         applicationInstall: function (appkey) {
             this.foxxList.fetch({
                 async: false
