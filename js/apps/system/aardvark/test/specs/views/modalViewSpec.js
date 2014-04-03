@@ -34,6 +34,7 @@
         expect(testee.buttons.SUCCESS).toEqual("success");
         expect(testee.buttons.NOTIFICATION).toEqual("notification");
         expect(testee.buttons.NEUTRAL).toEqual("neutral");
+        expect(testee.buttons.DELETE).toEqual("danger");
       });
 
       it("should automatically create the close button", function() {
@@ -115,6 +116,48 @@
         expect(cbs.cb3).toHaveBeenCalled();
         testee.hide();
       });
+
+      describe("should create a delete button", function() {
+        var cbs;
+
+        beforeEach(function() {
+          var btnObj = {},
+            title = "Delete",
+            buttons = [btnObj],
+            btn;
+
+          cbs = {
+            callback: function() {
+              testee.hide();
+            }
+          };
+          spyOn(cbs, "callback").andCallThrough();
+          btnObj.title = title;
+          btnObj.type = testee.buttons.DELETE;
+          btnObj.callback = cbs.callback;
+          testShow(buttons);
+          btn = $(".button-" + btnObj.type, $(div));
+          expect(btn.length).toEqual(1);
+          expect(btn.text()).toEqual(title);
+          btn.click();
+          expect(cbs.callback).not.toHaveBeenCalled();
+        });
+
+        it("with confirm dialog", function() {
+          expect($("#modal-delete-confirmation").css("display")).toEqual("block");
+          $("#modal-confirm-delete", $(div)).click();
+          expect(cbs.callback).toHaveBeenCalled();
+        });
+
+        it("should hide confirm dialog", function() {
+          expect($("#modal-delete-confirmation").css("display")).toEqual("block");
+          $("#modal-abort-delete", $(div)).click();
+          expect(cbs.callback).not.toHaveBeenCalled();
+          expect($("#modal-delete-confirmation").css("display")).toEqual("none");
+        });
+
+      });
+
     });
 
     describe("table content", function() {
