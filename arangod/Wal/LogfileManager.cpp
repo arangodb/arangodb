@@ -155,7 +155,7 @@ bool LogfileManager::prepare () {
     LOG_FATAL_AND_EXIT("invalid logfile size. Please use a value of at least %lu", (unsigned long) MinFilesize);
   }
   
-  _filesize = ((_filesize + PageSize - 1) / PageSize) * PageSize;
+  _filesize = (uint32_t) (((_filesize + PageSize - 1) / PageSize) * PageSize);
 
   return true;
 }

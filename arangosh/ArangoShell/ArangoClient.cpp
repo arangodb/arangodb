@@ -490,7 +490,7 @@ void ArangoClient::printErrLine (const string& s) {
 void ArangoClient::_printLine(const string &s) {
 #ifdef _WIN32
   LPWSTR wBuf = (LPWSTR)TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
-  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (sizeof WCHAR)* (s.size() + 1));
+  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (int) ((sizeof WCHAR) * (s.size() + 1)));
 
   if (wLen) {
     DWORD n;
@@ -499,7 +499,7 @@ void ArangoClient::_printLine(const string &s) {
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
     pos = bufferInfo.dwCursorPosition;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
-    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
+    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, (DWORD) s.size(), pos, &n);
     // Workaround recomended by 
     // http://social.msdn.microsoft.com/Forums/de-DE/c16846a3-eb27-4698-80a5-6c4ecf92a799/aus-der-msdnhotline-deutsche-umlaute-in-der-console-anzeigen-standard-c?forum=visualcplusde
     // but it does not work
