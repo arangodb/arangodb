@@ -92,7 +92,7 @@ static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
-  old_doc_mptr_t const* e = element;
+  old_doc_mptr_t const* e = static_cast<old_doc_mptr_t const*>(element);
   return TRI_FnvHashString((char const*) e->_key);
 }
 
@@ -101,8 +101,8 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  old_doc_mptr_t const* e = element;
-  char const * k = key;
+  old_doc_mptr_t const* e = static_cast<old_doc_mptr_t const*>(element);
+  char const * k = static_cast<char const*>(key);
 
   return (strcmp(k, e->_key) == 0);
 }
@@ -124,11 +124,11 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
                                  void* data, 
                                  TRI_datafile_t* datafile, 
                                  bool journal) {
-  old_doc_mptr_t const* found;
+  old_doc_mptr_t* found;
   TRI_associative_pointer_t* primaryIndex;
   TRI_voc_key_t key = NULL;
 
-  primaryIndex = data;
+  primaryIndex = static_cast<TRI_associative_pointer_t*>(data);
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
@@ -137,13 +137,11 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
     key = ((char*) d) + d->_offsetKey;
 
-    found = TRI_LookupByKeyAssociativePointer(primaryIndex, key);
+    found = static_cast<old_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(primaryIndex, key));
 
     // it is a new entry
     if (found == NULL) {
-      old_doc_mptr_t* header;
-
-      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true);
+      old_doc_mptr_t* header = static_cast<old_doc_mptr_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true));
       if (header == NULL) {
         return false;
       }
@@ -161,9 +159,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || 
              (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
-      old_doc_mptr_t* newHeader;
-      
-      newHeader = CONST_CAST(found);
+      old_doc_mptr_t* newHeader = found;
 
       // update the header info
       newHeader->_rid = d->_rid;
@@ -180,13 +176,11 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
     d = (TRI_doc_deletion_key_marker_t const*) marker;
     key = ((char*) d) + d->_offsetKey;
 
-    found = TRI_LookupByKeyAssociativePointer(primaryIndex, key);
+    found = static_cast<old_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(primaryIndex, key));
 
     // it is a new entry, so we missed the create
     if (found == NULL) {
-      old_doc_mptr_t* header;
-
-      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true);
+      old_doc_mptr_t* header = static_cast<old_doc_mptr_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true));
       if (header == NULL) {
         return false;
       }
@@ -203,9 +197,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
     // it is a real delete
     else if (found->_validTo == 0) {
-      old_doc_mptr_t* newHeader;
-      
-      newHeader = CONST_CAST(found);
+      old_doc_mptr_t* newHeader = found;
 
       // mark element as deleted
       newHeader->_validTo = marker->_tick; 
@@ -225,7 +217,7 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
                                   void* data, 
                                   TRI_datafile_t* datafile, 
                                   bool journal) {
-  shape_iterator_t* si = data;
+  shape_iterator_t* si = static_cast<shape_iterator_t*>(data);
   ssize_t* written     = si->_written;
 
   // new or updated document
@@ -800,7 +792,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
       char* filename;
       bool ok;
 
-      datafile = sealed._buffer[i];
+      datafile = static_cast<TRI_datafile_t*>(sealed._buffer[i]);
 
       number = TRI_StringUInt64(datafile->_fid);
       dname = TRI_Concatenate3String("datafile-", number, ".db");
@@ -833,7 +825,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
     n = all._length;
 
     for (i = 0;  i < n;  ++i) {
-      datafile = all._buffer[i];
+      datafile = static_cast<TRI_datafile_t*>(all._buffer[i]);
 
       LOG_TRACE("closing datafile '%s'", datafile->_filename);
 
@@ -922,13 +914,12 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
-  TRI_datafile_t* datafile;
   size_t n = files->_length;
   size_t i;
   bool result = true;
 
   for (i = 0;  i < n;  ++i) {
-    datafile = files->_buffer[i];
+    TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(files->_buffer[i]);
 
     assert(datafile);
 
@@ -1184,7 +1175,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // create collection structure
   if (collection == NULL) {
-    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
+    collection = static_cast<TRI_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false));
 
     if (collection == NULL) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -1328,7 +1319,6 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SyncCollection (TRI_collection_t* collection) {
-  TRI_datafile_t* journal;
   char const* synced;
   char* written;
 
@@ -1346,7 +1336,7 @@ int TRI_SyncCollection (TRI_collection_t* collection) {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  journal = collection->_journals._buffer[0];
+  TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(collection->_journals._buffer[0]);
 
   if (journal == NULL) {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
@@ -1482,11 +1472,8 @@ int TRI_LoadCollectionInfo (char const* path,
   n = json->_value._objects._length;
 
   for (i = 0;  i < n;  i += 2) {
-    TRI_json_t* key;
-    TRI_json_t* value;
-
-    key = TRI_AtVector(&json->_value._objects, i);
-    value = TRI_AtVector(&json->_value._objects, i + 1);
+    TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i));
+    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i + 1));
 
     if (! TRI_IsStringJson(key)) {
       continue;
@@ -1497,7 +1484,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_version = (TRI_col_version_t) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "type")) {
-        parameter->_type = value->_value._number;
+        parameter->_type = (TRI_col_type_e) (int) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) value->_value._number;
@@ -1632,15 +1619,15 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
 int TRI_RenameCollection (TRI_collection_t* collection, 
                           char const* name) {
-  TRI_col_info_t new;
+  TRI_col_info_t newInfo;
   int res;
 
-  TRI_CopyCollectionInfo(&new, &collection->_info);
-  TRI_CopyString(new._name, name, sizeof(new._name) - 1);
+  TRI_CopyCollectionInfo(&newInfo, &collection->_info);
+  TRI_CopyString(newInfo._name, name, sizeof(newInfo._name) - 1);
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_settings.forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, collection->_vocbase->_settings.forceSyncProperties);
 
-  TRI_FreeCollectionInfoOptions(&new);
+  TRI_FreeCollectionInfoOptions(&newInfo);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_CopyString(collection->_info._name, name, sizeof(collection->_info._name) - 1);
@@ -1776,7 +1763,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 
   // create collection
   if (collection == NULL) {
-    collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
+    collection = static_cast<TRI_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false));
 
     if (collection == NULL) {
       LOG_ERROR("cannot open '%s', out of memory", path);
@@ -1970,7 +1957,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
 
         // read all markers in the existing datafiles
         for (i = 0; i < datafiles._length; ++i) {
-          TRI_datafile_t* df = datafiles._buffer[i];
+          TRI_datafile_t* df = static_cast<TRI_datafile_t*>(datafiles._buffer[i]);
 
           TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false, false);
         }
@@ -1984,10 +1971,10 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
 
         // go over all documents in the index and calculate the total length
         for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-          old_doc_mptr_t* header = primaryIndex._table[i];
+          old_doc_mptr_t* header = static_cast<old_doc_mptr_t*>(primaryIndex._table[i]);
 
           if (header != NULL && header->_validTo == 0) {
-            TRI_df_marker_t const* marker = header->_data;
+            TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(header->_data);
 
             if (marker != NULL) {
               neededSize += TRI_DF_ALIGN_BLOCK(marker->_size);
@@ -2055,10 +2042,10 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
 
           // write all surviving documents into the datafile
           for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-            old_doc_mptr_t* mptr = primaryIndex._table[i];
+            old_doc_mptr_t* mptr = static_cast<old_doc_mptr_t*>(primaryIndex._table[i]);
 
             if (mptr != NULL && mptr->_validTo == 0) {
-              TRI_df_marker_t const* marker = mptr->_data;
+              TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
 
               if (marker != NULL) {
                 TRI_doc_document_key_marker_t* doc;
@@ -2129,10 +2116,8 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
 
       // close "old" datafiles
       for (i = 0; i < datafiles._length; ++i) {
-        TRI_datafile_t* df = datafiles._buffer[i];
-        char* old;
-
-        old = TRI_DuplicateString(df->getName(df));
+        TRI_datafile_t* df = static_cast<TRI_datafile_t*>(datafiles._buffer[i]);
+        char* old = TRI_DuplicateString(df->getName(df));
 
         TRI_CloseDatafile(df);
         TRI_FreeDatafile(df);
@@ -2457,7 +2442,7 @@ bool TRI_IsAllowedNameCollection (bool allowSystem,
 /// @brief return the type name for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_TypeNameCollection (const TRI_col_type_e type) {
+char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
   switch (type) {
     case TRI_COL_TYPE_DOCUMENT:
       return "document";

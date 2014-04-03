@@ -57,7 +57,7 @@ static uint64_t HashKey (TRI_associative_pointer_t* array,
 
 static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, 
                                      void const* element) {
-  TRI_vocbase_auth_t const* e = element;
+  TRI_vocbase_auth_t const* e = static_cast<TRI_vocbase_auth_t const*>(element);
 
   return TRI_FnvHashString(e->_username);
 }
@@ -70,7 +70,7 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
                               void const* key, 
                               void const* element) {
   char const* k = (char const*) key;
-  TRI_vocbase_auth_t const* e = element;
+  TRI_vocbase_auth_t const* e = static_cast<TRI_vocbase_auth_t const*>(element);
 
   return TRI_EqualString(k, e->_username);
 }
@@ -81,7 +81,7 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
 
 static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array, 
                                       void const* element) {
-  TRI_vocbase_auth_cache_t const* e = element;
+  TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
 
   return TRI_FnvHashString(e->_hash);
 }
@@ -94,7 +94,7 @@ static bool EqualKeyAuthCache (TRI_associative_pointer_t* array,
                                void const* key, 
                                void const* element) {
   char const* k = (char const*) key;
-  TRI_vocbase_auth_cache_t const* e = element;
+  TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
 
   return TRI_EqualString(k, e->_hash);
 }
@@ -238,8 +238,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool active;
   bool found;
   bool mustChange;
-  TRI_vocbase_auth_t* result;
-
+  
   shaper = primary->_shaper;
 
   // extract username
@@ -276,7 +275,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
     mustChange = false;
   }
 
-  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+  TRI_vocbase_auth_t* result = static_cast<TRI_vocbase_auth_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true));
 
   if (result == NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
@@ -312,7 +311,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
-      TRI_vocbase_auth_t* auth = *ptr;
+      TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(*ptr);
 
       FreeAuthInfo(auth);
       *ptr = NULL;
@@ -328,7 +327,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
-      TRI_vocbase_auth_cache_t* auth = *ptr;
+      TRI_vocbase_auth_cache_t* auth = static_cast<TRI_vocbase_auth_cache_t*>(*ptr);
 
       FreeAuthCacheInfo(auth);
       *ptr = NULL;
@@ -480,9 +479,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
       auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
       if (auth != NULL) {
-        TRI_vocbase_auth_t* old;
-
-        old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
+        TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
 
         if (old != NULL) {
           FreeAuthInfo(old);
@@ -523,7 +520,6 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
     TRI_json_t const* username;
     TRI_json_t const* password;
     TRI_json_t const* active;
-    TRI_vocbase_auth_t* auth;
 
     user = TRI_LookupListJson(json, i);
 
@@ -541,7 +537,7 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
       continue;
     }
   
-    auth = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+    TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true));
 
     if (auth == NULL) {
       continue;
@@ -594,13 +590,10 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
 char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
                               char const* hash,
                               bool* mustChange) {
-  TRI_vocbase_auth_cache_t* cached;
-  char* username;
-
-  username = NULL;
+  char* username = NULL;
 
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
-  cached = TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash);
+  TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
   if (cached != NULL) {
     username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
@@ -622,7 +615,6 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
                                       char const* username,
                                       char const* password,
                                       bool* mustChange) {
-  TRI_vocbase_auth_t* auth;
   bool res;
   char* hex;
   char* sha256;
@@ -634,7 +626,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
-  auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
+  TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
 
   if (auth == NULL || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
@@ -652,10 +644,8 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
       LOG_WARNING("found corrupted password for user '%s'", username);
     }
     else {
-      char* salted;
-
       len = 8 + strlen(password);
-      salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
+      char* salted = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false));
       memcpy(salted, auth->_password + 3, 8);
       memcpy(salted + 8, password, len - 8);
       salted[len] = '\0';
@@ -697,9 +687,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   if (res && hash != NULL) {
     // insert item into the cache
-    TRI_vocbase_auth_cache_t* cached;
-
-    cached = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false);
+    TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
 
     if (cached != NULL) {
       void* old;
