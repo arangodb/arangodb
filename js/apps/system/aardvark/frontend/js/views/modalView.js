@@ -47,9 +47,16 @@
 
 
     show: function(templateName, title, buttons, tableContent) {
-      var self = this;
+      var self = this, lastBtn;
       buttons = buttons || [];
-      buttons.push(this.closeButton);
+      // Insert close as second from right
+      if (buttons.length > 0) {
+        lastBtn = buttons.pop();
+        buttons.push(this.closeButton);
+        buttons.push(lastBtn);
+      } else {
+        buttons.push(this.closeButton);
+      }
       $(this.el).html(this.baseTemplate.render({
         title: title,
         buttons: buttons
