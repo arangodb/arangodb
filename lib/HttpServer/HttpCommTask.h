@@ -204,7 +204,7 @@ namespace triagens {
             if (headerLength > this->_maximalHeaderSize) {
               LOG_WARNING("maximal header size is %d, request header size is %d", (int) this->_maximalHeaderSize, (int) headerLength);
               // header is too large
-              HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE, getCompatibility());
               this->handleResponse(&response);
 
               return true;
@@ -223,7 +223,7 @@ namespace triagens {
               if (this->_request == 0) {
                 LOG_ERROR("cannot generate request");
                 // internal server error
-                HttpResponse response(HttpResponse::SERVER_ERROR);
+                HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
                 this->handleResponse(&response);
                 this->resetState();
 
@@ -235,7 +235,7 @@ namespace triagens {
 
               if (_httpVersion != HttpRequest::HTTP_1_0 && 
                   _httpVersion != HttpRequest::HTTP_1_1) {
-                HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED);
+                HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED, getCompatibility());
                 this->handleResponse(&response);
                 this->resetState();
 
@@ -245,7 +245,7 @@ namespace triagens {
               // check max URL length
               _fullUrl = this->_request->fullUrl();
               if (_fullUrl.size() > 16384) {
-                HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG);
+                HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG, getCompatibility());
                 this->handleResponse(&response);
                 this->resetState();
 
@@ -316,7 +316,7 @@ namespace triagens {
                   LOG_WARNING("got corrupted HTTP request '%s'",
                               string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)).c_str());
                   // bad request, method not allowed
-                  HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
+                  HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED, getCompatibility());
                   this->handleResponse(&response);
                   this->resetState();
 
@@ -333,7 +333,7 @@ namespace triagens {
               if (scheduler != 0 && ! scheduler->isActive()) {
                 // server is inactive and will intentionally respond with HTTP 503
                 LOG_TRACE("cannot serve request - server is inactive");
-                HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE);
+                HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE, getCompatibility());
                 this->handleResponse(&response);
                 this->resetState();
 
@@ -376,7 +376,7 @@ namespace triagens {
                           (int) this->_maximalBodySize,
                           (int) this->_bodyLength);
 
-              HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE, getCompatibility());
               this->handleResponse(&response);
               this->resetState();
 
@@ -429,7 +429,7 @@ namespace triagens {
                 if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
                   LOG_WARNING("read buffer is not empty. probably got a wrong Content-Length header?");
 
-                  HttpResponse response(HttpResponse::BAD);
+                  HttpResponse response(HttpResponse::BAD, getCompatibility());
                   this->handleResponse(&response);
                   this->resetState();
 
@@ -482,7 +482,7 @@ namespace triagens {
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
                 const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
-                HttpResponse response(HttpResponse::OK);
+                HttpResponse response(HttpResponse::OK, getCompatibility());
 
                 response.setHeader("allow", strlen("allow"), allowedMethods);
 
@@ -522,7 +522,7 @@ namespace triagens {
 
               if (handler == 0) {
                 LOG_TRACE("no handler is known, giving up");
-                HttpResponse response(HttpResponse::NOT_FOUND);
+                HttpResponse response(HttpResponse::NOT_FOUND, getCompatibility());
                 this->handleResponse(&response);
 
                 this->resetState();
@@ -562,7 +562,7 @@ namespace triagens {
                   }
                   
                   if (ok) {
-                    HttpResponse response(HttpResponse::ACCEPTED);
+                    HttpResponse response(HttpResponse::ACCEPTED, getCompatibility());
 
                     if (jobId > 0) {
                       // return the job id we just created
@@ -584,7 +584,7 @@ namespace triagens {
                 }
                 
                 if (! ok) {
-                  HttpResponse response(HttpResponse::SERVER_ERROR);
+                  HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
                   this->handleResponse(&response);
                 }
               }
@@ -592,7 +592,7 @@ namespace triagens {
 
             // not found 
             else if (authResult == HttpResponse::NOT_FOUND) {
-              HttpResponse response(authResult);
+              HttpResponse response(authResult, getCompatibility());
               response.setContentType("application/json; charset=utf-8");
   
               response.body().appendText("{\"error\":true,\"errorMessage\":\"")
@@ -609,7 +609,7 @@ namespace triagens {
             
             // forbidden
             else if (authResult == HttpResponse::FORBIDDEN) {
-              HttpResponse response(authResult);
+              HttpResponse response(authResult, getCompatibility());
               response.setContentType("application/json; charset=utf-8");
 
               response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
@@ -624,7 +624,7 @@ namespace triagens {
 
             // not authenticated
             else {
-              HttpResponse response(HttpResponse::UNAUTHORIZED);
+              HttpResponse response(HttpResponse::UNAUTHORIZED, getCompatibility());
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               if (sendWwwAuthenticateHeader()) {
@@ -646,7 +646,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
-
           // CORS response handling
           if (this->_origin.size() > 0) {
             // the request contained an Origin header. We have to send back the
@@ -741,7 +740,7 @@ namespace triagens {
 
           if (bodyLength < 0) {
             // bad request, body length is < 0. this is a client error
-            HttpResponse response(HttpResponse::LENGTH_REQUIRED);
+            HttpResponse response(HttpResponse::LENGTH_REQUIRED, getCompatibility());
             this->handleResponse(&response);
 
             return false;
@@ -756,7 +755,7 @@ namespace triagens {
           if ((size_t) bodyLength > this->_maximalBodySize) {
             // request entity too large
             LOG_WARNING("maximal body size is %d, request body size is %d", (int) this->_maximalBodySize, (int) bodyLength);
-            HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
+            HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE, getCompatibility());
             this->handleResponse(&response);
 
             return false;
@@ -785,6 +784,18 @@ namespace triagens {
           }
             
           return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get request compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+        int32_t getCompatibility () const {
+          if (this->_request != 0) {
+            return this->_request->compatibility();
+          }
+
+          return HttpRequest::MinCompatibility; 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
