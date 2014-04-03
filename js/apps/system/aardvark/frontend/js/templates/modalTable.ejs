@@ -1,0 +1,79 @@
+<script id="modalTable.ejs" type="text/template">
+  <table>
+    <tbody>
+    <%
+    _.each(content, function(row) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
+    %>
+    <tr>
+      <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+      <th class="collectionTh">
+    <%
+      switch(row.type) {
+        case "text":
+    %>
+        <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+    <%
+        break;
+        case "password":
+    %>
+        <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+    <%
+        break;
+        case "readonly":
+    %>
+        <div class="modal-text"><%=row.value||''%></div>
+
+    <%
+        break;
+        case "checkbox":
+          var checked = '',
+            disabled = '';
+          if (row.checked) {
+            checked = 'checked';
+          }
+          if (row.disabled) {
+            disabled = 'disabled';
+          }
+    %>
+        <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+    <%
+        break;
+        case "select":
+    %>
+        <select id="<%=row.id%>" class="modalSelect">
+    <%
+          _.each(row.options, function(opt) {
+    %>
+      <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+    <%
+          });
+    %>
+        </select>
+    <%
+        break;
+      }
+
+      if (row.info) {
+    %>
+      <th>
+        <div>
+          <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="<%=row.info%>">
+            <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </div>
+      </th>
+    <%
+      }
+    %>
+    <tr>
+    <%
+    });
+    %>
+
+    </tbody>
+  </table>
+</script>

@@ -1,0 +1,45 @@
+bson_concat(3)
+==============
+
+
+NAME
+----
+
+bson_concat - join two bson documents
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_concat (bson_t       *dst,
+             const bson_t *src);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_concat()_ function shall append the contents of _src_ to _dst_.
+
+
+RETURN VALUE
+------------
+
+TRUE if successful. Otherwise FALSE and no modifications are made.
+
+
+ERRORS
+------
+
+FALSE is returned if there was insufficient space to append _src_.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

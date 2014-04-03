@@ -1,0 +1,47 @@
+bson_string_free(3)
+===================
+
+
+NAME
+----
+
+bson_string_free - free a bson_string_t.
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+char *
+bson_string_free (bson_string_t *string,
+                  bool           free_segment);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_string_free()_ function shall free _string_.
+If _free_segment_ is FALSE, then the built string will be returned to the caller.
+Otherwise, the built string is also freed.
+
+
+RETURN VALUE
+------------
+
+The built string if _free_segment_ is FALSE, otherwise NULL.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -2586,6 +2586,17 @@ pre.gv-object-view {
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px; }
 
+.modal-delete-confirmation {
+  display: none; }
+  .modal-delete-confirmation button {
+    margin-right: 10px;
+    margin-top: -4px; }
+    .modal-delete-confirmation button .modal-confirm-delete {
+      margin-right: -18px; }
+
+.createModalDialog table {
+  width: 100%; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;
@@ -2714,9 +2725,6 @@ pre.gv-object-view {
   .contentTables .collectionTh {
     margin-right: 0;
     width: 5%; }
-
-.createModalDialog table {
-  width: 100%; }
 
 .user-menu-img {
   background-color: lightgray;

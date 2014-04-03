@@ -1,0 +1,52 @@
+bson_copy(3)
+============
+
+
+NAME
+----
+
+bson_copy - copy a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bson_t *
+bson_copy (const bson_t *bson);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_copy()_ function shall copy the contents of a bson document into a new _bson_t_.
+
+The resulting _bson_t_ should be freed with _bson_destroy()_.
+
+
+RETURN VALUE
+------------
+
+A newly allocated _bson_t_.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_copy_to[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

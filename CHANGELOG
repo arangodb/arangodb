@@ -1,6 +1,19 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* issue #798: Lower case http headers from arango
+        
+  This change allows returning capitalized HTTP headers, e.g.
+  `Content-Length` instead of `content-length`.
+  The HTTP spec says that headers are case-insensitive, but
+  in fact several clients rely on a specific case in response
+  headers.
+  This change will capitalize HTTP headers if the `X-Arango-Version`
+  request header is sent by the client and contains a value of at
+  least `20100` (for version 2.1). The default value for the
+  compatibility can also be set at server start, using the
+  `--server.default-api-compatibility` option.
+
 * simplified usage of `db._createStatement()`
 
   Previously, the function could not be called with a query string parameter as 
@@ -31,7 +44,13 @@ v2.1.0 (XXXX-XX-XX)
   the job is kept in the list of queryable jobs so its result can be fetched
   by a subsequent request.
 
-* use half the number of malloc operations when filling edge indexes
+* use a new data structure for the edge index of an edge collection. This
+  improves the performance for the creation of the edge index and in 
+  particular speeds up removal of edges in graphs. Note however that
+  this change might change the order in which edges starting at 
+  or ending in a vertex are returned. However, this order was never
+  guaranteed anyway and it is not sensible to guarantee any particular 
+  order.
 
 * provide a size hint to edge and hash indexes when initially filling them
   this will lead to less re-allocations when populating these indexes
@@ -43,9 +62,41 @@ v2.1.0 (XXXX-XX-XX)
 
 * removed arangod command line option `--database.remove-on-compacted`
 
+* export the sort attribute for graph traversals to the HTTP interface
+
+
+v2.0.2 (XXXX-XX-XX)
+-------------------
+
+* during cluster startup, do not log (somewhat expected) connection errors with
+  log level error, but with log level info
+
+* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
+  
+  The issue is described in detail here:
+  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
+
+* fixed dashboard modals
+
+* fixed connection check for cluster planning front end: firefox does 
+  not support async:false
+
+* document how to persist a cluster plan in order to relaunch an existing
+  cluster later
+
 
 v2.0.1 (XXXX-XX-XX)
 -------------------
+
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
 
 * fixed isses in arango-dfdb:
 

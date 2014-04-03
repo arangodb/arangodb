@@ -71,8 +71,8 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
     _loop(loop),
     _stopping(0),
     _stopped(0),
-    _hasWork(0),
-    _open(0) {
+    _open(0),
+    _hasWork(false) {
 
   // init lock
   SCHEDULER_INIT(&_queueLock);
@@ -150,18 +150,16 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
       cleanupTask(task);
       deleteTask(task);
     }
-    scheduler->wakeupLoop(_loop);
   }
 
   // different thread, be careful - we have to stop the event loop
   else {
-
     // put the register request onto the queue
     SCHEDULER_LOCK(&_queueLock);
 
     Work w(SETUP, scheduler, task);
     _queue.push_back(w);
-    _hasWork = 1;
+    _hasWork = true;
 
     scheduler->wakeupLoop(_loop);
 
@@ -184,7 +182,6 @@ void SchedulerThread::unregisterTask (Task* task) {
   // same thread, in this case it does not matter if we are inside the loop
   else if (threadId() == currentThreadId()) {
     cleanupTask(task);
-    _scheduler->wakeupLoop(_loop);
   }
 
   // different thread, be careful - we have to stop the event loop
@@ -195,7 +192,7 @@ void SchedulerThread::unregisterTask (Task* task) {
 
     Work w(CLEANUP, 0, task);
     _queue.push_back(w);
-    _hasWork = 1;
+    _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
 
@@ -219,7 +216,6 @@ void SchedulerThread::destroyTask (Task* task) {
   else if (threadId() == currentThreadId()) {
     cleanupTask(task);
     deleteTask(task);
-    _scheduler->wakeupLoop(_loop);
   }
 
   // different thread, be careful - we have to stop the event loop
@@ -230,7 +226,7 @@ void SchedulerThread::destroyTask (Task* task) {
 
     Work w(DESTROY, 0, task);
     _queue.push_back(w);
-    _hasWork = 1;
+    _hasWork = true;
 
     _scheduler->wakeupLoop(_loop);
 
@@ -289,9 +285,9 @@ void SchedulerThread::run () {
     LOG_TRACE("left scheduler loop %d", (int) threadId());
 #endif
 
-    if (_hasWork != 0) {
-      SCHEDULER_LOCK(&_queueLock);
+    SCHEDULER_LOCK(&_queueLock);
 
+    if (_hasWork) {
       while (! _queue.empty()) {
         Work w = _queue.front();
         _queue.pop_front();
@@ -307,7 +303,7 @@ void SchedulerThread::run () {
 
           case SETUP: {
             bool ok = setupTask(w.task, w.scheduler, _loop);
-            if (!ok) {
+            if (! ok) {
               cleanupTask(w.task);
               deleteTask(w.task);
             }
@@ -324,10 +320,10 @@ void SchedulerThread::run () {
         SCHEDULER_LOCK(&_queueLock);
       }
 
-      _hasWork = 0;
-
-      SCHEDULER_UNLOCK(&_queueLock);
+      _hasWork = false;
     }
+
+    SCHEDULER_UNLOCK(&_queueLock);
   }
 
   LOG_TRACE("scheduler thread stopped (%d)", (int) threadId());

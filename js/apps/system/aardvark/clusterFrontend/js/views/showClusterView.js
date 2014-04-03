@@ -544,7 +544,11 @@
         var cur;
         var coord;
         $("#modalPlaceholder").html(this.modalDummy.render({}));
-        serv.raw = tar.attr("id");
+        var ip_port = tar.attr("id");
+        ip_port = ip_port.replace(/\-/g,'.');
+        ip_port = ip_port.replace(/\_/g,':');
+        ip_port = ip_port.substr(2);
+        serv.raw = ip_port;
         serv.isDBServer = tar.hasClass("dbserver");
         if (serv.isDBServer) {
           cur = this.dbservers.findWhere({

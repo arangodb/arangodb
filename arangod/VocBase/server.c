@@ -2017,7 +2017,7 @@ int TRI_StartServer (TRI_server_t* server,
 
   // start dbm thread
   TRI_InitThread(&server->_databaseManager);
-  TRI_StartThread(&server->_databaseManager, "[databases]", DatabaseManager, server);
+  TRI_StartThread(&server->_databaseManager, NULL, "[databases]", DatabaseManager, server);
 
   return TRI_ERROR_NO_ERROR;
 }

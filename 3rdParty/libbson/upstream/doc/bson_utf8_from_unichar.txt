@@ -1,0 +1,35 @@
+bson_utf8_from_unichar(3)
+=========================
+
+
+NAME
+----
+
+bson_utf8_from_unichar - convert a unicode character to UTF-8
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_utf8_from_unichar (bson_unichar_t unichar,
+                        char           utf8[6],
+                        uint32_t      *len);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_utf8_from_unichar()_ function shall convert _unichar_ to a UTF-8 sequence and store it in _utf8_.
+The length of the sequence in bytes will be placed in _len_.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

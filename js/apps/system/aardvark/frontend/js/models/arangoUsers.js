@@ -29,18 +29,6 @@ window.Users = Backbone.Model.extend({
     return "/_api/user";
   },
 
-  initialize: function () {
-  },
-
-  isAuthorized: function () {
-    //return Boolean(this.get("sessionId");
-    return true;
-  },
-
-  isNotAuthorized: function () {
-    return false;
-  },
-
   checkPassword: function(passwd) {
     var self = this,
       result = false;
@@ -72,6 +60,25 @@ window.Users = Backbone.Model.extend({
       async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+      },
+      error: function(data) {
+      }
+    });
+  },
+
+  setExtras: function(name, img) {
+    var self = this,
+      result = false;
+
+    $.ajax({
+      cache: false,
+      type: "PATCH",
+      async: false, // sequential calls!
+      url: "/_api/user/" + this.get("user"),
+      data: JSON.stringify({"extra": {"name":name, "img":img}}),
       contentType: "application/json",
       processData: false,
       success: function(data) {

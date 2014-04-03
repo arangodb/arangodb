@@ -1,0 +1,44 @@
+bson_get_data(3)
+================
+
+
+NAME
+----
+
+bson_get_data - fetch the raw buffer of a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+const uint8_t *
+bson_get_data (const bson_t *bson);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_get_data()_ function shall return the raw buffer of a bson document. This can be used in conjunction with the _len_ property of a _bson_t_ if you want to copy the raw buffer around.
+
+
+RETURN VALUE
+------------
+
+A buffer which should not be modified or freed.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

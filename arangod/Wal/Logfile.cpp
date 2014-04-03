@@ -172,7 +172,7 @@ char* Logfile::reserve (size_t size) {
   char* result = _df->_next;
 
   _df->_next += size;
-  _df->_currentSize += size;
+  _df->_currentSize += (TRI_voc_size_t) size;
  
   return result; 
 }
@@ -187,7 +187,7 @@ TRI_df_header_marker_t Logfile::getHeaderMarker () const {
   TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, size);
   
   header._version     = TRI_DF_VERSION;
-  header._maximalSize = allocatedSize();
+  header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
   header._fid         = static_cast<TRI_voc_fid_t>(_id);
 
   return header;

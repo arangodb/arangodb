@@ -1,0 +1,164 @@
+Libbson 0.6.4
+=============
+
+This is just a followup release of libbson as we work towards stablizing for
+the new mongo-c-driver release. In fact, it only includes build work and a
+new macro, bson_clear().
+
+Happy hacking!
+
+
+Libbson 0.6.2
+=============
+
+A new Libbson release is already here as a follow up to the 0.6.0 release.
+
+This release includes a few build and installation fixes. In particular,
+
+ * Windows build fixes
+ * CMake build fixes
+ * C++ build fixes.
+
+The monotonic clock is now more accurately calculated on Windows as well.
+If you'd like to build on Windows, check out the section in README.md for
+information on how to do so.
+
+Happy hacking!
+
+
+Libbson 0.6.0
+=============
+
+Many changes have gone into this release!
+
+TL;DR
+
+ * C99 types (from C89).
+ * JSON parsing.
+ * Lots of Operating System support, including Windows.
+ * Parallel Test Suite.
+ * Revamped build system.
+ * A couple ABI breaks.
+
+First off, 0.6.0 has gone through a significant amount of build system cleanup.
+This should simplify using libbson as a submodule for those that wish to do so.
+For example, the mongo-c-driver now does this using autotools.
+
+Windows Vista and higher is now supported as a build target through the use of
+cmake. See README.md for the instructions. Other platforms should continue to
+use autotools.
+
+The test suite has been improved and more tests added. We now generate random
+seeds on every run to help catch more errors with additional fuzzing passes.
+By default, the test suite will run all tests in parallel with subprocesses.
+This should speed up execution of `make test' for contributors.
+
+bson_string_t went through an ABI break to support power-of-two growth.
+
+JSON parsing has been added through the bson_json_reader_t type. You can also
+now use bson_init_from_json() for a simplified interface.
+
+Types were revamped to appear to be using C99 types. If C99 types are
+available, they will be used. If not, they will be emulated. This means you
+can just go on using uint64_t and similar. We even use bool now.
+
+Many functions have been made portable to deal with inconsistencies with Win32.
+
+This release has been tested on the following operating systems:
+
+ * RedHat Enterprise 5, 6, and 7 beta.
+ * CentOS 6.5
+ * Ubuntu 12.04 LTS
+ * Fedora 20
+ * Windows 7
+ * FreeBSD 10
+ * DragonFly BSD
+ * Solaris 11
+ * SmartOS
+ * mingw64
+
+Thanks again and enjoy using libbson!
+
+Libbson 0.4.0
+=============
+
+This release includes a few bug fixes and copious documentation. Additionally,
+we improved our fuzz testing and found a couple issues in the process.  It is
+suggested that everyone upgrade their installations to 0.4.0.
+
+We have been busy adding a lot of documentation that we hope you will like.
+Many `man' pages have been added for various API endpoints and structures.  If
+you use vim, remember that you can jump to the documentation with <shift>k
+while on a symbol.
+
+Thanks and enjoy using libbson!
+
+Libbson 0.2.4
+=============
+
+This release includes some more performance improvements and bug fixes.
+
+It contains an important fix for dealing with invalid string lengths that could
+cause an integer overflow when checking to see if the string length fits within
+the end of the buffer.
+
+There is preliminary support for Solaris on x86_64 and SPARC.
+
+Generating OIDs is now simpler with the use of bson_context_get_default(). This
+function will return a thread-safe generic bson_context_t implementation.
+Alternatively, you may pass NULL to bson_oid_init() for the context and the
+default context is automatically used.
+
+The fuzz tests now use srand() with a 32-bit integer derived from /dev/urandom.
+
+Endianess conversions are now performed by __builtin_bswap*() functions when
+available with the GCC compiler.
+
+Endianness conversions for the double type are now properly handled on
+big-endian systems.
+
+bson_reinit() has been added to cleanup code that needs to destroy and then
+initialize a bson_t.
+
+Validation of Code with Scope fields was absent from bson_validate(). This is
+now supported.
+
+Libbson 0.2.2
+=============
+
+This release includes a few performance improvements and bug fixes.
+
+The bson_t structure is more efficient when growing allocated buffers.
+The use of memalign() was unnecessary for allocated bson_t structures
+and has therefore been removed. Performance sensitive allocations now
+use bson_malloc() instead of calloc() and initialize fields directly.
+Stack alignment of bson_t is now enforced through compiler intrinsics.
+
+The unit tests can now support running inside of valgrind to check for
+various memory leaks. Simply defing VALGRIND=valgrind when running
+`make test`.
+
+Enjoy libbson-0.2.2!
+
+
+Libbson 0.2.0
+=============
+
+This is the initial release of Libbson. It has not yet reached API and ABI
+maturity and is therefore subject to change without notice.  Developers are
+encouraged to start using Libbson as we journey on the road to 1.0, where ABI
+stability will be guaranteed.
+
+Libbson is Apache 2.0 licensed so that it can be embedded in a multitude of
+scenarios. This means that we try hard to not rely on external libraries.
+Therefore, Libbson contains useful routines to help in portability as well
+as BSON support.
+
+Libbson is the basis of a new MongoDB C driver that will follow shortly.
+
+Please see the doc/ directory for documentation on how to use Libbson. We
+would love for you to contribute to Libbson, whether that is code,
+documentation or packaging.
+
+You can contact Libbson's author, Christian Hergert at
+christian.hergert@mongodb.com if you have questions about using Libbson.

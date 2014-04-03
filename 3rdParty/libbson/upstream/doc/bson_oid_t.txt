@@ -1,0 +1,62 @@
+bson_oid_t(3)
+=============
+
+
+NAME
+----
+
+bson_oid_init, bson_oid_init_from_data, bson_oid_init_from_string - initialize a bson_oid_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+typedef struct
+{
+   uint8_t bytes[12];
+} bson_oid_t;
+
+void
+bson_oid_init (bson_oid_t * oid,
+               bson_context_t * context);
+
+void
+bson_oid_init_from_data (bson_oid_t    *oid,
+                         const uint8_t *data);
+
+void
+bson_oid_init_from_string (bson_oid_t *oid,
+                           const char *str);
+
+void
+bson_oid_init_sequence (bson_oid_t     *oid,
+                        bson_context_t *context);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_oid_init()_ function shall initialize _oid_ by generating a new oid. _context_ *MAY* be NULL to use the default _bson_context_t_.
+
+The _bson_oid_init_from_data()_ function shall initialize _oid_ by using the 12 bytes supplied by _data_. _data_ *MUST* be 12 bytes in size.
+
+The _bson_oid_init_from_string()_ function shall initialize _oid_ by parsing the 24-character hex encoded string _str_.
+
+The _bson_oid_init_sequence()_ function shall initialize _oid_ by generating a new oid in sequence form. This is generally only useful to intra-MongoDB server communication.
+
+
+ERRORS
+------
+
+If _str_ could not be parsed, bson_oid_init_from_string() will not be initialized. You can check the validity of a string by first validating it with _bson_oid_is_valid()_.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

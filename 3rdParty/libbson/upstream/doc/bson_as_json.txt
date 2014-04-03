@@ -1,0 +1,56 @@
+bson_as_json(3)
+===============
+
+
+NAME
+----
+
+bson_as_json - encode a bson document as JSON
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+char *
+bson_as_json (const bson_t *bson,
+              size_t       *length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_as_json()_ function shall encode _bson_ as a JSON encoded UTF-8 string.
+
+The caller is responsible for freeing the resulting UTF-8 encoded string by calling _bson_free()_ with the result.
+
+If non-NULL, _length_ will be set to the length of the result in bytes.
+
+
+RETURN VALUE
+------------
+
+A newly allocated UTF-8 encoded JSON string which should be freed with _bson_free()_.
+
+
+ERRORS
+------
+
+NULL is returned if there was a failure to encode the document.
+This can happen if _bson_ is corrupt or malicious in content.
+
+
+SEE ALSO
+--------
+
+http://bsonspec.org/#/specification
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -129,7 +129,9 @@ namespace triagens {
 
             TRI_set_errno(TRI_ERROR_NO_ERROR);
             if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
-              setErrorMessage(TRI_last_error(), false);
+              if (errno != TRI_ERROR_NO_ERROR) {
+                setErrorMessage(TRI_last_error(), false);
+              }
               this->close();
             }
             else {
@@ -175,7 +177,9 @@ namespace triagens {
                 break;
               }
 
-              setErrorMessage(TRI_last_error(), false);
+              if (errno != TRI_ERROR_NO_ERROR) {
+                setErrorMessage(TRI_last_error(), false);
+              }
               this->close();
             }
             break;
