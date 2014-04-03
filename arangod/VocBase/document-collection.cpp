@@ -368,7 +368,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
-  *totalSize = baseLength + shaped->_data.length;
+  *totalSize = (TRI_voc_size_t) (baseLength + shaped->_data.length);
  
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
@@ -385,7 +385,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
-  TRI_CloneMarker(&marker->base, original, baseLength, *totalSize);
+  TRI_CloneMarker(&marker->base, original, baseLength, (TRI_voc_size_t) *totalSize);
   assert(marker->_rid != 0);
   // the new revision must be greater than the old one
 
@@ -485,7 +485,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     // document marker
     fromSize    = 0;
     toSize      = 0;
-    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
+    keyBodySize = (TRI_voc_size_t) TRI_DF_ALIGN_BLOCK(keySize);
     markerSize  = sizeof(TRI_doc_document_key_marker_t);
   }
   else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
@@ -495,7 +495,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     fromSize    = strlen(edge->_fromKey) + 1;    
     toSize      = strlen(edge->_toKey) + 1; 
 
-    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
+    keyBodySize = (TRI_voc_size_t) TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
     markerSize  = sizeof(TRI_doc_edge_key_marker_t);
   }
   else {
@@ -505,7 +505,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
-  *totalSize = markerSize + keyBodySize + shaped->_data.length;
+  *totalSize = (TRI_voc_size_t) (markerSize + keyBodySize + shaped->_data.length);
  
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
@@ -545,8 +545,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     position += toSize;
     TRI_CopyString(position, (char*) edge->_fromKey, fromSize);
     
-    edgeMarker->_offsetToKey     = markerSize + keySize;
-    edgeMarker->_offsetFromKey   = markerSize + keySize + toSize;
+    edgeMarker->_offsetToKey     = (uint16_t) markerSize + keySize;
+    edgeMarker->_offsetFromKey   = (uint16_t) markerSize + keySize + toSize;
     edgeMarker->_fromCid         = edge->_fromCid;
     edgeMarker->_toCid           = edge->_toCid;
   }
@@ -556,8 +556,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   memcpy(position, (char*) shaped->_data.data, shaped->_data.length);
   
   // set the offsets for _key and shaped json
-  marker->_offsetKey  = markerSize;
-  marker->_offsetJson = markerSize + keyBodySize;
+  marker->_offsetKey  = (uint16_t) markerSize;
+  marker->_offsetJson = (uint16_t) markerSize + keyBodySize;
   
   *result = marker;
 
@@ -2685,7 +2685,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 /// currently, this will only fill edge indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillInternalIndexes (TRI_document_collection_t* document) {
+static int FillInternalIndexes (TRI_document_collection_t* document) {
   int res = TRI_ERROR_NO_ERROR;
   
   for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {

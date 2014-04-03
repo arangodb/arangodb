@@ -201,7 +201,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);
 
     TRI_ExecuteJavaScriptString(_context,
-                                v8::String::New(func.c_str(), func.size()),
+                                v8::String::New(func.c_str(), (int) func.size()),
                                 v8::String::New("global context method"),
                                 false);
   }
@@ -808,8 +808,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
     char const* logfile = TRI_GetFilenameLogging();
     TRI_AddGlobalVariableVocbase(context->_context, "LOGFILE_PATH", logfile != 0 ? v8::String::New(logfile) : v8::Null());
-    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str(), _appPath.size()));
-    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), _devAppPath.size()));
+    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str(), (int) _appPath.size()));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str(), (int) _devAppPath.size()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
     TRI_AddGlobalVariableVocbase(context->_context, "FE_DEVELOPMENT_MODE", v8::Boolean::New(_frontendDevelopmentMode));
 

@@ -163,7 +163,7 @@ int TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->isEqualElementElement = isEqualElementElement;
 
   array->_memoryZone = zone;
-  array->_elementSize = elementSize;
+  array->_elementSize = (uint32_t) elementSize;
   array->_nrAlloc = 0;
   array->_nrUsed  = 0;
 
