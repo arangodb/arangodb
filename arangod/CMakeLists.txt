@@ -123,29 +123,29 @@ add_executable(
     V8Server/v8-vocbase.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
-    VocBase/cleanup.c
+    VocBase/cleanup.cpp
     VocBase/collection.cpp
-    VocBase/compactor.c
-    VocBase/datafile.c
+    VocBase/compactor.cpp
+    VocBase/datafile.cpp
     VocBase/document-collection.cpp
     VocBase/edge-collection.cpp
     VocBase/general-cursor.cpp
     VocBase/headers.cpp
-    VocBase/index.c
+    VocBase/index.cpp
     VocBase/key-generator.cpp
     VocBase/marker.cpp
     VocBase/primary-collection.cpp
-    VocBase/replication-applier.c
-    VocBase/replication-common.c
-    VocBase/replication-dump.c
-    VocBase/replication-logger.c
-    VocBase/replication-master.c
-    VocBase/server.c
-    VocBase/synchroniser.c
+    VocBase/replication-applier.cpp
+    VocBase/replication-common.cpp
+    VocBase/replication-dump.cpp
+    VocBase/replication-logger.cpp
+    VocBase/replication-master.cpp
+    VocBase/server.cpp
+    VocBase/synchroniser.cpp
     VocBase/transaction.cpp
     VocBase/update-policy.cpp
-    VocBase/voc-shaper.c
-    VocBase/vocbase.c
+    VocBase/voc-shaper.cpp
+    VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
     Wal/AllocatorThread.cpp
     Wal/CollectorThread.cpp
