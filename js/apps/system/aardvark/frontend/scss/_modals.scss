@@ -181,3 +181,16 @@ pre.gv-object-view {
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px;
 }
+
+.modal-delete-confirmation {
+  display: none;
+
+  button {
+    margin-top: -4px;
+    margin-right: 10px;
+
+    .modal-confirm-delete {
+      margin-right: -18px;
+    }
+  }
+}
