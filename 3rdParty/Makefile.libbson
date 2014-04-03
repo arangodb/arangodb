@@ -22,6 +22,7 @@ LIBBSONDIR = @abs_top_srcdir@/3rdParty/libbson/BUILD
 
 	-mkdir $(LIBBSONDIR)
 	cd @top_srcdir@/3rdParty/libbson/upstream \
+	        && ./autogen.sh \
 		&& ./configure \
 			--enable-static \
 			--disable-shared \
