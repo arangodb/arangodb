@@ -1367,7 +1367,7 @@ static size_t insert_chars(struct current *current, size_t pos, const char *char
 #ifndef NO_COMPLETION
 static linenoiseCompletionCallback *completionCallback = NULL;
 
-static void beep() {
+static void beep(void) {
 #ifdef USE_TERMIOS
     fprintf(stderr, "\x7");
     fflush(stderr);
@@ -1562,9 +1562,10 @@ process_char:
             break;
         case ctrl('W'):    /* ctrl-w, delete word at left. save deleted chars */
             /* eat any spaces on the left */
-        {   
+        {  
+                size_t pos; 
                 eraseEol(current);
-                size_t pos = current->pos;
+                pos = current->pos;
                 current->pos = current->chars;
                 current->pos = pos;
                 while (pos > 0 && get_char(current, pos - 1) == ' ') {
