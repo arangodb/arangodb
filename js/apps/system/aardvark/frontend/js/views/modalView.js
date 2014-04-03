@@ -88,7 +88,7 @@
     },
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory);
+      var obj = createTextStub(this.tables.TEXT, label, value, info);
       obj.id = id;
       if (placeholder) {
         obj.placeholder = placeholder;
@@ -97,6 +97,32 @@
         obj.mandatory = mandatory;
       }
       return obj;
+    },
+
+    createCheckboxEntry: function(id, label, value, info, checked) {
+      var obj = createTextStub(this.tables.CHECKBOX, label, value, info);
+      obj.id = id;
+      if (checked) {
+        obj.checked = checked;
+      }
+      return obj;
+    },
+
+    createSelectEntry: function(id, label, selected, info, options) {
+      var obj = createTextStub(this.tables.SELECT, label, null, info);
+      obj.id = id;
+      if (selected) {
+        obj.selected = selected;
+      }
+      obj.options = options;
+      return obj;
+    },
+
+    createOptionEntry: function(label, value) {
+      return {
+        label: label,
+        value: value || label
+      };
     },
 
     show: function(templateName, title, buttons, tableContent) {
