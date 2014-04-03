@@ -347,10 +347,10 @@ static void CreateFlagOption (po_flag_t * desc, const void * input, void * outpu
   po = (TRI_program_options_t*) (output);
 
   if (desc->_value == 0) {
-    InitOptionStructure(&flagOpt, desc->base._name, 0, 0, po->_longopts._length);
+    InitOptionStructure(&flagOpt, desc->base._name, 0, 0, (int) po->_longopts._length);
   }
   else {
-    InitOptionStructure(&flagOpt, desc->base._name, 1, 0, po->_longopts._length);
+    InitOptionStructure(&flagOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
   }
 
   memset(&item, 0, sizeof(item));
@@ -396,7 +396,7 @@ void CreateInt16Option (po_int16_t * desc, const void * input, void * output) {
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -436,7 +436,7 @@ void CreateInt32Option (po_int32_t * desc, const void * input, void * output) {
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -476,7 +476,7 @@ static void CreateInt64Option (po_int64_t * desc, const void * input, void * out
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -533,7 +533,7 @@ static void CreateStringOption (TRI_PO_string_t * desc, const void * input, void
 
   po = (TRI_program_options_t *) output;
 
-  InitOptionStructure(&stringOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&stringOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -578,7 +578,7 @@ static void CreateUInt16Option (po_uint16_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -618,7 +618,7 @@ static void CreateUInt32Option (po_uint32_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -658,7 +658,7 @@ static void CreateUInt64Option (po_uint64_t * desc, const void * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&intOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&intOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 
@@ -695,7 +695,7 @@ static void CreateVectorStringOption (TRI_PO_vector_string_t * desc, const void 
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&vectorOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&vectorOpt, desc->base._name, 1, 0, (int) po->_longopts._length);
 
   memset(&item, 0, sizeof(item));
 

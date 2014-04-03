@@ -264,7 +264,7 @@ static void AddCookie (TRI_v8_global_t const* v8g,
   }
   if (data->Has(v8g->LifeTimeKey)) {
     v8::Handle<v8::Value> v = data->Get(v8g->LifeTimeKey);
-    lifeTimeSeconds = TRI_ObjectToInt64(v);
+    lifeTimeSeconds = (int) TRI_ObjectToInt64(v);
   }
   if (data->Has(v8g->PathKey) && ! data->Get(v8g->PathKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(v8g->PathKey);
@@ -334,40 +334,40 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
     req->Set(v8g->UserKey, v8::Null());
   }
   else {
-    req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
+    req->Set(v8g->UserKey, v8::String::New(user.c_str(), (int) user.size()));
   }
 
   // create database attribute
   string const& database = request->databaseName();
   assert(! database.empty());
 
-  req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), database.size()));
+  req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), (int) database.size()));
 
   // set the full url
   string const& fullUrl = request->fullUrl();
-  req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
+  req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), (int) fullUrl.size()));
 
   // set the protocol
   string const& protocol = request->protocol();
-  req->Set(v8g->ProtocolKey, v8::String::New(protocol.c_str(), protocol.size()));
+  req->Set(v8g->ProtocolKey, v8::String::New(protocol.c_str(), (int) protocol.size()));
 
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
 
   v8::Handle<v8::Object> serverArray = v8::Object::New();
-  serverArray->Set(v8g->AddressKey, v8::String::New(info.serverAddress.c_str(), info.serverAddress.size()));
+  serverArray->Set(v8g->AddressKey, v8::String::New(info.serverAddress.c_str(), (int) info.serverAddress.size()));
   serverArray->Set(v8g->PortKey, v8::Number::New(info.serverPort));
   req->Set(v8g->ServerKey, serverArray);
 
   v8::Handle<v8::Object> clientArray = v8::Object::New();
-  clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), info.clientAddress.size()));
+  clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), (int) info.clientAddress.size()));
   clientArray->Set(v8g->PortKey, v8::Number::New(info.clientPort));
   req->Set(v8g->ClientKey, clientArray);
 
   // copy prefix
   string path = request->prefix();
 
-  req->Set(v8g->PrefixKey, v8::String::New(path.c_str(), path.size()));
+  req->Set(v8g->PrefixKey, v8::String::New(path.c_str(), (int) path.size()));
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
@@ -377,9 +377,9 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   for (; iter != headers.end(); ++iter) {
     headerFields->Set(v8::String::New(iter->first.c_str(),
-                      iter->first.size()),
+                      (int) iter->first.size()),
                       v8::String::New(iter->second.c_str(),
-                      iter->second.size()));
+                      (int) iter->second.size()));
   }
 
   req->Set(v8g->HeadersKey, headerFields);
@@ -389,19 +389,19 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
-               request->bodySize()));
+               (int) request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
-               request->bodySize()));
+               (int) request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body(),
-               request->bodySize()));
+               (int) request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_OPTIONS:
@@ -431,8 +431,8 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
     string const& k = i->first;
     string const& v = i->second;
 
-    valuesObject->Set(v8::String::New(k.c_str(), k.size()),
-                      v8::String::New(v.c_str(), v.size()));
+    valuesObject->Set(v8::String::New(k.c_str(), (int) k.size()),
+                      v8::String::New(v.c_str(), (int) v.size()));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
@@ -446,10 +446,10 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
     v8::Handle<v8::Array> list = v8::Array::New();
 
     for (size_t i = 0; i < v->size(); ++i) {
-      list->Set(i, v8::String::New(v->at(i)));
+      list->Set((uint32_t) i, v8::String::New(v->at(i)));
     }
 
-    valuesObject->Set(v8::String::New(k.c_str(), k.size()), list);
+    valuesObject->Set(v8::String::New(k.c_str(), (int) k.size()), list);
   }
 
   req->Set(v8g->ParametersKey, valuesObject);
@@ -462,9 +462,9 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   for (; iter != cookies.end(); ++iter) {
     cookiesObject->Set(v8::String::New(iter->first.c_str(),
-                       iter->first.size()),
+                       (int) iter->first.size()),
                        v8::String::New(iter->second.c_str(),
-                       iter->second.size()));
+                       (int) iter->second.size()));
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
@@ -639,7 +639,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     suffixArray->Set(index++, v8::String::New(suffix[s].c_str(),
-                     suffix[s].size()));
+                     (int) suffix[s].size()));
 
     path += sep + suffix[s];
     sep = "/";
@@ -648,7 +648,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   req->Set(v8g->SuffixKey, suffixArray);
 
   // copy full path
-  req->Set(v8g->PathKey, v8::String::New(path.c_str(), path.size()));
+  req->Set(v8g->PathKey, v8::String::New(path.c_str(), (int) path.size()));
 
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
@@ -962,7 +962,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
                   v8::String::New(res->result->getHttpReturnMessage().c_str()));
         details->Set(v8::String::New("body"),
                 v8::String::New(res->result->getBody().str().c_str(),
-                res->result->getBody().str().length()));
+                (int) res->result->getBody().str().length()));
 
         r->Set(v8::String::New("details"), details);
         r->Set(v8g->ErrorMessageKey,
@@ -994,7 +994,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
       // The body:
       if (0 != res->answer->body()) {
         r->Set(v8::String::New("body"), v8::String::New(res->answer->body(),
-                                                    res->answer->bodySize()));
+                                                    (int) res->answer->bodySize()));
       }
       LOG_DEBUG("JS_ClusterTest: success");
     }
@@ -1041,7 +1041,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
       // The body:
       string theBody = res->result->getBody().str();
       r->Set(v8::String::New("body"), v8::String::New(theBody.c_str(),
-                                                      theBody.size()));
+                                                      (int) theBody.size()));
       LOG_DEBUG("JS_ClusterTest: success");
 
     }

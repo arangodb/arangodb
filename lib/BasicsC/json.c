@@ -1053,7 +1053,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   n = TRI_LengthStringBuffer(&buffer);
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, n);
+    ssize_t m = TRI_WRITE(fd, p, (unsigned int) n);
 
     if (m <= 0) {
       TRI_AnnihilateStringBuffer(&buffer);

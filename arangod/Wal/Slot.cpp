@@ -79,6 +79,7 @@ std::string Slot::statusText () const {
   // stop stelling me that the control flow will reach the end of a non-void
   // function. this cannot happen!!!!!
   assert(false); 
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
