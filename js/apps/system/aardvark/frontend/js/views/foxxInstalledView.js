@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, _, templateEngine*/
+/*global Backbone, $, window, _, templateEngine, alert*/
 
 (function() {
   "use strict";
@@ -9,11 +9,50 @@
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      'click .install': 'installFoxx'
+      'click .install': 'installDialog'
     },
 
     initialize: function(){
       _.bindAll(this, 'render');
+      this.buttonConfig = [
+        window.modalView.createSuccessButton(
+          "Install", this.install.bind(this)
+        )
+      ];
+      this.showMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Install Application"
+      );
+      this.super = this.options.super;
+    },
+
+    fillValues: function() {
+      var list = [],
+          isSystem;
+      if (this.model.get("isSystem")) {
+        isSystem = "Yes";
+      } else {
+        isSystem = "No";
+      }
+      list.push(window.modalView.createReadOnlyEntry(
+        "Name", this.model.get("name")
+      ));
+      list.push(window.modalView.createTextEntry(
+        "mount-point", "Mount", "/" + this.model.get("name"), "The path where the app can be reached."
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "Version", this.model.get("version") 
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "System", isSystem
+      ));
+      return list;
+    },
+
+    installDialog: function(event) {
+      event.stopPropagation();
+      this.showMod(this.buttonConfig, this.fillValues());
     },
 
     installFoxx: function(event) {
@@ -24,6 +63,34 @@
           trigger: true
         }
       );
+    },
+
+    install: function() {
+      var mountPoint = $("#mount-point").val(),
+        regex = /^(\/[^\/\s]+)+$/,
+        self = this;
+      if (!regex.test(mountPoint)){
+        alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
+        return false;
+      } 
+      this.model.collection.create({
+        mount: mountPoint,
+        name: this.model.get("name"),
+        version: this.model.get("version")
+      },
+      {
+        success: function() {
+          window.modalView.hide();
+          self.super.reload();
+        },
+        error: function(e, info) {
+          if (info.responseText.indexOf("already used by") > -1) {
+            alert("Mount-Path already in use.");
+          } else {
+            alert(info.statusText);
+          }
+        }
+      });
     },
 
     render: function(){
