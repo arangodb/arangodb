@@ -87,9 +87,15 @@
       return createTextStub(this.tables.READONLY, label, value, info);
     },
 
-    createTextEntry: function(id, label, value, info) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info);
+    createTextEntry: function(id, label, value, info, placeholder, mandatory) {
+      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory);
       obj.id = id;
+      if (placeholder) {
+        obj.placeholder = placeholder;
+      }
+      if (mandatory) {
+        obj.mandatory = mandatory;
+      }
       return obj;
     },
 
