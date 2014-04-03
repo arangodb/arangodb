@@ -1,0 +1,51 @@
+bson_oid_compare(3)
+===================
+
+
+NAME
+----
+
+bson_oid_compare - qsort style compare function for bson_oid_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+int
+bson_oid_compare (const bson_oid_t *oid1,
+                  const bson_oid_t *oid2);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_oid_compare()_ function shall return a qsort() style value of a lexicographical sort of _oid1_ and _oid2_.
+
+
+RETURN VALUE
+------------
+
+less than, greater than, or equal to zero based on compare.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_oid_equal[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -1,0 +1,55 @@
+bson_realloc(3)
+===============
+
+
+NAME
+----
+
+bson_realloc - a libbson wrapper around realloc
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void *
+bson_realloc (void  *mem,
+              size_t num_bytes);
+
+void *
+bson_realloc_ctx (void  *mem,
+                  size_t num_bytes,
+                  void  *ctx);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_realloc()_ function shall act just like the system realloc except that _abort()_ is called if there was a failure to realloc.
+
+Note that a call to bson_realloc() with _num_bytes_ of _0_ will free _mem_ as expected by system realloc.
+
+The _bson_realloc_ctx()_ function provides a wrapper around _bson_realloc()_ compatible with the _bson_realloc_func_ typedef.  The _ctx_ parameter is ignored.
+
+
+RETURN VALUE
+------------
+
+A potential new allocation or the existing if it could be reused. NULL is returned if _num_bytes_ is zero.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_malloc0[3]
+linkbson:bson_writer_new[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

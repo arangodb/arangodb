@@ -1,0 +1,61 @@
+bson_iter_date_time(3)
+======================
+
+
+NAME
+----
+
+bson_iter_date_time, bson_iter_time_t, bson_iter_timeval - retrieve a date/time element from a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+int64_t
+bson_iter_date_time (const bson_iter_t *iter);
+
+time_t
+bson_iter_time_t (const bson_iter_t *iter);
+
+void
+bson_iter_timeval (const bson_iter_t *iter,
+                   struct timeval    *tv);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_date_time()_ function shall return the number of miliseconds since the UNIX epoch, as contained in the BSON_TYPE_DATE_TIME element.
+
+The _bson_iter_time_t()_ function shall return the number of seconds since the UNIX epoch, as contained in the BSON_TYPE_DATE_TIME element.
+
+The _bson_iter_timeval()_ function shall return the number of seconds and microseconds since the UNIX epoch, as contained in the BSON_TYPE_DATE_TIME element into _tv_.
+
+
+RETURN VALUE
+------------
+
+The date and time contained in the element as the number of microseconds since the UNIX epoch.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

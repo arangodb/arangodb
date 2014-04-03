@@ -1,0 +1,40 @@
+bson_string_truncate(3)
+=======================
+
+
+NAME
+----
+
+bson_string_truncate - truncate the length of a bson_string_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_string_truncate (bson_string_t *string,
+                      uint32_t       len);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_string_truncate()_ function shall truncate the length of _string_ to the given length.
+The string will still be NULL terminated.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

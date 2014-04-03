@@ -1,0 +1,51 @@
+bson_utf8_validate(3)
+=====================
+
+
+NAME
+----
+
+bson_utf8_validate - validate a string is correct UTF-8
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_utf8_validate (const char *utf8,
+                    size_t      utf8_len,
+                    bool allow_null);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_utf8_validate()_ function shall check to see if the contents of _utf8_ is correct encoded UTF-8.
+
+_utf8_len_ should be the number of bytes in _utf8_ excluding the terminating '\0' byte.
+
+If _allow_null_ is TRUE, then a '\0' byte is allowed inside _utf8_.
+This is generally a bad idea, since it means _utf8_ can't be used by _strlen()_ and other libc functions.
+
+
+RETURN VALUE
+------------
+
+TRUE if _utf8_ is valid UTF-8. Otherwise FALSE.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.
