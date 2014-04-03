@@ -9,8 +9,8 @@ libbson_lib_dir="${libbson_build_dir}/libs"
 
 LIBBSON_CPPFLAGS="-I${libbson_build_dir}/include"
 LIBBSON_LDFLAGS=""
-LIBBSON_LIBS="${libbson_lib_dir}/libbson.a"
-LIBBSON_BUILT="${libbson_lib_dir}/libbson.a"
+LIBBSON_LIBS="${libbson_lib_dir}/libbson-1.0.a"
+LIBBSON_BUILT="${libbson_lib_dir}/libbson-1.0.a"
 
 TRI_LIBBSON_VERSION="git_3_April_2014"
 
