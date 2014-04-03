@@ -89,29 +89,29 @@ bin_arangod_SOURCES = \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/VocBase/auth.cpp \
 	arangod/VocBase/barrier.cpp \
-	arangod/VocBase/cleanup.c \
+	arangod/VocBase/cleanup.cpp \
 	arangod/VocBase/collection.cpp \
-	arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
+	arangod/VocBase/compactor.cpp \
+	arangod/VocBase/datafile.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/edge-collection.cpp \
 	arangod/VocBase/general-cursor.cpp \
 	arangod/VocBase/headers.cpp \
-	arangod/VocBase/index.c \
+	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
 	arangod/VocBase/marker.cpp \
 	arangod/VocBase/primary-collection.cpp \
-	arangod/VocBase/replication-applier.c \
-	arangod/VocBase/replication-common.c \
-	arangod/VocBase/replication-dump.c \
-	arangod/VocBase/replication-logger.c \
-	arangod/VocBase/replication-master.c \
-	arangod/VocBase/server.c \
-	arangod/VocBase/synchroniser.c \
+	arangod/VocBase/replication-applier.cpp \
+	arangod/VocBase/replication-common.cpp \
+	arangod/VocBase/replication-dump.cpp \
+	arangod/VocBase/replication-logger.cpp \
+	arangod/VocBase/replication-master.cpp \
+	arangod/VocBase/server.cpp \
+	arangod/VocBase/synchroniser.cpp \
 	arangod/VocBase/transaction.cpp \
 	arangod/VocBase/update-policy.cpp \
-	arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c \
+	arangod/VocBase/voc-shaper.cpp \
+	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \
 	arangod/Wal/AllocatorThread.cpp \
 	arangod/Wal/CollectorThread.cpp \

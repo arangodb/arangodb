@@ -443,14 +443,10 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
 
 TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* primary, 
                               TRI_idx_iid_t iid) {
-  TRI_document_collection_t* doc;
-  TRI_index_t* idx;
-  size_t i;
+  TRI_document_collection_t* doc = (TRI_document_collection_t*) primary;
 
-  doc = (TRI_document_collection_t*) primary;
-
-  for (i = 0;  i < doc->_allIndexes._length;  ++i) {
-    idx = doc->_allIndexes._buffer[i];
+  for (size_t i = 0;  i < doc->_allIndexes._length;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(doc->_allIndexes._buffer[i]);
 
     if (idx->_iid == iid) {
       return idx;
@@ -523,20 +519,17 @@ void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
 
 char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
                                       TRI_vector_t* paths) {
-  char const** fieldList;
-  size_t j;
-
   // .............................................................................
   // Allocate sufficent memory for the field list
   // .............................................................................
 
-  fieldList = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char const*) * paths->_length), false);
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char const*) * paths->_length), false));
 
   // ..........................................................................  
   // Convert the attributes (field list of the hash index) into strings
   // ..........................................................................  
 
-  for (j = 0;  j < paths->_length;  ++j) {
+  for (size_t j = 0;  j < paths->_length;  ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, j)));
     TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(shaper, shape);
 
@@ -628,19 +621,16 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
-  TRI_index_t* idx;
-  char* id;
-
   // note: primary can be NULL
 
   // create primary index
-  idx = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
+  TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false));
 
   if (idx == NULL) {
     return NULL;
   }
 
-  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
+  char* id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
@@ -694,15 +684,10 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
-  TRI_edge_header_t const* h;
-  uint64_t hash;
-  char* key;
+  TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
+  char const* key = h->_key;
 
-  h = data;
-  key = h->_key;
-
-  // only include directional bits for hashing, exclude special bits
-  hash = h->_cid;
+  uint64_t hash = h->_cid;
   hash ^=  (uint64_t) fasthash64(key, strlen(key), 0x87654321);
 
   return fasthash64(&hash, sizeof(hash), 0x56781234);
@@ -715,19 +700,15 @@ static uint64_t HashElementKey (TRI_multi_pointer_t* array, void const* data) {
 static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array, 
                                      void const* data,
                                      bool byKey) {
-  TRI_doc_mptr_t const* mptr;
-  TRI_doc_edge_key_marker_t const* edge;
-  char const* key;
-
   uint64_t hash;
 
-  if (!byKey) {
+  if (! byKey) {
     hash = (uint64_t) data;
   }
   else {
-    mptr = data;
-    edge = mptr->_data;
-    key = (char*) edge + edge->_offsetFromKey;
+    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_data);
+    char const* key = (char const*) edge + edge->_offsetFromKey;
 
     hash = edge->_fromCid;
     hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
@@ -743,19 +724,15 @@ static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array,
 static uint64_t HashElementEdgeTo (TRI_multi_pointer_t* array, 
                                    void const* data,
                                    bool byKey) {
-  TRI_doc_mptr_t const* mptr;
-  TRI_doc_edge_key_marker_t const* edge;
-  char const* key;
-
   uint64_t hash;
 
-  if (!byKey) {
+  if (! byKey) {
     hash = (uint64_t) data;
   }
   else {
-    mptr = data;
-    edge = mptr->_data;
-    key = (char*) edge + edge->_offsetToKey;
+    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_data);
+    char const* key = (char const*) edge + edge->_offsetToKey;
 
     hash = edge->_toCid;
     hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
@@ -773,18 +750,12 @@ static bool IsEqualKeyEdgeFrom (TRI_multi_pointer_t* array,
                                 void const* right) {
   // left is a key
   // right is an element, that is a master pointer
-  TRI_edge_header_t const* l;
-  TRI_doc_mptr_t const* rMptr;
-  TRI_doc_edge_key_marker_t const* rEdge;
-  const char* lKey;
-  const char* rKey;
+  TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
+  char const* lKey = l->_key;
 
-  l = left;
-  lKey = l->_key;
-
-  rMptr = right;
-  rEdge = rMptr->_data;
-  rKey = (char*) rEdge + rEdge->_offsetFromKey;
+  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_data);
+  char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
 
   return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_fromCid;
 }
@@ -798,18 +769,12 @@ static bool IsEqualKeyEdgeTo (TRI_multi_pointer_t* array,
                               void const* right) {
   // left is a key
   // right is an element, that is a master pointer
-  TRI_edge_header_t const* l;
-  TRI_doc_mptr_t const* rMptr;
-  TRI_doc_edge_key_marker_t const* rEdge;
-  const char* lKey;
-  const char* rKey;
+  TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
+  char const* lKey = l->_key;
 
-  l = left;
-  lKey = l->_key;
-
-  rMptr = right;
-  rEdge = rMptr->_data;
-  rKey = (char*) rEdge + rEdge->_offsetToKey;
+  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_data);
+  char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
 
   return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_toCid;
 }
@@ -822,23 +787,16 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
                                     void const* left,
                                     void const* right,
                                     bool byKey) {
-  TRI_doc_mptr_t const* lMptr;
-  TRI_doc_mptr_t const* rMptr;
-  TRI_doc_edge_key_marker_t const* lEdge;
-  TRI_doc_edge_key_marker_t const* rEdge;
-  char const* lKey;
-  char const* rKey;
-
-  if (!byKey) {
+  if (! byKey) {
     return left == right;
   }
   else {
-    lMptr = left;
-    rMptr = right;
-    lEdge = lMptr->_data;
-    rEdge = rMptr->_data;
-    lKey = (char*) lEdge + lEdge->_offsetFromKey;
-    rKey = (char*) rEdge + rEdge->_offsetFromKey;
+    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
+    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->_data);
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_data);
+    char const* lKey = (char const*) lEdge + lEdge->_offsetFromKey;
+    char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
 
     return strcmp(lKey, rKey) == 0 && lEdge->_fromCid == rEdge->_fromCid;
   }
@@ -852,23 +810,16 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
                                   void const* left,
                                   void const* right,
                                   bool byKey) {
-  TRI_doc_mptr_t const* lMptr;
-  TRI_doc_mptr_t const* rMptr;
-  TRI_doc_edge_key_marker_t const* lEdge;
-  TRI_doc_edge_key_marker_t const* rEdge;
-  char const* lKey;
-  char const* rKey;
-
-  if (!byKey) {
+  if (! byKey) {
     return left == right;
   }
   else {
-    lMptr = left;
-    rMptr = right;
-    lEdge = lMptr->_data;
-    rEdge = rMptr->_data;
-    lKey = (char*) lEdge + lEdge->_offsetToKey;
-    rKey = (char*) rEdge + rEdge->_offsetToKey;
+    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
+    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->_data);
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_data);
+    char const* lKey = (char const*) lEdge + lEdge->_offsetToKey;
+    char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
 
     return strcmp(lKey, rKey) == 0 && lEdge->_toCid == rEdge->_toCid;
   }
@@ -989,13 +940,12 @@ static int SizeHintEdge (TRI_index_t* idx,
 
 TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
                                   TRI_idx_iid_t iid) {
-  TRI_edge_index_t* edgeIndex;
   TRI_index_t* idx;
   char* id;
   int res;
 
   // create index
-  edgeIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+  TRI_edge_index_t* edgeIndex = static_cast<TRI_edge_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false));
 
   if (edgeIndex == NULL) {
     return NULL;
@@ -1127,7 +1077,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_LT_INDEX_OPERATOR: {
       relationOperator = (TRI_relation_index_operator_t*) slOperator;
       relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+      relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
       if (relationOperator->_fields != NULL) {
         for (j = 0; j < relationOperator->_numFields; ++j) {
@@ -1235,7 +1185,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     return TRI_ERROR_INTERNAL;
   }
 
-  skiplistElement->_document = CONST_CAST(document);
+  skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
   ptr = (char const*) skiplistElement->_document->_data;
     
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
@@ -1299,7 +1249,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // These will be used for comparisions
   // ...........................................................................
 
-  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false);
+  skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1378,7 +1328,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
   // ..........................................................................
   // Allocate sufficent memory for the field list
   // ..........................................................................
-  fieldList = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false);
+  fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
 
   // ..........................................................................
   // Convert the attributes (field list of the skiplist index) into strings
@@ -1434,7 +1384,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Allocate some memory for the SkiplistIndexElement structure
   // ...........................................................................
 
-  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false);
+  skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
   
   if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
@@ -1497,19 +1447,17 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
-  TRI_skiplist_index_t* skiplistIndex;
-  TRI_index_t* idx;
   int result;
   size_t j;
   
   assert(primary != NULL);
-  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
+  TRI_skiplist_index_t* skiplistIndex = static_cast<TRI_skiplist_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false));
 
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
-  idx = &skiplistIndex->base;
+  TRI_index_t* idx = &skiplistIndex->base;
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique);
 
@@ -1532,7 +1480,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
-    char const* name = fields->_buffer[j];
+    char const* name = static_cast<char const*>(fields->_buffer[j]);
     char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
     TRI_PushBackVectorString(&idx->_fields, copy);
   }
@@ -1820,7 +1768,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
                                       const char* attributeName,
                                       const bool indexSubstrings,
                                       int minWordLength) {
-  TRI_fulltext_index_t* fulltextIndex;
   TRI_index_t* idx;
   TRI_fts_index_t* fts;
   TRI_shaper_t* shaper;
@@ -1836,7 +1783,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
   }
 
   copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, attributeName);
-  fulltextIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
+  TRI_fulltext_index_t* fulltextIndex = static_cast<TRI_fulltext_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_fulltext_index_t), false));
 
   fts = TRI_CreateFtsIndex(2048, 1, 1);
   if (fts == NULL) {
@@ -2100,7 +2047,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
     // be retreived later.
     // ..........................................................................
 
-    element->data = CONST_CAST(document);
+    element->data = const_cast<TRI_doc_mptr_t*>(document);
 
     for (j = 0; j < baIndex->_paths._length; ++j) {
       TRI_shaped_json_t shapedJson;
@@ -2170,7 +2117,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
   // ............................................................................
 
   element.numFields   = baIndex->_paths._length;
-  element.fields      = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
+  element.fields      = static_cast<TRI_shaped_json_t*>(TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false));
   element.collection  = baIndex->base._collection;
 
   if (element.fields == NULL) {
@@ -2253,7 +2200,6 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
   TRI_primary_collection_t* primary;
   const TRI_shape_path_t* path;
   TRI_bitarray_index_t* baIndex;
-  char const** fieldList;
   size_t j;
 
   // ..........................................................................
@@ -2273,7 +2219,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
   // Allocate sufficent memory for the field list
   // ..........................................................................
 
-  fieldList = TRI_Allocate( TRI_CORE_MEM_ZONE, (sizeof(char*) * baIndex->_paths._length) , false);
+  char const** fieldList = static_cast<char const**>(TRI_Allocate( TRI_CORE_MEM_ZONE, (sizeof(char*) * baIndex->_paths._length) , false));
 
   // ..........................................................................
   // Convert the attributes (field list of the bitarray index) into strings
@@ -2407,7 +2353,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx,
   // ............................................................................
 
   element.numFields  = baIndex->_paths._length;
-  element.fields     = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
+  element.fields     = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false));
   element.collection = baIndex->base._collection;
   
   // ..........................................................................
@@ -2483,7 +2429,6 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
                                       bool supportUndef, 
                                       int* errorNum, 
                                       char** errorStr) {
-  TRI_bitarray_index_t* baIndex;
   TRI_index_t* idx;
   size_t i,j,k;
   int result;
@@ -2542,7 +2487,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   // attempt to allocate memory for the bit array index structure
   // ...........................................................................
 
-  baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
+  TRI_bitarray_index_t* baIndex = static_cast<TRI_bitarray_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false));
   idx = &baIndex->base;
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false);
@@ -2578,7 +2523,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
-    char const* name = fields->_buffer[j];
+    char const* name = static_cast<char const*>(fields->_buffer[j]);
     char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
 
     TRI_PushBackVectorString(&idx->_fields, copy);

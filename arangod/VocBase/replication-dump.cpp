@@ -147,7 +147,7 @@ resolved_name_t;
 
 static uint64_t HashKeyCid (TRI_associative_pointer_t* array, 
                             void const* key) {
-  TRI_voc_cid_t const* k = key;
+  TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
 
   return *k;
 }
@@ -158,7 +158,7 @@ static uint64_t HashKeyCid (TRI_associative_pointer_t* array,
 
 static uint64_t HashElementCid (TRI_associative_pointer_t* array, 
                                 void const* element) {
-  resolved_name_t const* e = element;
+  resolved_name_t const* e = static_cast<resolved_name_t const*>(element);
 
   return e->_cid;
 }
@@ -170,8 +170,8 @@ static uint64_t HashElementCid (TRI_associative_pointer_t* array,
 static bool IsEqualKeyElementCid (TRI_associative_pointer_t* array, 
                                   void const* key, 
                                   void const* element) {
-  TRI_voc_cid_t const* k = key;
-  resolved_name_t const* e = element;
+  TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
+  resolved_name_t const* e = static_cast<resolved_name_t const*>(element);
 
   return *k == e->_cid;
 }
@@ -184,14 +184,12 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
                                   TRI_voc_cid_t cid,
                                   char** result) {
 
-  resolved_name_t* found;
-
   assert(cid > 0);
   
-  found = (resolved_name_t*) TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid);
+  resolved_name_t* found = static_cast<resolved_name_t*>(TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid));
 
   if (found == NULL) {
-    found = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(resolved_name_t), false);
+    found = static_cast<resolved_name_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(resolved_name_t), false));
 
     if (found == NULL) {
       // out of memory;
@@ -252,15 +250,12 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
                              TRI_voc_tick_t dataMax,
                              bool isJournal) {
   
-  size_t i, n;
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
 
-  res = TRI_ERROR_NO_ERROR;
+  size_t const n = datafiles->_length;
 
-  n = datafiles->_length;
-
-  for (i = 0; i < n; ++i) {
-    TRI_datafile_t* df = TRI_AtVectorPointer(datafiles, i);
+  for (size_t i = 0; i < n; ++i) {
+    TRI_datafile_t* df = static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(datafiles, i));
 
     df_entry_t entry = { 
       df,
@@ -609,10 +604,8 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
 
   else if (n < 16) {
     // list is small: use a linear search
-    size_t i;
-
-    for (i = 0; i < n; ++i) {
-      TRI_voc_tid_t* tid = TRI_AtVector(list, i);
+    for (size_t i = 0; i < n; ++i) {
+      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, i));
 
       if (*tid == search) {
         return true;
@@ -629,11 +622,10 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
 
     while (true) {
       // determine midpoint
-      TRI_voc_tid_t* tid;
       size_t m;
 
       m = l + ((r - l) / 2);
-      tid = TRI_AtVector(list, m);
+      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, m));
 
       if (*tid == search) {
         return true;
@@ -1186,10 +1178,8 @@ int TRI_InitDumpReplication (TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDumpReplication (TRI_replication_dump_t* dump) {
-  size_t i;
-
-  for (i = 0; i < dump->_collectionNames._nrAlloc; ++i) {
-    resolved_name_t* found = dump->_collectionNames._table[i];
+  for (size_t i = 0; i < dump->_collectionNames._nrAlloc; ++i) {
+    resolved_name_t* found = static_cast<resolved_name_t*>(dump->_collectionNames._table[i]);
 
     if (found != NULL) {
       if (found->_name != NULL) {

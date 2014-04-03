@@ -221,11 +221,10 @@ static void CleanupCursors (TRI_vocbase_t* const vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupVocBase (void* data) {
-  TRI_vocbase_t* vocbase;
   TRI_vector_pointer_t collections;
   uint64_t iterations = 0;
 
-  vocbase = data;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
   assert(vocbase);
   assert(vocbase->_state == 1);
 
