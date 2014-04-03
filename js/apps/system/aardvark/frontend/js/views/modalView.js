@@ -99,6 +99,18 @@
       return obj;
     },
 
+    createPasswordEntry: function(id, label, value, info, placeholder, mandatory) {
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info);
+      obj.id = id;
+      if (placeholder) {
+        obj.placeholder = placeholder;
+      }
+      if (mandatory) {
+        obj.mandatory = mandatory;
+      }
+      return obj;
+    },
+
     createCheckboxEntry: function(id, label, value, info, checked) {
       var obj = createTextStub(this.tables.CHECKBOX, label, value, info);
       obj.id = id;
