@@ -102,8 +102,8 @@
         btnObj3.callback = cbs.cb3;
         testShow(buttons);
         btn = $("button[class*=button-]", $(div));
-        //Three defined above + cancel
-        expect(btn.length).toEqual(4);
+        //Three defined above + cancel + Yes & No from delete which are always present
+        expect(btn.length).toEqual(6);
         //Check click events for all buttons
         btn = $(".button-" + btnObj1.type, $(div));
         btn.click();
@@ -136,7 +136,7 @@
           btnObj.type = testee.buttons.DELETE;
           btnObj.callback = cbs.callback;
           testShow(buttons);
-          btn = $(".button-" + btnObj.type, $(div));
+          btn = $(".button-" + btnObj.type + ":not(#modal-confirm-delete)", $(div));
           expect(btn.length).toEqual(1);
           expect(btn.text()).toEqual(title);
           btn.click();
