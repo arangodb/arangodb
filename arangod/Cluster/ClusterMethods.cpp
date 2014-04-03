@@ -232,7 +232,7 @@ int usersOnCoordinator (std::string const& dbname,
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK ||
@@ -312,7 +312,7 @@ int revisionOnCoordinator (std::string const& dbname,
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
@@ -394,7 +394,7 @@ int figuresOnCoordinator (string const& dbname,
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
@@ -486,7 +486,7 @@ int countOnCoordinator (
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
@@ -737,7 +737,7 @@ int deleteDocumentOnCoordinator (
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
@@ -870,7 +870,7 @@ int getDocumentOnCoordinator (
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
@@ -935,7 +935,7 @@ int getAllDocumentsOnCoordinator (
   resultBody += "{ \"documents\" : [\n";
   char const* p;
   char const* q;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_TIMEOUT) {
       delete res;
@@ -1116,7 +1116,7 @@ int modifyDocumentOnCoordinator (
   // Now listen to the results:
   int count;
   int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
