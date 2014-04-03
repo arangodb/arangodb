@@ -262,6 +262,7 @@
   "test/specs/views/dbSelectionViewSpec.js",
   "test/specs/views/navigationViewSpec.js",
   "test/specs/views/graphViewSpec.js",
+  "test/specs/views/documentsViewSpec.js",
   "test/specs/views/graphManagementViewSpec.js",
   "test/specs/views/addNewGraphViewSpec.js",
   "test/specs/router/routerSpec.js",
