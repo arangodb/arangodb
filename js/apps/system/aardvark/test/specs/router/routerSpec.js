@@ -747,8 +747,8 @@
                 var key = 5;
                 simpleNavigationCheck(
                     "userProfile",
-                    "userProfileView",
-                    "user-menu",
+                    "userManagementView",
+                    "tools-menu",
                     {
                         collection: window.userCollection
                     },
