@@ -76,11 +76,15 @@
         model = {};
       model.content = tableContent || [];
       $(".modal-body").html(template.render(model));
-      $("#modal-dialog").show();
+      $('.modalTooltips').tooltip({
+        placement: "left"
+      });
+
+      $("#modal-dialog").modal("show");
     },
 
     hide: function() {
-      $("#modal-dialog").hide();
+      $("#modal-dialog").modal("hide");
     }
   });
 }());
