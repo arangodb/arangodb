@@ -155,13 +155,13 @@ window.ApplicationsView = Backbone.View.extend({
           if (foxx.get("type") === "app") {
             subView = new window.FoxxInstalledView({
               model: foxx,
-              super: self
+              appsView: self
             });
             self._availableSubViews[foxx.get('_id')] = subView;
           } else if (foxx.get("type") === "mount") {
             subView = new window.FoxxActiveView({
               model: foxx,
-              super: self
+              appsView: self
             });
             self._installedSubViews[foxx.get('_id')] = subView;
           }

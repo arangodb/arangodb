@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true*/
 /*global Backbone, $, window, _, templateEngine, alert*/
 
 (function() {
@@ -24,7 +24,7 @@
         "modalTable.ejs",
         "Install Application"
       );
-      this.super = this.options.super;
+      this.appsView = this.options.appsView;
     },
 
     fillValues: function() {
@@ -39,7 +39,8 @@
         "Name", this.model.get("name")
       ));
       list.push(window.modalView.createTextEntry(
-        "mount-point", "Mount", "/" + this.model.get("name"), "The path where the app can be reached."
+        "mount-point", "Mount", "/" + this.model.get("name"),
+        "The path where the app can be reached."
       ));
       list.push(window.modalView.createReadOnlyEntry(
         "Version", this.model.get("version") 
@@ -81,7 +82,7 @@
       {
         success: function() {
           window.modalView.hide();
-          self.super.reload();
+          self.appsView.reload();
         },
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
