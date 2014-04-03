@@ -358,9 +358,15 @@ static uint64_t GetPhysicalMemory () {
 #else
 
 static uint64_t TRI_GetPhysicalMemory () {
+  PROCESS_MEMORY_COUNTERS  pmc;
+  memset(&result, 0, sizeof(result));
+  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS);
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
+  if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
+    return pmc.PeakWorkingSetSize;
+  }
   return 0;
 }
-
 #endif
 #endif
 #endif
