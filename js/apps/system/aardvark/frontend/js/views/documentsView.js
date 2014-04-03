@@ -145,14 +145,6 @@
                   return;
                 }
 
-                /*if (data.errors === 0) {
-                  //Heiko: Display information
-                  //"Upload successful. " + data.created + " document(s) imported.");
-                }
-                else if (data.errors !== 0) {
-                  //Heiko: Display information
-                  //arangoHelper.arangoError("Upload failed." + data.errors + "error(s).");
-                }*/
                 self.hideSpinner();
                 self.hideImportModal();
                 self.resetView();
@@ -168,7 +160,6 @@
 
     uploadSetup: function () {
       var self = this;
-
       $('#importDocuments').change(function(e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -349,12 +340,12 @@
       var collid  = window.location.hash.split("/")[1],
         // second parameter is "true" to disable caching of collection type
         doctype = arangoHelper.collectionApiType(collid, true);
-
       if (doctype === 'edge') {
         $('#edgeCreateModal').modal('show');
         arangoHelper.fixTooltips(".modalTooltips", "left");
         return;
       }
+
       var result = window.arangoDocumentStore.createTypeDocument(collid);
       //Success
       if (result !== false) {
@@ -481,7 +472,7 @@
       window.location.hash = "#collection/" + this.colid + "/" + NeXt;
     },
 
-    initTable: function (colid, pageid) {
+    initTable: function () {
       $('#documentsTableID').dataTable({
         "bSortClasses": false,
         "bFilter": false,
