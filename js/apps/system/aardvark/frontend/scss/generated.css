@@ -2586,6 +2586,14 @@ pre.gv-object-view {
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px; }
 
+.modal-delete-confirmation {
+  display: none; }
+  .modal-delete-confirmation button {
+    margin-top: -4px;
+    margin-right: 10px; }
+    .modal-delete-confirmation button .modal-confirm-delete {
+      margin-right: -18px; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;
