@@ -57,8 +57,8 @@ static TRI_edge_index_t* FindEdgesIndex (
 
   n = document->_allIndexes._length;
   for (i = 0; i < n; ++i) {
-    TRI_index_t* idx 
-      = (TRI_index_t*) TRI_AtVectorPointer(&document->_allIndexes, i);
+    TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_AtVectorPointer(&document->_allIndexes, i));
+
     if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
       TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
       return edgesIndex;
@@ -74,14 +74,12 @@ static TRI_edge_index_t* FindEdgesIndex (
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
-  TRI_doc_edge_key_marker_t const* edge;
-  char* fromKey;
-  char* toKey;
+  TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_data);
 
-  edge = mptr->_data;
   if (edge->_toCid == edge->_fromCid) {
-    fromKey = (char*) edge + edge->_offsetFromKey;
-    toKey = (char*) edge + edge->_offsetToKey;
+    char* fromKey = (char*) edge + edge->_offsetFromKey;
+    char* toKey = (char*) edge + edge->_offsetToKey;
+
     return strcmp(fromKey, toKey) == 0;
   }
   return false;

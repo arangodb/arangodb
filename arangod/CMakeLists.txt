@@ -127,8 +127,8 @@ add_executable(
     VocBase/collection.c
     VocBase/compactor.c
     VocBase/datafile.c
-    VocBase/document-collection.c
-    VocBase/edge-collection.c
+    VocBase/document-collection.cpp
+    VocBase/edge-collection.cpp
     VocBase/general-cursor.c
     VocBase/headers.c
     VocBase/index.c

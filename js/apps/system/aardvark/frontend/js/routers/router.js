@@ -31,7 +31,13 @@
             "graphManagement/delete/:name": "graphDelete",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
-            "testing": "testview"
+            "testing": "testview",
+            "testModalView": "testmodalview"
+        },
+
+        testmodalview: function() {
+          this.testModalView = new window.testModalView();
+          this.testModalView.render();
         },
 
         testview: function () {
@@ -480,13 +486,13 @@
         },
 
         userProfile: function () {
-            if (!this.userProfileView) {
-                this.userProfileView = new window.userProfileView({
+          if (!this.userManagementView) {
+            this.userManagementView = new window.userManagementView({
                     collection: window.userCollection
                 });
             }
-            this.userProfileView.render();
-            this.naviView.selectMenuItem('user-menu');
+          this.userManagementView.render(true);
+          this.naviView.selectMenuItem('tools-menu');
         }
     });
 
