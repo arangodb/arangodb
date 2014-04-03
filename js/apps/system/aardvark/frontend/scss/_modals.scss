@@ -186,11 +186,16 @@ pre.gv-object-view {
   display: none;
 
   button {
-    margin-top: -4px;
     margin-right: 10px;
+    margin-top: -4px;
 
     .modal-confirm-delete {
       margin-right: -18px;
     }
   }
+}
+
+.createModalDialog table {
+  display: none;
+  width: 100%;
 }
