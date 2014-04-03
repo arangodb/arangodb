@@ -28,8 +28,6 @@ PROTO = http
 unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
-	unittests-make \
-	unittests-codebase-static \
 	unittests-config \
 	unittests-boost \
 	unittests-shell-server \
@@ -187,27 +185,6 @@ start-slave:
 
 curl-request-get:
 	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | tr "\r" " " | sed -e 's/^HTTP\/1\.1 \([0-9]*\).*$$/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
-
-################################################################################
-### @brief COMMON MAKE-RELATED TESTS
-################################################################################
-
-.PHONY: unittests-make
-
-unittests-make:
-	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
-
-################################################################################
-### @brief static codebase tests (a.k.a. Visual Studio cries)
-################################################################################
-
-.PHONY: unittests-codebase-static
-
-unittests-codebase-static:
-	@rm -f duplicates.test
-	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -print | cut -d "/" -f2-9 | tr "[:upper:]" "[:lower:]" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates.test) || true
-	@if [ "`grep " " duplicates.test`" != "" ]; then echo ; echo "Duplicate filenames found. These should be fixed to allow compilation with Visual Studio:"; cat duplicates.test; rm -f duplicates.test; false; fi
-	@rm -f duplicates.test
 
 ################################################################################
 ### @brief test configuration files
