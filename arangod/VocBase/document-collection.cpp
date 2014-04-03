@@ -209,7 +209,7 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
     TRI_index_t* idx;
     int res;
 
-    idx = document->_allIndexes._buffer[i];
+    idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     res = idx->insert(idx, header, isRollback);
 
     // in case of no-memory, return immediately
@@ -235,15 +235,12 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 static int DeletePrimaryIndex (TRI_document_collection_t* document,
                                TRI_doc_mptr_t const* header,
                                const bool isRollback) {
-  TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t* found;
-
   // .............................................................................
   // remove from main index
   // .............................................................................
 
-  primary = &document->base;
-  found = TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key);
+  TRI_primary_collection_t* primary = &document->base;
+  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key));
 
   if (found == NULL) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -268,11 +265,8 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
   result = TRI_ERROR_NO_ERROR;
 
   for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = document->_allIndexes._buffer[i];
-    res = idx->remove(idx, header, isRollback);
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+    int res = idx->remove(idx, header, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred
@@ -374,7 +368,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
-  *totalSize = baseLength + shaped->_data.length;
+  *totalSize = (TRI_voc_size_t) (baseLength + shaped->_data.length);
  
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
@@ -391,7 +385,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
-  TRI_CloneMarker(&marker->base, original, baseLength, *totalSize);
+  TRI_CloneMarker(&marker->base, original, baseLength, (TRI_voc_size_t) *totalSize);
   assert(marker->_rid != 0);
   // the new revision must be greater than the old one
 
@@ -491,17 +485,17 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     // document marker
     fromSize    = 0;
     toSize      = 0;
-    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
+    keyBodySize = (TRI_voc_size_t) TRI_DF_ALIGN_BLOCK(keySize);
     markerSize  = sizeof(TRI_doc_document_key_marker_t);
   }
   else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // edge marker
-    TRI_document_edge_t const* edge = data;
+    TRI_document_edge_t const* edge = static_cast<TRI_document_edge_t const*>(data);
 
     fromSize    = strlen(edge->_fromKey) + 1;    
     toSize      = strlen(edge->_toKey) + 1; 
 
-    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
+    keyBodySize = (TRI_voc_size_t) TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
     markerSize  = sizeof(TRI_doc_edge_key_marker_t);
   }
   else {
@@ -511,7 +505,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   
 
   // calculate the total size for the marker (= marker base size + key(s) + shaped json)
-  *totalSize = markerSize + keyBodySize + shaped->_data.length;
+  *totalSize = (TRI_voc_size_t) (markerSize + keyBodySize + shaped->_data.length);
  
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize, false);
 
@@ -544,15 +538,15 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // additional attributes for an edge marker
     TRI_doc_edge_key_marker_t* edgeMarker = (TRI_doc_edge_key_marker_t*) marker;
-    TRI_document_edge_t const* edge = data;
+    TRI_document_edge_t const* edge = static_cast<TRI_document_edge_t const*>(data);
 
     position += keySize;
     TRI_CopyString(position, (char*) edge->_toKey, toSize);
     position += toSize;
     TRI_CopyString(position, (char*) edge->_fromKey, fromSize);
     
-    edgeMarker->_offsetToKey     = markerSize + keySize;
-    edgeMarker->_offsetFromKey   = markerSize + keySize + toSize;
+    edgeMarker->_offsetToKey     = (uint16_t) markerSize + keySize;
+    edgeMarker->_offsetFromKey   = (uint16_t) markerSize + keySize + toSize;
     edgeMarker->_fromCid         = edge->_fromCid;
     edgeMarker->_toCid           = edge->_toCid;
   }
@@ -562,8 +556,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   memcpy(position, (char*) shaped->_data.data, shaped->_data.length);
   
   // set the offsets for _key and shaped json
-  marker->_offsetKey  = markerSize;
-  marker->_offsetJson = markerSize + keyBodySize;
+  marker->_offsetKey  = (uint16_t) markerSize;
+  marker->_offsetJson = (uint16_t) markerSize + keyBodySize;
   
   *result = marker;
 
@@ -638,9 +632,7 @@ static int RotateJournal (TRI_document_collection_t* document) {
     n = base->_journals._length;
 
     if (n > 0) {
-      TRI_datafile_t* datafile;
-
-      datafile = base->_journals._buffer[0];
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(base->_journals._buffer[0]);
       datafile->_full = true;
 
       document->_rotateRequested = true;
@@ -668,7 +660,6 @@ static int RotateJournal (TRI_document_collection_t* document) {
 static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
-  TRI_datafile_t* datafile;
   TRI_collection_t* collection;
   TRI_voc_size_t targetSize;
   int res;
@@ -685,7 +676,7 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
 
     for (i = 0;  i < n;  ++i) {
       // select datafile
-      datafile = collection->_journals._buffer[i];
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(collection->_journals._buffer[i]);
 
       // try to reserve space
       // make sure that the document fits
@@ -1023,9 +1014,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     n = document->_allIndexes._length;
 
     for (i = 0;  i < n;  ++i) {
-      TRI_index_t* idx;
-
-      idx = document->_allIndexes._buffer[i];
+      TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
       if (idx->postInsert != NULL) {
         idx->postInsert(trxCollection, idx, header);
@@ -1122,7 +1111,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
   document = (TRI_document_collection_t*) primary;
 
   // get the existing header pointer
-  header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) marker) + marker->_offsetKey);
+  header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) marker) + marker->_offsetKey));
 
   if (! IsVisible(header)) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1317,7 +1306,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   // .............................................................................
 
   // TODO: this will be identical for non-transactional collections only
-  newHeader = CONST_CAST(oldHeader);
+  newHeader = oldHeader; 
   
   // update the header. this will modify oldHeader !!!
   UpdateHeader(0, &marker->base, newHeader, oldHeader);
@@ -1507,13 +1496,12 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
   end = ptr + primary->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
-      TRI_doc_mptr_t const* d = *ptr;
-
+    TRI_doc_mptr_t const* p = static_cast<TRI_doc_mptr_t*>(*ptr);
+    if (p) {
       printf("fid %llu, key %s, rid %llu\n",
-             (unsigned long long) d->_fid,
-             (char*) d->_key,
-             (unsigned long long) d->_rid);
+             (unsigned long long) p->_fid,
+             (char*) p->_key,
+             (unsigned long long) p->_rid);
     }
   }
 }
@@ -1620,7 +1608,7 @@ static int ReadShapedJson (TRI_transaction_collection_t* trxCollection,
     primary->beginRead(primary);
   }
 
-  header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+  header = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
 
   if (! IsVisible(header)) {
     if (lock) {
@@ -1687,7 +1675,7 @@ static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT_MAINTAINER(key != NULL);
 
   // get the header pointer of the previous revision
-  header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+  header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
 
   if (IsVisible(header)) {
     // document found, now check revision
@@ -1700,12 +1688,10 @@ static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
 
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_df_marker_t const* original;
-
-    original = header->_data;
+    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(header->_data);
 
     tid = TRI_GetMarkerIdTransaction(trxCollection->_transaction);
-    res = CloneDocumentMarker(tid, (TRI_voc_tick_t) rid, original, &marker, &totalSize, original->_type, shaped);
+    res = CloneDocumentMarker(tid, (TRI_voc_tick_t) rid, original, &marker, &totalSize, (TRI_df_marker_type_e) original->_type, shaped);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = UpdateDocument(trxCollection, header, marker, totalSize, forceSync, mptr, &freeMarker);
@@ -2033,7 +2019,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     primary->_keyGenerator->track(primary->_keyGenerator, key);
   }
 
-  found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+  found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
 
   // it is a new entry
   if (found == NULL) {
@@ -2079,7 +2065,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // save the old data
     oldData = *found;
 
-    newHeader = CONST_CAST(found);
+    newHeader = static_cast<TRI_doc_mptr_t*>(CONST_CAST(found));
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
@@ -2136,7 +2122,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   TRI_primary_collection_t* primary;
   TRI_df_marker_t const* marker;
   TRI_doc_deletion_key_marker_t const* d;
-  TRI_doc_mptr_t const* found;
+  TRI_doc_mptr_t* found;
   TRI_voc_key_t key;
   
   document = state->_document; 
@@ -2165,7 +2151,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     primary->_keyGenerator->track(primary->_keyGenerator, key);
   }
 
-  found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+  found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
 
   // it is a new entry, so we missed the create
   if (found == NULL) {
@@ -2208,7 +2194,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headers->release(document->_headers, CONST_CAST(found), true);
+    document->_headers->release(document->_headers, found, true); 
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2312,18 +2298,14 @@ static int OpenIteratorPrepareTransaction (open_iterator_state_t* state) {
 
 static int ReadTrxCallback (TRI_transaction_collection_t* trxCollection,
                              void* data) {
-  open_iterator_state_t* state;
-  TRI_voc_key_t key;
-  TRI_primary_collection_t* primary;
   TRI_doc_mptr_t mptr;
-  int res;
  
-  state = data;
-  key = TRI_StringUInt64(state->_tid);
-  primary = trxCollection->_collection->_collection;
+  open_iterator_state_t* state = static_cast<open_iterator_state_t*>(data);
+  TRI_voc_key_t key = TRI_StringUInt64(state->_tid);
+  TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
   // check whether the document exists. we will not need mptr later, so we don't need a barrier
-  res = primary->read(trxCollection, key, &mptr, false);
+  int res = primary->read(trxCollection, key, &mptr, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   return res;
@@ -2358,11 +2340,9 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
         n = state->_operations._length;
 
         for (i = 0; i < n; ++i) {
-          int r;
+          open_iterator_operation_t* operation = static_cast<open_iterator_operation_t*>(TRI_AtVector(&state->_operations, i));
 
-          open_iterator_operation_t* operation = TRI_AtVector(&state->_operations, i);
-
-          r = OpenIteratorApplyOperation(state, operation);
+          int r = OpenIteratorApplyOperation(state, operation);
 
           if (r != TRI_ERROR_NO_ERROR) {
             res = r;
@@ -2398,11 +2378,9 @@ static int OpenIteratorCommitTransaction (open_iterator_state_t* state) {
     n = state->_operations._length;
 
     for (i = 0; i < n; ++i) {
-      int r;
+      open_iterator_operation_t* operation = static_cast<open_iterator_operation_t*>(TRI_AtVector(&state->_operations, i));
 
-      open_iterator_operation_t* operation = TRI_AtVector(&state->_operations, i);
-
-      r = OpenIteratorApplyOperation(state, operation);
+      int r = OpenIteratorApplyOperation(state, operation);
       if (r != TRI_ERROR_NO_ERROR) {
         res = r;
       }
@@ -2707,14 +2685,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 /// currently, this will only fill edge indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillInternalIndexes (TRI_document_collection_t* document) {
-  size_t i;
-  int res;
-
-  res = TRI_ERROR_NO_ERROR;
+static int FillInternalIndexes (TRI_document_collection_t* document) {
+  int res = TRI_ERROR_NO_ERROR;
   
-  for (i = 0;  i < document->_allIndexes._length;  ++i) {
-    TRI_index_t* idx = document->_allIndexes._buffer[i];
+  for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
       int r = FillIndex(document, idx);
@@ -2963,7 +2938,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
 
   // first create the document collection
-  document = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
+  document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
 
   if (document == NULL) {
     TRI_FreeKeyGenerator(keyGenerator);
@@ -3365,7 +3340,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   int res;
 
   // first open the document collection
-  document = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
+  document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
 
   if (document == NULL) {
     return NULL;
@@ -3544,7 +3519,7 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
   *fieldCount = fld->_value._objects._length;
 
   for (j = 0;  j < *fieldCount;  ++j) {
-    TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
+    TRI_json_t* sub = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, j));
 
     if (! TRI_IsStringJson(sub)) {
       LOG_ERROR("ignoring index %llu, 'fields' must be a list of attribute paths", (unsigned long long) iid);
@@ -3590,17 +3565,12 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
   // ...........................................................................
 
   for (j = 0;  j < *fieldCount;  ++j) {
-    TRI_json_t* keyValue;
-    TRI_json_t* key;
-    TRI_json_t* value;
-
 
     // .........................................................................
     // Extract the jth key value pair
     // .........................................................................
 
-    keyValue = TRI_AtVector(&keyValues->_value._objects, j);
-
+    TRI_json_t* keyValue = static_cast<TRI_json_t*>(TRI_AtVector(&keyValues->_value._objects, j));
 
     // .........................................................................
     // The length of this key value pair must be two
@@ -3617,7 +3587,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
     // Extract the key
     // .........................................................................
 
-    key = TRI_AtVector(&keyValue->_value._objects, 0);
+    TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 0));
 
     if (! TRI_IsStringJson(key)) {
       LOG_ERROR("ignoring index %llu, key in 'fields' pair must be an attribute (string)", (unsigned long long) iid);
@@ -3630,7 +3600,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
     // Extract the value
     // .........................................................................
 
-    value = TRI_AtVector(&keyValue->_value._objects, 1);
+    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 1));
 
     if (value == NULL || value->_type != TRI_JSON_LIST) {
       LOG_ERROR("ignoring index %llu, value in 'fields' pair must be a list ([...])", (unsigned long long) iid);
@@ -3654,7 +3624,6 @@ static bool DropIndex (TRI_document_collection_t* document,
   TRI_index_t* found;
   TRI_vocbase_t* vocbase;
   TRI_primary_collection_t* primary;
-  size_t i, n;
 
   if (iid == 0) {
     // invalid index id or primary index
@@ -3673,11 +3642,9 @@ static bool DropIndex (TRI_document_collection_t* document,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  n = document->_allIndexes._length;
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = document->_allIndexes._buffer[i];
+  size_t const n = document->_allIndexes._length;
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_iid == iid) {
       if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
@@ -3686,7 +3653,7 @@ static bool DropIndex (TRI_document_collection_t* document,
         break;
       }
 
-      found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
+      found = static_cast<TRI_index_t*>(TRI_RemoveVectorPointer(&document->_allIndexes, i));
 
       if (found != NULL && found->removeIndex != NULL) {
         // notify the index about its removal
@@ -3741,7 +3708,6 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end;
   void** ptr;
   int res;
-  // double starttime;
 
   primary = &document->base;
 
@@ -3755,14 +3721,12 @@ static int FillIndex (TRI_document_collection_t* document,
   }
 
 
-  // starttime = TRI_microtime();
-  //printf("FillIndex _iid=%llu start time: %f\n",(unsigned long long) idx->_iid,
-  //       starttime);
   inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
-    if (IsVisible(*ptr)) {
-      mptr = *ptr;
+    TRI_doc_mptr_t const* p = static_cast<TRI_doc_mptr_t const*>(*ptr);
+    if (IsVisible(p)) {
+      mptr = p;
 
       res = idx->insert(idx, mptr, false);
 
@@ -3784,8 +3748,6 @@ static int FillIndex (TRI_document_collection_t* document,
       }
     }
   }
-  //printf("FillIndex _iid=%llu time spent: %f\n",(unsigned long long) idx->_iid,
-  //       TRI_microtime()-starttime);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3807,7 +3769,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   // ...........................................................................
 
   for (j = 0;  j < collection->_allIndexes._length;  ++j) {
-    TRI_index_t* idx = collection->_allIndexes._buffer[j];
+    TRI_index_t* idx = static_cast<TRI_index_t*>(collection->_allIndexes._buffer[j]);
     bool found;
     size_t k;
 
@@ -4017,13 +3979,9 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // ...........................................................................
 
   for (j = 0;  j < fieldCount;  ++j) {
-    TRI_json_t* keyValue;
-    TRI_json_t* key;
-    TRI_json_t* value;
-
-    keyValue = TRI_AtVector(&keyValues->_value._objects, j);
-    key      = TRI_AtVector(&keyValue->_value._objects, 0);
-    value    = TRI_AtVector(&keyValue->_value._objects, 1);
+    TRI_json_t* keyValue = static_cast<TRI_json_t*>(TRI_AtVector(&keyValues->_value._objects, j));
+    TRI_json_t* key      = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 0));
+    TRI_json_t* value    = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 1));
 
     TRI_PushBackVectorPointer(&attributes, key->_value._string.data);
     TRI_PushBackVectorPointer(&values, value);
@@ -4082,7 +4040,6 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   TRI_index_t* idx;
   TRI_json_t* bv;
   TRI_json_t* fld;
-  TRI_json_t* fieldStr;
   TRI_vector_pointer_t attributes;
   bool unique;
   size_t fieldCount;
@@ -4124,7 +4081,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // find fields
   for (j = 0;  j < fieldCount;  ++j) {
-    fieldStr = TRI_AtVector(&fld->_value._objects, j);
+    TRI_json_t* fieldStr = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, j));
 
     TRI_PushBackVectorPointer(&attributes, fieldStr->_value._string.data);
   }
@@ -4152,8 +4109,8 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ComparePidName (void const* left, void const* right) {
-  pid_name_t const* l = left;
-  pid_name_t const* r = right;
+  pid_name_t const* l = static_cast<pid_name_t const*>(left);
+  pid_name_t const* r = static_cast<pid_name_t const*>(right);
 
   return (int) (l->_pid - r->_pid);
 }
@@ -4178,10 +4135,7 @@ static int ComparePidName (void const* left, void const* right) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
-  TRI_vector_pointer_t* vector;
-  size_t i, n;
-
-  vector = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+  TRI_vector_pointer_t* vector = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false));
 
   if (vector == NULL) {
     return NULL;
@@ -4189,15 +4143,11 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
   TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
 
-  n = document->_allIndexes._length;
+  size_t const n = document->_allIndexes._length;
 
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    TRI_json_t* json;
-
-    idx = document->_allIndexes._buffer[i];
-
-    json = idx->json(idx);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+    TRI_json_t* json = idx->json(idx);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
@@ -4249,7 +4199,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
   if (sorted) {
     // combine name and pid
-    pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+    pidnames = static_cast<pid_name_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false));
 
     if (pidnames == NULL) {
       LOG_ERROR("out of memory in PidNamesByAttributeNames");
@@ -4257,7 +4207,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
     }
 
     for (j = 0;  j < attributes->_length;  ++j) {
-      pidnames[j]._name = attributes->_buffer[j];
+      pidnames[j]._name = static_cast<char*>(attributes->_buffer[j]);
 
       if (create) {
         pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
@@ -4297,11 +4247,9 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
     TRI_InitVectorPointer(names, TRI_CORE_MEM_ZONE);
 
     for (j = 0;  j < attributes->_length;  ++j) {
-      char* name;
+      char* name = static_cast<char*>(attributes->_buffer[j]);
+
       TRI_shape_pid_t pid;
-
-      name = attributes->_buffer[j];
-
       if (create) {
         pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
       }
@@ -4758,9 +4706,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
     // need just one field
     if (fieldCount == 1) {
-      TRI_json_t* loc;
-
-      loc = TRI_AtVector(&fld->_value._objects, 0);
+      TRI_json_t* loc = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
 
       idx = CreateGeoIndexDocumentCollection(document,
                                         loc->_value._string.data,
@@ -4789,11 +4735,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   // attribute style
   else if (TRI_EqualString(typeStr, "geo2")) {
     if (fieldCount == 2) {
-      TRI_json_t* lat;
-      TRI_json_t* lon;
-
-      lat = TRI_AtVector(&fld->_value._objects, 0);
-      lon = TRI_AtVector(&fld->_value._objects, 1);
+      TRI_json_t* lat = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
+      TRI_json_t* lon = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 1));
 
       idx = CreateGeoIndexDocumentCollection(document,
                                         NULL,
@@ -4863,9 +4806,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   n = document->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = document->_allIndexes._buffer[i];
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -4911,7 +4852,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = document->_allIndexes._buffer[i];
+    idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -5615,7 +5556,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  attribute = TRI_AtVector(&fld->_value._objects, 0);
+  attribute = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
 
   if (! TRI_IsStringJson(attribute)) {
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);

@@ -87,20 +87,20 @@ bin_arangod_SOURCES = \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
-	arangod/VocBase/auth.c \
-	arangod/VocBase/barrier.c \
+	arangod/VocBase/auth.cpp \
+	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.c \
-	arangod/VocBase/collection.c \
+	arangod/VocBase/collection.cpp \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/edge-collection.c \
-	arangod/VocBase/general-cursor.c \
-	arangod/VocBase/headers.c \
+	arangod/VocBase/document-collection.cpp \
+	arangod/VocBase/edge-collection.cpp \
+	arangod/VocBase/general-cursor.cpp \
+	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.c \
-	arangod/VocBase/key-generator.c \
-	arangod/VocBase/marker.c \
-	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/key-generator.cpp \
+	arangod/VocBase/marker.cpp \
+	arangod/VocBase/primary-collection.cpp \
 	arangod/VocBase/replication-applier.c \
 	arangod/VocBase/replication-common.c \
 	arangod/VocBase/replication-dump.c \
@@ -108,11 +108,11 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-master.c \
 	arangod/VocBase/server.c \
 	arangod/VocBase/synchroniser.c \
-	arangod/VocBase/transaction.c \
-	arangod/VocBase/update-policy.c \
+	arangod/VocBase/transaction.cpp \
+	arangod/VocBase/update-policy.cpp \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c \
-	arangod/VocBase/vocbase-defaults.c \
+	arangod/VocBase/vocbase-defaults.cpp \
 	arangod/Wal/AllocatorThread.cpp \
 	arangod/Wal/CollectorThread.cpp \
 	arangod/Wal/LogfileManager.cpp \

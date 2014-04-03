@@ -43,15 +43,11 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find the edges index of a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_multi_pointer_t* FindEdgesIndex (TRI_document_collection_t* const document) {
+static TRI_edge_index_t* FindEdgesIndex (
+                         TRI_document_collection_t* const document) {
   size_t i, n;
 
   if (document->base.base._info._type != TRI_COL_TYPE_EDGE) {
@@ -61,11 +57,11 @@ static TRI_multi_pointer_t* FindEdgesIndex (TRI_document_collection_t* const doc
 
   n = document->_allIndexes._length;
   for (i = 0; i < n; ++i) {
-    TRI_index_t* idx = (TRI_index_t*) TRI_AtVectorPointer(&document->_allIndexes, i);
+    TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_AtVectorPointer(&document->_allIndexes, i));
+
     if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
       TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
-
-      return &edgesIndex->_edges;
+      return edgesIndex;
     }
   }
 
@@ -74,11 +70,19 @@ static TRI_multi_pointer_t* FindEdgesIndex (TRI_document_collection_t* const doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether an edge is self-reflexive
+/// @brief check whether the _from and _to end of an edge are identical
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsReflexive (const TRI_edge_header_t* const edge) {
-  return ((edge->_flags & TRI_EDGE_BIT_REFLEXIVE) > 0);
+static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
+  TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_data);
+
+  if (edge->_toCid == edge->_fromCid) {
+    char* fromKey = (char*) edge + edge->_offsetFromKey;
+    char* toKey = (char*) edge + edge->_offsetToKey;
+
+    return strcmp(fromKey, toKey) == 0;
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,17 +94,28 @@ static bool IsReflexive (const TRI_edge_header_t* const edge) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FindEdges (const TRI_edge_direction_e direction,
-                       TRI_multi_pointer_t* idx,
+                       TRI_edge_index_t* idx,
                        TRI_vector_pointer_t* result,
                        TRI_edge_header_t* entry,
                        const int matchType) {
   TRI_vector_pointer_t found;
+  TRI_doc_mptr_t* edge;
 
-  entry->_flags = TRI_LookupFlagsEdge(direction);
-  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, idx, entry);
+  if (direction == TRI_EDGE_OUT) {
+    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
+                                        &idx->_edges_from, 
+                                        entry);
+  }
+  else if (direction == TRI_EDGE_IN) {
+    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
+                                        &idx->_edges_to, 
+                                        entry);
+  }
+  else {
+    assert(false);   // TRI_EDGE_ANY not supported here
+  }
 
   if (found._length > 0) {
-    TRI_edge_header_t* edge;
     size_t i;
 
     if (result->_capacity == 0) {
@@ -119,99 +134,57 @@ static bool FindEdges (const TRI_edge_direction_e direction,
 
     // add all results found
     for (i = 0;  i < found._length;  ++i) {
-      edge = (TRI_edge_header_t*) found._buffer[i];
+      edge = (TRI_doc_mptr_t*) found._buffer[i];
 
       // the following queries will use the following sequences of matchTypes:
-      // inEdges(): 1, 2,  outEdges(): 1, 2,  edges(): 1, 3
+      // inEdges(): 1,  outEdges(): 1,  edges(): 1, 3
 
-      // if matchType is 1, we'll return all found edges without further filtering
-      //
-      // if matchType is 2 (inEdges or outEdges query), the direction is reversed.
-      // We'll exclude all self-reflexive edges now (we already got them in iteration 1),
+      // if matchType is 1, we'll return all found edges without filtering
+      // We'll exclude all loop edges now (we already got them in iteration 1),
       // and alsoexclude all unidirectional edges
       //
       // if matchType is 3, the direction is also reversed. We'll exclude all
-      // self-reflexive edges now (we already got them in iteration 1)
+      // loop edges now (we already got them in iteration 1)
 
       if (matchType > 1) {
-        // if the edge is self-reflexive, we have already found it in iteration 1
+        
+        // if the edge is a loop, we have already found it in iteration 1
         // we must skip it here, otherwise we would produce duplicates
         if (IsReflexive(edge)) {
           continue;
         }
       }
+      
+      TRI_PushBackVectorPointer(result, CONST_CAST(edge));
 
-      TRI_PushBackVectorPointer(result, CONST_CAST(edge->_mptr));
     }
   }
-
 
   TRI_DestroyVectorPointer(&found);
 
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compose edge flags aggregate out of only the direction
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e direction) {
-  if (direction == TRI_EDGE_IN) {
-    return TRI_EDGE_BIT_DIRECTION_IN;
-  }
-  if (direction == TRI_EDGE_OUT) {
-    return TRI_EDGE_BIT_DIRECTION_OUT;
-  }
-
-  // invalid direction type
-  assert(false);
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compose edge flags aggregate out of multiple individual parameters
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e direction,
-                                const bool isReflexive) {
-  TRI_edge_flags_t result = TRI_LookupFlagsEdge(direction);
-
-  if (isReflexive) {
-    result |= TRI_EDGE_BIT_REFLEXIVE;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_edge_direction_e direction,
-                                                        TRI_voc_cid_t cid,
-                                                        TRI_voc_key_t key) {
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
+                                        TRI_document_collection_t* document,
+                                        TRI_edge_direction_e direction,
+                                        TRI_voc_cid_t cid,
+                                        TRI_voc_key_t key) {
   TRI_vector_pointer_t result;
   TRI_edge_header_t entry;
-  TRI_multi_pointer_t* edgesIndex;
+  TRI_edge_index_t* edgesIndex;
 
   // search criteria
-  entry._mptr = NULL;
   entry._cid = cid;
-  entry._searchKey._key = key;
+  entry._key = key;
 
   // initialise the result vector
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
@@ -239,10 +212,6 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
 
   return result;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

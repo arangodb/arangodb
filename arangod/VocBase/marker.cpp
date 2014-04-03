@@ -40,7 +40,7 @@
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_NameMarker (TRI_df_marker_t const* marker) {
+char const* TRI_NameMarker (TRI_df_marker_t const* marker) {
   switch (marker->_type) {
     case TRI_DOC_MARKER_KEY_DOCUMENT:
       return "document";

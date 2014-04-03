@@ -152,7 +152,7 @@ static uint64_t HashKeyId (TRI_associative_pointer_t* array, void const* k) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementId (TRI_associative_pointer_t* array, void const* e) {
-  TRI_general_cursor_t const* element = e;
+  TRI_general_cursor_t const* element = static_cast<TRI_general_cursor_t const*>(e);
 
   return (uint64_t) element->_id;
 }
@@ -162,7 +162,7 @@ static uint64_t HashElementId (TRI_associative_pointer_t* array, void const* e) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualKeyId (TRI_associative_pointer_t* array, void const* k, void const* e) {
-  TRI_general_cursor_t const* element = e;
+  TRI_general_cursor_t const* element = static_cast<TRI_general_cursor_t const*>(e);
   TRI_voc_tick_t key = *((TRI_voc_tick_t*) k);
 
   return (key == element->_id);
@@ -327,7 +327,7 @@ TRI_general_cursor_t* TRI_UseGeneralCursor (TRI_general_cursor_t* cursor) {
   TRI_general_cursor_store_t* store = cursor->_store;
 
   TRI_LockSpin(&store->_lock);
-  cursor = TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id);
+  cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
 
   if (cursor != NULL) {
     if (cursor->_usage._isDeleted) {
@@ -350,7 +350,7 @@ void TRI_ReleaseGeneralCursor (TRI_general_cursor_t* cursor) {
   TRI_general_cursor_store_t* store = cursor->_store;
 
   TRI_LockSpin(&store->_lock);
-  cursor = TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id);
+  cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
   if (cursor != NULL) {
     --cursor->_usage._refCount;
   }
@@ -366,7 +366,8 @@ bool TRI_DropGeneralCursor (TRI_general_cursor_t* cursor) {
   bool result;
 
   TRI_LockSpin(&store->_lock);
-  cursor = TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id);
+  cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
+
   if (cursor != NULL && ! cursor->_usage._isDeleted) {
     cursor->_usage._isDeleted = true;
     result = true;
@@ -411,10 +412,9 @@ void TRI_PersistGeneralCursor (TRI_general_cursor_t* cursor,
 TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase, 
                                              TRI_voc_tick_t id) {
   TRI_general_cursor_store_t* store = vocbase->_cursors;
-  TRI_general_cursor_t* cursor;
 
   TRI_LockSpin(&store->_lock);
-  cursor = TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+  TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &id));
   if (cursor == NULL || cursor->_usage._isDeleted) {
     cursor = NULL;
   }
@@ -430,11 +430,10 @@ TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase,
 bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase, 
                               TRI_voc_tick_t id) {
   TRI_general_cursor_store_t* store = vocbase->_cursors;
-  TRI_general_cursor_t* cursor;
   bool result;
 
   TRI_LockSpin(&store->_lock);
-  cursor = TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+  TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &id));
   if (cursor == NULL || cursor->_usage._isDeleted) {
     result = false;
   }
@@ -452,21 +451,18 @@ bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_general_cursor_store_t* TRI_CreateStoreGeneralCursor (void) {
-  TRI_general_cursor_store_t* store;
-  int res;
-
-  store = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
+  TRI_general_cursor_store_t* store = static_cast<TRI_general_cursor_store_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false));
 
   if (store == NULL) {
     return NULL;
   }
 
-  res = TRI_InitAssociativePointer(&store->_ids,
-                                   TRI_UNKNOWN_MEM_ZONE,
-                                   HashKeyId,
-                                   HashElementId,
-                                   EqualKeyId,
-                                   NULL);
+  int res = TRI_InitAssociativePointer(&store->_ids,
+                                       TRI_UNKNOWN_MEM_ZONE,
+                                       HashKeyId,
+                                       HashElementId,
+                                       EqualKeyId,
+                                       NULL);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);

@@ -201,24 +201,13 @@ const string& HttpResponse::getBatchErrorHeader () {
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponse ()
-  : _code(NOT_IMPLEMENTED),
-    _headers(6),
-    _body(TRI_UNKNOWN_MEM_ZONE),
-    _isHeadResponse(false),
-    _bodySize(0),
-    _freeables() {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
-HttpResponse::HttpResponse (HttpResponseCode code)
+HttpResponse::HttpResponse (HttpResponseCode code,
+                            uint32_t apiCompatibility)
   : _code(code),
+    _apiCompatibility(apiCompatibility),
+    _isHeadResponse(false),
     _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
-    _isHeadResponse(false),
     _bodySize(0),
     _freeables() {
 
@@ -609,7 +598,7 @@ void HttpResponse::setCookie (string const& name, string const& value,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* HttpResponse::swap () {
-  HttpResponse* response = new HttpResponse(_code);
+  HttpResponse* response = new HttpResponse(_code, _apiCompatibility);
 
   response->_headers.swap(&_headers);
   response->_body.swap(&_body);
@@ -631,6 +620,8 @@ HttpResponse* HttpResponse::swap () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponse::writeHeader (StringBuffer* output) {
+  bool const capitalizeHeaders = (_apiCompatibility >= 20100);
+
   output->appendText("HTTP/1.1 ");
   output->appendText(responseString(_code));
   output->appendText("\r\n");
@@ -661,32 +652,79 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       continue;
     }
 
-    char const* value = begin->_value;
-
-    output->appendText(key, keyLength);
+    if (capitalizeHeaders) {
+      char const* p = key;
+      char const* end = key + keyLength;
+      int capState = 1;
+      while (p < end) {
+        if (capState == 1) {
+          // upper case
+          output->appendChar(::toupper(*p));
+          capState = 0;
+        }
+        else if (capState == 0) {
+          // normal case
+          output->appendChar(::tolower(*p));
+          if (*p == '-') {
+            capState = 1;
+          }
+          else if (*p == ':') {
+            capState = 2;
+          }
+        }
+        else {
+          // output as is
+          output->appendChar(*p);
+        }
+        ++p;
+      }
+    }
+    else {
+      output->appendText(key, keyLength);
+    }
     output->appendText(": ", 2);
-    output->appendText(value);
+    output->appendText(begin->_value);
     output->appendText("\r\n", 2);
   }
 
   for (vector<char const*>::iterator iter = _cookies.begin(); 
           iter != _cookies.end(); ++iter) {
-    output->appendText("Set-Cookie: ", 12);
+    if (capitalizeHeaders) {
+      output->appendText("Set-Cookie: ", 12);
+    }
+    else {
+      output->appendText("set-cookie: ", 12);
+    }
     output->appendText(*iter);
     output->appendText("\r\n", 2);    
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
+    if (capitalizeHeaders) {
+      output->appendText("Transfer-Encoding: chunked\r\n\r\n", 30);
+    }
+    else {
+      output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
+    }
   }
   else {
     if (seenTransferEncoding) {
-      output->appendText("transfer-encoding: ", 19);
+      if (capitalizeHeaders) {
+        output->appendText("Transfer-Encoding: ", 19);
+      }
+      else {
+        output->appendText("transfer-encoding: ", 19);
+      }
       output->appendText(transferEncoding);
       output->appendText("\r\n", 2);
     }
 
-    output->appendText("content-length: ", 16);
+    if (capitalizeHeaders) {
+      output->appendText("Content-Length: ", 16);
+    }
+    else {
+      output->appendText("content-length: ", 16);
+    }
 
     if (_isHeadResponse) {
       // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13

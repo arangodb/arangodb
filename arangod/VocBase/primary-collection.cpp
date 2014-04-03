@@ -58,7 +58,7 @@ static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
-  TRI_doc_mptr_t const* e = element;
+  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
   return TRI_FnvHashString((char const*) e->_key);
 }
 
@@ -67,9 +67,9 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_doc_mptr_t const* e = element;
+  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  char const * k = key;
+  char const * k = static_cast<char const*>(key);
   return (strcmp(k, e->_key) == 0);
 }
 
@@ -78,7 +78,7 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyDatafile (TRI_associative_pointer_t* array, void const* key) {
-  TRI_voc_fid_t const* k = key;
+  TRI_voc_fid_t const* k = static_cast<TRI_voc_fid_t const*>(key);
 
   return *k;
 }
@@ -88,7 +88,7 @@ static uint64_t HashKeyDatafile (TRI_associative_pointer_t* array, void const* k
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementDatafile (TRI_associative_pointer_t* array, void const* element) {
-  TRI_doc_datafile_info_t const* e = element;
+  TRI_doc_datafile_info_t const* e = static_cast<TRI_doc_datafile_info_t const*>(element);
 
   return e->_fid;
 }
@@ -98,8 +98,8 @@ static uint64_t HashElementDatafile (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_voc_fid_t const* k = key;
-  TRI_doc_datafile_info_t const* e = element;
+  TRI_voc_fid_t const* k = static_cast<TRI_voc_fid_t const*>(key);
+  TRI_doc_datafile_info_t const* e = static_cast<TRI_doc_datafile_info_t const*>(element);
 
   return *k == e->_fid;
 }
@@ -138,16 +138,15 @@ static void DebugDatafileInfoDatafile (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary) {
-  TRI_datafile_t* datafile;
-  size_t i, n;
+  size_t n;
 
   // journals
   n = primary->base._journals._length;
   if (n > 0) {
     printf("JOURNALS (%d)\n-----------------------------\n", (int) n);
 
-    for (i = 0;  i < n;  ++i) {
-      datafile = primary->base._journals._buffer[i];
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(primary->base._journals._buffer[i]);
       DebugDatafileInfoDatafile(primary, datafile);
     }
   }
@@ -157,8 +156,8 @@ static void DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* primar
   if (n > 0) {
     printf("COMPACTORS (%d)\n-----------------------------\n", (int) n);
 
-    for (i = 0;  i < n;  ++i) {
-      datafile = primary->base._compactors._buffer[i];
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(primary->base._compactors._buffer[i]);
       DebugDatafileInfoDatafile(primary, datafile);
     }
   }
@@ -168,8 +167,8 @@ static void DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* primar
   if (n > 0) {
     printf("DATAFILES (%d)\n-----------------------------\n", (int) n);
 
-    for (i = 0;  i < n;  ++i) {
-      datafile = primary->base._datafiles._buffer[i];
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(primary->base._datafiles._buffer[i]);
       DebugDatafileInfoDatafile(primary, datafile);
     }
   }
@@ -398,7 +397,6 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
                                            size_t position,
                                            bool compactor) {
-  TRI_datafile_t* journal;
   TRI_collection_t* collection;
   TRI_vector_pointer_t* vector;
   int res;
@@ -420,7 +418,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
   }
 
   // seal and rename datafile
-  journal = vector->_buffer[position];
+  TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(vector->_buffer[position]);
   res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -492,14 +490,14 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   size_t i;
 
   // prefill with 0's to init counters
-  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
+  info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
 
   if (info == NULL) {
     return NULL;
   }
     
   for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
-    TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
+    TRI_doc_datafile_info_t* d = static_cast<TRI_doc_datafile_info_t*>(primary->_datafileInfo._table[i]);
 
     if (d != NULL) {
       info->_numberAlive        += d->_numberAlive;
@@ -643,7 +641,8 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
   n = primary->_datafileInfo._nrAlloc;
 
   for (i = 0; i < n; ++i) {
-    TRI_doc_datafile_info_t* dfi = primary->_datafileInfo._table[i];
+    TRI_doc_datafile_info_t* dfi = static_cast<TRI_doc_datafile_info_t*>(primary->_datafileInfo._table[i]);
+
     if (dfi != NULL) {
       FreeDatafileInfo(dfi);
     }
@@ -685,13 +684,10 @@ void TRI_RemoveDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary,
 TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary,
                                                                 TRI_voc_fid_t fid,
                                                                 bool create) {
-  TRI_doc_datafile_info_t const* found;
-  TRI_doc_datafile_info_t* dfi;
-
-  found = TRI_LookupByKeyAssociativePointer(&primary->_datafileInfo, &fid);
+  TRI_doc_datafile_info_t const* found = static_cast<TRI_doc_datafile_info_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_datafileInfo, &fid));
 
   if (found != NULL) {
-    return CONST_CAST(found);
+    return const_cast<TRI_doc_datafile_info_t*>(found);
   }
 
   if (! create) {
@@ -699,7 +695,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
   }
 
   // allocate and set to 0
-  dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true);
+  TRI_doc_datafile_info_t* dfi = static_cast<TRI_doc_datafile_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true));
 
   if (dfi == NULL) {
     return NULL;

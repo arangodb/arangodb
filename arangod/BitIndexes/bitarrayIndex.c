@@ -878,7 +878,7 @@ static void  BitarrayIndex_extendMaskSet(TRI_bitarray_mask_set_t* maskSet, const
   TRI_bitarray_mask_t* newArray;
 
   if (nSize <= 0) {
-    newSize = (increaseBy * maskSet->_arraySize) + 1;
+    newSize = (size_t) ((increaseBy * maskSet->_arraySize) + 1);
   }
   else {
     newSize = nSize;
@@ -1062,7 +1062,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
 
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
 
-    shiftLeft += valueList->_value._objects._length;
+    shiftLeft += (int) valueList->_value._objects._length;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1121,7 +1121,7 @@ int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relatio
     valueList = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
 
 
-    ignoreShiftLeft += valueList->_value._objects._length;
+    ignoreShiftLeft += (int) valueList->_value._objects._length;
 
     // .........................................................................
     // client did not send us this attribute (hence undefined value), therefore
@@ -1195,7 +1195,7 @@ int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relatio
 
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
 
-    shiftLeft += valueList->_value._objects._length;
+    shiftLeft += (int) valueList->_value._objects._length;
   }
 
   // ................................................................................

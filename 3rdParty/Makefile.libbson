@@ -1,0 +1,62 @@
+# -*- mode: Makefile; -*-
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                           LIBRARY
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief LIBBSON
+################################################################################
+
+BUILT_SOURCES += @LIBBSON_BUILT@
+LIBBSONDIR = @abs_top_srcdir@/3rdParty/libbson/BUILD
+
+@LIBBSON_LIBS@: @srcdir@/.libbson-build-@TRI_BITS@
+
+@srcdir@/.libbson-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING LIBBSON"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	-mkdir $(LIBBSONDIR)
+	cd @top_srcdir@/3rdParty/libbson/upstream \
+	        && ./autogen.sh \
+		&& ./configure \
+			--enable-static \
+			--disable-shared \
+			--prefix=$(LIBBSONDIR) \
+			--libdir=$(LIBBSONDIR)/libs \
+			CC=${CC} \
+			CXX=${CXX}
+
+	cd @top_srcdir@/3rdParty/libbson/upstream && $(MAKE) install
+
+	touch @srcdir@/.libbson-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD LIBBSON FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+
+CLEANUP_3RD += clean-libbson
+
+clean-libbson:
+	cd @top_srcdir@/3rdParty/libbson/upstream && ( $(MAKE) clean || true )
+	rm -f @srcdir@/.libbson-build-@TRI_BITS@
+	rm -rf $(LIBBSONDIR)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:
