@@ -1,4 +1,4 @@
-v2.0.2 (XXXX-XX-XX)
+v2.0.2-rc1 (XXXX-XX-XX)
 -------------------
 
 * during cluster startup, do not log (somewhat expected) connection errors with
