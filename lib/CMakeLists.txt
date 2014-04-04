@@ -116,10 +116,9 @@ add_library(
     Rest/InitialiseRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
-    Rest/Url.cpp
-    ShapedJson/json-shaper.c
-    ShapedJson/shape-accessor.c
-    ShapedJson/shaped-json.c
+    ShapedJson/json-shaper.cpp
+    ShapedJson/shape-accessor.cpp
+    ShapedJson/shaped-json.cpp
     Statistics/statistics.cpp
     Utilities/ScriptLoader.cpp
     Zip/ioapi.c

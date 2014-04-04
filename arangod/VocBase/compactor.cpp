@@ -245,12 +245,10 @@ static int CopyMarker (TRI_document_collection_t* document,
 static bool LocateDatafile (TRI_vector_pointer_t const* vector,
                             const TRI_voc_fid_t fid,
                             size_t* position) {
-  size_t i, n;
-  
-  n = vector->_length;
+  size_t const n = vector->_length;
 
-  for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* df = vector->_buffer[i];
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_datafile_t* df = static_cast<TRI_datafile_t*>(vector->_buffer[i]);
 
     if (df->_fid == fid) {
       *position = i;
@@ -484,7 +482,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
     TRI_doc_document_key_marker_t const* d;
-    TRI_doc_mptr_t* found2;
     TRI_voc_key_t key;
     bool deleted;
 
@@ -494,7 +491,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -516,7 +513,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
     deleted = found == NULL;
 
     if (deleted) {
@@ -530,7 +527,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       return true;
     }
 
-    found2 = CONST_CAST(found);
+    TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found); 
     assert(found2->_data != NULL);
     assert(((TRI_df_marker_t*) found2->_data)->_size > 0);
 
@@ -728,23 +725,17 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
                            void* data, 
                            TRI_datafile_t* datafile, 
                            bool journal) {
-  TRI_document_collection_t* document;
-  TRI_primary_collection_t* primary;
-  compaction_initial_context_t* context;
-  TRI_voc_size_t alignedSize;
-
-  context  = data;
-  document = context->_document;
-  primary  = &document->base;
+  compaction_initial_context_t* context  = static_cast<compaction_initial_context_t*>(data);
+  TRI_document_collection_t* document = context->_document;
+  TRI_primary_collection_t* primary  = &document->base;
     
-  alignedSize = TRI_DF_ALIGN_BLOCK(marker->_size);
+  TRI_voc_size_t alignedSize = TRI_DF_ALIGN_BLOCK(marker->_size);
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
     TRI_doc_document_key_marker_t const* d;
-    TRI_doc_mptr_t const* found;
     TRI_voc_key_t key;
     bool deleted;
 
@@ -754,7 +745,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
+    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -811,12 +802,8 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
 
   n = compactions->_length;
   for (i = 0; i < n; ++i) {
-    TRI_datafile_t* df;
-    compaction_info_t* compaction;
-    bool ok;
-
-    compaction = TRI_AtVector(compactions, i);
-    df = compaction->_datafile;
+    compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+    TRI_datafile_t* df = compaction->_datafile;
 
     if (i == 0) {
       // extract and store fid
@@ -825,7 +812,7 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
 
     context._keepDeletions = compaction->_keepDeletions;
     
-    ok = TRI_IterateDatafile(df, CalculateSize, &context, false, false);
+    bool ok = TRI_IterateDatafile(df, CalculateSize, &context, false, false);
 
     if (! ok) {
       context._failed = true;
@@ -885,12 +872,8 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   
   // now compact all datafiles
   for (i = 0; i < n; ++i) {
-    compaction_info_t* compaction;
-    TRI_datafile_t* df;
-    bool ok;
-    
-    compaction = TRI_AtVector(compactions, i);
-    df = compaction->_datafile;
+    compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+    TRI_datafile_t* df = compaction->_datafile;
     
     LOG_DEBUG("compacting datafile '%s' into '%s', number: %d, keep deletions: %d", 
               df->getName(df), 
@@ -903,7 +886,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     context._keepDeletions = compaction->_keepDeletions;
 
     // run the actual compaction of a single datafile
-    ok = TRI_IterateDatafile(df, Compactifier, &context, false, false);
+    bool ok = TRI_IterateDatafile(df, Compactifier, &context, false, false);
   
     if (! ok) {
       LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
@@ -950,11 +933,8 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     if (n > 1) {
       // create .dead files for all collected files 
       for (i = 0; i < n; ++i) {
-        compaction_info_t* compaction;
-        TRI_datafile_t* datafile;
-
-        compaction = TRI_AtVector(compactions, i);
-        datafile = compaction->_datafile;
+        compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+        TRI_datafile_t* datafile = compaction->_datafile;
 
         if (datafile->isPhysical(datafile)) {
           char* filename = TRI_Concatenate2String(datafile->getName(datafile), ".dead");
@@ -971,9 +951,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     RemoveCompactor(document, compactor);
 
     for (i = 0; i < n; ++i) {
-      compaction_info_t* compaction;
-
-      compaction = TRI_AtVector(compactions, i);
+      compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     
       // datafile is also empty after compaction and thus useless
       RemoveDatafile(document, compaction->_datafile);
@@ -990,11 +968,8 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     if (n > 1) {
       // create .dead files for all collected files but the first 
       for (i = 1; i < n; ++i) {
-        compaction_info_t* compaction;
-        TRI_datafile_t* datafile;
-
-        compaction = TRI_AtVector(compactions, i);
-        datafile = compaction->_datafile;
+        compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
+        TRI_datafile_t* datafile = compaction->_datafile;
 
         if (datafile->isPhysical(datafile)) {
           char* filename = TRI_Concatenate2String(datafile->getName(datafile), ".dead");
@@ -1009,9 +984,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 
     for (i = 0; i < n; ++i) {
       TRI_barrier_t* b;
-      compaction_info_t* compaction;
-
-      compaction = TRI_AtVector(compactions, i);
+      compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
 
       if (i == 0) {
         // add a rename marker 
@@ -1091,13 +1064,12 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   numAlive = 0;
 
   for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
     compaction_info_t compaction;
     uint64_t totalSize = 0;
     bool shouldCompact;
   
-    df = primary->base._datafiles._buffer[i];
+    TRI_datafile_t* df = static_cast<TRI_datafile_t*>(primary->base._datafiles._buffer[i]);
 
     assert(df != NULL);
 
@@ -1248,10 +1220,7 @@ static void UnlockCompaction (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
-  double now;
-  size_t i, n;
-
-  now = TRI_microtime();
+  double now = TRI_microtime();
  
   // check if we can acquire the write lock instantly
   if (! TryLockCompaction(vocbase)) {
@@ -1262,9 +1231,9 @@ static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
   // we are now holding the write lock
 
   // check if we have a still-valid compaction blocker
-  n = vocbase->_compactionBlockers._data._length;
-  for (i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+  size_t const n = vocbase->_compactionBlockers._data._length;
+  for (size_t i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
 
     if (blocker->_expires > now) {
       // found a compaction blocker. unlock and return
@@ -1315,7 +1284,6 @@ void TRI_DestroyCompactorVocBase (TRI_vocbase_t* vocbase) {
 
 bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
   double now;
-  size_t i, n;
 
   now = TRI_microtime();
   
@@ -1327,11 +1295,10 @@ bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
 
   // we are now holding the write lock
 
-  n = vocbase->_compactionBlockers._data._length;
- 
-  i = 0;
+  size_t n = vocbase->_compactionBlockers._data._length;
+  size_t i = 0;
   while (i < n) {
-    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
 
     if (blocker->_expires < now) {
       TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);
@@ -1386,10 +1353,7 @@ int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
 int TRI_TouchBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
                                       TRI_voc_tick_t id,
                                       double lifetime) {
-  size_t i, n;
-  bool found;
-
-  found = false;
+  bool found = false;
   
   if (lifetime <= 0.0) {
     return TRI_ERROR_BAD_PARAMETER;
@@ -1397,10 +1361,10 @@ int TRI_TouchBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
   
   LockCompaction(vocbase);
 
-  n = vocbase->_compactionBlockers._data._length;
+  size_t const n = vocbase->_compactionBlockers._data._length;
 
-  for (i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+  for (size_t i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
 
     if (blocker->_id == id) {
       blocker->_expires = TRI_microtime() + lifetime;
@@ -1442,17 +1406,14 @@ void TRI_UnlockCompactorVocBase (TRI_vocbase_t* vocbase) {
 
 int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
                                        TRI_voc_tick_t id) {
-  size_t i, n;
-  bool found;
-
-  found = false;
+  bool found = false;
 
   LockCompaction(vocbase);  
 
-  n = vocbase->_compactionBlockers._data._length;
+  size_t const n = vocbase->_compactionBlockers._data._length;
 
-  for (i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+  for (size_t i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(TRI_AtVector(&vocbase->_compactionBlockers._data, i));
 
     if (blocker->_id == id) {
       TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);

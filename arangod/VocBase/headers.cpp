@@ -363,20 +363,15 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
                                       size_t size) {
   simple_headers_t* headers = (simple_headers_t*) h;
   char const* header;
-  TRI_doc_mptr_t* result;
 
   assert(size > 0);
   
   if (headers->_freelist == NULL) {
-    char* begin;
-    char* ptr;
-    size_t blockSize;
-
-    blockSize = GetBlockSize(headers->_blocks._length);
+    size_t blockSize = GetBlockSize(headers->_blocks._length);
     TRI_ASSERT_MAINTAINER(blockSize > 0);
 
     // initialise the memory with 0's
-    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * sizeof(TRI_doc_mptr_t), true);
+    char* begin = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * sizeof(TRI_doc_mptr_t), true));
 
     // out of memory
     if (begin == NULL) {
@@ -384,7 +379,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
       return NULL;
     }
 
-    ptr = begin + sizeof(TRI_doc_mptr_t) * (blockSize - 1);
+    char* ptr = begin + sizeof(TRI_doc_mptr_t) * (blockSize - 1);
 
     header = NULL;
 
@@ -401,10 +396,10 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
   
   TRI_ASSERT_MAINTAINER(headers->_freelist != NULL);
 
-  result = CONST_CAST(headers->_freelist);
+  TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(headers->_freelist); 
   TRI_ASSERT_MAINTAINER(result != NULL);
 
-  headers->_freelist = result->_data;
+  headers->_freelist = static_cast<TRI_doc_mptr_t const*>(result->_data);
   result->_data = NULL;
 
   // put new header at the end of the list
@@ -564,7 +559,7 @@ static void DumpHeaders (TRI_headers_t const* h) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_headers_t* TRI_CreateSimpleHeaders () {
-  simple_headers_t* headers = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t), false);
+  simple_headers_t* headers = static_cast<simple_headers_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t), false));
 
   if (headers == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);

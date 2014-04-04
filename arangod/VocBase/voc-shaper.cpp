@@ -310,7 +310,7 @@ static void SetAttributeWeight (voc_shaper_t* shaper,
   // in the associative array. We need to pass this pointer to the Vector Pointer
   // ...........................................................................
 
-  item = TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(item->_aid));
+  item = static_cast<attribute_weight_t*>(TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(item->_aid)));
 
   if (item == NULL) {
     LOG_ERROR("attribute weight could not be located immediately after insert into associative array");
@@ -382,7 +382,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   void* f;
   int64_t searchResult;
   bool weighted;
-  attribute_weight_t* weightedAttribute;
 
   assert(name != NULL);
 
@@ -479,7 +478,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
   markerResult = (TRI_df_attribute_marker_t*) result;
 
-  weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
+  attribute_weight_t* weightedAttribute = static_cast<attribute_weight_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false));
 
   if (weightedAttribute != NULL) {
     weightedAttribute->_aid       = markerResult->_aid;
@@ -527,7 +526,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const* key) {
-  TRI_shape_aid_t const* k = key;
+  TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
 
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_aid_t));
 }
@@ -537,7 +536,7 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
-  TRI_df_attribute_marker_t const* e = element;
+  TRI_df_attribute_marker_t const* e = static_cast<TRI_df_attribute_marker_t const*>(element);
 
   return TRI_FnvHashPointer(&e->_aid, sizeof(TRI_shape_aid_t));
 }
@@ -547,8 +546,8 @@ static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void co
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* key, void const* element) {
-  TRI_shape_aid_t const* k = key;
-  TRI_df_attribute_marker_t const* e = element;
+  TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
+  TRI_df_attribute_marker_t const* e = static_cast<TRI_df_attribute_marker_t const*>(element);
 
   return *k == e->_aid;
 }
@@ -557,28 +556,25 @@ static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* ke
 /// @brief looks up an attribute name by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* LookupAttributeId (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
+static char const* LookupAttributeId (TRI_shaper_t* shaper, 
+                                      TRI_shape_aid_t aid) {
   voc_shaper_t* s = (voc_shaper_t*) shaper;
-  void const* p;
 
-  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
+  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
 
   if (p == NULL) {
     return NULL;
   }
-  else {
-    char const* a;
 
-    a = p;
-    return a + sizeof(TRI_df_attribute_marker_t);
-  }
+  return static_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute weight by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
+static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, 
+                                      TRI_shape_aid_t aid) {
   voc_shaper_t* s = (voc_shaper_t*) shaper;
   const attribute_weight_t* item;
 
@@ -609,9 +605,10 @@ static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, TRI_shape_aid_t aid)
 /// @brief hashes the shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementShape (TRI_associative_synced_t* array, void const* element) {
-  char const* e = element;
-  TRI_shape_t const* ee = element;
+static uint64_t HashElementShape (TRI_associative_synced_t* array, 
+                                  void const* element) {
+  char const* e = static_cast<char const*>(element);
+  TRI_shape_t const* ee = static_cast<TRI_shape_t const*>(element);
 
   return TRI_FnvHashPointer(e + + sizeof(TRI_shape_sid_t), ee->_size - sizeof(TRI_shape_sid_t));
 }
@@ -620,12 +617,14 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array, void const* e
 /// @brief compares shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualElementShape (TRI_associative_synced_t* array, void const* left, void const* right) {
-  char const* l = left;
-  char const* r = right;
+static bool EqualElementShape (TRI_associative_synced_t* array, 
+                               void const* left, 
+                               void const* right) {
+  char const* l = static_cast<char const*>(left);
+  char const* r = static_cast<char const*>(right);
 
-  TRI_shape_t const* ll = left;
-  TRI_shape_t const* rr = right;
+  TRI_shape_t const* ll = static_cast<TRI_shape_t const*>(left);
+  TRI_shape_t const* rr = static_cast<TRI_shape_t const*>(right);
 
   return (ll->_size == rr->_size)
     && memcmp(l + sizeof(TRI_shape_sid_t),
@@ -662,7 +661,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   found = TRI_LookupBasicShapeShaper(shape);
 
   if (found == NULL) {
-    found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
+    found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
   }
 
   // shape found, free argument and return
@@ -699,7 +698,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // lock the index and check the element is still missing
   TRI_LockMutex(&s->_shapeLock);
 
-  found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
+  found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
 
   if (found != 0) {
     TRI_UnlockMutex(&s->_shapeLock);
@@ -850,7 +849,7 @@ static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
   // Allocate memory to hold the attribute information required for comparison
   // .............................................................................
   
-  *attributeArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizeof(weighted_attribute_t) * (fixedEntries + variableEntries)), false);   
+  *attributeArray = static_cast<weighted_attribute_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizeof(weighted_attribute_t) * (fixedEntries + variableEntries)), false));
 
   if (*attributeArray == NULL) {
     return -1;
@@ -896,7 +895,7 @@ static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
 
 static uint64_t HashKeyShapeId (TRI_associative_synced_t* array, 
                                 void const* key) {
-  TRI_shape_sid_t const* k = key;
+  TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
 
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_sid_t));
 }
@@ -907,7 +906,7 @@ static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
 
 static uint64_t HashElementShapeId (TRI_associative_synced_t* array, 
                                     void const* element) {
-  TRI_shape_t const* e = element;
+  TRI_shape_t const* e = static_cast<TRI_shape_t const*>(element);
 
   return TRI_FnvHashPointer(&e->_sid, sizeof(TRI_shape_sid_t));
 }
@@ -919,8 +918,8 @@ static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
 static bool EqualKeyShapeId (TRI_associative_synced_t* array, 
                              void const* key, 
                              void const* element) {
-  TRI_shape_sid_t const* k = key;
-  TRI_shape_t const* e = element;
+  TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
+  TRI_shape_t const* e = static_cast<TRI_shape_t const*>(element);
 
   return *k == e->_sid;
 }
@@ -935,7 +934,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper,
 
   if (shape == NULL) {
     voc_shaper_t* s = (voc_shaper_t*) shaper;
-    shape = TRI_LookupByKeyAssociativeSynced(&s->_shapeIds, &sid);
+    shape = static_cast<TRI_shape_t const*>(TRI_LookupByKeyAssociativeSynced(&s->_shapeIds, &sid));
   }
 
   return shape;
@@ -946,7 +945,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void const* element) {
-  TRI_shape_access_t const* ee = element;
+  TRI_shape_access_t const* ee = static_cast<TRI_shape_access_t const*>(element);
   uint64_t v[2];
 
   v[0] = ee->_sid;
@@ -960,12 +959,11 @@ static uint64_t HashElementAccessor (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* left, void const* right) {
-  TRI_shape_access_t const* ll = left;
-  TRI_shape_access_t const* rr = right;
+  TRI_shape_access_t const* ll = static_cast<TRI_shape_access_t const*>(left);
+  TRI_shape_access_t const* rr = static_cast<TRI_shape_access_t const*>(right);
 
   return ll->_sid == rr->_sid && ll->_pid == rr->_pid;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hashes a weighted attribute
@@ -1165,10 +1163,7 @@ static int InitStep3VocShaper (voc_shaper_t* shaper) {
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    TRI_document_collection_t* document) {
-  voc_shaper_t* shaper;
-  int res;
-
-  shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+  voc_shaper_t* shaper = static_cast<voc_shaper_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false));
 
   if (shaper == NULL) {
     // out of memory
@@ -1177,7 +1172,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
 
   shaper->_collection = document;
 
-  res = TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
+  int res = TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
@@ -1387,7 +1382,6 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
   char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
   void* f;
-  attribute_weight_t* weightedAttribute;
 
   LOG_TRACE("found attribute '%s', aid: %lu", p, (unsigned long) m->_aid);
 
@@ -1427,7 +1421,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   // have been loaded into memory.
   // .........................................................................
 
-  weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
+  attribute_weight_t* weightedAttribute = static_cast<attribute_weight_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false));
 
   if (weightedAttribute != NULL) {
     attribute_weight_t* result;
@@ -1454,9 +1448,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
     result = (attribute_weight_t*) TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid), weightedAttribute, false);
 
     if (result == NULL) {
-      attribute_weight_t* weightedItem;
-
-      weightedItem = TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid));
+      attribute_weight_t* weightedItem = static_cast<attribute_weight_t*>(TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid)));
 
       if (weightedItem == NULL ||
           weightedItem->_aid != weightedAttribute->_aid) {
@@ -1488,14 +1480,12 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
   voc_shaper_t* shaper = (voc_shaper_t*) s;
   TRI_shape_access_t search;
   TRI_shape_access_t* accessor;
-  TRI_shape_access_t const* found;
 
   search._sid = sid;
   search._pid = pid;
 
-
   TRI_LockMutex(&shaper->_accessorLock);
-  found = TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search);
+  TRI_shape_access_t const* found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
 
   if (found == NULL) {
     found = accessor = TRI_ShapeAccessor(&shaper->base, sid, pid);
@@ -1610,7 +1600,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
 
     left._sid = leftObject->_sid;
     left._data.length = leftObject->_length;
-    left._data.data = CONST_CAST(ptr + leftObject->_offset);
+    left._data.data = const_cast<char*>(ptr) + leftObject->_offset;
   }
   else {
     left = *leftShaped;
@@ -1622,7 +1612,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
 
     right._sid = rightObject->_sid;
     right._data.length = rightObject->_length;
-    right._data.data = CONST_CAST(ptr + rightObject->_offset);
+    right._data.data = const_cast<char*>(ptr) + rightObject->_offset;
   }
   else {
     right = *rightShaped;

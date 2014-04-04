@@ -364,7 +364,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   TRI_CLOSE(datafile->_fd);
 
-  datafile->_data = data;
+  datafile->_data = static_cast<char*>(data);
   datafile->_next = (char*)(data) + vocSize;
   datafile->_currentSize = vocSize; 
   datafile->_maximalSize = maximalSize;
@@ -373,7 +373,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   datafile->_state = TRI_DF_STATE_CLOSED;
   datafile->_full = false;
   datafile->_isSealed = false;
-  datafile->_synced = data;
+  datafile->_synced = static_cast<char*>(data);
   datafile->_written = datafile->_next;
   
   // rename files
@@ -645,8 +645,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char* pos1;
-  char* pos2;
+  char const* pos1;
+  char const* pos2;
 
   pos1 = strrchr(filename, '.');
 
@@ -669,7 +669,6 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 
 static TRI_datafile_t* OpenDatafile (char const* filename, 
                                      bool ignoreErrors) {
-  TRI_datafile_t* datafile;
   TRI_voc_size_t size;
   TRI_voc_fid_t fid;
   bool ok;
@@ -788,7 +787,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   }
 
   // create datafile structure
-  datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
+  TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
   if (datafile == NULL) {
     TRI_UNMMFile(data, size, fd, &mmHandle);
@@ -804,7 +803,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
                size,
                size,
                fid,
-               data);
+               static_cast<char*>(data));
 
   return datafile;
 }
@@ -957,7 +956,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
                maximalSize,
                0,
                fid,
-               data);
+               static_cast<char*>(data));
 
   return datafile;
 }
@@ -1019,7 +1018,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                maximalSize,
                0,
                fid,
-               data);
+               static_cast<char*>(data));
 
   return datafile;
 }
@@ -1169,11 +1168,11 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
     crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
 
     if (keyBody != NULL && 0 < keyBodySize) {
-      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
+      crc = TRI_BlockCrc32(crc, static_cast<char const*>(keyBody), keyBodySize);
     }
 
     if (body != NULL && 0 < bodySize) {
-      crc = TRI_BlockCrc32(crc, body, bodySize);
+      crc = TRI_BlockCrc32(crc, static_cast<char const*>(body), bodySize);
     }
 
     marker->_crc = TRI_FinalCrc32(crc);
@@ -1258,7 +1257,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               bool forceSync) {
 
   TRI_voc_tick_t tick       = marker->_tick;
-  TRI_df_marker_type_e type = marker->_type;
+  TRI_df_marker_type_e type = (TRI_df_marker_type_e) (int) marker->_type;
    
   assert(tick > 0);
 
@@ -1349,7 +1348,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
   if (forceSync) {
     bool ok;
 
-    ok = datafile->sync(datafile, position, ((char*) position) + markerSize);
+    ok = datafile->sync(datafile, static_cast<char const*>(position), ((char*) position) + markerSize);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
