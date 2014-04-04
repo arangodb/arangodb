@@ -8723,6 +8723,20 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   be changed once set.
 ///   This option is meaningless in a single server setup.
 ///
+///   When choosing the shard keys, one must be aware of the following
+///   rules and limitations: In a sharded collection with more than
+///   one shard it is not possible to set up a unique constraint on
+///   an attribute that is not the one and only shard key given in
+///   `shardKeys`. This is because enforcing a unique constraint
+///   would otherwise make a global index necessary or need extensive
+///   communication for every single write operation. Furthermore, if
+///   `_key` is not the one and only shard key, then it is not possible
+///   to set the `_key` attribute when inserting a document, provided
+///   the collection has more than one shard. Again, this is because
+///   the database has to enforce the unique constraint on the `_key`
+///   attribute and this can only be done efficiently if this is the
+///   only shard key by delegating to the individual shards.
+///
 /// @EXAMPLES
 ///
 /// With defaults:
