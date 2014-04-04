@@ -44,7 +44,6 @@
 #include "Basics/InitialiseBasics.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
-#include "Rest/Url.h"
 #include "Statistics/statistics.h"
 
 // -----------------------------------------------------------------------------
@@ -116,7 +115,6 @@ namespace triagens {
     void InitialiseRest (int argc, char* argv[]) {
       TRIAGENS_BASICS_INITIALISE(argc, argv);
 
-      TRI_InitialiseUrl();
       TRI_InitialiseStatistics();
 
       SSL_library_init();
@@ -138,7 +136,6 @@ namespace triagens {
         opensslCleanup();
 #endif
 
-      TRI_ShutdownUrl();
       TRI_ShutdownStatistics();
 
       TRIAGENS_BASICS_SHUTDOWN;
