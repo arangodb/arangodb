@@ -3668,6 +3668,36 @@ input.gv-radio-button {
 @media (min-width: 1042px) and (max-width: 1284px) {
   .arango-collection-ul a {
     font-size: 13px; } }
+.arango-table {
+  border-top: 1px solid #000;
+  width: 100%; }
+  .arango-table thead {
+    background-color: #fff; }
+    .arango-table thead th {
+      border-bottom: 1px solid #c2c2c2;
+      height: 43px; }
+  .arango-table tbody tr:nth-child(even) {
+    background-color: #fff; }
+  .arango-table tbody tr:nth-child(odd) {
+    background: #f1f0ee; }
+  .arango-table tbody td {
+    padding: 10px 18px; }
+
+.arango-tabbar {
+  height: 27px;
+  width: 100%; }
+  .arango-tabbar button {
+    background: #f1f0ee;
+    border: 0;
+    float: right;
+    height: 27px;
+    width: 82px; }
+  .arango-tabbar .arango-active-tab {
+    background-color: #fff;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    border-top: 1px solid #000; }
+
 .arangoDataTable {
   border-spacing: 0 0;
   position: relative;
