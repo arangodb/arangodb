@@ -48,7 +48,7 @@
   SetCompressor @CPACK_NSIS_COMPRESSOR@
 
   ;Require administrator access
-  RequestExecutionLevel admin
+  RequestExecutionLevel highest
 
 @CPACK_NSIS_DEFINES@
 
@@ -562,6 +562,7 @@ FunctionEnd
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
   Page custom InstallOptionsPage
   !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
 
   ;Start Menu Folder Page Configuration
@@ -778,16 +779,60 @@ Function default_installation_directory
     Abort
   checkSingleUser:
     StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+    SetShellVarContext all
+    MessageBox MB_OK "all $DOCUMENTS"
     SetShellVarContext current
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    MessageBox MB_OK "single user $DOCUMENTS"
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+;    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
   all_users:
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
+    MessageBox MB_OK "all users $DOCUMENTS"
     StrCpy $TRI_INSTALL_AS_SERVICE '1'
+;    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 FunctionEnd
 
+; Workaroound until we can use system calls
+; or a plugin http://nsis.sourceforge.net/AccessControl_plug-in
+Function is_writable 
+  ClearErrors
+  FileOpen $0 $INSTDIR\___tri_test___ w
+  FileWrite $0 "ok"
+  FileClose $0
+  StrCpy $2 "file writen"
+  IfErrors there_are_errors
+
+  ClearErrors
+  FileOpen $0 $INSTDIR\___tri_test___ r
+  IfErrors there_are_errors
+  FileRead $0 $1
+  FileClose $0
+  StrCpy $2 "file read"
+  IfErrors there_are_errors
+  Delete $INSTDIR\___tri_test___ 
+  StrCpy $2 "file deleted"
+  IfErrors there_are_errors
+    MessageBox MB_OK "no errors" 
+  StrCpy $1 "1"
+  return
+  there_are_errors:
+;    MessageBox MB_OK "$2"
+    DELETE $INSTDIR\___tri_test___ 
+    ClearErrors
+    StrCpy $1 "0"
+FunctionEnd
+
+Function check_installation_directory
+   Call is_writable
+   StrCmp $1 "0" handle_error
+   return
+   handle_error:
+     MessageBox MB_YESNO "you aren't allowed to install arango in $INSTDIR do you want try once more?" IDNO no
+       Abort
+     no: Quit
+FunctionEnd
 
 ;--------------------------------
 ; determine admin versus local install
