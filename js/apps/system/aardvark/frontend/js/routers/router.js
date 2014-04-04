@@ -31,13 +31,7 @@
             "graphManagement/delete/:name": "graphDelete",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
-            "testing": "testview",
-            "testModalView": "testmodalview"
-        },
-
-        testmodalview: function() {
-          this.testModalView = new window.testModalView();
-          this.testModalView.render();
+            "testing": "testview"
         },
 
         testview: function () {
