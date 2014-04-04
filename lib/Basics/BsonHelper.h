@@ -46,6 +46,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         bson_t _bson;        // this class is only a very thin wrapping layer
+        uint32_t count;      // for array appending
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,34 +58,105 @@ namespace triagens {
 /// @brief Create an empty Bson structure
 ////////////////////////////////////////////////////////////////////////////////
 
-        Bson () {
+        void init () {
           bson_init(&_bson);
+          count = 0;
         }
 
-        Bson (uint8_t const* data, uint32_t length) {
-          bson_init_static(&_bson, data, length);
-        }
-
-        ~Bson () {
+        void destruct () {
           bson_destroy(&_bson);
         }
 
+        Bson () {
+          // This will be empty but can mutable.
+          init();
+        }
+
+        Bson (uint8_t const* data, uint32_t length) {
+          // This will be readonly!
+          bson_init_static(&_bson, data, length);
+          count = 0;
+        }
+
+        ~Bson () {
+          destruct();
+        }
+
         uint8_t const* getBuffer () {
-          return bson_data(&_bson);
+          // Only usable to copy out.
+          return bson_get_data(&_bson);
         }
 
         uint8_t* steal (uint32_t* length) {
+          // Ownership goes over to the caller.
           uint8_t* buf = bson_destroy_with_steal(&_bson, true, length);
           bson_init(&_bson);
+          return buf;
         }
 
         void clear () {
           bson_reinit(&_bson);
+          count = 0;
         }
 
-        
-        
+        bool append_undefined (string const key) {
+          // Returns false if append did not work.
+          return bson_append_undefined(&_bson, key.c_str(), key.size());
+        }
 
+        bool append_null (string const key) {
+          // Returns false if append did not work.
+          return bson_append_null(&_bson, key.c_str(), key.size());
+        }
+
+        bool append_bool (string const key, bool value) {
+          // Returns false if append did not work.
+          return bson_append_bool(&_bson, key.c_str(), key.size(), value);
+        }
+
+        bool append_double (string const key, double value) {
+          // Returns false if append did not work.
+          return bson_append_double(&_bson, key.c_str(), key.size(), value);
+        }
+
+        bool append_utf8 (string const key, string value) {
+          // Returns false if append did not work.
+          return bson_append_utf8(&_bson, key.c_str(), key.size(), 
+                                          value.c_str(), value.size());
+        }
+
+        bool append_document_begin (string const key, Bson& child) {
+          // Returns false if append did not work, child will be
+          // destroyed and reinitialised, even if the append operation
+          // did not work.
+          bool result;
+          child.destruct();
+          result = bson_append_document_begin(&_bson, key.c_str(), key.size(),
+                                              &child._bson);
+          if (result) {
+            child.count = 0;
+            return true;
+          }
+          else {
+            child.init();
+            return false;
+          }
+        }
+
+        bool append_document_end (string const key, Bson& child) {
+          // Returns false if append did not work, child will be
+          // empty afterwards, even if the append operation did not work.
+          bool result;
+          result = bson_append_document_end(&_bson, &child._bson);
+          child.init();
+          return result;
+        }
+
+
+    };   // class Bson
+
+  }  // namespace triagens.basics
+}  // namespace triagens
 #endif
 
 // Local Variables:
