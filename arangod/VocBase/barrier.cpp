@@ -94,6 +94,14 @@ static void LinkBarrierElement (TRI_barrier_t* element,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief allocate memory for a barrier of a certain type
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T> static T* CreateBarrier () {
+  return static_cast<T*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(T), false));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,11 +201,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
                                           size_t line,
                                           char const* filename) {
-  TRI_barrier_blocker_t* element;
-
-  assert(container != NULL);
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_blocker_t), false);
+  TRI_barrier_blocker_t* element = CreateBarrier<TRI_barrier_blocker_t>();
 
   if (element == NULL) {
     return NULL;
@@ -220,9 +224,7 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container) {
-  TRI_barrier_replication_t* element;
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_replication_t), false);
+  TRI_barrier_replication_t* element = CreateBarrier<TRI_barrier_replication_t>();
 
   if (element == NULL) {
     return NULL;
@@ -240,9 +242,7 @@ TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container) {
-  TRI_barrier_compaction_t* element;
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_compaction_t), false);
+  TRI_barrier_compaction_t* element = CreateBarrier<TRI_barrier_compaction_t>();
 
   if (element == NULL) {
     return NULL;
@@ -263,9 +263,7 @@ TRI_barrier_t* TRI_CreateBarrierDropDatafile (TRI_barrier_list_t* container,
                                               TRI_datafile_t* datafile,
                                               void (*callback) (struct TRI_datafile_s*, void*),
                                               void* data) {
-  TRI_barrier_datafile_drop_cb_t* element;
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_drop_cb_t), false);
+  TRI_barrier_datafile_drop_cb_t* element = CreateBarrier<TRI_barrier_datafile_drop_cb_t>();
 
   if (element == NULL) {
     return NULL;
@@ -291,9 +289,7 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
                                                 TRI_datafile_t* datafile,
                                                 void (*callback) (struct TRI_datafile_s*, void*),
                                                 void* data) {
-  TRI_barrier_datafile_rename_cb_t* element;
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_rename_cb_t), false);
+  TRI_barrier_datafile_rename_cb_t* element = CreateBarrier<TRI_barrier_datafile_rename_cb_t>();
 
   if (element == NULL) {
     return NULL;
@@ -319,10 +315,7 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
                                                   struct TRI_collection_s* collection,
                                                   bool (*callback) (struct TRI_collection_s*, void*),
                                                   void* data) {
-  TRI_barrier_collection_cb_t* element;
-
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
+  TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
   if (element == NULL) {
     return NULL;
@@ -348,9 +341,7 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
                                                 struct TRI_collection_s* collection,
                                                 bool (*callback) (struct TRI_collection_s*, void*),
                                                 void* data) {
-  TRI_barrier_collection_cb_t* element;
-
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
+  TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
   if (element == NULL) {
     return NULL;

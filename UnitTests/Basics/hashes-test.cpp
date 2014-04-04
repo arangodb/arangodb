@@ -258,21 +258,25 @@ BOOST_AUTO_TEST_CASE (tst_crc32_simple) {
   buffer = "";
   BOOST_CHECK_EQUAL((uint64_t) 0ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 0ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 0ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = " ";
   BOOST_CHECK_EQUAL((uint64_t) 3916222277ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 3916222277ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 3916222277ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "  ";
   BOOST_CHECK_EQUAL((uint64_t) 4013102741ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 4013102741ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 4013102741ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "a";
   BOOST_CHECK_EQUAL((uint64_t) 3904355907ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 3904355907ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 3904355907ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "A";
@@ -343,11 +347,13 @@ BOOST_AUTO_TEST_CASE (tst_crc32_simple) {
   buffer = "the quick brown fox jumped over the lazy dog";
   BOOST_CHECK_EQUAL((uint64_t) 3783847129ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 3783847129ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 3783847129ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 
 
   buffer = "The Quick Brown Fox Jumped Over The Lazy Dog";
   BOOST_CHECK_EQUAL((uint64_t) 3804975563ULL, TRI_Crc32HashString(buffer.c_str()));
   BOOST_CHECK_EQUAL((uint64_t) 3804975563ULL, TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
+  BOOST_CHECK_EQUAL((uint64_t) 3804975563ULL, TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), buffer.c_str(), strlen(buffer.c_str()))));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

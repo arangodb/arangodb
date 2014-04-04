@@ -463,7 +463,7 @@ bool TRI_IsAllowedNameCollection (bool,
 /// @brief return the type name for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_TypeNameCollection (const TRI_col_type_e);
+char const* TRI_TypeNameCollection (const TRI_col_type_e);
 
 #ifdef __cplusplus
 }

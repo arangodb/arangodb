@@ -635,9 +635,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase) {
-  TRI_replication_applier_t* applier;
-
-  applier = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_applier_t), false);
+  TRI_replication_applier_t* applier = static_cast<TRI_replication_applier_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_applier_t), false));
 
   if (applier == NULL) {
     return NULL;

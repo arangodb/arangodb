@@ -88,7 +88,7 @@ logger_client_t;
 
 static uint64_t HashKeyClient (TRI_associative_pointer_t* array, 
                                void const* key) {
-  TRI_server_id_t const* k = key;
+  TRI_server_id_t const* k = static_cast<TRI_server_id_t const*>(key);
 
   return (uint64_t) *k;
 }
@@ -99,7 +99,7 @@ static uint64_t HashKeyClient (TRI_associative_pointer_t* array,
 
 static uint64_t HashElementClient (TRI_associative_pointer_t* array, 
                                    void const* element) {
-  logger_client_t const* e = element;
+  logger_client_t const* e = static_cast<logger_client_t const*>(element);
   
   return (uint64_t) e->_serverId;
 }
@@ -111,8 +111,8 @@ static uint64_t HashElementClient (TRI_associative_pointer_t* array,
 static bool IsEqualKeyClient (TRI_associative_pointer_t* array, 
                               void const* key, 
                               void const* element) {
-  TRI_server_id_t const* k = key;
-  logger_client_t const* e = element;
+  TRI_server_id_t const* k = static_cast<TRI_server_id_t const*>(key);
+  logger_client_t const* e = static_cast<logger_client_t const*>(element);
 
   return *k == e->_serverId;
 }
@@ -135,7 +135,7 @@ static void FreeClients (TRI_replication_logger_t* logger) {
   n = logger->_clients._nrAlloc;
 
   for (i = 0; i < n; ++i) {
-    logger_client_t* client = logger->_clients._table[i];
+    logger_client_t* client = static_cast<logger_client_t*>(logger->_clients._table[i]);
 
     if (client != NULL) {
       FreeClient(client);
@@ -367,11 +367,10 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
-  TRI_string_buffer_t* buffer;
   size_t n;
    
   assert(logger != NULL);
-  buffer = NULL;
+  TRI_string_buffer_t* buffer = NULL;
 
   // locked section
   // ---------------------------------------
@@ -380,7 +379,7 @@ static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   n = logger->_buffers._length;
 
   if (n > 0) {
-    buffer = TRI_RemoveVectorPointer(&logger->_buffers, (size_t) (n - 1));
+    buffer = static_cast<TRI_string_buffer_t*>(TRI_RemoveVectorPointer(&logger->_buffers, (size_t) (n - 1)));
   }
 
   TRI_UnlockSpin(&logger->_bufferLock);
@@ -469,7 +468,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
     TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
                          &json, 
-                         "type", 
+                         (char*) "type", 
                          4, // strlen("type")
                          &typeAttribute,
                          true);
@@ -482,7 +481,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
     TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
                          &json, 
-                         "tid", 
+                         (char*) "tid", 
                          3, // strlen("tid")
                          &tidAttribute,
                          true);
@@ -496,7 +495,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
     TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
                          &json, 
-                         "data", 
+                         (char*) "data", 
                          4, // strlen("data")
                          &dataAttribute,
                          true);
@@ -859,10 +858,9 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
   n = trx->_collections._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection;
     TRI_document_collection_t* document;
 
-    trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_operations == NULL) {
       // no markers available for collection
@@ -1187,9 +1185,7 @@ static bool HasRelevantOperations (TRI_transaction_t const* trx) {
   n = trx->_collections._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection;
-
-    trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
     assert(trxCollection != NULL);
 
     if (trxCollection->_operations == NULL ||
@@ -1242,11 +1238,10 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
   assert(n > 0);
 
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection;
     TRI_document_collection_t* document;
     size_t j, k;
 
-    trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_operations == NULL) {
       // no markers available for collection
@@ -1264,10 +1259,9 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     assert(k > 0);
 
     for (j = 0; j < k; ++j) {
-      TRI_transaction_operation_t* trxOperation;
       TRI_replication_operation_e type;
 
-      trxOperation = TRI_AtVector(trxCollection->_operations, j);
+      TRI_transaction_operation_t* trxOperation = static_cast<TRI_transaction_operation_t*>(TRI_AtVector(trxCollection->_operations, j));
   
       buffer = GetBuffer(logger);
 
@@ -1371,18 +1365,14 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
-  TRI_replication_logger_t* logger;
-  char* filename;
-  int res;
-
-  logger = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_logger_t), false);
+  TRI_replication_logger_t* logger = static_cast<TRI_replication_logger_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_logger_t), false));
 
   if (logger == NULL) {
     return NULL;
   }
  
   // init string buffers 
-  res = InitBuffers(logger);
+  int res = InitBuffers(logger);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // out of memory
@@ -1430,7 +1420,7 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   assert(logger->_databaseName != NULL);
   
   // check if there is a configuration file to load
-  filename = GetConfigurationFilename(vocbase);
+  char* filename = GetConfigurationFilename(vocbase);
 
   if (filename != NULL) {
     LOG_TRACE("looking for replication logger configuration in '%s'", filename);
@@ -1659,7 +1649,7 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
   n = logger->_clients._nrAlloc;
 
   for (i = 0; i < n; ++i) {
-    logger_client_t* client = logger->_clients._table[i];
+    logger_client_t* client = static_cast<logger_client_t*>(logger->_clients._table[i]);
 
     if (client != NULL) {
       TRI_json_t* element = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -1699,10 +1689,7 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
                                         TRI_server_id_t serverId,
                                         TRI_voc_tick_t lastServedTick) {
 
-  logger_client_t* client;
-  void* found;
-  
-  client = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(logger_client_t), false);
+  logger_client_t* client = static_cast<logger_client_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(logger_client_t), false));
 
   if (client == NULL) {
     return;
@@ -1715,7 +1702,7 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
 
   TRI_WriteLockReadWriteLock(&logger->_clientsLock);
 
-  found = TRI_RemoveKeyAssociativePointer(&logger->_clients, &client->_serverId);
+  void* found = TRI_RemoveKeyAssociativePointer(&logger->_clients, &client->_serverId);
 
   if (found != NULL) {
     FreeClient((logger_client_t*) found); 
