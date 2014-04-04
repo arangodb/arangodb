@@ -49,6 +49,16 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables 
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief page size
+////////////////////////////////////////////////////////////////////////////////
+
+size_t PageSize;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
 
@@ -99,12 +109,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief page size
-////////////////////////////////////////////////////////////////////////////////
-
-size_t PageSize;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief random server identifier (16 bit)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -142,7 +146,7 @@ static TRI_server_id_t ServerId;
 
 static uint64_t HashElementDatabaseName (TRI_associative_pointer_t* array,
                                          void const* element) {
-  TRI_vocbase_t const* e = element;
+  TRI_vocbase_t const* e = static_cast<TRI_vocbase_t const*>(element);
 
   return TRI_FnvHashString((char const*) e->_name);
 }
@@ -154,8 +158,8 @@ static uint64_t HashElementDatabaseName (TRI_associative_pointer_t* array,
 static bool EqualKeyDatabaseName (TRI_associative_pointer_t* array,
                                   void const* key,
                                   void const* element) {
-  char const* k = (char const*) key;
-  TRI_vocbase_t const* e = element;
+  char const* k = static_cast<char const*>(key);
+  TRI_vocbase_t const* e = static_cast<TRI_vocbase_t const*>(element);
 
   return TRI_EqualString(k, e->_name);
 }
@@ -860,14 +864,14 @@ static int OpenDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases (TRI_server_t* server) {
-  size_t i, n;
+  size_t n;
 
   WRITE_LOCK_DATABASES(server->_databasesLock);
 
   n = server->_databases._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_databases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != NULL) {
       assert(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
@@ -883,8 +887,8 @@ static int CloseDatabases (TRI_server_t* server) {
 #ifdef TRI_ENABLE_CLUSTER  
   n = server->_coordinatorDatabases._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != NULL) {
       assert(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
@@ -1449,14 +1453,12 @@ static int InitDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DatabaseManager (void* data) {
-  TRI_server_t* server;
   bool shutdown;
 
-  server = data;
+  TRI_server_t* server = static_cast<TRI_server_t*>(data);
 
   while (true) {
     TRI_vocbase_t* database;
-    size_t i, n;
 
     TRI_LockMutex(&server->_createLock);
     shutdown = server->_shutdown;
@@ -1467,10 +1469,10 @@ static void DatabaseManager (void* data) {
 
     READ_LOCK_DATABASES(server->_databasesLock);
 
-    n = server->_droppedDatabases._length;
+    size_t const n = server->_droppedDatabases._length;
 
-    for (i = 0; i < n; ++i) {
-      TRI_vocbase_t* vocbase = TRI_AtVectorPointer(&server->_droppedDatabases, i);
+    for (size_t i = 0; i < n; ++i) {
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_AtVectorPointer(&server->_droppedDatabases, i));
 
       if (! TRI_CanRemoveVocBase(vocbase)) {
         continue;
@@ -1572,11 +1574,7 @@ static void DatabaseManager (void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_server_t* TRI_CreateServer () {
-  TRI_server_t* server;
-
-  server = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_server_t), true);
-
-  return server;
+  return static_cast<TRI_server_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_server_t), true));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2059,9 +2057,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
                                          char const* name,
                                          TRI_vocbase_defaults_t const* defaults,
                                          TRI_vocbase_t** database) {
-  TRI_vocbase_t* vocbase;
-  int res;
-
   if (! TRI_IsAllowedNameVocBase(true, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -2070,7 +2065,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   READ_LOCK_DATABASES(server->_databasesLock);
 
-  vocbase = TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name);
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
   if (vocbase != NULL) {
     // name already in use
@@ -2089,7 +2084,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
     TRI_UnlockMutex(&server->_createLock);
 
     // grab last error
-    res = TRI_errno();
+    int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
       // but we must have an error...
@@ -2145,11 +2140,8 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
                               char const* name,
                               TRI_vocbase_defaults_t const* defaults,
                               TRI_vocbase_t** database) {
-  TRI_vocbase_t* vocbase;
-  TRI_voc_tick_t tick;
   char* file;
   char* path;
-  int res;
 
   if (! TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
@@ -2159,7 +2151,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   READ_LOCK_DATABASES(server->_databasesLock);
 
-  vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase != NULL) {
     // name already in use
@@ -2173,8 +2165,8 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   READ_UNLOCK_DATABASES(server->_databasesLock);
 
   // create the database directory
-  tick = TRI_NewTickServer();
-  res = CreateDatabaseDirectory(server, tick, name, defaults, &file);
+  TRI_voc_tick_t tick = TRI_NewTickServer();
+  int res = CreateDatabaseDirectory(server, tick, name, defaults, &file);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&server->_createLock);
@@ -2241,15 +2233,14 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
   TRI_vector_t v;
   TRI_voc_tick_t* data;
   TRI_voc_tick_t zero;
-  size_t i, n;
 
   TRI_InitVector(&v, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tick_t));
 
   READ_LOCK_DATABASES(server->_databasesLock);
-  n = server->_coordinatorDatabases._nrAlloc;
+  size_t const n = server->_coordinatorDatabases._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != NULL &&
         ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
@@ -2259,7 +2250,7 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
 
   READ_UNLOCK_DATABASES(server->_databasesLock);
 
-  // append a 0
+  // append a 0 as the end marker
   zero = 0;
   TRI_PushBackVector(&v, &zero);
 
@@ -2281,10 +2272,7 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                            TRI_voc_tick_t id,
                                            bool force) {
-  size_t i, n;
-  int res;
-  
-  res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
 
   WRITE_LOCK_DATABASES(server->_databasesLock);
 
@@ -2295,9 +2283,9 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  n = server->_coordinatorDatabases._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_coordinatorDatabases._table[i];
+  size_t const n = server->_coordinatorDatabases._nrAlloc;
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != NULL && 
         vocbase->_id == id &&
@@ -2328,9 +2316,6 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 #ifdef TRI_ENABLE_CLUSTER
 int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
                                        char const* name) {
-  TRI_vocbase_t* vocbase;
-  int res;
-
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -2345,7 +2330,8 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  vocbase = TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, name);
+  int res = TRI_ERROR_INTERNAL;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
   if (vocbase == NULL) {
     // not found
@@ -2380,9 +2366,6 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
 
 int TRI_DropDatabaseServer (TRI_server_t* server,
                             char const* name) {
-  TRI_vocbase_t* vocbase;
-  int res;
-
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -2397,7 +2380,8 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  vocbase = TRI_RemoveKeyAssociativePointer(&server->_databases, name);
+  int res = TRI_ERROR_INTERNAL;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_RemoveKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase == NULL) {
     // not found
@@ -2439,14 +2423,11 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
 #ifdef TRI_ENABLE_CLUSTER
 TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                                      TRI_voc_tick_t id) {
-  TRI_vocbase_t* vocbase;
-  size_t i, n;
-
   READ_LOCK_DATABASES(server->_databasesLock);
-  n = server->_coordinatorDatabases._nrAlloc;
+  size_t const n = server->_coordinatorDatabases._nrAlloc;
  
-  for (i = 0; i < n; ++i) {
-    vocbase = server->_coordinatorDatabases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != NULL && vocbase->_id == id) {
       bool result = TRI_UseVocBase(vocbase);
@@ -2472,11 +2453,9 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
 #ifdef TRI_ENABLE_CLUSTER
 TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
                                                  char const* name) {
-  TRI_vocbase_t* vocbase;
-
   READ_LOCK_DATABASES(server->_databasesLock);
 
-  vocbase = TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name);
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
   if (vocbase != NULL) {
     bool result = TRI_UseVocBase(vocbase);
@@ -2498,11 +2477,9 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
                                       char const* name) {
-  TRI_vocbase_t* vocbase;
-
   READ_LOCK_DATABASES(server->_databasesLock);
 
-  vocbase = TRI_LookupByKeyAssociativePointer(&server->_databases, name);
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase != NULL) {
     bool result = TRI_UseVocBase(vocbase);
@@ -2536,16 +2513,13 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
                                 char const* password,
                                 TRI_vector_string_t* names) {
 
-  size_t i, n;
-  int res;
-
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   READ_LOCK_DATABASES(server->_databasesLock);
-  n = server->_databases._nrAlloc;
+  size_t const n = server->_databases._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_databases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != NULL) {
       char* copy;
@@ -2587,16 +2561,13 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
 int TRI_GetDatabaseNamesServer (TRI_server_t* server,
                                 TRI_vector_string_t* names) {
 
-  size_t i, n;
-  int res;
-
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   READ_LOCK_DATABASES(server->_databasesLock);
-  n = server->_databases._nrAlloc;
+  size_t const n = server->_databases._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
-    TRI_vocbase_t* vocbase = server->_databases._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != NULL) {
       char* copy;

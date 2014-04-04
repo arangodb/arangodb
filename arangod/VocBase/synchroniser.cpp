@@ -85,7 +85,7 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* document) {
   n = base->_journals._length;
 
   for (i = 0;  i < n; ++i) {
-    journal = base->_journals._buffer[i];
+    journal = static_cast<TRI_datafile_t*>(base->_journals._buffer[i]);
 
     // we only need to care about physical datafiles
     if (! journal->isPhysical(journal)) {
@@ -153,7 +153,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
   n = base->_journals._length;
 
   for (i = 0;  i < n;) {
-    journal = base->_journals._buffer[i];
+    journal = static_cast<TRI_datafile_t*>(base->_journals._buffer[i]);
 
     if (journal->_full) {
       worked = true;
@@ -227,7 +227,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SynchroniserVocBase (void* data) {
-  TRI_vocbase_t* vocbase = data;
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
   TRI_vector_pointer_t collections;
 
   assert(vocbase->_state == 1);
@@ -253,11 +253,7 @@ void TRI_SynchroniserVocBase (void* data) {
     n = collections._length;
 
     for (i = 0;  i < n;  ++i) {
-      TRI_vocbase_col_t* collection;
-      TRI_primary_collection_t* primary;
-      bool result;
-
-      collection = collections._buffer[i];
+      TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
 
       // if we cannot acquire the read lock instantly, we will continue.
       // otherwise we'll risk a multi-thread deadlock between synchroniser,
@@ -271,10 +267,10 @@ void TRI_SynchroniserVocBase (void* data) {
         continue;
       }
 
-      primary = collection->_collection;
+      TRI_primary_collection_t* primary = collection->_collection;
 
       // for document collection, first sync and then seal
-      result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
+      bool result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
       worked |= result;
 
       result = CheckJournalDocumentCollection((TRI_document_collection_t*) primary);
