@@ -21,8 +21,6 @@
             "logs": "logs",
             "api": "api",
             "databases": "databases",
-            "application/installed/:key": "applicationEdit",
-            "application/available/:key": "applicationInstall",
             "applications": "applications",
             "application/documentation/:key": "appDocumentation",
             "graph": "graph",
@@ -445,28 +443,6 @@
             }
             this.applicationsView.reload();
             this.naviView.selectMenuItem('applications-menu');
-        },
-
-        applicationEdit: function (appkey) {
-            this.foxxList.fetch({
-                async: false
-            });
-            var editAppView = new window.foxxEditView(
-                {model: this.foxxList.findWhere({_key: appkey})}
-            );
-            editAppView.render();
-        },
-
-        applicationInstall: function (appkey) {
-            this.foxxList.fetch({
-                async: false
-            });
-            if (!this.installAppView) {
-                this.installAppView = new window.foxxMountView({
-                    collection: this.foxxList
-                });
-            }
-            this.installAppView.render(appkey);
         },
 
         appDocumentation: function (key) {
