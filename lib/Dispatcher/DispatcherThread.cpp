@@ -187,7 +187,9 @@ void DispatcherThread::run () {
       }
 
       // trigger GC
+      /* TODO: tick is a no-op. decide whether it should be deleted
       tick(false);
+      */
 
       // detached jobs (status == JOB::DETACH) might be killed asynchronously by other means
       // it is not safe to use detached jobs after job->work()
@@ -247,10 +249,13 @@ void DispatcherThread::run () {
     }
     else {
 
+      /* 
+        TODO: tick is a no-op. decide whether it should be deleted
       // cleanup without holding a lock
       _queue->_accessQueue.unlock();
       tick(true);
       _queue->_accessQueue.lock();
+      */
 
       // wait, if there are no jobs
       if (_queue->_readyJobs.empty()) {
