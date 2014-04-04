@@ -127,7 +127,7 @@ static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_path_t const* LookupPidAttributePath (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
-  return TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid);
+  return static_cast<TRI_shape_path_t const*>(TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +217,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
   // split path into attribute pieces
   count = 0;
-  aids = TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false);
+  aids = static_cast<TRI_shape_aid_t*>(TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false));
 
   if (aids == NULL) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -267,7 +267,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
   // create element
   total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
-  result = TRI_Allocate(shaper->_memoryZone, total, false);
+  result = static_cast<TRI_shape_path_t*>(TRI_Allocate(shaper->_memoryZone, total, false));
 
   if (result == NULL) {
     TRI_UnlockMutex(&shaper->_attributePathLock);

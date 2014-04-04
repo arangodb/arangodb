@@ -21,12 +21,23 @@ module.exports = function(karma) {
 
     // list of files to exclude
     exclude: [
-
     ],
 
     preprocessors: {
-      'frontend/js/**/**.js': ['coverage'],
-      'clusterFrontend/js/**/**.js': ['coverage']
+      'test/karma/files.json': ['html2js'],
+      'clusterFrontend/js/**/**.js': ['coverage'],
+      'frontend/js/arango/**.js': ['coverage'],
+      'frontend/js/bootstrap/**.js': ['coverage'],
+      'frontend/js/client/**.js': ['coverage'],
+      'frontend/js/collections/**.js': ['coverage'],
+      'frontend/js/config/**.js': ['coverage'],
+      'frontend/js/graphViewer/**.js': ['coverage'],
+      'frontend/js/models/**.js': ['coverage'],
+      'frontend/js/modules/**.js': ['coverage'],
+      'frontend/js/routers/**.js': ['coverage'],
+      'frontend/js/shell/**.js': ['coverage'],
+      'frontend/js/templates/**.js': ['coverage'],
+      'frontend/js/views/**.js': ['coverage']
     },
 
     // test results reporter to use

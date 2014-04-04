@@ -497,7 +497,7 @@ static void SortDatabaseNames (TRI_vector_string_t* names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char* pos;
+  char const* pos;
 
   pos = strrchr(filename, '-');
 
