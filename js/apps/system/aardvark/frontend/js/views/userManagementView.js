@@ -469,18 +469,32 @@
         tableContent = [];
 
       tableContent.push(
-        window.modalView.createTextEntry("oldCurrentPassword", "Old Password", "", false, "", false)
+        window.modalView.createPasswordEntry(
+          "oldCurrentPassword",
+          "Old Password",
+          "",
+          false,
+          "old password",
+          false
+        )
       );
       tableContent.push(
-        window.modalView.createTextEntry("newCurrentPassword", "New Password", "", false, "", false)
+        window.modalView.createPasswordEntry(
+          "newCurrentPassword",
+          "New Password",
+          "",
+          false,
+          "new password",
+          false
+        )
       );
       tableContent.push(
-        window.modalView.createTextEntry(
+        window.modalView.createPasswordEntry(
           "confirmCurrentPassword",
           "Confirm New Password",
           "",
           false,
-          "",
+          "confirm new password",
           false)
       );
 
