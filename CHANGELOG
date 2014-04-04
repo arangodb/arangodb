@@ -1,6 +1,16 @@
 v2.0.2-rc1 (XXXX-XX-XX)
 -------------------
 
+* fixed race conditions during shape / attribute insertion
+
+  A race condition could have led to spurios `cannot find attribute #xx`
+  (where xx is a number) warning messages being logged by the server. This
+  happened when a new attribute was inserted and at the same time was queried.
+
+  Also fixed a race condition that may have occurred when a thread tried to
+  access the shapes / attributes hash tables while they were resized. In this
+  cases, the shape / attribute may have been hashed to a wrong slot.
+
 * during cluster startup, do not log (somewhat expected) connection errors with
   log level error, but with log level info
 

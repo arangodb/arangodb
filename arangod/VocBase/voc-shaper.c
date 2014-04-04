@@ -465,11 +465,11 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
   }
   
-  // enter into the dictionaries
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
+  f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result, false);
   assert(f == NULL);
-
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result);
+  
+  // enter into the dictionaries
+  f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result, false);
   assert(f == NULL);
 
   // ...........................................................................
@@ -750,10 +750,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
 
-  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l);
+  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l, false);
   assert(f == NULL);
 
-  f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l);
+  f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l, false);
   assert(f == NULL);
 
   TRI_UnlockMutex(&s->_shapeLock);
@@ -1304,20 +1304,14 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     TRI_LockMutex(&shaper->_shapeLock);
 
     // remove the old marker
-    f = TRI_RemoveKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid);
+    // and re-insert the marker with the new pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
     assert(f != NULL);
-
-    // re-insert the marker with the new pointer
-    f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l);
-    assert(f == NULL);
   
     // same for the shape dictionary
-    f = TRI_RemoveElementAssociativeSynced(&shaper->_shapeDictionary, l);
+    // delete and re-insert 
+    f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, true);
     assert(f != NULL);
-
-    // re-insert 
-    f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l);
-    assert(f == NULL);
     
     TRI_UnlockMutex(&shaper->_shapeLock);
   }
@@ -1330,20 +1324,14 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
  
     // remove attribute by name (p points to new location of name, but names
     // are identical in old and new marker) 
-    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeNames, p);
+    // and re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
     assert(f != NULL);
-  
-    // now re-insert same attribute with adjusted pointer
-    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m);
-    assert(f == NULL);
 
     // same for attribute ids
-    f = TRI_RemoveKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid);
+    // delete and re-insert same attribute with adjusted pointer
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, true);
     assert(f != NULL);
-
-    // now re-insert same attribute with adjusted pointer
-    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m);
-    assert(f == NULL);
     
     TRI_UnlockMutex(&shaper->_attributeLock);
   }
@@ -1364,10 +1352,10 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
 
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
-  f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l);
+  f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
   assert(f == NULL);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l);
+  f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, false);
   assert(f == NULL);
 
   if (shaper->_nextSid <= l->_sid) {
@@ -1391,7 +1379,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
   LOG_TRACE("found attribute '%s', aid: %lu", p, (unsigned long) m->_aid);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m);
+  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
 
   if (f != NULL) {
     char const* name = shaper->_collection->base.base._info._name;
@@ -1403,7 +1391,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 #endif    
   }
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m);
+  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, false);
   
   if (f != NULL) {
     char const* name = shaper->_collection->base.base._info._name;
