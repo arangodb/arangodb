@@ -83,6 +83,12 @@
       return createButtonStub(this.buttons.NEUTRAL, title, cb);
     },
 
+    createDisabledButton: function(title) {
+      var disabledButton = createButtonStub(this.buttons.NEUTRAL, title);
+      disabledButton.disabled = true;
+      return disabledButton;
+    },
+
     createReadOnlyEntry: function(label, value, info) {
       return createTextStub(this.tables.READONLY, label, value, info);
     },

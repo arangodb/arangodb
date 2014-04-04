@@ -91,15 +91,9 @@
       }
       var isSystem = (collName.substr(0, 1) === '_');
       var wfs = (collSync === "true");
-      var journalSizeString;
-
-      if (collSize === '') {
-        journalSizeString = '';
-      }
-      else {
+      if (collSize > 0) {
         try {
           collSize = JSON.parse(collSize) * 1024 * 1024;
-          journalSizeString = ', "journalSize":' + collSize;
         }
         catch (e) {
           arangoHelper.arangoError('Please enter a valid number');
@@ -112,7 +106,7 @@
       }
 
       var returnobj = window.arangoCollectionsStore.newCollection(
-        collName, wfs, isSystem, journalSizeString, collType, shards, shardBy
+        collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
       if (returnobj.status === true) {
         self.hidden();
