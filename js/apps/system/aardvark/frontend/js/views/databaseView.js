@@ -80,12 +80,18 @@
       return true;
     },
 
+    createDatabase: function(e) {
+      e.preventDefault();
+      this.createAddDatabaseModal();
+    },
+
     submitCreateDatabase: function() {
       var self = this;
       var name  = $('#newDatabaseName').val();
       var userName = $('#newUser').val();
       var userPassword = $('#newPassword').val();
       if (!this.validateDatabaseInfo(name, userName, userPassword)) {
+        console.log("VALIDATE");
         return;
       }
       var options = {
@@ -104,37 +110,17 @@
           self.handleError(err.status, err.statusText, name);
         },
         success: function(data) {
-          self.hideModal('createDatabaseModal');
           self.updateDatabases();
+          window.modalView.hide();
         }
       });
     },
 
-    hideModal: function(modal) {
-      $('#' + modal).modal('hide');
-    },
-
-    showModal: function(modal) {
-      $('#' + modal).modal('show');
-    },
-
-    createDatabase: function(e) {
-      e.preventDefault();
-      this.showModal('createDatabaseModal');
-    },
-
-    submitDeleteDatabase: function(e) {
-      var toDelete = this.collection.where({name: this.dbToDelete});
-      toDelete[0].destroy({wait: true, url:"/_api/database/"+this.dbToDelete});
-      this.dbToDelete = '';
-      this.hideModal('deleteDatabaseModal');
+    submitDeleteDatabase: function(dbname) {
+      var toDelete = this.collection.where({name: dbname});
+      toDelete[0].destroy({wait: true, url:"/_api/database/"+dbname});
       this.updateDatabases();
-    },
-
-    deleteDatabase: function(e) {
-      this.hideModal('editDatabaseModal');
-      this.dbToDelete = $('#editDatabaseName').html();
-      this.showModal('deleteDatabaseModal');
+      window.modalView.hide();
     },
 
     currentDatabase: function() {
@@ -158,20 +144,12 @@
     },
 
     editDatabase: function(e) {
-      var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database');
-      $('#editDatabaseName').html(dbName);
-      var button = $('#deleteDatabase');
+      var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database'),
+        isDeleteable = true;
       if(dbName === this.currentDB) {
-        var element;
-        button.prop('disabled', true);
-        button.removeClass('button-danger');
-        button.addClass('button-neutral');
-      } else {
-        button.prop('disabled', false);
-        button.removeClass('button-neutral');
-        button.addClass('button-danger');
+        isDeleteable = false;
       }
-      this.showModal('editDatabaseModal');
+      this.createEditDatabaseModal(dbName, isDeleteable);
     },
 
     search: function() {
@@ -218,6 +196,82 @@
     evaluateDatabaseName : function(str, substr) {
       var index = str.lastIndexOf(substr);
       return str.substring(0, index);
+    },
+
+    createEditDatabaseModal: function(dbName, isDeleteable) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry("Name", dbName, "")
+      );
+      if (isDeleteable) {
+        buttons.push(
+          window.modalView.createDeleteButton(
+            "Delete",
+            this.submitDeleteDatabase.bind(this, dbName)
+          )
+        );
+      } else {
+        buttons.push(window.modalView.createDisabledButton("Delete"));
+      }
+      window.modalView.show(
+        "modalTable.ejs",
+        "Edit database",
+        buttons,
+        tableContent
+      );
+    },
+
+    createAddDatabaseModal: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newDatabaseName",
+          "Name",
+          "",
+          false,
+          "Database Name",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newUser",
+          "Username",
+          "",
+          "Please define the owner of this database. This will be the only user having "
+            + "initial access to this database. If the user is different to your account "
+            + "you will not be able to see the database. "
+            + "If there is a failure you will be informed.",
+          "Database Owner",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createPasswordEntry(
+          "newPassword",
+          "Password",
+          "",
+          false,
+          "",
+          false
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton(
+          "Create",
+          this.submitCreateDatabase.bind(this)
+        )
+      );
+      window.modalView.show(
+        "modalTable.ejs",
+        "Create Database",
+        buttons,
+        tableContent
+      );
     }
 
 
