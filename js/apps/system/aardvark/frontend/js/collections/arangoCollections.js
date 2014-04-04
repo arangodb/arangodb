@@ -270,6 +270,9 @@
         var data = {};
         data.name = collName;
         data.waitForSync = wfs;
+        if (journalSize > 0) {
+          data.journalSize = journalSize;
+        }
         data.isSystem = isSystem;
         data.type = parseInt(collType, 10);
         if (shards) {

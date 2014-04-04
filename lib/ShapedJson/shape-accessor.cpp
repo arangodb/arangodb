@@ -293,7 +293,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   }
 
   accessor->_shape = shape;
-  accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
+  accessor->_code = static_cast<void const**>(TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false));
 
   if (accessor->_code == NULL) {
     LOG_ERROR("out of memory");
@@ -318,18 +318,15 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   TRI_shape_size_t e;
   TRI_shape_size_t pos;
   TRI_shape_size_t* offsetsV;
-  void* const* ops;
 
   if (accessor->_shape == NULL) {
     return false;
   }
 
-  ops = accessor->_code;
+  void const** ops = static_cast<void const**>(accessor->_code);
 
   while (true) {
-    TRI_shape_ac_bc_e op;
-
-    op = * (TRI_shape_ac_bc_e*) ops;
+    TRI_shape_ac_bc_e op = *(TRI_shape_ac_bc_e*) ops;
     ops++;
 
     switch (op) {
@@ -401,10 +398,7 @@ void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
 TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
                                        TRI_shape_sid_t sid,
                                        TRI_shape_pid_t pid) {
-  TRI_shape_access_t* accessor;
-  bool ok;
-
-  accessor = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_access_t), false);
+  TRI_shape_access_t* accessor = static_cast<TRI_shape_access_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_access_t), false));
 
   if (accessor == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -416,7 +410,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   accessor->_code = NULL;
   accessor->_memoryZone = shaper->_memoryZone;
 
-  ok = BytecodeShapeAccessor(shaper, accessor);
+  bool ok = BytecodeShapeAccessor(shaper, accessor);
 
   if (ok) {
     return accessor;
@@ -462,7 +456,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
   TRI_shape_size_t e;
   TRI_shape_size_t pos;
   TRI_shape_t const* shape;
-  void* const* ops;
 
   printf("shape accessor for sid: %lu, pid: %lu\n",
          (unsigned long) accessor->_sid,
@@ -475,13 +468,11 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
 
   printf("  result shape: %lu\n", (unsigned long) accessor->_shape->_sid);
 
-  ops = accessor->_code;
+  void const** ops = static_cast<void const**>(accessor->_code);
   shape = accessor->_shape;
 
   while (true) {
-    TRI_shape_ac_bc_e op;
-
-    op = * (TRI_shape_ac_bc_e*) ops;
+    TRI_shape_ac_bc_e op = static_cast<TRI_shape_ac_bc_e>(*(TRI_shape_ac_bc_e*) ops);
     ops++;
 
     switch (op) {
@@ -489,7 +480,7 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         return;
 
       case TRI_SHAPE_AC_SHAPE_PTR:
-        shape = *ops++;
+        shape = static_cast<TRI_shape_t const*>(*ops++);
 
         printf("  OP: shape %lu\n",
                (unsigned long) shape->_sid);
