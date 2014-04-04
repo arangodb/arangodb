@@ -14,7 +14,9 @@
     currentLoglevel: "logall",
 
     events: {
-      "click #arangoLogTabbar button" : "setActiveLoglevel"
+      "click #arangoLogTabbar button" : "setActiveLoglevel",
+      "click #logTable_first" : "firstPage",
+      "click #logTable_last" : "lastPage"
     },
 
     template: templateEngine.createTemplate("newLogsView.ejs"),
@@ -34,18 +36,14 @@
 
     tableDescription: {
       id: "arangoLogTable",
-      cols: 3,
       titles: ["Loglevel", "Date", "Message"],
-      rows: [
-        ["hallo", "welt", "2"],
-        ["miasd", "asdst", "12"]
-      ]
+      rows: []
     },
 
     convertedRows: null,
 
     setActiveLoglevel: function(e) {
-     $('.arangodb-tabbar').removeClass('arangoActiveTab');
+     $('.arangodb-tabbar').removeClass('arango-active-tab');
 
       if (this.currentLoglevel !== e.currentTarget.id) {
         this.currentLoglevel = e.currentTarget.id;
@@ -62,7 +60,10 @@
         success: function() {
           self.activeCollection.each(function(model) {
             date = new Date(model.get('timestamp') * 1000);
-            rowsArray.push([model.get('level'), arangoHelper.formatDT(date), model.get('text')]);
+            rowsArray.push([
+              self.convertLogStatus(model.get('level')),
+              arangoHelper.formatDT(date),
+              model.get('text')]);
           });
           self.tableDescription.rows = rowsArray;
           self.render();
@@ -74,49 +75,67 @@
       $(this.el).html(this.template.render({}));
       $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
-      $('#'+this.currentLoglevel).addClass('arangoActiveTab');
+      $('#'+this.currentLoglevel).addClass('arango-active-tab');
+      this.renderPagination();
       return this;
     },
 
-    renderPagination: function (totalPages, currentPage) {
-
+    jumpTo: function(page) {
       var self = this;
+      this.activeCollection.setPage(page);
+      this.activeCollection.fetch({
+        success: function() {
+          self.convertModelToJSON();
+        }
+      });
+    },
+
+    firstPage: function() {
+      this.jumpTo(1);
+    },
+
+    lastPage: function() {
+      this.jumpTo(Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize));
+    },
+
+    renderPagination: function () {
+      var self = this;
+      var currentPage = this.activeCollection.getPage();
+      var totalPages = Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize);
       var target = $('#logPaginationDiv'),
       options = {
-//        left: 2,
-//        right: 2,
         page: currentPage,
         lastPage: totalPages,
         click: function(i) {
-          var doSomething = false;
           if (i === 1 && i !== currentPage) {
-            self.firstTable();
+            self.activeCollection.setPage(1);
           }
           else if (i === totalPages && i !== currentPage) {
-            self.lastTable();
+            self.activeCollection.setPage(totalPages);
           }
           else if (i !== currentPage) {
-            self.jumpToTable(i);
+            self.activeCollection.setPage(i);
           }
           options.page = i;
+          self.activeCollection.fetch({
+            success: function() {
+              self.convertModelToJSON();
+            }
+          });
         }
       };
       target.html("");
       target.pagination(options);
       $('#logPaginationDiv').prepend(
-        '<ul class="pre-pagi"><li><a id="logTableID_first" class="pagination-button">'+
+        '<ul class="pre-pagi"><li><a id="logTable_first" class="pagination-button">'+
         '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>'
       );
       $('#logPaginationDiv').append(
-        '<ul class="las-pagi"><li><a id="logTableID_last" class="pagination-button">'+
+        '<ul class="las-pagi"><li><a id="logTable_last" class="pagination-button">'+
         '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
       );
     },
 
-    drawTable: function () {
-    },
-    clearTable: function () {
-    },
     convertLogStatus: function (status) {
       var returnString;
       if (status === 1) {

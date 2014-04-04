@@ -9,6 +9,7 @@
     pagesize: 10,
     upto: false,
     loglevel: 0,
+    totalAmount: 0,
 
     parse: function(response) {
       var myResponse = [];
@@ -23,6 +24,7 @@
         });
         i++;
       });
+      this.totalAmount = response.totalAmount;
       return myResponse;
     },
 
@@ -31,6 +33,14 @@
         this.upto = true;
       }
       this.loglevel = options.loglevel;
+    },
+
+    getPage: function() {
+      return this.page+1;
+    },
+
+    setPage: function(counter) {
+      this.page = counter-1;
     },
 
     model: window.newArangoLog,
