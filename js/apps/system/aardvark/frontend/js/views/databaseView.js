@@ -91,7 +91,6 @@
       var userName = $('#newUser').val();
       var userPassword = $('#newPassword').val();
       if (!this.validateDatabaseInfo(name, userName, userPassword)) {
-        console.log("VALIDATE");
         return;
       }
       var options = {
