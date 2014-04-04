@@ -48,7 +48,7 @@
 /// @brief initial number of elements in the array
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INITIAL_SIZE (10)
+#define INITIAL_SIZE (11)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1330,7 +1330,6 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // compute the hash
   hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1339,6 +1338,7 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
+  i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
@@ -1367,7 +1367,6 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
 
   // compute the hash
   hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1376,6 +1375,7 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
+  i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
@@ -1402,15 +1402,8 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
   uint64_t i;
   void* old;
 
-  // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
-  }
-
   // compute the hash
   hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1419,6 +1412,15 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
+  
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    TRI_WriteUnlockReadWriteLock(&array->_lock);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
+
+  i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
@@ -1459,15 +1461,8 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
   uint64_t i;
   void* old;
 
-  // check for out-of-memory
-  if (array->_nrAlloc == array->_nrUsed) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
-  }
-
   // compute the hash
   hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1476,6 +1471,15 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
+  
+  i = hash % array->_nrAlloc;
+  
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    TRI_WriteUnlockReadWriteLock(&array->_lock);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
@@ -1517,7 +1521,6 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
   void* old;
 
   hash = array->hashElement(array, element);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1526,6 +1529,8 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
+  
+  i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
@@ -1577,7 +1582,6 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   void* old;
 
   hash = array->hashKey(array, key);
-  i = hash % array->_nrAlloc;
 
 #ifdef TRI_INTERNAL_STATS
   // update statistics
@@ -1586,6 +1590,8 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
+  
+  i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;

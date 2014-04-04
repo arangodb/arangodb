@@ -419,12 +419,12 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
               TRI_errno_string(res));
     return 0;
   }
-    
+  
   // enter into the dictionaries
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
-  assert(f == NULL);
-
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result);
+  assert(f == NULL);
+    
+  f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
   assert(f == NULL);
 
   // ...........................................................................
@@ -691,11 +691,11 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
-
-  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l);
+  
+  f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l);
   assert(f == NULL);
 
-  f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l);
+  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l);
   assert(f == NULL);
 
   TRI_UnlockMutex(&s->_shapeLock);
