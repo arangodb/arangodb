@@ -419,18 +419,6 @@ typedef struct TRI_associative_synced_s {
 
   TRI_read_write_lock_t _lock;
 
-#ifdef TRI_INTERNAL_STATS
-  uint64_t _nrFinds;     // statistics: number of lookup calls
-  uint64_t _nrAdds;      // statistics: number of insert calls
-  uint64_t _nrRems;      // statistics: number of remove calls
-  uint64_t _nrResizes;   // statistics: number of resizes
-
-  uint64_t _nrProbesF;   // statistics: number of misses while looking up
-  uint64_t _nrProbesA;   // statistics: number of misses while inserting
-  uint64_t _nrProbesD;   // statistics: number of misses while removing
-  uint64_t _nrProbesR;   // statistics: number of misses while adding
-#endif
-
   TRI_memory_zone_t* _memoryZone;
 }
 TRI_associative_synced_t;
@@ -494,31 +482,39 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t*, void co
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t*, void const* element);
+void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t*, 
+                                                  void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t*, void* element);
+void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t*, 
+                                          void*, 
+                                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t*, void const* key, void* element);
+void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t*, 
+                                      void const*, 
+                                      void*, 
+                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t*, void const* element);
+void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t*, 
+                                          void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*, void const* key);
+void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*, 
+                                      void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of elements from the array
