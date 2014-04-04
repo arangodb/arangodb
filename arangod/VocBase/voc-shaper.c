@@ -750,10 +750,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
 
-  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l, false);
-  assert(f == NULL);
-
   f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l, false);
+  assert(f == NULL);
+  
+  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l, false);
   assert(f == NULL);
 
   TRI_UnlockMutex(&s->_shapeLock);
