@@ -12,6 +12,10 @@ v2.0.2-rc1 (XXXX-XX-XX)
 * document how to persist a cluster plan in order to relaunch an existing
   cluster later
 
+* improve documentation of db._create and explain the rules and
+  limitations following from the choice of shardKeys for sharded
+  collections with more than one shard
+
 
 v2.0.1 (2014-03-31)
 -------------------
