@@ -29,7 +29,41 @@
             "graphManagement/delete/:name": "graphDelete",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
-            "testing": "testview"
+            "testing": "testview",
+            "testModalView": "testmodalview",
+            "newLogsView": "newLogsView"
+        },
+
+        newLogsView: function() {
+          var self = this;
+          this.newLogsAllCollection = new window.NewArangoLogs(
+            {upto: true, loglevel: 4}
+          );
+          this.newLogsDebugCollection = new window.NewArangoLogs(
+            {loglevel: 4}
+          );
+          this.newLogsInfoCollection = new window.NewArangoLogs(
+            {loglevel: 3}
+          );
+          this.newLogsWarningCollection = new window.NewArangoLogs(
+            {loglevel: 2}
+          );
+          this.newLogsErrorCollection = new window.NewArangoLogs(
+            {loglevel: 1}
+          );
+          this.newLogsView = new window.NewLogsView({
+            logall: self.newLogsAllCollection,
+            logdebug: self.newLogsDebugCollection,
+            loginfo: self.newLogsInfoCollection,
+            logwarning: self.newLogsWarningCollection,
+            logerror: self.newLogsErrorCollection
+          });
+          this.newLogsView.render();
+        },
+
+        testmodalview: function() {
+          this.testModalView = new window.testModalView();
+          this.testModalView.render();
         },
 
         testview: function () {
