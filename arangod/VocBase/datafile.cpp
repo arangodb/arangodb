@@ -645,8 +645,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char* pos1;
-  char* pos2;
+  char const* pos1;
+  char const* pos2;
 
   pos1 = strrchr(filename, '.');
 
