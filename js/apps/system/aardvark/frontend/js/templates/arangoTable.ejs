@@ -1,0 +1,22 @@
+<script id="arangoTable.ejs" type="text/template">
+<table class="arango-table" id="<%=content.id%>">
+
+  <thead>
+    <tr>
+      <% _.each(content.titles, function(y) { %>
+        <th class="arangob-table-th"><%=y%></th>
+      <% });%>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% _.each(content.rows, function(k) { %>
+      <tr>
+        <% _.each(k, function(x) { %>
+          <td class="arangob-table-td"><%=x%></td>
+        <% });%>
+      </tr>
+    <%});%>
+  </tbody>
+</table>
+</script>
