@@ -14,7 +14,7 @@
 
     initialize: function(){
       _.bindAll(this, 'render');
-      this.buttonConfig = [
+      var buttonConfig = [
         window.modalView.createSuccessButton(
           "Install", this.install.bind(this)
         )
@@ -22,7 +22,8 @@
       this.showMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
-        "Install Application"
+        "Install Application",
+        buttonConfig
       );
       this.appsView = this.options.appsView;
     },
@@ -40,7 +41,9 @@
       ));
       list.push(window.modalView.createTextEntry(
         "mount-point", "Mount", "/" + this.model.get("name"),
-        "The path where the app can be reached."
+        "The path where the app can be reached.",
+        "mount-path",
+        true
       ));
       list.push(window.modalView.createReadOnlyEntry(
         "Version", this.model.get("version") 
@@ -53,17 +56,7 @@
 
     installDialog: function(event) {
       event.stopPropagation();
-      this.showMod(this.buttonConfig, this.fillValues());
-    },
-
-    installFoxx: function(event) {
-      event.stopPropagation();
-      window.App.navigate(
-        "application/available/" + encodeURIComponent(this.model.get("_key")),
-        {
-          trigger: true
-        }
-      );
+      this.showMod(this.fillValues());
     },
 
     install: function() {
