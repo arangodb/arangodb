@@ -1,4 +1,4 @@
-v1.4.14 (XXXX-XX-XX)
+v1.4.14 (2014-04-05)
 --------------------
 
 * fixed race conditions during shape / attribute insertion
