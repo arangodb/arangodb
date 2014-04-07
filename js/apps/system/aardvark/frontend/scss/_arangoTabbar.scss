@@ -1,0 +1,19 @@
+.arango-tabbar {
+  height: 27px;
+  width: 100%;
+
+  button {
+    background: #f1f0ee;
+    border: 0;
+    float: right;
+    height: 27px;
+    width: 82px;
+  }
+
+  .arango-active-tab {
+    background-color: #fff;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    border-top: 1px solid #000;
+  }
+}

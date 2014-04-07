@@ -517,7 +517,7 @@ actions.defineHttp({
             identifier: "userTime",
             name: "User Time",
             description: "Amount of time that this process has been scheduled in user mode, " + 
-                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+                         "measured in seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -527,7 +527,7 @@ actions.defineHttp({
             identifier: "systemTime",
             name: "System Time",
             description: "Amount of time that this process has been scheduled in kernel mode, " +
-                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+                         "measured in seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -536,7 +536,7 @@ actions.defineHttp({
             group: "system",
             identifier: "numberOfThreads",
             name: "Number of Threads",
-            description: "Number of threads in this process.",
+            description: "Number of threads in the arangod process.",
             type: "current",
             units: "number"
           },
@@ -557,7 +557,8 @@ actions.defineHttp({
             group: "system",
             identifier: "residentSizePercent",
             name: "Resident Set Size",
-            description: "The percentage of physical memory used as resident set size",
+            description: "The percentage of physical memory used by the process as resident " +
+                         "set size.",
             type: "current",
             units: "percent"
           },
@@ -566,7 +567,10 @@ actions.defineHttp({
             group: "system",
             identifier: "virtualSize",
             name: "Virtual Memory Size",
-            description: "The size of the virtual memory the process is using.",
+            description: "On Windows, this figure contains the total amount of memory that the " +
+                         "memory manager has committed for the arangod process. On other " +
+                         "systems, this figure contains The size of the virtual memory the " +
+                         "process is using.",
             type: "current",
             units: "bytes"
           },
@@ -576,7 +580,8 @@ actions.defineHttp({
             identifier: "minorPageFaults",
             name: "Minor Page Faults",
             description: "The number of minor faults the process has made which have " +
-                         "not required loading a memory page from disk.",
+                         "not required loading a memory page from disk. This figure is " +
+                         "not reported on Windows.",
             type: "accumulated",
             units: "number"
           },
@@ -585,8 +590,9 @@ actions.defineHttp({
             group: "system",
             identifier: "majorPageFaults",
             name: "Major Page Faults",
-            description: "The number of major faults the process has made which have required " +
-                         "loading a memory page from disk.",
+            description: "On Windows, this figure contains the total number of page faults. " +
+                         "On other system, this figure contains the number of major faults the " +
+                         "process has made which have required loading a memory page from disk.",
             type: "accumulated",
             units: "number"
           },

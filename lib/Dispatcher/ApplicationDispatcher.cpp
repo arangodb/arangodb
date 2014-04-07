@@ -84,7 +84,7 @@ ApplicationDispatcher::ApplicationDispatcher ()
     _applicationScheduler(0),
     _dispatcher(0),
     _dispatcherReporterTask(0),
-    _reportInterval(60.0) {
+    _reportInterval(0.0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

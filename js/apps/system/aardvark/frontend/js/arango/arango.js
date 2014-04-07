@@ -157,6 +157,19 @@
       return type;
     },
 
+    formatDT: function (dt) {
+      var pad = function (n) {
+        return n < 10 ? '0' + n : n;
+      };
+
+      return dt.getUTCFullYear() + '-'
+      + pad(dt.getUTCMonth() + 1) + '-'
+      + pad(dt.getUTCDate()) + ' <br>'
+      + pad(dt.getUTCHours()) + ':'
+      + pad(dt.getUTCMinutes()) + ':'
+      + pad(dt.getUTCSeconds());
+    },
+
     escapeHtml: function (val) {
       // HTML-escape a string
       return String(val).replace(/&/g, '&amp;')
