@@ -64,8 +64,6 @@
             col.setCollection(colId);
             expect(col.getPage()).toEqual(1);
             expect($.ajax).toHaveBeenCalled();
-            //remove the spy again
-            $.ajax.isSpy = false;
             queryStart = "FOR x in @@collection";
             sortStatement = " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
             filter1 = " FILTER x.`test` == @param0";
