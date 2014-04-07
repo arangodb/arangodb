@@ -55,7 +55,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
   size_t i;
 
   n = idx->_paths._length;
-  key->_values = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
+  key->_values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false));
 
   if (key->_values == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -66,7 +66,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
   for (i = 0;  i < n;  ++i) {
     key->_values[i]._sid = element->_subObjects[i]._sid;
     key->_values[i]._data.length = element->_subObjects[i]._length;
-    key->_values[i]._data.data = CONST_CAST(ptr + element->_subObjects[i]._offset);
+    key->_values[i]._data.data = const_cast<char*>(ptr + element->_subObjects[i]._offset);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -78,9 +78,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
 
 static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
                                                TRI_hash_index_element_t* element) {
-  element->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                      idx->_paths._length * sizeof(TRI_shaped_sub_t),
-                                      false);
+  element->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, idx->_paths._length * sizeof(TRI_shaped_sub_t), false));
 
   if (element->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -129,7 +127,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
 
-  hashElement->_document = CONST_CAST(document);
+  hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
 
   // .............................................................................
   // Extract the attribute values
@@ -304,7 +302,7 @@ static TRI_index_result_t HashIndex_find (TRI_hash_index_t* hashIndex,
 
     // unique hash index: maximum number is 1
     results._length    = 1;
-    results._documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 1 * sizeof(TRI_doc_mptr_t*), false);
+    results._documents = static_cast<TRI_doc_mptr_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 1 * sizeof(TRI_doc_mptr_t*), false));
 
     if (results._documents == NULL) {
       // no memory. prevent worst case by re-setting results length to 0
@@ -396,9 +394,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
     size_t j;
 
     results._length    = result._length;
-    results._documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                      result._length* sizeof(TRI_doc_mptr_t*),
-                                      false);
+    results._documents = static_cast<TRI_doc_mptr_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, result._length* sizeof(TRI_doc_mptr_t*), false));
 
     if (results._documents == NULL) {
       // no memory. prevent worst case by re-setting results length to 0
@@ -586,16 +582,12 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique) {
-  TRI_hash_index_t* hashIndex;
-  TRI_index_t* idx;
-  int res;
-
   // ...........................................................................
   // Initialize the index and the callback functions
   // ...........................................................................
 
-  hashIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false);
-  idx = &hashIndex->base;
+  TRI_hash_index_t* hashIndex = static_cast<TRI_hash_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false));
+  TRI_index_t* idx = &hashIndex->base;
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, primary, unique);
   
@@ -614,8 +606,8 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   TRI_CopyDataFromVectorPointerVectorString(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   // create a index preallocated for the current number of documents
-  res = TRI_InitHashArray(&hashIndex->_hashArray,
-                          hashIndex->_paths._length);
+  int res = TRI_InitHashArray(&hashIndex->_hashArray,
+                              hashIndex->_paths._length);
 
   // oops, out of memory?
   if (res != TRI_ERROR_NO_ERROR) {
