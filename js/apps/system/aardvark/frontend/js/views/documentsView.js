@@ -114,47 +114,23 @@
     },
 
     startUpload: function () {
-      var self = this;
-      if (self.allowUpload === true) {
-        self.showSpinner();
-        $.ajax({
-          type: "POST",
-          async: false,
-          url:
-            '/_api/import?type=auto&collection='+
-            encodeURIComponent(self.colid)+
-            '&createCollection=false',
-          data: self.file,
-          processData: false,
-          contentType: 'json',
-          dataType: 'json',
-          complete: function(xhr) {
-            if (xhr.readyState === 4) {
-              if (xhr.status === 201) {
-                var data;
-
-                try {
-                  data = JSON.parse(xhr.responseText);
-                }
-
-                catch (e) {
-                  arangoHelper.arangoError("Error: " + e);
-                  self.hideSpinner();
-                  self.hideImportModal();
-                  self.resetView();
-                  return;
-                }
-
-                self.hideSpinner();
-                self.hideImportModal();
-                self.resetView();
-                return;
-              }
+      var result;
+      if (this.allowUpload === true) {
+          this.showSpinner();
+        result = window.arangoDocumentsStore.updloadDocuments(this.file);
+        if (result !== true) {
+            this.hideSpinner();
+            if (result.substr(0, 5 ) === "Error") {
+                this.hideImportModal();
+                this.resetView();
             }
-            self.hideSpinner();
-            arangoHelper.arangoError("Upload error");
-          }
-        });
+            arangoHelper.arangoError(result);
+            return;
+        }
+        this.hideSpinner();
+        this.hideImportModal();
+        this.resetView();
+        return;
       }
     },
 

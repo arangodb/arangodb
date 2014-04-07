@@ -238,7 +238,7 @@
             };
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            window.arangoDocumentsStore = new window.arangoDocuments({collectionID : view.colid});
             view.resetView();
             expect(window.$).toHaveBeenCalledWith("input");
             expect(window.$).toHaveBeenCalledWith("select");
@@ -261,22 +261,20 @@
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 4, status: 201, responseText: '{"a" : 1}'});
-            });
+
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn(true);
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            window.arangoDocumentsStore = new window.arangoDocuments();
+
 
             view.allowUpload = true;
 
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).toHaveBeenCalled();
@@ -288,22 +286,19 @@
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 3, status: 201, responseText: '{"a" : 1}'});
-            });
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn("Upload error");
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            window.arangoDocumentsStore = new window.arangoDocuments();
+
 
             view.allowUpload = true;
             spyOn(arangoHelper, "arangoError");
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).not.toHaveBeenCalled();
@@ -313,26 +308,23 @@
 
         it("start succesful Upload mit XHR ready state = 4, " +
             "XHR status = 201 and not parseable JSON", function () {
+            window.arangoDocumentsStore = new window.arangoDocuments();
             spyOn(view, "showSpinner");
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 4, status: 201, responseText: "blub"});
-            });
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn('Error: SyntaxError: Unable to parse JSON string');
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            window.arangoDocumentsStore = new window.arangoDocuments();
 
             view.allowUpload = true;
             spyOn(arangoHelper, "arangoError");
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).toHaveBeenCalled();
