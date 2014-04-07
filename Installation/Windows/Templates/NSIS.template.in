@@ -1,10 +1,13 @@
 ; CPack install script designed for a nmake build
 ;!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
+!addincludedir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
+  !include "UAC.nsh"
 
 
 ;--------------------------------
@@ -48,7 +51,33 @@
   SetCompressor @CPACK_NSIS_COMPRESSOR@
 
   ;Require administrator access
+  ; RequestExecutionLevel admin
   RequestExecutionLevel highest
+
+Function Tri_ChangePrivileges
+uac_tryagain:
+!insertmacro UAC_RunElevated
+${Switch} $0
+${Case} 0
+	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
+	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "This ${thing} requires admin privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+	${EndIf}
+	;fall-through and die
+${Case} 1223
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "This ${thing} requires admin privileges, aborting!"
+	Quit
+${Case} 1062
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
+	Quit
+${Default}
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
+	Quit
+${EndSwitch}
+ 
+SetShellVarContext all
+FunctionEnd
 
 @CPACK_NSIS_DEFINES@
 
@@ -774,58 +803,60 @@ Function default_installation_directory
   !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_SINGLE_USER "NSIS.InstallOptions.ini" "Field 4" "State"
 
   StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 checkSingleUser
+    Call Tri_ChangePrivileges
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
     Abort
   checkSingleUser:
     StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
-    SetShellVarContext all
-    MessageBox MB_OK "all $DOCUMENTS"
     SetShellVarContext current
-    MessageBox MB_OK "single user $DOCUMENTS"
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
-;    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
   all_users:
+    Call Tri_ChangePrivileges
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
-    MessageBox MB_OK "all users $DOCUMENTS"
     StrCpy $TRI_INSTALL_AS_SERVICE '1'
-;    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 FunctionEnd
 
 ; Workaroound until we can use system calls
 ; or a plugin http://nsis.sourceforge.net/AccessControl_plug-in
 Function is_writable 
+  Push $0
+; is does not matter if we do some errors here
+  
+  CreateDirectory "$INSTDIR"
   ClearErrors
-  FileOpen $0 $INSTDIR\___tri_test___ w
+  FileOpen $0 "$INSTDIR\___tri_test___" w
   FileWrite $0 "ok"
   FileClose $0
   StrCpy $2 "file writen"
   IfErrors there_are_errors
 
   ClearErrors
-  FileOpen $0 $INSTDIR\___tri_test___ r
+  FileOpen $0 "$INSTDIR\___tri_test___" r
   IfErrors there_are_errors
   FileRead $0 $1
   FileClose $0
   StrCpy $2 "file read"
   IfErrors there_are_errors
-  Delete $INSTDIR\___tri_test___ 
+  Delete "$INSTDIR\___tri_test___" 
   StrCpy $2 "file deleted"
   IfErrors there_are_errors
-    MessageBox MB_OK "no errors" 
   StrCpy $1 "1"
   return
   there_are_errors:
 ;    MessageBox MB_OK "$2"
-    DELETE $INSTDIR\___tri_test___ 
+    DELETE "$INSTDIR\___tri_test___" 
     ClearErrors
     StrCpy $1 "0"
 FunctionEnd
 
 Function check_installation_directory
-   Call is_writable
+   ClearErrors
+    Call is_writable
    StrCmp $1 "0" handle_error
    return
    handle_error:
@@ -834,10 +865,37 @@ Function check_installation_directory
      no: Quit
 FunctionEnd
 
+
+!macro triagens_init
+uac_tryagain:
+!insertmacro UAC_RunElevated
+${Switch} $0
+${Case} 0
+	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
+	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "This ${thing} requires admin privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+	${EndIf}
+	;fall-through and die
+${Case} 1223
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "This ${thing} requires admin privileges, aborting!"
+	Quit
+${Case} 1062
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
+	Quit
+${Default}
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
+	Quit
+${EndSwitch}
+ 
+SetShellVarContext all
+!macroend
+
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
 
+  !insertmacro triagens_init
 ;  ClearErrors
 ;  UserInfo::GetName
 ;  IfErrors noLM
@@ -1005,6 +1063,7 @@ Section "Uninstall"
   doNotRemoveFromPath:
 SectionEnd
 
+
 ;--------------------------------
 ; determine admin versus local install
 ; Is install for "AllUsers" or "JustMe"?
@@ -1040,6 +1099,7 @@ uninst_failed:
 
 
 inst:
+;  !insertmacro triagens_init
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
@@ -1076,6 +1136,7 @@ inst:
 
   noLM:
     StrCpy $SV_ALLUSERS "AllUsers"
+    ;MessageBox MB_OK 'noLM'
     ;Get installation folder from registry if available
 
   done:
