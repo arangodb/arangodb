@@ -14,11 +14,48 @@
     },
 
     setPage: function(counter) {
-      this.page = counter-1;
+      if (counter > this.getLastPageNumber()) {
+        this.page = this.getLastPageNumber();
+        return;
+      }
+      if (counter < 1) {
+        this.page = 0;
+        return;
+      }
+      this.page = counter - 1;
     },
 
     getLastPageNumber: function() {
-      return Math.ceil(this.totalAmount / this.pagesize);
+      return Math.max(Math.ceil(this.totalAmount / this.pagesize), 1);
+    },
+
+    getOffset: function() {
+      return this.getPage() * this.pagesize;
+    },
+
+    getPageSize: function() {
+      return this.pagesize;
+    },
+
+    setToFirst: function() {
+      this.page = 0;
+    },
+
+    setToLast: function() {
+      this.setPage(this.getLastPageNumber());
+    },
+
+    setToPrev: function() {
+      this.setPage(this.getPage() - 1);
+
+    },
+
+    setToNext: function() {
+      this.setPage(this.getPage() + 1);
+    },
+
+    setTotal: function(total) {
+      this.totalAmount = total;
     }
 
   });
