@@ -52,17 +52,20 @@
           </select>
           <%
               break;
+              case "select2":
+          %>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
             }
 
             if (row.info) {
           %>
         <th>
-      <div>
-        <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="<%=row.info%>">
-          <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-        </a>
-    </div>
-  </th>
+          <a class="modalTooltips" title="<%=row.info%>">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
       <%
         }
       %>
