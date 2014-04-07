@@ -268,7 +268,7 @@ namespace triagens {
               // keep track of the original value of the "origin" request header (if any)
               // we need this value to handle CORS requests
               this->_origin = this->_request->header("origin");
-              if (this->_origin.size() > 0) {
+              if (! this->_origin.empty()) {
                 // check for Access-Control-Allow-Credentials header
                 bool found;
                 string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
@@ -486,7 +486,7 @@ namespace triagens {
 
                 response.setHeader("allow", strlen("allow"), allowedMethods);
 
-                if (this->_origin.size() > 0) {
+                if (! this->_origin.empty()) {
                   LOG_TRACE("got CORS preflight request");
                   const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
 
@@ -494,7 +494,7 @@ namespace triagens {
                   // we'll allow all
                   response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), allowedMethods);
 
-                  if (allowHeaders.size() > 0) {
+                  if (! allowHeaders.empty()) {
                     // allow all extra headers the client requested
                     // we don't verify them here. the worst that can happen is that the client
                     // sends some broken headers and then later cannot access the data on the
@@ -647,7 +647,7 @@ namespace triagens {
 
         void addResponse (HttpResponse* response) {
           // CORS response handling
-          if (this->_origin.size() > 0) {
+          if (! this->_origin.empty()) {
             // the request contained an Origin header. We have to send back the
             // access-control-allow-origin header now
             LOG_TRACE("handling CORS response");

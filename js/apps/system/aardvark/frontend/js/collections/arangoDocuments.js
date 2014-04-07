@@ -245,6 +245,38 @@
                 error: function(data) {
                 }
             });
+        },
+
+        updloadDocuments : function (file) {
+            var result, data;
+            $.ajax({
+                type: "POST",
+                async: false,
+                url:
+                    '/_api/import?type=auto&collection='+
+                        encodeURIComponent(this.collectionID)+
+                        '&createCollection=false',
+                data: file,
+                processData: false,
+                contentType: 'json',
+                dataType: 'json',
+                complete: function(xhr) {
+                    if (xhr.readyState === 4 && xhr.status === 201) {
+                        result =  xhr.responseText;
+                        try {
+                            data = JSON.parse(result);
+                            result =  true;
+                        } catch (e) {
+                            result =  "Error: " + e;
+                        }
+                    } else {
+                        result =  "Upload error";
+                    }
+                }
+            });
+            return result;
         }
+
+
   });
 }());

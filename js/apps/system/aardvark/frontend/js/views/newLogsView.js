@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, templateEngine*/
+/*global Backbone, arangoHelper, $, window, templateEngine*/
 
 (function() {
   "use strict";
@@ -43,7 +43,7 @@
     convertedRows: null,
 
     setActiveLoglevel: function(e) {
-     $('.arangodb-tabbar').removeClass('arango-active-tab');
+      $('.arangodb-tabbar').removeClass('arango-active-tab');
 
       if (this.currentLoglevel !== e.currentTarget.id) {
         this.currentLoglevel = e.currentTarget.id;
@@ -61,7 +61,7 @@
           self.activeCollection.each(function(model) {
             date = new Date(model.get('timestamp') * 1000);
             rowsArray.push([
-              self.convertLogStatus(model.get('level')),
+              model.getLogStatus(),
               arangoHelper.formatDT(date),
               model.get('text')]);
           });
@@ -95,13 +95,13 @@
     },
 
     lastPage: function() {
-      this.jumpTo(Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize));
+      this.jumpTo(this.activeCollection.getLastPageNumber());
     },
 
     renderPagination: function () {
       var self = this;
       var currentPage = this.activeCollection.getPage();
-      var totalPages = Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize);
+      var totalPages = this.activeCollection.getLastPageNumber();
       var target = $('#logPaginationDiv'),
       options = {
         page: currentPage,
@@ -134,26 +134,6 @@
         '<ul class="las-pagi"><li><a id="logTable_last" class="pagination-button">'+
         '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
       );
-    },
-
-    convertLogStatus: function (status) {
-      var returnString;
-      if (status === 1) {
-        returnString = "Error";
-      }
-      else if (status === 2) {
-        returnString = "Warning";
-      }
-      else if (status === 3) {
-        returnString =  "Info";
-      }
-      else if (status === 4) {
-        returnString = "Debug";
-      }
-      else {
-        returnString = "Unknown";
-      }
-      return returnString;
     }
   });
 }());
