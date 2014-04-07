@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global Backbone, window, $, _ */
 (function () {
 
   "use strict";
@@ -13,16 +13,14 @@
 
     parse: function(response) {
       var myResponse = [];
-      var i = 0;
-      $.each(response.lid, function(key, val) {
+      _.each(response.lid, function(val, i) {
         myResponse.push({
           "level": response.level[i],
-          "lid": response.lid[i],
+          "lid": val,
           "text": response.text[i],
           "timestamp": response.timestamp[i],
           "totalAmount": response.totalAmount
         });
-        i++;
       });
       this.totalAmount = response.totalAmount;
       return myResponse;
@@ -41,6 +39,11 @@
 
     setPage: function(counter) {
       this.page = counter-1;
+    },
+
+    getLastPageNumber: function() {
+      return Math.ceil(this.totalAmount / this.pagesize);
+      
     },
 
     model: window.newArangoLog,
