@@ -65,32 +65,29 @@ static TRI_fulltext_query_operation_e ParseOperation (const char c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* NormaliseWord (const char* const word, const size_t wordLength) {
-  char* copy;
-  char* copy2;
-  char* copy3;
-  char* prefixEnd;
   size_t outLength;
   int32_t outLength2;
-  ptrdiff_t prefixLength;
 
   // normalise string
-  copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
+  char* copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
+
   if (copy == NULL) {
     return NULL;
   }
 
   // lower case string
-  copy2 = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
+  char* copy2 = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
 
   if (copy2 == NULL) {
     return NULL;
   }
 
-  prefixEnd = TRI_PrefixUtf8String(copy2, TRI_FULLTEXT_MAX_WORD_LENGTH);
-  prefixLength = prefixEnd - copy2;
+  char* prefixEnd = TRI_PrefixUtf8String(copy2, TRI_FULLTEXT_MAX_WORD_LENGTH);
+  ptrdiff_t prefixLength = prefixEnd - copy2;
 
-  copy3 = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * ((size_t) prefixLength + 1), false);
+  char* copy3 = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * ((size_t) prefixLength + 1), false));
+
   if (copy3 == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
     return NULL;
@@ -121,28 +118,30 @@ static char* NormaliseWord (const char* const word, const size_t wordLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t numWords) {
-  TRI_fulltext_query_t* query;
+  TRI_fulltext_query_t* query = static_cast<TRI_fulltext_query_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_t), false));
 
-  query = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_t), false);
   if (query == NULL) {
     return NULL;
   }
 
   // fill word vector with NULLs
-  query->_words = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char*) * numWords, true);
+  query->_words = static_cast<char**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char*) * numWords, true));
+
   if (query->_words == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
     return NULL;
   }
 
-  query->_matches = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_match_e) * numWords, false);
+  query->_matches = static_cast<TRI_fulltext_query_match_e*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_match_e) * numWords, false));
+
   if (query->_matches == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
     return NULL;
   }
 
-  query->_operations = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_operation_e) * numWords, false);
+  query->_operations = static_cast<TRI_fulltext_query_operation_e*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_operation_e) * numWords, false));
+
   if (query->_operations == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_matches);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);

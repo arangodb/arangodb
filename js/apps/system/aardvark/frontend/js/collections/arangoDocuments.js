@@ -38,7 +38,7 @@
     },
 
     // TODO Endof Remove this block
-    
+
     getTotalDocuments: function() {
       var result;
       $.ajax({
@@ -72,27 +72,27 @@
         return;
       }
       var query = " FILTER",
-        parts = _.map(this.filters, function(f, i) {
-          var res = " x.`";
-          res += f.attr;
-          res += "` ";
-          res += f.op;
-          res += " @param";
-          res += i;
-          bindVars["param" + i] = this.val;
-          return res;
-        });
+      parts = _.map(this.filters, function(f, i) {
+        var res = " x.`";
+        res += f.attr;
+        res += "` ";
+        res += f.op;
+        res += " @param";
+        res += i;
+        bindVars["param" + i] = this.val;
+        return res;
+      });
       return query + parts.join(" &&");
     },
 
     resetFilter: function() {
       this.filters = [];
     },
-    
+
     getDocuments: function () {
       var self = this,
-        query,
-        bindVars;
+          query,
+          bindVars;
       bindVars = {
         "@collection": this.collectionID,
         "offset": this.getOffset(),
@@ -257,9 +257,36 @@
         success: function(data) {
           self.history =  data.result;
         },
-        error: function(data) {
+      });
+    },
+
+    updloadDocuments : function (file) {
+      var result;
+      $.ajax({
+        type: "POST",
+        async: false,
+        url:
+        '/_api/import?type=auto&collection='+
+        encodeURIComponent(this.collectionID)+
+        '&createCollection=false',
+        data: file,
+        processData: false,
+        contentType: 'json',
+        dataType: 'json',
+        complete: function(xhr) {
+          if (xhr.readyState === 4 && xhr.status === 201) {
+            result =  xhr.responseText;
+            try {
+              result =  true;
+            } catch (e) {
+              result =  "Error: " + e;
+            }
+          } else {
+            result =  "Upload error";
+          }
         }
       });
+      return result;
     }
   });
 }());
