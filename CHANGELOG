@@ -71,12 +71,6 @@ v2.0.2 (XXXX-XX-XX)
 * during cluster startup, do not log (somewhat expected) connection errors with
   log level error, but with log level info
 
-* fixed a memory barrier / cpu synchronisation problem with libev, affecting
-  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
-  
-  The issue is described in detail here:
-  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
-
 * fixed dashboard modals
 
 * fixed connection check for cluster planning front end: firefox does 
@@ -363,7 +357,28 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.13 (XXXX-XX-XX)
+v1.4.14 (XXXX-XX-XX)
+--------------------
+
+* fixed race conditions during shape / attribute insertion
+
+  A race condition could have led to spurios `cannot find attribute #xx` or
+  `cannot find shape #xx` (where xx is a number) warning messages being logged 
+  by the server. This happened when a new attribute was inserted and at the same 
+  time was queried by another thread.
+
+  Also fixed a race condition that may have occurred when a thread tried to
+  access the shapes / attributes hash tables while they were resized. In this
+  cases, the shape / attribute may have been hashed to a wrong slot.
+
+* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
+  
+  The issue is described in detail here:
+  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
+
+
+v1.4.13 (2014-03-14)
 --------------------
 
 * added diagnostic output for Foxx application upload

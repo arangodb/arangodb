@@ -287,7 +287,7 @@
                 expect(opt.processData).toEqual(false);
                 expect(opt.data).toEqual(JSON.stringify(
                     {
-                        name: "heinz", waitForSync: true, isSystem: true,
+                        name: "heinz", waitForSync: true, journalSize :2, isSystem: true,
                         type: 3, numberOfShards: 3, shardKeys: ["a", "b", "c"]
                     }
                 ));
@@ -310,7 +310,7 @@
                 expect(opt.processData).toEqual(false);
                 expect(opt.data).toEqual(JSON.stringify(
                     {
-                        name: "heinz", waitForSync: true, isSystem: true,
+                        name: "heinz", waitForSync: true, journalSize: 2, isSystem: true,
                         type: 3, numberOfShards: 3, shardKeys: ["a", "b", "c"]
                     }
                 ));

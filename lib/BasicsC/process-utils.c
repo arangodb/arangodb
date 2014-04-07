@@ -686,7 +686,16 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     // there is not any corresponce to minflt in linux
     result._minorPageFaults = 0;
 
-    result._residentSize = pmc.PeakWorkingSetSize;
+    // from MSDN:
+    // "The working set is the amount of memory physically mapped to the process context at a given time.
+    // Memory in the paged pool is system memory that can be transferred to the paging file on disk(paged) when 
+    // it is not being used. Memory in the nonpaged pool is system memory that cannot be paged to disk as long as 
+    // the corresponding objects are allocated. The pagefile usage represents how much memory is set aside for the 
+    // process in the system paging file. When memory usage is too high, the virtual memory manager pages selected 
+    // memory to disk. When a thread needs a page that is not in memory, the memory manager reloads it from the 
+    // paging file."
+
+    result._residentSize = pmc.WorkingSetSize;
     result._virtualSize = pmc.PrivateUsage;
   }
   /// computing times
@@ -703,22 +712,18 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
   /// computing number of threads
   DWORD myPID = GetCurrentProcessId();
   HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
-  THREADENTRY32 te32;
-  te32.dwSize = sizeof(THREADENTRY32);
-  if (!Thread32First(snapShot, &te32))
-  {
-    /// computation of number of threads is no posible
-    CloseHandle(snapShot);     // Must clean up the snapshot object!
-  }
-  else {
-    result._numberThreads++;
-    while (Thread32Next(snapShot, &te32)) {
-      if (te32.th32OwnerProcessID == myPID) {
-        result._numberThreads++;
+
+  if (snapShot != INVALID_HANDLE_VALUE) {
+    THREADENTRY32 te32;
+    te32.dwSize = sizeof(THREADENTRY32);
+    if (Thread32First(snapShot, &te32)) {
+      result._numberThreads++;
+      while (Thread32Next(snapShot, &te32)) {
+        if (te32.th32OwnerProcessID == myPID) {
+          result._numberThreads++;
+        }
       }
     }
-  }
-  if (snapShot) {
     CloseHandle(snapShot);
   }
 

@@ -874,7 +874,7 @@ function post_api_traversal(req, res) {
       var init = new Function('result', json.init);
       init(result);
     } 
-    catch (err6) {
+    catch (err7) {
       return badParam(req, res, "invalid init function");
     }
   }
@@ -888,12 +888,12 @@ function post_api_traversal(req, res) {
     traverser.traverse(result, doc);
     actions.resultOk(req, res, actions.HTTP_OK, { result : result });
   }
-  catch (err7) {
+  catch (err8) {
     if (traverser === undefined) {
       // error during traversal setup
-      return badParam(req, res, err7);
+      return badParam(req, res, err8);
     }
-    actions.resultException(req, res, err7, undefined, false);
+    actions.resultException(req, res, err8, undefined, false);
   }
 }
 
