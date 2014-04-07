@@ -55,7 +55,7 @@ bin_arangod_SOURCES = \
 	arangod/FulltextIndex/fulltext-result.cc \
 	arangod/FulltextIndex/fulltext-wordlist.cc \
 	arangod/GeoIndex/GeoIndex.c \
-	arangod/GeoIndex/geo-index.c \
+	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cc \
 	arangod/HashIndex/hash-index.cc \
 	arangod/IndexIterators/index-iterator.cc \
