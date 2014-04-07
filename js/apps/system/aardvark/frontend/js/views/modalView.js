@@ -143,7 +143,7 @@
       };
     },
 
-    show: function(templateName, title, buttons, tableContent) {
+    show: function(templateName, title, buttons, tableContent, advancedContent) {
       var self = this, lastBtn;
       buttons = buttons || [];
       // Insert close as second from right
@@ -179,6 +179,7 @@
       var template = templateEngine.createTemplate(templateName),
         model = {};
       model.content = tableContent || [];
+      model.advancedContent = advancedContent || false;
       $(".modal-body").html(template.render(model));
       $('.modalTooltips').tooltip({
         placement: "left"

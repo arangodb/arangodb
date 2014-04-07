@@ -498,24 +498,11 @@
     drawTable: function() {
       var self = this;
 
-      /*
-         if (this.addDocumentSwitch === true) {
-         $(self.table).dataTable().fnAddData(
-         [
-         '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-         '',
-         '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
-         ]
-         );
-         }*/
-
-      if (window.arangoDocumentsStore.models.length === 0) {
+        if (window.arangoDocumentsStore.models.length === 0) {
         $('.dataTables_empty').text('No documents');
       }
       else {
-
         $.each(window.arangoDocumentsStore.models, function(key, value) {
-
           var tempObj = {};
           $.each(value.attributes.content, function(k, v) {
             if (! (k === '_id' || k === '_rev' || k === '_key')) {
@@ -679,7 +666,7 @@
       });
       return fields;
     },
-    createIndex: function (e) {
+    createIndex: function () {
       //e.preventDefault();
       var self = this;
       var collection = this.collectionName;

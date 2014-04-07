@@ -285,10 +285,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
   TRI_Free(shaper->_memoryZone, aids);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result);
+  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
   assert(f == NULL);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result);
+  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result, false);
   assert(f == NULL);
 
   // return pid
