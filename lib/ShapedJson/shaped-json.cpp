@@ -619,7 +619,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (uint32_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values;  p < e;  ++p) {
@@ -688,7 +688,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (uint32_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     offsets = (TRI_shape_size_t*) ptr;
@@ -731,7 +731,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (uint32_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     sids = (TRI_shape_sid_t*) ptr;
