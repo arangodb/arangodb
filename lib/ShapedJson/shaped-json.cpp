@@ -1608,22 +1608,10 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
     return false;
   }
 
-  if (l > 1) {
-    char* unicoded;
-    size_t out;
-
-    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, data, (size_t) (l - 1), true, &out, false);
-
-    if (unicoded == NULL) {
-      return false;
-    }
-
-    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
-    TRI_FreeString(shaper->_memoryZone, unicoded);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
+  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, true);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
   }
 
   res = TRI_AppendCharStringBuffer(buffer, '"');
@@ -1645,8 +1633,6 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
                                               char const* data,
                                               uint64_t size) {
   TRI_shape_length_long_string_t l;
-  char* unicoded;
-  size_t out;
   int res;
 
   l = * (TRI_shape_length_long_string_t const*) data;
@@ -1658,14 +1644,7 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
     return false;
   }
 
-  unicoded = TRI_EscapeUtf8StringZ(buffer->_memoryZone, data, l - 1, true, &out, false);
-
-  if (unicoded == NULL) {
-    return false;
-  }
-
-  res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
-  TRI_FreeString(buffer->_memoryZone, unicoded);
+  res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
@@ -1703,8 +1682,6 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
   shape_cache_t shapeCache;
   bool first;
   char const* qtr;
-  char* unicoded;
-  size_t out;
   int res;
 
   s = (TRI_array_shape_t const*) shape;
@@ -1790,14 +1767,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, name, strlen(name), true, &out, false);
-
-    if (unicoded == NULL) {
-      return false;
-    }
-
-    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
-    TRI_FreeString(shaper->_memoryZone, unicoded);
+    res = TRI_AppendJsonEncodedStringStringBuffer(buffer, name, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -1869,14 +1839,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, name, strlen(name), true, &out, false);
-
-    if (unicoded == NULL) {
-      return false;
-    }
-
-    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
-    TRI_FreeString(shaper->_memoryZone, unicoded);
+    res = TRI_AppendJsonEncodedStringStringBuffer(buffer, name, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
