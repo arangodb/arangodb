@@ -90,8 +90,10 @@
       return disabledButton;
     },
 
-    createReadOnlyEntry: function(label, value, info) {
-      return createTextStub(this.tables.READONLY, label, value, info);
+    createReadOnlyEntry: function(id, label, value, info) {
+      var obj = createTextStub(this.tables.READONLY, label, value, info);
+      obj.id = id;
+      return obj;
     },
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {

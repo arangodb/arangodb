@@ -194,17 +194,17 @@
       );
       tableContent.push(
         window.modalView.createReadOnlyEntry(
-          "ID", this.model.get('id'), ""
+          "change-collection-id", "ID", this.model.get('id'), ""
         )
       );
       tableContent.push(
         window.modalView.createReadOnlyEntry(
-          "Type", this.model.get('type'), ""
+          "change-collection-type", "Type", this.model.get('type'), ""
         )
       );
       tableContent.push(
         window.modalView.createReadOnlyEntry(
-          "Status", this.model.get('status'), ""
+          "change-collection-status", "Status", this.model.get('status'), ""
         )
       );
       if(this.model.get('status') === "loaded") {
