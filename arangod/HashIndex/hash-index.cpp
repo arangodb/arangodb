@@ -50,22 +50,18 @@
 static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
                                                    TRI_index_search_value_t* key,
                                                    TRI_hash_index_element_t* element) {
-  char const* ptr;
-  size_t n;
-  size_t i;
-
-  n = idx->_paths._length;
+  size_t const n = idx->_paths._length;
   key->_values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false));
 
   if (key->_values == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  ptr = (char const*) element->_document->_data;
+  char const* ptr = static_cast<char const*>(element->_document->_data);
 
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     key->_values[i]._sid = element->_subObjects[i]._sid;
-    key->_values[i]._data.length = element->_subObjects[i]._length;
+    key->_values[i]._data.length = (uint32_t) element->_subObjects[i]._length;
     key->_values[i]._data.data = const_cast<char*>(ptr + element->_subObjects[i]._offset);
   }
 

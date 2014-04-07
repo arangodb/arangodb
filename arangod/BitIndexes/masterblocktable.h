@@ -270,7 +270,7 @@ static int extendMasterTable(MasterTable_t* mt) {
   }
 
 
-  newNumBlocks = (mt->_numBlocks * BITARRAY_MASTER_TABLE_GROW_FACTOR) + 1;
+  newNumBlocks = ((size_t) (mt->_numBlocks * BITARRAY_MASTER_TABLE_GROW_FACTOR)) + 1;
   MasterTableBlock_t* newBlocks = static_cast<MasterTableBlock_t*>(TRI_Allocate(mt->_memoryZone, (sizeof(MasterTableBlock_t) * newNumBlocks), true));
 
   if (newBlocks == NULL) {

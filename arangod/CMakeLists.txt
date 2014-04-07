@@ -69,9 +69,9 @@ add_executable(
     Ahuacatl/ahuacatl-statementlist.c
     Ahuacatl/ahuacatl-tokens.c
     Ahuacatl/ahuacatl-variable.c
-    BitIndexes/bitarray.cc
-    BitIndexes/bitarrayIndex.cc
-    CapConstraint/cap-constraint.cc
+    BitIndexes/bitarray.cpp
+    BitIndexes/bitarrayIndex.cpp
+    CapConstraint/cap-constraint.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
@@ -82,18 +82,18 @@ add_executable(
     Cluster/ServerJob.cpp
     Cluster/ServerState.cpp
     Cluster/v8-cluster.cpp
-    FulltextIndex/fulltext-handles.cc
-    FulltextIndex/fulltext-index.cc
-    FulltextIndex/fulltext-list.cc
-    FulltextIndex/fulltext-query.cc
-    FulltextIndex/fulltext-result.cc
-    FulltextIndex/fulltext-wordlist.cc
+    FulltextIndex/fulltext-handles.cpp
+    FulltextIndex/fulltext-index.cpp
+    FulltextIndex/fulltext-list.cpp
+    FulltextIndex/fulltext-query.cpp
+    FulltextIndex/fulltext-result.cpp
+    FulltextIndex/fulltext-wordlist.cpp
     GeoIndex/GeoIndex.c
-    GeoIndex/geo-index.c
-    HashIndex/hash-array.cc
-    HashIndex/hash-index.cc
-    IndexIterators/index-iterator.cc
-    IndexOperators/index-operator.cc
+    GeoIndex/geo-index.cpp
+    HashIndex/hash-array.cpp
+    HashIndex/hash-index.cpp
+    IndexIterators/index-iterator.cpp
+    IndexOperators/index-operator.cpp
     Replication/replication-static.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
@@ -110,7 +110,7 @@ add_executable(
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
-    SkipLists/skiplistIndex.cc
+    SkipLists/skiplistIndex.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
     Transaction/Transaction.cpp
