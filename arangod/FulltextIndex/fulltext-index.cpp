@@ -568,9 +568,8 @@ static bool ExtendSubNodeList (index_t* const idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static node_t* CreateNode (index_t* const idx) {
-  node_t* node;
+  node_t* node = static_cast<node_t*>(AllocateMemory(idx, sizeof(node_t)));
 
-  node = AllocateMemory(idx, sizeof(node_t));
   if (node == NULL) {
     return NULL;
   }
@@ -1296,9 +1295,8 @@ static inline size_t CommonPrefixLength (const char* const lhs,
 TRI_fts_index_t* TRI_CreateFtsIndex (uint32_t handleChunkSize,
                                      uint32_t nodeChunkSize,
                                      uint32_t initialNodeHandles) {
-  index_t* idx;
+  index_t* idx = static_cast<index_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(index_t), false));
 
-  idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(index_t), false);
   if (idx == NULL) {
     return NULL;
   }

@@ -339,8 +339,9 @@ int GeoIndexNewPot(GeoIx * gix)
         x=x/y;
         if(x>1000000000L) return -2;
         newpotct= (int) x;
-        gp = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,newpotct*sizeof(GeoPot));
-        if(gp!=NULL) gix->pots=gp;
+        gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,newpotct*sizeof(GeoPot)));
+
+        if(gp !=NULL) gix->pots=gp;
             else     return -2;
         for(j=gix->potct;j<newpotct;j++) GeoIndexFreePot(gix,j);
         gix->potct=newpotct;
@@ -374,15 +375,15 @@ GeoIndex * GeoIndex_new(void) {
     int i,j;
     double lat, lon, x, y, z;
 
-    gix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false);
+    gix = static_cast<GeoIx*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
 
     if (gix == NULL) {
       return (GeoIndex *) gix;
     }
 
 /* try to allocate all the things we need  */
-    gix->pots       = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART*sizeof(GeoPot), false);
-    gix->gc         = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART*sizeof(GeoCoordinate), false);
+    gix->pots       = static_cast<GeoPot*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART*sizeof(GeoPot), false));
+    gix->gc         = static_cast<GeoCoordinate*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART*sizeof(GeoCoordinate), false));
 
 /* if any of them fail, free the ones that succeeded  */
 /* and then return the NULL pointer for our user      */
@@ -817,9 +818,9 @@ GeoResults * GeoResultsCons(int alloc)
       return NULL;
     }
 
-    gres = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults), false);
-    sa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(int), false);
-    dd = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(double), false);
+    gres = static_cast<GeoResults*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults), false));
+    sa = static_cast<int*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(int), false));
+    dd = static_cast<double*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc*sizeof(double), false));
     if( (gres==NULL) ||
          (sa==NULL)  ||
          (dd==NULL)   )
@@ -944,8 +945,8 @@ int GeoResultsGrow(GeoResults * gr)
         /* otherwise grow by about 50%  */
     newsiz=gr->pointsct + (gr->pointsct/2) + 1;
     if(newsiz > 1000000000) return -1;
-    sa=TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->slot, newsiz*sizeof(int));
-    dd=TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->snmd, newsiz*sizeof(double));
+    sa=static_cast<int*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->slot, newsiz*sizeof(int)));
+    dd=static_cast<double*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->snmd, newsiz*sizeof(double)));
     if( (sa==NULL) || (dd==NULL) )
     {
         if(sa!=NULL) gr->slot = sa;
@@ -988,8 +989,8 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
       return NULL;
     }
 
-    ans = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates), false);
-    gc  = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate), false);
+    ans = static_cast<GeoCoordinates*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates), false));
+    gc  = static_cast<GeoCoordinate*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate), false));
 
     if( (ans==NULL) || (gc==NULL) )
     {
@@ -1262,7 +1263,7 @@ int GeoIndexNewSlot(GeoIx * gix)
         x=x/y;
         if(x>2000000000L) return -2;
         newslotct= (int) x;
-        gc = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->gc,newslotct*sizeof(GeoCoordinate));
+        gc = static_cast<GeoCoordinate*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->gc,newslotct*sizeof(GeoCoordinate)));
         if(gc!=NULL) gix->gc=gc;
             else     return -2;
         for(j=gix->slotct;j<newslotct;j++) GeoIndexFreeSlot(gix,j);
