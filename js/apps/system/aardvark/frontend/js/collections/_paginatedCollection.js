@@ -56,6 +56,10 @@
 
     setTotal: function(total) {
       this.totalAmount = total;
+    },
+
+    getTotal: function() {
+      return this.totalAmount;
     }
 
   });
