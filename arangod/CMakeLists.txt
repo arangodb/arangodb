@@ -89,7 +89,7 @@ add_executable(
     FulltextIndex/fulltext-result.cc
     FulltextIndex/fulltext-wordlist.cc
     GeoIndex/GeoIndex.c
-    GeoIndex/geo-index.c
+    GeoIndex/geo-index.cpp
     HashIndex/hash-array.cc
     HashIndex/hash-index.cc
     IndexIterators/index-iterator.cc
