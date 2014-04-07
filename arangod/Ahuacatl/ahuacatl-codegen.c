@@ -269,13 +269,12 @@ static inline bool OutputString (TRI_string_buffer_t* const buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a string to the buffer
+/// @brief append a JSON-encoded string to the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool OutputString2 (TRI_string_buffer_t* const buffer,
-                                  const char* const value,
-                                  size_t length) {
-  return (TRI_AppendString2StringBuffer(buffer, value, length) == TRI_ERROR_NO_ERROR);
+static inline bool OutputEncodedString (TRI_string_buffer_t* const buffer,
+                                        const char* const value) {
+  return (TRI_AppendJsonEncodedStringStringBuffer(buffer, value, false) == TRI_ERROR_NO_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +365,7 @@ static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator,
   if (! OutputChar(scope->_buffer, '\'')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (! OutputString(scope->_buffer, value)) {
+  if (! OutputEncodedString(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
   if (! OutputChar(scope->_buffer, '\'')) {
@@ -381,8 +380,6 @@ static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator,
 static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
                                        const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  char* escaped;
-  size_t outLength;
 
   if (scope == NULL) {
     return;
@@ -392,16 +389,7 @@ static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  escaped = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, strlen(value), false, &outLength, false);
-
-  if (escaped != NULL) {
-    if (! OutputString2(scope->_buffer, escaped, outLength)) {
-      generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
-  }
-  else {
+  if (! OutputEncodedString(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 

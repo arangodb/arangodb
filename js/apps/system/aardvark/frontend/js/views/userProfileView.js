@@ -48,7 +48,6 @@
     },
 
     submitEditUserProfile : function() {
-      var self = this;
       var name      = $('#editName').val();
       var img       = $('#editUserProfileImg').val();
 

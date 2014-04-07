@@ -159,14 +159,7 @@
       var buttons = [],
         tableContent = [];
 
-      if (this.isCoordinator) {
-/*
-        <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value="" readonly="readonly" /></th>
-*/
-
-      } else {
-//        <input type="text" id="change-collection-name" name="name" value=""/></th>
-          //(id, label, value, info, placeholder, mandatory)
+      if (! this.isCoordinator) {
         tableContent.push(
           window.modalView.createTextEntry(
             "change-collection-name", "Name", this.model.get('name'), false, "", true
@@ -182,7 +175,10 @@
         )
       );
 
+      // prevent "unexpected sync method error"
+      /*jslint stupid: true */
       var wfs = this.model.collection.getProperties(this.model.get('id')).waitForSync;
+      /*jslint stupid: false */
 
       tableContent.push(
         window.modalView.createSelectEntry(
