@@ -27,6 +27,7 @@
       }
       if (result === true) {
         this.fillEditor();
+        return true;
       }
     },
 

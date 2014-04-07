@@ -41,9 +41,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
-  TRI_fulltext_result_t* result;
+  TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false));
 
-  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false);
   if (result == NULL) {
     return NULL;
   }
@@ -52,7 +51,8 @@ TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
   result->_numDocuments = 0;
 
   if (size > 0) {
-    result->_documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false);
+    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
+
     if (result->_documents == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
       return NULL;

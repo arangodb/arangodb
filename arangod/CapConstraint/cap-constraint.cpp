@@ -280,16 +280,13 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
                                       TRI_idx_iid_t iid,
                                       size_t count,
                                       int64_t size) {
-  TRI_cap_constraint_t* cap;
-  TRI_index_t* idx;
-
-  cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  TRI_cap_constraint_t* cap = static_cast<TRI_cap_constraint_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false));
 
   if (cap == NULL) {
     return NULL;
   }
 
-  idx = &cap->base;
+  TRI_index_t* idx = &cap->base;
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
