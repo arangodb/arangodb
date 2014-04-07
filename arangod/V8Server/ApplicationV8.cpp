@@ -324,13 +324,29 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   CONDITION_LOCKER(guard, _contextCondition);
 
-  context->handleGlobalContextMethods();
-
   ++context->_dirt;
 
   // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
+
+  // try to execute new global context methods
+  bool runGlobal = false;
+  {
+    MUTEX_LOCKER(context->_globalMethodsLock);
+    runGlobal = ! context->_globalMethods.empty();
+  }
+
+  if (runGlobal) {
+    context->_isolate->Enter();
+    context->_context->Enter();
+
+    context->handleGlobalContextMethods();
+    
+    context->_context->Exit();
+    context->_isolate->Exit();
+  }
+
   delete context->_locker;
 
 

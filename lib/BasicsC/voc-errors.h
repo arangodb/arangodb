@@ -53,6 +53,8 @@ extern "C" {
 ///   Will be raised when an attempt to create a directory fails.
 /// - 20: @LIT{cannot create temporary file}
 ///   Will be raised when an attempt to create a temporary file fails.
+/// - 21: @LIT{canceled request}
+///   Will be raised when a request is canceled by the user.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -714,6 +716,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CANNOT_CREATE_TEMP_FILE                                 (20)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 21: ERROR_REQUEST_CANCELED
+///
+/// canceled request
+///
+/// Will be raised when a request is canceled by the user.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REQUEST_CANCELED                                        (21)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

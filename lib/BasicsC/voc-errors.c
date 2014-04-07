@@ -32,6 +32,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_LOCK_TIMEOUT, "lock timeout");
   REG_ERROR(ERROR_CANNOT_CREATE_DIRECTORY, "cannot create directory");
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
+  REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");

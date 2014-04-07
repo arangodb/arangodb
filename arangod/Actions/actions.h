@@ -29,6 +29,7 @@
 #define TRIAGENS_ACTIONS_ACTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -54,7 +55,7 @@ namespace triagens {
 class TRI_action_result_t {
   public:
     TRI_action_result_t ()
-      : isValid(false), requeue(false), response(0), sleep(0.0) {
+      : isValid(false), requeue(false), canceled(false), response(0), sleep(0.0) {
     }
 
     // Please be careful here: In the beginning we had "bool requeue" after
@@ -65,8 +66,10 @@ class TRI_action_result_t {
     // In this order it seems to work.
     // Details: v8-actions.cpp: v8_action_t::execute returns a TRI_action_result_t
     // to RestActionHandler::executeAction and suddenly requeue is true.
+
     bool isValid;
     bool requeue;
+    bool canceled;
 
     triagens::rest::HttpResponse* response;
     
@@ -85,7 +88,13 @@ class TRI_action_t {
 
     virtual ~TRI_action_t () {}
 
-    virtual TRI_action_result_t execute (struct TRI_vocbase_s*, triagens::rest::HttpRequest*) = 0;
+    virtual TRI_action_result_t execute (struct TRI_vocbase_s*,
+                                         triagens::rest::HttpRequest*,
+                                         triagens::basics::Mutex* dataLock,
+                                         void** data) = 0;
+
+    virtual bool cancel (triagens::basics::Mutex* dataLock,
+                         void** data) = 0;
 
     std::string _type;
     std::string _url;

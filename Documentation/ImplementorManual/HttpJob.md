@@ -96,6 +96,10 @@ Managing Async Results via HTTP {#HttpJobHttp}
 @copydetails triagens::admin::RestJobHandler::putJob
 
 @CLEARPAGE
+@anchor HttpJobPutMethod
+@copydetails triagens::admin::RestJobHandler::putJobMethod
+
+@CLEARPAGE
 @anchor HttpJobDelete
 @copydetails triagens::admin::RestJobHandler::deleteJob
 

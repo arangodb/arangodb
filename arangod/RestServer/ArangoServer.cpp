@@ -116,7 +116,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_api", dispatcher->dispatcher(), jobManager);
 
   // add a upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
@@ -149,8 +149,8 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 #ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
-                            RestHandlerCreator<RestShardHandler>::createData<void*>,
-                            (void*) dispatcher->dispatcher());
+                            RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
+                            dispatcher->dispatcher());
 #endif
 }
 
@@ -165,7 +165,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationServer* applicationServer) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_admin", dispatcher->dispatcher(), jobManager);
 
   // add "/_admin/shutdown" handler
   factory->addPrefixHandler("/_admin/shutdown",

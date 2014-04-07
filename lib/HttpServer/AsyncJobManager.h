@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2004-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2004-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_JOB_MANAGER_H
-#define TRIAGENS_HTTP_SERVER_JOB_MANAGER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_ASYNC_JOB_MANAGER_H
+#define TRIAGENS_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
@@ -43,6 +43,10 @@ namespace triagens {
 // --SECTION--                                        class AsyncCallbackContext
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AsyncCallbackContext
+////////////////////////////////////////////////////////////////////////////////
+
     class AsyncCallbackContext {
 
 // -----------------------------------------------------------------------------
@@ -50,10 +54,19 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         AsyncCallbackContext (std::string const& coordHeader)
           : _coordHeader(coordHeader),
             _response(0) {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
         ~AsyncCallbackContext () {
           if (_response != 0) {
@@ -67,7 +80,11 @@ namespace triagens {
 
       public:
 
-        string& getCoordinatorHeader() {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the coordinator header
+////////////////////////////////////////////////////////////////////////////////
+
+        string& getCoordinatorHeader () {
           return _coordHeader;
         }
 
@@ -77,7 +94,15 @@ namespace triagens {
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief coordinator header
+////////////////////////////////////////////////////////////////////////////////
+
         std::string _coordHeader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief http response
+////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse* _response;
     };
@@ -85,6 +110,10 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AsyncJobResult
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AsyncJobResult
+////////////////////////////////////////////////////////////////////////////////
 
     struct AsyncJobResult {
 
@@ -95,7 +124,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job statuses
+/// @brief job states
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef enum {
@@ -108,7 +137,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief id typedef
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         typedef uint64_t IdType;
 
 // -----------------------------------------------------------------------------
@@ -119,7 +148,7 @@ namespace triagens {
 /// @brief constructor for an unspecified job result
 ////////////////////////////////////////////////////////////////////////////////
 
-        AsyncJobResult () : 
+        AsyncJobResult () :
           _jobId(0),
           _response(0),
           _stamp(0.0),
@@ -130,8 +159,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a specific job result
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AsyncJobResult (IdType jobId, 
+
+        AsyncJobResult (IdType jobId,
                         HttpResponse* response,
                         double stamp,
                         Status status,
@@ -158,7 +187,7 @@ namespace triagens {
 /// @brief job id
 ////////////////////////////////////////////////////////////////////////////////
 
-        IdType        _jobId;
+        IdType _jobId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the full HTTP response object of the job, can be 0
@@ -170,20 +199,19 @@ namespace triagens {
 /// @brief job creation stamp
 ////////////////////////////////////////////////////////////////////////////////
 
-        double        _stamp;
+        double _stamp;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job status
 ////////////////////////////////////////////////////////////////////////////////
 
-        Status        _status;
+        Status _status;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback context object (normally 0, used in cluster operations)
 ////////////////////////////////////////////////////////////////////////////////
 
         AsyncCallbackContext* _ctx;
-
     };
 
 // -----------------------------------------------------------------------------
@@ -197,7 +225,31 @@ namespace triagens {
         AsyncJobManager& operator= (AsyncJobManager const&);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors 
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback typedef
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef void (*callback_fptr)(string&, HttpResponse*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate typedef
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef uint64_t (*generate_fptr)();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief joblist typedef
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef std::map<AsyncJobResult::IdType, AsyncJobResult> JobList;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
       public:
@@ -206,12 +258,12 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        AsyncJobManager (uint64_t (*idFunc)(), 
-                         void (*callbackFunc)(string&, HttpResponse*))
+        AsyncJobManager (generate_fptr idFunc,
+                         callback_fptr callback)
           : _lock(),
             _jobs(),
             generate(idFunc),
-            callback(callbackFunc) {
+            callback(callback) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,32 +274,22 @@ namespace triagens {
         }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief joblist typedef
-////////////////////////////////////////////////////////////////////////////////
-        
-        typedef std::map<AsyncJobResult::IdType, AsyncJobResult> JobList;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the result of an async job, and optionally remove it from the
-/// list of done jobs if it is completed
+/// @brief gets the result of an async job
+///
+/// Get the result of an async job, and optionally remove it from the list of
+/// done jobs if it is completed.
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse* getJobResult (AsyncJobResult::IdType jobId,
                                     AsyncJobResult::Status& status,
-                                    bool removeFromList) { 
+                                    bool removeFromList) {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.find(jobId); 
+          JobList::iterator it = _jobs.find(jobId);
 
           if (it == _jobs.end()) {
             status = AsyncJobResult::JOB_UNDEFINED;
@@ -258,7 +300,7 @@ namespace triagens {
           status = (*it).second._status;
 
           if (status == AsyncJobResult::JOB_PENDING) {
-            return 0; 
+            return 0;
           }
 
           if (! removeFromList) {
@@ -271,13 +313,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the result of an async job, without returning it
+/// @brief deletes the result of an async job, without returning it
 ////////////////////////////////////////////////////////////////////////////////
 
         bool deleteJobResult (AsyncJobResult::IdType jobId) {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.find(jobId); 
+          JobList::iterator it = _jobs.find(jobId);
 
           if (it == _jobs.end()) {
             return false;
@@ -295,7 +337,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete all results
+/// @brief deletes all results
 ////////////////////////////////////////////////////////////////////////////////
 
         void deleteJobResults () {
@@ -317,7 +359,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete expired results
+/// @brief deletes expired results
 ////////////////////////////////////////////////////////////////////////////////
 
         void deleteExpiredJobResults (double stamp) {
@@ -344,26 +386,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of pending jobs
+/// @brief returns the list of pending jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<AsyncJobResult::IdType> pending (size_t maxCount) { 
+        const std::vector<AsyncJobResult::IdType> pending (size_t maxCount) {
           return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of done jobs
+/// @brief returns the list of done jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<AsyncJobResult::IdType> done (size_t maxCount) { 
+        const std::vector<AsyncJobResult::IdType> done (size_t maxCount) {
           return byStatus(AsyncJobResult::JOB_DONE, maxCount);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of jobs by status
+/// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<AsyncJobResult::IdType> byStatus (AsyncJobResult::Status status, 
+        const std::vector<AsyncJobResult::IdType> byStatus (AsyncJobResult::Status status,
                                                             size_t maxCount) {
           vector<AsyncJobResult::IdType> jobs;
           size_t n = 0;
@@ -392,12 +434,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise an async job
+/// @brief initialises an async job
 ////////////////////////////////////////////////////////////////////////////////
 
         template<typename S, typename HF>
-        void initAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job, 
-                           uint64_t* jobId) { 
+        void initAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job,
+                           uint64_t* jobId) {
           if (jobId == 0) {
             return;
           }
@@ -417,8 +459,11 @@ namespace triagens {
             ctx = new AsyncCallbackContext(std::string(hdr));
           }
 
-          AsyncJobResult ajr(*jobId, 0, TRI_microtime(), 
-                             AsyncJobResult::JOB_PENDING, ctx);
+          AsyncJobResult ajr(*jobId,
+                             0,
+                             TRI_microtime(),
+                             AsyncJobResult::JOB_PENDING,
+                             ctx);
 
           WRITE_LOCKER(_lock);
 
@@ -426,13 +471,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finish the execution of an async job
+/// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
         template<typename S, typename HF>
-        void finishAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job) { 
+        void finishAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job) {
           assert(job != 0);
-        
+
           typename HF::GeneralHandler* handler = job->getHandler();
           assert(handler != 0);
 
@@ -441,18 +486,18 @@ namespace triagens {
           if (jobId == 0) {
             return;
           }
-            
+
           const double now = TRI_microtime();
           AsyncCallbackContext* ctx = 0;
           HttpResponse* response    = 0;
 
           {
             WRITE_LOCKER(_lock);
-            JobList::iterator it = _jobs.find(jobId); 
-          
+            JobList::iterator it = _jobs.find(jobId);
+
             if (it == _jobs.end()) {
               // job is already deleted.
-              // do nothing here. the dispatcher will throw away the handler, 
+              // do nothing here. the dispatcher will throw away the handler,
               // which will also dispose the response
               return;
             }
@@ -461,7 +506,7 @@ namespace triagens {
 
               (*it).second._response = response;
               (*it).second._status = AsyncJobResult::JOB_DONE;
-              (*it).second._stamp = now; 
+              (*it).second._stamp = now;
 
               ctx = (*it).second._ctx;
 
@@ -497,29 +542,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock to protect the _jobs map
 ////////////////////////////////////////////////////////////////////////////////
-       
-        basics::ReadWriteLock _lock;   
+
+        basics::ReadWriteLock _lock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list of pending/done async jobs
 ////////////////////////////////////////////////////////////////////////////////
-   
-        JobList _jobs;     
+
+        JobList _jobs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function pointer for id generation
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t (*generate)();
+        generate_fptr generate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function pointer for callback registered at initialisation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void (*callback)(string& coordinator, HttpResponse* response);
-
+        callback_fptr callback;
     };
-
   }
 }
 
