@@ -631,49 +631,6 @@
                 );
             });
 
-            it("should navigate to the editAppView", function () {
-                var key = 5;
-                spyOn(foxxDummy, "findWhere").andCallThrough();
-                spyOn(foxxDummy, "fetch");
-                simpleNavigationCheck(
-                    {
-                        url: "application/installed/:key",
-                        params: [key]
-                    },
-                    "foxxEditView",
-                    undefined,
-                    {
-                        model: key
-                    },
-                    {
-                    },
-                    false,
-                    true
-                );
-                expect(foxxDummy.fetch).toHaveBeenCalledWith({async: false});
-                expect(foxxDummy.findWhere).toHaveBeenCalledWith({_key: 5});
-            });
-
-            it("should navigate to the installAppView", function () {
-                var key = 5;
-                spyOn(foxxDummy, "fetch");
-                simpleNavigationCheck(
-                    {
-                        url: "application/available/:key",
-                        params: [key]
-                    },
-                    "foxxMountView",
-                    undefined,
-                    {
-                        collection: foxxDummy
-                    },
-                    {
-                    },
-                    false
-                );
-                expect(foxxDummy.fetch).toHaveBeenCalledWith({async: false});
-            });
-
             it("should navigate to the appDocumentation", function () {
                 var key = 5;
                 simpleNavigationCheck(
@@ -775,7 +732,7 @@
                 );
             });
 
-            it("should route to the graph management tab", function () {
+            it("should route to the new collection creation", function () {
                 simpleNavigationCheck(
                     "new",
                     "newCollectionView",
@@ -829,6 +786,8 @@
                 );
             });
 
+            /*
+
             it("should offer the delete graph view", function () {
                 var name = "testGraph";
                 simpleNavigationCheck(
@@ -846,6 +805,8 @@
                     }
                 );
             });
+
+            */
 
             it("should route to the applications tab", function () {
                 simpleNavigationCheck(

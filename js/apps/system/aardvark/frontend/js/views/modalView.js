@@ -50,6 +50,7 @@
       TEXT: "text",
       PASSWORD: "password",
       SELECT: "select",
+      SELECT2: "select2",
       CHECKBOX: "checkbox"
     },
     closeButton: {
@@ -95,6 +96,18 @@
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {
       var obj = createTextStub(this.tables.TEXT, label, value, info);
+      obj.id = id;
+      if (placeholder) {
+        obj.placeholder = placeholder;
+      }
+      if (mandatory) {
+        obj.mandatory = mandatory;
+      }
+      return obj;
+    },
+
+    createSelect2Entry: function(id, label, value, info, placeholder, mandatory) {
+      var obj = createTextStub(this.tables.SELECT2, label, value, info);
       obj.id = id;
       if (placeholder) {
         obj.placeholder = placeholder;
