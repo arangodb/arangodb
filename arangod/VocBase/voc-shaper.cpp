@@ -395,7 +395,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   // create a new attribute name
   n = strlen(name) + 1;
   
-  totalSize = sizeof(TRI_df_attribute_marker_t) + n;
+  totalSize = (TRI_voc_size_t) (sizeof(TRI_df_attribute_marker_t) + n);
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
@@ -677,7 +677,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   }
 
   // initialise a new shape marker
-  totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
+  totalSize = (TRI_voc_size_t) (sizeof(TRI_df_shape_marker_t) + shape->_size);
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
   if (mem == NULL) {
@@ -812,7 +812,6 @@ static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
   TRI_shape_size_t fixedEntries;     // the number of entries in the JSON array whose value is of a fixed size
   TRI_shape_size_t variableEntries;  // the number of entries in the JSON array whose value is not of a known fixed size
   TRI_shape_size_t j;
-  int jj;
   const TRI_shape_aid_t* aids;
   const TRI_shape_sid_t* sids;
   const TRI_shape_size_t* offsets;
@@ -873,20 +872,20 @@ static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
     (*attributeArray)[j]._weight             = shaper->lookupAttributeWeight((TRI_shaper_t*)(shaper),aids[j]);
     (*attributeArray)[j]._value._sid         = sids[j];
     (*attributeArray)[j]._value._data.data   = shapedJson->_data.data + offsets[j];
-    (*attributeArray)[j]._value._data.length = offsets[j + 1] - offsets[j];
+    (*attributeArray)[j]._value._data.length = (uint32_t) (offsets[j + 1] - offsets[j]);
   }
   
   offsets = (const TRI_shape_size_t*)(shapedJson->_data.data);
   for (j = 0; j < variableEntries; ++j) {
-    jj = j + fixedEntries;
+    TRI_shape_size_t jj = j + fixedEntries;
     (*attributeArray)[jj]._aid                = aids[jj];
     (*attributeArray)[jj]._weight             = shaper->lookupAttributeWeight((TRI_shaper_t*)(shaper),aids[jj]);
     (*attributeArray)[jj]._value._sid         = sids[jj];
     (*attributeArray)[jj]._value._data.data   = shapedJson->_data.data + offsets[j];
-    (*attributeArray)[jj]._value._data.length = offsets[j + 1] - offsets[j];
+    (*attributeArray)[jj]._value._data.length = (uint32_t) (offsets[j + 1] - offsets[j]);
   }
 
-  return (fixedEntries + variableEntries);  
+  return (int) (fixedEntries + variableEntries);  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1587,7 +1586,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     ptr = (char const*) leftDocument->_data;
 
     left._sid = leftObject->_sid;
-    left._data.length = leftObject->_length;
+    left._data.length = (uint32_t) leftObject->_length;
     left._data.data = const_cast<char*>(ptr) + leftObject->_offset;
   }
   else {
@@ -1599,7 +1598,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     ptr = (char const*) rightDocument->_data;
 
     right._sid = rightObject->_sid;
-    right._data.length = rightObject->_length;
+    right._data.length = (uint32_t) rightObject->_length;
     right._data.data = const_cast<char*>(ptr) + rightObject->_offset;
   }
   else {
