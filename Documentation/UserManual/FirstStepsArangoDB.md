@@ -143,7 +143,7 @@ ArangoDB is a database that serves documents to clients.
   joins using many collections or graph structures
 - *Cursors* are used to iterate over the result of a query
 - *Indexes* are used to speed up of searches. There are various different
-  types of indexes like @ref IndexHash , @ref IndexGeo , @ref IndexBitArrays
+  types of indexes like @ref IndexHash, @ref IndexGeo and @ref IndexBitArray
 
 If you are familiar with RDBMS then it is safe to compare collections
 to tables and documents to rows. However, bringing structure to the
