@@ -77,3 +77,22 @@
 .dataTables_info {
   display: none;
 }
+
+//new log view - do not delete
+#arangoLogTable {
+  tbody {
+    td:nth-child(1) {
+      text-align: center;
+      width: 80px;
+    }
+
+    td:nth-child(2) {
+      text-align: center;
+      width: 80px;
+    }
+
+    td:nth-child(3) {
+      width: auto;
+    }
+  }
+}

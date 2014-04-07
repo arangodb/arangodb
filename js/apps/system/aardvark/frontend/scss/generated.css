@@ -3418,6 +3418,15 @@ textarea,
 .dataTables_info {
   display: none; }
 
+#arangoLogTable tbody td:nth-child(1) {
+  width: 80px;
+  text-align: center; }
+#arangoLogTable tbody td:nth-child(2) {
+  width: 80px;
+  text-align: center; }
+#arangoLogTable tbody td:nth-child(3) {
+  width: auto; }
+
 div.gv_zoom_widget {
   height: 300px;
   left: 95px;
