@@ -37,7 +37,7 @@
         isSystem = "No";
       }
       list.push(window.modalView.createReadOnlyEntry(
-        "Name", this.model.get("name")
+        "id_name", "Name", this.model.get("name")
       ));
       list.push(window.modalView.createTextEntry(
         "mount-point", "Mount", "/" + this.model.get("name"),
@@ -46,10 +46,10 @@
         true
       ));
       list.push(window.modalView.createReadOnlyEntry(
-        "Version", this.model.get("version") 
+        "id_version", "Version", this.model.get("version")
       ));
       list.push(window.modalView.createReadOnlyEntry(
-        "System", isSystem
+        "id_system", "System", isSystem
       ));
       return list;
     },

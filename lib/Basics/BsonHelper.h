@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_BASICS_BSON_HELPER_H
 #define TRIAGENS_BASICS_BSON_HELPER_H 1
 
+#include "Common.h"
+
 extern "C" {
 #include "libbson-1.0/bson.h"
 }
@@ -114,33 +116,28 @@ namespace triagens {
           count = 0;
         }
 
-        bool append_undefined (string const key) {
-          // Returns false if append did not work.
-          return bson_append_undefined(&_bson, key.c_str(), key.size());
-        }
-
-        bool append_null (string const key) {
+        bool appendNull (string const key) {
           // Returns false if append did not work.
           return bson_append_null(&_bson, key.c_str(), key.size());
         }
 
-        bool append (string const key, bool value) {
+        bool appendBool (string const key, bool value) {
           // Returns false if append did not work.
           return bson_append_bool(&_bson, key.c_str(), key.size(), value);
         }
 
-        bool append (string const key, double value) {
+        bool appendDouble (string const key, double value) {
           // Returns false if append did not work.
           return bson_append_double(&_bson, key.c_str(), key.size(), value);
         }
 
-        bool append (string const key, string value) {
+        bool appendUtf8 (string const key, string value) {
           // Returns false if append did not work.
           return bson_append_utf8(&_bson, key.c_str(), key.size(), 
                                           value.c_str(), value.size());
         }
 
-        bool append_document_begin (string const key, Bson& child) {
+        bool appendDocumentBegin (string const key, Bson& child) {
           // Returns false if append did not work, child will be
           // destroyed and reinitialised, even if the append operation
           // did not work.
@@ -158,7 +155,7 @@ namespace triagens {
           }
         }
 
-        bool append_document_end (string const key, Bson& child) {
+        bool appendDocumentEnd (string const key, Bson& child) {
           // Returns false if append did not work, child will be
           // empty afterwards, even if the append operation did not work.
           bool result;
@@ -167,7 +164,7 @@ namespace triagens {
           return result;
         }
 
-        bool as_json (string& result) {
+        bool toJson (string& result) {
           size_t length;
           char* p = bson_as_json(&_bson, &length);
           if (NULL == p) {
@@ -199,11 +196,11 @@ namespace triagens {
           return bson_compare(&_bson, &that._bson);
         }
 
-        bool append (string key, BsonIter& that);
+        bool appendIterItem (string key, BsonIter& that);
         // This needs to be a real method because it needs access to
         // the details of the BsonIter class.
 
-        bool append (Bson const& that) {
+        bool appendBson (Bson const& that) {
           return bson_concat(&_bson, &that._bson);
         }
 
@@ -329,7 +326,7 @@ namespace triagens {
       return res;
     }
 
-    bool Bson::append (string key, BsonIter& that) {
+    inline bool Bson::appendIterItem (string key, BsonIter& that) {
       if (! that.hasData()) {
         return false;
       }
