@@ -269,7 +269,7 @@ UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 UnitTests_geo_suite_SOURCES = \
 	UnitTests/Geo/Runner.cpp \
 	UnitTests/Geo/georeg.cpp \
-	arangod/GeoIndex/GeoIndex.c
+	arangod/GeoIndex/GeoIndex.cpp
 
 else
 

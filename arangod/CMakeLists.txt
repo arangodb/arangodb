@@ -88,7 +88,7 @@ add_executable(
     FulltextIndex/fulltext-query.cpp
     FulltextIndex/fulltext-result.cpp
     FulltextIndex/fulltext-wordlist.cpp
-    GeoIndex/GeoIndex.c
+    GeoIndex/GeoIndex.cpp
     GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
     HashIndex/hash-index.cpp
