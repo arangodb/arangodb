@@ -55,6 +55,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
   : _name(name),
     _accessQueue(),
     _readyJobs(),
+    _runningJobs(),
     _maxSize(maxSize),
     _stopping(0),
     _monopolizer(0),
@@ -95,8 +96,8 @@ bool DispatcherQueue::addJob (Job* job) {
 
   CONDITION_LOCKER(guard, _accessQueue);
 
+  // queue is full
   if (_readyJobs.size() >= _maxSize) {
-    // queue is full
     return false;
   }
 
@@ -109,6 +110,60 @@ bool DispatcherQueue::addJob (Job* job) {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to cancel a job
+////////////////////////////////////////////////////////////////////////////////
+
+bool DispatcherQueue::cancelJob (uint64_t jobId) {
+  CONDITION_LOCKER(guard, _accessQueue);
+
+  if (jobId == 0) {
+    return false;
+  }
+
+  // job is already running, try to cancel it
+  for (set<Job*>::iterator it = _runningJobs.begin();  it != _runningJobs.end();  ++it) {
+    Job* job = *it;
+
+    if (job->id() == jobId) {
+      job->cancel(true);
+      return true;
+    }
+  }
+
+  // maybe there is a waiting job with this it, try to remove it
+  for (list<Job*>::iterator it = _readyJobs.begin();  it != _readyJobs.end();  ++it) {
+    Job* job = *it;
+
+    if (job->id() == jobId) {
+      bool canceled = job->cancel(false);
+
+      if (canceled) {
+        try {
+          job->setDispatcherThread(0);
+          job->cleanup();
+        }
+        catch (...) {
+#ifdef TRI_HAVE_POSIX_THREADS
+          if (_stopping != 0) {
+            LOG_WARNING("caught cancellation exception during cleanup");
+            throw;
+          }
+#endif
+
+          LOG_WARNING("caught error while cleaning up!");
+        }
+
+        _readyJobs.erase(it);
+      }
+
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

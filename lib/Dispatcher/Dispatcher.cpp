@@ -157,12 +157,27 @@ bool Dispatcher::addJob (Job* job) {
 
   // add the job to the list of ready jobs
   if (! queue->addJob(job)) {
-    // queue full etc.
-    return false;
+    return false; // queue full etc.
   }
 
   // indicate success, BUT never access job after it has been added to the queue
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to cancel a job
+////////////////////////////////////////////////////////////////////////////////
+
+bool Dispatcher::cancelJob (uint64_t jobId) {
+  bool done = false;
+
+  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end() && ! done;  ++i) {
+    DispatcherQueue* q = i->second;
+
+    done = q->cancelJob(jobId);
+  }
+
+  return done;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +296,6 @@ void Dispatcher::reportStatus () {
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a queue
 ////////////////////////////////////////////////////////////////////////////////

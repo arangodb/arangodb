@@ -28,6 +28,7 @@
 #include "v8-actions.h"
 
 #include "Actions/actions.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -38,8 +39,8 @@
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/ApplicationScheduler.h"
+#include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -117,7 +118,9 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     v8_action_t (set<string> const& contexts)
-      : TRI_action_t(contexts) {
+      : TRI_action_t(contexts),
+        _callbacks(),
+        _callbacksLock() {
       _type = "JAVASCRIPT";
     }
 
@@ -139,11 +142,13 @@ class v8_action_t : public TRI_action_t {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the callback for a request
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
     TRI_action_result_t execute (TRI_vocbase_t* vocbase,
-                                 HttpRequest* request) {
+                                 HttpRequest* request,
+                                 Mutex* dataLock,
+                                 void** data) {
       TRI_action_result_t result;
 
       // determine whether we should force a re-initialistion of the engine in development mode
@@ -187,11 +192,54 @@ class v8_action_t : public TRI_action_t {
       }
 
       // and execute it
+      {
+        MUTEX_LOCKER(*dataLock);
+
+        if (*data != 0) {
+          result.canceled = true;
+
+          GlobalV8Dealer->exitContext(context);
+
+          return result;
+        }
+
+        *data = (void*) context->_isolate;
+      }
+
       result = ExecuteActionVocbase(vocbase, context->_isolate, this, i->second, request);
+
+      {
+        MUTEX_LOCKER(*dataLock);
+        *data = 0;
+      }
 
       GlobalV8Dealer->exitContext(context);
 
       return result;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+    bool cancel (Mutex* dataLock, void** data) {
+      {
+        MUTEX_LOCKER(*dataLock);
+
+        // either we have not yet reached the execute above or we are already done
+        if (*data == 0) {
+          *data = (void*) 1; // mark as canceled
+        }
+
+        // data is set, cancel the execution
+        else {
+          if (! v8::V8::IsExecutionTerminating((v8::Isolate*) *data)) {
+            v8::V8::TerminateExecution((v8::Isolate*) *data);
+          }
+        }
+      }
+
+      return true;
     }
 
   private:
@@ -660,20 +708,26 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   result.isValid = true;
 
   if (tryCatch.HasCaught()) {
-    v8::Handle<v8::Value> exception = tryCatch.Exception();
-    bool isSleepAndRequeue = v8g->SleepAndRequeueFuncTempl->HasInstance(exception);
+    if (tryCatch.CanContinue()) {
+      v8::Handle<v8::Value> exception = tryCatch.Exception();
+      bool isSleepAndRequeue = v8g->SleepAndRequeueFuncTempl->HasInstance(exception);
 
-    if (isSleepAndRequeue) {
-      result.requeue = true;
-      result.sleep = TRI_ObjectToDouble(exception->ToObject()->Get(v8g->SleepKey));
+      if (isSleepAndRequeue) {
+        result.requeue = true;
+        result.sleep = TRI_ObjectToDouble(exception->ToObject()->Get(v8g->SleepKey));
+      }
+      else {
+        string msg = TRI_StringifyV8Exception(&tryCatch);
+
+        HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
+        response->body().appendText(msg);
+
+        result.response = response;
+      }
     }
     else {
-      string msg = TRI_StringifyV8Exception(&tryCatch);
-
-      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
-      response->body().appendText(msg);
-
-      result.response = response;
+      result.isValid = false;
+      result.canceled = true;
     }
   }
 
