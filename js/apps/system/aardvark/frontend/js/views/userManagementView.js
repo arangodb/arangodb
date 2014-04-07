@@ -431,7 +431,7 @@
         tableContent = [];
 
       tableContent.push(
-        window.modalView.createReadOnlyEntry("Username", username)
+        window.modalView.createReadOnlyEntry("id_username", "Username", username)
       );
       tableContent.push(
         window.modalView.createTextEntry("editCurrentName", "Name", name, false, "Name", false)
