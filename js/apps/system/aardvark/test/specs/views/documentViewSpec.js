@@ -27,50 +27,65 @@
       });
     });
 
-    it("check document view type check", function() {
-      var model = new window.arangoDocument({
-        _key: "123",
-        _id: "v/123",
-        _rev: "123",
-        name: "alice"
-      });
+    it("should render", function () {
+    });
+
+    it("should copy a model into editor", function () {
+    });
+
+
+/*    it("check document view type check", function() {
 
       var arangoDocStoreDummy = {
         getEdge: function () {
-          return true;
         },
         getDocument: function () {
-          return true;
         },
         first: function () {
           return model;
         }
       };
 
-      //spyOn(window, "arangoDocumentStore").andReturn(arangoDocStoreDummy);
-      //spyOn(window.arangoDocumentStore, "getEdge").andReturn(true);
 
-      view.typeCheck('edge').toEqual(true);
-      view.typeCheck('document').toEqual(true);
-      view.typeCheck('xyz').toEqual(false);
-      view.typeCheck(false).toEqual(false);
-      view.typeCheck(123).toEqual(false);
+      spyOn(window, "arangoDocumentStore").andReturn(arangoDocStoreDummy);
+      spyOn(arangoDocStoreDummy, "getEdge").andReturn(true);
+
+      expect(view.typeCheck('edge')).toEqual(true);
+    });*/
+
+    it("should remove readonly keys", function() {
+      var object = {
+        hello: 123,
+        wrong: true,
+        _key: "123",
+        _rev: "adasda",
+        _id: "paosdjfp1321"
+      }
+
+      var shouldObject = {
+        hello: 123,
+        wrong: true
+      }
+
+      var result = view.removeReadonlyKeys(object);
+      expect(result).toEqual(shouldObject);
     });
 
-    it("should offer a source view", function() {
+    it("should modify the breadcrumb", function () {
+      var bar = document.createElement("div");
+      bar.id = 'transparentHeader';
+
+      var emptyBar = document.createElement("div");
+
+      view.breadcrumb();
+      expect(emptyBar).not.toBe(bar);
     });
 
-    it("should offer a way back to the collection", function() {
-    });
+    //it("should escape the value string", function () {
+    // FUNKTION NICHT MEHR BENUTZT??
+    //});
 
-    it("should offer a way back to the collections overiew", function () {
-    });
 
-    it("should offer a way to add more attributes", function() {
-    });
-
-    it("should offer the table of document attributes", function() {
-    });
   });
 
 }());
