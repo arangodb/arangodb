@@ -148,7 +148,6 @@
         page: currentPage,
         lastPage: totalPages,
         click: function(i) {
-          var doSomething = false;
           if (i === 1 && i !== currentPage) {
             self.firstTable();
           }

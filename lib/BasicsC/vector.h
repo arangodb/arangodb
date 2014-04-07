@@ -53,8 +53,8 @@ extern "C" {
 
 typedef struct TRI_vector_s {
   TRI_memory_zone_t* _memoryZone;
-  size_t _elementSize;
   char * _buffer;
+  size_t _elementSize;
   size_t _length;
   size_t _capacity;
 }
