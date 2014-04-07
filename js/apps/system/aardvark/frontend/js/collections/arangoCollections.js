@@ -195,7 +195,6 @@
 
       deleteIndex: function (collection, id) {
         var returnval = false;
-        var self = this;
         $.ajax({
           cache: false,
           type: 'DELETE',
@@ -325,7 +324,6 @@
         return result;
       },
       changeCollection: function (id, wfs, journalSize) {
-        var self = this;
         var result = false;
 
         $.ajax({

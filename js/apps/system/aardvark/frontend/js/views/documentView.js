@@ -60,7 +60,6 @@
     },
 
     saveDocument: function () {
-      var self = this;
       var model, result;
       model = this.editor.get();
 
