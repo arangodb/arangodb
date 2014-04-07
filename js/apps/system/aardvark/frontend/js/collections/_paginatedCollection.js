@@ -30,7 +30,7 @@
     },
 
     getOffset: function() {
-      return this.getPage() * this.pagesize;
+      return this.page * this.pagesize;
     },
 
     getPageSize: function() {
