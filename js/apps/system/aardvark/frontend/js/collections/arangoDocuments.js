@@ -32,29 +32,11 @@
     },
 
     setCollection: function(id) {
+      this.resetFilter();
       this.collectionID = id;
       this.setPage(1);
       this.loadTotal();
     },
-
-    // TODO Remove this block
-
-    getFirstDocuments: function () {
-      this.setToFirst();
-    },
-
-    getLastDocuments: function () {
-      this.setToLast();
-    },
-
-    getPrevDocuments: function () {
-      this.setToPrev();
-    },
-    getNextDocuments: function () {
-      this.setToNext();
-    },
-
-    // TODO Endof Remove this block
 
     addFilter: function(attr, op, val) {
       this.filters.push({
@@ -76,7 +58,7 @@
         res += f.op;
         res += " @param";
         res += i;
-        bindVars["param" + i] = this.val;
+        bindVars["param" + i] = f.val;
         return res;
       });
       return query + parts.join(" &&");
@@ -169,6 +151,9 @@
         success: function(data) {
           self.history =  data.result;
         },
+        error: function() {
+
+        }
       });
     },
 
