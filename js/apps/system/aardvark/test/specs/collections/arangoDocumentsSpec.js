@@ -427,6 +427,62 @@
                 figures: ["bytesSend, totalTime"]});
             expect(col.history).toEqual(undefined);
         });
+
+        it("start succesful Upload mit XHR ready state = 4, " +
+            "XHR status = 201 and parseable JSON", function () {
+            spyOn($, "ajax").andCallFake(function (opt) {
+                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
+                    encodeURIComponent(col.collectionID) +
+                    '&createCollection=false');
+                expect(opt.dataType).toEqual("json");
+                expect(opt.contentType).toEqual("json");
+                expect(opt.processData).toEqual(false);
+                expect(opt.data).toEqual("a");
+                expect(opt.async).toEqual(false);
+                expect(opt.type).toEqual("POST");
+                opt.complete({readyState: 4, status: 201, responseText: '{"a" : 1}'});
+            });
+            var res = col.updloadDocuments("a");
+            expect(res).toEqual(true);
+        });
+
+        it("start succesful Upload mit XHR ready state != 4", function () {
+            spyOn($, "ajax").andCallFake(function (opt) {
+                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
+                    encodeURIComponent(col.collectionID) +
+                    '&createCollection=false');
+                expect(opt.dataType).toEqual("json");
+                expect(opt.contentType).toEqual("json");
+                expect(opt.processData).toEqual(false);
+                expect(opt.data).toEqual("a");
+                expect(opt.async).toEqual(false);
+                expect(opt.type).toEqual("POST");
+                opt.complete({readyState: 3, status: 201, responseText: '{"a" : 1}'});
+            });
+
+            var res = col.updloadDocuments("a");
+            expect(res).toEqual("Upload error");
+        });
+
+        it("start succesful Upload mit XHR ready state = 4, " +
+            "XHR status = 201 and not parseable JSON", function () {
+            spyOn($, "ajax").andCallFake(function (opt) {
+                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
+                    encodeURIComponent(col.collectionID) +
+                    '&createCollection=false');
+                expect(opt.dataType).toEqual("json");
+                expect(opt.contentType).toEqual("json");
+                expect(opt.processData).toEqual(false);
+                expect(opt.data).toEqual("a");
+                expect(opt.async).toEqual(false);
+                expect(opt.type).toEqual("POST");
+                opt.complete({readyState: 4, status: 201, responseText: "blub"});
+            });
+
+            var res = col.updloadDocuments("a");
+            expect(res).toEqual('Error: SyntaxError: Unable to parse JSON string');
+        });
+
     });
 
 }());
