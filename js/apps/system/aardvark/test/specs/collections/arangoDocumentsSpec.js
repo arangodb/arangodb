@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
-/*global $*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
+/*global $, _*/
 
 (function () {
     "use strict";
@@ -15,353 +15,178 @@
             window.arangoDocumentsStore = col;
         });
 
-        it("should getFirstDocuments", function () {
-            expect(col.currentPage).toEqual(1);
-            expect(col.collectionID).toEqual(1);
-            expect(col.totalPages).toEqual(1);
-            expect(col.documentsPerPage).toEqual(10);
-            expect(col.documentsCount).toEqual(1);
-            expect(col.offset).toEqual(0);
-            col.currentPage = 2;
-            window.location.hash = "a/b/c";
-            col.getFirstDocuments();
-            expect(window.location.hash).toEqual("#a/b/c/1");
+        describe("navigate", function() {
+
+          beforeEach(function() {
+            // This should be 10 pages
+            expect(col.pagesize).toEqual(10);
+            col.setTotal(100);
+            col.setPage(5);
+            expect(col.getPage()).toEqual(5);
+          });
+
+          it("to first page", function () {
+            col.setToFirst();
+            expect(col.getPage()).toEqual(1);
+          });
+
+          it("to last page", function () {
+            col.setToLast();
+            expect(col.getPage()).toEqual(10);
+          });
+
+          it("to previous page", function () {
+            col.setToPrev();
+            expect(col.getPage()).toEqual(4);
+          });
+
+          it("to next page", function () {
+            col.setToNext();
+            expect(col.getPage()).toEqual(6);
+          });
         });
 
-        it("should getLastDocuments", function () {
-            col.currentPage = 2;
-            col.totalPages = 5;
-            window.location.hash = "a/b/c";
-            col.getLastDocuments();
-            expect(window.location.hash).toEqual("#a/b/c/5");
-        });
-        it("should getPrevDocuments", function () {
-            col.currentPage = 2;
-            window.location.hash = "a/b/c";
-            col.getPrevDocuments();
-            expect(window.location.hash).toEqual("#a/b/c/1");
-        });
+        describe("getting documents", function() {
+          var colId, queryStart, queryEnd, sortStatement, filter1, filter2;
 
-        it("should getNextDocuments", function () {
-            col.currentPage = 2;
-            col.totalPages = 5;
-            window.location.hash = "a/b/c";
-            col.getNextDocuments();
-            expect(window.location.hash).toEqual("#a/b/c/3");
-        });
-
-        it("should getDocuments starting on first page and succeed", function () {
-            var colid = "12345", currpage = "0", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                if (opt.type === "GET") {
-                    expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.processData).toEqual(false);
-                    opt.success({count: 100});
-                } else if (opt.type === "POST") {
-                    expect(opt.url).toEqual('/_api/cursor');
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.data).toEqual(JSON.stringify({
-                        query: "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 " +
-                            "? x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x",
-                        bindVars: {
-                            "@collection": colid,
-                            "offset": 0,
-                            "count": 10
-                        }
-                    }));
-                    opt.success({result: [
-                        {_id: 1, _rev: 2, _key: 4},
-                        {_id: 2, _rev: 2, _key: 4},
-                        {_id: 3, _rev: 2, _key: 4}
-                    ]
-                    });
-                }
+          beforeEach(function() {
+            colId = "12345";
+            col.setPage(5);
+            spyOn($, "ajax").andCallFake(function(obj) {
+              expect(_.isFunction(obj.success)).toBeTruthy();
+              expect(obj.url).toEqual("/_api/collection/" + colId + "/count");
+              expect(obj.type).toEqual("GET");
+              expect(obj.async).toBeFalsy();
+              obj.success({
+                count: 1000
+              });
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            result = col.getDocuments(colid, currpage);
-            expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10);
-        });
+            col.setCollection(colId);
+            expect(col.getPage()).toEqual(1);
+            expect($.ajax).toHaveBeenCalled();
+            //remove the spy again
+            $.ajax.isSpy = false;
+            queryStart = "FOR x in @@collection";
+            sortStatement = " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
+            filter1 = " FILTER x.`test` == @param0";
+            filter2 = " && x.`second` < @param1";
+            queryEnd = " LIMIT @offset, @count RETURN x";
+          });
 
-        it("should getDocuments starting on undefined page and succeed", function () {
-            var colid = "12345", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                if (opt.type === "GET") {
-                    expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.processData).toEqual(false);
-                    opt.success({count: 100});
-                } else if (opt.type === "POST") {
-                    expect(opt.url).toEqual('/_api/cursor');
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.data).toEqual(JSON.stringify({
-                        query: "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 " +
-                            "? x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x",
-                        bindVars: {
-                            "@collection": colid,
-                            "offset": 0,
-                            "count": 10
-                        }
-                    }));
-                    opt.success({result: [
-                        {_id: 1, _rev: 2, _key: 4},
-                        {_id: 2, _rev: 2, _key: 4},
-                        {_id: 3, _rev: 2, _key: 4}
-                    ]
-                    });
-                }
+          it("should start using first page", function() {
+            spyOn($, "ajax").andCallFake(function(req) {
+              expect(req.url).toEqual('/_api/cursor');
+              expect(req.type).toEqual("POST");
+              expect(req.cache).toEqual(false);
+              expect(req.async).toEqual(false);
+              var data = JSON.parse(req.data),
+                baseQuery = queryStart + sortStatement + queryEnd;
+              expect(data.query).toEqual(baseQuery);
+              expect(data.bindVars["@collection"]).toEqual(colId);
+              expect(data.bindVars.offset).toEqual(0);
+              expect(data.bindVars.count).toEqual(10);
+              expect(req.success).toEqual(jasmine.any(Function));
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            result = col.getDocuments(colid);
-            expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10);
-        });
+            col.getDocuments();
+            expect($.ajax).toHaveBeenCalled();
+          });
 
-        it("should getDocuments with exceeding sort count", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                if (opt.type === "GET") {
-                    expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.processData).toEqual(false);
-                    opt.success({count: 100000});
-                } else if (opt.type === "POST") {
-                    expect(opt.url).toEqual('/_api/cursor');
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.data).toEqual(JSON.stringify({
-                        query: "FOR x in @@collection LIMIT @offset, @count RETURN x",
-                        bindVars: {
-                            "@collection": colid,
-                            "offset": 10,
-                            "count": 10
-                        }
-                    }));
-                    opt.success({result: [
-                        {_id: 1, _rev: 2, _key: 4},
-                        {_id: 2, _rev: 2, _key: 4},
-                        {_id: 3, _rev: 2, _key: 4}
-                    ]
-                    });
-                }
+          it("should react to page changes", function() {
+            col.setPage(3);
+            spyOn($, "ajax").andCallFake(function(req) {
+              expect(req.url).toEqual('/_api/cursor');
+              expect(req.type).toEqual("POST");
+              expect(req.cache).toEqual(false);
+              expect(req.async).toEqual(false);
+              var data = JSON.parse(req.data),
+                baseQuery = queryStart + sortStatement + queryEnd;
+              expect(data.query).toEqual(baseQuery);
+              expect(data.bindVars["@collection"]).toEqual(colId);
+              expect(data.bindVars.offset).toEqual(20);
+              expect(data.bindVars.count).toEqual(10);
+              expect(req.success).toEqual(jasmine.any(Function));
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            result = col.getDocuments(colid, currpage);
-            expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10000);
-        });
+            col.getDocuments();
+            expect($.ajax).toHaveBeenCalled();
+          });
 
-        it("should getDocuments with initial draw", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                if (opt.type === "GET") {
-                    expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.processData).toEqual(false);
-                    opt.success({count: 0});
-                } else if (opt.type === "POST") {
-                    expect(opt.url).toEqual('/_api/cursor');
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.data).toEqual(JSON.stringify({
-                        query: "FOR x in @@collection SORT TO_NUMBER(x._key) == 0 " +
-                            "? x._key : TO_NUMBER(x._key) LIMIT @offset, @count RETURN x",
-                        bindVars: {
-                            "@collection": colid,
-                            "offset": 10,
-                            "count": 10
-                        }
-                    }));
-                    opt.success({result: [
-                        {_id: 1, _rev: 2, _key: 4},
-                        {_id: 2, _rev: 2, _key: 4},
-                        {_id: 3, _rev: 2, _key: 4}
-                    ]
-                    });
-                }
+          it("should not sort large collections", function() {
+            col.setTotal(10000);
+            spyOn($, "ajax").andCallFake(function(req) {
+              expect(req.url).toEqual('/_api/cursor');
+              expect(req.type).toEqual("POST");
+              expect(req.cache).toEqual(false);
+              expect(req.async).toEqual(false);
+              var data = JSON.parse(req.data),
+                baseQuery = queryStart + queryEnd;
+              expect(data.query).toEqual(baseQuery);
+              expect(data.bindVars["@collection"]).toEqual(colId);
+              expect(data.bindVars.offset).toEqual(0);
+              expect(data.bindVars.count).toEqual(10);
+              expect(req.success).toEqual(jasmine.any(Function));
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            result = col.getDocuments(colid, currpage);
-            expect(window.documentsView.initTable).toHaveBeenCalled();
-        });
+            col.getDocuments();
+            expect($.ajax).toHaveBeenCalled();
+          });
 
-
-        it("should getDocuments with exceeding sort count", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                if (opt.type === "GET") {
-                    expect(opt.url).toEqual("/_api/collection/" + colid + "/count");
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.processData).toEqual(false);
-                    opt.success({count: 100000});
-                } else if (opt.type === "POST") {
-                    expect(opt.url).toEqual('/_api/cursor');
-                    expect(opt.contentType).toEqual("application/json");
-                    expect(opt.cache).toEqual(false);
-                    expect(opt.async).toEqual(false);
-                    expect(opt.data).toEqual(JSON.stringify({
-                        query: "FOR x in @@collection LIMIT @offset, @count RETURN x",
-                        bindVars: {
-                            "@collection": colid,
-                            "offset": 10,
-                            "count": 10
-                        }
-                    }));
-                    opt.success({result: [
-                        {_id: 1, _rev: 2, _key: 4},
-                        {_id: 2, _rev: 2, _key: 4},
-                        {_id: 3, _rev: 2, _key: 4}
-                    ]
-                    });
-                }
+          it("should be able to use one filter", function() {
+            col.addFilter("test", "==", "foxx");
+            spyOn($, "ajax").andCallFake(function(req) {
+              expect(req.url).toEqual('/_api/cursor');
+              expect(req.type).toEqual("POST");
+              expect(req.cache).toEqual(false);
+              expect(req.async).toEqual(false);
+              var data = JSON.parse(req.data),
+                baseQuery = queryStart + filter1 + sortStatement + queryEnd;
+              expect(data.query).toEqual(baseQuery);
+              expect(data.bindVars["@collection"]).toEqual(colId);
+              expect(data.bindVars.offset).toEqual(0);
+              expect(data.bindVars.count).toEqual(10);
+              expect(data.bindVars.param0).toEqual("foxx");
+              expect(req.success).toEqual(jasmine.any(Function));
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            result = col.getDocuments(colid, currpage);
-            expect(window.documentsView.renderPagination).toHaveBeenCalledWith(10000);
-        });
+            col.getDocuments();
+            expect($.ajax).toHaveBeenCalled();
+          });
 
-        it("should sorted getFilteredDocuments with empty filter", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.type).toEqual("POST");
-                expect(opt.url).toEqual('/_api/cursor');
-                expect(opt.contentType).toEqual("application/json");
-                expect(opt.cache).toEqual(false);
-                expect(opt.async).toEqual(false);
-                expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection SORT " +
-                        "TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
-                        " LIMIT @offset, @count RETURN u",
-                    bindVars: {
-                        "@collection": "12345", "count": 10, "offset": 10
-                    },
-                    options: {
-                        fullCount: true
-                    }
-                }));
-                opt.success({result: [
-                    {_id: 1, _rev: 2, _key: 4},
-                    {_id: 2, _rev: 2, _key: 4},
-                    {_id: 3, _rev: 2, _key: 4}
-                ], extra: {fullCount: 10}
-                });
+          it("should be able to use a second filter", function() {
+            col.addFilter("test", "==", "other");
+            col.addFilter("second", "<", "params");
+            spyOn($, "ajax").andCallFake(function(req) {
+              expect(req.url).toEqual('/_api/cursor');
+              expect(req.type).toEqual("POST");
+              expect(req.cache).toEqual(false);
+              expect(req.async).toEqual(false);
+              var data = JSON.parse(req.data),
+                baseQuery = queryStart + filter1 + filter2 + sortStatement + queryEnd;
+              expect(data.query).toEqual(baseQuery);
+              expect(data.bindVars["@collection"]).toEqual(colId);
+              expect(data.bindVars.offset).toEqual(0);
+              expect(data.bindVars.count).toEqual(10);
+              expect(data.bindVars.param0).toEqual("other");
+              expect(data.bindVars.param1).toEqual("params");
+              expect(req.success).toEqual(jasmine.any(Function));
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.arangoDocumentsStore, "add");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            col.documentsCount = 100;
-            result = col.getFilteredDocuments(colid, currpage, [], []);
-            expect(window.documentsView.renderPagination).toHaveBeenCalled();
-        });
+            col.getDocuments();
+            expect($.ajax).toHaveBeenCalled();
+          });
 
-        it("should sorted getFilteredDocuments with empty filter and empty result", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.type).toEqual("POST");
-                expect(opt.url).toEqual('/_api/cursor');
-                expect(opt.contentType).toEqual("application/json");
-                expect(opt.cache).toEqual(false);
-                expect(opt.async).toEqual(false);
-                expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection " +
-                        "SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)" +
-                        " LIMIT @offset, @count RETURN u",
-                    bindVars: {
-                        "@collection": "12345", "count": 10, "offset": 10
-                    },
-                    options: {
-                        fullCount: true
-                    }
-                }));
-                opt.success({result: [
-                    {_id: 1, _rev: 2, _key: 4},
-                    {_id: 2, _rev: 2, _key: 4},
-                    {_id: 3, _rev: 2, _key: 4}
-                ], extra: {fullCount: 0}
-                });
+          it("should insert the result of the query appropriatly", function() {
+            var f = {_id: "1/1", _rev: 2, _key: 1},
+              s = {_id: "1/2", _rev: 2, _key: 2},
+              t = {_id: "1/3", _rev: 2, _key: 3}
+            spyOn($, "ajax").andCallFake(function(req) {
+              req.success({result: [f, s, t], extra: {fullCount: 3}});
             });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.arangoDocumentsStore, "add");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            col.documentsCount = 100;
-            result = col.getFilteredDocuments(colid, currpage, [], []);
-            expect(window.documentsView.initTable).toHaveBeenCalled();
-        });
+            expect(col.getTotal()).not.toEqual(3);
+            col.getDocuments();
+            expect(col.getTotal()).toEqual(3);
+            expect(col.size()).toEqual(3);
+            expect(col.findWhere({content: f})).toBeDefined();
+            expect(col.findWhere({content: s})).toBeDefined();
+            expect(col.findWhere({content: t})).toBeDefined();
+          });
 
-        it("should sorted getFilteredDocuments with filter", function () {
-            var colid = "12345", currpage = "2", result;
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.type).toEqual("POST");
-                expect(opt.url).toEqual('/_api/cursor');
-                expect(opt.contentType).toEqual("application/json");
-                expect(opt.cache).toEqual(false);
-                expect(opt.async).toEqual(false);
-                expect(opt.data).toEqual(JSON.stringify({
-                    query: "FOR u in @@collection FILTER u.NAME = " +
-                        "@@name &&  u.AGE > @age SORT TO_NUMBER(u._key) == 0" +
-                        " ? u._key : TO_NUMBER(u._key)" +
-                        " LIMIT @offset, @count RETURN u",
-                    bindVars: {
-                        "@collection": "12345",
-                        count: 10,
-                        offset: 10,
-                        name: "Heinz",
-                        age: 4
-                    },
-                    options: {
-                        fullCount: true
-                    }
-                }));
-                opt.success({result: [
-                    {_id: 1, _rev: 2, _key: 4},
-                    {_id: 2, _rev: 2, _key: 4},
-                    {_id: 3, _rev: 2, _key: 4}
-                ], extra: {fullCount: 10}
-                });
-            });
-            spyOn(window.arangoDocumentsStore, "reset");
-            spyOn(window.arangoDocumentsStore, "add");
-            spyOn(window.documentsView, "drawTable");
-            spyOn(window.documentsView, "renderPagination");
-            spyOn(window.documentsView, "initTable");
-            col.documentsCount = 100;
-            result = col.getFilteredDocuments(
-                colid, currpage, [' u.NAME = @@name', ' u.AGE > @age'],
-                {name: "Heinz", age: 4});
-            expect(window.documentsView.renderPagination).toHaveBeenCalled();
         });
 
         it("should getStatisticsHistory", function () {
