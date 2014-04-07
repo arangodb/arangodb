@@ -56,7 +56,8 @@ V8PeriodicJob::V8PeriodicJob (TRI_vocbase_t* vocbase,
     _v8Dealer(v8Dealer),
     _module(module),
     _func(func),
-    _parameter(parameter) {
+    _parameter(parameter),
+    _canceled(0) {
 }
 
 // -----------------------------------------------------------------------------
@@ -85,6 +86,10 @@ const string& V8PeriodicJob::queue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Job::status_t V8PeriodicJob::work () {
+  if (_canceled) {
+    return status_t(JOB_DONE);
+  }
+
   ApplicationV8::V8Context* context
     = _v8Dealer->enterContext(_vocbase, 0, true, false);
 
@@ -112,6 +117,18 @@ Job::status_t V8PeriodicJob::work () {
   _v8Dealer->exitContext(context);
 
   return status_t(JOB_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8PeriodicJob::cancel (bool running) {
+  if (running) {
+    _canceled = 1;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

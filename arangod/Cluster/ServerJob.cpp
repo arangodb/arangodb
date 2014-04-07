@@ -98,6 +98,14 @@ Job::status_t ServerJob::work () {
   return status_t(Job::JOB_FAILED);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerJob::cancel (bool running) {
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -107,6 +115,7 @@ Job::status_t ServerJob::work () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerJob::execute () {
+
   // default to system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
