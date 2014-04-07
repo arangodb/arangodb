@@ -1,28 +1,23 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global window, $, _ */
 (function () {
 
   "use strict";
 
-  window.NewArangoLogs = Backbone.Collection.extend({
-    page: 0,
-    pagesize: 10,
+  window.NewArangoLogs = window.PaginatedCollection.extend({
     upto: false,
     loglevel: 0,
-    totalAmount: 0,
 
     parse: function(response) {
       var myResponse = [];
-      var i = 0;
-      $.each(response.lid, function(key, val) {
+      _.each(response.lid, function(val, i) {
         myResponse.push({
-          "level": response.level[i],
-          "lid": response.lid[i],
-          "text": response.text[i],
-          "timestamp": response.timestamp[i],
-          "totalAmount": response.totalAmount
+          level: response.level[i],
+          lid: val,
+          text: response.text[i],
+          timestamp: response.timestamp[i],
+          totalAmount: response.totalAmount
         });
-        i++;
       });
       this.totalAmount = response.totalAmount;
       return myResponse;
@@ -33,14 +28,6 @@
         this.upto = true;
       }
       this.loglevel = options.loglevel;
-    },
-
-    getPage: function() {
-      return this.page+1;
-    },
-
-    setPage: function(counter) {
-      this.page = counter-1;
     },
 
     model: window.newArangoLog,
