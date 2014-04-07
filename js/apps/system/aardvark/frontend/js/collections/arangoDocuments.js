@@ -33,6 +33,7 @@
 
     setCollection: function(id) {
       this.collectionID = id;
+      this.setPage(1);
       this.loadTotal();
     },
 
@@ -65,7 +66,7 @@
 
     setFiltersForQuery: function(bindVars) {
       if (this.filters.length === 0) {
-        return;
+        return "";
       }
       var query = " FILTER",
       parts = _.map(this.filters, function(f, i) {
