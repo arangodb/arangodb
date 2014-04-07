@@ -84,9 +84,8 @@ static uint32_t SortFulltextRandomGenerator (void) {
 
 TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
                                                           const size_t numWords) {
-  TRI_fulltext_wordlist_t* wordlist;
+  TRI_fulltext_wordlist_t* wordlist = static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
 
-  wordlist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false);
   if (wordlist == NULL) {
     return NULL;
   }

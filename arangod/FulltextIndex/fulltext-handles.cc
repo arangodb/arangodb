@@ -72,20 +72,18 @@ static void FreeSlot (TRI_fulltext_handle_slot_t* slot) {
 
 static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
                           const uint32_t slotNumber) {
-  TRI_fulltext_handle_slot_t* slot;
-
   if (handles->_slots[slotNumber] != NULL) {
     return true;
   }
 
-  slot = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false);
+  TRI_fulltext_handle_slot_t* slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
 
   if (slot == NULL) {
     return false;
   }
 
   // allocate and clear
-  slot->_documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true);
+  slot->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true));
 
   if (slot->_documents == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
@@ -93,7 +91,7 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
   }
 
   // allocate and clear deleted flags
-  slot->_deleted = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true);
+  slot->_deleted = static_cast<uint8_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true));
 
   if (slot->_deleted == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
@@ -133,7 +131,7 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
     return true;
   }
 
-  slots = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true);
+  slots = static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
 
   if (slots == NULL) {
     // out of memory
@@ -177,9 +175,7 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize) {
-  TRI_fulltext_handles_t* handles;
-
-  handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false);
+  TRI_fulltext_handles_t* handles = static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
 
   if (handles == NULL) {
     return NULL;
@@ -273,11 +269,11 @@ bool TRI_ShouldCompactHandleFulltextIndex (TRI_fulltext_handles_t* const handles
 
 TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* const original) {
   TRI_fulltext_handles_t* clone;
-  TRI_fulltext_handle_t* map;
   uint32_t originalHandle, targetHandle;
   uint32_t i;
 
-  map = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_t) * original->_next, false);
+  TRI_fulltext_handle_t* map = static_cast<TRI_fulltext_handle_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_t) * original->_next, false));
+
   if (map == NULL) {
     return NULL;
   }

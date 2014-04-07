@@ -140,12 +140,13 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
 /// @brief compares two elements in a skip list, this is the generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CmpElmElm(void* sli, void* left, void* right,
-                     TRI_cmp_type_e cmptype) {
+static int CmpElmElm (void* sli, 
+                      void* left, 
+                      void* right,
+                      TRI_cmp_type_e cmptype) {
 
-  SkiplistIndex* skiplistindex = sli;
-  TRI_skiplist_index_element_t* leftElement = left;
-  TRI_skiplist_index_element_t* rightElement = right;
+  TRI_skiplist_index_element_t* leftElement = static_cast<TRI_skiplist_index_element_t*>(left);
+  TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
   int compareResult;
   TRI_shaper_t* shaper;
   size_t j;
@@ -165,6 +166,7 @@ static int CmpElmElm(void* sli, void* left, void* right,
     return 0;
   }    
   
+  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   shaper = skiplistindex->_collection->_shaper;
   
   for (j = 0;  j < skiplistindex->_numFields;  j++) {
@@ -207,11 +209,11 @@ static int CmpElmElm(void* sli, void* left, void* right,
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CmpKeyElm (void* sli, void* left, void* right) {
-
-  SkiplistIndex* skiplistindex = sli;
-  TRI_skiplist_index_key_t* leftKey = left;
-  TRI_skiplist_index_element_t* rightElement = right;
+static int CmpKeyElm (void* sli, 
+                      void* left, 
+                      void* right) {
+  TRI_skiplist_index_key_t* leftKey = static_cast<TRI_skiplist_index_key_t*>(left);
+  TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
   int compareResult;
   TRI_shaper_t* shaper;
   size_t j;
@@ -219,6 +221,7 @@ static int CmpKeyElm (void* sli, void* left, void* right) {
   assert(NULL != left);
   assert(NULL != right);
 
+  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   shaper = skiplistindex->_collection->_shaper;
   
   // Note that the key might contain fewer fields than there are indexed
@@ -240,11 +243,11 @@ static int CmpKeyElm (void* sli, void* left, void* right) {
 /// @brief frees an element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeElm(void* x)
+static void FreeElm (void* e)
 {
-  TRI_skiplist_index_element_t* xx = x;
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx->_subObjects);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, xx);
+  TRI_skiplist_index_element_t* element = static_cast<TRI_skiplist_index_element_t*>(e);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
 static int CopyElement (SkiplistIndex* skiplistindex,
@@ -253,8 +256,7 @@ static int CopyElement (SkiplistIndex* skiplistindex,
   assert(NULL != leftElement && NULL != rightElement);
     
   leftElement->_document   = rightElement->_document;
-  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
-                 sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields, false);
+  leftElement->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields, false));
   
   if (leftElement->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -546,9 +548,7 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
 
 SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
                                   size_t numFields, bool unique, bool sparse) {
-  SkiplistIndex* skiplistIndex;
-
-  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
+  SkiplistIndex* skiplistIndex = static_cast<SkiplistIndex*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true));
 
   if (skiplistIndex == NULL) {
     return NULL;
@@ -874,11 +874,8 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
                             SkiplistIndex* skiplistIndex, 
                             TRI_vector_t* shapeList, 
                             TRI_index_operator_t* indexOperator) {
-  TRI_skiplist_iterator_t* results;
-  TRI_skiplist_iterator_interval_t* tmp;
+  TRI_skiplist_iterator_t* results = static_cast<TRI_skiplist_iterator_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), true));
 
-  results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t),
-                         true);
   if (results == NULL) {
     return NULL; // calling procedure needs to care when the iterator is null
   }
@@ -896,8 +893,7 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
 
   // Finally initialise _cursor if the result is not empty:
   if (0 < TRI_LengthVector(&(results->_intervals))) {
-    tmp = (TRI_skiplist_iterator_interval_t*) 
-             TRI_AtVector(&(results->_intervals),0);
+    TRI_skiplist_iterator_interval_t* tmp = static_cast<TRI_skiplist_iterator_interval_t*>(TRI_AtVector(&(results->_intervals), 0));
     results->_cursor = tmp->_leftEndPoint;
   }
 
@@ -910,25 +906,27 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
 
 int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, 
                           TRI_skiplist_index_element_t* element) {
-  TRI_skiplist_index_element_t* copy;
-  int result;
+  TRI_skiplist_index_element_t* copy = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_element_t), false));
 
-  copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
-                      sizeof(TRI_skiplist_index_element_t),false);
   if (NULL == copy) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  result = CopyElement(skiplistIndex, copy, element);
-  if (result != TRI_ERROR_NO_ERROR) {
+  
+  int res = CopyElement(skiplistIndex, copy, element);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-    return result;
+    return res;
   }
-  result = TRI_SkipListInsert(skiplistIndex->skiplist, copy);
-  if (result != TRI_ERROR_NO_ERROR) {
+
+  res = TRI_SkipListInsert(skiplistIndex->skiplist, copy);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy->_subObjects);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-    return result;
+    return res;
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 
