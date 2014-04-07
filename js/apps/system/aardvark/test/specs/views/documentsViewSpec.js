@@ -317,7 +317,9 @@
                 updloadDocuments: function () {
                 }
             };
-            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn('Error: SyntaxError: Unable to parse JSON string');
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn(
+                'Error: SyntaxError: Unable to parse JSON string'
+            );
             spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
             window.arangoDocumentsStore = new window.arangoDocuments();
 
