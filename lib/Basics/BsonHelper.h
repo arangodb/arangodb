@@ -39,7 +39,11 @@ extern "C" {
 namespace triagens {
   namespace basics {
 
+    class BsonIter;
+
     class Bson {
+
+        friend class BsonIter;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private data
@@ -47,6 +51,15 @@ namespace triagens {
 
         bson_t _bson;        // this class is only a very thin wrapping layer
         uint32_t count;      // for array appending
+
+        void init () {
+          bson_init(&_bson);
+          count = 0;
+        }
+
+        void destruct () {
+          bson_destroy(&_bson);
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,15 +70,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create an empty Bson structure
 ////////////////////////////////////////////////////////////////////////////////
-
-        void init () {
-          bson_init(&_bson);
-          count = 0;
-        }
-
-        void destruct () {
-          bson_destroy(&_bson);
-        }
 
         Bson () {
           // This will be empty but can mutable.
@@ -80,6 +84,17 @@ namespace triagens {
 
         ~Bson () {
           destruct();
+        }
+
+        Bson (Bson const& another) {
+          bson_copy_to(&another._bson, &_bson);
+          count = 0;
+        }
+
+        void operator= (Bson const& that) {
+          destruct();
+          bson_copy_to(&that._bson, &_bson);
+          count = 0;
         }
 
         uint8_t const* getBuffer () {
@@ -109,17 +124,17 @@ namespace triagens {
           return bson_append_null(&_bson, key.c_str(), key.size());
         }
 
-        bool append_bool (string const key, bool value) {
+        bool append (string const key, bool value) {
           // Returns false if append did not work.
           return bson_append_bool(&_bson, key.c_str(), key.size(), value);
         }
 
-        bool append_double (string const key, double value) {
+        bool append (string const key, double value) {
           // Returns false if append did not work.
           return bson_append_double(&_bson, key.c_str(), key.size(), value);
         }
 
-        bool append_utf8 (string const key, string value) {
+        bool append (string const key, string value) {
           // Returns false if append did not work.
           return bson_append_utf8(&_bson, key.c_str(), key.size(), 
                                           value.c_str(), value.size());
@@ -152,8 +167,190 @@ namespace triagens {
           return result;
         }
 
+        bool as_json (string& result) {
+          size_t length;
+          char* p = bson_as_json(&_bson, &length);
+          if (NULL == p) {
+            return false;
+          }
+          result.clear();
+          result.append(p, length);
+          bson_free(p);
+          return true;
+        }
 
+        bool operator== (Bson const& that) {
+          return bson_equal(&_bson, &that._bson);
+        }
+
+        bool operator< (Bson const& that) {
+          return bson_compare(&_bson, &that._bson) == -1;
+        }
+
+        bool operator<= (Bson const& that) {
+          return bson_compare(&_bson, &that._bson) <= 0;
+        }
+
+        bool operator>= (Bson const& that) {
+          return bson_compare(&_bson, &that._bson) >= 0;
+        }
+
+        int compare (Bson const& that) {
+          return bson_compare(&_bson, &that._bson);
+        }
+
+        bool append (string key, BsonIter& that);
+        // This needs to be a real method because it needs access to
+        // the details of the BsonIter class.
+
+        bool append (Bson const& that) {
+          return bson_concat(&_bson, &that._bson);
+        }
+
+        size_t size () {
+          return static_cast<size_t>(bson_count_keys(&_bson));
+        }
+
+        bool hasField (string key) {
+          return bson_has_field(&_bson, key.c_str());
+        }
     };   // class Bson
+
+    class BsonIter {
+
+        friend class Bson;
+
+        bson_iter_t _bsonIter;
+        bool _hasData;
+      
+      public:
+
+        BsonIter (Bson const& b) : _hasData(false) {
+          bson_iter_init (&_bsonIter, &(b._bson));
+        }
+
+        ~BsonIter () {}    // no destruction is needed for bson_iter_t objects 
+
+        bool hasData () {
+          return _hasData;
+        }
+
+        bool next () {
+          // Must be called before accessing the first element, returns
+          // true iff there is another one after this call.
+          return (_hasData = bson_iter_next(&_bsonIter));
+        }
+
+        bool find (string const key) {
+          // Returns true if key is found. Note: case-insensitive.
+          return (_hasData = bson_iter_find(&_bsonIter, key.c_str()));
+        }
+
+        bool findCaseSensitive (string const key) {
+          // Returns true if key is found.
+          return (_hasData = bson_iter_find(&_bsonIter, key.c_str()));
+        }
+
+        bool getKey (string& key) {
+          // Copies key to the argument and returns true, if the
+          // iterator is pointing to something, otherwise it returns
+          // false and the argument is unchanged.
+          if (! _hasData) {
+            return false;
+          }
+          char const* p = bson_iter_key(&_bsonIter);
+          key.clear();
+          key.append(p);
+          return true;
+        }
+
+        bson_type_t getType () {
+          // Returns one of the allowed bson types:
+          //  BSON_TYPE_EOD           = 0x00,
+          //  BSON_TYPE_DOUBLE        = 0x01,
+          //  BSON_TYPE_UTF8          = 0x02,
+          //  BSON_TYPE_DOCUMENT      = 0x03,
+          //  BSON_TYPE_ARRAY         = 0x04,
+          //  BSON_TYPE_BINARY        = 0x05,
+          //  BSON_TYPE_UNDEFINED     = 0x06,
+          //  BSON_TYPE_OID           = 0x07,
+          //  BSON_TYPE_BOOL          = 0x08,
+          //  BSON_TYPE_DATE_TIME     = 0x09,
+          //  BSON_TYPE_NULL          = 0x0A,
+          //  BSON_TYPE_REGEX         = 0x0B,
+          //  BSON_TYPE_DBPOINTER     = 0x0C,
+          //  BSON_TYPE_CODE          = 0x0D,
+          //  BSON_TYPE_SYMBOL        = 0x0E,
+          //  BSON_TYPE_CODEWSCOPE    = 0x0F,
+          //  BSON_TYPE_INT32         = 0x10,
+          //  BSON_TYPE_TIMESTAMP     = 0x11,
+          //  BSON_TYPE_INT64         = 0x12,
+          //  BSON_TYPE_MAXKEY        = 0x7F,
+          //  BSON_TYPE_MINKEY        = 0xFF,
+          // of type bson_type_t.
+          return (! _hasData) ? BSON_TYPE_EOD  
+                              : bson_iter_type(&_bsonIter);
+        }
+
+        bool getBool () {
+          return (! _hasData || ! BSON_ITER_HOLDS_BOOL(&_bsonIter))
+                 ? false : bson_iter_bool(&_bsonIter);
+        }
+
+        double getDouble () {
+          return (! _hasData || ! BSON_ITER_HOLDS_DOUBLE(&_bsonIter))
+                 ? 0.0 : bson_iter_bool(&_bsonIter);
+        }
+         
+        string getUtf8 () {
+          string res;
+          if (! _hasData || !  BSON_ITER_HOLDS_UTF8(&_bsonIter)) {
+            return res;
+          }
+          uint32_t length;
+          char const* p = bson_iter_utf8(&_bsonIter, &length);
+          res.append(p,length);
+          return res;
+        }
+
+        bool recurse (BsonIter& child) {
+          bson_type_t type = getType();
+          if (type == BSON_TYPE_ARRAY || type == BSON_TYPE_DOCUMENT) {
+            child._hasData = false;
+            return bson_iter_recurse(&_bsonIter, &child._bsonIter);
+          }
+        }
+    };
+
+    string EscapeUtf8ForJson (string s) {
+      char* p = bson_utf8_escape_for_json (s.c_str(), s.size());
+      string res(p);
+      bson_free(p);
+      return res;
+    }
+
+    bool Bson::append (string key, BsonIter& that) {
+      if (! that.hasData()) {
+        return false;
+      }
+      return bson_append_iter(&_bson, key.c_str(), key.size(), 
+                              &that._bsonIter);
+    }
+
+    // Left out so far:
+    //  append for anything non-JSON
+    //  bson_writer
+    //  bson_reader
+    //  bson_context because it is only needed for oids
+    //  copy_to_excluding
+    //  extract raw sub-bsons from iter (bson_iter_array, bson_iter_document) 
+    //  extract for anything non-JSON
+    //  overwrite for fixed-length data via iterator
+    //  visitor for bson
+    //  oid support
+    //  reserve: not exported by official libbson 
+    //  bson-strings : unnecessary
+    //  utf8-validation
 
   }  // namespace triagens.basics
 }  // namespace triagens
