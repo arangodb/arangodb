@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global require, exports, window, Backbone, arangoDocumentModel, _, $*/
 (function() {
   "use strict";
@@ -16,8 +16,24 @@
     url: '/_api/documents',
     model: window.arangoDocumentModel,
 
+    loadTotal: function() {
+      var self = this;
+      $.ajax({
+        cache: false,
+        type: "GET",
+        url: "/_api/collection/" + this.collectionID + "/count",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          self.setTotal(data.count);
+        }
+      });
+    },
+
     setCollection: function(id) {
       this.collectionID = id;
+      this.loadTotal();
     },
 
     // TODO Remove this block
@@ -38,26 +54,6 @@
     },
 
     // TODO Endof Remove this block
-
-    getTotalDocuments: function() {
-      var result;
-      $.ajax({
-        cache: false,
-        type: "GET",
-        url: "/_api/collection/" + this.collectionID + "/count",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function(data) {
-          result = data.count;
-        },
-        error: function() {
-        }
-      });
-      this.setTotal(result);
-      return result;
-    },
-
 
     addFilter: function(attr, op, val) {
       this.filters.push({
@@ -92,7 +88,8 @@
     getDocuments: function () {
       var self = this,
           query,
-          bindVars;
+          bindVars,
+          queryObj;
       bindVars = {
         "@collection": this.collectionID,
         "offset": this.getOffset(),
@@ -107,7 +104,7 @@
       }
       query += " LIMIT @offset, @count RETURN x";
 
-      var myQuery = {
+      queryObj = {
         query: query,
         bindVars: bindVars
       };
@@ -117,7 +114,7 @@
         type: 'POST',
         async: false,
         url: '/_api/cursor',
-        data: JSON.stringify(myQuery),
+        data: JSON.stringify(queryObj),
         contentType: "application/json",
         success: function(data) {
           self.clearDocuments();
@@ -136,106 +133,20 @@
       });
     },
 
-    getFilteredDocuments: function (colid, currpage, filter, bindValues) {
-      var self = this;
-      this.collectionID = colid;
-      this.currentPage = currpage;
-      this.currentFilterPage = currpage;
-      var filterString;
-      if(filter.length === 0){
-        filterString ="";
-      } else {
-        filterString = ' FILTER' + filter.join(' && ');
-      }
-
-      var sortCount = 10000;
-
-      var sortString = '';
-      if (this.documentsCount <= sortCount) {
-        //sorted
-        sortString = " SORT TO_NUMBER(u._key) == 0 ? u._key : TO_NUMBER(u._key)";
-      }
-
-      var myQueryVal = "FOR u in @@collection" + filterString + sortString +
-                       " LIMIT @offset, @count RETURN u";
-
-      this.offset = (this.currentPage - 1) * this.documentsPerPage;
-
-      var myQuery = {
-        query: myQueryVal,
-        bindVars: {
-          "@collection": this.collectionID,
-          "count": this.documentsPerPage,
-          "offset": this.offset
-        },
-        options: {
-          fullCount: true
-        }
-      };
-
-      $.each(bindValues, function(k,v) {
-        myQuery.bindVars[k] = v;
-      });
-
-      $.ajax({
-        cache: false,
-        type: 'POST',
-        async: false,
-        url: '/_api/cursor',
-        data: JSON.stringify(myQuery),
-        contentType: "application/json",
-        success: function(data) {
-          self.clearDocuments();
-          self.documentsCount = data.extra.fullCount;
-          self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
-          if (
-            isNaN(this.currentPage)
-            || this.currentPage === undefined
-            || this.currentPage < 1
-          ) {
-            this.currentPage = 1;
-          }
-          if (this.totalPages === 0 || this.totalPages === undefined) {
-            this.totalPages = 1;
-          }
-
-          this.offset = (this.currentPage - 1) * this.documentsPerPage;
-          if (self.documentsCount !== 0) {
-            $.each(data.result, function(k, v) {
-              window.arangoDocumentsStore.add({
-                "id": v._id,
-                "rev": v._rev,
-                "key": v._key,
-                "content": v
-              });
-            });
-            window.documentsView.drawTable();
-            window.documentsView.renderPagination(self.totalPages, true);
-          }
-          else {
-            window.documentsView.initTable();
-            window.documentsView.drawTable();
-          }
-        },
-        error: function(data) {
-        }
-      });
-    },
-
     clearDocuments: function () {
       this.reset();
     },
 
     getStatisticsHistory: function(params) {
-      var self = this;
-      var body = {
+      var self = this,
+      body = {
         startDate : params.startDate,
         endDate   : params.endDate,
         figures   : params.figures
-      };
-      var server = params.server;
-      var addAuth = function(){};
-      var url = "";
+      },
+      server = params.server,
+      addAuth = function(){},
+      url = "";
       if (server) {
         url = server.endpoint;
         url += "/_admin/history";
