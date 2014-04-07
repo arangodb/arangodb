@@ -486,12 +486,10 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
                                   bool geoJson,
                                   bool unique,
                                   bool ignoreNull) {
-  TRI_geo_index_t* geo;
-  TRI_index_t* idx;
   char* ln;
 
-  geo = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false);
-  idx = &geo->base;
+  TRI_geo_index_t* geo = static_cast<TRI_geo_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false));
+  TRI_index_t* idx = &geo->base;
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
@@ -540,13 +538,11 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
                                   TRI_shape_pid_t longitude,
                                   bool unique,
                                   bool ignoreNull) {
-  TRI_geo_index_t* geo;
-  TRI_index_t* idx;
   char* lat;
   char* lon;
 
-  geo = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false);
-  idx = &geo->base;
+  TRI_geo_index_t* geo = static_cast<TRI_geo_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false));
+  TRI_index_t* idx = &geo->base;
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 

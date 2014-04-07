@@ -37,6 +37,11 @@
         width: 290px;
       }
     }
+
+    div.select2-container {
+      margin-bottom: 10px;
+      margin-top: 10px;
+    }
   }
 
   .icon-info-sign {
@@ -51,8 +56,10 @@
   }
 
   .accordion-inner {
+    border-top: 0;
     margin-left: 0;
     padding-left: 0;
+    padding-right: 0;
   }
 
   input {
@@ -157,8 +164,9 @@ pre.gv-object-view {
   color: $c-neutral-hover;
   font-size: 18px;
   margin-top: -10px;
-  position: absolute;
+  position: relative;
   right: 12px;
+  top: 2px;
 }
 
 .modal-body .icon_arangodb_info:hover {
