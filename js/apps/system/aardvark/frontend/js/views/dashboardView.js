@@ -483,8 +483,8 @@
 
     //value prep for d3 graphs
     var distributionValues = this.series.client[name].distribution.data.counts;
-    var sum = this.series.client[name].distribution.data.sum;
-    var areaLength = this.series.client[name].distribution.data.counts.length;
+    //var sum = this.series.client[name].distribution.data.sum;
+    //var areaLength = this.series.client[name].distribution.data.counts.length;
     var values = [];
     var counter = 0;
     _.each(distributionValues, function() {

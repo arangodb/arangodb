@@ -30,8 +30,7 @@ window.Users = Backbone.Model.extend({
   },
 
   checkPassword: function(passwd) {
-    var self = this,
-      result = false;
+    var result = false;
 
     $.ajax({
       cache: false,
@@ -51,9 +50,6 @@ window.Users = Backbone.Model.extend({
   },
 
   setPassword: function(passwd) {
-    var self = this,
-      result = false;
-
     $.ajax({
       cache: false,
       type: "PATCH",
@@ -70,9 +66,6 @@ window.Users = Backbone.Model.extend({
   },
 
   setExtras: function(name, img) {
-    var self = this,
-      result = false;
-
     $.ajax({
       cache: false,
       type: "PATCH",

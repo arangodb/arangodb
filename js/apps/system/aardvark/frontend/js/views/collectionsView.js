@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, $*/
+/*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, $*/
 
 (function() {
   "use strict";
@@ -235,8 +235,6 @@
     },
 
     submitCreateCollection: function() {
-      var self = this;
-
       var collName = $('#new-collection-name').val();
       var collSize = $('#new-collection-size').val();
       var collType = $('#new-collection-type').val();

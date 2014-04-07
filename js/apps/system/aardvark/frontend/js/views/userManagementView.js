@@ -194,9 +194,8 @@
     },
 
     submitEditUser : function(username) {
-      var self = this,
-        name = $('#editName42').val(),
-        status = $('#editStatus').is(':checked');
+      var name = $('#editName42').val();
+      var status = $('#editStatus').is(':checked');
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
@@ -284,8 +283,7 @@
     },
 
     submitEditUserPassword : function () {
-      var self        = this,
-        oldPasswd     = $('#oldCurrentPassword').val(),
+      var oldPasswd   = $('#oldCurrentPassword').val(),
         newPasswd     = $('#newCurrentPassword').val(),
         confirmPasswd = $('#confirmCurrentPassword').val();
       $('#oldCurrentPassword').val('');
@@ -329,7 +327,6 @@
 
 
     submitEditCurrentUserProfile: function() {
-      var self = this;
       var name    = $('#editCurrentName').val();
       var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
