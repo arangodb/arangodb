@@ -112,6 +112,7 @@
 
   "frontend/js/config/dygraphConfig.js",
 
+  "frontend/js/collections/_paginatedCollection.js",
   "frontend/js/collections/arangoCollections.js",
   "frontend/js/collections/arangoDocuments.js",
   "frontend/js/collections/arangoDocument.js",
