@@ -316,6 +316,7 @@ namespace triagens {
             child._hasData = false;
             return bson_iter_recurse(&_bsonIter, &child._bsonIter);
           }
+          return false;
         }
     };
 
