@@ -7,10 +7,17 @@
   describe("The new logs view", function() {
 
     var view;
+    var dummyCollection = {
+      fetch: function() {
+      }
+    };
 
-    beforeEach(function() {
+      beforeEach(function() {
 
-      view = new window.NewLogsView();
+
+      view = new window.NewLogsView({
+          logall: dummyCollection
+      });
 
     });
 
@@ -21,7 +28,7 @@
         }
       };
 
-      spyOn(this, "activeCollection").andReturn(dummyCollection);
+      spyOn(view, "collection").andReturn(dummyCollection);
       spyOn(dummyCollection, "fetch").andReturn(dummyCollection.fetch());
 
       var element = {
@@ -31,7 +38,7 @@
       };
 
       spyOn(view, "convertModelToJSON");
-      view.setActiveLogLevel(element);
+      view.setActiveLoglevel(element);
       expect(view.convertModelToJSON).toHaveBeenCalled();
     });
 
