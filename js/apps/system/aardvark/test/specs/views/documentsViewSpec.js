@@ -2776,34 +2776,122 @@
         });
 
 
+        it("rerender", function () {
+            spyOn(view, "clearTable");
+            spyOn(view, "drawTable");
+            spyOn(view, "renderPagination");
+            view.collection = {
+                getDocuments : function () {}
+            };
+            spyOn(view.collection, "getDocuments");
 
-        /*rerender : function () {
-            this.clearTable();
-            this.collection.getDocuments();
-            this.drawTable();
-            $('#documents_last').css("visibility", "hidden");
-            $('#documents_first').css("visibility", "hidden");
-            this.renderPagination()
-        },
+            jQueryDummy = {
+                css: function () {
+                }
+            };
+            spyOn(jQueryDummy, "css");
 
-        renderPaginationElements: function () {
+            spyOn(window, "$").andReturn(jQueryDummy);
 
-            this.renderPagination();
-            var total = $('#totalDocuments');
-            if (total.length > 0) {
-                total.html("Total: " + this.collection.getTotal() + " documents");
-            } else {
-                $('#documentsToolbarFL').append(
-                    '<a id="totalDocuments" class="totalDocuments">Total: '
-                     + this.collection.getTotal() +
-                        ' document(s) </a>'
-                );
+            view.rerender();
+
+            expect(view.clearTable).toHaveBeenCalled();
+            expect(view.collection.getDocuments).toHaveBeenCalled();
+            expect(view.drawTable).toHaveBeenCalled();
+            expect(view.renderPagination).toHaveBeenCalled();
+
+            expect(view.index).toEqual(undefined);
+            expect(window.$).toHaveBeenCalledWith('#documents_last');
+            expect(window.$).toHaveBeenCalledWith('#documents_first');
+            expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "hidden");
+
+        });
+
+        it("setCollectionId", function () {
+            view.collection = {
+                setCollection : function () {}
+            };
+            spyOn(view.collection, "setCollection");
+            view.setCollectionId(1);
+            expect(view.collection.setCollection).toHaveBeenCalledWith(1);
+
+        });
+
+        it("renderPaginationElements", function () {
+            view.collection = {
+                getTotal : function () {return 5}
+            };
+            spyOn(view.collection, "getTotal").andCallThrough();
+
+            jQueryDummy = {
+                length : 45,
+                html : function () {
+
+                }
+            };
+            spyOn(jQueryDummy, "html");
+
+            spyOn(window, "$").andReturn(jQueryDummy);
+
+            spyOn(view, "renderPagination");
+
+            view.renderPaginationElements();
+            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(view.renderPagination).toHaveBeenCalled();
+            expect(view.collection.getTotal).toHaveBeenCalled();
+            expect(jQueryDummy.html).toHaveBeenCalledWith(
+                "Total: 5 documents"
+            );
+
+        });
+
+        it("renderPaginationElements with total = 0", function () {
+            view.collection = {
+                getTotal : function () {return 5}
+            };
+            spyOn(view.collection, "getTotal").andCallThrough();
+
+            jQueryDummy = {
+                length : 0,
+                append : function () {
+
+                }
+            };
+            spyOn(jQueryDummy, "append");
+
+            spyOn(window, "$").andReturn(jQueryDummy);
+
+            spyOn(view, "renderPagination");
+
+            view.renderPaginationElements();
+            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(window.$).toHaveBeenCalledWith('#documentsToolbarFL');
+            expect(view.renderPagination).toHaveBeenCalled();
+            expect(view.collection.getTotal).toHaveBeenCalled();
+            expect(jQueryDummy.append).toHaveBeenCalledWith(
+                '<a id="totalDocuments" class="totalDocuments">Total: '
+                    + 5 +
+                    ' document(s) </a>'
+            );
+
+        });
+
+
+        it("firstPage and lastPage", function () {
+            spyOn(view, "jumpTo");
+            view.collection = {
+                getLastPageNumber : function () {
+                    return 3;
+                }
             }
-        },
+            view.firstPage();
+            expect(view.jumpTo).toHaveBeenCalledWith(1);
+            view.lastPage();
+            expect(view.jumpTo).toHaveBeenCalledWith(3);
 
-        setCollectionId : function (colid) {
-            this.collection.setCollection(colid);
-        },*/
+        });
+
+
 
 
     });
