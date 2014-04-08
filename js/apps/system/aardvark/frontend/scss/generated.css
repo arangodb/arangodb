@@ -2494,9 +2494,9 @@ div.breadcrumb a.disabledBread {
     padding-left: 0;
     padding-right: 0; }
   .modal-body input {
-    width: 320px; }
+    width: 384px; }
   .modal-body select {
-    width: 334px; }
+    width: 398px; }
 
 .modal-text {
   font-weight: 300;
@@ -2572,9 +2572,8 @@ pre.gv-object-view {
   color: #736b68;
   font-size: 18px;
   margin-top: -10px;
-  position: relative;
-  right: 12px;
-  top: 2px; }
+  position: absolute;
+  right: 12px; }
 
 .modal-body .icon_arangodb_info:hover {
   color: black; }
@@ -3422,11 +3421,11 @@ textarea,
   display: none; }
 
 #arangoLogTable tbody td:nth-child(1) {
-  width: 80px;
-  text-align: center; }
+  text-align: center;
+  width: 80px; }
 #arangoLogTable tbody td:nth-child(2) {
-  width: 80px;
-  text-align: center; }
+  text-align: center;
+  width: 80px; }
 #arangoLogTable tbody td:nth-child(3) {
   width: auto; }
 
