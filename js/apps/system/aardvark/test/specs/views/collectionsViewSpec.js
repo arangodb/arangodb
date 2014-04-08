@@ -41,7 +41,6 @@
 
             var cols = [edgeCol, docCol, sysCol];
             spyOn($, "ajax").andCallFake(function (url) {
-                console.log(url);
               return {done:function() {}};
             });
             myStore = new window.arangoCollections(cols);
