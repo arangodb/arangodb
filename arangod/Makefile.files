@@ -79,6 +79,7 @@ bin_arangod_SOURCES = \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Transaction/IdGenerator.cpp \
 	arangod/Transaction/Manager.cpp \
+	arangod/Transaction/Operations.cpp \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \

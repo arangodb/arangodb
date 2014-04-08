@@ -113,6 +113,7 @@ add_executable(
     SkipLists/skiplistIndex.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
+    Transaction/Operations.cpp
     Transaction/Transaction.cpp
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp

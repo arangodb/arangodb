@@ -3,9 +3,10 @@
 
 (function() {
   "use strict";
-  window.NewLogsView = Backbone.View.extend({
+  window.NewLogsView = window.PaginationView.extend({
     el: '#content',
     id: '#logContent',
+    paginationDiv : "#logPaginationDiv",
 
     initialize: function () {
       this.convertModelToJSON();
@@ -80,22 +81,8 @@
       return this;
     },
 
-    jumpTo: function(page) {
-      var self = this;
-      this.activeCollection.setPage(page);
-      this.activeCollection.fetch({
-        success: function() {
-          self.convertModelToJSON();
-        }
-      });
-    },
-
-    firstPage: function() {
-      this.jumpTo(1);
-    },
-
-    lastPage: function() {
-      this.jumpTo(this.activeCollection.getLastPageNumber());
+    rerender : function () {
+        this.convertModelToJSON();
     },
 
     renderPagination: function () {

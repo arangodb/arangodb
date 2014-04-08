@@ -106,7 +106,9 @@
                 collection: window.arangoCollectionsStore
             });
             window.arangoCollectionsStore.fetch();
-            window.documentsView = new window.DocumentsView();
+            window.documentsView = new window.DocumentsView({
+                collection: window.arangoDocumentsStore
+            });
             window.documentView = new window.DocumentView({
                 collection: window.arangoDocumentStore
             });
@@ -297,13 +299,13 @@
             if (!window.documentsView) {
                 window.documentsView.initTable(colid, pageid);
             }
-            window.documentsView.collectionID = colid;
             var type = arangoHelper.collectionApiType(colid);
-            window.documentsView.colid = colid;
             window.documentsView.pageid = pageid;
             window.documentsView.type = type;
-            window.documentsView.render();
+            window.documentsView.setCollectionId(colid);
             window.arangoDocumentsStore.getDocuments(colid, pageid);
+            window.documentsView.render();
+
         },
 
         document: function (colid, docid) {

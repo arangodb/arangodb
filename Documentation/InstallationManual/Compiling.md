@@ -9,12 +9,13 @@ Compiling ArangoDB{#CompilingIntro}
 
 The following sections describe how to compile and build the ArangoDB from
 scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
-assumes that you use the GNU C++ compiler to compile the source. The ArangoDB
-has been tested with the GNU C++ compiler, but should compile with any Posix
-compliant compiler. Please let us know, whether you successfully compiled it
-with another C++ compiler.
+assumes that you use the GNU C/C++ compiler or clang/clang++ to compile the 
+source. ArangoDB has been tested with the GNU C/C++ compiler and clang/clang++, 
+but should be able to compile with any Posix-compliant compiler. 
+Please let us know whether you successfully compiled it with another C/C++ 
+compiler.
 
-There are possibilities:
+There are the following possibilities:
 
 - all-in-one: this version contains the source code of the ArangoDB, all
               generated files from the autotools, FLEX, and BISON as well
@@ -52,7 +53,10 @@ Basic System Requirements{#CompilingAIOPrerequisites}
 
 Verify that your system contains:
 
-- the GNU C++ compiler "g++" and standard C++ libraries
+- the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
+  compiler and library support for C++11. To be on the safe side with gcc/g++, you will
+  need version number 4.8 or higher. For "clang" and "clang++", you will need at least
+  version 3.4.
 - the GNU make
 
 In addition you will need the following library:
@@ -174,7 +178,10 @@ Basic System Requirements{#CompilingDevelPrerequisites}
 
 Verify that your system contains
 
-- the GNU C++ compiler "g++" and standard C++ libraries
+- the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
+  compiler and library support for C++11. To be on the safe side with gcc/g++, you will
+  need version number 4.8 or higher. For "clang" and "clang++", you will need at least
+  version 3.4.
 - the GNU autotools (autoconf, automake)
 - the GNU make
 - the GNU scanner generator FLEX, at least version 2.3.35
@@ -184,9 +191,9 @@ Verify that your system contains
 
 In addition you will need the following libraries
 
-- libev in version 3 or 4
-- Google's V8 engine
-- the ICU library
+- libev in version 3 or 4 (only when configured with `--disable-all-in-one-libev`)
+- Google's V8 engine (only when configured with `--disable-all-in-one-v8`)
+- the ICU library (only when not configured with `--enable-all-in-one-icu`)
 - the GNU readline library
 - the OpenSSL library
 - the Boost test framework library (boost_unit_test_framework)
@@ -194,18 +201,19 @@ In addition you will need the following libraries
 To compile Google V8 yourself, you will also need Python 2 and SCons.
 
 Some distributions, for example Centos 5, provide only very out-dated versions
-of FLEX, BISON, and the V8 engine. In that case you need to compile newer
+of compilers, FLEX, BISON, and the V8 engine. In that case you need to compile newer
 versions of the programs and/or libraries.
 
-Install or download the prerequisites
+If necessary, install or download the prerequisites:
 
+- GNU C/C++ 4.8 or higher (see http://gcc.gnu.org) 
 - Google's V8 engine (see http://code.google.com/p/v8)
 - SCons for compiling V8 (see http://www.scons.org)
 - libev (see http://software.schmorp.de/pkg/libev.html) 
 - OpenSSL (http://openssl.org/)
 - Go (http://golang.org/)
 
-if necessary. Most linux systems already supply RPM or DEP for these
+Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
 
 Download the Source{#DownloadSourceDevel}
