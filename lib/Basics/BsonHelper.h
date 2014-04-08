@@ -29,6 +29,9 @@
 #define TRIAGENS_BASICS_BSON_HELPER_H 1
 
 #include "Common.h"
+#include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
+#include "BasicsC/vector.h"
 
 extern "C" {
 #include "libbson-1.0/bson.h"
@@ -136,6 +139,33 @@ namespace triagens {
           return bson_append_utf8(&_bson, key.c_str(), key.size(), 
                                           value.c_str(), value.size());
         }
+        
+        bool appendArrayBegin (string const key, Bson& child) {
+          // Returns false if append did not work, child will be
+          // destroyed and reinitialised, even if the append operation
+          // did not work.
+          bool result;
+          child.destruct();
+          result = bson_append_array_begin(&_bson, key.c_str(), key.size(),
+                                           &child._bson);
+          if (result) {
+            child.count = 0;
+            return true;
+          }
+          else {
+            child.init();
+            return false;
+          }
+        }
+        
+        bool appendArrayEnd (Bson& child) {
+          // Returns false if append did not work, child will be
+          // empty afterwards, even if the append operation did not work.
+          bool result;
+          result = bson_append_array_end(&_bson, &child._bson);
+          child.init();
+          return result;
+        }
 
         bool appendDocumentBegin (string const key, Bson& child) {
           // Returns false if append did not work, child will be
@@ -155,13 +185,124 @@ namespace triagens {
           }
         }
 
-        bool appendDocumentEnd (string const key, Bson& child) {
+        bool appendDocumentEnd (Bson& child) {
           // Returns false if append did not work, child will be
           // empty afterwards, even if the append operation did not work.
           bool result;
           result = bson_append_document_end(&_bson, &child._bson);
           child.init();
           return result;
+        }
+
+        bool processJsonPart (TRI_json_t const* json) {
+          assert(json->_type == TRI_JSON_LIST ||
+                 json->_type == TRI_JSON_ARRAY);
+
+          size_t step;
+          if (json->_type == TRI_JSON_LIST) {
+            step = 1;
+          }
+          else {
+            step = 2;
+          }
+
+          for (size_t i = 0; i < json->_value._objects._length; i += step) {
+            TRI_json_t const* key;
+            TRI_json_t const* value;
+            string keyString;
+
+            if (step == 1) {
+              // list
+              value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+              
+              keyString = StringUtils::itoa(i);
+            }
+            else {
+              // array
+              key   = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+              value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+              keyString = string(key->_value._string.data, key->_value._string.length - 1);
+            }
+                
+            switch (value->_type) {
+              case TRI_JSON_UNUSED: 
+              case TRI_JSON_NULL: {
+                if (! appendNull(keyString)) {
+                  return false;
+                }
+                break;
+              }
+
+              case TRI_JSON_BOOLEAN: {
+                if (! appendBool(keyString, value->_value._boolean)) {
+                  return false;
+                }
+                break;
+              }
+
+              case TRI_JSON_NUMBER: {
+                if (! appendDouble(keyString, value->_value._number)) {
+                  return false;
+                }
+                break;
+              }
+              
+              case TRI_JSON_STRING: 
+              case TRI_JSON_STRING_REFERENCE: {
+                if (! appendUtf8(keyString, string(value->_value._string.data, value->_value._string.length - 1))) {
+                  return false;
+                }
+                break;
+              }
+              
+              case TRI_JSON_LIST: {
+                Bson child;
+                appendArrayBegin(keyString, child);
+
+                if (! processJsonPart(value)) {
+                  return false;
+                }
+
+                appendArrayEnd(child);
+                break;
+              }
+              
+              case TRI_JSON_ARRAY: {
+                Bson child;
+                appendDocumentBegin(keyString, child);
+
+                if (! processJsonPart(value)) {
+                  return false;
+                }
+
+                appendDocumentEnd(child);
+                break;
+              }
+            }
+          }
+
+          return true;
+        }
+
+        bool fromJson (string const& value) {
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, value.c_str());  
+
+          if (json == NULL) {
+            return false;
+          }
+
+          if (json->_type != TRI_JSON_ARRAY) {
+            // wrong type. must be document
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+            return false;
+          }
+
+          clear();
+
+          processJsonPart(json);
+
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          return true;
         }
 
         bool toJson (string& result) {

@@ -82,6 +82,35 @@ BOOST_AUTO_TEST_CASE (tst_append) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test fromjson conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_fromjson_broken) {
+  // intentionally stop string here
+  string json = "{ \"foo\": \"bar\", ";
+
+  Bson b;
+  BOOST_CHECK_EQUAL(false, b.fromJson(json));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test from/tojson conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_from_to_json) {
+  string json = "{ \"foo\": \"bar\", \"test\": null, \"numeric\": 1.2, \"stringy\": \"some\r\nrandom\tstring\", \"boolean\": true, \"boolean2\": false, \"listy\" : [ 1, 4, \"foo\" ], \"doc\": { \"foo\" : \"baz\", \"bar\": false, \"listdoc\": [ -1.23456789, -9, false, [ ], { } ] } }";
+
+
+  Bson b;
+  BOOST_CHECK_EQUAL(true, b.fromJson(json));
+
+  string result;
+  b.toJson(result);
+
+  std::cout << "BSON RESULT:" << result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
