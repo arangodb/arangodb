@@ -74,6 +74,7 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query,
   parser->_buffer = (char*) query;
   parser->_queryLength = queryLength;
   parser->_length = (size_t) queryLength;
+  parser->_offset = 0;
 
   return parser;
 }
