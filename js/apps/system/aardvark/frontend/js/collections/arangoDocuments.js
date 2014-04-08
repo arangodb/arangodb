@@ -4,12 +4,7 @@
   "use strict";
 
   window.arangoDocuments = window.PaginatedCollection.extend({
-    currentPage: 1,
     collectionID: 1,
-    totalPages: 1,
-    documentsPerPage: 10,
-    documentsCount: 1,
-    offset: 0,
 
     filters: [],
 
@@ -101,7 +96,7 @@
         success: function(data) {
           self.clearDocuments();
           self.setTotal(data.extra.fullCount);
-          if (self.documentsCount !== 0) {
+          if (self.getTotal() !== 0) {
             _.each(data.result, function(v) {
               self.add({
                 "id": v._id,

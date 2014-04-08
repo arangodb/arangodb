@@ -141,6 +141,9 @@
                 render: function () {
                 },
                 initTable: function () {
+                },
+                setCollectionId : function () {
+
                 }
             };
 
@@ -476,6 +479,7 @@
                 };
                 spyOn(documentsDummy, "getDocuments");
                 spyOn(window.documentsView, "render");
+                spyOn(window.documentsView, "setCollectionId");
                 spyOn(arangoHelper, "collectionApiType").andReturn(1);
                 simpleNavigationCheck(
                     {
@@ -489,13 +493,14 @@
                     },
                     true
                 );
-                expect(window.documentsView.colid).toEqual(colid);
-                expect(window.documentsView.collectionID).toEqual(colid);
                 expect(window.documentsView.pageid).toEqual(pageid);
                 expect(window.documentsView.type).toEqual(1);
                 expect(window.documentsView.render).toHaveBeenCalled();
                 expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(colid);
+                expect(window.documentsView.setCollectionId).toHaveBeenCalledWith(colid);
                 expect(documentsDummy.getDocuments).toHaveBeenCalledWith(colid, pageid);
+
+
             });
 
             it("should route to document", function () {

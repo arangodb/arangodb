@@ -13,10 +13,6 @@
         });
 
         it("assert the basics", function () {
-            expect(view.collectionID).toEqual(0);
-            expect(view.currentPage).toEqual(1);
-            expect(view.documentsPerPage).toEqual(10);
-            expect(view.totalPages).toEqual(1);
             expect(view.filters).toEqual({ "0": true });
             expect(view.filterId).toEqual(0);
             expect(view.addDocumentSwitch).toEqual(true);
@@ -619,8 +615,9 @@
                 {1: "blub"}
             ];
             expect(view.getFilterContent()).toEqual([
-                [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
+                { attribute : 'name0', operator : 'operator0', value :
+                { jsonval : 1 } },
+                { attribute : 'name1', operator : 'operator1', value : 'stringval' }
             ]);
             expect(window.$).toHaveBeenCalledWith("#attribute_value0");
             expect(window.$).toHaveBeenCalledWith("#attribute_value1");
@@ -648,37 +645,44 @@
             spyOn(window, "$").andReturn(jQueryDummy);
             spyOn(view, "getFilterContent").andReturn(
                 [
-                    [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                    { param0: {jsonval: 1}, param1: "stringval"}
+                    { attribute : 'name0', operator : 'operator0', value :
+                    { jsonval : 1 } },
+                    { attribute : 'name1', operator : 'operator1', value : 'stringval' }
                 ]
 
             );
 
             var arangoDocStoreDummy = {
-                    getFilteredDocuments: function () {
-                    }
-                },
-                documentsViewDummy = {
-                    clearTable: function () {
+                    setToFirst: function () {
+                    },
+                    addFilter : function () {
+
+                    },
+                    getDocuments : function () {
+
                     }
                 };
-            spyOn(arangoDocStoreDummy, "getFilteredDocuments");
-            spyOn(documentsViewDummy, "clearTable");
+            spyOn(arangoDocStoreDummy, "setToFirst");
+            spyOn(arangoDocStoreDummy, "addFilter");
+            spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            spyOn(view, "clearTable");
+            view.collection = new window.arangoDocuments();
             window.documentsView = new window.DocumentsView();
 
 
             view.sendFilter();
 
             expect(view.addDocumentSwitch).toEqual(false);
-            expect(documentsViewDummy.clearTable).toHaveBeenCalled();
-            expect(arangoDocStoreDummy.getFilteredDocuments).toHaveBeenCalledWith(
-                view.colid, 1,
-                [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
+            expect(view.clearTable).toHaveBeenCalled();
+            expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
+                "name0", "operator0", { jsonval : 1 }
             );
+            expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
+                "name1", "operator1", "stringval"
+            );
+            expect(arangoDocStoreDummy.setToFirst).toHaveBeenCalled();
+            expect(arangoDocStoreDummy.getDocuments).toHaveBeenCalled();
 
 
             expect(window.$).toHaveBeenCalledWith("#documents_last");
@@ -1020,31 +1024,24 @@
 
         it("first-last-next-prev document", function () {
             var arangoDocumentsStoreDummy = {
-                getFirstDocuments: function () {
+                getLastPageNumber: function () {
+                    return 5;
                 },
-                getLastDocuments: function () {
-                },
-                getPrevDocuments: function () {
-                },
-                getNextDocuments: function () {
+                getPage: function () {
+                    return 4;
                 }
             };
-            spyOn(arangoDocumentsStoreDummy, "getFirstDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getLastDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getPrevDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getNextDocuments");
-            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            spyOn(view, "jumpTo");
+            view.collection = arangoDocumentsStoreDummy;
 
             view.firstDocuments();
-            expect(arangoDocumentsStoreDummy.getFirstDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(1);
             view.lastDocuments();
-            expect(arangoDocumentsStoreDummy.getLastDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(5);
             view.prevDocuments();
-            expect(arangoDocumentsStoreDummy.getPrevDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(3);
             view.nextDocuments();
-            expect(arangoDocumentsStoreDummy.getNextDocuments).toHaveBeenCalled();
-
+            expect(view.jumpTo).toHaveBeenCalledWith(5);
 
         });
 
@@ -1150,7 +1147,8 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
 
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(false);
@@ -1159,7 +1157,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1202,7 +1200,8 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1210,7 +1209,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1274,7 +1273,8 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1282,7 +1282,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1357,7 +1357,8 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1365,7 +1366,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1461,6 +1462,9 @@
             spyOn(view, "addDocument");
             view.alreadyClicked = false;
             view.colid = "coll";
+            view.collection = {
+                collectionID : "coll"
+            };
             expect(view.clicked({currentTarget: {firstChild: "blub"}})).toEqual(undefined);
             expect(view.addDocument).not.toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith("blub");
@@ -1518,6 +1522,7 @@
                 text: function () {
 
                 }
+
             };
             spyOn(jQueryDummy, "text");
             spyOn(window, "$").andReturn(jQueryDummy);
@@ -1526,17 +1531,28 @@
                 models: [],
                 totalPages: 1,
                 currentPage: 1,
-                documentsCount: 0
+                documentsCount: 0,
+                size : function () {
+                    return arangoDocsStoreDummy.models.length;
+                },
+                getLastPageNumber : function () {
+                    return arangoDocsStoreDummy.totalPages;
+                },
+                getPage : function () {
+                    return arangoDocsStoreDummy.currentPage;
+                },
+                getTotal : function () {
+                    return arangoDocsStoreDummy.documentsCount;
+                }
 
             };
+            spyOn(view, "clearTable");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
-
+            view.collection= new window.arangoDocuments();
+            //$(self.table).dataTable().fnAddData(
             view.drawTable();
-            expect(view.totalPages).toEqual(1);
-            expect(view.currentPage).toEqual(1);
-            expect(view.documentsCount).toEqual(0);
             expect(window.$).toHaveBeenCalledWith(".dataTables_empty");
+            expect(view.clearTable).toHaveBeenCalled();
             expect(jQueryDummy.text).toHaveBeenCalledWith('No documents');
         });
 
@@ -1592,20 +1608,25 @@
                 ],
                 totalPages: 1,
                 currentPage: 2,
-                documentsCount: 3
+                documentsCount: 3,
+                size : function () {
+                    return arangoDocsStoreDummy.models.length;
+                },
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
+                }
 
             };
+            spyOn(view, "clearTable");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
             view.drawTable();
             expect(arangoHelper.fixTooltips).toHaveBeenCalledWith(
                 ".icon_arangodb, .arangoicon", "top"
             );
-            expect(view.totalPages).toEqual(1);
-            expect(view.currentPage).toEqual(2);
-            expect(view.documentsCount).toEqual(3);
+            expect(view.clearTable).toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith(".prettify");
             expect(jQueryDummy.dataTable).toHaveBeenCalled();
             expect(jQueryDummy.snippet).toHaveBeenCalledWith("javascript", {
@@ -1645,11 +1666,14 @@
 
                 };
                 spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
-                window.arangoCollectionsStore = new window.arangoCollections();
+                window.arangoCollectionsStore  = new window.arangoCollections();
+                view.collection = {collectionID : "1"};
                 spyOn(view, "getIndex");
                 spyOn(view, "initTable");
                 spyOn(view, "breadcrumb");
                 spyOn(view, "uploadSetup");
+                spyOn(view, "drawTable");
+                spyOn(view, "renderPaginationElements");
                 spyOn(arangoHelper, "fixTooltips");
                 view.el = 1;
                 view.colid = "1";
@@ -1663,12 +1687,13 @@
 
             it("render with no prev and no next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: null, next: null});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
@@ -1689,13 +1714,14 @@
 
             it("render with no prev but next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: null, next: 1});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
                 expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
@@ -1715,13 +1741,14 @@
 
             it("render with  prev but no next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: 1, next: null});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
                 expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
@@ -1741,18 +1768,6 @@
 
         });
 
-        it("showLoadingState", function () {
-            jQueryDummy = {
-                text: function () {
-                }
-            };
-            spyOn(jQueryDummy, "text");
-            spyOn(window, "$").andReturn(jQueryDummy);
-            view.showLoadingState();
-            expect(jQueryDummy.text).toHaveBeenCalledWith('Loading...');
-            expect(window.$).toHaveBeenCalledWith('.dataTables_empty');
-
-        });
 
         it("renderPagination with filter check and totalDocs > 0 ", function () {
             jQueryDummy = {
@@ -1782,12 +1797,31 @@
                 currentFilterPage: 2,
                 getFilteredDocuments: function () {
 
+                },
+                getPage : function () {
+
+                },
+                getLastPageNumber : function () {
+
+                },
+                setPage : function () {
+
+                },
+                getDocuments : function () {
+
+                },
+                size : function () {
+
+                },
+                models : [],
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoDocsStoreDummy, "getFilteredDocuments");
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection= new window.arangoDocuments();
 
 
             spyOn(view, "getFilterContent").andReturn(
@@ -1799,37 +1833,12 @@
             );
             spyOn(view, "clearTable");
             window.documentsView = view;
+            spyOn(view,"rerender");
             view.colid = 1;
             view.documentsCount = 11;
             view.renderPagination(3, true);
 
-
-            expect(jQueryDummy.html).toHaveBeenCalledWith('');
-            expect(jQueryDummy.html).toHaveBeenCalledWith("Total: 11 documents");
-            expect(jQueryDummy.prepend).toHaveBeenCalledWith('<ul class="pre-pagi">' +
-                '<li><a id="documents_first" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
-            expect(jQueryDummy.append).toHaveBeenCalledWith('<ul class="las-pagi">' +
-                '<li><a id="documents_last" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
-            expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "hidden");
-            expect(jQueryDummy.pagination).toHaveBeenCalledWith(
-                {
-                    left: 2,
-                    right: 2,
-                    page: 5,
-                    lastPage: 3,
-                    click: jasmine.any(Function)
-                }
-            );
-            expect(arangoDocsStoreDummy.getFilteredDocuments).toHaveBeenCalledWith(
-                1, 5, [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
-            );
-            expect(window.$).toHaveBeenCalledWith('#documentsToolbarF');
-            expect(window.$).toHaveBeenCalledWith('#documents_last');
-            expect(window.$).toHaveBeenCalledWith('#documents_first');
-            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(view.rerender).toHaveBeenCalled();
 
         });
 
@@ -1861,12 +1870,31 @@
                 currentFilterPage: 2,
                 getFilteredDocuments: function () {
 
+                },
+                getPage : function () {
+
+                },
+                getLastPageNumber : function () {
+
+                },
+                setPage : function () {
+
+                },
+                getDocuments : function () {
+
+                },
+                size : function () {
+
+                },
+                models : [],
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoDocsStoreDummy, "getFilteredDocuments");
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
 
             spyOn(view, "getFilterContent").andReturn(
@@ -1877,38 +1905,14 @@
 
             );
             spyOn(view, "clearTable");
+            spyOn(view,"rerender");
             window.documentsView = view;
             view.colid = 1;
             view.documentsCount = 0;
             view.pageid = "1";
             view.renderPagination(3, false);
 
-
-            expect(jQueryDummy.html).toHaveBeenCalledWith('');
-            expect(view.clearTable).not.toHaveBeenCalled();
-            expect(jQueryDummy.html).not.toHaveBeenCalledWith("Total: 0 documents");
-            expect(jQueryDummy.prepend).toHaveBeenCalledWith('<ul class="pre-pagi">' +
-                '<li><a id="documents_first" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
-            expect(jQueryDummy.append).toHaveBeenCalledWith('<ul class="las-pagi">' +
-                '<li><a id="documents_last" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
-            expect(jQueryDummy.css).not.toHaveBeenCalledWith("visibility", "hidden");
-            expect(jQueryDummy.pagination).toHaveBeenCalledWith(
-                {
-                    left: 2,
-                    right: 2,
-                    page: 5,
-                    lastPage: 3,
-                    click: jasmine.any(Function)
-                }
-            );
-            expect(arangoDocsStoreDummy.getFilteredDocuments).not.toHaveBeenCalled();
-            expect(window.$).toHaveBeenCalledWith('#documentsToolbarF');
-            expect(window.$).not.toHaveBeenCalledWith('#documents_last');
-            expect(window.$).not.toHaveBeenCalledWith('#documents_first');
-            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
-            expect(window.location.hash).toEqual('#collection/1/documents/5');
+            expect(view.rerender).toHaveBeenCalled();
 
         });
 
@@ -2692,8 +2696,9 @@
                 };
                 list.forEach(callBackWraper);
             };
-
-            view.collectionID = "coll";
+            view.collection =  {
+                collectionID : "coll"
+            };
             view.getIndex();
 
             expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
@@ -2758,7 +2763,9 @@
                 list.forEach(callBackWraper);
             };
 
-            view.collectionID = "coll";
+            view.collection =  {
+                collectionID : "coll"
+            };
             view.getIndex();
 
             expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
@@ -2767,6 +2774,35 @@
             expect(jQueryDummy.append).not.toHaveBeenCalled();
             expect(arangoHelper.fixTooltips).not.toHaveBeenCalledWith();
         });
+
+
+
+        /*rerender : function () {
+            this.clearTable();
+            this.collection.getDocuments();
+            this.drawTable();
+            $('#documents_last').css("visibility", "hidden");
+            $('#documents_first').css("visibility", "hidden");
+            this.renderPagination()
+        },
+
+        renderPaginationElements: function () {
+
+            this.renderPagination();
+            var total = $('#totalDocuments');
+            if (total.length > 0) {
+                total.html("Total: " + this.collection.getTotal() + " documents");
+            } else {
+                $('#documentsToolbarFL').append(
+                    '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
+                        ' document(s) </a>'
+                );
+            }
+        },
+
+        setCollectionId : function (colid) {
+            this.collection.setCollection(colid);
+        },*/
 
 
     });
