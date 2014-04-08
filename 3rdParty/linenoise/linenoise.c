@@ -1591,7 +1591,7 @@ process_char:
                 int rchars = 0;
                 size_t rlen = 0;
                 int searchpos = history_len - 1;
-
+                const char * originalPrompt = current->prompt;
                 rbuf[0] = 0;
                 while (1) {
                     int n = 0;
@@ -1600,6 +1600,8 @@ process_char:
                     int searchdir = -1;
 
                     snprintf(rprompt, sizeof(rprompt), "(reverse-i-search)'%s': ", rbuf);
+                    initPrompt(current, rprompt);
+                    eraseEol(current);
                     refreshLine(rprompt, current);
                     c = fd_read(current);
                     if (c == ctrl('H') || c == 127) {
@@ -1670,7 +1672,9 @@ process_char:
                         rbuf[rlen] = 0;
                     }
                 }
+                initPrompt(current, originalPrompt);
                 if (c == ctrl('G') || c == ctrl('C')) {
+                    eraseEol(current);
                     /* ctrl-g terminates the search with no effect */
                     set_current(current, "");
                     c = 0;
@@ -1680,6 +1684,7 @@ process_char:
                     c = 0;
                 }
                 /* Go process the char normally */
+                eraseEol(current);
                 refreshLine(current->prompt, current);
                 goto process_char;
             }
