@@ -41,11 +41,13 @@ using namespace triagens::transaction;
 
 Transaction::Transaction (Manager* manager,
                           IdType id,
-                          TRI_vocbase_t* vocbase) 
+                          TRI_vocbase_t* vocbase,
+                          bool singleOperation) 
   : _manager(manager),
     _id(id),
     _state(StateType::STATE_UNINITIALISED),
     _vocbase(vocbase),
+    _singleOperation(singleOperation),
     _operations(),
     _startTime() {
 }
@@ -70,15 +72,7 @@ Transaction::~Transaction () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::begin () {
-  if (state() == StateType::STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = StateType::STATE_BEGUN;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  return _manager->beginTransaction(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,15 +80,7 @@ int Transaction::begin () {
 ////////////////////////////////////////////////////////////////////////////////
         
 int Transaction::commit () {
-  if (state() == StateType::STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = StateType::STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  return _manager->commitTransaction(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,15 +88,7 @@ int Transaction::commit () {
 ////////////////////////////////////////////////////////////////////////////////
         
 int Transaction::abort () {
-  if (state() == StateType::STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = StateType::STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  _state = StateType::STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  return _manager->abortTransaction(this);
 }
 
 // Local Variables:
