@@ -166,7 +166,7 @@ that ArangoDB has been installed in the location `<ROOTDIR>`.
 You have to be careful when choosing an installation directory. You need either
 write permission to this directory or you need to modify the config file for the
 server process. In the latter case the database directory and the Foxx directory
-should be writable by the user.
+has to be writable by the user.
 
 Installing for a single user: Select a different directory during
 installation. For example `C:/Users/<username>/arangodb` or `C:/ArangoDB`.
@@ -229,7 +229,7 @@ page:
     http://127.0.0.1:8529/
 
 To check if your installation was successful, click the `Collection` tab and
-open the configutation. Select the `System` type. If the installation was
+open the configuration. Select the `System` type. If the installation was
 successful, then the page should display a few system collections.
 
 Try to add a new collection and then add some documents to this new collection.
