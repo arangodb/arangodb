@@ -58,6 +58,17 @@ Manager::Manager ()
 ////////////////////////////////////////////////////////////////////////////////
 
 Manager::~Manager () {
+  WRITE_LOCKER(_lock);
+
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    Transaction* transaction = (*it).second;
+
+    if (transaction->state() == Transaction::StateType::STATE_BEGUN) {
+      transaction->setAborted();
+    }
+  }
+
+  _transactions.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -98,11 +109,12 @@ void Manager::shutdown () {
 /// @brief create a transaction object
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase,
+Transaction* Manager::createTransaction (triagens::arango::CollectionNameResolver const& resolver,
+                                         TRI_vocbase_t* vocbase,
                                          bool singleOperation) {
   Transaction::IdType id = _generator.next();
 
-  Transaction* transaction = new Transaction(this, id, vocbase, singleOperation);
+  Transaction* transaction = new Transaction(this, id, resolver, vocbase, singleOperation);
   
   WRITE_LOCKER(_lock);
   auto it = _transactions.insert(make_pair(id, transaction));

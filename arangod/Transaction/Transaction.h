@@ -29,7 +29,8 @@
 #define TRIAGENS_TRANSACTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Transaction/Operations.h"
+#include "Transaction/Collection.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/vocbase.h"
 #include <unordered_map>
 
@@ -89,6 +90,7 @@ namespace triagens {
 
         Transaction (Manager*,
                      IdType,
+                     triagens::arango::CollectionNameResolver const&,
                      struct TRI_vocbase_s*,
                      bool,
                      bool = false);
@@ -155,6 +157,20 @@ namespace triagens {
           }
           return 0.0;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int addCollection (std::string const&, 
+                           Collection::AccessType);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the transaction
+////////////////////////////////////////////////////////////////////////////////
+        
+        int addCollection (TRI_voc_cid_t, 
+                           Collection::AccessType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction
@@ -230,6 +246,12 @@ namespace triagens {
         StateType _state;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::CollectionNameResolver const& _resolver;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase for the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -248,10 +270,10 @@ namespace triagens {
         bool _waitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations, per collection
+/// @brief collections used in the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<TRI_voc_cid_t, Operations*> _operations;
+        std::unordered_map<TRI_voc_cid_t, Collection*> _collections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timestamp of transaction start

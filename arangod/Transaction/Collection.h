@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations
+/// @brief transaction collection and related operations
 ///
 /// @file
 ///
@@ -35,18 +35,34 @@ namespace triagens {
   namespace transaction {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class Operations
+// --SECTION--                                                  class Collection
 // -----------------------------------------------------------------------------
 
-    class Operations {
+    class Collection {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access type
+////////////////////////////////////////////////////////////////////////////////
+
+        enum class AccessType {
+          READ  = 0,
+          WRITE = 1  // includes read
+        };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Operations
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        Operations (Operations const&);
-        Operations& operator= (Operations const&);
+        Collection (Collection const&);
+        Collection& operator= (Collection const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -58,19 +74,28 @@ namespace triagens {
 /// @brief create an operations collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Operations (TRI_voc_cid_t);
+        explicit Collection (TRI_voc_cid_t,
+                             Collection::AccessType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an operations collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Operations ();
+        ~Collection ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not write access is allowed
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool allowWriteAccess () const {
+          return _accessType == AccessType::WRITE;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -89,6 +114,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_cid_t const _id;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access type for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection::AccessType const _accessType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of inserts into this collection
