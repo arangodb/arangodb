@@ -63,11 +63,11 @@
   }
 
   input {
-    width: 320px;
+    width: 384px;
   }
 
   select {
-    width: 334px;
+    width: 398px;
   }
 }
 
@@ -164,9 +164,8 @@ pre.gv-object-view {
   color: $c-neutral-hover;
   font-size: 18px;
   margin-top: -10px;
-  position: relative;
+  position: absolute;
   right: 12px;
-  top: 2px;
 }
 
 .modal-body .icon_arangodb_info:hover {
