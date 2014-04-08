@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction
+/// @brief transaction operations
 ///
 /// @file
 ///
@@ -25,93 +25,95 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
-#include "Transaction/Manager.h"
+#ifndef TRIAGENS_TRANSACTION_OPERATIONS_H
+#define TRIAGENS_TRANSACTION_OPERATIONS_H 1
+
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
-using namespace triagens::transaction;
+namespace triagens {
+  namespace transaction {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class Operations
+// -----------------------------------------------------------------------------
+
+    class Operations {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Operations
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+        Operations (Operations const&);
+        Operations& operator= (Operations const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
-    _id(id),
-    _state(StateType::STATE_UNINITIALISED),
-    _vocbase(vocbase),
-    _operations(),
-    _startTime() {
-}
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief create an operations collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::~Transaction () {
-  if (state() != StateType::STATE_COMMITTED && 
-      state() != StateType::STATE_ABORTED) {
-    this->abort();
-  }
-}
+        explicit Operations (TRI_voc_cid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an operations collection
+////////////////////////////////////////////////////////////////////////////////
+
+        ~Operations ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+      public:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
+/// @brief collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::begin () {
-  if (state() == StateType::STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = StateType::STATE_BEGUN;
+        TRI_voc_cid_t const _id;
 
-    return TRI_ERROR_NO_ERROR;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of inserts into this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _numInserts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of updates in this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _numUpdates;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of deletes in this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _numDeletes;
+
+    };
+
   }
-
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::commit () {
-  if (state() == StateType::STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = StateType::STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-        
-int Transaction::abort () {
-  if (state() == StateType::STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = StateType::STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  _state = StateType::STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor
