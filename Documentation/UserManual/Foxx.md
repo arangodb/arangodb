@@ -144,7 +144,7 @@ application files on every request, so changes to the underlying files are
 visible instantly. 
 Note: if you use the development mode for the first time or choose a different
 directory for `dev-app-path`, it may be necessary to start ArangoDB with the
-`--upgrade` option once. This will initialise the specified application directory.
+`--upgrade` option once. This will initialize the specified application directory.
 
 Note: the development mode is convenient when developing applications but the
 permanent reloading has an impact on performance. Therefore permanent reloading is

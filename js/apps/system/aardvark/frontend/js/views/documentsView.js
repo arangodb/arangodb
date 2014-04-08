@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine */
+/*global require, exports, _, Backbone, EJS, $, window, arangoHelper, templateEngine */
 
 (function() {
   "use strict";
@@ -255,7 +255,7 @@
       this.addDocumentSwitch = false;
       _.each(filters, function (f) {
           self.collection.addFilter(f.attribute, f.operator, f.value);
-      })
+      });
       this.clearTable();
       this.collection.setToFirst();
       this.collection.getDocuments();
@@ -391,7 +391,9 @@
 
       var result;
       if (this.type === 'document') {
-        result = window.arangoDocumentStore.deleteDocument(this.collection.collectionID, this.docid);
+        result = window.arangoDocumentStore.deleteDocument(
+            this.collection.collectionID, this.docid
+        );
         if (result) {
           //on success
           deleted = true;
@@ -553,7 +555,7 @@
         this.drawTable();
         $('#documents_last').css("visibility", "hidden");
         $('#documents_first').css("visibility", "hidden");
-        this.renderPagination()
+        this.renderPagination();
     },
 
     renderPaginationElements: function () {

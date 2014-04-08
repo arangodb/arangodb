@@ -194,7 +194,7 @@
     },
 
     submitEditUser : function(username) {
-      var name = $('#editName42').val();
+      var name = $('#editName').val();
       var status = $('#editStatus').is(':checked');
 
       if (!this.validateStatus(status)) {
@@ -202,7 +202,7 @@
         return;
       }
       if (!this.validateName(name)) {
-        $('#editName42').closest("th").css("backgroundColor", "red");
+        $('#editName').closest("th").css("backgroundColor", "red");
         return;
       }
       var user = this.collection.findWhere({"user": username});
@@ -374,7 +374,7 @@
           type: window.modalView.tables.TEXT,
           label: "Name",
           value: name,
-          id: "editName42",
+          id: "editName",
           placeholder: "Name"
         },
         {

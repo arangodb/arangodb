@@ -57,11 +57,13 @@
             target.html("");
             target.pagination(options);
             $(this.paginationDiv).prepend(
-                '<ul class="pre-pagi"><li><a id="' + this.idPrefix + '_first" class="pagination-button">'+
+                '<ul class="pre-pagi"><li><a id="' + this.idPrefix +
+                    '_first" class="pagination-button">'+
                     '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>'
             );
             $(this.paginationDiv).append(
-                '<ul class="las-pagi"><li><a id="' + this.idPrefix + '_last" class="pagination-button">'+
+                '<ul class="las-pagi"><li><a id="' + this.idPrefix +
+                    '_last" class="pagination-button">'+
                     '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
 
             );
