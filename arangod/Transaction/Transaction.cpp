@@ -41,21 +41,23 @@ using namespace triagens::transaction;
 
 Transaction::Transaction (Manager* manager,
                           IdType id,
+                          triagens::arango::CollectionNameResolver const& resolver,
                           TRI_vocbase_t* vocbase,
                           bool singleOperation,
                           bool waitForSync) 
   : _manager(manager),
     _id(id),
     _state(StateType::STATE_UNINITIALISED),
+    _resolver(resolver),
     _vocbase(vocbase),
     _singleOperation(singleOperation),
     _waitForSync(waitForSync),
-    _operations(),
+    _collections(),
     _startTime() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief destroy the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::~Transaction () {
@@ -63,11 +65,62 @@ Transaction::~Transaction () {
       state() != StateType::STATE_ABORTED) {
     this->abort();
   }
+
+  for (auto it = _collections.begin(); it != _collections.end(); ++it) {
+    Collection* collection = (*it).second;
+
+    delete collection;
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the transaction
+////////////////////////////////////////////////////////////////////////////////
+ 
+int Transaction::addCollection (string const& name,
+                                Collection::AccessType accessType) {
+  TRI_voc_cid_t id = _resolver.getCollectionId(name);
+
+  return addCollection(id, accessType);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the transaction
+////////////////////////////////////////////////////////////////////////////////
+ 
+int Transaction::addCollection (TRI_voc_cid_t id,
+                                Collection::AccessType accessType) {
+  if (id == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  if (state() != StateType::STATE_BEGUN) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  // add the collection to the list
+  auto it = _collections.find(id);
+
+  if (it != _collections.end()) {
+    // collection was already added
+    if (accessType == Collection::AccessType::WRITE && 
+        ! (*it).second->allowWriteAccess()) {
+      return TRI_ERROR_TRANSACTION_INTERNAL;
+    }
+
+    // ok
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // register the collection
+  _collections.insert(make_pair(id, new Collection(id, accessType)));
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction

@@ -32,6 +32,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Transaction/IdGenerator.h"
 #include "Transaction/Transaction.h"
+#include "Utils/CollectionNameResolver.h"
 
 extern "C" {
   struct TRI_vocbase_s;
@@ -84,7 +85,8 @@ namespace triagens {
 /// @brief create a transaction object
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction* createTransaction (struct TRI_vocbase_s*,
+        Transaction* createTransaction (triagens::arango::CollectionNameResolver const&,
+                                        struct TRI_vocbase_s*,
                                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////

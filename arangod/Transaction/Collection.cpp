@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations
+/// @brief transaction collection and related operations
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Operations.h"
+#include "Collection.h"
 
 using namespace triagens::transaction;
 
@@ -37,8 +37,10 @@ using namespace triagens::transaction;
 /// @brief create the operations
 ////////////////////////////////////////////////////////////////////////////////
 
-Operations::Operations (TRI_voc_cid_t id) 
+Collection::Collection (TRI_voc_cid_t id,
+                        Collection::AccessType accessType) 
   : _id(id),
+    _accessType(accessType),
     _numInserts(0),
     _numUpdates(0),
     _numDeletes(0) {
@@ -48,7 +50,7 @@ Operations::Operations (TRI_voc_cid_t id)
 /// @brief destroy the operations
 ////////////////////////////////////////////////////////////////////////////////
 
-Operations::~Operations () {
+Collection::~Collection () {
 }
 
 // -----------------------------------------------------------------------------
