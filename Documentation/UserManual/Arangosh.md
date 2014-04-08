@@ -10,13 +10,13 @@ ArangoDB Shell Introduction {#UserManualArangoshIntro}
 The ArangoDB shell (_arangosh_) is a command-line tool that can be used for
 administration of ArangoDB, including running ad-hoc queries.
 
-The _arangosh_ binary is shipped with ArangoDB, and can be invoked like so:
+The _arangosh_ binary is shipped with ArangoDB and can be invoked like so:
 
     unix> arangosh
     
-By default, arangosh will try to connect to an ArangoDB server running on
+By default _arangosh_ will try to connect to an ArangoDB server running on
 server `localhost` on port `8529`. It will use the username `root` and an
-empty password by default. Additionally, it will connect to the default database
+empty password by default. Additionally it will connect to the default database
 (`_system`). All these defaults can be changed using the following 
 command-line options:
 
@@ -27,7 +27,7 @@ command-line options:
 - `--server.disable-authentication <bool>`: disable password prompt and authentication
 
 For example, to connect to an ArangoDB server on IP `192.168.173.13` on port
-8530 with the user `foo` and using the database `test`, use
+8530 with the user `foo` and using the database `test`, use:
 
     unix> arangosh  \
       --server.endpoint tcp://192.168.173.13:8530  \
@@ -38,7 +38,7 @@ For example, to connect to an ArangoDB server on IP `192.168.173.13` on port
 _arangosh_ will then display a password prompt and try to connect to the 
 server after the password was entered.
 
-The change the current database after the connection has been made, you
+To change the current database after the connection has been made, you
 can use the `db._useDatabase()` command in arangosh:
 
     arangosh> db._useDatabase("myapp");
@@ -46,7 +46,7 @@ can use the `db._useDatabase()` command in arangosh:
 To get a list of available commands, arangosh provides a `help()` function.
 Calling it will display helpful information.
 
-arangosh also provides auto-completion. Additional information on available 
+_arangosh_ also provides auto-completion. Additional information on available 
 commands and methods is thus provided by typing the first few letters of a
 variable and then pressing the tab key. It is recommend to try this with entering
 `db.` (without pressing return) and then pressing tab.
@@ -62,7 +62,7 @@ For a list of available methods for the `db` object, type
 ArangoDB Shell Output {#UserManualArangoshOutput}
 =================================================
 
-In general the ArangoDB shell prints its as output to standard output channel
+In general the ArangoDB shell prints its output to the standard output channel
 using the JSON stringifier.
 
     arangosh> db.five.toArray();
@@ -74,7 +74,7 @@ using the JSON stringifier.
 @CLEARPAGE
 @FUN{start_pretty_print()}
 
-While the standard JSON stringifier is very concise it is hard to read.  Calling
+While the standard JSON stringifier is very concise it is hard to read. Calling
 the function @FN{start_pretty_print} will enable the pretty printer which
 formats the output in a human-readable way.
 
@@ -114,7 +114,7 @@ ArangoDB Shell Configuration {#UserManualArangoshConfiguration}
 ===============================================================
 
 _arangosh_ will look for a user-defined startup script named `.arangosh.rc` in the
-user's home directory on startup. If the file is present, _arangosh_ will execute
+user's home directory on startup. If the file is present _arangosh_ will execute
 the contents of this file inside the global scope.
 
 You can use this to define your own extra variables and functions that you need often.
@@ -141,7 +141,7 @@ You can now start _arangosh_ and invoke the function like this:
     });
 
 Please keep in mind that, if present, the `.arangosh.rc` file needs to contain valid
-JavaScript code. If you want any variables in the global scope to survive, you need to
+JavaScript code. If you want any variables in the global scope to survive you need to
 omit the `var` keyword for them. Otherwise the variables will only be visible inside
 the script itself, but not outside.
 
