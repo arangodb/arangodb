@@ -27,7 +27,7 @@ Using a Package Manager to install ArangoDB {#InstallingLinuxPackageManager}
 Follow the instructions on the
 @EXTREF_S{http://www.arangodb.org/download,Downloads} 
 page to use your favorite package manager for the major distributions. After setting 
-up the ArangoDB repository you can then easily install ArangoDB using yum, aptitude, 
+up the ArangoDB repository you can easily install ArangoDB using yum, aptitude, 
 urpmi, or zypper.
 
 ### Gentoo
@@ -38,7 +38,7 @@ provided by @@mgiken.
 
 ### Linux-Mint {#InstallingDebian}
 
-Download and import GPG-PublicKey
+Download and import GPG-PublicKey:
 
     wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.org/repositories/PublicKey
     apt-key add RPM-GPG-KEY-www.arangodb.org
@@ -79,18 +79,18 @@ graphical user interface to start and stop the server.
 Homebrew {#InstallingMacOSXHomebrew}
 ------------------------------------
 
-If you are using @EXTREF_S{http://brew.sh/,homebrew},
+If you are using  @EXTREF_S{http://brew.sh/,homebrew},
 then you can install the ArangoDB using `brew` as follows:
 
     brew install arangodb
 
 This will install the current stable version of ArangoDB and all
 dependencies within your Homebrew tree. Note that the server will be
-installed as
+installed as:
 
     /usr/local/sbin/arangod
 
-The ArangoDB shell will be install as
+The ArangoDB shell will be installed as:
 
     /usr/local/bin/arangosh
 
@@ -98,16 +98,16 @@ If you want to install the latest (unstable) version use:
 
     brew install --HEAD arangodb
 
-You can unstall ArangoDB using
+You can uninstall ArangoDB using:
 
     brew uninstall arangodb
 
 However, in case you started ArangoDB using the launchctl, then you
-need to unload it before uninstalling the server.
+need to unload it before uninstalling the server:
 
     launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
 
-Then remove the LaunchAgent
+Then remove the LaunchAgent:
 
     rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
 
@@ -122,7 +122,7 @@ Command-Line App {#InstallingMacOSXBundle}
 ------------------------------------------
 
 In case you are not using homebrew, we also provide a command-line app. You can
-download it from
+download it from:
 
     http://www.arangodb.org/download
 
@@ -164,14 +164,14 @@ installation process you may change this. In the following description we will a
 that ArangoDB has been installed in the location `<ROOTDIR>`.
 
 You have to be careful when choosing an installation directory. You need either
-write permission to this directoy or you need to modify the config file for the
+write permission to this directory or you need to modify the config file for the
 server process. In the latter case the database directory and the Foxx directory
-should must be writable by the user.
+should be writable by the user.
 
-Installating for a single user: Select a different directory during
+Installing for a single user: Select a different directory during
 installation. For example `C:/Users/<username>/arangodb` or `C:/ArangoDB`.
 
-Installating for multiple users: Keep the default directory. After the
+Installing for multiple users: Keep the default directory. After the
 installation edit the file `<ROOTDIR>/etc/arangodb/arangod.conf`. Adjust the
 `directory` and `app-path` so that these paths point into your home directory.
 
@@ -183,7 +183,7 @@ installation edit the file `<ROOTDIR>/etc/arangodb/arangod.conf`. Adjust the
 
        Create the directories for each user that wants to use ArangoDB.
 
-Installating as Service: Keep the default directory. After the installation open
+Installing as Service: Keep the default directory. After the installation open
 a command line as administrator (search for `cmd` and right click `run as
 administrator`).
 
@@ -213,12 +213,12 @@ Starting{#InstallingWindowsStarting}
 To start an ArangoDB server instance with networking enabled, use the executable
 `arangod.exe` located in `<ROOTDIR>/bin`. This will use the configuration
 file `arangod.conf` located in `<ROOTDIR>/etc/arangodb`, which you can adjust
-to your needs and use the data directory "<ROOTDIR>/var/lib/arangodb". This
+to your needs and use the data directory `<ROOTDIR>/var/lib/arangodb`. This
 is the place where all your data (databases and collections) will be stored
 by default.
 
 Please check the output of the `arangod.exe` executable before going on. If the
-server started successully, you should see a line `ArangoDB is ready for
+server started successfully, you should see a line `ArangoDB is ready for
 business. Have fun!` at the end of its output.
 
 We now wish to check that the installation is working correctly and to do this
@@ -248,11 +248,11 @@ Using the Client{#InstallingWindowsClient}
 
 To connect to an already running ArangoDB server instance, there is a shell
 `arangosh.exe` located in `<ROOTDIR>/bin`. This starts a shell which can be
-used (amongst other things) to administer and query a local or remote
+used – amongst other things – to administer and query a local or remote
 ArangoDB server.
 
 Note that `arangosh.exe` does NOT start a separate server, it only starts the
-shell.  To use it, you must have a server running somewhere, e.g. by using
+shell.  To use it you must have a server running somewhere, e.g. by using
 the `arangod.exe` executable.
 
 `arangosh.exe` uses configuration from the file `arangosh.conf` located in
@@ -295,7 +295,7 @@ Limitations for Cygwin{#InstallingWindowsCygwin}
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing
-CTRL-C will forcefully kill the server process, without giving it a chance to
+`CTRL-C` will forcefully kill the server process without giving it a chance to
 handle the kill signal. In this case, a regular server shutdown is not possible,
 which may leave a file `LOCK` around in the server's data directory.  This file
 needs to be removed manually to make ArangoDB start again.  Additionally, as
