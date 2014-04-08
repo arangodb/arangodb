@@ -152,6 +152,28 @@ TransactionInfo Manager::getOldestRunning () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether any of the specified transactions is still running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Manager::containsRunning (vector<Transaction::IdType> const& ids) {
+  READ_LOCKER(_lock);
+
+  for (auto it = ids.begin(); it != ids.end(); ++it) {
+    auto it2 = _transactions.find(*it);
+
+    if (it2 != _transactions.end()) {
+      Transaction* transaction = (*it2).second;
+
+      if (transaction->state() == Transaction::StateType::STATE_BEGUN) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove failed transactions from the failed list
 ////////////////////////////////////////////////////////////////////////////////
 
