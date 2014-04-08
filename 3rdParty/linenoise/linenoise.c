@@ -197,6 +197,7 @@ static void initLinenoiseLine(struct current *current);
 static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
 static int next_allowed_x(size_t pos, int cols, int pchars);
 static void setCursorPosXY(struct current *current, int x, int y);
+static void initPrompt(struct current *current, const char *prompt);
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -1590,7 +1591,7 @@ process_char:
                 int rchars = 0;
                 size_t rlen = 0;
                 int searchpos = history_len - 1;
-
+                const char * originalPrompt = current->prompt;
                 rbuf[0] = 0;
                 while (1) {
                     int n = 0;
@@ -1599,6 +1600,8 @@ process_char:
                     int searchdir = -1;
 
                     snprintf(rprompt, sizeof(rprompt), "(reverse-i-search)'%s': ", rbuf);
+                    initPrompt(current, rprompt);
+                    eraseEol(current);
                     refreshLine(rprompt, current);
                     c = fd_read(current);
                     if (c == ctrl('H') || c == 127) {
@@ -1669,7 +1672,9 @@ process_char:
                         rbuf[rlen] = 0;
                     }
                 }
+                initPrompt(current, originalPrompt);
                 if (c == ctrl('G') || c == ctrl('C')) {
+                    eraseEol(current);
                     /* ctrl-g terminates the search with no effect */
                     set_current(current, "");
                     c = 0;
@@ -1679,6 +1684,7 @@ process_char:
                     c = 0;
                 }
                 /* Go process the char normally */
+                eraseEol(current);
                 refreshLine(current->prompt, current);
                 goto process_char;
             }
@@ -1817,7 +1823,6 @@ int linenoiseColumns(void)
     disableRawMode (&current);
     return current.cols;
 }
-
 char *linenoise(const char *prompt)
 {
     size_t count;
@@ -1838,18 +1843,12 @@ char *linenoise(const char *prompt)
     }
     else
     {
-        size_t pchars = utf8_strlen(prompt, strlen(prompt));
-        /* Scan the prompt for embedded ansi color control sequences and
-         * discount them as characters/columns.
-         */
-        pchars -= countColorControlChars(prompt);
         current.buf = buf;
         current.bufmax = sizeof(buf);
         current.len = 0;
         current.chars = 0;
         current.pos = 0;
-        current.prompt = prompt;
-        current.pchars = pchars;
+        initPrompt(&current, prompt);
         current.capture = NULL;
 
         initLinenoiseLine(&current);
@@ -1866,6 +1865,15 @@ char *linenoise(const char *prompt)
     return strdup(buf);
 }
 
+static void initPrompt(struct current *current, const char *prompt) {
+        size_t pchars = utf8_strlen(prompt, strlen(prompt));
+        /* Scan the prompt for embedded ansi color control sequences and
+         * discount them as characters/columns.
+         */
+        pchars -= countColorControlChars(prompt);
+        current->prompt = prompt;
+        current->pchars = pchars;
+}
 /* Using a circular buffer is smarter, but a bit more complex to handle. */
 int linenoiseHistoryAdd(const char *line) {
     char *linecopy;
