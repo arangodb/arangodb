@@ -1,13 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine */
+/*global require, exports, _, Backbone, EJS, $, window, arangoHelper, templateEngine */
 
 (function() {
   "use strict";
   window.DocumentsView = window.PaginationView.extend({
-    collectionID: 0,
-    currentPage: 1,
-    documentsPerPage: 10,
-    totalPages: 1,
     filters : { "0" : true },
     filterId : 0,
     paginationDiv : "#documentsToolbarF",
@@ -23,8 +19,6 @@
     },
 
     setCollectionId : function (colid) {
-        this.collectionID = colid;
-        this.colid = colid;
         this.collection.setCollection(colid);
     },
 
@@ -257,10 +251,11 @@
 
     sendFilter : function () {
       var filters = this.getFilterContent();
+      var self = this;
       this.addDocumentSwitch = false;
       _.each(filters, function (f) {
-        this.collection.addFilter((f.attribute, f.operator, f.value));
-      })
+          self.collection.addFilter(f.attribute, f.operator, f.value);
+      });
       this.clearTable();
       this.collection.setToFirst();
       this.collection.getDocuments();
@@ -396,7 +391,9 @@
 
       var result;
       if (this.type === 'document') {
-        result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
+        result = window.arangoDocumentStore.deleteDocument(
+            this.collection.collectionID, this.docid
+        );
         if (result) {
           //on success
           deleted = true;
@@ -406,7 +403,7 @@
         }
       }
       else if (this.type === 'edge') {
-        result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
+        result = window.arangoDocumentStore.deleteEdge(this.collection.collectionID, this.docid);
         if (result === true) {
           //on success
           deleted = true;
@@ -421,7 +418,7 @@
           $('#documentsTableID').dataTable().fnGetPosition(row)
         );
         $('#documentsTableID').dataTable().fnClearTable();
-        window.arangoDocumentsStore.getDocuments(this.colid, page);
+          this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
       }
 
@@ -445,7 +442,8 @@
       }
       var docId = self.firstChild;
       var NeXt = $(docId).next().text();
-      window.location.hash = "#collection/" + this.colid + "/" + NeXt;
+      window.location.hash = "#collection/" + this.collection.collectionID
+          + "/" + NeXt;
     },
 
     initTable: function () {
@@ -518,14 +516,13 @@
         });
 
       }
-      this.totalPages = window.arangoDocumentsStore.totalPages;
-      this.currentPage = window.arangoDocumentsStore.currentPage;
-      this.documentsCount = window.arangoDocumentsStore.documentsCount;
     },
 
 
     render: function() {
-      this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
+      this.collectionContext = window.arangoCollectionsStore.getPosition(
+          this.collection.collectionID
+      );
 
       $(this.el).html(this.template.render({}));
       this.getIndex();
@@ -558,7 +555,7 @@
         this.drawTable();
         $('#documents_last').css("visibility", "hidden");
         $('#documents_first').css("visibility", "hidden");
-        this.renderPagination()
+        this.renderPagination();
     },
 
     renderPaginationElements: function () {
@@ -566,7 +563,7 @@
         this.renderPagination();
         var total = $('#totalDocuments');
           if (total.length > 0) {
-            total.html("Total: " + this.documentsCount + " documents");
+            total.html("Total: " + this.collection.getTotal() + " documents");
           } else {
             $('#documentsToolbarFL').append(
               '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
@@ -720,7 +717,7 @@
       return $(id).prop('checked');
     },
     getIndex: function () {
-      this.index = window.arangoCollectionsStore.getIndex(this.collectionID, true);
+      this.index = window.arangoCollectionsStore.getIndex(this.collection.collectionID, true);
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';
