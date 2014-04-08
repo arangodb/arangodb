@@ -91,7 +91,6 @@
         query: query,
         bindVars: bindVars
       };
-
       $.ajax({
         cache: false,
         type: 'POST',
