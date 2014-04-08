@@ -197,6 +197,7 @@ static void initLinenoiseLine(struct current *current);
 static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
 static int next_allowed_x(size_t pos, int cols, int pchars);
 static void setCursorPosXY(struct current *current, int x, int y);
+static void initPrompt(struct current *current, const char *prompt);
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -1817,7 +1818,6 @@ int linenoiseColumns(void)
     disableRawMode (&current);
     return current.cols;
 }
-
 char *linenoise(const char *prompt)
 {
     size_t count;
@@ -1838,18 +1838,12 @@ char *linenoise(const char *prompt)
     }
     else
     {
-        size_t pchars = utf8_strlen(prompt, strlen(prompt));
-        /* Scan the prompt for embedded ansi color control sequences and
-         * discount them as characters/columns.
-         */
-        pchars -= countColorControlChars(prompt);
         current.buf = buf;
         current.bufmax = sizeof(buf);
         current.len = 0;
         current.chars = 0;
         current.pos = 0;
-        current.prompt = prompt;
-        current.pchars = pchars;
+        initPrompt(&current, prompt);
         current.capture = NULL;
 
         initLinenoiseLine(&current);
@@ -1866,6 +1860,15 @@ char *linenoise(const char *prompt)
     return strdup(buf);
 }
 
+static void initPrompt(struct current *current, const char *prompt) {
+        size_t pchars = utf8_strlen(prompt, strlen(prompt));
+        /* Scan the prompt for embedded ansi color control sequences and
+         * discount them as characters/columns.
+         */
+        pchars -= countColorControlChars(prompt);
+        current->prompt = prompt;
+        current->pchars = pchars;
+}
 /* Using a circular buffer is smarter, but a bit more complex to handle. */
 int linenoiseHistoryAdd(const char *line) {
     char *linecopy;
