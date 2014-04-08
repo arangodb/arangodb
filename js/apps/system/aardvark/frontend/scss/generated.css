@@ -2488,6 +2488,8 @@ div.breadcrumb a.disabledBread {
     padding-bottom: 5px; }
   .modal-body .icon-info-sign:hover {
     opacity: 1; }
+  .modal-body .collapse {
+    position: inherit; }
   .modal-body .accordion-inner {
     border-top: 0;
     margin-left: 0;
