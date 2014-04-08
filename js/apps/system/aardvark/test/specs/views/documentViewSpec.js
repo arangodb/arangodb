@@ -60,22 +60,21 @@
         _key: "123",
         _rev: "adasda",
         _id: "paosdjfp1321"
-      }
-
-      var shouldObject = {
+      },
+      shouldObject = {
         hello: 123,
         wrong: true
-      }
+      },
+      result = view.removeReadonlyKeys(object);
 
-      var result = view.removeReadonlyKeys(object);
       expect(result).toEqual(shouldObject);
     });
 
     it("should modify the breadcrumb", function () {
-      var bar = document.createElement("div");
+      var bar = document.createElement("div"),
+        emptyBar = document.createElement("div");
       bar.id = 'transparentHeader';
 
-      var emptyBar = document.createElement("div");
 
       view.breadcrumb();
       expect(emptyBar).not.toBe(bar);
