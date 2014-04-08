@@ -111,6 +111,7 @@ Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Manager::beginTransaction (Transaction* transaction) {
+  double startTime = TRI_microtime();
   Transaction::IdType id = transaction->id();
 
   WRITE_LOCKER(_lock);
@@ -119,6 +120,8 @@ int Manager::beginTransaction (Transaction* transaction) {
   if (it.first == _transactions.end()) {
     return TRI_ERROR_INTERNAL;
   }
+
+  transaction->setStartTime(startTime);
 
   return TRI_ERROR_NO_ERROR;
 }
