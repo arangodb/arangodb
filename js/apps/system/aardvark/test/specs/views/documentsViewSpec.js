@@ -2822,7 +2822,7 @@
 
         it("renderPaginationElements", function () {
             view.collection = {
-                getTotal : function () {return 5}
+              getTotal: function() {return 5;}
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
@@ -2850,7 +2850,7 @@
 
         it("renderPaginationElements with total = 0", function () {
             view.collection = {
-                getTotal : function () {return 5}
+                getTotal : function () {return 5;}
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
@@ -2886,7 +2886,7 @@
                 getLastPageNumber : function () {
                     return 3;
                 }
-            }
+            };
             view.firstPage();
             expect(view.jumpTo).toHaveBeenCalledWith(1);
             view.lastPage();

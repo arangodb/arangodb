@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, arangoHelper, exports, _, Backbone, EJS, $, window, arangoHelper, templateEngine */
+/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine */
 
 (function() {
   "use strict";
