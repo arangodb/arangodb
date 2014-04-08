@@ -44,6 +44,8 @@ namespace triagens {
 
     class Transaction {
 
+      friend class Manager;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          typedefs
 // -----------------------------------------------------------------------------
@@ -87,7 +89,8 @@ namespace triagens {
 
         Transaction (Manager*,
                      IdType,
-                     struct TRI_vocbase_s*);
+                     struct TRI_vocbase_s*,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a transaction
@@ -118,11 +121,30 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the transaction start time stamp
+/// @brief is single operation?
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void setStartTime (double s) {
-          _startTime = s;
+        inline bool singleOperation () const {
+          return _singleOperation;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction start time stamp
+////////////////////////////////////////////////////////////////////////////////
+
+        inline double startTime () const {
+          return _startTime;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the time since transaction start
+////////////////////////////////////////////////////////////////////////////////
+
+        inline double elapsedTime () const {
+          if (state() == Transaction::StateType::STATE_BEGUN) {
+            return TRI_microtime() - _startTime;
+          }
+          return 0.0;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +170,31 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a transaction to committed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setBegun () {
+          _startTime = TRI_microtime();
+          _state     = StateType::STATE_BEGUN;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a transaction to committed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setCommitted () {
+          _state     = StateType::STATE_COMMITTED;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a transaction to aborted
+////////////////////////////////////////////////////////////////////////////////
+
+        void setAborted () {
+          _state     = StateType::STATE_ABORTED;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -180,6 +227,12 @@ namespace triagens {
         struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _singleOperation;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction operations, per collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -191,6 +244,26 @@ namespace triagens {
 
         double _startTime;
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   TransactionInfo
+// -----------------------------------------------------------------------------
+    
+    struct TransactionInfo {
+      TransactionInfo (Transaction::IdType id, 
+                       double elapsedTime) 
+        : _id(id),
+          _elapsedTime(elapsedTime) {
+      }
+
+      TransactionInfo () 
+        : _id(0),
+          _elapsedTime(0.0) {
+      }
+
+      Transaction::IdType const _id;
+      double const              _elapsedTime;
     };
 
   }
