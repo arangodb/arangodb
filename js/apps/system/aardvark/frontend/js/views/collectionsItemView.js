@@ -166,7 +166,7 @@
           )
         );
       }
-      // TODO: needs to be refactored. move getProperties into model
+      // needs to be refactored. move getProperties into model
       var journalSize = this.model.collection.getProperties(this.model.get('id')).journalSize;
       journalSize = journalSize/(1024*1024);
       tableContent.push(
