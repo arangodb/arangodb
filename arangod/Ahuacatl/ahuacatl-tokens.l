@@ -6,6 +6,9 @@
 %option bison-bridge
 %option yylineno
 %option noyywrap nounput batch
+%x BACKTICK
+%x SINGLE_QUOTE
+%x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
 
@@ -21,7 +24,7 @@
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*
 
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng;
+#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng; yyextra->_parser->_offset += yyleng;
 
 #define YY_NO_INPUT 1
 
@@ -235,22 +238,86 @@
   return T_STRING; 
 }
 
-`(\\.|[^\\`])*` {
+<INITIAL>` {
   /* string enclosed in backticks */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
+  yyextra->_parser->_marker = (char*) (yyextra->_query + yyextra->_parser->_offset);
+  BEGIN(BACKTICK);
+}
+
+<BACKTICK>` {
+  /* end of backtick-enclosed string */
+  BEGIN(INITIAL);
+  yylval->strval = TRI_RegisterStringAql(yyextra, yyextra->_parser->_marker, yyextra->_parser->_offset - (yyextra->_parser->_marker - yyextra->_query) - 1, true);
   return T_STRING;
 }
 
-\"(\\.|[^\\\"])*\" {
-  /* string enclosed in double quotes */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
+<BACKTICK>\\. {
+  /* character escaped by backslash */
+  BEGIN(BACKTICK);
+}
+
+<BACKTICK>\n {
+  /* newline character inside backtick */
+  BEGIN(BACKTICK);
+}
+
+<BACKTICK>. {
+  /* any character (except newline) inside backtick */
+  BEGIN(BACKTICK);
+}
+
+<INITIAL>\" {
+  yyextra->_parser->_marker = (char*) (yyextra->_query + yyextra->_parser->_offset);
+  BEGIN(DOUBLE_QUOTE);
+}
+
+<DOUBLE_QUOTE>\" {
+  /* end of quote-enclosed string */
+  BEGIN(INITIAL);
+  yylval->strval = TRI_RegisterStringAql(yyextra, yyextra->_parser->_marker, yyextra->_parser->_offset - (yyextra->_parser->_marker - yyextra->_query) - 1, true);
   return T_QUOTED_STRING;
 }
 
-'(\\.|[^\\'])*' {
-  /* string enclosed in single quotes */
-  yylval->strval = TRI_RegisterStringAql(yyextra, yytext + 1, yyleng - 2, true); 
+<DOUBLE_QUOTE>\\. {
+  /* character escaped by backslash */
+  BEGIN(DOUBLE_QUOTE);
+}
+
+<DOUBLE_QUOTE>\n {
+  /* newline character inside quote */
+  BEGIN(DOUBLE_QUOTE);
+}
+
+<DOUBLE_QUOTE>. {
+  /* any character (except newline) inside quote */
+  BEGIN(DOUBLE_QUOTE);
+}
+
+<INITIAL>' {
+  yyextra->_parser->_marker = (char*) (yyextra->_query + yyextra->_parser->_offset);
+  BEGIN(SINGLE_QUOTE);
+}
+
+<SINGLE_QUOTE>' {
+  /* end of quote-enclosed string */
+  BEGIN(INITIAL);
+  yylval->strval = TRI_RegisterStringAql(yyextra, yyextra->_parser->_marker, yyextra->_parser->_offset - (yyextra->_parser->_marker - yyextra->_query) - 1, true);
   return T_QUOTED_STRING;
+}
+
+<SINGLE_QUOTE>\\. {
+  /* character escaped by backslash */
+  BEGIN(SINGLE_QUOTE);
+}
+
+<SINGLE_QUOTE>\n {
+  /* newline character inside quote */
+  BEGIN(SINGLE_QUOTE);
+}
+
+<SINGLE_QUOTE>. {
+  /* any character (except newline) inside quote */
+  BEGIN(SINGLE_QUOTE);
 }
 
 (0|[1-9][0-9]*) {  

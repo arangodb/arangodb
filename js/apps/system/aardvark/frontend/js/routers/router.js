@@ -18,7 +18,6 @@
             "collection/:colid/:docid": "document",
             "shell": "shell",
             "query": "query",
-            "logs": "logs",
             "api": "api",
             "databases": "databases",
             "applications": "applications",
@@ -31,34 +30,36 @@
             "userProfile": "userProfile",
             "testing": "testview",
             "testModalView": "testmodalview",
-            "newLogsView": "newLogsView"
+            "logs": "newLogsView"
         },
 
         newLogsView: function() {
-          var self = this;
-          this.newLogsAllCollection = new window.NewArangoLogs(
-            {upto: true, loglevel: 4}
-          );
-          this.newLogsDebugCollection = new window.NewArangoLogs(
-            {loglevel: 4}
-          );
-          this.newLogsInfoCollection = new window.NewArangoLogs(
-            {loglevel: 3}
-          );
-          this.newLogsWarningCollection = new window.NewArangoLogs(
-            {loglevel: 2}
-          );
-          this.newLogsErrorCollection = new window.NewArangoLogs(
-            {loglevel: 1}
-          );
-          this.newLogsView = new window.NewLogsView({
-            logall: self.newLogsAllCollection,
-            logdebug: self.newLogsDebugCollection,
-            loginfo: self.newLogsInfoCollection,
-            logwarning: self.newLogsWarningCollection,
-            logerror: self.newLogsErrorCollection
-          });
-          this.newLogsView.render();
+          if (!this.logsView) {
+            var newLogsAllCollection = new window.NewArangoLogs(
+              {upto: true, loglevel: 4}
+            ),
+            newLogsDebugCollection = new window.NewArangoLogs(
+              {loglevel: 4}
+            ),
+            newLogsInfoCollection = new window.NewArangoLogs(
+              {loglevel: 3}
+            ),
+            newLogsWarningCollection = new window.NewArangoLogs(
+              {loglevel: 2}
+            ),
+            newLogsErrorCollection = new window.NewArangoLogs(
+              {loglevel: 1}
+            );
+            this.logsView = new window.NewLogsView({
+              logall: newLogsAllCollection,
+              logdebug: newLogsDebugCollection,
+              loginfo: newLogsInfoCollection,
+              logwarning: newLogsWarningCollection,
+              logerror: newLogsErrorCollection
+            });
+          }
+          this.logsView.render();
+          this.naviView.selectMenuItem('tools-menu');
         },
 
         testmodalview: function() {
@@ -111,6 +112,7 @@
             window.documentView = new window.DocumentView({
                 collection: window.arangoDocumentStore
             });
+            /*
             window.arangoLogsStore = new window.ArangoLogs();
             window.arangoLogsStore.fetch({
                 success: function () {
@@ -119,7 +121,7 @@
                     });
                 }
             });
-
+            */
             this.foxxList = new window.FoxxCollection();
 
             this.footerView = new window.FooterView();
@@ -357,6 +359,7 @@
             }
         },
 
+        /*
         logs: function () {
             if (!this.logsAllowed()) {
                 this.navigate('', { trigger: true });
@@ -374,7 +377,7 @@
             });
             this.naviView.selectMenuItem('tools-menu');
         },
-
+        */
         dashboard: function () {
             this.naviView.selectMenuItem('dashboard-menu');
             if (this.statisticsDescriptionCollection === undefined) {

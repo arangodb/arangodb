@@ -372,6 +372,9 @@ distclean-local:
 clean-local:
 	rm -rf $(CLEANUP)
 
+superclean: clean
+	rm -rf arangod/*/.deps lib/*/.deps Makefile
+
 ################################################################################
 ### @brief generated files
 ################################################################################

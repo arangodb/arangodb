@@ -2794,7 +2794,8 @@
                 total.html("Total: " + this.collection.getTotal() + " documents");
             } else {
                 $('#documentsToolbarFL').append(
-                    '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
+                    '<a id="totalDocuments" class="totalDocuments">Total: '
+                     + this.collection.getTotal() +
                         ' document(s) </a>'
                 );
             }

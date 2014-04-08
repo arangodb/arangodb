@@ -139,6 +139,66 @@ function ahuacatlEscapingTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks6 : function () {
+      var expected = { "a\r\nfox" : "jumped\nover\nit" };
+      var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\r\nfox` == 'jumped\nover\nit' RETURN r"); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks7 : function () {
+      var expected = { "a\r\nfox" : "jumped\nover\nit" };
+      var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\r\nfox` == \"jumped\nover\nit\" RETURN r"); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks8 : function () {
+      var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
+      var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\\\\r\\\\nfox` == 'jumped\\\\nover\\\\nit' RETURN r"); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks9 : function () {
+      var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
+      var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\\\\r\\\\nfox` == \"jumped\\\\nover\\\\nit\" RETURN r"); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks10 : function () {
+      var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
+      var actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.`a\\\\r\\\\nfox` == @var2 RETURN r", { var1: expected, var2: expected["a\\r\\nfox"] }); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test backticks with line breaks
+////////////////////////////////////////////////////////////////////////////////
+    
+    testPunctuationBackticks11 : function () {
+      var expected = { "a\r\nfox" : "jumped\nover\nit" };
+      var actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.`a\\r\\nfox` == @var2 RETURN r", { var1: expected, var2: expected["a\r\nfox"] }); 
+      assertEqual([ expected ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test punctuation names escaping
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -275,6 +335,16 @@ function ahuacatlEscapingTestSuite () {
     testLineBreaks2 : function () {
       var expected = [ { "the\nquick\nbrown\r\nfox\rjumped\n" : "over\nthis\r\nattribute" } ];
       var actual = getQueryResults("RETURN { \"the\nquick\nbrown\r\nfox\rjumped\n\" : \"over\nthis\r\nattribute\" }");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line breaks3
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLineBreaks3 : function () {
+      var expected = [ { "the\nquick\nbrown\r\nfox\rjumped\n" : "over\nthis\r\nattribute" } ];
+      var actual = getQueryResults("RETURN { 'the\nquick\nbrown\r\nfox\rjumped\n' : 'over\nthis\r\nattribute' }");
       assertEqual(expected, actual);
     },
 
