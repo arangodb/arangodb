@@ -49,11 +49,11 @@ poll & update interval.
 Please note that you can use the magnifying glass icon on any of the small detail
 charts to make the chart be display at the top "in big".
 
-The *DashboarD* tab also shows an overview of the current database's replication
+The *Dashboard* tab also shows an overview of the current databases replication 
 status, including:
-- whether or not replication is running
-- the progress of the replication
-- if there has been a replication error
+- Whether or not replication is running
+- The progress of the replication
+- If there has been a replication error
 
 Collections Tab {#UserManualWebInterfaceCollections}
 ----------------------------------------------------
@@ -62,7 +62,7 @@ The *Collections* tab shows an overview of the loaded and unloaded
 collections present in ArangoDB. System collections (i.e. collections
 whose names start with an underscore) are not shown by default.
 
-The list of collections can be restricted using the search bar, or by
+The list of collections can be restricted using the search bar or by
 using the filtering at the top. The filter can also be used to show or
 hide system collections.
 
@@ -93,7 +93,7 @@ Graphs Tab {#UserManualWebInterfaceGraphs}
 ------------------------------------------
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
-allows browsing ArangoDB graphs stored in the `_graphs` system collection, or a
+allows browsing ArangoDB graphs stored in the `_graphs` system collection or a
 graph consisting of an arbitrary vertex and edge collection. 
 
 Please note that the graph viewer requires client-side SVG and that you need a
@@ -120,7 +120,7 @@ The *JS Shell* tab provides access to a JavaScript shell connection to the
 database server.
 
 Any valid JavaScript code can be executed inside the shell. The code will be
-executed inside your browser. To contact the ArangoDB server, you can use the
+executed inside your browser. To contact the ArangoDB server you can use the
 `db` object, for example as follows:
 
     JSH> db._create("mycollection");
