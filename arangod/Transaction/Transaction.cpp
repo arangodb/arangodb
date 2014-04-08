@@ -42,12 +42,14 @@ using namespace triagens::transaction;
 Transaction::Transaction (Manager* manager,
                           IdType id,
                           TRI_vocbase_t* vocbase,
-                          bool singleOperation) 
+                          bool singleOperation,
+                          bool waitForSync) 
   : _manager(manager),
     _id(id),
     _state(StateType::STATE_UNINITIALISED),
     _vocbase(vocbase),
     _singleOperation(singleOperation),
+    _waitForSync(waitForSync),
     _operations(),
     _startTime() {
 }
