@@ -135,6 +135,7 @@
   "frontend/js/collections/_paginatedCollection.js",
   "frontend/js/collections/newArangoLogs.js",
 
+  "frontend/js/views/_paginationView.js",
   "frontend/js/views/modalView.js",
   "frontend/js/views/navigationView.js",
   "frontend/js/views/notificationView.js",

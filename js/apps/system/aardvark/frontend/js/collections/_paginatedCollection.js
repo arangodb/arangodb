@@ -14,8 +14,8 @@
     },
 
     setPage: function(counter) {
-      if (counter > this.getLastPageNumber()) {
-        this.page = this.getLastPageNumber();
+      if (counter >= this.getLastPageNumber()) {
+        this.page = this.getLastPageNumber()-1;
         return;
       }
       if (counter < 1) {
@@ -23,6 +23,7 @@
         return;
       }
       this.page = counter - 1;
+
     },
 
     getLastPageNumber: function() {
@@ -42,7 +43,9 @@
     },
 
     setToLast: function() {
+        console.log("lpn " , this.getLastPageNumber());
       this.setPage(this.getLastPageNumber());
+      console.log(this.getPage());
     },
 
     setToPrev: function() {

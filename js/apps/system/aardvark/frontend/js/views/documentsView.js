@@ -3,13 +3,15 @@
 
 (function() {
   "use strict";
-  window.DocumentsView = Backbone.View.extend({
+  window.DocumentsView = window.PaginationView.extend({
     collectionID: 0,
     currentPage: 1,
     documentsPerPage: 10,
     totalPages: 1,
     filters : { "0" : true },
     filterId : 0,
+    paginationDiv : "#documentsToolbarF",
+    idPrefix : "documents",
 
     addDocumentSwitch: true,
 
@@ -18,6 +20,12 @@
     collectionContext : {
       prev: null,
       next: null
+    },
+
+    setCollectionId : function (colid) {
+        this.collectionID = colid;
+        this.colid = colid;
+        this.collection.setCollection(colid);
     },
 
     alreadyClicked: false,
@@ -221,7 +229,7 @@
     },
 
     getFilterContent: function () {
-      var filters = [ ], bindValues = { };
+      var filters = [ ];
       var i;
 
       for (i in this.filters) {
@@ -236,23 +244,26 @@
           }
 
           if ($('#attribute_name' + i).val() !== ''){
-            filters.push(" u.`"+ $('#attribute_name'+i).val() + "`" + 
-                         $('#operator' + i).val() + 
-                         "@param" + i);
-            bindValues["param" + i] = value;
+            filters.push({
+                attribute : $('#attribute_name'+i).val(),
+                operator : $('#operator'+i).val(),
+                value : value
+            });
           }
         }
       }
-      return [filters, bindValues];
+      return filters;
     },
 
     sendFilter : function () {
-      var filterArray = this.getFilterContent();
-      var filters = filterArray[0];
-      var bindValues = filterArray[1];
+      var filters = this.getFilterContent();
       this.addDocumentSwitch = false;
-      window.documentsView.clearTable();
-      window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
+      _.each(filters, function (f) {
+        this.collection.addFilter((f.attribute, f.operator, f.value));
+      })
+      this.clearTable();
+      this.collection.setToFirst();
+      this.collection.getDocuments();
 
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
@@ -355,18 +366,7 @@
         arangoHelper.arangoError('Creating edge failed');
       }
     },
-    firstDocuments: function () {
-      window.arangoDocumentsStore.getFirstDocuments();
-    },
-    lastDocuments: function () {
-      window.arangoDocumentsStore.getLastDocuments();
-    },
-    prevDocuments: function () {
-      window.arangoDocumentsStore.getPrevDocuments();
-    },
-    nextDocuments: function () {
-      window.arangoDocumentsStore.getNextDocuments();
-    },
+
     remove: function (a) {
       this.target = a.currentTarget;
       var thiselement = a.currentTarget.parentElement;
@@ -472,13 +472,14 @@
       $(this.table).dataTable().fnClearTable();
     },
     drawTable: function() {
+      this.clearTable();
       var self = this;
 
-        if (window.arangoDocumentsStore.models.length === 0) {
+        if (this.collection.size() === 0) {
         $('.dataTables_empty').text('No documents');
       }
       else {
-        $.each(window.arangoDocumentsStore.models, function(key, value) {
+            this.collection.each(function(value, key) {
           var tempObj = {};
           $.each(value.attributes.content, function(k, v) {
             if (! (k === '_id' || k === '_rev' || k === '_key')) {
@@ -546,67 +547,34 @@
       });
         
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
-
+      this.drawTable();
+      this.renderPaginationElements();
       return this;
     },
-    showLoadingState: function () {
-      $('.dataTables_empty').text('Loading...');
+
+    rerender : function () {
+        this.clearTable();
+        this.collection.getDocuments();
+        this.drawTable();
+        $('#documents_last').css("visibility", "hidden");
+        $('#documents_first').css("visibility", "hidden");
+        this.renderPagination()
     },
-    renderPagination: function (totalPages, checkFilter) {
-      $('#documentsToolbarF').html("");
-      var self = this;
 
-      var currentPage;
-      if (checkFilter) {
-        currentPage = window.arangoDocumentsStore.currentFilterPage;
-      }
-      else {
-        currentPage = JSON.parse(this.pageid);
-      }
-      var target = $('#documentsToolbarF'),
-      options = {
-        left: 2,
-        right: 2,
-        page: currentPage,
-        lastPage: totalPages,
-        click: function(i) {
-          options.page = i;
-          if (checkFilter) {
-            var filterArray = self.getFilterContent();
-            var filters = filterArray[0];
-            var bindValues = filterArray[1];
-            self.addDocumentSwitch = false;
+    renderPaginationElements: function () {
 
-            window.documentsView.clearTable();
-            window.arangoDocumentsStore.getFilteredDocuments(self.colid, i, filters, bindValues);
-
-            //Hide first/last pagination
-            $('#documents_last').css("visibility", "hidden");
-            $('#documents_first').css("visibility", "hidden");
-          }
-          else {
-            var windowLocationHash =  '#collection/' + self.colid + '/documents/' + options.page;
-            window.location.hash = windowLocationHash;
-          }
-        }
-      };
-      target.pagination(options);
-      $('#documentsToolbarF').prepend(
-        '<ul class="pre-pagi"><li><a id="documents_first" class="pagination-button">'+
-        '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
-        $('#documentsToolbarF').append(
-          '<ul class="las-pagi"><li><a id="documents_last" class="pagination-button">'+
-          '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
-          var total = $('#totalDocuments');
+        this.renderPagination();
+        var total = $('#totalDocuments');
           if (total.length > 0) {
             total.html("Total: " + this.documentsCount + " documents");
           } else {
             $('#documentsToolbarFL').append(
-              '<a id="totalDocuments" class="totalDocuments">Total: ' + this.documentsCount +
+              '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
               ' document(s) </a>'
             );
           }
     },
+
     breadcrumb: function () {
       this.collectionName = window.location.hash.split("/")[1];
       $('#transparentHeader').append(
