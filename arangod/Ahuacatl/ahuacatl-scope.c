@@ -113,6 +113,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_type             = NextType(context, type);
   scope->_ranges           = NULL;
   scope->_selfContained    = true;
+  scope->_empty            = false;
   scope->_level            = 0; // init with a dummy value
 
   scope->_limit._offset    = 0;
