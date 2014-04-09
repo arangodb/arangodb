@@ -2,6 +2,7 @@
 ;!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\AccessControl\Plugins'
 !addincludedir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS'
 
 ;--------------------------------
@@ -31,6 +32,7 @@
   Var IS_DEFAULT_INSTALLDIR
 ; Variables for definition of instdir
   VAR TRI_INSTALL_AS_SERVICE
+  VAR TRI_INSTALL_ALL_USERS
   VAR TRI_INSTALL_SINGLE_USER
 ;--------------------------------
 ;Include Modern UI
@@ -586,9 +588,12 @@ FunctionEnd
 
 ;--------------------------------
 ;Pages
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_WELCOME
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
+
   Page custom InstallOptionsPage
   !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
@@ -796,16 +801,24 @@ Function ArangoPreInstallationOptionsPage
 FunctionEnd
 
 ;--------------------------------
+Function skip_page
+  ${If} ${UAC_IsInnerInstance} 
+    Abort
+  ${EndIf}
+FunctionEnd
+
+;--------------------------------
 Function default_installation_directory
 ; Read variables which defines if arango should be installed as Service 
   !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_AS_SERVICE "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $0 "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
   !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_SINGLE_USER "NSIS.InstallOptions.ini" "Field 4" "State"
 
   StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 checkSingleUser
     Call Tri_ChangePrivileges
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
     SetShellVarContext all
+    Call skip_page
     Abort
   checkSingleUser:
     StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
@@ -821,37 +834,25 @@ Function default_installation_directory
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 FunctionEnd
 
-; Workaroound until we can use system calls
-; or a plugin http://nsis.sourceforge.net/AccessControl_plug-in
-Function is_writable 
-  Push $0
-; is does not matter if we do some errors here
-  
-  CreateDirectory "$INSTDIR"
-  ClearErrors
-  FileOpen $0 "$INSTDIR\___tri_test___" w
-  FileWrite $0 "ok"
-  FileClose $0
-  StrCpy $2 "file writen"
-  IfErrors there_are_errors
+Function assign_propertly_access_rigths
+    StrCpy $0 "0"
+    AccessControl::GrantOnFile \
+     "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
+    Pop $R0
+    ${If} $R0 == error
+      Pop $R0
+      StrCpy $0 "1"
+      DetailPrint `AccessControl error: $R0`
+      ; MessageBox MB_OK "target directory  $INSTDIR can not get cannot get correct access rigths"
+  ${EndIf}
+FunctionEnd
 
-  ClearErrors
-  FileOpen $0 "$INSTDIR\___tri_test___" r
-  IfErrors there_are_errors
-  FileRead $0 $1
-  FileClose $0
-  StrCpy $2 "file read"
-  IfErrors there_are_errors
-  Delete "$INSTDIR\___tri_test___" 
-  StrCpy $2 "file deleted"
-  IfErrors there_are_errors
-  StrCpy $1 "1"
-  return
-  there_are_errors:
-;    MessageBox MB_OK "$2"
-    DELETE "$INSTDIR\___tri_test___" 
-    ClearErrors
-    StrCpy $1 "0"
+Function is_writable 
+; is does not matter if we do some errors here
+   ${If} $TRI_INSTALL_ALL_USERS == '1'
+     CreateDirectory $INSTDIR
+     Call assign_propertly_access_rigths
+    ${EndIf}
 FunctionEnd
 
 Function check_installation_directory
@@ -864,6 +865,7 @@ Function check_installation_directory
        Abort
      no: Quit
 FunctionEnd
+
 
 
 !macro triagens_init
@@ -917,11 +919,11 @@ Function un.onInit
 ;  done:
 
     ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
-  StrCmp $0 "Service" 0 +3
+  ${If} $0 == "Service" 
     SetShellVarContext all
-     Goto tri_done
+  ${Else}
     SetShellVarContext current
-    tri_done:
+  ${EndIf} 
    
 FunctionEnd
 
