@@ -1,0 +1,17 @@
+{
+  "name": "cerberus",
+  "version": "0.0.1",
+  "author": "gschwab",
+  "isSystem": true,
+  "controllers": {
+    "/_open/": "cerberus.js"
+  },
+  "assets": {
+    "changePassword.html": {
+      "files": [
+        "html/changePassword.html",
+        "html/error.html"
+      ]
+    }
+  }
+}
