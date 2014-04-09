@@ -234,7 +234,7 @@
             };
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments({collectionID : view.colid});
+            view.collection = new window.arangoDocuments({collectionID : view.colid});
             view.resetView();
             expect(window.$).toHaveBeenCalledWith("input");
             expect(window.$).toHaveBeenCalledWith("select");
@@ -264,7 +264,7 @@
             };
             spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn(true);
             spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
 
             view.allowUpload = true;
@@ -288,7 +288,7 @@
             };
             spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn("Upload error");
             spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
 
             view.allowUpload = true;
@@ -304,7 +304,7 @@
 
         it("start succesful Upload mit XHR ready state = 4, " +
             "XHR status = 201 and not parseable JSON", function () {
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             spyOn(view, "showSpinner");
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
@@ -317,7 +317,7 @@
                 'Error: SyntaxError: Unable to parse JSON string'
             );
             spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
             view.allowUpload = true;
             spyOn(arangoHelper, "arangoError");
@@ -668,8 +668,6 @@
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
             spyOn(view, "clearTable");
             view.collection = new window.arangoDocuments();
-            window.documentsView = new window.DocumentsView();
-
 
             view.sendFilter();
 
@@ -789,7 +787,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn("newDoc");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoHelper, "collectionApiType").andReturn("document");
             window.location.hash = "1/2";
@@ -808,7 +806,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn("newDoc");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             jQueryDummy = {
                 modal: function () {
@@ -839,7 +837,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoHelper, "collectionApiType").andReturn("document");
             spyOn(arangoHelper, "arangoError");
@@ -881,7 +879,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -920,7 +918,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -963,7 +961,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge").andReturn("newEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -1008,7 +1006,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -1153,7 +1151,7 @@
 
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
@@ -1205,7 +1203,7 @@
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
@@ -1278,7 +1276,7 @@
             };
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
@@ -1362,7 +1360,7 @@
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
@@ -1666,7 +1664,7 @@
 
                 };
                 spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
-                window.arangoCollectionsStore  = new window.arangoCollections();
+                view.collectionsStore  = new window.arangoCollections();
                 view.collection = {collectionID : "1"};
                 spyOn(view, "getIndex");
                 spyOn(view, "initTable");
@@ -1832,7 +1830,6 @@
 
             );
             spyOn(view, "clearTable");
-            window.documentsView = view;
             spyOn(view,"rerender");
             view.colid = 1;
             view.documentsCount = 11;
@@ -1906,7 +1903,6 @@
             );
             spyOn(view, "clearTable");
             spyOn(view,"rerender");
-            window.documentsView = view;
             view.colid = 1;
             view.documentsCount = 0;
             view.pageid = "1";
@@ -2067,7 +2063,7 @@
             };
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2137,7 +2133,7 @@
             );
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2205,7 +2201,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2266,7 +2262,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2333,7 +2329,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2400,7 +2396,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(false);
             spyOn(arangoHelper, "arangoNotification");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2471,7 +2467,7 @@
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(
                 {responseText: '{"errorMessage" : "blub"}'});
             spyOn(arangoHelper, "arangoNotification");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2560,7 +2556,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(true);
             spyOn(arangoHelper, "arangoError");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.lastTarget = {currentTarget: "blub"};
             view.collectionName = "coll";
@@ -2602,7 +2598,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(false);
             spyOn(arangoHelper, "arangoError");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.lastTarget = {currentTarget: "blub"};
             view.collectionName = "coll";
@@ -2689,7 +2685,7 @@
                     ]
                 }
             );
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
             $.each = function (list, callback) {
                 var callBackWraper = function (a, b) {
                     callback(b, a);
@@ -2755,7 +2751,7 @@
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(undefined);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
             $.each = function (list, callback) {
                 var callBackWraper = function (a, b) {
                     callback(b, a);
@@ -2809,17 +2805,24 @@
 
         it("setCollectionId", function () {
             view.collection = {
-                setCollection : function () {}
+                setCollection : function () {},
+                getDocuments : function () {}
             };
             spyOn(view.collection, "setCollection");
-            view.setCollectionId(1);
+            spyOn(view.collection, "getDocuments");
+            spyOn(arangoHelper, "collectionApiType").andReturn("blub");
+            view.setCollectionId(1, 2);
             expect(view.collection.setCollection).toHaveBeenCalledWith(1);
+            expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(1);
+            expect(view.type).toEqual("blub");
+            expect(view.pageid).toEqual(2);
+            expect(view.collection.getDocuments).toHaveBeenCalledWith(1, 2);
 
         });
 
         it("renderPaginationElements", function () {
             view.collection = {
-                getTotal : function () {return 5}
+              getTotal: function() {return 5;}
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
@@ -2847,7 +2850,7 @@
 
         it("renderPaginationElements with total = 0", function () {
             view.collection = {
-                getTotal : function () {return 5}
+                getTotal : function () {return 5;}
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
@@ -2883,7 +2886,7 @@
                 getLastPageNumber : function () {
                     return 3;
                 }
-            }
+            };
             view.firstPage();
             expect(view.jumpTo).toHaveBeenCalledWith(1);
             view.lastPage();
