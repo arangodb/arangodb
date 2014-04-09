@@ -7,7 +7,7 @@ Handling Documents {#HandlingDocuments}
 Documents, Identifiers, Handles {#HandlingDocumentsIntro}
 =========================================================
 
-This is an introduction to ArangoDB's interface for documents and how handle
+This is an introduction to ArangoDB's interface for documents to and how handle
 documents from the JavaScript shell _arangosh_. For other languages see the
 corresponding language API.
 
@@ -20,7 +20,7 @@ For example:
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
 All documents contain special attributes: the document handle in `_id`, the
-document's unique key in `_key` and and the etag aka document revision in
+document's unique key in `_key` and and the ETag aka document revision in
 `_rev`. The value of the `_key` attribute can be specified by the user when
 creating a document.  `_id` and `_key` values are immutable once the document
 has been created. The `_rev` value is maintained by ArangoDB autonomously.
@@ -38,7 +38,7 @@ All documents in ArangoDB have a document handle. This handle uniquely defines a
 document and is managed by ArangoDB. The interface allows you to access the
 documents of a collection as:
 
-    db.@FA{collection}.document(@FA{document-handle})
+    db.collection.document("document-handle")
 
 For example: Assume that the document handle, which is stored in the `_id` field
 of the document, is `demo/362549` and the document lives in a collection
@@ -51,7 +51,7 @@ can leave out the @FA{collection} and use the shortcut:
 
     db._document("demo/362549736")
 
-Each document also has a document revision or etag with is returned in the
+Each document also has a document revision or ETag witch is returned in the
 `_rev` field when requesting a document. The document's key is returned in the
 `_key` attribute.
 
