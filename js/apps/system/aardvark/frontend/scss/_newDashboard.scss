@@ -1,0 +1,84 @@
+$dashboard-height: 250px;
+
+%dashboard-chart-box {
+  @extend %pull-left;
+  border-left: 1px solid $c-black;
+  margin-left: -1px;
+
+  &:first-child {
+    border-left: 0;
+    margin-left: 0;
+  }
+}
+
+.dashboard-large-chart {
+  @extend %dashboard-chart-box;
+  height: $dashboard-height;
+}
+
+.dashboard-medium-chart {
+  @extend %dashboard-chart-box;
+  height: $dashboard-height;
+}
+
+.dashboard-small-chart {
+  @extend %dashboard-chart-box;
+  height: $dashboard-height;
+}
+
+.dashboard-legend {
+  display: block;
+}
+
+.dashboard-half-height-chart {
+  @extend %clear-float;
+  height: $dashboard-height / 2;
+}
+
+.dashboard-title-bar {
+  background-color: $c-bar-bg;
+  border: {
+    bottom: 0;
+    left: 1px;
+    left-color: $c-black;
+    right: 1px;
+    right-color: $c-black;
+    style: solid;
+    top: 1px;
+    top-color: $c-black;
+  }
+  color: $c-white;
+  font-size: 16px;
+  height: 36px;
+  line-height: 36px;
+  margin-left: -1px;
+  margin-right: -1px;
+  text-align: center;
+}
+
+.dashboard-subtitle-bar {
+  @extend %pull-left;
+  @extend %dashboard-chart-box;
+  border-bottom: 1px solid $c-black;
+  border-top: 1px solid $c-black;
+  font-size: 16px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  width: 50%;
+}
+
+.dashboard-tendency {
+  @extend %pull-left;
+  @extend %dashboard-chart-box;
+  height: $dashboard-height / 2 - 36px - 36px;
+  width: 50%;
+}
+
+.dashboard-row {
+  @extend %clear-float;
+  border: 1px solid $c-black;
+  margin-bottom: 5px;
+  margin-left: -1px;
+  margin-right: -1px;
+}

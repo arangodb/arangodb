@@ -1,8 +1,8 @@
-Database Organisation {#GlossaryDatabaseOrganisation}
+Database Organization {#GlossaryDatabaseOrganization}
 =====================================================
 
-@GE{Database Organisation}: A single ArangoDB instance can handle multiple
-databases in parallel. By default, there will be at least one database, which
+@GE{Database Organization}: A single ArangoDB instance can handle multiple
+databases in parallel. By default, there will be at least one database which
 is named `_system`.
 
 Databases are physically stored in separate sub-directories underneath the
@@ -26,7 +26,7 @@ layout could look like this:
           collection-<id>/    # directory containg data about a collection
           collection-<id>/    # directory containg data about a collection
 
-Foxx applications are also organised in database-specific directories inside
+Foxx applications are also organized in database-specific directories inside
 the application path. The filesystem layout could look like this:
 
     apps/                   # the instance's application directory
