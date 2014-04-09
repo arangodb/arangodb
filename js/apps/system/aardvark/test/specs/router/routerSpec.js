@@ -743,7 +743,7 @@
             it("should route to the api tab", function () {
                 simpleNavigationCheck(
                     "api",
-                    "apiView",
+                    "ApiView",
                     "tools-menu"
                 );
             });
