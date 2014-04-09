@@ -160,7 +160,7 @@ bool TRI_StartThread (TRI_thread_t* thread,
   }
 
   if (threadId != NULL) {
-    *threadId = *thread;
+    *threadId = (TRI_tid_t) *thread;
   }
 
   return true;
