@@ -6,12 +6,12 @@ instance. Databases can be used to logically group and separate data. An ArangoD
 database consists of collections and dedicated database-specific worker processes.
 
 A database contains its own collections (which cannot be accessed from other databases),
-Foxx applications, and replication loggers and appliers. Each ArangoDB database
+Foxx applications and replication loggers and appliers. Each ArangoDB database
 contains its own system collections (e.g. `_users`, `_replication`, ...).
 
 There will always be at least one database in ArangoDB. This is the default
-database, named `_system`. This database cannot be dropped, and provides special
-operations for creating, dropping, and enumerating databases.
+database named `_system`. This database cannot be dropped and provides special
+operations for creating, dropping and enumerating databases.
 Users can create additional databases and give them unique names to access them later.
 Database management operations cannot be initiated from out of user-defined databases.
 
