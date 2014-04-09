@@ -8,7 +8,7 @@ What is ArangoDB? {#FirstStepsArangoDBIntro}
 ============================================
 
 For installation instructions, please refer to the 
-@S_EXTREF_S{InstallManual.html,installation manual}.
+@S_EXTREF_S{InstallManual.html,installation manual}
 
 ArangoDB is a multi-purpose open-source database with a flexible data
 model for documents, graphs, and key-values. You can easily build high
