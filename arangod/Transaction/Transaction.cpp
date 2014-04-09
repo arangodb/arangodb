@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Transaction.h"
+
+#include "BasicsC/logging.h"
 #include "Transaction/Manager.h"
 #include "VocBase/vocbase.h"
 
@@ -41,19 +43,20 @@ using namespace triagens::transaction;
 
 Transaction::Transaction (Manager* manager,
                           IdType id,
-                          triagens::arango::CollectionNameResolver const& resolver,
                           TRI_vocbase_t* vocbase,
                           bool singleOperation,
                           bool waitForSync) 
   : _manager(manager),
     _id(id),
     _state(StateType::STATE_UNINITIALISED),
-    _resolver(resolver),
+    _resolver(vocbase),
     _vocbase(vocbase),
     _singleOperation(singleOperation),
     _waitForSync(waitForSync),
     _collections(),
     _startTime() {
+
+  LOG_INFO("creating transaction %llu", (unsigned long long) id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +66,7 @@ Transaction::Transaction (Manager* manager,
 Transaction::~Transaction () {
   if (state() != StateType::STATE_COMMITTED && 
       state() != StateType::STATE_ABORTED) {
-    this->abort();
+    this->rollback();
   }
 
   for (auto it = _collections.begin(); it != _collections.end(); ++it) {
@@ -71,6 +74,8 @@ Transaction::~Transaction () {
 
     delete collection;
   }
+  
+  LOG_INFO("destroyed transaction %llu", (unsigned long long) _id);
 }
 
 // -----------------------------------------------------------------------------
@@ -98,7 +103,16 @@ int Transaction::addCollection (TRI_voc_cid_t id,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  if (state() != StateType::STATE_BEGUN) {
+  auto s = state();
+
+  if (accessType == Collection::AccessType::WRITE &&
+      s != StateType::STATE_UNINITIALISED) {
+    // cannot add write access to an already running collection
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+  
+  if (s != StateType::STATE_UNINITIALISED &&
+      s != StateType::STATE_BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -115,6 +129,8 @@ int Transaction::addCollection (TRI_voc_cid_t id,
     // ok
     return TRI_ERROR_NO_ERROR;
   }
+  
+  LOG_INFO("adding collection %llu to transaction %llu", (unsigned long long) id, (unsigned long long) _id);
 
   // register the collection
   _collections.insert(make_pair(id, new Collection(id, accessType)));
@@ -127,6 +143,7 @@ int Transaction::addCollection (TRI_voc_cid_t id,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::begin () {
+  LOG_INFO("beginning transaction %llu", (unsigned long long) _id);
   return _manager->beginTransaction(this);
 }
 
@@ -134,16 +151,18 @@ int Transaction::begin () {
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-int Transaction::commit () {
-  return _manager->commitTransaction(this);
+int Transaction::commit (bool waitForSync) {
+  LOG_INFO("committing transaction %llu", (unsigned long long) _id);
+  return _manager->commitTransaction(this, waitForSync || _waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-int Transaction::abort () {
-  return _manager->abortTransaction(this);
+int Transaction::rollback () {
+  LOG_INFO("rolling back transaction %llu", (unsigned long long) _id);
+  return _manager->rollbackTransaction(this);
 }
 
 // Local Variables:

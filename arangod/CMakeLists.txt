@@ -112,9 +112,11 @@ add_executable(
     RestServer/arango.cpp
     SkipLists/skiplistIndex.cpp
     Transaction/Collection.cpp
+    Transaction/Context.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
     Transaction/Transaction.cpp
+    Transaction/WorkUnit.cpp
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8PeriodicTask.cpp
