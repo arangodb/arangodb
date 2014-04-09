@@ -15,6 +15,10 @@
             window.arangoDocumentsStore = col;
         });
 
+        afterEach(function () {
+            delete  window.documentsView;
+        });
+
         describe("navigate", function() {
 
           beforeEach(function() {

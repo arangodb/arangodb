@@ -97,6 +97,7 @@ typedef struct TRI_aql_scope_s {
   TRI_aql_scope_e            _type;          // type of scope
   size_t                     _level;         // level (start at 0)
   bool                       _selfContained; // means: scope doesn't refer to exterior variables
+  bool                       _empty;
 }
 TRI_aql_scope_t;
 
