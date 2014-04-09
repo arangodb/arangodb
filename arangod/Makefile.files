@@ -45,21 +45,21 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
-	arangod/BitIndexes/bitarray.c \
-	arangod/BitIndexes/bitarrayIndex.c \
-	arangod/CapConstraint/cap-constraint.c \
-	arangod/FulltextIndex/fulltext-handles.c \
-	arangod/FulltextIndex/fulltext-index.c \
-	arangod/FulltextIndex/fulltext-list.c \
-	arangod/FulltextIndex/fulltext-query.c \
-	arangod/FulltextIndex/fulltext-result.c \
-	arangod/FulltextIndex/fulltext-wordlist.c \
-	arangod/GeoIndex/GeoIndex.c \
-	arangod/GeoIndex/geo-index.c \
-	arangod/HashIndex/hash-array.c \
-	arangod/HashIndex/hash-index.c \
-	arangod/IndexIterators/index-iterator.c \
-	arangod/IndexOperators/index-operator.c \
+	arangod/BitIndexes/bitarray.cpp \
+	arangod/BitIndexes/bitarrayIndex.cpp \
+	arangod/CapConstraint/cap-constraint.cpp \
+	arangod/FulltextIndex/fulltext-handles.cpp \
+	arangod/FulltextIndex/fulltext-index.cpp \
+	arangod/FulltextIndex/fulltext-list.cpp \
+	arangod/FulltextIndex/fulltext-query.cpp \
+	arangod/FulltextIndex/fulltext-result.cpp \
+	arangod/FulltextIndex/fulltext-wordlist.cpp \
+	arangod/GeoIndex/GeoIndex.cpp \
+	arangod/GeoIndex/geo-index.cpp \
+	arangod/HashIndex/hash-array.cpp \
+	arangod/HashIndex/hash-index.cpp \
+	arangod/IndexIterators/index-iterator.cpp \
+	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/replication-static.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -76,9 +76,10 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
-	arangod/SkipLists/skiplistIndex.c \
+	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Transaction/IdGenerator.cpp \
 	arangod/Transaction/Manager.cpp \
+	arangod/Transaction/Operations.cpp \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \

@@ -8,51 +8,51 @@ What is ArangoDB? {#FirstStepsArangoDBIntro}
 ============================================
 
 For installation instructions, please refer to the 
-@S_EXTREF_S{InstallManual.html,installation manual}
+@S_EXTREF_S{InstallManual.html,installation manual}.
 
 ArangoDB is a multi-purpose open-source database with a flexible data
-models for documents, graphs, and key-values. You can easily build high
+model for documents, graphs, and key-values. You can easily build high
 performance applications using a convenient 
 @ref Aql "SQL-like query language" or @ref UserManualFoxxManager 
-"JavaScript" and Ruby extensions.
+"JavaScript" and mruby extensions.
 
 The database server _arangod_ stores all documents and serves them
-using a REST interface. There are driver for all major language like
+using a REST interface. There are drivers for all major languages like
 Ruby, Python, PHP, JavaScript, and Perl. In the following sections we
 will use the JavaScript shell to communicate with the database and
 demonstrate some of ArangoDB's features using JavaScript.
 
 Key features include:
 
-- *Schema-free schemata* let you combine the space efficiency of MySQL with
+- *Schema-free schemata*: Let you combine the space efficiency of MySQL with
   the performance power of NoSQL
-- Use ArangoDB as an *application server* and fuse your application and
+- *Application server*: Use ArangoDB as an application server and fuse your application and
   database together for maximal throughput
-- *JavaScript for all:* no language zoo, you can use one language from your
+- *JavaScript for all:* No language zoo, you can use one language from your
   browser to your back-end
-- *Flexible data modeling:* model your data as combination of key-value pairs,
+- *Flexible data modeling:* Model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
-- *Free index choice:* use the correct index for your problem, be it a skip
-  list or a fulltext search
-- *Configurable durability:* let the application decide if it needs more
+- *Free index choice:* Use the correct index for your problem, be it a skip
+  list or a fulltext search 
+- *Configurable durability:* Let the application decide if it needs more
   durability or more performance
 - *No-nonsense storage:* ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
 - *Powerful query language* (AQL) to retrieve data 
-- *Transactions*: run queries on multiple documents or collections with 
+- *Transactions*: Run queries on multiple documents or collections with 
   optional transactional consistency and isolation
-- *Replication*: set up the database in a master-slave configuration
+- *Replication*: Set up the database in a master-slave configuration
 - It is open source (*Apache Licence 2.0*)
 
-For more in-depth information
+For more in-depth information:
 
-- read more on the 
+- Read more on the 
   @S_EXTREF_S{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals} 
   of ArangoDB
-- @EXTREF{http://vimeo.com/36411892,watch the video}: Martin Schönert, 
+- @EXTREF{http://vimeo.com/36411892,Watch the video}: Martin Schönert, 
   architect of ArangoDB, gives an introduction of what the ArangoDB project 
   is about
-- or give it a @S_EXTREF{http://www.arangodb.org/try,try}.
+- Or give it a @S_EXTREF{http://www.arangodb.org/try,try}
 
 
 ArangoDB programs {#FirstStepsArangoDBBinaries}
@@ -63,55 +63,52 @@ The ArangoDB database package comes with the following programs:
 - _arangod_: The ArangoDB database daemon. This server program is
   intended to run as daemon process and to server the various clients
   connection to the server via TCP / HTTP. See @ref
-  FirstStepsServerStartStop.
+  FirstStepsServerStartStop
 - _arangosh_: The ArangoDB shell. A client that implements a
   read-eval-print loop (REPL) and provides functions to access and
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
-- _arangoimp_: A bulk importer for the ArangoDB server.
+- _arangoimp_: A bulk importer for the ArangoDB server
   See @ref ImpManual
 - _arangodump_: A tool to create backups of an ArangoDB database. See
   @ref DumpManual
 - _arangorestore_: A tool to reload data from a backup into an ArangoDB database.
   See @ref RestoreManual
-- _foxx-manager_: a shell script to administer Foxx applications.
+- _foxx-manager_: A shell script to administer Foxx applications.
   See @ref UserManualFoxxManager
-- _arango-dfdb_: a datafile debugger for ArangoDB. It is intended to be
+- _arango-dfdb_: A datafile debugger for ArangoDB. It is intended to be
   used primarily during development of ArangoDB. See @ref DbaManualDatafileDebugger
-- _arangob_: a tool for conducting tests and benchmarks with ArangoDB.
-  It is intended to be used primarily during development and testing of
-  ArangoDB.
 
 
-Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
+Getting familiar with ArangoDB {#FirstStepsArangoDBServerStart}
 ===============================================================
 
 First of all download and install the corresponding RPM or Debian package or use
 homebrew on the MacOS X. See the @S_EXTREF_S{InstallManual.html, installation
 manual} for more details.  In case you just want to experiment with ArangoDB you
-can use the @S_EXTREF_S{http://www.arangodb.org/try,on-line} demo without
+can use the @S_EXTREF_S{http://www.arangodb.org/try,online} demo without
 installing ArangoDB locally.
 
 For Linux:
 
-- visit the official ArangoDB download page at 
+- Visit the official ArangoDB download page at 
   @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the correct package for your Linux distribution
-- install the package using your favorite package manager
-- start up the database server, normally this is done by
+- Install the package using your favorite package manager
+- Start up the database server, normally this is done by
   executing `/etc/init.d/arangod start`. The exact command
   depends on your Linux distribution
 
 For MacOS X:
 
-- execute `brew install arangodb`
-- and start the server using `/usr/local/sbin/arangod &`
+- Execute `brew install arangodb`
+- And start the server using `/usr/local/sbin/arangod &`
 
 For Microsoft Windows:
 
-- visit the official ArangoDB download page at 
+- Visit the official ArangoDB download page at 
   @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the installer for Windows
-- start up the database server
+- Start up the database server
 
 After these steps there should be a running instance of _arangod_ -
 the ArangoDB database server.
@@ -135,18 +132,18 @@ Exploring Collections and Documents {#FirstStepsArangoDBFirstSteps}
 
 ArangoDB is a database that serves documents to clients.
 
-- A *document* contains zero or more attributes, each of these
-  attribute has a value. A value can either be a atomic type, i. e.,
-  integer, strings, boolean or a list or an embedded document. Documents
-  are normally represented as JSON objects.
-- Documents are grouped into *collections*. A collection can contains zero
-  or more documents.
-- *Queries* are used to extract documents based on filter criteria;
-  queries can be as simple as a query by-example or as complex as a
-  joins using many collections or graph structures.
-- *Cursors* are used to iterate over the result of a query.
-- *Indexes* are used to speed up of searches; there are various different
-  types of indexes like hash indexes, geo-indexes, bit-indexes.
+- A *document* contains zero or more attributes, each one of these
+  attributes has a value. A value can either be an atomic type, i. e.
+  integer, strings, boolean, a list or an embedded document. Documents
+  are normally represented as JSON objects
+- Documents are grouped into *collections*. A collection contains zero
+  or more documents
+- *Queries* are used to filter documents based on certain criteria.
+  Queries can be as simple as a @ref SimpleQueryByExample "query by example" or as complex as
+  joins using many collections or graph structures
+- *Cursors* are used to iterate over the result of a query
+- *Indexes* are used to speed up of searches. There are various different
+  types of indexes like @ref IndexHash, @ref IndexGeo and @ref IndexBitArray
 
 If you are familiar with RDBMS then it is safe to compare collections
 to tables and documents to rows. However, bringing structure to the
@@ -158,7 +155,7 @@ Starting the JavaScript shell {#FirstStepsArangoDBConnecting}
 The easiest way to connect to the database is the JavaScript shell
 _arangosh_. You can either start it from the command-line or as an
 embedded version in the browser. Using the command-line tool has the
-advantage that you can use auto-completion.
+advantage that you can use autocompletion.
 
     unix> arangosh --server.password ""
 					   _     
@@ -198,10 +195,10 @@ advantage that you can use auto-completion.
      > exit                                         
     arangosh>
 
-This gives you a prompt, where you can issue JavaScript commands.
+This gives you a prompt where you can issue JavaScript commands.
 
-The standard setup does not require a password. Depending on you
-setup, you might need to specify the endpoint, username and password
+The standard setup does not require a password. Depending on your
+setup you might need to specify the endpoint, username and password
 in order to run the shell on your system. You can use the options
 `--server.endpoint`, `--server.username` and `--server.password` for
 this.
@@ -220,36 +217,35 @@ using `arangosh` or other clients, you can try to find the problem cause by
 executing the following steps. If the server starts up without problems,
 you can skip this section.
 
-* check the server log file: if the server has written a log file, it is
-  good to check its contain because it might contain relevant error context
-  information.
+* *Check the server log file*: If the server has written a log file you should 
+  check it because it might contain relevant error context information.
 
-* check the configuration: the server looks for a configuration file 
+* *Check the configuration*: The server looks for a configuration file 
   named `arangod.conf` on startup. The contents of this file will be used
   as a base configuration that can optionally be overridden with command-line 
   configuration parameters. You should check the config file for the most
-  relevant parameters, such as:
-  * `server.endpoint`: what IP address and port to bind to, 
-  * `log` parameters: if and where to log
-  * `database.directory`: path the database files are stored in
+  relevant parameters such as:
+  * `server.endpoint`: What IP address and port to bind to
+  * `log parameters`: If and where to log
+  * `database.directory`: Path the database files are stored in
 
-  If the configuration reveals something is not configured right, the config
+  If the configuration reveals that something is not configured right the config
   file should be adjusted and the server be restarted.
 
-* start the server manually and check its output: starting the server might
+* *Start the server manually and check its output*: Starting the server might
   fail even before logging is activated so the server will not produce log
   output. This can happen if the server is configured to write the logs to
-  a file that the server has no permissions on. In this case, the server 
-  cannot log an error to the specified log file, but will write a startup 
+  a file that the server has no permissions on. In this case the server 
+  cannot log an error to the specified log file but will write a startup 
   error on stderr instead.
   Starting the server manually will also allow you to override specific 
   configuration options, e.g. to turn on/off file or screen logging etc.
 
-* if the server starts up but does not accept any incoming connections, this
-  might be due to firewall configuration between the server and any client(s).
-  The server by default will listen on TCP port 8529. Please make sure this
-  port is actually accessible by other clients if you plan to use ArangoDB
-  in a network setup.
+* *Check the TCP port*: If the server starts up but does not accept any incoming 
+  connections this might be due to firewall configuration between the server 
+  and any client(s). The server by default will listen on TCP port 8529. Please 
+  make sure this port is actually accessible by other clients if you plan to use 
+  ArangoDB in a network setup.
 
   When using hostnames in the configuration or when connecting, please make
   sure the hostname is actually resolvable. Resolving hostnames might invoke
@@ -260,11 +256,11 @@ you can skip this section.
   a source of errors. Another alternative is to use a hostname specified
   in the local `/etc/hosts` file, which will then bypass DNS.
 
-* test if `curl` can connect: once the server is started, you can quickly
-  verify whether it responds to requests at all. This check allows you to
+* *Test if `curl` can connect*: Once the server is started, you can quickly
+  verify if it responds to requests at all. This check allows you to
   determine whether connection errors are client-specific or not. If at 
   least one client can connect, it is likely that connection problems of
-  other clients are not due to ArangoDB's configuration, but due to client
+  other clients are not due to ArangoDB's configuration but due to client
   or in-between network configurations.
 
   You can test connectivity using a simple command such as:
@@ -272,11 +268,11 @@ you can skip this section.
   `curl --dump - -X GET http://127.0.0.1:8529/_api/version && echo` 
 
   This should return a response with an `HTTP 200` status code when the
-  server is running. If it does, it also means the server is generally 
+  server is running. If it does it also means the server is generally 
   accepting connections. Alternative tools to check connectivity are `lynx`
   or `ab`.
 
-Querying For Documents {#FirstStepsArangoDBQuerying}
+Querying for Documents {#FirstStepsArangoDBQuerying}
 ----------------------------------------------------
 
 All documents are stored in collections. All collections are stored in a
@@ -288,11 +284,11 @@ of the `db` variable.
     arangosh> db._create("example");
     [ArangoCollection 70628, "example" (status loaded)]
 
-After the collection has been create you can easily access it using
+After the collection has been created you can easily access it using
 the path `db.example`. The collection currently shows as `loaded`,
-meaning that its loaded into memory. If you restart the server and
-access the collection again, it will now show as `unloaded`. You can
-also manually unload a collection
+meaning that it's loaded into memory. If you restart the server and
+access the collection again it will now show as `unloaded`. You can
+also manually unload a collection.
 
     arangosh> db.example.unload();
     arangosh> db.example;
@@ -301,7 +297,7 @@ also manually unload a collection
 Whenever you use a collection, ArangoDB will automatically load it
 into memory for you.
 
-In order to create new documents in a collection, use the `save`
+In order to create new documents in a collection use the `save`
 operation. 
 
     arangosh> db.example.save({ Hello : "World" });
@@ -346,7 +342,7 @@ Now extract all elements:
       }
     ]
 
-The last document was a mistake, so let's delete it:
+The last document was a mistake – so let's delete it:
 
     arangosh> db.example.remove("example/5980583")
     true
@@ -368,8 +364,8 @@ The last document was a mistake, so let's delete it:
       }
     ]
 
-Now we want to look for a person with a given name, we can use
-`byExample` for this. The methods returns a list of documents
+Now we want to look for a person with a given name. We can use
+`byExample` for this. The method returns a list of documents
 matching a given example.
 
     arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()
@@ -384,8 +380,8 @@ matching a given example.
     ]
 
 While the `byExample` works very well for simple queries where you
-`and` conditions together, the above syntax becomes messy for joins
-and `or` conditions. Therefore, ArangoDB also supports a full-blown
+combine the conditions with an `and`. The syntax above becomes messy for joins
+and `or` conditions. Therefore ArangoDB also supports a full-blown
 query language.
 
     arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
@@ -425,8 +421,8 @@ can use the front-end using the following URL:
 
     http://localhost:8529/_admin/html/index.html
 
-Unless you have loaded an application into the ArangoDB server, which remaps
-the paths, the front-end will also be available under
+Unless you have loaded an application into the ArangoDB server – which remaps
+the paths – the front-end will also be available under
 
     http://localhost:8529/
 
@@ -438,8 +434,8 @@ the ArangoDB shell described in the next section.
 Details about the ArangoDB Server {#FirstStepsServerStartStop}
 ==============================================================
 
-The ArangoDB database server has two modes of operation: as server, where it
-will answer to client requests, and an emergency console, in which you can
+The ArangoDB database server has two modes of operation: As a server, where it
+will answer to client requests and as an emergency console, in which you can
 access the database directly. The latter - as the name suggests - should 
 only be used in case of an emergency, for example, a corrupted
 collection. Using the emergency console allows you to issue all commands
@@ -455,7 +451,7 @@ if a lockfile is already present.
 The following command starts the ArangoDB database in server mode. You will
 be able to access the server using HTTP requests on port 8529. See @ref
 FirstStepsServerStartStopOptions "below" for a list of frequently used
-options, see @ref CommandLine "here" for a complete list.
+options – see @ref CommandLine "here" for a complete list.
 
     unix> /usr/local/sbin/arangod /tmp/vocbase
     20ZZ-XX-YYT12:37:08Z [8145] INFO using built-in JavaScript startup files
@@ -471,28 +467,25 @@ to access the administration front-end.
 Linux
 -----
 
-To start the server at system boot time, you should use one of the 
+To start the server at system boot time you should use one of the 
 pre-rolled packages that will install the necessary start / stop
-scripts for ArangoDB. To start and stop the server manually, you can
-use the start / stop script like this (provided the start / stop script
-is located in /etc/init.d/arangod, the command actual name and invocation are
-platform-dependent):
+scripts for ArangoDB. You can use the start script as follows:
 
     unix> /etc/init.d/arangod start
  
-To stop the server, you can use the command
+To stop the server you can use the following command:
 
     unix> /etc/init.d/arangod stop
 
 You may require root privileges to execute these commands.
 
 If you compiled ArangoDB from source and did not use any installation
-package, or you are using non-default locations and/or multiple ArangoDB
-instances on the same host, you may want to start the server process 
+package – or using non-default locations and/or multiple ArangoDB
+instances on the same host – you may want to start the server process 
 manually. You can do so by invoking the arangod binary from the command
 line as shown before. To stop the database server gracefully, you can
-either pressCTRL-C or by send the SIGINT signal to the server process. 
-On many systems, this can be achieved with the following command:
+either press CTRL-C or by send the SIGINT signal to the server process. 
+On many systems this can be achieved with the following command:
 
     unix> kill -2 `pidof arangod`
 
@@ -516,7 +509,7 @@ CommandLineArangod "here".
 
 Allows the user to choose the level of information which is logged by
 the server. The @CA{level} is specified as a string and can be one of
-the following values: fatal, error, warning, info, debug, trace.  For
+the following values: fatal, error, warning, info, debug or trace.  For
 more information see @ref CommandLineLogging "here".
 
 
@@ -538,16 +531,16 @@ Details about the ArangoDB Shell {#FirstStepsShellStartStop}
 ============================================================
 
 After the server has been @ref FirstStepsServerStartStop "started",
-you can use the ArangoDB shell (arangosh) to administrate the
+you can use the ArangoDB shell (_arangosh_) to administrate the
 server. Without any arguments, the ArangoDB shell will try to contact
 the server on port 8529 on the localhost. For more information see
 @ref UserManualArangosh. You might need to set additional options
-(endpoint, username, and password) when connecting:
+(endpoint, username and password) when connecting:
 
     unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
 
-The shell will print its own version number and, if successfully connected
-to a server, the version number of the ArangoDB server.
+The shell will print its own version number and – if successfully connected
+to a server – the version number of the ArangoDB server.
 
 Command-Line Options {#FirstStepsShellStartStopOptions}
 -------------------------------------------------------

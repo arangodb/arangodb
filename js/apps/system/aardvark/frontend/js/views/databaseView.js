@@ -202,7 +202,7 @@
         tableContent = [];
 
       tableContent.push(
-        window.modalView.createReadOnlyEntry("Name", dbName, "")
+        window.modalView.createReadOnlyEntry("id_name", "Name", dbName, "")
       );
       if (isDeleteable) {
         buttons.push(

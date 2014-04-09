@@ -50,6 +50,7 @@
       TEXT: "text",
       PASSWORD: "password",
       SELECT: "select",
+      SELECT2: "select2",
       CHECKBOX: "checkbox"
     },
     closeButton: {
@@ -89,12 +90,26 @@
       return disabledButton;
     },
 
-    createReadOnlyEntry: function(label, value, info) {
-      return createTextStub(this.tables.READONLY, label, value, info);
+    createReadOnlyEntry: function(id, label, value, info) {
+      var obj = createTextStub(this.tables.READONLY, label, value, info);
+      obj.id = id;
+      return obj;
     },
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {
       var obj = createTextStub(this.tables.TEXT, label, value, info);
+      obj.id = id;
+      if (placeholder) {
+        obj.placeholder = placeholder;
+      }
+      if (mandatory) {
+        obj.mandatory = mandatory;
+      }
+      return obj;
+    },
+
+    createSelect2Entry: function(id, label, value, info, placeholder, mandatory) {
+      var obj = createTextStub(this.tables.SELECT2, label, value, info);
       obj.id = id;
       if (placeholder) {
         obj.placeholder = placeholder;
@@ -186,6 +201,19 @@
       });
       var ind = buttons.indexOf(this.closeButton);
       buttons.splice(ind, 1);
+
+      //handle select2
+      _.each(tableContent, function(r) {
+        if (r.type === self.tables.SELECT2) {
+          $('#'+r.id).select2({
+            tags: [],
+            showSearchBox: false,
+            minimumResultsForSearch: -1,
+            width: "336px",
+            maximumSelectionSize: 8
+          });
+        }
+      });//handle select2
 
       $("#modal-dialog").modal("show");
     },

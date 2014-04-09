@@ -18,7 +18,6 @@
             "collection/:colid/:docid": "document",
             "shell": "shell",
             "query": "query",
-            "logs": "logs",
             "api": "api",
             "databases": "databases",
             "applications": "applications",
@@ -31,34 +30,36 @@
             "userProfile": "userProfile",
             "testing": "testview",
             "testModalView": "testmodalview",
-            "newLogsView": "newLogsView"
+            "logs": "newLogsView"
         },
 
         newLogsView: function() {
-          var self = this;
-          this.newLogsAllCollection = new window.NewArangoLogs(
-            {upto: true, loglevel: 4}
-          );
-          this.newLogsDebugCollection = new window.NewArangoLogs(
-            {loglevel: 4}
-          );
-          this.newLogsInfoCollection = new window.NewArangoLogs(
-            {loglevel: 3}
-          );
-          this.newLogsWarningCollection = new window.NewArangoLogs(
-            {loglevel: 2}
-          );
-          this.newLogsErrorCollection = new window.NewArangoLogs(
-            {loglevel: 1}
-          );
-          this.newLogsView = new window.NewLogsView({
-            logall: self.newLogsAllCollection,
-            logdebug: self.newLogsDebugCollection,
-            loginfo: self.newLogsInfoCollection,
-            logwarning: self.newLogsWarningCollection,
-            logerror: self.newLogsErrorCollection
-          });
-          this.newLogsView.render();
+          if (!this.logsView) {
+            var newLogsAllCollection = new window.NewArangoLogs(
+              {upto: true, loglevel: 4}
+            ),
+            newLogsDebugCollection = new window.NewArangoLogs(
+              {loglevel: 4}
+            ),
+            newLogsInfoCollection = new window.NewArangoLogs(
+              {loglevel: 3}
+            ),
+            newLogsWarningCollection = new window.NewArangoLogs(
+              {loglevel: 2}
+            ),
+            newLogsErrorCollection = new window.NewArangoLogs(
+              {loglevel: 1}
+            );
+            this.logsView = new window.NewLogsView({
+              logall: newLogsAllCollection,
+              logdebug: newLogsDebugCollection,
+              loginfo: newLogsInfoCollection,
+              logwarning: newLogsWarningCollection,
+              logerror: newLogsErrorCollection
+            });
+          }
+          this.logsView.render();
+          this.naviView.selectMenuItem('tools-menu');
         },
 
         testmodalview: function() {
@@ -105,10 +106,10 @@
                 collection: window.arangoCollectionsStore
             });
             window.arangoCollectionsStore.fetch();
-            window.documentsView = new window.DocumentsView();
             window.documentView = new window.DocumentView({
                 collection: window.arangoDocumentStore
             });
+            /*
             window.arangoLogsStore = new window.ArangoLogs();
             window.arangoLogsStore.fetch({
                 success: function () {
@@ -117,7 +118,7 @@
                     });
                 }
             });
-
+            */
             this.foxxList = new window.FoxxCollection();
 
             this.footerView = new window.FooterView();
@@ -293,15 +294,15 @@
 
         documents: function (colid, pageid) {
             if (!window.documentsView) {
-                window.documentsView.initTable(colid, pageid);
+                window.documentsView = new window.DocumentsView({
+                    collection : window.arangoDocumentsStore,
+                    documentStore : window.arangoDocumentStore,
+                    collectionsStore :  window.arangoCollectionsStore
+                });
             }
-            window.documentsView.collectionID = colid;
-            var type = arangoHelper.collectionApiType(colid);
-            window.documentsView.colid = colid;
-            window.documentsView.pageid = pageid;
-            window.documentsView.type = type;
+            window.documentsView.setCollectionId(colid, pageid);
             window.documentsView.render();
-            window.arangoDocumentsStore.getDocuments(colid, pageid);
+
         },
 
         document: function (colid, docid) {
@@ -355,6 +356,7 @@
             }
         },
 
+        /*
         logs: function () {
             if (!this.logsAllowed()) {
                 this.navigate('', { trigger: true });
@@ -372,7 +374,7 @@
             });
             this.naviView.selectMenuItem('tools-menu');
         },
-
+        */
         dashboard: function () {
             this.naviView.selectMenuItem('dashboard-menu');
             if (this.statisticsDescriptionCollection === undefined) {
@@ -466,8 +468,8 @@
             var divider = containerWidth / spanWidth;
             var roundDiv = parseInt(divider, 10);
             var newWidth = roundDiv * spanWidth - 2;
-            var marginWidth = ((containerWidth + 30) - newWidth) / 2;
             /*
+             var marginWidth = ((containerWidth + 30) - newWidth) / 2;
              $('#content').width(newWidth)
              .css('margin-left', marginWidth)
              .css('margin-right', marginWidth);

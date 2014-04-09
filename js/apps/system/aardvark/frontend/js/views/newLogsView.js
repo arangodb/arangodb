@@ -1,11 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, templateEngine*/
+/*global Backbone, arangoHelper, $, window, templateEngine*/
 
 (function() {
   "use strict";
-  window.NewLogsView = Backbone.View.extend({
+  window.NewLogsView = window.PaginationView.extend({
     el: '#content',
     id: '#logContent',
+    paginationDiv : "#logPaginationDiv",
 
     initialize: function () {
       this.convertModelToJSON();
@@ -43,7 +44,7 @@
     convertedRows: null,
 
     setActiveLoglevel: function(e) {
-     $('.arangodb-tabbar').removeClass('arango-active-tab');
+      $('.arangodb-tabbar').removeClass('arango-active-tab');
 
       if (this.currentLoglevel !== e.currentTarget.id) {
         this.currentLoglevel = e.currentTarget.id;
@@ -55,13 +56,13 @@
       var self = this;
       var date;
       var rowsArray = [];
-      this.activeCollection = this.options[this.currentLoglevel];
-      this.activeCollection.fetch({
+      this.collection = this.options[this.currentLoglevel];
+      this.collection.fetch({
         success: function() {
-          self.activeCollection.each(function(model) {
+          self.collection.each(function(model) {
             date = new Date(model.get('timestamp') * 1000);
             rowsArray.push([
-              self.convertLogStatus(model.get('level')),
+              model.getLogStatus(),
               arangoHelper.formatDT(date),
               model.get('text')]);
           });
@@ -80,44 +81,30 @@
       return this;
     },
 
-    jumpTo: function(page) {
-      var self = this;
-      this.activeCollection.setPage(page);
-      this.activeCollection.fetch({
-        success: function() {
-          self.convertModelToJSON();
-        }
-      });
-    },
-
-    firstPage: function() {
-      this.jumpTo(1);
-    },
-
-    lastPage: function() {
-      this.jumpTo(Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize));
+    rerender : function () {
+        this.convertModelToJSON();
     },
 
     renderPagination: function () {
       var self = this;
-      var currentPage = this.activeCollection.getPage();
-      var totalPages = Math.ceil(this.activeCollection.totalAmount/this.activeCollection.pagesize);
+      var currentPage = this.collection.getPage();
+      var totalPages = this.collection.getLastPageNumber();
       var target = $('#logPaginationDiv'),
       options = {
         page: currentPage,
         lastPage: totalPages,
         click: function(i) {
           if (i === 1 && i !== currentPage) {
-            self.activeCollection.setPage(1);
+            self.collection.setPage(1);
           }
           else if (i === totalPages && i !== currentPage) {
-            self.activeCollection.setPage(totalPages);
+            self.collection.setPage(totalPages);
           }
           else if (i !== currentPage) {
-            self.activeCollection.setPage(i);
+            self.collection.setPage(i);
           }
           options.page = i;
-          self.activeCollection.fetch({
+          self.collection.fetch({
             success: function() {
               self.convertModelToJSON();
             }
@@ -134,26 +121,6 @@
         '<ul class="las-pagi"><li><a id="logTable_last" class="pagination-button">'+
         '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
       );
-    },
-
-    convertLogStatus: function (status) {
-      var returnString;
-      if (status === 1) {
-        returnString = "Error";
-      }
-      else if (status === 2) {
-        returnString = "Warning";
-      }
-      else if (status === 3) {
-        returnString =  "Info";
-      }
-      else if (status === 4) {
-        returnString = "Debug";
-      }
-      else {
-        returnString = "Unknown";
-      }
-      return returnString;
     }
   });
 }());

@@ -109,7 +109,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   // Allocate the necessary memory to store the bitArray structure.
   // ...........................................................................
 
-  *bitArray = TRI_Allocate(memoryZone, sizeof(TRI_bitarray_t), false);
+  *bitArray = static_cast<TRI_bitarray_t*>(TRI_Allocate(memoryZone, sizeof(TRI_bitarray_t), false));
 
   if (*bitArray == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -163,7 +163,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   // ...........................................................................
 
   (*bitArray)->_memoryZone   = memoryZone;
-  (*bitArray)->_columns      = TRI_Allocate(memoryZone, sizeof(BitColumn_t) * numArrays, true);
+  (*bitArray)->_columns      = static_cast<char*>(TRI_Allocate(memoryZone, sizeof(BitColumn_t) * numArrays, true));
 
   if ((*bitArray)->_columns == NULL) {
     TRI_Free(memoryZone,*bitArray);
@@ -181,7 +181,8 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     BitColumn_t* column;
 
     column = (BitColumn_t*)((*bitArray)->_columns + (sizeof(BitColumn_t) * j));
-    column->_column = TRI_Allocate(memoryZone, sizeof(bit_column_int_t) * BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE, true);
+    column->_column = static_cast<bit_column_int_t*>(TRI_Allocate(memoryZone, sizeof(bit_column_int_t) * BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE, true));
+
     if (column->_column == NULL) {
       ok = false;
       break;
@@ -277,7 +278,6 @@ int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t* ba,
   mt = (MasterTable_t*)(ba->_masterTable);
 
   if (mt == NULL) {
-    assert(NULL);
     return TRI_ERROR_INTERNAL;
   }
 
@@ -425,7 +425,7 @@ int TRI_LookupBitMaskBitarray (TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, vo
         //debugPrintMaskFooter("");
         position._blockNum = i_blockNum;
         position._bitNum   = j_bitNum;
-        /* result = */ storeElementMasterTable(ba->_masterTable, resultStorage, &position);
+        /* result = */ storeElementMasterTable(static_cast<MasterTable_t*>(ba->_masterTable), resultStorage, &position);
       }
 
     }
@@ -523,7 +523,7 @@ int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t* ba,
           //debugPrintMaskFooter("");
           position._blockNum = i_blockNum;
           position._bitNum   = j_bitNum;
-          /* result = */ storeElementMasterTable(ba->_masterTable, resultStorage, &position);
+          /* result = */ storeElementMasterTable(static_cast<MasterTable_t*>(ba->_masterTable), resultStorage, &position);
         }
       }
     }
@@ -623,14 +623,13 @@ int TRI_RemoveElementBitarray (TRI_bitarray_t* ba, TRI_doc_mptr_t* element) {
 int extendColumns (TRI_bitarray_t* ba, size_t newBlocks) {
   bool ok = true;
   size_t j;
-  char* newColumns;
-
 
   // ............................................................................
   // allocate memory for the new columns
   // ............................................................................
 
-  newColumns = TRI_Allocate(ba->_memoryZone, sizeof(BitColumn_t) * ba->_numColumns, true);
+  char* newColumns = static_cast<char*>(TRI_Allocate(ba->_memoryZone, sizeof(BitColumn_t) * ba->_numColumns, true));
+
   if (newColumns == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -642,7 +641,8 @@ int extendColumns (TRI_bitarray_t* ba, size_t newBlocks) {
   for (j = 0; j < ba->_numColumns; ++j) {
     BitColumn_t* newColumn;
     newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
-    newColumn->_column = TRI_Allocate(ba->_memoryZone, sizeof(bit_column_int_t) * newBlocks, true);
+    newColumn->_column = static_cast<bit_column_int_t*>(TRI_Allocate(ba->_memoryZone, sizeof(bit_column_int_t) * newBlocks, true));
+
     if (newColumn->_column == NULL) {
       ok = false;
       break;

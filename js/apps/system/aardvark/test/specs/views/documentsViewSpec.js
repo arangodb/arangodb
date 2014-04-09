@@ -13,10 +13,6 @@
         });
 
         it("assert the basics", function () {
-            expect(view.collectionID).toEqual(0);
-            expect(view.currentPage).toEqual(1);
-            expect(view.documentsPerPage).toEqual(10);
-            expect(view.totalPages).toEqual(1);
             expect(view.filters).toEqual({ "0": true });
             expect(view.filterId).toEqual(0);
             expect(view.addDocumentSwitch).toEqual(true);
@@ -238,7 +234,7 @@
             };
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments({collectionID : view.colid});
             view.resetView();
             expect(window.$).toHaveBeenCalledWith("input");
             expect(window.$).toHaveBeenCalledWith("select");
@@ -261,22 +257,20 @@
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 4, status: 201, responseText: '{"a" : 1}'});
-            });
+
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn(true);
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            view.collection = new window.arangoDocuments();
+
 
             view.allowUpload = true;
 
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).toHaveBeenCalled();
@@ -288,22 +282,19 @@
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 3, status: 201, responseText: '{"a" : 1}'});
-            });
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn("Upload error");
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            view.collection = new window.arangoDocuments();
+
 
             view.allowUpload = true;
             spyOn(arangoHelper, "arangoError");
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).not.toHaveBeenCalled();
@@ -313,26 +304,25 @@
 
         it("start succesful Upload mit XHR ready state = 4, " +
             "XHR status = 201 and not parseable JSON", function () {
+            view.collection = new window.arangoDocuments();
             spyOn(view, "showSpinner");
             spyOn(view, "hideSpinner");
             spyOn(view, "hideImportModal");
             spyOn(view, "resetView");
-            spyOn($, "ajax").andCallFake(function (opt) {
-                expect(opt.url).toEqual('/_api/import?type=auto&collection=' +
-                    encodeURIComponent(view.colid) +
-                    '&createCollection=false');
-                expect(opt.dataType).toEqual("json");
-                expect(opt.contentType).toEqual("json");
-                expect(opt.processData).toEqual(false);
-                expect(opt.data).toEqual(view.file);
-                expect(opt.async).toEqual(false);
-                expect(opt.type).toEqual("POST");
-                opt.complete({readyState: 4, status: 201, responseText: "blub"});
-            });
+            var arangoDocumentsStoreDummy = {
+                updloadDocuments: function () {
+                }
+            };
+            spyOn(arangoDocumentsStoreDummy, "updloadDocuments").andReturn(
+                'Error: SyntaxError: Unable to parse JSON string'
+            );
+            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
+            view.collection = new window.arangoDocuments();
 
             view.allowUpload = true;
             spyOn(arangoHelper, "arangoError");
             view.startUpload();
+            expect(arangoDocumentsStoreDummy.updloadDocuments).toHaveBeenCalledWith(view.file);
             expect(view.showSpinner).toHaveBeenCalled();
             expect(view.hideSpinner).toHaveBeenCalled();
             expect(view.hideImportModal).toHaveBeenCalled();
@@ -625,8 +615,9 @@
                 {1: "blub"}
             ];
             expect(view.getFilterContent()).toEqual([
-                [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
+                { attribute : 'name0', operator : 'operator0', value :
+                { jsonval : 1 } },
+                { attribute : 'name1', operator : 'operator1', value : 'stringval' }
             ]);
             expect(window.$).toHaveBeenCalledWith("#attribute_value0");
             expect(window.$).toHaveBeenCalledWith("#attribute_value1");
@@ -654,37 +645,42 @@
             spyOn(window, "$").andReturn(jQueryDummy);
             spyOn(view, "getFilterContent").andReturn(
                 [
-                    [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                    { param0: {jsonval: 1}, param1: "stringval"}
+                    { attribute : 'name0', operator : 'operator0', value :
+                    { jsonval : 1 } },
+                    { attribute : 'name1', operator : 'operator1', value : 'stringval' }
                 ]
 
             );
 
             var arangoDocStoreDummy = {
-                    getFilteredDocuments: function () {
-                    }
-                },
-                documentsViewDummy = {
-                    clearTable: function () {
+                    setToFirst: function () {
+                    },
+                    addFilter : function () {
+
+                    },
+                    getDocuments : function () {
+
                     }
                 };
-            spyOn(arangoDocStoreDummy, "getFilteredDocuments");
-            spyOn(documentsViewDummy, "clearTable");
+            spyOn(arangoDocStoreDummy, "setToFirst");
+            spyOn(arangoDocStoreDummy, "addFilter");
+            spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
-            window.documentsView = new window.DocumentsView();
-
+            spyOn(view, "clearTable");
+            view.collection = new window.arangoDocuments();
 
             view.sendFilter();
 
             expect(view.addDocumentSwitch).toEqual(false);
-            expect(documentsViewDummy.clearTable).toHaveBeenCalled();
-            expect(arangoDocStoreDummy.getFilteredDocuments).toHaveBeenCalledWith(
-                view.colid, 1,
-                [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
+            expect(view.clearTable).toHaveBeenCalled();
+            expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
+                "name0", "operator0", { jsonval : 1 }
             );
+            expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
+                "name1", "operator1", "stringval"
+            );
+            expect(arangoDocStoreDummy.setToFirst).toHaveBeenCalled();
+            expect(arangoDocStoreDummy.getDocuments).toHaveBeenCalled();
 
 
             expect(window.$).toHaveBeenCalledWith("#documents_last");
@@ -791,7 +787,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn("newDoc");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoHelper, "collectionApiType").andReturn("document");
             window.location.hash = "1/2";
@@ -810,7 +806,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn("newDoc");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             jQueryDummy = {
                 modal: function () {
@@ -841,7 +837,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeDocument").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoHelper, "collectionApiType").andReturn("document");
             spyOn(arangoHelper, "arangoError");
@@ -883,7 +879,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -922,7 +918,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -965,7 +961,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge").andReturn("newEdge");
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -1010,7 +1006,7 @@
             };
             spyOn(arangoDocStoreDummy, "createTypeEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             window.location.hash = "1/2";
             view.addEdge();
@@ -1026,31 +1022,24 @@
 
         it("first-last-next-prev document", function () {
             var arangoDocumentsStoreDummy = {
-                getFirstDocuments: function () {
+                getLastPageNumber: function () {
+                    return 5;
                 },
-                getLastDocuments: function () {
-                },
-                getPrevDocuments: function () {
-                },
-                getNextDocuments: function () {
+                getPage: function () {
+                    return 4;
                 }
             };
-            spyOn(arangoDocumentsStoreDummy, "getFirstDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getLastDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getPrevDocuments");
-            spyOn(arangoDocumentsStoreDummy, "getNextDocuments");
-            spyOn(window, "arangoDocuments").andReturn(arangoDocumentsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            spyOn(view, "jumpTo");
+            view.collection = arangoDocumentsStoreDummy;
 
             view.firstDocuments();
-            expect(arangoDocumentsStoreDummy.getFirstDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(1);
             view.lastDocuments();
-            expect(arangoDocumentsStoreDummy.getLastDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(5);
             view.prevDocuments();
-            expect(arangoDocumentsStoreDummy.getPrevDocuments).toHaveBeenCalled();
+            expect(view.jumpTo).toHaveBeenCalledWith(3);
             view.nextDocuments();
-            expect(arangoDocumentsStoreDummy.getNextDocuments).toHaveBeenCalled();
-
+            expect(view.jumpTo).toHaveBeenCalledWith(5);
 
         });
 
@@ -1156,16 +1145,17 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
 
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1208,15 +1198,16 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1280,15 +1271,16 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1363,15 +1355,16 @@
                 }
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
-                }
+                },
+                collectionID : "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
-            window.arangoDocumentStore = new window.arangoDocument();
+            view.documentStore = new window.arangoDocument();
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
             view.reallyDelete();
@@ -1467,6 +1460,9 @@
             spyOn(view, "addDocument");
             view.alreadyClicked = false;
             view.colid = "coll";
+            view.collection = {
+                collectionID : "coll"
+            };
             expect(view.clicked({currentTarget: {firstChild: "blub"}})).toEqual(undefined);
             expect(view.addDocument).not.toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith("blub");
@@ -1524,6 +1520,7 @@
                 text: function () {
 
                 }
+
             };
             spyOn(jQueryDummy, "text");
             spyOn(window, "$").andReturn(jQueryDummy);
@@ -1532,17 +1529,28 @@
                 models: [],
                 totalPages: 1,
                 currentPage: 1,
-                documentsCount: 0
+                documentsCount: 0,
+                size : function () {
+                    return arangoDocsStoreDummy.models.length;
+                },
+                getLastPageNumber : function () {
+                    return arangoDocsStoreDummy.totalPages;
+                },
+                getPage : function () {
+                    return arangoDocsStoreDummy.currentPage;
+                },
+                getTotal : function () {
+                    return arangoDocsStoreDummy.documentsCount;
+                }
 
             };
+            spyOn(view, "clearTable");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            window.arangoDocumentsStore = new window.arangoDocuments();
-
+            view.collection= new window.arangoDocuments();
+            //$(self.table).dataTable().fnAddData(
             view.drawTable();
-            expect(view.totalPages).toEqual(1);
-            expect(view.currentPage).toEqual(1);
-            expect(view.documentsCount).toEqual(0);
             expect(window.$).toHaveBeenCalledWith(".dataTables_empty");
+            expect(view.clearTable).toHaveBeenCalled();
             expect(jQueryDummy.text).toHaveBeenCalledWith('No documents');
         });
 
@@ -1598,20 +1606,25 @@
                 ],
                 totalPages: 1,
                 currentPage: 2,
-                documentsCount: 3
+                documentsCount: 3,
+                size : function () {
+                    return arangoDocsStoreDummy.models.length;
+                },
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
+                }
 
             };
+            spyOn(view, "clearTable");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
             view.drawTable();
             expect(arangoHelper.fixTooltips).toHaveBeenCalledWith(
                 ".icon_arangodb, .arangoicon", "top"
             );
-            expect(view.totalPages).toEqual(1);
-            expect(view.currentPage).toEqual(2);
-            expect(view.documentsCount).toEqual(3);
+            expect(view.clearTable).toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith(".prettify");
             expect(jQueryDummy.dataTable).toHaveBeenCalled();
             expect(jQueryDummy.snippet).toHaveBeenCalledWith("javascript", {
@@ -1651,11 +1664,14 @@
 
                 };
                 spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
-                window.arangoCollectionsStore = new window.arangoCollections();
+                view.collectionsStore  = new window.arangoCollections();
+                view.collection = {collectionID : "1"};
                 spyOn(view, "getIndex");
                 spyOn(view, "initTable");
                 spyOn(view, "breadcrumb");
                 spyOn(view, "uploadSetup");
+                spyOn(view, "drawTable");
+                spyOn(view, "renderPaginationElements");
                 spyOn(arangoHelper, "fixTooltips");
                 view.el = 1;
                 view.colid = "1";
@@ -1669,12 +1685,13 @@
 
             it("render with no prev and no next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: null, next: null});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
@@ -1695,13 +1712,14 @@
 
             it("render with no prev but next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: null, next: 1});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
                 expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
@@ -1721,13 +1739,14 @@
 
             it("render with  prev but no next page", function () {
                 spyOn(arangoCollectionsDummy, "getPosition").andReturn({prev: 1, next: null});
-
                 expect(view.render()).toEqual(view);
 
                 expect(arangoCollectionsDummy.getPosition).toHaveBeenCalledWith("1");
                 expect(view.getIndex).toHaveBeenCalled();
                 expect(view.initTable).toHaveBeenCalled();
                 expect(view.breadcrumb).toHaveBeenCalled();
+                expect(view.drawTable).toHaveBeenCalled();
+                expect(view.renderPaginationElements).toHaveBeenCalled();
                 expect(view.uploadSetup).toHaveBeenCalled();
                 expect(jQueryDummy.parent).toHaveBeenCalled();
                 expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
@@ -1747,18 +1766,6 @@
 
         });
 
-        it("showLoadingState", function () {
-            jQueryDummy = {
-                text: function () {
-                }
-            };
-            spyOn(jQueryDummy, "text");
-            spyOn(window, "$").andReturn(jQueryDummy);
-            view.showLoadingState();
-            expect(jQueryDummy.text).toHaveBeenCalledWith('Loading...');
-            expect(window.$).toHaveBeenCalledWith('.dataTables_empty');
-
-        });
 
         it("renderPagination with filter check and totalDocs > 0 ", function () {
             jQueryDummy = {
@@ -1788,12 +1795,31 @@
                 currentFilterPage: 2,
                 getFilteredDocuments: function () {
 
+                },
+                getPage : function () {
+
+                },
+                getLastPageNumber : function () {
+
+                },
+                setPage : function () {
+
+                },
+                getDocuments : function () {
+
+                },
+                size : function () {
+
+                },
+                models : [],
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoDocsStoreDummy, "getFilteredDocuments");
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection= new window.arangoDocuments();
 
 
             spyOn(view, "getFilterContent").andReturn(
@@ -1804,38 +1830,12 @@
 
             );
             spyOn(view, "clearTable");
-            window.documentsView = view;
+            spyOn(view,"rerender");
             view.colid = 1;
             view.documentsCount = 11;
             view.renderPagination(3, true);
 
-
-            expect(jQueryDummy.html).toHaveBeenCalledWith('');
-            expect(jQueryDummy.html).toHaveBeenCalledWith("Total: 11 documents");
-            expect(jQueryDummy.prepend).toHaveBeenCalledWith('<ul class="pre-pagi">' +
-                '<li><a id="documents_first" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
-            expect(jQueryDummy.append).toHaveBeenCalledWith('<ul class="las-pagi">' +
-                '<li><a id="documents_last" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
-            expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "hidden");
-            expect(jQueryDummy.pagination).toHaveBeenCalledWith(
-                {
-                    left: 2,
-                    right: 2,
-                    page: 5,
-                    lastPage: 3,
-                    click: jasmine.any(Function)
-                }
-            );
-            expect(arangoDocsStoreDummy.getFilteredDocuments).toHaveBeenCalledWith(
-                1, 5, [" u.`name0`operator0@param0", " u.`name1`operator1@param1"],
-                { param0: {jsonval: 1}, param1: "stringval"}
-            );
-            expect(window.$).toHaveBeenCalledWith('#documentsToolbarF');
-            expect(window.$).toHaveBeenCalledWith('#documents_last');
-            expect(window.$).toHaveBeenCalledWith('#documents_first');
-            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(view.rerender).toHaveBeenCalled();
 
         });
 
@@ -1867,12 +1867,31 @@
                 currentFilterPage: 2,
                 getFilteredDocuments: function () {
 
+                },
+                getPage : function () {
+
+                },
+                getLastPageNumber : function () {
+
+                },
+                setPage : function () {
+
+                },
+                getDocuments : function () {
+
+                },
+                size : function () {
+
+                },
+                models : [],
+                each : function (cb) {
+                    arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoDocsStoreDummy, "getFilteredDocuments");
             spyOn(arangoHelper, "fixTooltips");
-            window.arangoDocumentsStore = new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
 
             spyOn(view, "getFilterContent").andReturn(
@@ -1883,38 +1902,13 @@
 
             );
             spyOn(view, "clearTable");
-            window.documentsView = view;
+            spyOn(view,"rerender");
             view.colid = 1;
             view.documentsCount = 0;
             view.pageid = "1";
             view.renderPagination(3, false);
 
-
-            expect(jQueryDummy.html).toHaveBeenCalledWith('');
-            expect(view.clearTable).not.toHaveBeenCalled();
-            expect(jQueryDummy.html).not.toHaveBeenCalledWith("Total: 0 documents");
-            expect(jQueryDummy.prepend).toHaveBeenCalledWith('<ul class="pre-pagi">' +
-                '<li><a id="documents_first" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>');
-            expect(jQueryDummy.append).toHaveBeenCalledWith('<ul class="las-pagi">' +
-                '<li><a id="documents_last" class="pagination-button">' +
-                '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>');
-            expect(jQueryDummy.css).not.toHaveBeenCalledWith("visibility", "hidden");
-            expect(jQueryDummy.pagination).toHaveBeenCalledWith(
-                {
-                    left: 2,
-                    right: 2,
-                    page: 5,
-                    lastPage: 3,
-                    click: jasmine.any(Function)
-                }
-            );
-            expect(arangoDocsStoreDummy.getFilteredDocuments).not.toHaveBeenCalled();
-            expect(window.$).toHaveBeenCalledWith('#documentsToolbarF');
-            expect(window.$).not.toHaveBeenCalledWith('#documents_last');
-            expect(window.$).not.toHaveBeenCalledWith('#documents_first');
-            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
-            expect(window.location.hash).toEqual('#collection/1/documents/5');
+            expect(view.rerender).toHaveBeenCalled();
 
         });
 
@@ -2069,7 +2063,7 @@
             };
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2139,7 +2133,7 @@
             );
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2207,7 +2201,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2268,7 +2262,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2335,7 +2329,7 @@
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2402,7 +2396,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(false);
             spyOn(arangoHelper, "arangoNotification");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2473,7 +2467,7 @@
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(
                 {responseText: '{"errorMessage" : "blub"}'});
             spyOn(arangoHelper, "arangoNotification");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.createIndex();
 
@@ -2562,7 +2556,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(true);
             spyOn(arangoHelper, "arangoError");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.lastTarget = {currentTarget: "blub"};
             view.collectionName = "coll";
@@ -2604,7 +2598,7 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(false);
             spyOn(arangoHelper, "arangoError");
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
 
             view.lastTarget = {currentTarget: "blub"};
             view.collectionName = "coll";
@@ -2691,15 +2685,16 @@
                     ]
                 }
             );
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
             $.each = function (list, callback) {
                 var callBackWraper = function (a, b) {
                     callback(b, a);
                 };
                 list.forEach(callBackWraper);
             };
-
-            view.collectionID = "coll";
+            view.collection =  {
+                collectionID : "coll"
+            };
             view.getIndex();
 
             expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
@@ -2756,7 +2751,7 @@
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(undefined);
-            window.arangoCollectionsStore = new window.arangoCollections();
+            view.collectionsStore = new window.arangoCollections();
             $.each = function (list, callback) {
                 var callBackWraper = function (a, b) {
                     callback(b, a);
@@ -2764,7 +2759,9 @@
                 list.forEach(callBackWraper);
             };
 
-            view.collectionID = "coll";
+            view.collection =  {
+                collectionID : "coll"
+            };
             view.getIndex();
 
             expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
@@ -2773,6 +2770,131 @@
             expect(jQueryDummy.append).not.toHaveBeenCalled();
             expect(arangoHelper.fixTooltips).not.toHaveBeenCalledWith();
         });
+
+
+        it("rerender", function () {
+            spyOn(view, "clearTable");
+            spyOn(view, "drawTable");
+            spyOn(view, "renderPagination");
+            view.collection = {
+                getDocuments : function () {}
+            };
+            spyOn(view.collection, "getDocuments");
+
+            jQueryDummy = {
+                css: function () {
+                }
+            };
+            spyOn(jQueryDummy, "css");
+
+            spyOn(window, "$").andReturn(jQueryDummy);
+
+            view.rerender();
+
+            expect(view.clearTable).toHaveBeenCalled();
+            expect(view.collection.getDocuments).toHaveBeenCalled();
+            expect(view.drawTable).toHaveBeenCalled();
+            expect(view.renderPagination).toHaveBeenCalled();
+
+            expect(view.index).toEqual(undefined);
+            expect(window.$).toHaveBeenCalledWith('#documents_last');
+            expect(window.$).toHaveBeenCalledWith('#documents_first');
+            expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "hidden");
+
+        });
+
+        it("setCollectionId", function () {
+            view.collection = {
+                setCollection : function () {},
+                getDocuments : function () {}
+            };
+            spyOn(view.collection, "setCollection");
+            spyOn(view.collection, "getDocuments");
+            spyOn(arangoHelper, "collectionApiType").andReturn("blub");
+            view.setCollectionId(1, 2);
+            expect(view.collection.setCollection).toHaveBeenCalledWith(1);
+            expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(1);
+            expect(view.type).toEqual("blub");
+            expect(view.pageid).toEqual(2);
+            expect(view.collection.getDocuments).toHaveBeenCalledWith(1, 2);
+
+        });
+
+        it("renderPaginationElements", function () {
+            view.collection = {
+              getTotal: function() {return 5;}
+            };
+            spyOn(view.collection, "getTotal").andCallThrough();
+
+            jQueryDummy = {
+                length : 45,
+                html : function () {
+
+                }
+            };
+            spyOn(jQueryDummy, "html");
+
+            spyOn(window, "$").andReturn(jQueryDummy);
+
+            spyOn(view, "renderPagination");
+
+            view.renderPaginationElements();
+            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(view.renderPagination).toHaveBeenCalled();
+            expect(view.collection.getTotal).toHaveBeenCalled();
+            expect(jQueryDummy.html).toHaveBeenCalledWith(
+                "Total: 5 documents"
+            );
+
+        });
+
+        it("renderPaginationElements with total = 0", function () {
+            view.collection = {
+                getTotal : function () {return 5;}
+            };
+            spyOn(view.collection, "getTotal").andCallThrough();
+
+            jQueryDummy = {
+                length : 0,
+                append : function () {
+
+                }
+            };
+            spyOn(jQueryDummy, "append");
+
+            spyOn(window, "$").andReturn(jQueryDummy);
+
+            spyOn(view, "renderPagination");
+
+            view.renderPaginationElements();
+            expect(window.$).toHaveBeenCalledWith('#totalDocuments');
+            expect(window.$).toHaveBeenCalledWith('#documentsToolbarFL');
+            expect(view.renderPagination).toHaveBeenCalled();
+            expect(view.collection.getTotal).toHaveBeenCalled();
+            expect(jQueryDummy.append).toHaveBeenCalledWith(
+                '<a id="totalDocuments" class="totalDocuments">Total: '
+                    + 5 +
+                    ' document(s) </a>'
+            );
+
+        });
+
+
+        it("firstPage and lastPage", function () {
+            spyOn(view, "jumpTo");
+            view.collection = {
+                getLastPageNumber : function () {
+                    return 3;
+                }
+            };
+            view.firstPage();
+            expect(view.jumpTo).toHaveBeenCalledWith(1);
+            view.lastPage();
+            expect(view.jumpTo).toHaveBeenCalledWith(3);
+
+        });
+
+
 
 
     });

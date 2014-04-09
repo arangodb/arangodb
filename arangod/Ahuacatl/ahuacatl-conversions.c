@@ -245,7 +245,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
       value = TRI_RegisterStringAql(context, 
                                     json->_value._string.data, 
                                     json->_value._string.length - 1, 
-                                    true);
+                                    false);
       node = TRI_CreateNodeValueStringAql(context, value);
       break;
 
@@ -368,36 +368,12 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_TYPE_STRING: {
-      size_t length;
-
       if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
-      length = strlen(value->_value._string);
-
-      if (length > 0) {
-        char* escapedString;
-        size_t outLength;
-
-        escapedString = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE,
-                                              value->_value._string,
-                                              length,
-                                              false,
-                                              &outLength,
-                                              false);
-
-        if (escapedString == NULL) {
-          return false;
-        }
-
-        if (TRI_AppendString2StringBuffer(buffer, escapedString, outLength) != TRI_ERROR_NO_ERROR) {
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
- 
-          return false;
-        }
-
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
+      if (TRI_AppendJsonEncodedStringStringBuffer(buffer, value->_value._string, false) != TRI_ERROR_NO_ERROR) {
+        return false;
       }
 
       return (TRI_AppendCharStringBuffer(buffer, '"') == TRI_ERROR_NO_ERROR);

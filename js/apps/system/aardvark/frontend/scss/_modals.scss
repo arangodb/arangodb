@@ -37,6 +37,11 @@
         width: 290px;
       }
     }
+
+    div.select2-container {
+      margin-bottom: 10px;
+      margin-top: 10px;
+    }
   }
 
   .icon-info-sign {
@@ -50,17 +55,23 @@
     opacity: 1;
   }
 
+  .collapse {
+    position: inherit;
+  }
+
   .accordion-inner {
+    border-top: 0;
     margin-left: 0;
     padding-left: 0;
+    padding-right: 0;
   }
 
   input {
-    width: 320px;
+    width: 384px;
   }
 
   select {
-    width: 334px;
+    width: 398px;
   }
 }
 

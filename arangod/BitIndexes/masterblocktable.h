@@ -159,7 +159,8 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, 
   // Create the MT structure
   // ..........................................................................
 
-  *mt = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MasterTable_t), true);
+  *mt = static_cast<MasterTable_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(MasterTable_t), true));
+
   if (*mt == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -172,7 +173,8 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, 
   (*mt)->_numBlocks  = BITARRAY_MASTER_TABLE_INITIAL_SIZE;
 
   if ((*mt)->_numBlocks > 0) {
-    (*mt)->_blocks = TRI_Allocate(memoryZone, (sizeof(MasterTableBlock_t) * (*mt)->_numBlocks), true);
+    (*mt)->_blocks = static_cast<MasterTableBlock_t*>(TRI_Allocate(memoryZone, (sizeof(MasterTableBlock_t) * (*mt)->_numBlocks), true));
+
     if ((*mt)->_blocks == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, *mt);
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -249,16 +251,14 @@ static void destroyMasterTable(MasterTable_t* mt) {
 ///////////////////////////////////////////////////////////////////////////////
 
 static int extendMasterTable(MasterTable_t* mt) {
-  MasterTableBlock_t* newBlocks;
   size_t newNumBlocks;
-  size_t* freeBlock;
   size_t j;
 
   // ..........................................................................
   // Obtain the first block which is free
   // ..........................................................................
 
-  freeBlock = TRI_AtVector(&(mt->_freeBlockPosition),0);
+  size_t* freeBlock = static_cast<size_t*>(TRI_AtVector(&(mt->_freeBlockPosition), 0));
 
   if (freeBlock != NULL) {
 
@@ -270,8 +270,8 @@ static int extendMasterTable(MasterTable_t* mt) {
   }
 
 
-  newNumBlocks = (mt->_numBlocks * BITARRAY_MASTER_TABLE_GROW_FACTOR) + 1;
-  newBlocks    = TRI_Allocate(mt->_memoryZone, (sizeof(MasterTableBlock_t) * newNumBlocks), true);
+  newNumBlocks = ((size_t) (mt->_numBlocks * BITARRAY_MASTER_TABLE_GROW_FACTOR)) + 1;
+  MasterTableBlock_t* newBlocks = static_cast<MasterTableBlock_t*>(TRI_Allocate(mt->_memoryZone, (sizeof(MasterTableBlock_t) * newNumBlocks), true));
 
   if (newBlocks == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -323,14 +323,13 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
   bit_column_int_t blockEntryNum;
   size_t* freeBlock;
 
-
   START: // I love goto it makes me nostalgic for the good old days of FORTRAN
 
   // ..........................................................................
   // Obtain the first block which is free
   // ..........................................................................
 
-  freeBlock = TRI_AtVector(&(mt->_freeBlockPosition),0);
+  freeBlock = static_cast<size_t*>(TRI_AtVector(&(mt->_freeBlockPosition), 0));
 
   if (freeBlock == NULL) {
     // ........................................................................
@@ -594,10 +593,9 @@ static int64_t compareIndexOf(MasterTable_t* mt, size_t item, bool* equality) {
   rightPos = ((int64_t) (mt->_freeBlockPosition)._length) - 1;
 
   while (leftPos <= rightPos)  {
-    size_t* compareResult;
-
     midPos = (leftPos + rightPos) / 2;
-    compareResult = TRI_AtVector(&(mt->_freeBlockPosition), midPos);
+    size_t* compareResult = static_cast<size_t*>(TRI_AtVector(&(mt->_freeBlockPosition), midPos));
+
     if (*compareResult < item) {
       leftPos = midPos + 1;
     }
