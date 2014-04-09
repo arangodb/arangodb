@@ -115,6 +115,8 @@ add_executable(
     Transaction/Context.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
+    Transaction/Operations.cpp
+    Transaction/State.cpp
     Transaction/Transaction.cpp
     Transaction/WorkUnit.cpp
     Utils/DocumentHelper.cpp

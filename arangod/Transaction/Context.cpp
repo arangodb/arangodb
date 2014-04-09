@@ -28,8 +28,11 @@
 #include "Context.h"
 
 #include "BasicsC/logging.h"
+#include "Transaction/Collection.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Transaction.h"
+#include "Transaction/WorkUnit.h"
+#include "VocBase/vocbase.h"
 
 using namespace triagens::transaction;
 
@@ -42,11 +45,15 @@ using namespace triagens::transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 Context::Context (Manager* manager,
+                  TRI_vocbase_t* vocbase,
                   Context** globalContext) 
   : _manager(manager),
+    _resolver(vocbase),
     _globalContext(globalContext),
     _transaction(0),
-    _level(0) {
+    _workUnits(),
+    _nextWorkUnitId(0),
+    _refCount(0) {
 
   LOG_INFO("creating context");
   if (_globalContext != nullptr) {
@@ -59,7 +66,7 @@ Context::Context (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Context::~Context () {
-  assert(_level == 0);
+  assert(_workUnits.empty());
   assert(_transaction == nullptr);
 
   if (_globalContext != nullptr) {
@@ -77,16 +84,18 @@ Context::~Context () {
 ////////////////////////////////////////////////////////////////////////////////
  
 Context* Context::getContext (Manager* manager,
+                              TRI_vocbase_t* vocbase,
                               Context** globalContext) {
-  return createContext(manager, globalContext);
+  return createContext(manager, vocbase, globalContext);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a transaction context
 ////////////////////////////////////////////////////////////////////////////////
  
-Context* Context::getContext (Manager* manager) {
-  return createContext(manager, nullptr);
+Context* Context::getContext (Manager* manager,
+                              TRI_vocbase_t* vocbase) {
+  return createContext(manager, vocbase, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,24 +121,50 @@ void Context::decreaseRefCount () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* Context::resolveCollection (std::string const& name) const {
+  return const_cast<TRI_vocbase_col_t*>(_resolver.getCollectionStruct(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find a collection in the top-level work units
+////////////////////////////////////////////////////////////////////////////////
+
+Collection* Context::findCollection (TRI_voc_cid_t id) const {
+  for (auto it = _workUnits.rbegin(); it != _workUnits.rend(); ++it) {
+    WorkUnit* workUnit = (*it);
+
+    Collection* collection = workUnit->findCollection(id);
+
+    if (collection != nullptr) {
+      // found the collection
+      return collection;
+    }
+  }
+
+  // did not find the collection
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start a new unit of work
 ////////////////////////////////////////////////////////////////////////////////
 
-int Context::startWorkUnit (TRI_vocbase_t* vocbase,
-                            bool singleOperation) {
-
-  if (_level == 0) {
+int Context::startWorkUnit (WorkUnit* workUnit) {
+  if (_workUnits.empty()) {
     LOG_INFO("starting top-level work unit");
     assert(_transaction == nullptr);
 
-    _transaction = _manager->createTransaction(vocbase, singleOperation);
+    _transaction = _manager->createTransaction(workUnit->isSingleOperation());
     assert(_transaction != nullptr);
   }
   else {
-    LOG_INFO("starting nested (%d) work unit", _level);
+    LOG_INFO("starting nested (%d) work unit", (int) _workUnits.size());
   }
 
-  ++_level;
+  _workUnits.push_back(workUnit);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -138,12 +173,15 @@ int Context::startWorkUnit (TRI_vocbase_t* vocbase,
 /// @brief end a unit of work
 ////////////////////////////////////////////////////////////////////////////////
 
-int Context::endWorkUnit () {
-  assert(_level > 0);
+int Context::endWorkUnit (WorkUnit* workUnit) {
+  assert(! _workUnits.empty());
 
-  --_level;
+  assert(_workUnits.back() == workUnit);
+
+  // pop last work unit from stack
+  _workUnits.pop_back();
   
-  if (_level == 0) {
+  if (_workUnits.empty()) {
     LOG_INFO("ending top-level work unit");
 
     // final level
@@ -153,7 +191,7 @@ int Context::endWorkUnit () {
     }
   }
   else {
-    LOG_INFO("ending nested (%d) work unit", _level);
+    LOG_INFO("ending nested (%d) work unit", (int) _workUnits.size());
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -168,10 +206,11 @@ int Context::endWorkUnit () {
 ////////////////////////////////////////////////////////////////////////////////
  
 Context* Context::createContext (Manager* manager,
+                                 TRI_vocbase_t* vocbase,
                                  Context** globalContext) {
   if (globalContext == nullptr ||
       *globalContext == nullptr) {
-    return new Context(manager, globalContext);
+    return new Context(manager, vocbase, globalContext);
   }
 
   return *globalContext;

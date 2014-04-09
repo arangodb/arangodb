@@ -29,6 +29,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Transaction/IdGenerator.h"
+#include "Transaction/State.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::transaction;
@@ -63,8 +64,8 @@ Manager::~Manager () {
   for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
     Transaction* transaction = (*it).second;
 
-    if (transaction->state() == Transaction::StateType::STATE_BEGUN) {
-      transaction->setAborted();
+    if (transaction->state() == State::StateType::BEGUN) {
+      transaction->setState(State::StateType::ABORTED);
     }
   }
 
@@ -109,11 +110,10 @@ void Manager::shutdown () {
 /// @brief create a transaction object
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase,
-                                         bool singleOperation) {
+Transaction* Manager::createTransaction (bool singleOperation) {
   Transaction::IdType id = _generator.next();
 
-  Transaction* transaction = new Transaction(this, id, vocbase, singleOperation);
+  Transaction* transaction = new Transaction(this, id, singleOperation);
   
   WRITE_LOCKER(_lock);
   auto it = _transactions.insert(make_pair(id, transaction));
@@ -141,7 +141,7 @@ Transaction::StateType Manager::statusTransaction (Transaction::IdType id) {
   }
 
   // unknown transaction. probably already committed
-  return Transaction::StateType::STATE_COMMITTED;
+  return State::StateType::COMMITTED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ TransactionInfo Manager::getOldestRunning () {
   for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
     Transaction* transaction = (*it).second;
   
-    if (transaction->state() == Transaction::StateType::STATE_BEGUN) {
+    if (transaction->state() == State::StateType::BEGUN) {
       return TransactionInfo(transaction->id(), transaction->elapsedTime());
     }
   }
@@ -175,7 +175,7 @@ bool Manager::containsRunning (vector<Transaction::IdType> const& ids) {
     if (it2 != _transactions.end()) {
       Transaction* transaction = (*it2).second;
 
-      if (transaction->state() == Transaction::StateType::STATE_BEGUN) {
+      if (transaction->state() == State::StateType::BEGUN) {
         return true;
       }
     }
@@ -206,13 +206,13 @@ int Manager::beginTransaction (Transaction* transaction) {
   WRITE_LOCKER(_lock);
   
   // check the transaction state first
-  if (transaction->state() != Transaction::StateType::STATE_UNINITIALISED) {
-    transaction->setAborted();
+  if (transaction->state() != State::StateType::UNINITIALISED) {
+    transaction->setState(State::StateType::ABORTED);
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
   // sets status and start time stamp
-  transaction->setBegun();
+  transaction->setState(State::StateType::BEGUN);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -227,13 +227,13 @@ int Manager::commitTransaction (Transaction* transaction,
   
   WRITE_LOCKER(_lock);
   
-  if (transaction->state() != Transaction::StateType::STATE_BEGUN) {
+  if (transaction->state() != State::StateType::BEGUN) {
     // set it to aborted
-    transaction->setAborted();
+    transaction->setState(State::StateType::ABORTED);
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  transaction->setCommitted();
+  transaction->setState(State::StateType::COMMITTED);
 
   auto it = _transactions.find(id);
 
@@ -255,17 +255,16 @@ int Manager::commitTransaction (Transaction* transaction,
 int Manager::rollbackTransaction (Transaction* transaction) {
   WRITE_LOCKER(_lock);
 
-  if (transaction->state() != Transaction::StateType::STATE_BEGUN) {
+  if (transaction->state() != State::StateType::BEGUN) {
     // TODO: set it to aborted
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  transaction->setAborted();
+  transaction->setState(State::StateType::ABORTED);
   
   // leave it in the list of transactions
   return TRI_ERROR_NO_ERROR;
 }
-
 
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"

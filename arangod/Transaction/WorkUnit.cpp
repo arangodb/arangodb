@@ -26,8 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkUnit.h"
+#include "Transaction/Collection.h"
 #include "Transaction/Context.h"
 #include "Transaction/Transaction.h"
+#include "VocBase/vocbase.h"
 
 using namespace triagens::transaction;
 
@@ -40,17 +42,16 @@ using namespace triagens::transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 WorkUnit::WorkUnit (Context* context, 
-                    TRI_vocbase_t* vocbase,
                     bool singleOperation)
-  : _context(context),
-    _active(true) {
-
-  assert(context != nullptr);
+  : State(),
+    _context(context),
+    _id(context->nextWorkUnitId()),
+    _level(context->level()),
+    _singleOperation(singleOperation),
+    _done(false) {
 
   _context->increaseRefCount();
-
-  _level = _context->level();
-  _context->startWorkUnit(vocbase, singleOperation);
+  _context->startWorkUnit(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,8 +59,7 @@ WorkUnit::WorkUnit (Context* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 WorkUnit::~WorkUnit () {
-  deactivate();
-
+  done();
   _context->decreaseRefCount();
 }
 
@@ -72,10 +72,16 @@ WorkUnit::~WorkUnit () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int WorkUnit::addCollection (string const& name,
-                             Collection::AccessType accessType) {
-  Transaction* transaction = _context->transaction();
-
-  return transaction->addCollection(name, accessType);
+                             Collection::AccessType accessType,
+                             bool lockResponsibility,
+                             bool locked) {
+  TRI_vocbase_col_t* collection = _context->resolveCollection(name);
+  
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+   
+  return addCollection(collection->_cid, collection, accessType, lockResponsibility, locked);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,10 +89,48 @@ int WorkUnit::addCollection (string const& name,
 ////////////////////////////////////////////////////////////////////////////////
         
 int WorkUnit::addCollection (TRI_voc_cid_t id,
-                             Collection::AccessType accessType) {
-  Transaction* transaction = _context->transaction();
+                             TRI_vocbase_col_t* collection,
+                             Collection::AccessType accessType,
+                             bool lockResponsibility,
+                             bool locked) {
+  if (id == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
 
-  return transaction->addCollection(id, accessType);
+  auto it = _collections.find(id);
+
+  if (it != _collections.end()) {
+    Collection* collection = (*it).second;
+    if (accessType == Collection::AccessType::WRITE &&
+        ! collection->allowWriteAccess()) {
+      return TRI_ERROR_TRANSACTION_INTERNAL;
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  Collection* previous = _context->findCollection(id);
+
+  if (previous != nullptr) {
+    // collection already present in a top-level work unit
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  _collections.insert(make_pair(id, new Collection(id, collection, accessType, lockResponsibility, locked)));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find a collection in a unit of work
+////////////////////////////////////////////////////////////////////////////////
+
+Collection* WorkUnit::findCollection (TRI_voc_cid_t id) const {
+  auto it = _collections.find(id);
+  if (it != _collections.end()) {
+    return (*it).second;
+  }
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,10 +138,10 @@ int WorkUnit::addCollection (TRI_voc_cid_t id,
 ////////////////////////////////////////////////////////////////////////////////
 
 int WorkUnit::begin () {
-  if (! active()) {
+  if (state() != State::StateType::UNINITIALISED) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-  
+ 
   int res;
   if (! isTopLevel()) {
     // TODO: implement begin
@@ -107,6 +151,8 @@ int WorkUnit::begin () {
     Transaction* transaction = _context->transaction();
     res = transaction->begin();
   }
+  
+  setState(State::StateType::BEGUN);
 
   return res;
 }
@@ -116,7 +162,7 @@ int WorkUnit::begin () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int WorkUnit::commit (bool waitForSync) {
-  if (! active()) {
+  if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
    
@@ -129,8 +175,10 @@ int WorkUnit::commit (bool waitForSync) {
     Transaction* transaction = _context->transaction();
     res = transaction->commit(waitForSync);
   }
+  
+  setState(State::StateType::COMMITTED);
+  done();
 
-  deactivate();
   return res;
 }
 
@@ -139,7 +187,7 @@ int WorkUnit::commit (bool waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int WorkUnit::rollback () {
-  if (! active()) {
+  if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -152,24 +200,40 @@ int WorkUnit::rollback () {
     Transaction* transaction = _context->transaction();
     res = transaction->rollback();
   }
+  
+  setState(State::StateType::ABORTED);
+  done();
 
-  deactivate();
   return res;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
+  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deactive the unit of work
+/// @brief set the unit of work to done
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkUnit::deactivate () {
-  if (active()) {
-    _context->endWorkUnit();
-    _active = false;
+void WorkUnit::done () {
+  if (! _done) {
+    _context->endWorkUnit(this);
+    _done = true;
   }
+  cleanup();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup the unit of work
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkUnit::cleanup () {
+  for (auto it = _collections.begin(); it != _collections.end(); ++it) {
+    Collection* collection = (*it).second;
+    delete collection;
+  }
+  
+  _collections.clear();
 }
 
 // Local Variables:
