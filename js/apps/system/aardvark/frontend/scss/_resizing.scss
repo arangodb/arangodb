@@ -34,18 +34,31 @@ div.resizecontainer {
 
 }
 
-@for $i from 0 through 11 {
-  $min: 242px * $i;
-  @media (min-width: $min + 6) and (max-width: $min + 242 + 5) {
+@for $i from 1 through 11 {
+  $min: $tile-width * $i;
+  $content-size: $min - 12px;
+  @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
 
     div.resizecontainer {
-      width: $min;
+      width: $content-size;
     }
 
     div.modalChartDetail {
       left: 50%;
-      margin-left: -$min/2;
-      width: $min;
+      margin-left: -($content-size)/2;
+      width: $content-size;
+    }
+
+    .dashboard-large-chart {
+      width: ($content-size * 2 / 3);
+    }
+
+    .dashboard-medium-chart {
+      width: ($content-size / 2);
+    }
+
+    .dashboard-small-chart {
+      width: ($content-size / 3);
     }
   }
 }
