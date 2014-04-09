@@ -73,7 +73,7 @@ Collection Methods {#HandlingCollectionsCollectionMethods}
 @copydetails JS_PropertiesVocbaseCol
 
 @CLEARPAGE
-
+@anchor HandlingCollectionsFigures
 @copydetails JS_FiguresVocbaseCol
 
 @CLEARPAGE

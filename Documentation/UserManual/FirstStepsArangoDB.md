@@ -28,15 +28,15 @@ Key features include:
   the performance power of NoSQL
 - *Application server*: Use ArangoDB as an application server and fuse your application and
   database together for maximal throughput
-- *JavaScript for all:* No language zoo, you can use one language from your
+- *JavaScript for all*: No language zoo, you can use one language from your
   browser to your back-end
-- *Flexible data modeling:* Model your data as combination of key-value pairs,
+- *Flexible data modeling*: Model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
-- *Free index choice:* Use the correct index for your problem, be it a skip
+- *Free index choice*: Use the correct index for your problem, be it a skip
   list or a fulltext search 
-- *Configurable durability:* Let the application decide if it needs more
+- *Configurable durability*: Let the application decide if it needs more
   durability or more performance
-- *No-nonsense storage:* ArangoDB uses all of the power of modern storage
+- *No-nonsense storage*: ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
 - *Powerful query language* (AQL) to retrieve data 
 - *Transactions*: Run queries on multiple documents or collections with 
