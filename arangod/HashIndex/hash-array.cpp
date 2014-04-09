@@ -259,11 +259,7 @@ static void AddNewElement (TRI_hash_array_t* array,
 
 static int AllocateTable (TRI_hash_array_t* array, 
                           size_t numElements) {
-  TRI_hash_index_element_t* table;
-
-  table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                       sizeof(TRI_hash_index_element_t) * numElements,
-                       true);
+  TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,  sizeof(TRI_hash_index_element_t) * numElements, true));
 
   if (table == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -680,8 +676,6 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
   uint64_t hash;
   uint64_t i;
   uint64_t k;
-  bool found;
-  void* arrayElement;
 
   // ...........................................................................
   // compute the hash
@@ -699,13 +693,13 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
     i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
-  arrayElement = &array->_table[i];
+  TRI_hash_index_element_t* arrayElement = static_cast<TRI_hash_index_element_t*>(&array->_table[i]);
 
   // ...........................................................................
   // if we did not find such an item return false
   // ...........................................................................
 
-  found = ! IsEmptyElement(array, arrayElement);
+  bool found = ! IsEmptyElement(array, arrayElement);
 
   if (! found) {
     return TRI_RESULT_ELEMENT_NOT_FOUND;
@@ -750,7 +744,6 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
   uint64_t i;
   uint64_t k;
   bool found;
-  void* arrayElement;
 
   // ...........................................................................
   // compute the hash
@@ -768,7 +761,7 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
     i = TRI_IncModU64(i, array->_nrAlloc);
   }
 
-  arrayElement = &array->_table[i];
+  TRI_hash_index_element_t* arrayElement = static_cast<TRI_hash_index_element_t*>(&array->_table[i]);
 
   // ...........................................................................
   // if we did not find such an item return false

@@ -24,6 +24,10 @@
 
 #ifdef __cplusplus
 
+#ifdef __clang__
+typedef struct { long double x, y; } __float128;
+#endif
+
 #include "unicode/errorcode.h"
 
 U_NAMESPACE_BEGIN

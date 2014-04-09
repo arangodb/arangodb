@@ -18,23 +18,73 @@
       view = new window.DocumentView();
     });
 
-    it("should offer a list view", function() {
+    it("assert the basics", function () {
+      expect(view.colid).toEqual(0);
+      expect(view.colid).toEqual(0);
+      expect(view.editor).toEqual(0);
+      expect(view.events).toEqual({
+        "click #saveDocumentButton" : "saveDocument"
+      });
     });
 
-    it("should offer a source view", function() {
+    it("should render", function () {
     });
 
-    it("should offer a way back to the collection", function() {
+    it("should copy a model into editor", function () {
     });
 
-    it("should offer a way back to the collections overiew", function () {
+
+/*    it("check document view type check", function() {
+
+      var arangoDocStoreDummy = {
+        getEdge: function () {
+        },
+        getDocument: function () {
+        },
+        first: function () {
+          return model;
+        }
+      };
+
+
+      spyOn(window, "arangoDocumentStore").andReturn(arangoDocStoreDummy);
+      spyOn(arangoDocStoreDummy, "getEdge").andReturn(true);
+
+      expect(view.typeCheck('edge')).toEqual(true);
+    });*/
+
+    it("should remove readonly keys", function() {
+      var object = {
+        hello: 123,
+        wrong: true,
+        _key: "123",
+        _rev: "adasda",
+        _id: "paosdjfp1321"
+      },
+      shouldObject = {
+        hello: 123,
+        wrong: true
+      },
+      result = view.removeReadonlyKeys(object);
+
+      expect(result).toEqual(shouldObject);
     });
 
-    it("should offer a way to add more attributes", function() {
+    it("should modify the breadcrumb", function () {
+      var bar = document.createElement("div"),
+        emptyBar = document.createElement("div");
+      bar.id = 'transparentHeader';
+
+
+      view.breadcrumb();
+      expect(emptyBar).not.toBe(bar);
     });
 
-    it("should offer the table of document attributes", function() {
-    });
+    //it("should escape the value string", function () {
+    // FUNKTION NICHT MEHR BENUTZT??
+    //});
+
+
   });
 
 }());

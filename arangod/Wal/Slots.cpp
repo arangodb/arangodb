@@ -368,7 +368,7 @@ int Slots::writeHeader (Slot* slot) {
   TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
   assert(mem != nullptr);
 
-  slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&header.base, size);
   slot->setReturned(false); // sync
 
@@ -386,7 +386,7 @@ int Slots::writeFooter (Slot* slot) {
   TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
   assert(mem != nullptr);
 
-  slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&footer.base, size);
   slot->setReturned(true); // sync
 

@@ -27,6 +27,7 @@
       }
       if (result === true) {
         this.fillEditor();
+        return true;
       }
     },
 
@@ -59,7 +60,6 @@
     },
 
     saveDocument: function () {
-      var self = this;
       var model, result;
       model = this.editor.get();
 

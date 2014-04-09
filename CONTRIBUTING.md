@@ -24,15 +24,15 @@ Getting started
 * Please let us know if you plan to work an a ticket. This way we can make sure
   we avoid redundant work.
 
-* Create a fork our repository. You can use GitHub to do this.
+* Create a fork of our repository. You can use GitHub to do this.
 
 * Clone the fork to your development box and pull the latest changes from the
   ArangoDB repository. Please make sure to use the appropriate branch:
 
   * the "devel" branch is normally used for new features 
 
-  * bug fixes should be done in the "devel" first, before being applied to
-    master or other branches
+  * bug fixes should be done in the "devel" branch first, before being applied to
+    master or other branches.
 
 * If missing, install the required prerequisites. They are listed
   [here](https://github.com/triAGENS/ArangoDB/wiki/Compiling).
@@ -65,13 +65,14 @@ Making Changes
   directory. To recreate the documentation locally, run make doxygen. This will
   re-create all documentation files in the Doxygen directory in your
   repository. You can inspect the documentation in this folder using a text
-  editor or a browser.
+  editor or a browser. We recently agreed that future documentation should be
+  written in American English (AE).
 
 * When done, run the complete test suite and make sure all tests pass.
 
 * When finished, push the changes to your GitHub repository and send a pull
   request from your fork to the ArangoDB repository. Please make sure to select
-  the appropriate branches there.
+  the appropriate branches there. This will most likely be "devel".
 
 * You must use the Apache License for your changes.
 

@@ -194,16 +194,15 @@
     },
 
     submitEditUser : function(username) {
-      var self = this,
-        name = $('#editName42').val(),
-        status = $('#editStatus').is(':checked');
+      var name = $('#editName').val();
+      var status = $('#editStatus').is(':checked');
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest("th").css("backgroundColor", "red");
         return;
       }
       if (!this.validateName(name)) {
-        $('#editName42').closest("th").css("backgroundColor", "red");
+        $('#editName').closest("th").css("backgroundColor", "red");
         return;
       }
       var user = this.collection.findWhere({"user": username});
@@ -284,8 +283,7 @@
     },
 
     submitEditUserPassword : function () {
-      var self        = this,
-        oldPasswd     = $('#oldCurrentPassword').val(),
+      var oldPasswd   = $('#oldCurrentPassword').val(),
         newPasswd     = $('#newCurrentPassword').val(),
         confirmPasswd = $('#confirmCurrentPassword').val();
       $('#oldCurrentPassword').val('');
@@ -329,7 +327,6 @@
 
 
     submitEditCurrentUserProfile: function() {
-      var self = this;
       var name    = $('#editCurrentName').val();
       var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
@@ -377,7 +374,7 @@
           type: window.modalView.tables.TEXT,
           label: "Name",
           value: name,
-          id: "editName42",
+          id: "editName",
           placeholder: "Name"
         },
         {
@@ -431,7 +428,7 @@
         tableContent = [];
 
       tableContent.push(
-        window.modalView.createReadOnlyEntry("Username", username)
+        window.modalView.createReadOnlyEntry("id_username", "Username", username)
       );
       tableContent.push(
         window.modalView.createTextEntry("editCurrentName", "Name", name, false, "Name", false)

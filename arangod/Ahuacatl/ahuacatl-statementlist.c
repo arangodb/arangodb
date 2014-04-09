@@ -76,6 +76,50 @@ static inline TRI_aql_node_t* StatementAt (const TRI_aql_statement_list_t* const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates all statements in a scope marked as "empty"
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
+                                    const size_t position) {
+  size_t i, n;
+  size_t scopes;
+
+  assert(list);
+  n = list->_statements._length;
+  i = position;
+  scopes = 0;
+
+  while (i < n) {
+    TRI_aql_node_t* node = StatementAt(list, i);
+    TRI_aql_node_type_e type = node->_type;
+    
+    if (i == position) {
+      assert(type == TRI_AQL_NODE_SCOPE_START);
+      list->_statements._buffer[i] = DummyReturnEmptyNode;
+    }
+    else {
+      list->_statements._buffer[i] = TRI_GetDummyNopNodeAql(); 
+    }
+    ++i;
+
+    if (type == TRI_AQL_NODE_SCOPE_START) {
+      ++scopes;
+    }
+    else if (type == TRI_AQL_NODE_SCOPE_END) {
+      assert(scopes > 0);
+      --scopes;
+
+      if (scopes == 0) {
+        break;
+      }
+    }
+    
+  }
+
+  return i;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,14 +213,6 @@ void TRI_GlobalFreeStatementListAql (void) {
 
 TRI_aql_node_t* TRI_GetDummyNopNodeAql (void) {
   return DummyNopNode;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the dummy return empty node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void) {
-  return DummyReturnEmptyNode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,99 +361,27 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
       continue;
     }
 
-    if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
-      i = TRI_InvalidateStatementListAql(list, i);
-      j = i;
-      continue;
+    if (node->_type == TRI_AQL_NODE_SCOPE_START) {
+      TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+
+      if (scope->_empty) {
+        i = InvalidateEmptyScope(list, i);
+        j = i;
+        continue;
+      } 
     }
+
+    /* should not happen anymore
+    if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
+      assert(false);
+    }
+    */
 
     list->_statements._buffer[j++] = node;
     ++i;
   }
 
   list->_statements._length = j;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate all statements in current scope and subscopes
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
-                                       const size_t position) {
-  size_t i, n;
-  size_t start;
-  size_t scopes;
-  size_t ignoreScopes;
-
-  assert(list);
-  n = list->_statements._length;
-
-  // walk the scope from the specified position backwards until we find the start of the scope
-  scopes = 1;
-  ignoreScopes = 0;
-  i = position;
-  while (true) {
-    TRI_aql_node_t* node = StatementAt(list, i);
-    TRI_aql_node_type_e type = node->_type;
-
-    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
-    start = i;
-
-    if (type == TRI_AQL_NODE_SCOPE_START) {
-      // node is a scope start
-      TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
-
-      if (ignoreScopes > 0) {
-        // this is an inner, parallel scope that we can ignore
-        --ignoreScopes;
-      }
-      else {
-        if (scope->_type != TRI_AQL_SCOPE_FOR_NESTED) {
-          // we have reached the scope and need to stop
-          break;
-        }
-        scopes++;
-      }
-    }
-    else if (type == TRI_AQL_NODE_SCOPE_END) {
-      // we found the end of another scope
-      // we must remember how many other scopes we passed
-      ignoreScopes++;
-    }
-
-    if (i-- == 0) {
-      break;
-    }
-  }
-
-  assert(ignoreScopes == 0);
-
-  // remove from position forwards to scope end
-  i = position;
-  while (true) {
-    TRI_aql_node_t* node = StatementAt(list, i);
-    TRI_aql_node_type_e type = node->_type;
-
-    list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
-
-    if (type == TRI_AQL_NODE_SCOPE_START) {
-      ++scopes;
-    }
-    else if (type == TRI_AQL_NODE_SCOPE_END) {
-      assert(scopes > 0);
-      if (--scopes == 0) {
-        break;
-      }
-    }
-
-    if (++i == n) {
-      break;
-    }
-  }
-
-  list->_statements._buffer[start] = TRI_GetDummyReturnEmptyNodeAql();
-
-  return start + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -269,16 +269,6 @@ static inline bool OutputString (TRI_string_buffer_t* const buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a string to the buffer
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool OutputString2 (TRI_string_buffer_t* const buffer,
-                                  const char* const value,
-                                  size_t length) {
-  return (TRI_AppendString2StringBuffer(buffer, value, length) == TRI_ERROR_NO_ERROR);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append a single character to the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -366,46 +356,11 @@ static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator,
   if (! OutputChar(scope->_buffer, '\'')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (! OutputString(scope->_buffer, value)) {
+
+  if (TRI_AppendJsonEncodedStringStringBuffer(scope->_buffer, value, false) != TRI_ERROR_NO_ERROR) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
   if (! OutputChar(scope->_buffer, '\'')) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print an escaped string in the current scope, enclosed by "
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
-                                       const char* const value) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  char* escaped;
-  size_t outLength;
-
-  if (scope == NULL) {
-    return;
-  }
-
-  if (! OutputChar(scope->_buffer, '"')) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  escaped = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, strlen(value), false, &outLength, false);
-
-  if (escaped != NULL) {
-    if (! OutputString2(scope->_buffer, escaped, outLength)) {
-      generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
-  }
-  else {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  if (! OutputChar(scope->_buffer, '"')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -1256,7 +1211,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       ScopeOutputJson(generator, fieldAccess->_value._value);
       ScopeOutput(generator, ")");
@@ -1270,7 +1225,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
@@ -1305,7 +1260,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
     }
 
-    ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+    ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
     ScopeOutput(generator, " : ");
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
       assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
@@ -1358,7 +1313,7 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
 
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
-  ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+  ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
     assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
@@ -1401,7 +1356,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       ScopeOutputJson(generator, fieldAccess->_value._value);
       ScopeOutput(generator, ")");
@@ -1415,7 +1370,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
         ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
@@ -1449,7 +1404,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
     }
 
-    ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1); // offset);
+    ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1); // offset);
     ScopeOutput(generator, " : [ ");
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT) {
@@ -1523,7 +1478,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       ScopeOutputJson(generator, fieldAccess->_value._value);
       ScopeOutput(generator, ")");
@@ -1537,7 +1492,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
-      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+      ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
       ScopeOutput(generator, ", ");
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
         ScopeOutputSymbol(generator, fieldAccess->_value._reference._ref._name);
@@ -1570,7 +1525,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
     // Only implement equality operator for now
     // ................................................................................
 
-    ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+    ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
     ScopeOutput(generator, " : ");
 
     switch (fieldAccess->_type) {

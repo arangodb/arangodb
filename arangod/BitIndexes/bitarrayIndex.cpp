@@ -61,7 +61,7 @@ static void  BitarrayIndex_freeMaskSet                (TRI_bitarray_mask_set_t*)
 #endif
 static int   BitarrayIndex_generateInsertBitMask      (BitarrayIndex*, const TRI_bitarray_index_key_t*, TRI_bitarray_mask_t*);
 static int   BitarrayIndex_generateEqualBitMask       (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
-static int   BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t*, TRI_json_t*, uint64_t*);
+static int   BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const*, TRI_json_t const*, uint64_t*);
 static void  BitarrayIndex_insertMaskSet              (TRI_bitarray_mask_set_t*, TRI_bitarray_mask_t*, bool);
 
 
@@ -188,8 +188,6 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
                       void* context) {
   int     result;
   size_t  numArrays;
-  int j;
-
 
   // ...........................................................................
   // Some simple checks
@@ -223,7 +221,8 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
   // Create the bit array index structure
   // ...........................................................................
 
-  *baIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(BitarrayIndex), true);
+  *baIndex = static_cast<BitarrayIndex*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(BitarrayIndex), true));
+
   if (*baIndex == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -236,9 +235,9 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
 
   TRI_InitVector(&((*baIndex)->_values), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));
 
-  for (j = 0;  j < values->_length;  ++j) {
+  for (size_t j = 0;  j < values->_length;  ++j) {
     TRI_json_t value;
-    TRI_CopyToJson(TRI_UNKNOWN_MEM_ZONE, &value, (TRI_json_t*)(TRI_AtVector(values,j)));
+    TRI_CopyToJson(TRI_UNKNOWN_MEM_ZONE, &value, (TRI_json_t*)(TRI_AtVector(values, j)));
     TRI_PushBackVector(&((*baIndex)->_values), &value);
   }
 
@@ -321,7 +320,6 @@ TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex,
                                           TRI_vector_t* shapeList,
                                           TRI_bitarray_index_t* collectionIndex,
                                           bool (*filter) (TRI_index_iterator_t*) ) {
-  TRI_index_iterator_t* iterator;
   TRI_bitarray_mask_set_t maskSet;
   int result;
 
@@ -330,7 +328,8 @@ TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex,
   // if any of the lookup.
   // ...........................................................................
 
-  iterator = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_t), true);
+  TRI_index_iterator_t* iterator = static_cast<TRI_index_iterator_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_t), true));
+
   if (iterator == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL; // calling procedure needs to care when the iterator is null
@@ -584,7 +583,6 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
   switch (indexOperator->_type) {
 
     case TRI_AND_INDEX_OPERATOR: {
-      int j;
       TRI_bitarray_mask_set_t leftMaskSet;
       TRI_bitarray_mask_set_t rightMaskSet;
       TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);
@@ -617,12 +615,11 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
         return result;
       }
 
-      for (j = 0; j < leftMaskSet._setSize; ++j) {
-        int k;
+      for (size_t j = 0; j < leftMaskSet._setSize; ++j) {
         TRI_bitarray_mask_t* leftMask = leftMaskSet._maskArray + j;
         TRI_bitarray_mask_t andMask;
         leftMask->_mask = leftMask->_mask | leftMask->_ignoreMask;
-        for (k = 0; k < rightMaskSet._setSize; ++k) {
+        for (size_t k = 0; k < rightMaskSet._setSize; ++k) {
           TRI_bitarray_mask_t* rightMask = rightMaskSet._maskArray + k;
           rightMask->_mask = rightMask->_mask | rightMask->_ignoreMask;
           andMask._mask = leftMask->_mask & rightMask->_mask;
@@ -765,7 +762,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
 // some document we generate a bit mask.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
+static bool isEqualJson(TRI_json_t const* left, TRI_json_t const* right) {
 
   if (left == NULL && right == NULL) {
     return true;
@@ -803,24 +800,19 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
     }
 
     case TRI_JSON_ARRAY: {
-      int j;
-
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
 
-      for (j = 0; j < (left->_value._objects._length / 2); ++j) {
-        TRI_json_t* leftName;
-        TRI_json_t* leftValue;
-        TRI_json_t* rightValue;
+      for (size_t j = 0; j < (left->_value._objects._length / 2); ++j) {
+        TRI_json_t const* leftName = static_cast<TRI_json_t*>(TRI_AtVector(&(left->_value._objects), 2 * j));
 
-        leftName = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),2*j));
         if (leftName == NULL) {
           return false;
         }
 
-        leftValue  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),(2*j) + 1));
-        rightValue = TRI_LookupArrayJson(right, leftName->_value._string.data);
+        TRI_json_t const* leftValue = static_cast<TRI_json_t const*>(TRI_AtVector(&(left->_value._objects), (2 * j) + 1));
+        TRI_json_t const* rightValue = static_cast<TRI_json_t const*>(TRI_LookupArrayJson(right, leftName->_value._string.data));
 
         if (isEqualJson(leftValue, rightValue)) {
           continue;
@@ -832,17 +824,14 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
     }
 
     case TRI_JSON_LIST: {
-      int j;
-
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
 
-      for (j = 0; j < left->_value._objects._length; ++j) {
-        TRI_json_t* subLeft;
-        TRI_json_t* subRight;
-        subLeft  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),j));
-        subRight = (TRI_json_t*)(TRI_AtVector(&(right->_value._objects),j));
+      for (size_t j = 0; j < left->_value._objects._length; ++j) {
+        TRI_json_t const* subLeft  = static_cast<TRI_json_t const*>(TRI_AtVector(&(left->_value._objects), j));
+        TRI_json_t const* subRight = static_cast<TRI_json_t const*>(TRI_AtVector(&(right->_value._objects), j));
+
         if (isEqualJson(subLeft, subRight)) {
           continue;
         }
@@ -875,7 +864,6 @@ static void  BitarrayIndex_destroyMaskSet(TRI_bitarray_mask_set_t* maskSet) {
 
 static void  BitarrayIndex_extendMaskSet(TRI_bitarray_mask_set_t* maskSet, const int nSize, const double increaseBy) {
   size_t newSize;
-  TRI_bitarray_mask_t* newArray;
 
   if (nSize <= 0) {
     newSize = (size_t) ((increaseBy * maskSet->_arraySize) + 1);
@@ -884,7 +872,7 @@ static void  BitarrayIndex_extendMaskSet(TRI_bitarray_mask_set_t* maskSet, const
     newSize = nSize;
   }
 
-  newArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bitarray_mask_t) * newSize, true);
+  TRI_bitarray_mask_t* newArray = static_cast<TRI_bitarray_mask_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bitarray_mask_t) * newSize, true));
 
   if (newArray == NULL) {
     // todo report memory failure
@@ -913,8 +901,9 @@ static void  BitarrayIndex_freeMaskSet(TRI_bitarray_mask_set_t* maskSet) {
 }
 #endif
 
-static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_json_t* value, uint64_t* mask) {
-  int i;
+static int BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const* valueList, 
+                                                     TRI_json_t const* value, 
+                                                     uint64_t* mask) {
   uint64_t other = 0;
   uint64_t tempMask = 0;
 
@@ -925,9 +914,8 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
   // allowed values.
   // .............................................................................
 
-  for (i = 0; i < valueList->_value._objects._length; ++i) {
-    int k;
-    TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));
+  for (size_t i = 0; i < valueList->_value._objects._length; ++i) {
+    TRI_json_t const* listEntry = static_cast<TRI_json_t const*>(TRI_AtVector(&(valueList->_value._objects), i));
 
     // ...........................................................................
     // if the ith possible set of values is not a list, do comparison
@@ -955,9 +943,9 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
     }
 
 
-    for (k = 0; k < listEntry->_value._objects._length; k++) {
-      TRI_json_t* subListEntry;
-      subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), k));
+    for (size_t k = 0; k < listEntry->_value._objects._length; k++) {
+      TRI_json_t const* subListEntry = static_cast<TRI_json_t const*>(TRI_AtVector(&(listEntry->_value._objects), k));
+
       if (isEqualJson(value, subListEntry)) {
         tempMask = tempMask | ((uint64_t)(1) << i);
         break;
@@ -989,7 +977,6 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
                                          const TRI_bitarray_index_key_t* element,
                                          TRI_bitarray_mask_t* mask) {
   TRI_shaper_t* shaper;
-  int j;
   int shiftLeft;
   int result;
 
@@ -1034,13 +1021,11 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   mask->_mask = 0;
   shiftLeft   = 0;
 
-  for (j = 0; j < baIndex->_values._length; ++j) {
-    TRI_json_t* valueList;
-    TRI_json_t* value;
+  for (size_t j = 0; j < baIndex->_values._length; ++j) {
     uint64_t    tempMask;
 
-    value      = TRI_JsonShapedJson(shaper, &(element->fields[j])); // from shaped json to simple json
-    valueList  = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
+    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_JsonShapedJson(shaper, &(element->fields[j]))); // from shaped json to simple json
+    TRI_json_t const* valueList = static_cast<TRI_json_t const*>(TRI_AtVector(&(baIndex->_values), j));
     tempMask   = 0;
 
 
@@ -1071,7 +1056,6 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
 
 
 int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
-  int j;
   int shiftLeft;
   int ignoreShiftLeft;
   int result;
@@ -1111,14 +1095,11 @@ int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relatio
   shiftLeft         = 0;
   ignoreShiftLeft   = 0;
 
-  for (j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
-    TRI_json_t* valueList;
-    TRI_json_t* value;
+  for (size_t j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
     uint64_t    tempMask;
 
-
-    value     = (TRI_json_t*)(TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
-    valueList = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
+    TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
+    TRI_json_t const* valueList = static_cast<TRI_json_t const*>(TRI_AtVector(&(baIndex->_values), j));
 
 
     ignoreShiftLeft += (int) valueList->_value._objects._length;
@@ -1173,9 +1154,9 @@ int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relatio
       // ........................................................................
 
       else {
-        int i;
-        for (i = 0; i < value->_value._objects._length; ++i) {
-          TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(value->_value._objects), i));
+        for (size_t i = 0; i < value->_value._objects._length; ++i) {
+          TRI_json_t const* listEntry = static_cast<TRI_json_t const*>(TRI_AtVector(&(value->_value._objects), i));
+
           result = BitarrayIndex_generateEqualBitMaskHelper(valueList, listEntry, &tempMask);
           if (result == TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE) {
             return result;
@@ -1217,8 +1198,7 @@ int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relatio
 
 static void  BitarrayIndex_insertMaskSet(TRI_bitarray_mask_set_t* maskSet, TRI_bitarray_mask_t* mask, bool checkForDuplicate) {
   if (checkForDuplicate) {
-    int j;
-    for (j = 0; j < maskSet->_setSize; ++j) {
+    for (size_t j = 0; j < maskSet->_setSize; ++j) {
       TRI_bitarray_mask_t* inMask = maskSet->_maskArray + j;
       if (inMask->_mask == mask->_mask && inMask->_ignoreMask == mask->_ignoreMask) {
         return;

@@ -82,7 +82,7 @@
         active = "Inactive";
       }
       list.push(modView.createReadOnlyEntry(
-        "Name", name
+        "id_name", "Name", name
       ));
       list.push(modView.createTextEntry(
         "change-mount-point", "Mount", this.model.get("mount"),
@@ -96,13 +96,13 @@
        * list.push(modView.createSelectEntry()
        */
       list.push(modView.createReadOnlyEntry(
-        "Version", appInfos[2]
+        "id_version", "Version", appInfos[2]
       ));
       list.push(modView.createReadOnlyEntry(
-        "System", isSystem
+        "id_system", "System", isSystem
       ));
       list.push(modView.createReadOnlyEntry(
-        "Status", active
+        "id_status", "Status", active
       ));
       return list;
     },
