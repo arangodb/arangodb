@@ -460,6 +460,7 @@ exports.changePassword = function (token, password) {
   var hash = encodePassword(password);
 
   users.update(current, { passwordToken: null, password: hash });
+  exports.reload();
 
   return true;
 };
