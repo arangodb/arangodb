@@ -737,7 +737,7 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
     // list is empty => we can eliminate the for statement
     LOG_TRACE("optimised away empty for loop");
 
-    return TRI_GetDummyReturnEmptyNodeAql();
+    TRI_EmptyScopeStatementWalkerAql(walker);
   }
 
   return node;
@@ -835,7 +835,8 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     // LIMIT x, 0 makes the complete scope useless
     LOG_TRACE("optimised away limit");
 
-    return TRI_GetDummyReturnEmptyNodeAql();
+    TRI_EmptyScopeStatementWalkerAql(walker);
+    return node; 
   }
 
   // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
@@ -866,8 +867,10 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
 /// that will remove the complete scope on statement list compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
-  if (TRI_GetBooleanNodeValueAql(node)) {
+static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_statement_walker_t* const walker,
+                                               TRI_aql_node_t* const node,
+                                               TRI_aql_node_t* const expression) {
+  if (TRI_GetBooleanNodeValueAql(expression)) {
     // filter expression is always true => remove it
     LOG_TRACE("optimised away constant (true) filter");
 
@@ -877,7 +880,9 @@ static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
   // filter expression is always false => invalidate surrounding scope(s)
   LOG_TRACE("optimised away scope");
 
-  return TRI_GetDummyReturnEmptyNodeAql();
+  TRI_EmptyScopeStatementWalkerAql(walker);
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,7 +906,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
     if (TRI_IsConstantValueNodeAql(expression)) {
       // filter expression is a constant value
-      return OptimiseConstantFilter(expression);
+      return OptimiseConstantFilter(walker, node, expression);
     }
 
     // filter expression is non-constant
