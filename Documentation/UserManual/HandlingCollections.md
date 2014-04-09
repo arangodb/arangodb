@@ -7,7 +7,7 @@ Handling Collections {#HandlingCollections}
 JavaScript Interface to Collections {#HandlingCollectionsIntro}
 ===============================================================
 
-This is an introduction to ArangoDB's interface for collections and how handle
+This is an introduction to ArangoDB's interface for collections and how to handle
 collections from the JavaScript shell _arangosh_. For other languages see the
 corresponding language API.
 
@@ -23,14 +23,14 @@ The most import call is the call to create a new collection, see
 Address of a Collection {#HandlingCollectionsResource}
 ======================================================
 
-All collections in ArangoDB have an unique identifier and a unique
+All collections in ArangoDB have an unique identifier and an unique
 name. ArangoDB internally uses the collection's unique identifier to look up
 collections. This identifier, however, is managed by ArangoDB and the user has
-no control over it. In order to allow users use their own names, each collection
-also has a unique name, which is specified by the user.  To access a collection
+no control over it. In order to allow users to use their own names, each collection
+	also has an unique name which is specified by the user. To access a collection
 from the user perspective, the collection name should be used, i.e.:
 
-    db._collection(@FA{collection-name})
+    @LIT{db._collection(@FA{collection-name})}
 
 A collection is created by a @ref HandlingCollectionsCreate "db._create" call.
 
@@ -43,16 +43,16 @@ If no collection with such a name exists, then @LIT{null} is returned.
 
 There is a short-cut that can be used for non-system collections:
 
-    db.@FA{collection-name}
+    @LIT{db.@FA{collection-name}}
 
-This call will either return the collection named @FA{collection-name} or create
+This call will either return the collection named @LIT{@FA{collection-name}} or create
 a new one with that name and a set of default properties.
 
-Note: creating a collection on the fly using @LIT{db.@FA{collection-name}} is
-not recommend and does not work in arangosh. To create a new collection, please
+Note: Creating a collection on the fly using @LIT{db.@FA{collection-name}} is
+not recommend and does not work in _arangosh_. To create a new collection, please
 use
 
-    db._create(@FA{collection-name})
+    @LIT{db._create(@FA{collection-name})}
 
 @CLEARPAGE
 Working with Collections {#HandlingCollectionsShell}
@@ -73,7 +73,7 @@ Collection Methods {#HandlingCollectionsCollectionMethods}
 @copydetails JS_PropertiesVocbaseCol
 
 @CLEARPAGE
-@anchor HandlingCollectionsFigures
+
 @copydetails JS_FiguresVocbaseCol
 
 @CLEARPAGE
