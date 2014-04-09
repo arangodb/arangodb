@@ -332,7 +332,7 @@
 
         api: function () {
             if (!this.apiView) {
-                this.apiView = new window.apiView();
+                this.apiView = new window.ApiView();
             }
             this.apiView.render();
             this.naviView.selectMenuItem('tools-menu');

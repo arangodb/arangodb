@@ -20,7 +20,7 @@
 
     it("should define the swagger UI on create", function() {
       spyOn(window, "SwaggerUi");
-      var view = new window.apiView();
+      var view = new window.ApiView();
       expect(window.SwaggerUi).toHaveBeenCalledWith({
         discoveryUrl: "api-docs.json",
         apiKey: false,
@@ -47,7 +47,7 @@
           swaggerDummy.onFailure = opts.onFailure;
           return swaggerDummy;
         });
-        view = new window.apiView();
+        view = new window.ApiView();
       });
 
       it("swagger onComplete should highlight blocks", function() {
