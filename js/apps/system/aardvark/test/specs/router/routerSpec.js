@@ -141,6 +141,9 @@
                 render: function () {
                 },
                 initTable: function () {
+                },
+                setCollectionId : function () {
+
                 }
             };
 
@@ -261,8 +264,8 @@
                 );
             });
 
-            it("should create a documentsView", function () {
-                expect(window.DocumentsView).toHaveBeenCalled();
+            it("should not create a documentsView", function () {
+                expect(window.DocumentsView).not.toHaveBeenCalled();
             });
 
             it("should create collectionsView", function () {
@@ -471,10 +474,9 @@
             it("should route to documents", function () {
                 var colid = 5,
                     pageid = 6;
-                documentsDummy.getDocuments = function () {
-                };
-                spyOn(documentsDummy, "getDocuments");
-                spyOn(window.documentsView, "render");
+
+                spyOn(documentsViewDummy, "render");
+                spyOn(documentsViewDummy, "setCollectionId");
                 spyOn(arangoHelper, "collectionApiType").andReturn(1);
                 simpleNavigationCheck(
                     {
@@ -488,13 +490,10 @@
                     },
                     true
                 );
-                expect(window.documentsView.colid).toEqual(colid);
-                expect(window.documentsView.collectionID).toEqual(colid);
-                expect(window.documentsView.pageid).toEqual(pageid);
-                expect(window.documentsView.type).toEqual(1);
-                expect(window.documentsView.render).toHaveBeenCalled();
-                expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(colid);
-                expect(documentsDummy.getDocuments).toHaveBeenCalledWith(colid, pageid);
+                expect(documentsViewDummy.render).toHaveBeenCalled();
+                expect(documentsViewDummy.setCollectionId).toHaveBeenCalledWith(colid, pageid);
+
+
             });
 
             it("should route to document", function () {

@@ -43,9 +43,7 @@
     },
 
     setToLast: function() {
-        console.log("lpn " , this.getLastPageNumber());
       this.setPage(this.getLastPageNumber());
-      console.log(this.getPage());
     },
 
     setToPrev: function() {

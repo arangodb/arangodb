@@ -1,13 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine */
+/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine */
 
 (function() {
   "use strict";
   window.DocumentsView = window.PaginationView.extend({
-    collectionID: 0,
-    currentPage: 1,
-    documentsPerPage: 10,
-    totalPages: 1,
     filters : { "0" : true },
     filterId : 0,
     paginationDiv : "#documentsToolbarF",
@@ -22,10 +18,19 @@
       next: null
     },
 
-    setCollectionId : function (colid) {
-        this.collectionID = colid;
-        this.colid = colid;
+    initialize : function () {
+        this.documentStore = this.options.documentStore;
+        this.collectionsStore = this.options.collectionsStore;
+    },
+
+
+    setCollectionId : function (colid, pageid) {
         this.collection.setCollection(colid);
+        var type = arangoHelper.collectionApiType(colid);
+        this.pageid = pageid;
+        this.type = type;
+        this.collection.getDocuments(colid, pageid);
+
     },
 
     alreadyClicked: false,
@@ -118,14 +123,14 @@
       $('#documents_last').css("visibility", "visible");
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
-      window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
+      this.collection.getDocuments(this.collectionID, 1);
     },
 
     startUpload: function () {
       var result;
       if (this.allowUpload === true) {
           this.showSpinner();
-        result = window.arangoDocumentsStore.updloadDocuments(this.file);
+        result = this.collection.updloadDocuments(this.file);
         if (result !== true) {
             this.hideSpinner();
             if (result.substr(0, 5 ) === "Error") {
@@ -257,10 +262,11 @@
 
     sendFilter : function () {
       var filters = this.getFilterContent();
+      var self = this;
       this.addDocumentSwitch = false;
       _.each(filters, function (f) {
-        this.collection.addFilter((f.attribute, f.operator, f.value));
-      })
+          self.collection.addFilter(f.attribute, f.operator, f.value);
+      });
       this.clearTable();
       this.collection.setToFirst();
       this.collection.getDocuments();
@@ -333,7 +339,7 @@
         return;
       }
 
-      var result = window.arangoDocumentStore.createTypeDocument(collid);
+      var result = this.documentStore.createTypeDocument(collid);
       //Success
       if (result !== false) {
         window.location.hash = "collection/" + result;
@@ -355,7 +361,7 @@
         //Heiko: Form-Validator - to is missing
         return;
       }
-      var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
+      var result = this.documentStore.createTypeEdge(collid, from, to);
 
       if (result !== false) {
         $('#edgeCreateModal').modal('hide');
@@ -396,7 +402,9 @@
 
       var result;
       if (this.type === 'document') {
-        result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
+        result = this.documentStore.deleteDocument(
+            this.collection.collectionID, this.docid
+        );
         if (result) {
           //on success
           deleted = true;
@@ -406,7 +414,7 @@
         }
       }
       else if (this.type === 'edge') {
-        result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
+        result = this.documentStore.deleteEdge(this.collection.collectionID, this.docid);
         if (result === true) {
           //on success
           deleted = true;
@@ -421,7 +429,7 @@
           $('#documentsTableID').dataTable().fnGetPosition(row)
         );
         $('#documentsTableID').dataTable().fnClearTable();
-        window.arangoDocumentsStore.getDocuments(this.colid, page);
+          this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
       }
 
@@ -445,7 +453,8 @@
       }
       var docId = self.firstChild;
       var NeXt = $(docId).next().text();
-      window.location.hash = "#collection/" + this.colid + "/" + NeXt;
+      window.location.hash = "#collection/" + this.collection.collectionID
+          + "/" + NeXt;
     },
 
     initTable: function () {
@@ -518,14 +527,13 @@
         });
 
       }
-      this.totalPages = window.arangoDocumentsStore.totalPages;
-      this.currentPage = window.arangoDocumentsStore.currentPage;
-      this.documentsCount = window.arangoDocumentsStore.documentsCount;
     },
 
 
     render: function() {
-      this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
+      this.collectionContext = this.collectionsStore.getPosition(
+          this.collection.collectionID
+      );
 
       $(this.el).html(this.template.render({}));
       this.getIndex();
@@ -558,7 +566,7 @@
         this.drawTable();
         $('#documents_last').css("visibility", "hidden");
         $('#documents_first').css("visibility", "hidden");
-        this.renderPagination()
+        this.renderPagination();
     },
 
     renderPaginationElements: function () {
@@ -566,7 +574,7 @@
         this.renderPagination();
         var total = $('#totalDocuments');
           if (total.length > 0) {
-            total.html("Total: " + this.documentsCount + " documents");
+            total.html("Total: " + this.collection.getTotal() + " documents");
           } else {
             $('#documentsToolbarFL').append(
               '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
@@ -672,7 +680,7 @@
           };
           break;
       }
-      result = window.arangoCollectionsStore.createIndex(collection, postParameter);
+      result = self.collectionsStore.createIndex(collection, postParameter);
       if (result === true) {
         $('#collectionEditIndexTable tr').remove();
         self.getIndex();
@@ -702,7 +710,7 @@
       $("#indexDeleteModal").modal('show');
     },
     deleteIndex: function () {
-      var result = window.arangoCollectionsStore.deleteIndex(this.collectionName, this.lastId);
+      var result = this.collectionsStore.deleteIndex(this.collectionName, this.lastId);
       if (result === true) {
         $(this.lastTarget.currentTarget).parent().parent().remove();
       }
@@ -720,7 +728,7 @@
       return $(id).prop('checked');
     },
     getIndex: function () {
-      this.index = window.arangoCollectionsStore.getIndex(this.collectionID, true);
+      this.index = this.collectionsStore.getIndex(this.collection.collectionID, true);
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';

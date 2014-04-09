@@ -56,10 +56,10 @@
       var self = this;
       var date;
       var rowsArray = [];
-      this.activeCollection = this.options[this.currentLoglevel];
-      this.activeCollection.fetch({
+      this.collection = this.options[this.currentLoglevel];
+      this.collection.fetch({
         success: function() {
-          self.activeCollection.each(function(model) {
+          self.collection.each(function(model) {
             date = new Date(model.get('timestamp') * 1000);
             rowsArray.push([
               model.getLogStatus(),
@@ -87,24 +87,24 @@
 
     renderPagination: function () {
       var self = this;
-      var currentPage = this.activeCollection.getPage();
-      var totalPages = this.activeCollection.getLastPageNumber();
+      var currentPage = this.collection.getPage();
+      var totalPages = this.collection.getLastPageNumber();
       var target = $('#logPaginationDiv'),
       options = {
         page: currentPage,
         lastPage: totalPages,
         click: function(i) {
           if (i === 1 && i !== currentPage) {
-            self.activeCollection.setPage(1);
+            self.collection.setPage(1);
           }
           else if (i === totalPages && i !== currentPage) {
-            self.activeCollection.setPage(totalPages);
+            self.collection.setPage(totalPages);
           }
           else if (i !== currentPage) {
-            self.activeCollection.setPage(i);
+            self.collection.setPage(i);
           }
           options.page = i;
-          self.activeCollection.fetch({
+          self.collection.fetch({
             success: function() {
               self.convertModelToJSON();
             }
