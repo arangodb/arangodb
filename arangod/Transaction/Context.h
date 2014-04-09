@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction manager
+/// @brief transaction context
 ///
 /// @file
 ///
@@ -25,13 +25,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_TRANSACTION_MANAGER_H
-#define TRIAGENS_TRANSACTION_MANAGER_H 1
+#ifndef TRIAGENS_TRANSACTION_CONTEXT_H
+#define TRIAGENS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Transaction/IdGenerator.h"
-#include "Transaction/Transaction.h"
 
 extern "C" {
   struct TRI_vocbase_s;
@@ -40,19 +37,42 @@ extern "C" {
 namespace triagens {
   namespace transaction {
 
+    class Manager;
+
+    class Transaction;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class TransactionManager
+// --SECTION--                                                     class Context
 // -----------------------------------------------------------------------------
 
-    class Manager {
+    class Context {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TransactionManager
+/// @brief Context
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        Manager (Manager const&);
-        Manager& operator= (Manager const&);
+        Context (Context const&);
+        Context& operator= (Context const&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a transaction context
+////////////////////////////////////////////////////////////////////////////////
+
+        Context (Manager*,
+                 Context**); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a transaction context
+////////////////////////////////////////////////////////////////////////////////
+
+        ~Context ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -61,84 +81,72 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a transaction manager
-////////////////////////////////////////////////////////////////////////////////
-        
-        Manager ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a transaction manager
+/// @brief return the current transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Manager ();
+        inline Transaction* transaction () const {
+          return _transaction;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the transaction manager instance
+/// @brief return the current nesting level
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Manager* instance ();
+        inline int level () const {
+          return _level;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the transaction manager instance
+/// @brief get or create a transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initialise ();
+        static Context* getContext (Manager*, 
+                                    Context**);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the transaction manager instance
+/// @brief create a transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdown ();
+        static Context* getContext (Manager*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a transaction object
+/// @brief increase the reference count
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction* createTransaction (struct TRI_vocbase_s*,
-                                        bool);
+        void increaseRefCount (); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the status of a transaction
+/// @brief decrease the reference count
+/// the last user that calls this will destroy the context!
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction::StateType statusTransaction (Transaction::IdType);
+        void decreaseRefCount (); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get oldest still running transaction
+/// @brief start a new unit of work
 ////////////////////////////////////////////////////////////////////////////////
 
-        TransactionInfo getOldestRunning ();
+        int startWorkUnit (struct TRI_vocbase_s*,
+                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether any of the specified transactions is still running
+/// @brief end a unit of work
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool containsRunning (std::vector<Transaction::IdType> const&);
+        int endWorkUnit ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove specified transactions from the failed list
+/// @brief create a new transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-        int removeFailed (std::vector<Transaction::IdType> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int beginTransaction (Transaction*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int commitTransaction (Transaction*,
-                               bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rollback a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int rollbackTransaction (Transaction*);
+        static Context* createContext (Manager*,
+                                       Context**);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -147,22 +155,34 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction id generator
+/// @brief the transaction manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        IdGenerator _generator;
+        Manager* _manager;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief R/W lock for transactions tables
+/// @brief address to update with our context
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::ReadWriteLock _lock;
+        Context** _globalContext;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief all running or aborted transactions
+/// @brief the underlying transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<Transaction::IdType, Transaction*> _transactions;
+        Transaction* _transaction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the current nesting level for work units
+////////////////////////////////////////////////////////////////////////////////
+
+        int _level;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the current number of users of this context
+////////////////////////////////////////////////////////////////////////////////
+        
+        int _refCount;
 
     };
 

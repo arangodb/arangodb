@@ -90,7 +90,6 @@ namespace triagens {
 
         Transaction (Manager*,
                      IdType,
-                     triagens::arango::CollectionNameResolver const&,
                      struct TRI_vocbase_s*,
                      bool,
                      bool = false);
@@ -182,13 +181,13 @@ namespace triagens {
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        int commit ();
+        int commit (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        int abort ();
+        int rollback ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -249,7 +248,7 @@ namespace triagens {
 /// @brief collection name resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::arango::CollectionNameResolver const& _resolver;
+        triagens::arango::CollectionNameResolver _resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase for the transaction

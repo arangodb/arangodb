@@ -109,12 +109,11 @@ void Manager::shutdown () {
 /// @brief create a transaction object
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction* Manager::createTransaction (triagens::arango::CollectionNameResolver const& resolver,
-                                         TRI_vocbase_t* vocbase,
+Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase,
                                          bool singleOperation) {
   Transaction::IdType id = _generator.next();
 
-  Transaction* transaction = new Transaction(this, id, resolver, vocbase, singleOperation);
+  Transaction* transaction = new Transaction(this, id, vocbase, singleOperation);
   
   WRITE_LOCKER(_lock);
   auto it = _transactions.insert(make_pair(id, transaction));
@@ -222,7 +221,8 @@ int Manager::beginTransaction (Transaction* transaction) {
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Manager::commitTransaction (Transaction* transaction) {
+int Manager::commitTransaction (Transaction* transaction,
+                                bool waitForSync) {
   Transaction::IdType id = transaction->id();
   
   WRITE_LOCKER(_lock);
@@ -249,10 +249,10 @@ int Manager::commitTransaction (Transaction* transaction) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Manager::abortTransaction (Transaction* transaction) {
+int Manager::rollbackTransaction (Transaction* transaction) {
   WRITE_LOCKER(_lock);
 
   if (transaction->state() != Transaction::StateType::STATE_BEGUN) {
