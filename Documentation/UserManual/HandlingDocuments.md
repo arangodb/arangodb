@@ -51,7 +51,7 @@ can leave out the @FA{collection} and use the shortcut:
 
     db._document("demo/362549736")
 
-Each document also has a document revision or ETag witch is returned in the
+Each document also has a document revision or ETag which is returned in the
 `_rev` field when requesting a document. The document's key is returned in the
 `_key` attribute.
 
