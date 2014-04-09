@@ -81,6 +81,8 @@ bin_arangod_SOURCES = \
 	arangod/Transaction/Context.cpp \
 	arangod/Transaction/IdGenerator.cpp \
 	arangod/Transaction/Manager.cpp \
+	arangod/Transaction/Operations.cpp \
+	arangod/Transaction/State.cpp \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Transaction/WorkUnit.cpp \
 	arangod/Utils/DocumentHelper.cpp \
