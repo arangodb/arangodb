@@ -138,6 +138,10 @@ exports.save = function (user, passwd, active, extra, changePassword) {
     active = true; // this is the default value
   }
 
+  if (changePassword === undefined || changePassword === null) {
+    changePassword = false; // this is the default
+  }
+
   var users = getStorage();
   var previous = users.firstExample({ user: user });
 
@@ -374,12 +378,14 @@ exports.all = function () {
 
 exports.reload = function () {
   internal.reloadAuth();
+
   if (require("org/arangodb/cluster").isCoordinator()) {
     // Tell the agency about this reload, such that all other coordinators
     // reload as well. This is important because most calls to this
     // function here come from actual changes in the collection _users.
     var UserVersion;
     var done = false;
+
     while (! done) {
       try {
         UserVersion = ArangoAgency.get("Sync/UserVersion")["Sync/UserVersion"];
@@ -397,6 +403,63 @@ exports.reload = function () {
       }
     }
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a password-change token
+////////////////////////////////////////////////////////////////////////////////
+
+exports.setPasswordToken = function (user, token) {
+  var users = getStorage();
+  var current = users.firstExample({ user: user });
+
+  if (current === null) {
+    return null;
+  }
+
+  if (token === null || token === undefined) {
+    token = internal.genRandomAlphaNumbers(50);
+  }
+
+  users.update(current, { passwordToken: token });
+
+  return token;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the password-change token
+////////////////////////////////////////////////////////////////////////////////
+
+exports.userByToken = function (token) {
+  var users = getStorage();
+  var current = users.firstExample({ passwordToken: token });
+
+  if (current === null) {
+    return null;
+  }
+
+  return current.user;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the password-change token
+////////////////////////////////////////////////////////////////////////////////
+
+exports.changePassword = function (token, password) {
+  var users = getStorage();
+  var current = users.firstExample({ passwordToken: token });
+
+  if (current === null) {
+    return false;
+  }
+
+  validatePassword(password);
+
+  var hash = encodePassword(password);
+
+  users.update(current, { passwordToken: null, password: hash });
+
+  return true;
 };
 
 // -----------------------------------------------------------------------------
