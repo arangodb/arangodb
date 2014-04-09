@@ -170,14 +170,14 @@ div {
   & .tile {
     @extend %tile;
     height: 100px;
-    width: 230px;
+    width: $tile-width - 12px;
   }
 
   & .bigtile {
     @extend %clickable;
     @extend %tile;
     height: 309px;
-    width: 460px;
+    width: 2 * ($tile-width - 12px);
 
     div.shardContainer {
       font-size: 30px;
