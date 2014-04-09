@@ -11,13 +11,13 @@ This is an introduction to managing databases in ArangoDB from within
 JavaScript. 
 
 While being in an established connection to ArangoDB, the current
-database can be changed explicity by using the `db._useDatabase()`
+database can be changed explicitly by using the `db._useDatabase()`
 method. This will switch to the specified database (provided it
 exists and the user can connect to it). From this point on, any
 following actions in the same shell or connection will use the
 specified database unless otherwise specified.
 
-Note: if the database is changed, client drivers need to store the 
+Note: If the database is changed, client drivers need to store the 
 current database name on their side, too. This is because connections
 in ArangoDB do not contain any state information. All state information
 is contained in the HTTP request/response data.
@@ -43,7 +43,7 @@ Working with Databases {#HandlingDatabasesShell}
 Database Methods {#HandlingDatabasesMethods}
 --------------------------------------------
 
-To following methods are available to manage databases via JavaScript.
+The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the `_system`
 database only.
 
@@ -85,7 +85,7 @@ Notes about Databases {#HandlingDatabasesGlossary}
 Please keep in mind that each database contains its own system collections,
 which need to set up when a database is created. This will make the creation
 of a database take a while. Replication is configured on a per-database level,
-meaning that any replication logging or applying for the a new database must
+meaning that any replication logging or applying for a new database must
 be configured explicitly after a new database has been created. Foxx applications
 are also available only in the context of the database they have been installed 
 in. A new database will only provide access to the system applications shipped
@@ -96,6 +96,6 @@ applications until they are explicitly installed for the particular database.
 
 @copydoc GlossaryDatabaseName
 
-@copydoc GlossaryDatabaseOrganisation
+@copydoc GlossaryDatabaseOrganization
 
 @BNAVIGATE_HandlingDatabases
