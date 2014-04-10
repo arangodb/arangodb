@@ -122,8 +122,7 @@
       var returnVal = false;
       $.ajax({
         type: "GET",
-        cache: false,
-        url: "/_api/collection/"+encodeURIComponent(val)+"/properties",
+        url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
         contentType: "application/json",
         processData: false,
         async: false,
