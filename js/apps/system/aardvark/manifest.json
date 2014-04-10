@@ -57,6 +57,7 @@
         "frontend/js/arango/templateEngine.js",
         "frontend/js/shell/browser.js",
         "frontend/js/config/dygraphConfig.js",
+        "frontend/js/config/newDygraphConfig.js",
         "frontend/js/modules/org/arangodb/**",
         "frontend/js/modules/org/arangodb-common.js",
         "frontend/js/modules/org/arangodb.js",
