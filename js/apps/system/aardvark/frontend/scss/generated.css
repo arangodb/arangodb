@@ -2489,12 +2489,21 @@ div.breadcrumb a.disabledBread {
   .modal-body .icon-info-sign:hover {
     opacity: 1; }
   .modal-body .collapse {
-    position: inherit; }
+    margin-right: -14px;
+    position: relative; }
   .modal-body .accordion-inner {
     border-top: 0;
     margin-left: 0;
     padding-left: 0;
     padding-right: 0; }
+  .modal-body .accordion-toggle span b.caret {
+    border-top-color: black;
+    float: right;
+    margin-top: 5px; }
+  .modal-body .accordion-toggle.collapsed span b.caret {
+    -ms-transform: rotate(90deg);
+    -webkit-transform: rotate(90deg);
+    transform: rotate(90deg); }
   .modal-body input {
     width: 384px; }
   .modal-body select {
