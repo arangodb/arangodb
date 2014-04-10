@@ -284,13 +284,6 @@
             this.collectionInfoView.render();
             this.naviView.selectMenuItem('collections-menu');
         },
-        newCollection: function () {
-            if (!this.newCollectionView) {
-                this.newCollectionView = new window.newCollectionView({});
-            }
-            this.newCollectionView.render();
-            this.naviView.selectMenuItem('collections-menu');
-        },
 
         documents: function (colid, pageid) {
             if (!window.documentsView) {
