@@ -1369,13 +1369,13 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-subtitle-bar, .dashboard-tendency, .dashboardModal, .pagination-line li a {
   float: left; }
 
 div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
+div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .dashboard-half-height-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
   clear: both;
   content: '.';
   display: block;
@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2038,10 +2038,10 @@ div .tile, div .bigtile {
 
 div .tile {
   height: 100px;
-  width: 230px; }
+  width: 228px; }
 div .bigtile {
   height: 309px;
-  width: 460px; }
+  width: 456px; }
   div .bigtile div.shardContainer {
     font-size: 30px; }
     div .bigtile div.shardContainer span {
@@ -2074,102 +2074,193 @@ div.resizecontainer {
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 14px; } }
-@media (min-width: 6px) and (max-width: 247px) {
+@media (min-width: 240px) and (max-width: 479px) {
   div.resizecontainer {
-    width: 0px; }
+    width: 228px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: 0px;
-    width: 0px; } }
-@media (min-width: 248px) and (max-width: 489px) {
+    margin-left: -114px;
+    width: 228px; }
+
+  .dashboard-large-chart {
+    width: 152px; }
+
+  .dashboard-medium-chart {
+    width: 114px; }
+
+  .dashboard-small-chart {
+    width: 76px; } }
+@media (min-width: 480px) and (max-width: 719px) {
   div.resizecontainer {
-    width: 242px; }
+    width: 468px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -121px;
-    width: 242px; } }
-@media (min-width: 490px) and (max-width: 731px) {
+    margin-left: -234px;
+    width: 468px; }
+
+  .dashboard-large-chart {
+    width: 312px; }
+
+  .dashboard-medium-chart {
+    width: 234px; }
+
+  .dashboard-small-chart {
+    width: 156px; } }
+@media (min-width: 720px) and (max-width: 959px) {
   div.resizecontainer {
-    width: 484px; }
+    width: 708px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -242px;
-    width: 484px; } }
-@media (min-width: 732px) and (max-width: 973px) {
+    margin-left: -354px;
+    width: 708px; }
+
+  .dashboard-large-chart {
+    width: 472px; }
+
+  .dashboard-medium-chart {
+    width: 354px; }
+
+  .dashboard-small-chart {
+    width: 236px; } }
+@media (min-width: 960px) and (max-width: 1199px) {
   div.resizecontainer {
-    width: 726px; }
+    width: 948px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -363px;
-    width: 726px; } }
-@media (min-width: 974px) and (max-width: 1215px) {
+    margin-left: -474px;
+    width: 948px; }
+
+  .dashboard-large-chart {
+    width: 632px; }
+
+  .dashboard-medium-chart {
+    width: 474px; }
+
+  .dashboard-small-chart {
+    width: 316px; } }
+@media (min-width: 1200px) and (max-width: 1439px) {
   div.resizecontainer {
-    width: 968px; }
+    width: 1188px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -484px;
-    width: 968px; } }
-@media (min-width: 1216px) and (max-width: 1457px) {
+    margin-left: -594px;
+    width: 1188px; }
+
+  .dashboard-large-chart {
+    width: 792px; }
+
+  .dashboard-medium-chart {
+    width: 594px; }
+
+  .dashboard-small-chart {
+    width: 396px; } }
+@media (min-width: 1440px) and (max-width: 1679px) {
   div.resizecontainer {
-    width: 1210px; }
+    width: 1428px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -605px;
-    width: 1210px; } }
-@media (min-width: 1458px) and (max-width: 1699px) {
+    margin-left: -714px;
+    width: 1428px; }
+
+  .dashboard-large-chart {
+    width: 952px; }
+
+  .dashboard-medium-chart {
+    width: 714px; }
+
+  .dashboard-small-chart {
+    width: 476px; } }
+@media (min-width: 1680px) and (max-width: 1919px) {
   div.resizecontainer {
-    width: 1452px; }
+    width: 1668px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -726px;
-    width: 1452px; } }
-@media (min-width: 1700px) and (max-width: 1941px) {
+    margin-left: -834px;
+    width: 1668px; }
+
+  .dashboard-large-chart {
+    width: 1112px; }
+
+  .dashboard-medium-chart {
+    width: 834px; }
+
+  .dashboard-small-chart {
+    width: 556px; } }
+@media (min-width: 1920px) and (max-width: 2159px) {
   div.resizecontainer {
-    width: 1694px; }
+    width: 1908px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -847px;
-    width: 1694px; } }
-@media (min-width: 1942px) and (max-width: 2183px) {
+    margin-left: -954px;
+    width: 1908px; }
+
+  .dashboard-large-chart {
+    width: 1272px; }
+
+  .dashboard-medium-chart {
+    width: 954px; }
+
+  .dashboard-small-chart {
+    width: 636px; } }
+@media (min-width: 2160px) and (max-width: 2399px) {
   div.resizecontainer {
-    width: 1936px; }
+    width: 2148px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -968px;
-    width: 1936px; } }
-@media (min-width: 2184px) and (max-width: 2425px) {
+    margin-left: -1074px;
+    width: 2148px; }
+
+  .dashboard-large-chart {
+    width: 1432px; }
+
+  .dashboard-medium-chart {
+    width: 1074px; }
+
+  .dashboard-small-chart {
+    width: 716px; } }
+@media (min-width: 2400px) and (max-width: 2639px) {
   div.resizecontainer {
-    width: 2178px; }
+    width: 2388px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -1089px;
-    width: 2178px; } }
-@media (min-width: 2426px) and (max-width: 2667px) {
+    margin-left: -1194px;
+    width: 2388px; }
+
+  .dashboard-large-chart {
+    width: 1592px; }
+
+  .dashboard-medium-chart {
+    width: 1194px; }
+
+  .dashboard-small-chart {
+    width: 796px; } }
+@media (min-width: 2640px) and (max-width: 2879px) {
   div.resizecontainer {
-    width: 2420px; }
+    width: 2628px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -1210px;
-    width: 2420px; } }
-@media (min-width: 2668px) and (max-width: 2909px) {
-  div.resizecontainer {
-    width: 2662px; }
+    margin-left: -1314px;
+    width: 2628px; }
 
-  div.modalChartDetail {
-    left: 50%;
-    margin-left: -1331px;
-    width: 2662px; } }
+  .dashboard-large-chart {
+    width: 1752px; }
+
+  .dashboard-medium-chart {
+    width: 1314px; }
+
+  .dashboard-small-chart {
+    width: 876px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -2743,7 +2834,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2772,6 +2863,65 @@ pre.gv-object-view {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap; }
+
+.dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-subtitle-bar, .dashboard-tendency {
+  border-left: 1px solid black;
+  margin-left: -1px; }
+  .dashboard-large-chart:first-child, .dashboard-medium-chart:first-child, .dashboard-small-chart:first-child, .dashboard-subtitle-bar:first-child, .dashboard-tendency:first-child {
+    border-left: 0;
+    margin-left: 0; }
+
+.dashboard-large-chart {
+  height: 250px; }
+
+.dashboard-medium-chart {
+  height: 250px; }
+
+.dashboard-small-chart {
+  height: 250px; }
+
+.dashboard-legend {
+  display: block; }
+
+.dashboard-half-height-chart {
+  height: 125px; }
+
+.dashboard-title-bar {
+  background-color: #686766;
+  border-bottom: 0;
+  border-left: 1px;
+  border-left-color: black;
+  border-right: 1px;
+  border-right-color: black;
+  border-style: solid;
+  border-top: 1px;
+  border-top-color: black;
+  color: white;
+  font-size: 16px;
+  height: 36px;
+  line-height: 36px;
+  margin-left: -1px;
+  margin-right: -1px;
+  text-align: center; }
+
+.dashboard-subtitle-bar {
+  border-bottom: 1px solid black;
+  border-top: 1px solid black;
+  font-size: 16px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  width: 50%; }
+
+.dashboard-tendency {
+  height: 53px;
+  width: 50%; }
+
+.dashboard-row {
+  border: 1px solid black;
+  margin-bottom: 5px;
+  margin-left: -1px;
+  margin-right: -1px; }
 
 .dashboardModal {
   -moz-border-radius: 8px !important;
@@ -3256,7 +3406,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: gray; }
+  background-color: grey; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
