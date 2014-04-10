@@ -29,7 +29,7 @@ module.exports = function(karma) {
       'frontend/js/arango/**.js': ['coverage'],
       'frontend/js/collections/**.js': ['coverage'],
       'frontend/js/config/**.js': ['coverage'],
-      'frontend/js/graphViewer/**.js': ['coverage'],
+      'frontend/js/graphViewer/**/**.js': ['coverage'],
       'frontend/js/models/**.js': ['coverage'],
       'frontend/js/routers/**.js': ['coverage'],
       'frontend/js/views/**.js': ['coverage']
