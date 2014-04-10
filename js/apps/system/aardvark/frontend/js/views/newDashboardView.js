@@ -23,6 +23,7 @@
     },
     
     showDetail : function(e) {
+        var self = this;
         var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g , "");
         this.getStatistics(figure)
         var options = this.dygraphConfig.getDetailChartConfig(figure);
@@ -36,17 +37,20 @@
                 )
             ]
         );
+
         $('#modal-dialog').toggleClass("modalChartDetail", true);
         $('#modal-body').toggleClass("modal-body", true);
-        this.detailGraph = new Dygraph(
+
+        var dimensions = self.getCurrentSize("lineChartDetail");
+        options.height = dimensions.height;
+        options.width = dimensions.width;
+
+        self.detailGraph = new Dygraph(
             document.getElementById("lineChartDetail"),
-            this.history[figure],
+            self.history[figure],
             options
         );
 
-
-
-        //on modal hide ---> hidden()
     },
 
     hidden: function () {
@@ -59,8 +63,13 @@
     getCurrentSize : function (div) {
         var height, width;
         div.replace(/div#/g,  "");
-        height = $('#' + div).parent().height() * 0.9;
-        width = $('#' + div).parent().width() * 0.9;
+        if (div !== "lineChartDetail") {
+            height = $('#' + div).parent().height() * 0.9;
+            width = $('#' + div).parent().width() * 0.9;
+        } else {
+            height = $('#lineChartDetail').height() - 34 -29;
+            width = $('#lineChartDetail').width() -10;
+        }
         return {
             height : height,
             width: width
