@@ -4,7 +4,7 @@
   "author": "gschwab",
   "isSystem": true,
   "controllers": {
-    "/_open/": "cerberus.js"
+    "/": "cerberus.js"
   },
   "assets": {
     "changePassword.html": {

@@ -892,6 +892,84 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief routing function
+////////////////////////////////////////////////////////////////////////////////
+
+function routeRequest (req, res) {
+  var action;
+  var execute;
+  var next;
+  var path = req.suffix.join("/");
+
+  action = exports.firstRouting(req.requestType, req.suffix);
+
+  execute = function () {
+    if (action.route === undefined) {
+      exports.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, 
+        "unknown path '" + path + "'");
+      return;
+    }
+
+    if (action.route.path !== undefined) {
+      req.path = action.route.path;
+    }
+    else {
+      delete req.path;
+    }
+
+    if (action.prefix !== undefined) {
+      req.prefix = action.prefix;
+    }
+    else {
+      delete req.prefix;
+    }
+
+    if (action.suffix !== undefined) {
+      req.suffix = action.suffix;
+    }
+    else {
+      delete req.suffix;
+    }
+
+    if (action.urlParameters !== undefined) {
+      req.urlParameters = action.urlParameters;
+    }
+    else {
+      req.urlParameters = {};
+    }
+
+    var func = action.route.callback.controller;
+
+    if (func === null || typeof func !== 'function') {
+      func = exports.errorFunction(action.route,
+                                   'Invalid callback definition found for route ' 
+                                   + JSON.stringify(action.route));
+    }
+
+    try {
+      func(req, res, action.route.callback.options, next);
+    }
+    catch (err) {
+      if (err instanceof internal.SleepAndRequeue) {
+        throw err;
+      }
+
+      var msg = 'A runtime error occurred while executing an action: '
+              + String(err) + " " + String(err.stack) + " " + (typeof err);
+
+      exports.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
+    }
+  };
+
+  next = function () {
+    action = exports.nextRouting(action);
+    execute();
+  };
+
+  execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
 ///
 /// @FUN{actions.defineHttp(@FA{options})}
@@ -1977,6 +2055,7 @@ function stringifyRequestAddress (req) {
 // -----------------------------------------------------------------------------
 
 // public functions
+exports.routeRequest             = routeRequest;
 exports.defineHttp               = defineHttp;
 exports.getErrorMessage          = getErrorMessage;
 exports.getJsonBody              = getJsonBody;
