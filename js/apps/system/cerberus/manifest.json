@@ -9,8 +9,7 @@
   "assets": {
     "changePassword.html": {
       "files": [
-        "html/changePassword.html",
-        "html/error.html"
+        "html/changePassword.html"
       ]
     }
   }
