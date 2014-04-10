@@ -823,7 +823,13 @@ Function default_installation_directory
   checkSingleUser:
     StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
     SetShellVarContext current
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+    ${If}  ${UAC_IsAdmin}  
+      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+    ${Else}
+; normal user has not write rights to HKCC
+      WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
+    ${EndIf}
+
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
   all_users:
@@ -897,7 +903,6 @@ SetShellVarContext all
 ; determine admin versus local install
 Function un.onInit
 
-  !insertmacro triagens_init
 ;  ClearErrors
 ;  UserInfo::GetName
 ;  IfErrors noLM
@@ -918,8 +923,29 @@ Function un.onInit
 ;
 ;  done:
 
-    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
-  ${If} $0 == "Service" 
+; determine admin versus local install
+; arango may be installed on diferent places
+; determine if the arango was installed for a local user
+
+  Pop $0
+; temporary variable used as flag for decide the change to administration rights
+  StrCpy $R0 "admin"
+  ${If}  ${UAC_IsAdmin}  
+    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"   
+  ${Else}
+; see function default_installation_directory
+    ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
+    ${If}  $0 == "SingleUser"
+      StrCpy $R0 "user"
+    ${EndIf}
+  ${EndIf}
+  
+  ${If} $R0 == "admin" 
+    !insertmacro triagens_init
+  ${EndIf}
+ ; are we a child process? 
+ ; when yes, we have administrator privileges
+  ${If} ${UAC_IsInnerInstance} 
     SetShellVarContext all
   ${Else}
     SetShellVarContext current
@@ -1057,7 +1083,12 @@ Section "Uninstall"
   secondStartMenuDeleteLoopDone:
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
-  DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ; Delete flag which controls if arango is started as service or no
+  ${If} ${UAC_IsInnerInstance} 
+     DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ${Else}
+     DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ${EndIf} 
 
   Push $INSTDIR\bin
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
