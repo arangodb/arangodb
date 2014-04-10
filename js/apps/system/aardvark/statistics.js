@@ -174,6 +174,7 @@ function computeStatisticsRaw (start) {
           getsPerSecond: null,
           deletesPerSecond: null,
           othersPerSecond: null,
+          pathessPerSecond: null,
           asyncsPerSecond: null,
           virtualSize: null,
           residentSize: null,
@@ -260,6 +261,11 @@ function computeStatisticsRaw (start) {
         d,
         raw.http.requestsOther, 
         lastRaw.http.requestsOther);
+
+      data.patchesPerSecond = perTimeSlice(
+        d,
+        raw.http.requestsPatch, 
+        lastRaw.http.requestsPatch);
 
       data.asyncsPerSecond = perTimeSlice(
         d,
@@ -644,6 +650,18 @@ function computeStatisticsSeries (start, attrs) {
 
   if (attrs === null || attrs.getsPerSecond) {
     result.getsPerSecond = convertSeries(raw.series, "getsPerSecond");
+  }
+
+  if (attrs === null || attrs.deletesPerSecond) {
+    result.deletesPerSecond = convertSeries(raw.series, "deletesPerSecond");
+  }
+
+  if (attrs === null || attrs.othersPerSecond) {
+    result.othersPerSecond = convertSeries(raw.series, "othersPerSecond");
+  }
+
+  if (attrs === null || attrs.patchesPerSecond) {
+    result.patchesPerSecond = convertSeries(raw.series, "patchesPerSecond");
   }
 
   if (attrs === null || attrs.asyncsPerSecond) {
