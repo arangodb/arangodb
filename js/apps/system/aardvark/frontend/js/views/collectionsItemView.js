@@ -171,7 +171,12 @@
       journalSize = journalSize/(1024*1024);
       tableContent.push(
         window.modalView.createTextEntry(
-          "change-collection-size", "Journal size", journalSize, false, "", true
+          "change-collection-size",
+          "Journal size",
+          journalSize,
+          "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+          "",
+          true
         )
       );
 
