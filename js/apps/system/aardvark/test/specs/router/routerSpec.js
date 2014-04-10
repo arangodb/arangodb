@@ -764,40 +764,6 @@
                 );
             });
 
-            it("should offer the add new graph view", function () {
-                simpleNavigationCheck(
-                    "graphManagement/add",
-                    "AddNewGraphView",
-                    "graphviewer-menu",
-                    {
-                        collection: storeDummy,
-                        graphs: graphsDummy
-                    }
-                );
-            });
-
-            /*
-
-            it("should offer the delete graph view", function () {
-                var name = "testGraph";
-                simpleNavigationCheck(
-                    {
-                        url: "graphManagement/delete/:name",
-                        params: [name]
-                    },
-                    "DeleteGraphView",
-                    "graphviewer-menu",
-                    {
-                        collection: graphsDummy
-                    },
-                    {
-                        render: name
-                    }
-                );
-            });
-
-            */
-
             it("should route to the applications tab", function () {
                 simpleNavigationCheck(
                     "applications",
