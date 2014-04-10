@@ -119,8 +119,22 @@
     },
 
     isSystemCollection: function (val) {
-      //return val && val.name && val.name.substr(0, 1) === '_';
-      return val.substr(0, 1) === '_';
+      var returnVal = false;
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: "/_api/collection/"+encodeURIComponent(val)+"/properties",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          returnVal = data.isSystem;
+        },
+        error: function(data) {
+          returnVal = false;
+        }
+      });
+      return returnVal;
     },
 
     collectionApiType: function (identifier, refresh) {
@@ -150,7 +164,7 @@
         type = "unknown";
       }
 
-      if (val.name.substr(0, 1) === '_') {
+      if (this.isSystemCollection(val.name)) {
         type += " (system)";
       }
 
