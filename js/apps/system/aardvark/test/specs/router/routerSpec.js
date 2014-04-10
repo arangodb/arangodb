@@ -731,15 +731,6 @@
                 );
             });
 
-            it("should route to the new collection creation", function () {
-                simpleNavigationCheck(
-                    "new",
-                    "newCollectionView",
-                    "collections-menu",
-                    {}
-                );
-            });
-
             it("should route to the api tab", function () {
                 simpleNavigationCheck(
                     "api",
