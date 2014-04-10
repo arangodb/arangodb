@@ -1,7 +1,7 @@
 CollectionIdentifier {#GlossaryCollectionIdentifier}
 ====================================================
 
-@GE{Collection Identifier}: A collection identifier identifies a
+@GE{Collection Identifier}: A collection identifier lets you refer to a
 collection in a database. It is a string value and is unique within 
 the database.
 Up to including ArangoDB 1.1, the collection identifier has been a

@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, runs, expect, waitsFor*/
-/*global GraphManagementView, _, $*/
+/*global GraphManagementView, _, jasmine$*/
 
 (function() {
   "use strict";
@@ -10,11 +10,16 @@
     
     var view,
       div,
+      modalDiv,
       graphs,
       collections,
       v1, v2, e1, e2, sys1, cols;
     
     beforeEach(function() {
+      modalDiv = document.createElement("div");
+      modalDiv.id = "modalPlaceholder";
+      document.body.appendChild(modalDiv);
+      window.modalView = new window.ModalView();
       collections = new window.arangoCollections(cols);
       graphs = new window.GraphCollection();
       div = document.createElement("div");
@@ -30,6 +35,7 @@
 
     afterEach(function() {
       document.body.removeChild(div);
+      document.body.removeChild(modalDiv);
     });
 
     it("should fetch the graphs on render", function () {
@@ -82,30 +88,33 @@
 
       describe("creating a new graph", function() {
 
-        it("should navigate to the graph adding view", function() {
-          spyOn(window.App, "navigate");
-          $("#createGraph").click();
-          expect(window.App.navigate).toHaveBeenCalledWith(
-            "graphManagement/add",
-            {
-              trigger: true
-            }
-          );
+        it("should create a new graph", function() {
+          runs(function() {
+            $("#createGraph").click();
+          });
+          waitsFor(function() {
+            return $("#modal-dialog").css("display") === "block";
+          });
+          runs (function() {
+            $("#createNewGraphName").val("newGraph");
+            $("#newGraphVertices").val("newVertices");
+            $("#newGraphEdges").val("newEdges");
+            spyOn($, "ajax").andCallFake(function(opts) {
+              expect(opts.type).toEqual("POST");
+              expect(opts.url).toEqual("/_api/graph");
+              expect(opts.data).toEqual(JSON.stringify({
+                _key: "newGraph",
+                vertices: "newVertices",
+                edges: "newEdges",
+                _id: "",
+                _rev: ""
+              }));
+            });
+            $("#modalButton1").click();
+            expect($.ajax).toHaveBeenCalled()
+          });
         });
 
-      });
-
-      it("should navigate to graph delete view", function() {
-        spyOn(window.App, "navigate");
-        var lg = graphs.get("g3");
-        $("#" + g3._key + "_settings").click();
-        $("#deleteGraph").click();
-        expect(window.App.navigate).toHaveBeenCalledWith(
-          "graphManagement/delete/" + g3._key,
-          {
-            trigger: true
-          }
-        );
       });
 
     });

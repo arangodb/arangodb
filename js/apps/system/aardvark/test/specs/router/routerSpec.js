@@ -731,19 +731,10 @@
                 );
             });
 
-            it("should route to the new collection creation", function () {
-                simpleNavigationCheck(
-                    "new",
-                    "newCollectionView",
-                    "collections-menu",
-                    {}
-                );
-            });
-
             it("should route to the api tab", function () {
                 simpleNavigationCheck(
                     "api",
-                    "apiView",
+                    "ApiView",
                     "tools-menu"
                 );
             });
@@ -772,40 +763,6 @@
                     { collection: graphsDummy}
                 );
             });
-
-            it("should offer the add new graph view", function () {
-                simpleNavigationCheck(
-                    "graphManagement/add",
-                    "AddNewGraphView",
-                    "graphviewer-menu",
-                    {
-                        collection: storeDummy,
-                        graphs: graphsDummy
-                    }
-                );
-            });
-
-            /*
-
-            it("should offer the delete graph view", function () {
-                var name = "testGraph";
-                simpleNavigationCheck(
-                    {
-                        url: "graphManagement/delete/:name",
-                        params: [name]
-                    },
-                    "DeleteGraphView",
-                    "graphviewer-menu",
-                    {
-                        collection: graphsDummy
-                    },
-                    {
-                        render: name
-                    }
-                );
-            });
-
-            */
 
             it("should route to the applications tab", function () {
                 simpleNavigationCheck(
