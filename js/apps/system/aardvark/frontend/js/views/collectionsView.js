@@ -258,7 +258,13 @@
           shardBy.push("_key");
         }
       }
-      var isSystem = (collName.substr(0, 1) === '_');
+      //no new system collections via webinterface
+      //var isSystem = (collName.substr(0, 1) === '_');
+      if (collName.substr(0, 1) === '_') {
+        arangoHelper.arangoError('No "_" allowed as first character!');
+        return 0;
+      }
+      var isSystem = false;
       var wfs = (collSync === "true");
       if (collSize > 0) {
         try {
