@@ -56,7 +56,8 @@
   }
 
   .collapse {
-    position: inherit;
+    margin-right: -14px;
+    position: relative;
   }
 
   .accordion-inner {
@@ -64,6 +65,30 @@
     margin-left: 0;
     padding-left: 0;
     padding-right: 0;
+  }
+
+  .accordion-toggle {
+
+    span {
+
+      b.caret {
+        border-top-color: $c-black;
+        float: right;
+        margin-top: 5px;
+      }
+    }
+
+    &.collapsed {
+      span {
+
+        b.caret {
+          -ms-transform: rotate(90deg);
+          -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+        }
+      }
+
+    }
   }
 
   input {
@@ -87,7 +112,7 @@
 }
 
 .modalChartDetail {
-  height: 70%;
+  height: 570px;
   margin-left: 0;
   width: 70%;
 }

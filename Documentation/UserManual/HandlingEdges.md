@@ -7,7 +7,7 @@ Handling Edges{#HandlingEdges}
 Edges, Identifiers, Handles{#HandlingEdgesIntro}
 ================================================
 
-This is an introduction to ArangoDB's interface for edges and how handle
+This is an introduction to ArangoDB's interface for edges and how to handle
 edges from the JavaScript shell @LIT{arangosh}. For other languages see the
 corresponding language API.
 

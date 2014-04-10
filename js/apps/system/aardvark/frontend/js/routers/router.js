@@ -76,7 +76,7 @@
           // This should be the only global object
           window.modalView = new window.ModalView();
             var self = this;
-            this.bind('all', function (trigger, args) {
+           /* this.bind('all', function (trigger, args) {
                 if (trigger === "route") {
                     if (self.currentRoute === "dashboard" && self.dashboardView) {
                         self.dashboardView.stopUpdating();
@@ -85,7 +85,7 @@
                     }
                     self.currentRoute = args;
                 }
-            });
+            });*/
             this.graphs = new window.GraphCollection();
             this.notificationList = new window.NotificationCollection();
 
@@ -284,13 +284,6 @@
             this.collectionInfoView.render();
             this.naviView.selectMenuItem('collections-menu');
         },
-        newCollection: function () {
-            if (!this.newCollectionView) {
-                this.newCollectionView = new window.newCollectionView({});
-            }
-            this.newCollectionView.render();
-            this.naviView.selectMenuItem('collections-menu');
-        },
 
         documents: function (colid, pageid) {
             if (!window.documentsView) {
@@ -332,7 +325,7 @@
 
         api: function () {
             if (!this.apiView) {
-                this.apiView = new window.apiView();
+                this.apiView = new window.ApiView();
             }
             this.apiView.render();
             this.naviView.selectMenuItem('tools-menu');
@@ -377,6 +370,17 @@
         */
         dashboard: function () {
             this.naviView.selectMenuItem('dashboard-menu');
+            if (this.dashboardView === undefined) {
+                this.dashboardView = new newDashboardView({
+                    dygraphConfig: window.newDygraphConfig
+                });
+            }
+            this.dashboardView.render();
+        },
+
+/*
+        dashboard: function () {
+            this.naviView.selectMenuItem('dashboard-menu');
             if (this.statisticsDescriptionCollection === undefined) {
                 this.statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
                 this.statisticsDescriptionCollection.fetch({
@@ -396,6 +400,8 @@
             }
             this.dashboardView.render();
         },
+*/
+
 
         graph: function () {
             var self = this;

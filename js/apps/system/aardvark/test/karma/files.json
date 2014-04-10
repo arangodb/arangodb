@@ -147,7 +147,6 @@
   "frontend/js/views/collectionsView.js",
   "frontend/js/views/collectionView.js",
   "frontend/js/views/collectionInfoView.js",
-  "frontend/js/views/newCollectionView.js",
   "frontend/js/views/collectionsItemView.js",
   "frontend/js/views/documentsView.js",
   "frontend/js/views/documentView.js",
@@ -248,6 +247,8 @@
   "test/specs/collections/ClusterStatisticsCollectionSpec.js",
 
 
+  "test/specs/views/apiViewSpec.js",
+  "test/specs/views/appDocumentationViewSpec.js",
   "test/specs/views/modalViewSpec.js",
   "test/specs/views/editListEntryViewSpec.js",
   "test/specs/views/collectionViewSpec.js",
