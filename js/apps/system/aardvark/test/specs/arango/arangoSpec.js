@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global describe, it, expect, jasmine, spyOn*/
+/*global describe, it, expect, jasmine, spyOn, beforeEach*/
 /*global $, d3, arangoHelper*/
 
 
@@ -7,6 +7,17 @@ describe("Arango Helper", function() {
   "use strict";
 
   describe("Checking collection types converter", function() {
+
+    var ajaxCB;
+
+    beforeEach(function() {
+      ajaxCB = function() {
+
+      };
+      spyOn($, "ajax").andCallFake(function(opts) {
+        ajaxCB(opts);
+      });
+    });
 
     it("if blank collection name", function() {
       var myObject = {},
