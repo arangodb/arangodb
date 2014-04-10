@@ -44,6 +44,35 @@
       document.body.removeChild(div);
     });
 
+    it("assert basics", function () {
+      expect(view.currentLoglevel).toEqual("logall");
+      expect(view.id).toEqual("#logContent");
+    });
+
+    it("check set not same active log level function", function () {
+      var button = {
+        currentTarget: {
+          id: "logdebug"
+        }
+      }
+      spyOn(view, "convertModelToJSON");
+      view.setActiveLoglevel(button);
+      expect(view.convertModelToJSON).toHaveBeenCalled();
+      expect(view.currentLoglevel).toBe(button.currentTarget.id);
+    });
+
+    it("check set same active log level function", function () {
+      var button = {
+        currentTarget: {
+          id: "logall"
+        }
+      }
+      spyOn(view, "convertModelToJSON");
+      view.setActiveLoglevel(button);
+      expect(view.convertModelToJSON).not.toHaveBeenCalled();
+      expect(view.currentLoglevel).toBe(button.currentTarget.id);
+    });
+
     it("set active log level to loginfo", function () {
       allLogs.fetch.reset();
       spyOn(infoLogs, "fetch");
