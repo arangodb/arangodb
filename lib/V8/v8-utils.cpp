@@ -1743,7 +1743,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   double rssp = 0;
 
   if (TRI_PhysicalMemory != 0) {
-    rssp = 100.0 * rss / TRI_PhysicalMemory;
+    rssp = rss / TRI_PhysicalMemory;
   }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
