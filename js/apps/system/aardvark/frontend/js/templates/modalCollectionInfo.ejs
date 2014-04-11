@@ -1,4 +1,4 @@
-<script id="collectionInfoView.ejs" type="text/template">
+<script id="modalCollectionInfo.ejs" type="text/template">
 <%
     var roundNumber = function(number, n) {
       var factor;
@@ -7,15 +7,11 @@
       return returnVal;
     };
 
-%>
+    var figuresData = content.getFigures();
+    var revision    = content.getRevision();
+    var index       = content.getIndex();
 
-<div id="show-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader" id="show-collection-name">Collection Info</a>
-  </div>
-	
-  <div class="modal-body show-collection">
+%>
 
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
@@ -24,64 +20,74 @@
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
-      
+
 			<div class="tab-pane active" id="info">
-        
+
         <table id="collectionInfoTable">
-          <tr id="collectionSizeBox" style="display:none">
+          <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size (MB):</th>
-            <th class="collectionInfoTh"><div id="show-collection-size" class="modal-text"/></th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-size" class="modal-text">
+                <%=roundNumber(figuresData.journalSize / 1024 / 1024, 2)%>
+              </div>
+            </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
                   <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
             </th>
           </tr>
-          <tr id="collectionSyncBox" style="display:none">
+          <tr id="collectionSyncBox">
             <th class="collectionInfoTh2">Wait for sync:</th>
             <th class="collectionInfoTh">
-                <div id="show-collection-sync" class="modal-text"/>
-            </th> 
+                <div id="show-collection-sync" class="modal-text">
+                  <%=figuresData.waitForSync%>
+                </div>
+            </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
                   <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
             </th>
-          </tr> 
+          </tr>
 
           <tr>
             <th class="collectionInfoTh2">ID:</th>
             <th class="collectionInfoTh">
-              <div id="show-collection-id" class="modal-text"/>
+              <div id="show-collection-id" class="modal-text">
+                <%=content.get("id")%>
+              </div>
             <th>
           </tr>
-         
-          <tr id="collectionRevBox" style="display:none">
+
+          <tr id="collectionRevBox">
             <th class="collectionInfoTh2">Revision:</th>
             <th class="collectionInfoTh">
-              <div id="show-collection-rev" class="modal-text"/>
+              <div id="show-collection-rev" class="modal-text">
+                <%=revision.revision%>
+              </div>
             </th>
           </tr>
 
           <tr>
-            <th class="collectionInfoTh2">Type:</th> 
+            <th class="collectionInfoTh2">Type:</th>
             <th class="collectionInfoTh">
-              <div id="show-collection-type" class="modal-text"/>
+              <div class="modal-text"><%=content.get("type")%></div>
             </th>
           </tr>
 
           <tr>
             <th class="collectionInfoTh2">Status:</th>
             <th class="collectionInfoTh">
-              <div id="show-collection-status" class="modal-text"/>
+              <div class="modal-text"><%=content.get("status")%></div>
             </th>
           </tr>
         </table>
-        
+
       </div>
 
       <div class="tab-pane collection-info-figures" id="figures">
@@ -100,7 +106,7 @@
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalInfoTooltips" data-toggle="tooltip" data-placement="left" title="Number of active datafiles.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number of active datafiles.">
                   <span class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
@@ -113,7 +119,7 @@
             <%=roundNumber(figuresData.figures.journals.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Number of journal files.">
+              <a class="modalTooltips" title="Number of journal files.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -124,7 +130,7 @@
             <%=roundNumber(figuresData.figures.compactors.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Number of compactor files.">
+              <a class="modalTooltips" title="Number of compactor files.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -135,7 +141,7 @@
             <%=roundNumber(figuresData.figures.shapefiles.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Number of shape files.">
+              <a class="modalTooltips" title="Number of shape files.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -151,7 +157,7 @@
             <th class="modal-text">Shapes</th>
             <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Total number of shapes used in the collection">
+              <a class="modalTooltips" title="Total number of shapes used in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -159,7 +165,7 @@
             <th class="modal-text">Attributes</th>
             <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Total number of attributes used in the collection">
+              <a class="modalTooltips" title="Total number of attributes used in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -181,8 +187,9 @@
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
-              <a class="modalInfoTooltips" title="Total number and size used by all living documents.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+              <a class="modalTooltips" title="Total number and size used by all living documents.">
+                <span class="arangoicon icon_arangodb_info"></span>
+              </a>
             </th>
           </tr>
           <tr>
@@ -195,8 +202,9 @@
 
             <th class="tooltipInfoTh">
               <div>
-              <a class="modalInfoTooltips" title="Total number and size used by all dead documents.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
+                <a class="modalTooltips" title="Total number and size used by all dead documents.">
+                <span class="arangoicon icon_arangodb_info"></span>
+                </a>
             </div>
             </th>
 
@@ -204,7 +212,7 @@
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-					
+
 			<div class="tab-pane" id="index">
         <table id="collectionIndexTable">
           <tr class="figuresHeader">
@@ -213,13 +221,30 @@
             <th class="collectionInfoTh">Unique</th>
             <th class="collectionInfoTh">Fields</th>
           </tr>
+          <%
+          if (index){
+            var fieldString = '';
+            $.each(index.indexes, function(k,v) {
+              if (v.fields !== undefined) {
+                fieldString = v.fields.join(", ");
+              }
+
+              //cut index id
+              var position = v.id.indexOf('/');
+              var indexId = v.id.substr(position+1, v.id.length);
+          %>
+          <tr>
+            <th class="collectionInfoTh modal-text"><%=indexId%></th>
+            <th class="collectionInfoTh modal-text"><%=v.type%></th>
+            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
+            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
+          </tr>
+          <%
+            });
+          }
+          %>
         </table>
 			</div>
 
 	  </div>
-  </div>
-  <div id="colFooter" class="modal-footer">
-    <button id="closeBtnInfoView"class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
-  </div>
-</div>
 </script>

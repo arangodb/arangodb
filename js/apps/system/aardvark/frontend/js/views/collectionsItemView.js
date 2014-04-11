@@ -44,9 +44,12 @@
 
     showProperties: function(event) {
       event.stopPropagation();
+      this.createInfoModal();
+/*
       window.App.navigate(
         "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
       );
+*/
     },
     
     selectCollection: function() {
@@ -171,7 +174,12 @@
       journalSize = journalSize/(1024*1024);
       tableContent.push(
         window.modalView.createTextEntry(
-          "change-collection-size", "Journal size", journalSize, false, "", true
+          "change-collection-size",
+          "Journal size",
+          journalSize,
+          "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+          "",
+          true
         )
       );
 
@@ -238,6 +246,18 @@
         buttons,
         tableContent
       );
+    },
+
+    createInfoModal: function() {
+      var buttons = [],
+        tableContent = this.model;
+      window.modalView.show(
+        "modalCollectionInfo.ejs",
+        "Collection: " + this.model.get('name'),
+        buttons,
+        tableContent
+      );
+
     }
 
   });

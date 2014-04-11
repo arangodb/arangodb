@@ -1,4 +1,5 @@
 $dashboard-height: 250px;
+$dashboard-padding: 28px;
 
 %dashboard-chart-box {
   @extend %pull-left;
@@ -11,34 +12,58 @@ $dashboard-height: 250px;
   }
 }
 
+.dashboard-interior-chart {
+  @extend %pull-left;
+  height: $dashboard-height - $dashboard-padding;
+}
+
 .dashboard-large-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
+  padding-top: $dashboard-padding;
 }
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
+  padding-top: $dashboard-padding;
 }
 
 .dashboard-small-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
+  padding-top: $dashboard-padding;
+}
+
+.dashboard-tendency-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  height: $dashboard-height + $dashboard-padding;
 }
 
 .dashboard-legend {
-  display: block;
+  @extend %pull-left;
+  height: $dashboard-height;
+  width: $legend-width;
+
+  .dashboard-legend-inner {
+    padding-top: 20px;
+  }
 }
 
 .dashboard-half-height-chart {
   @extend %clear-float;
-  height: $dashboard-height / 2;
+  height: ($dashboard-height + $dashboard-padding) / 2;
 }
 
 .dashboard-title-bar {
   background-color: $c-bar-bg;
   border: {
-    bottom: 0;
+    bottom: 1px;
+    bottom-color: $c-black;
     left: 1px;
     left-color: $c-black;
     right: 1px;
@@ -54,13 +79,24 @@ $dashboard-height: 250px;
   margin-left: -1px;
   margin-right: -1px;
   text-align: center;
+
+  .dashboard-half-title-bar {
+    @extend %pull-left;
+    border-left: 1px solid $c-black;
+    margin-left: -1px;
+    width: 50%;
+
+    &:first-child {
+      border-left: 0;
+      margin-left: 0;
+    }
+  }
 }
 
 .dashboard-subtitle-bar {
   @extend %pull-left;
   @extend %dashboard-chart-box;
   border-bottom: 1px solid $c-black;
-  border-top: 1px solid $c-black;
   font-size: 16px;
   height: 36px;
   line-height: 36px;
@@ -71,7 +107,7 @@ $dashboard-height: 250px;
 .dashboard-tendency {
   @extend %pull-left;
   @extend %dashboard-chart-box;
-  height: $dashboard-height / 2 - 36px - 36px;
+  height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
   width: 50%;
 }
 
