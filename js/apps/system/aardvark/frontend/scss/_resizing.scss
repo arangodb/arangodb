@@ -37,6 +37,7 @@ div.resizecontainer {
 @for $i from 1 through 11 {
   $min: $tile-width * $i;
   $content-size: $min - 12px;
+  
   @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
 
     div.resizecontainer {
@@ -54,7 +55,7 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-interior-chart {
-        width: $int-width - 106px;
+        width: $int-width - $legend-width;
       }
     }
 
@@ -63,7 +64,7 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-interior-chart {
-        width: $int-width - 106px;
+        width: $int-width - $legend-width;
       }
     }
 
@@ -72,9 +73,19 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-interior-chart {
-        width: $int-width - 106px;
+        width: $int-width - $legend-width;
       }
     }
+
+    .dashboard-tendency-chart {
+      $int-width: ($content-size / 3);
+      width: $int-width;
+
+      .dashboard-interior-chart {
+        width: $int-width - $legend-width;
+      }
+    }
+
   }
 }
 
