@@ -7,7 +7,7 @@
 
   describe("The new logs view", function() {
 
-    var view, allLogs, debugLogs, infoLogs, warnLogs, errLogs, div;
+    var view, allLogs, debugLogs, infoLogs, warnLogs, errLogs, div, fakeCall, model;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -28,7 +28,14 @@
       errLogs = new window.NewArangoLogs(
         {loglevel: 1}
       );
-      spyOn(allLogs, "fetch");
+
+      fakeCall = function(options) {
+      };
+
+      spyOn(allLogs, "fetch").andCallFake(function(options) {
+        return fakeCall(options);
+      });
+
       view = new window.NewLogsView({
         logall: allLogs,
         logdebug: debugLogs,
@@ -36,6 +43,16 @@
         logwarning: warnLogs,
         logerror: errLogs
       });
+
+      model = {defaults: {
+        lid: "1",
+        level: "1",
+        timestamp: "12312323",
+        text: "Hallo",
+        totalAmount: "20"
+        }
+      },
+
       expect(allLogs.fetch).toHaveBeenCalled();
       view.render();
     });
@@ -47,6 +64,26 @@
     it("assert basics", function () {
       expect(view.currentLoglevel).toEqual("logall");
       expect(view.id).toEqual("#logContent");
+      expect(view.events).toEqual({
+        "click #arangoLogTabbar button" : "setActiveLoglevel",
+        "click #logTable_first" : "firstPage",
+        "click #logTable_last" : "lastPage"
+      });
+      expect(view.tabbarElements).toEqual({
+        id: "arangoLogTabbar",
+        titles: [
+          ["Debug", "logdebug"],
+          ["Warning", "logwarning"],
+          ["Error", "logerror"],
+          ["Info", "loginfo"],
+          ["All", "logall"]
+        ]
+      });
+      expect(view.tableDescription).toEqual({
+          id: "arangoLogTable",
+          titles: ["Loglevel", "Date", "Message"],
+          rows: []
+      });
     });
 
     it("check set not same active log level function", function () {
@@ -73,7 +110,7 @@
       expect(view.currentLoglevel).toBe(button.currentTarget.id);
     });
 
-    it("set active log level to loginfo", function () {
+    it("check set active log level to loginfo", function () {
       allLogs.fetch.reset();
       spyOn(infoLogs, "fetch");
       $("#loginfo").click();
@@ -81,6 +118,21 @@
       expect(allLogs.fetch).not.toHaveBeenCalled();
     });
 
+    it("check set checkModelToJSON function", function() {
+      spyOn(view, "render");
+      fakeCall = function(options) {
+        return options.success();
+      };
+
+      view.convertModelToJSON();
+      expect(view.render).toHaveBeenCalled();
+    });
+
+    it("check rerender function", function() {
+      spyOn(view, "convertModelToJSON");
+      view.rerender();
+      expect(view.convertModelToJSON).toHaveBeenCalled();
+    });
 
   });
 
