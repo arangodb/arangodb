@@ -96,7 +96,7 @@ namespace triagens {
 /// @brief get the status of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction::StateType statusTransaction (Transaction::IdType);
+        Transaction::StateType statusTransaction (TRI_voc_tid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get oldest still running transaction
@@ -108,13 +108,13 @@ namespace triagens {
 /// @brief check whether any of the specified transactions is still running
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool containsRunning (std::vector<Transaction::IdType> const&);
+        bool containsRunning (std::vector<TRI_voc_tid_t> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove specified transactions from the failed list
 ////////////////////////////////////////////////////////////////////////////////
 
-        int removeFailed (std::vector<Transaction::IdType> const&);
+        int removeFailed (std::vector<TRI_voc_tid_t> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction
@@ -157,7 +157,7 @@ namespace triagens {
 /// @brief all running or aborted transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<Transaction::IdType, Transaction*> _transactions;
+        map<TRI_voc_tid_t, Transaction*> _transactions;
 
     };
 

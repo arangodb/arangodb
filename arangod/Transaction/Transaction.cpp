@@ -44,7 +44,7 @@ using namespace triagens::transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::Transaction (Manager* manager,
-                          IdType id,
+                          TRI_voc_tid_t id,
                           bool singleOperation,
                           bool waitForSync) 
   : State(),

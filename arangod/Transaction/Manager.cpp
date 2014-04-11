@@ -108,7 +108,7 @@ void Manager::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction* Manager::createTransaction (bool singleOperation) {
-  Transaction::IdType id = _generator.next();
+  TRI_voc_tid_t id = _generator.next();
 
   Transaction* transaction = new Transaction(this, id, singleOperation);
   
@@ -129,7 +129,7 @@ Transaction* Manager::createTransaction (bool singleOperation) {
 /// @brief return the status of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::StateType Manager::statusTransaction (Transaction::IdType id) {
+Transaction::StateType Manager::statusTransaction (TRI_voc_tid_t id) {
   READ_LOCKER(_lock);
   
   auto it = _transactions.find(id);
@@ -163,7 +163,7 @@ TransactionInfo Manager::getOldestRunning () {
 /// @brief check whether any of the specified transactions is still running
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Manager::containsRunning (vector<Transaction::IdType> const& ids) {
+bool Manager::containsRunning (vector<TRI_voc_tid_t> const& ids) {
   READ_LOCKER(_lock);
 
   for (auto it = ids.begin(); it != ids.end(); ++it) {
@@ -185,7 +185,7 @@ bool Manager::containsRunning (vector<Transaction::IdType> const& ids) {
 /// @brief remove failed transactions from the failed list
 ////////////////////////////////////////////////////////////////////////////////
 
-int Manager::removeFailed (vector<Transaction::IdType> const& ids) {
+int Manager::removeFailed (vector<TRI_voc_tid_t> const& ids) {
   WRITE_LOCKER(_lock);
 
   for (auto it = ids.begin(); it != ids.end(); ++it) {
@@ -220,7 +220,7 @@ int Manager::beginTransaction (Transaction* transaction) {
 
 int Manager::commitTransaction (Transaction* transaction,
                                 bool waitForSync) {
-  Transaction::IdType id = transaction->id();
+  TRI_voc_tid_t id = transaction->id();
   
   WRITE_LOCKER(_lock);
   

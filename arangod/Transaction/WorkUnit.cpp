@@ -269,20 +269,52 @@ int WorkUnit::saveDocument (Collection* collection,
   // validate or create key
   string key(Helper::documentKey(document));
   if (key.empty()) {
+    // no key specified. now create one
     key = collection->generateKey(revision);
     Helper::appendKey(document, key); 
   }
   else {
+    // a key was specified, now validate it
     collection->validateKey(key);
   }
 
-  DocumentMarker marker(collection->databaseId(), collection->id(), key, revision, document);
+  // TODO: remove _key attribute from BSON document
+
+  // TODO: distinct between document and edge markers
+  Transaction* transaction = _context->transaction();
+  DocumentMarker marker(collection->databaseId(), collection->id(), transaction->idForMarker(), key, revision, document);
 
   LogfileManager* logfileManager = _context->logfileManager();
        
   int res = logfileManager->allocateAndWrite(marker.buffer, 
                                              marker.size, 
                                              waitForSync);
+
+  // TODO: insert into indexes
+  // TODO: return TRI_doc_mptr_t*
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a single document
+////////////////////////////////////////////////////////////////////////////////
+
+int WorkUnit::deleteDocument (Collection* collection,
+                              string const& key,
+//                              WriteOperationContext& operationContext, 
+                              bool waitForSync) {
+  
+  Transaction* transaction = _context->transaction();
+  RemoveMarker marker(collection->databaseId(), collection->id(), transaction->idForMarker(), key);
+  
+  LogfileManager* logfileManager = _context->logfileManager();
+  
+  int res = logfileManager->allocateAndWrite(marker.buffer, 
+                                             marker.size, 
+                                             waitForSync);
+
+  // TODO: remove from indexes
 
   return res;
 }
