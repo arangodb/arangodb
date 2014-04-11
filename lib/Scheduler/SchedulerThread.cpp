@@ -134,15 +134,15 @@ void SchedulerThread::beginShutdown () {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
-
+bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   // thread has already been stopped
   if (_stopped) {
     // do nothing
+    return false;
   }
 
   // same thread, in this case it does not matter if we are inside the loop
-  else if (threadId() == currentThreadId()) {
+  if (threadId() == currentThreadId()) {
     bool ok = setupTask(task, scheduler, _loop);
 
     if (! ok) {
@@ -150,21 +150,22 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
       cleanupTask(task);
       deleteTask(task);
     }
+
+    return ok;
   }
 
   // different thread, be careful - we have to stop the event loop
-  else {
-    // put the register request onto the queue
-    SCHEDULER_LOCK(&_queueLock);
+  // put the register request onto the queue
+  SCHEDULER_LOCK(&_queueLock);
 
-    Work w(SETUP, scheduler, task);
-    _queue.push_back(w);
-    _hasWork = true;
+  Work w(SETUP, scheduler, task);
+  _queue.push_back(w);
+  _hasWork = true;
 
-    scheduler->wakeupLoop(_loop);
+  scheduler->wakeupLoop(_loop);
 
-    SCHEDULER_UNLOCK(&_queueLock);
-  }
+  SCHEDULER_UNLOCK(&_queueLock);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

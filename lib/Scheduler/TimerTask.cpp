@@ -38,8 +38,9 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-TimerTask::TimerTask (double seconds)
-  : Task("TimerTask"),
+TimerTask::TimerTask (uint64_t id,
+                      double seconds)
+  : Task(id, "TimerTask"),
     watcher(0),
     seconds(seconds) {
 }
@@ -54,11 +55,11 @@ TimerTask::~TimerTask () {
 // -----------------------------------------------------------------------------
 
 bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->scheduler = scheduler;
-  this->loop = loop;
+  this->_scheduler = scheduler;
+  this->_loop = loop;
 
   if (0.0 < seconds) {
-    watcher = scheduler->installTimerEvent(loop, this, seconds);
+    watcher = _scheduler->installTimerEvent(loop, this, seconds);
     LOG_TRACE("armed TimerTask with %f seconds", seconds);
   }
   else {
@@ -71,13 +72,13 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void TimerTask::cleanup () {
-  if (scheduler == 0) {
+  if (_scheduler == 0) {
     LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }
 
-  scheduler->uninstallEvent(watcher);
+  _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }
 
@@ -88,7 +89,7 @@ bool TimerTask::handleEvent (EventToken token, EventType revents) {
 
   if (token == watcher) {
     if (revents & EVENT_TIMER) {
-      scheduler->uninstallEvent(watcher);
+      _scheduler->uninstallEvent(watcher);
       watcher = 0;
 
       result = handleTimeout();

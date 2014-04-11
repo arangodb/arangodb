@@ -37,8 +37,9 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PeriodicTask::PeriodicTask (double offset, double interval)
-  : Task("PeriodicTask"),
+PeriodicTask::PeriodicTask (double offset, 
+                            double interval)
+  : Task(0, "PeriodicTask"),
     watcher(0),
     offset(offset),
     interval(interval) {
@@ -48,7 +49,7 @@ PeriodicTask::PeriodicTask (double offset, double interval)
 
 PeriodicTask::~PeriodicTask () {
   if (watcher != 0) {
-    scheduler->uninstallEvent(watcher);
+    _scheduler->uninstallEvent(watcher);
   }
 }
 
@@ -57,7 +58,7 @@ PeriodicTask::~PeriodicTask () {
 // -----------------------------------------------------------------------------
 
 void PeriodicTask::resetTimer (double offset, double interval) {
-  scheduler->rearmPeriodic(watcher, offset, interval);
+  _scheduler->rearmPeriodic(watcher, offset, interval);
 }
 
 // -----------------------------------------------------------------------------
@@ -65,8 +66,8 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 // -----------------------------------------------------------------------------
 
 bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->scheduler = scheduler;
-  this->loop = loop;
+  this->_scheduler = scheduler;
+  this->_loop = loop;
 
   watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
   if (watcher == -1) {
@@ -78,12 +79,12 @@ bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void PeriodicTask::cleanup () {
-  if (scheduler == 0) {
+  if (_scheduler == 0) {
     LOG_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }
-  scheduler->uninstallEvent(watcher);
+  _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }
 

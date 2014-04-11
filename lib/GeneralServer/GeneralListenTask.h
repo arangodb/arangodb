@@ -75,7 +75,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         GeneralListenTask (S* server, Endpoint* endpoint)
-          : Task("GeneralListenTask"), ListenTask(endpoint), server(server) {
+          : Task(0, "GeneralListenTask"), 
+            ListenTask(endpoint), 
+            server(server) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
