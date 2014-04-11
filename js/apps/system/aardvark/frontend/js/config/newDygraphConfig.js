@@ -177,6 +177,7 @@
                 strokeBorderWidth: 1,
                 includeZero: true,
                 highlightCircleSize: 0,
+                labelsSeparateLines : true,
                 strokeBorderColor: '#ffffff',
                 interactionModel: {},
                 maxNumberWidth : 10,

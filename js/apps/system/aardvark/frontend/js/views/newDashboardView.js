@@ -175,7 +175,9 @@
                         valueList.push(newData[a][i]);
                     }
                 });
-                self.history[f].push(valueList);
+                if (valueList.length > 1) {
+                    self.history[f].push(valueList);
+                }
             });
         };
         this.nextStart = newData.nextStart;
