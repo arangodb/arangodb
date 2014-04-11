@@ -95,7 +95,7 @@ static SignalTask* localSignalTask;
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
-        : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
+        : Task(0, "Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
         addSignal(SIGQUIT);
@@ -155,7 +155,7 @@ static SignalTask* localSignalTask;
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
-        : Task("Hangup"), SignalTask() {
+        : Task(0, "Hangup"), SignalTask() {
         addSignal(SIGHUP);
       }
 
@@ -177,7 +177,7 @@ static SignalTask* localSignalTask;
   class Sigusr1Task : public SignalTask {
     public:
       Sigusr1Task (ApplicationScheduler* scheduler)
-        : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
+        : Task(0, "Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
         addSignal(SIGUSR1);
 #endif
@@ -209,7 +209,9 @@ static SignalTask* localSignalTask;
   class SchedulerReporterTask : public PeriodicTask {
     public:
       SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
-        : Task("Scheduler-Reporter"), PeriodicTask(1.0, _reportInterval), _scheduler(scheduler) {
+        : Task(0, "Scheduler-Reporter"), 
+          PeriodicTask(1.0, _reportInterval), 
+          _scheduler(scheduler) {
       }
 
     public:

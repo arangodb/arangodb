@@ -37,8 +37,12 @@ using namespace std;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-Task::Task (string const& name)
-  : scheduler(0), loop(0), name(name), active(1) {
+Task::Task (uint64_t id, string const& name)
+  : _scheduler(0), 
+    _loop(0), 
+    _id(id), 
+    _name(name), 
+    _active(1) {
 }
 
 
@@ -49,6 +53,10 @@ Task::~Task () {
 // -----------------------------------------------------------------------------
 // protected methods
 // -----------------------------------------------------------------------------
+
+bool Task::isUserDefined () const {
+  return false;
+}
 
 bool Task::needsMainEventLoop () const {
   return false;
