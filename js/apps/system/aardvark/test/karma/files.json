@@ -22,6 +22,7 @@
   "frontend/js/lib/ColVis.js",
   "frontend/js/lib/bootstrap.js",
   "frontend/js/lib/bootstrap-pagination.js",
+  "frontend/js/lib/jsoneditor-min.js",
   "frontend/src/ace.js",
   "frontend/js/lib/jqconsole.min.js",
   "frontend/js/lib/swagger.js",
