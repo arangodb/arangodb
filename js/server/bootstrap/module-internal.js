@@ -118,8 +118,43 @@
     internal.defineAction = SYS_DEFINE_ACTION;
     delete SYS_DEFINE_ACTION;
 
-    internal.actionLoaded = function() {
-      console.debug("actions loaded");
+    // autoload specific actions
+    internal.actionLoaded = function () {
+      console.debug("autoloading actions");
+
+      var modules = internal.db._collection("_modules");
+
+      if (modules !== null) {
+        modules = modules.byExample({ autoload: true }).toArray();
+
+        modules.forEach(function(module) {
+          if (internal.threadNumber !== 0 && ! module.perThread) {
+            // module is only meant to be executed in one thread
+            return;
+          }
+
+          console.debug("autoloading module: %s", module.path);
+
+          try {
+            if (module.path !== undefined) {
+              // require a module 
+              require(module.path);
+            }
+            else if (module.func !== undefined) {
+              // execute a user function
+              /*jslint evil: true */
+              var func = new Function(module.func);
+              /*jslint evil: false */
+              func();
+            }
+          }
+          catch (err) {
+            console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
+          }
+        });
+      }
+
+      console.debug("autoloading actions finished");
     };
   }
 
