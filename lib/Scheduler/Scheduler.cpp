@@ -218,14 +218,75 @@ void Scheduler::shutdown () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief list user tasks
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::pair<uint64_t, std::string> > Scheduler::getUserTasks () {
+  vector<pair<uint64_t, string> > result;
+  
+  {
+    MUTEX_LOCKER(schedulerLock);
+
+    map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+    while (i != task2thread.end()) {
+      Task* task = (*i).first;
+
+      if (task->isUserDefined()) {
+        result.push_back(make_pair(task->id(), task->getName()));
+      }
+
+      ++i;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel a user task by id
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scheduler::unregisterUserTask (uint64_t id) {
+  Task* task = 0;
+  
+  {
+    MUTEX_LOCKER(schedulerLock);
+
+    map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+    while (i != task2thread.end()) {
+      task = (*i).first;
+
+      if (task->id() == id) {
+        // found the sought task
+        if (! task->isUserDefined()) {
+          return false;
+        }
+
+        break;
+      }
+
+      ++i;
+    }
+  }
+
+  if (task == 0) {
+    // not found
+    return false;
+  }
+
+  unregisterTask(task);
+  return true; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::registerTask (Task* task) {
+bool Scheduler::registerTask (Task* task) {
   SchedulerThread* thread = 0;
 
   string const name = task->getName();
-  LOG_TRACE("registerTask for task %p (%s)", (void*)task, name.c_str());
+  LOG_TRACE("registerTask for task %p (%s)", (void*) task, name.c_str());
 
   {
     size_t n = 0;
@@ -241,7 +302,7 @@ void Scheduler::registerTask (Task* task) {
     taskRegistered.insert(task);
   }
 
-  thread->registerTask(this, task);
+  return thread->registerTask(this, task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
