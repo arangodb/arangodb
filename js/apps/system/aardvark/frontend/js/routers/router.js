@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper,dashboardView,arangoDatabase, newDashboardView*/
+/*global arangoHelper,dashboardView,arangoDatabase, _*/
 
 (function () {
   "use strict";
@@ -132,112 +132,12 @@
         collection: window.arangoCollectionsStore
       });
 
-      this.initVersionCheck();
 
       $(window).resize(function () {
         self.handleResize();
       });
       //this.handleResize();
-    },
-
-    initVersionCheck: function () {
-      // this checks for version updates
-
-      var self = this;
-      var versionCheck = function () {
-        $.ajax({
-          async: true,
-          crossDomain: true,
-          dataType: "jsonp",
-          url: "https://www.arangodb.org/repositories/versions.php" +
-          "?callback=parseVersions",
-          success: function (json) {
-            if (typeof json !== 'object') {
-              return;
-            }
-
-            // turn our own version string into a version object
-            var currentVersion =
-            window.versionHelper.fromString(self.footerView.system.version);
-
-            // get our mainline version
-            var mainLine = window.versionHelper.toStringMainLine(currentVersion);
-
-            var mainLines = Object.keys(json).
-            sort(window.versionHelper.compareVersionStrings);
-            var latestMainLine;
-            mainLines.forEach(function (l) {
-              if (json[l].stable) {
-                if (window.versionHelper.compareVersionStrings(l, mainLine) > 0) {
-                  latestMainLine = json[l];
-                }
-              }
-            });
-
-            var update;
-            var mainLineVersions;
-            var latest;
-            if (latestMainLine !== undefined &&
-              Object.keys(latestMainLine.versions).length > 0) {
-              mainLineVersions = Object.keys(latestMainLine.versions);
-              mainLineVersions = mainLineVersions.
-              sort(window.versionHelper.compareVersionStrings);
-              latest = mainLineVersions[mainLineVersions.length - 1];
-
-              update = {
-                type: "major",
-                version: latest,
-                changes: latestMainLine.versions[latest].changes
-              };
-            }
-
-            // check which stable mainline versions are available remotely
-            if (update === undefined &&
-              json.hasOwnProperty(mainLine) &&
-              json[mainLine].stable &&
-              json[mainLine].hasOwnProperty("versions") &&
-              Object.keys(json[mainLine].versions).length > 0) {
-              // sort by version numbers
-              mainLineVersions = Object.keys(json[mainLine].versions);
-              mainLineVersions = mainLineVersions.
-              sort(window.versionHelper.compareVersionStrings);
-              latest = mainLineVersions[mainLineVersions.length - 1];
-
-              var result = window.versionHelper.compareVersions(
-                currentVersion,
-                window.versionHelper.fromString(latest)
-              );
-              if (result < 0) {
-                update = {
-                  type: "minor",
-                  version: latest,
-                  changes: json[mainLine].versions[latest].changes
-                };
-              }
-            }
-
-            if (update !== undefined) {
-              var buttons = [];
-              buttons.push(window.modalView.createSuccessButton("Download Page", function() {
-                window.open('https://www.arangodb.org/download','_blank');
-              }));
-              var infos = {
-                newVersion: update.version,
-                oldVersion: currentVersion.toString()
-              };
-              window.modalView.show(
-                "modalNewVersion.ejs", "New Version Available", buttons, infos
-              );
-            }
-          },
-          error: function () {
-            // re-schedule the version check
-            window.setTimeout(versionCheck, 60000);
-          }
-        });
-      };
-
-      window.setTimeout(versionCheck, 5000);
+      window.checkVersion();
     },
 
     logsAllowed: function () {
@@ -367,7 +267,7 @@
     dashboard: function () {
       this.naviView.selectMenuItem('dashboard-menu');
       if (this.dashboardView === undefined) {
-        this.dashboardView = new newDashboardView({
+        this.dashboardView = new window.newDashboardView({
           dygraphConfig: window.newDygraphConfig
         });
       }

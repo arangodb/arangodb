@@ -151,6 +151,7 @@
         "frontend/js/views/userBarView.js",
         "frontend/js/views/userManagementView.js",
         "frontend/js/routers/router.js",
+        "frontend/js/routers/versionCheck.js",
         "frontend/js/routers/startApp.js"
       ]
     },
