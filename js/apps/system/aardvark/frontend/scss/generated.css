@@ -1369,7 +1369,7 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-subtitle-bar, .dashboard-tendency, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-tendency-chart, .dashboard-subtitle-bar, .dashboard-tendency, .dashboard-interior-chart, .dashboard-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
 div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
@@ -2085,12 +2085,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 152px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: -48px; }
 
   .dashboard-medium-chart {
     width: 114px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: -86px; }
 
   .dashboard-small-chart {
-    width: 76px; } }
+    width: 76px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: -124px; }
+
+  .dashboard-tendency-chart {
+    width: 76px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: -124px; } }
 @media (min-width: 480px) and (max-width: 719px) {
   div.resizecontainer {
     width: 468px; }
@@ -2102,12 +2113,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 312px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 112px; }
 
   .dashboard-medium-chart {
     width: 234px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 34px; }
 
   .dashboard-small-chart {
-    width: 156px; } }
+    width: 156px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: -44px; }
+
+  .dashboard-tendency-chart {
+    width: 156px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: -44px; } }
 @media (min-width: 720px) and (max-width: 959px) {
   div.resizecontainer {
     width: 708px; }
@@ -2119,12 +2141,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 472px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 272px; }
 
   .dashboard-medium-chart {
     width: 354px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 154px; }
 
   .dashboard-small-chart {
-    width: 236px; } }
+    width: 236px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 36px; }
+
+  .dashboard-tendency-chart {
+    width: 236px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 36px; } }
 @media (min-width: 960px) and (max-width: 1199px) {
   div.resizecontainer {
     width: 948px; }
@@ -2136,12 +2169,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 632px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 432px; }
 
   .dashboard-medium-chart {
     width: 474px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 274px; }
 
   .dashboard-small-chart {
-    width: 316px; } }
+    width: 316px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 116px; }
+
+  .dashboard-tendency-chart {
+    width: 316px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 116px; } }
 @media (min-width: 1200px) and (max-width: 1439px) {
   div.resizecontainer {
     width: 1188px; }
@@ -2153,12 +2197,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 792px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 592px; }
 
   .dashboard-medium-chart {
     width: 594px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 394px; }
 
   .dashboard-small-chart {
-    width: 396px; } }
+    width: 396px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 196px; }
+
+  .dashboard-tendency-chart {
+    width: 396px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 196px; } }
 @media (min-width: 1440px) and (max-width: 1679px) {
   div.resizecontainer {
     width: 1428px; }
@@ -2170,12 +2225,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 952px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 752px; }
 
   .dashboard-medium-chart {
     width: 714px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 514px; }
 
   .dashboard-small-chart {
-    width: 476px; } }
+    width: 476px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 276px; }
+
+  .dashboard-tendency-chart {
+    width: 476px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 276px; } }
 @media (min-width: 1680px) and (max-width: 1919px) {
   div.resizecontainer {
     width: 1668px; }
@@ -2187,12 +2253,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 1112px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 912px; }
 
   .dashboard-medium-chart {
     width: 834px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 634px; }
 
   .dashboard-small-chart {
-    width: 556px; } }
+    width: 556px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 356px; }
+
+  .dashboard-tendency-chart {
+    width: 556px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 356px; } }
 @media (min-width: 1920px) and (max-width: 2159px) {
   div.resizecontainer {
     width: 1908px; }
@@ -2204,12 +2281,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 1272px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1072px; }
 
   .dashboard-medium-chart {
     width: 954px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 754px; }
 
   .dashboard-small-chart {
-    width: 636px; } }
+    width: 636px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 436px; }
+
+  .dashboard-tendency-chart {
+    width: 636px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 436px; } }
 @media (min-width: 2160px) and (max-width: 2399px) {
   div.resizecontainer {
     width: 2148px; }
@@ -2221,12 +2309,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 1432px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1232px; }
 
   .dashboard-medium-chart {
     width: 1074px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 874px; }
 
   .dashboard-small-chart {
-    width: 716px; } }
+    width: 716px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 516px; }
+
+  .dashboard-tendency-chart {
+    width: 716px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 516px; } }
 @media (min-width: 2400px) and (max-width: 2639px) {
   div.resizecontainer {
     width: 2388px; }
@@ -2238,12 +2337,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 1592px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1392px; }
 
   .dashboard-medium-chart {
     width: 1194px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 994px; }
 
   .dashboard-small-chart {
-    width: 796px; } }
+    width: 796px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 596px; }
+
+  .dashboard-tendency-chart {
+    width: 796px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 596px; } }
 @media (min-width: 2640px) and (max-width: 2879px) {
   div.resizecontainer {
     width: 2628px; }
@@ -2255,12 +2365,23 @@ div.resizecontainer {
 
   .dashboard-large-chart {
     width: 1752px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1552px; }
 
   .dashboard-medium-chart {
     width: 1314px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 1114px; }
 
   .dashboard-small-chart {
-    width: 876px; } }
+    width: 876px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 676px; }
+
+  .dashboard-tendency-chart {
+    width: 876px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 676px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -2612,7 +2733,7 @@ div.breadcrumb a.disabledBread {
   opacity: .4; }
 
 .modalChartDetail {
-  height: 70%;
+  height: 570px;
   margin-left: 0;
   width: 70%; }
 
@@ -2883,31 +3004,44 @@ pre.gv-object-view {
   text-overflow: ellipsis;
   white-space: nowrap; }
 
-.dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-subtitle-bar, .dashboard-tendency {
+.dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-tendency-chart, .dashboard-subtitle-bar, .dashboard-tendency {
   border-left: 1px solid black;
   margin-left: -1px; }
-  .dashboard-large-chart:first-child, .dashboard-medium-chart:first-child, .dashboard-small-chart:first-child, .dashboard-subtitle-bar:first-child, .dashboard-tendency:first-child {
+  .dashboard-large-chart:first-child, .dashboard-medium-chart:first-child, .dashboard-small-chart:first-child, .dashboard-tendency-chart:first-child, .dashboard-subtitle-bar:first-child, .dashboard-tendency:first-child {
     border-left: 0;
     margin-left: 0; }
 
+.dashboard-interior-chart {
+  height: 222px; }
+
 .dashboard-large-chart {
-  height: 250px; }
+  height: 250px;
+  padding-top: 28px; }
 
 .dashboard-medium-chart {
-  height: 250px; }
+  height: 250px;
+  padding-top: 28px; }
 
 .dashboard-small-chart {
-  height: 250px; }
+  height: 250px;
+  padding-top: 28px; }
+
+.dashboard-tendency-chart {
+  height: 278px; }
 
 .dashboard-legend {
-  display: block; }
+  height: 250px;
+  width: 200px; }
+  .dashboard-legend .dashboard-legend-inner {
+    padding-top: 20px; }
 
 .dashboard-half-height-chart {
-  height: 125px; }
+  height: 139px; }
 
 .dashboard-title-bar {
   background-color: #686766;
-  border-bottom: 0;
+  border-bottom: 1px;
+  border-bottom-color: black;
   border-left: 1px;
   border-left-color: black;
   border-right: 1px;
@@ -2922,10 +3056,16 @@ pre.gv-object-view {
   margin-left: -1px;
   margin-right: -1px;
   text-align: center; }
+  .dashboard-title-bar .dashboard-half-title-bar {
+    border-left: 1px solid black;
+    margin-left: -1px;
+    width: 50%; }
+    .dashboard-title-bar .dashboard-half-title-bar:first-child {
+      border-left: 0;
+      margin-left: 0; }
 
 .dashboard-subtitle-bar {
   border-bottom: 1px solid black;
-  border-top: 1px solid black;
   font-size: 16px;
   height: 36px;
   line-height: 36px;
@@ -2933,7 +3073,7 @@ pre.gv-object-view {
   width: 50%; }
 
 .dashboard-tendency {
-  height: 53px;
+  height: 65px;
   width: 50%; }
 
 .dashboard-row {
