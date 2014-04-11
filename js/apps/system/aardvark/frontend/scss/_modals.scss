@@ -98,6 +98,10 @@
   select {
     width: 398px;
   }
+
+  .tab-content {
+    min-height: 200px;
+  }
 }
 
 .modal-text {
@@ -231,6 +235,36 @@ pre.gv-object-view {
   }
 }
 
-.createModalDialog table {
-  width: 100%;
+.createModalDialog {
+
+  table {
+    width: 100%;
+  }
+
+  .collection-info-figures table {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    min-width: 200px;
+    padding: 3px;
+    text-align: left;
+  }
+
+  .figures1,
+  .figures2 {
+    margin-bottom: 20px;
+    width: 255px;
+  }
+
+  .figures2 {
+    margin-left: 20px !important;
+  }
+
+  .figures3 {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+
 }
