@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
-/*global document, Dygraph, _,templateEngine */
+/*global document, console, Dygraph, _,templateEngine */
 
 (function() {
   "use strict";
@@ -26,7 +26,9 @@
 
       asyncRequestsCurrent : ["asyncRequestsCurrent", "asyncRequestsCurrentPercentChange"],
       asyncRequestsAverage : ["asyncPerSecond15M", "asyncPerSecondPercentChange15M"],
-      clientConnectionsCurrent : ["clientConnectionsCurrent", "clientConnectionsCurrentPercentChange"],
+      clientConnectionsCurrent : ["clientConnectionsCurrent",
+          "clientConnectionsCurrentPercentChange"
+      ],
       clientConnectionsAverage : ["clientConnections15M", "clientConnectionsPercentChange15M"],
       numberOfThreadsCurrent : ["numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"],
       numberOfThreadsAverage : ["numberOfThreads15M", "numberOfThreadsPercentChange15M"],
@@ -37,7 +39,7 @@
     showDetail : function(e) {
         var self = this;
         var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g , "");
-        this.getStatistics(figure)
+        this.getStatistics(figure);
         var options = this.dygraphConfig.getDetailChartConfig(figure);
 
         this.detailGraphFigure = figure;
@@ -79,7 +81,7 @@
         return {
             height : height,
             width: width
-        }
+        };
     },
 
     prepareDygraphs : function () {
@@ -106,7 +108,7 @@
         var self = this;
         if (this.detailGraph) {
             this.updateLineChart(this.detailGraphFigure, true);
-            return
+            return;
         }
         this.updateD3Charts();
         this.updateTendencies();
@@ -121,10 +123,6 @@
         Object.keys(map).forEach(function (a) {
             $("#" + a).text(self.history[a][0] + " (" + self.history[a][1] + " %)");
         });
-
-
-
-        /*$( "div.second" ).replaceWith( "<h2>New heading</h2>" );$( "div.second" ).replaceWith( "<h2>New heading</h2>" );*/
     },
 
 
@@ -139,26 +137,11 @@
     updateDateWindow : function(graph, isDetailChart) {
         var t = new Date().getTime();
         var borderLeft, borderRight;
-        if (isDetailChart) {
-         /*   displayOptions.height = $('#lineChartDetail').height() - 34 -29;
-            displayOptions.width = $('#lineChartDetail').width() -10;
-            chart.detailChartConfig();
-            if (chart.graph.dateWindow_) {
-                borderLeft = chart.graph.dateWindow_[0];
-                borderRight = t - chart.graph.dateWindow_[1] - self.interval * 5 > 0 ?
-                    chart.graph.dateWindow_[1] : t;
-            }*/
+    /*    if (isDetailChart) {
         } else {
-           /* chart.updateDateWindow();
-            borderLeft = chart.options.dateWindow[0];
-            borderRight = chart.options.dateWindow[1];*/
         }
-        /*if (self.modal && createDiv) {
-            displayOptions.height = $('.innerDashboardChart').height() - 34;
-            displayOptions.width = $('.innerDashboardChart').width() -45;
-        }*/
-
-        return [new Date().getTime() - this.defaultFrame, new Date().getTime()]
+    */
+        return [new Date().getTime() - this.defaultFrame, new Date().getTime()];
 
 
     },
@@ -176,43 +159,39 @@
         }
     },
 
-
-    mergeHistory : function (newData) {
-        var self = this, valueList, i, figures = this.dygraphConfig.getDashBoardFigures(true);
-        /*Object.keys(this.tendencies).forEach(function (a) {
-          figures.push(self.tendencies[a][0])
-          figures.push(self.tendencies[a][1])
-        });*/
-
-
-        for (i = 0;  i < newData["times"].length;  ++i) {
-            figures.forEach(function (f) {
-                if (!self.history[f]) {
-                    self.history[f] = [];
+    mergeDygraphHistory : function (newData, i) {
+        var self = this, valueList;
+        this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
+            if (!self.history[f]) {
+                self.history[f] = [];
+            }
+            valueList = [];
+            self.dygraphConfig.mapStatToFigure[f].forEach(function (a) {
+                if (!newData[a]) {
+                    return;
                 }
-                valueList = [];
-                self.dygraphConfig.mapStatToFigure[f].forEach(function (a) {
-                    if (!newData[a]) {
-                        return;
-                    }
-                    if (a === "times") {
-                        valueList.push(new Date(newData[a][i] * 1000));
-                    } else {
-                        valueList.push(newData[a][i]);
-                    }
-                });
-                if (valueList.length > 1) {
-                    self.history[f].push(valueList);
+                if (a === "times") {
+                    valueList.push(new Date(newData[a][i] * 1000));
+                } else {
+                    valueList.push(newData[a][i]);
                 }
             });
-        };
+            if (valueList.length > 1) {
+                self.history[f].push(valueList);
+            }
+        });
+    },
+
+    mergeHistory : function (newData) {
+        var self = this, i;
+        for (i = 0;  i < newData.times.length;  ++i) {
+            this.mergeDygraphHistory(newData, i);
+        }
         Object.keys(this.tendencies).forEach(function (a) {
             if (a === "virtualSizeCurrent" ||
                 a === "virtualSizeAverage") {
-                newData[self.tendencies[a][0]] = newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
-            } else if (a === "clientConnectionsCurrent" ||
-                a === "numberOfThreadsCurrent") {
-                newData[self.tendencies[a][0]] = newData[self.tendencies[a][0]];
+                newData[self.tendencies[a][0]] =
+                    newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
             }
             self.history[a] = [
                 Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
@@ -223,27 +202,28 @@
     },
 
     getStatistics : function (figure) {
-        var url = "statistics/full?", self = this, d;
-        if (!figure) {
-            d = this.nextStart ? this.nextStart : (new Date().getTime() - this.defaultFrame);
-            url+= "start=" +  (this.nextStart ? this.nextStart : (new Date().getTime() - this.defaultFrame)/ 1000);
+        var url = "statistics/full?start=", self = this, dateString;
+        if (!figure && this.nextStart) {
+            url+= this.nextStart;
+        } else if (!figure && !this.nextStart) {
+            url+= (new Date().getTime() - this.defaultFrame)/ 1000;
         } else {
             if ( this.alreadyCalledDetailChart.indexOf(figure) !== -1) {
                 return;
             }
             this.history[figure] = [];
-            d = new Date().getTime() - this.defaultDetailFrame;
-            url+=  "start=" + (new Date().getTime() - this.defaultDetailFrame)/ 1000;
+            url+=  (new Date().getTime() - this.defaultDetailFrame)/ 1000;
             url+= "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
             this.alreadyCalledDetailChart.push(figure);
         }
+        console.log(url);
         $.ajax(
             url,
             {async: false}
         ).done(
             function(d) {
-                console.log(d);
-                self.mergeHistory(d)
+                console.log("got result");
+                self.mergeHistory(d);
             }
         );
 

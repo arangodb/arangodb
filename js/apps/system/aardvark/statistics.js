@@ -479,12 +479,12 @@ function computeStatisticsRaw15M (start) {
 
   var lastRaw = null;
   var count = 0;
-  var sumasync = 0;
+  var sumAsync = 0;
   var sumConnections = 0;
   var sumThreads = 0;
   var sumVirtualSize = 0;
 
-  var firstasync = null;
+  var firstAsync = null;
   var firstConnections = null;
   var firstThreads = null;
   var firstVirtualSize = null;
@@ -505,13 +505,13 @@ function computeStatisticsRaw15M (start) {
         var n4 = raw.virtualSize;
 
         count++;
-        sumasync += n1;
+        sumAsync += n1;
         sumConnections += n2;
         sumThreads += n3;
         sumVirtualSize += n4;
 
-        if (firstasync === null) {
-          firstasync = n1;
+        if (firstAsync === null) {
+            firstAsync = n1;
         }
 
         if (firstConnections === null) {
@@ -530,17 +530,17 @@ function computeStatisticsRaw15M (start) {
   }
 
   if (count !== 0) {
-    sumasync /= count;
+    sumAsync /= count;
     sumConnections /= count;
     sumThreads /= count;
     sumVirtualSize /= count;
   }
 
-  if (firstasync === null) {
-    firstasync = 0;
+  if (firstAsync === null) {
+      firstAsync = 0;
   }
-  else if (firstasync !== 0) {
-    firstasync = (sumasync - firstasync) / firstasync;
+  else if (firstAsync !== 0) {
+      firstAsync = (sumAsync - firstAsync) / firstAsync;
   }
 
   if (firstConnections === null) {
@@ -565,8 +565,8 @@ function computeStatisticsRaw15M (start) {
   }
 
   return {
-    asyncPerSecond: sumasync,
-    asyncPerSecondPercentChange: firstasync,
+    asyncPerSecond: sumAsync,
+    asyncPerSecondPercentChange: firstAsync,
     clientConnections: sumConnections,
     clientConnectionsPercentChange: firstConnections,
     numberOfThreads: sumThreads,
