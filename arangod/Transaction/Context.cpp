@@ -33,8 +33,13 @@
 #include "Transaction/Transaction.h"
 #include "Transaction/WorkUnit.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
 
+#define CONTEXT_LOG(msg) LOG_INFO("%s", msg)
+
+using namespace std;
 using namespace triagens::transaction;
+using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -45,9 +50,11 @@ using namespace triagens::transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 Context::Context (Manager* manager,
+                  wal::LogfileManager* logfileManager,
                   TRI_vocbase_t* vocbase,
                   Context** globalContext) 
   : _manager(manager),
+    _logfileManager(logfileManager),
     _resolver(vocbase),
     _globalContext(globalContext),
     _transaction(0),
@@ -55,7 +62,8 @@ Context::Context (Manager* manager,
     _nextWorkUnitId(0),
     _refCount(0) {
 
-  LOG_INFO("creating context");
+  CONTEXT_LOG("creating context");
+
   if (_globalContext != nullptr) {
     *_globalContext = this;
   }
@@ -72,7 +80,8 @@ Context::~Context () {
   if (_globalContext != nullptr) {
     *_globalContext = nullptr;
   }
-  LOG_INFO("destroyed context");
+
+  CONTEXT_LOG("destroyed context");
 }
 
 // -----------------------------------------------------------------------------
@@ -84,9 +93,10 @@ Context::~Context () {
 ////////////////////////////////////////////////////////////////////////////////
  
 Context* Context::getContext (Manager* manager,
+                              wal::LogfileManager* logfileManager,
                               TRI_vocbase_t* vocbase,
                               Context** globalContext) {
-  return createContext(manager, vocbase, globalContext);
+  return createContext(manager, logfileManager, vocbase, globalContext);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +104,9 @@ Context* Context::getContext (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
  
 Context* Context::getContext (Manager* manager,
+                              wal::LogfileManager* logfileManager,
                               TRI_vocbase_t* vocbase) {
-  return createContext(manager, vocbase, nullptr);
+  return createContext(manager, logfileManager, vocbase, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,15 +165,13 @@ Collection* Context::findCollection (TRI_voc_cid_t id) const {
 
 int Context::startWorkUnit (WorkUnit* workUnit) {
   if (_workUnits.empty()) {
-    LOG_INFO("starting top-level work unit");
     assert(_transaction == nullptr);
 
     _transaction = _manager->createTransaction(workUnit->isSingleOperation());
     assert(_transaction != nullptr);
   }
-  else {
-    LOG_INFO("starting nested (%d) work unit", (int) _workUnits.size());
-  }
+
+  assert(_transaction != nullptr);
 
   _workUnits.push_back(workUnit);
 
@@ -182,16 +191,11 @@ int Context::endWorkUnit (WorkUnit* workUnit) {
   _workUnits.pop_back();
   
   if (_workUnits.empty()) {
-    LOG_INFO("ending top-level work unit");
-
     // final level
     if (_transaction != nullptr) {
       delete _transaction;
       _transaction = nullptr;
     }
-  }
-  else {
-    LOG_INFO("ending nested (%d) work unit", (int) _workUnits.size());
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -206,11 +210,12 @@ int Context::endWorkUnit (WorkUnit* workUnit) {
 ////////////////////////////////////////////////////////////////////////////////
  
 Context* Context::createContext (Manager* manager,
+                                 wal::LogfileManager* logfileManager,
                                  TRI_vocbase_t* vocbase,
                                  Context** globalContext) {
   if (globalContext == nullptr ||
       *globalContext == nullptr) {
-    return new Context(manager, vocbase, globalContext);
+    return new Context(manager, logfileManager, vocbase, globalContext);
   }
 
   return *globalContext;

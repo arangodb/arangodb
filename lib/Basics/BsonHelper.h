@@ -102,9 +102,13 @@ namespace triagens {
           count = 0;
         }
 
-        uint8_t const* getBuffer () {
+        uint8_t const* getBuffer () const {
           // Only usable to copy out.
           return bson_get_data(&_bson);
+        }
+        
+        uint32_t getSize () const {
+          return _bson.len;
         }
 
         uint8_t* steal (uint32_t* length) {
@@ -461,7 +465,7 @@ namespace triagens {
         }
     };
 
-    string EscapeUtf8ForJson (string s) {
+    inline string EscapeUtf8ForJson (string s) {
       char* p = bson_utf8_escape_for_json (s.c_str(), s.size());
       string res(p);
       bson_free(p);

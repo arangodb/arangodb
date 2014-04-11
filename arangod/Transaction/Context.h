@@ -33,6 +33,10 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
+  namespace wal {
+    class LogfileManager;
+  }
+
   namespace transaction {
 
     class Collection;
@@ -68,7 +72,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Context (Manager*,
-                 struct TRI_vocbase_s*,
+                 triagens::wal::LogfileManager*,
+                 TRI_vocbase_t*,
                  Context**); 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +94,14 @@ namespace triagens {
   
         inline uint64_t nextWorkUnitId () {
           return ++_nextWorkUnitId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logfile manager
+////////////////////////////////////////////////////////////////////////////////
+
+        inline wal::LogfileManager* logfileManager () const {
+          return _logfileManager;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +137,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static Context* getContext (Manager*, 
-                                    struct TRI_vocbase_s*,
+                                    triagens::wal::LogfileManager*,
+                                    TRI_vocbase_t*,
                                     Context**);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +146,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static Context* getContext (Manager*,
-                                    struct TRI_vocbase_s*);
+                                    triagens::wal::LogfileManager*,
+                                    TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the reference count
@@ -170,7 +185,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static Context* createContext (Manager*,
-                                       struct TRI_vocbase_s*,
+                                       triagens::wal::LogfileManager*,
+                                       TRI_vocbase_t*,
                                        Context**);
 
 // -----------------------------------------------------------------------------
@@ -184,6 +200,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Manager* _manager;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the logfile manager
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::wal::LogfileManager* _logfileManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the collection name resolver

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction id generator
+/// @brief arango exceptions
 ///
 /// @file
 ///
@@ -22,57 +22,73 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IdGenerator.h"
-#include "VocBase/server.h"
+#ifndef TRIAGENS_ARANGO_UTILS_EXCEPTION_H
+#define TRIAGENS_ARANGO_UTILS_EXCEPTION_H 1
 
-using namespace std;
-using namespace triagens::transaction;
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+
+#include <errno.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an id generator
+/// @brief throws an arango exception with an error code
 ////////////////////////////////////////////////////////////////////////////////
 
-IdGenerator::IdGenerator (Transaction::IdType id) {
-  setLastId(id);
+#define THROW_ARANGO_EXCEPTION(code)                                           \
+  throw triagens::arango::Exception(code, "", __FILE__, __LINE__)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an exception for internal errors
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_STRING(code, details)                           \
+  throw triagens::arango::Exception(code, details, __FILE__, __LINE__)
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arango exception type
+////////////////////////////////////////////////////////////////////////////////
+
+    class Exception : public virtual std::exception {
+      public:
+        Exception (int code,
+                   std::string const& details,
+                   char const* file,
+                   int line);
+
+        ~Exception () throw ();
+
+      public:
+        char const * what () const throw ();
+
+        std::string message () const throw ();
+
+        int code () const throw();
+
+      protected:
+        std::string const _details;
+        char const* _file;
+        int const _line;
+        int const _code;
+    };
+
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an id generator
-////////////////////////////////////////////////////////////////////////////////
-
-IdGenerator::~IdGenerator () {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set minimal transaction id
-////////////////////////////////////////////////////////////////////////////////
-
-void IdGenerator::setLastId (Transaction::IdType id) {
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a transaction id
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::IdType IdGenerator::next () {
-  return static_cast<Transaction::IdType>(TRI_NewTickServer());
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+#endif
 
 // Local Variables:
 // mode: outline-minor

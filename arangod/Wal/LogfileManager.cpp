@@ -41,9 +41,14 @@
 #include "Wal/CollectorThread.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
-#include "Wal/TestThread.h"
 
 using namespace triagens::wal;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the logfile manager singleton
+////////////////////////////////////////////////////////////////////////////////
+
+static LogfileManager* Instance = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class LogfileManager
@@ -89,6 +94,8 @@ LogfileManager::LogfileManager (std::string* databasePath)
   if (res != 0) {
     THROW_INTERNAL_ERROR("could not compile regex"); 
   }
+  
+  _slots = new Slots(this, 1048576, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,11 +105,36 @@ LogfileManager::LogfileManager (std::string* databasePath)
 LogfileManager::~LogfileManager () {
   LOG_TRACE("shutting down wal logfile manager");
 
+  stop();
+
   regfree(&_regex);
 
   if (_slots != nullptr) {
     delete _slots;
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the logfile manager instance
+////////////////////////////////////////////////////////////////////////////////
+
+LogfileManager* LogfileManager::instance () {
+  assert(Instance != nullptr);
+  return Instance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the logfile manager instance
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::initialise (string* path) {
+  assert(Instance == nullptr);
+
+  Instance = new LogfileManager(path);
 }
 
 // -----------------------------------------------------------------------------
@@ -165,7 +197,10 @@ bool LogfileManager::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::start () {
-  _slots = new Slots(this, 1048576, 0);
+  if (_allocatorThread != nullptr) {
+    // we were already started
+    return true;
+  }
 
   int res = inventory();
 
@@ -242,22 +277,6 @@ bool LogfileManager::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open () {
-  TestThread* threads[4];
-  for (size_t i = 0; i < 4; ++i) {
-    threads[i] = new TestThread(this);
-    threads[i]->start();
-  }
-
-  LOG_INFO("sleeping");
-  sleep(60);
-
-  for (size_t i = 0; i < 4; ++i) {
-    threads[i]->stop();
-    delete threads[i];
-  }
-
-  LOG_INFO("done");
-
   return true;
 }
 

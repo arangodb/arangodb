@@ -121,7 +121,7 @@ Slot::TickType Slots::lastCommittedTick () {
 
 SlotInfo Slots::nextUnused (uint32_t size) {
   // we need to use the aligned size for writing
-  size = TRI_DF_ALIGN_BLOCK(size);
+  uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
   
   bool hasWaited = false;
 
@@ -146,7 +146,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
         // cycle until we have a valid logfile
         while (_logfile == nullptr ||
-               _logfile->freeSize() < static_cast<uint64_t>(size)) {
+               _logfile->freeSize() < static_cast<uint64_t>(alignedSize)) {
 
           if (_logfile != nullptr) {
             // seal existing logfile by creating a footer marker
@@ -164,7 +164,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
           // fetch the next free logfile (this may create a new one)
           Logfile::StatusType status = Logfile::StatusType::UNKNOWN;
-          _logfile = _logfileManager->getWriteableLogfile(size, status);
+          _logfile = _logfileManager->getWriteableLogfile(alignedSize, status);
 
           if (_logfile == nullptr) {
             LOG_WARNING("unable to acquire writeable wal logfile!");
@@ -190,7 +190,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
         // if we get here, we got a free slot for the actual data...
 
-        char* mem = _logfile->reserve(size);
+        char* mem = _logfile->reserve(alignedSize);
 
         if (mem == nullptr) {
           return SlotInfo(TRI_ERROR_INTERNAL);

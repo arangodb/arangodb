@@ -290,7 +290,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
-    _logfileManager(0),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -387,10 +386,10 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
-/*
-  _logfileManager = new wal::LogfileManager(&_databasePath); 
-  _applicationServer->addFeature(_logfileManager);
-*/
+
+  wal::LogfileManager::initialise(&_databasePath);
+  _applicationServer->addFeature(wal::LogfileManager::instance());
+
   // .............................................................................
   // dispatcher
   // .............................................................................
@@ -713,6 +712,11 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
+  
+  // make sure the logfile manager is ready
+  wal::LogfileManager::instance()->prepare();
+  wal::LogfileManager::instance()->start();
+
 
   // dump version details
   LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());

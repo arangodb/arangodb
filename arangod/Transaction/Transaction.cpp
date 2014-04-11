@@ -30,7 +30,10 @@
 #include "BasicsC/logging.h"
 #include "Transaction/Manager.h"
 
+using namespace std;
 using namespace triagens::transaction;
+
+#define TRANSACTION_LOG(msg) LOG_INFO("trx #%llu: %s", (unsigned long long) _id, msg)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -51,7 +54,7 @@ Transaction::Transaction (Manager* manager,
     _waitForSync(waitForSync),
     _startTime() {
 
-  LOG_INFO("creating transaction %llu", (unsigned long long) id);
+  TRANSACTION_LOG("creating transaction");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +67,7 @@ Transaction::~Transaction () {
     this->rollback();
   }
 
-  LOG_INFO("destroyed transaction %llu", (unsigned long long) _id);
+  TRANSACTION_LOG("destroyed transaction");
 }
 
 // -----------------------------------------------------------------------------
@@ -80,7 +83,7 @@ int Transaction::begin () {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  LOG_INFO("beginning transaction %llu", (unsigned long long) _id);
+  TRANSACTION_LOG("beginning transaction");
   int res = _manager->beginTransaction(this);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -98,7 +101,7 @@ int Transaction::commit (bool waitForSync) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  LOG_INFO("committing transaction %llu", (unsigned long long) _id);
+  TRANSACTION_LOG("committing transaction");
   return _manager->commitTransaction(this, waitForSync || _waitForSync);
 }
 
@@ -111,7 +114,7 @@ int Transaction::rollback () {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  LOG_INFO("rolling back transaction %llu", (unsigned long long) _id);
+  TRANSACTION_LOG("rolling back transaction");
   return _manager->rollbackTransaction(this);
 }
 
