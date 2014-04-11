@@ -565,7 +565,7 @@ function cmdUsage () {
   'use strict';
 
   var printf = arangodb.printf;
-  var fm = "foxx/manager";
+  var fm = "foxx-manager";
 
   printf("Example usage:\n");
   printf(" %s install <foxx> <mount-point>\n", fm);
