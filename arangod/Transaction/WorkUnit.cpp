@@ -29,6 +29,7 @@
 #include "BasicsC/logging.h"
 #include "Transaction/Collection.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helper.h"
 #include "Transaction/Marker.h"
 #include "Transaction/Transaction.h"
 #include "Utils/Exception.h"
@@ -260,10 +261,22 @@ int WorkUnit::rollback () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int WorkUnit::saveDocument (Collection* collection,
-                            triagens::basics::Bson const& document,
+                            triagens::basics::Bson& document,
                             bool waitForSync) {
+  // generate a tick value
+  TRI_voc_tick_t revision = collection->generateRevision();
 
-  DocumentMarker marker(collection->databaseId(), collection->id(), document);
+  // validate or create key
+  string key(Helper::documentKey(document));
+  if (key.empty()) {
+    key = collection->generateKey(revision);
+    Helper::appendKey(document, key); 
+  }
+  else {
+    collection->validateKey(key);
+  }
+
+  DocumentMarker marker(collection->databaseId(), collection->id(), key, revision, document);
 
   LogfileManager* logfileManager = _context->logfileManager();
        

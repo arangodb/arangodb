@@ -63,9 +63,18 @@ namespace triagens {
         return (char*) buffer + sizeof(TRI_df_marker_t);
       }
 
-      template <typename T> void storeValue (char*& ptr, T value) {
+      inline void advance (char*& ptr, size_t length) {
+        ptr += length;
+      }
+
+      template <typename T> void store (char*& ptr, T value) {
         *((T*) ptr) = value;
-        ptr += sizeof(T);
+        advance(ptr, sizeof(T));
+      }
+
+      void store (char*& ptr, char const* src, size_t length) {
+        memcpy(ptr, src, length);
+        advance(ptr, length);
       }
       
       char*          buffer;
@@ -75,14 +84,24 @@ namespace triagens {
     struct DocumentMarker : public Marker {
       DocumentMarker (TRI_voc_tick_t databaseId,
                       TRI_voc_cid_t collectionId,
+                      std::string const& key,
+                      TRI_voc_tick_t revision,
                       triagens::basics::Bson const& document)
-        : Marker(TRI_WAL_MARKER_DOCUMENT_STANDALONE, sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + document.getSize()) {
+        : Marker(TRI_WAL_MARKER_DOCUMENT_STANDALONE, 
+                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tick_t) + key.size() + 2 + document.getSize()) {
 
         char* p = data();
-        storeValue<TRI_voc_tick_t>(p, databaseId);
-        storeValue<TRI_voc_cid_t>(p, collectionId);
+        store<TRI_voc_tick_t>(p, databaseId);
+        store<TRI_voc_cid_t>(p, collectionId);
+        store<TRI_voc_tick_t>(p, revision);
 
-        memcpy(p, document.getBuffer(), document.getSize());
+        // store key
+        store<uint8_t>(p, (uint8_t) key.size()); 
+        store(p, key.c_str(), key.size());
+        store<unsigned char>(p, '\0');
+
+        // store bson
+        store(p, (char const*) document.getBuffer(), static_cast<size_t>(document.getSize()));
       }
 
       ~DocumentMarker () {

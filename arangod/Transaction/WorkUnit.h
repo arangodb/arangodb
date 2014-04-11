@@ -152,7 +152,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int saveDocument (Collection*,
-                          triagens::basics::Bson const&,
+                          triagens::basics::Bson&,
                           bool);
 
 // -----------------------------------------------------------------------------

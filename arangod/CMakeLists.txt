@@ -113,6 +113,7 @@ add_executable(
     SkipLists/skiplistIndex.cpp
     Transaction/Collection.cpp
     Transaction/Context.cpp
+    Transaction/Helper.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
     Transaction/Operations.cpp

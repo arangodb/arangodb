@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction macros
+/// @brief static transaction helper functions
 ///
 /// @file
 ///
@@ -25,44 +25,50 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_TRANSACTION_TRANSACTIONS_H
-#define TRIAGENS_TRANSACTION_TRANSACTIONS_H 1
+#ifndef TRIAGENS_TRANSACTION_HELPER_H
+#define TRIAGENS_TRANSACTION_HELPER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/logging.h"
-#include "Transaction/Context.h"
-#include "Transaction/Helper.h"
-#include "Transaction/Manager.h"
-#include "Transaction/Transaction.h"
-#include "Transaction/WorkUnit.h"
-#include "Utils/Exception.h"
-#include "Wal/LogfileManager.h"
+#include "Basics/BsonHelper.h"
+
+namespace triagens {
+  namespace transaction {
+
+    class Helper {
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief try block for a transaction
+/// @brief append a document key
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRANSACTION_TRY(vocbase, context, globalContext)                       \
-  try {                                                                        \
-    triagens::transaction::Manager* manager = new triagens::transaction::Manager(); \
-    triagens::transaction::Context* context = triagens::transaction::Context::getContext(manager, triagens::wal::LogfileManager::instance(), vocbase, globalContext);
+        static bool appendKey (basics::Bson&,
+                               std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief catch block for a transaction
+/// @brief extract a document key
+/// this will throw if the document key is invalid
+/// if the document does not contain the _key attribute, an empty string will
+/// be returned
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRANSACTION_CATCH(ex)                                                  \
-  }                                                                            \
-  catch (triagens::arango::Exception const &ex) {                              \
-    LOG_INFO("transaction exception: %s", ex.what());                          \
-
+        static std::string documentKey (basics::Bson const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief final block for a transaction
+/// @brief creates a BSON document from the string
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRANSACTION_FINALLY                                                    \
+        static basics::Bson documentFromJson (std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a BSON document from the string
+////////////////////////////////////////////////////////////////////////////////
+    
+        static basics::Bson documentFromJson (char const*, 
+                                              size_t);
+
+    };
   }
+}
 
 #endif
 

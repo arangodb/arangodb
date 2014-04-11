@@ -32,6 +32,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/voc-errors.h"
+#include "Basics/StringUtils.h"
 
 #include "VocBase/vocbase.h"
 
@@ -219,6 +220,52 @@ static void TraditionalFree (TRI_key_generator_t* const generator) {
   if (data != NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new document key
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string TraditionalGenerateKey (TRI_key_generator_t* const generator,
+                                           TRI_voc_tick_t revision) {
+  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
+  assert(data != 0);
+
+  // user has not specified a key, generate one based on tick
+  return triagens::basics::StringUtils::itoa(revision);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a document key
+////////////////////////////////////////////////////////////////////////////////
+
+static int TraditionalValidateKey (TRI_key_generator_t* const generator,
+                                   std::string const& key) {
+  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
+  assert(data != 0);
+
+  // user has specified a key
+  if (! key.empty() && ! data->_allowUserKeys) {
+    // we do not allow user-generated keys
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
+  }
+  
+  if (key.empty()) {
+    // user key is empty
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  if (key.size() > TRI_VOC_KEY_MAX_LENGTH) {
+    // user key is too long
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  // validate user-supplied key
+  if (! ValidateKey(key.c_str())) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,6 +514,67 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a new key
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string AutoIncrementGenerateKey (TRI_key_generator_t* const generator,
+                                             TRI_voc_tick_t revision) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
+  assert(data != 0);
+    
+  // user has not specified a key, generate one based on algorithm
+  uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
+
+  // bounds and sanity checks
+  if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
+    return "";
+  }
+
+  assert(keyValue > data->_lastValue);
+  // update our last value
+  data->_lastValue = keyValue;
+
+  return triagens::basics::StringUtils::itoa(keyValue);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a key
+////////////////////////////////////////////////////////////////////////////////
+
+static int AutoIncrementValidateKey (TRI_key_generator_t* const generator,
+                                     std::string const& key) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
+  assert(data != 0);
+
+  if (! key.empty() && ! data->_allowUserKeys) {
+    // we do not allow user-generated keys
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
+  }
+
+  if (key.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  if (key.size() > TRI_VOC_KEY_MAX_LENGTH) {
+    // user key is too long
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  // validate user-supplied key
+  if (! ValidateNumericKey(key.c_str())) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  uint64_t intValue = triagens::basics::StringUtils::uint64(key);
+  if (intValue > data->_lastValue) {
+    // update our last value
+    data->_lastValue = intValue;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new key
 /// the caller must make sure that the outBuffer is big enough to hold at least
 /// maxLength + 1 bytes
 ////////////////////////////////////////////////////////////////////////////////
@@ -662,6 +770,8 @@ static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters)
   if (type == TYPE_TRADITIONAL) {
     generator->init        = &TraditionalInit;
     generator->generate    = &TraditionalGenerate;
+    generator->generateKey = &TraditionalGenerateKey;
+    generator->validateKey = &TraditionalValidateKey;
     generator->free        = &TraditionalFree;
     generator->track       = NULL;
     generator->toJson      = &TraditionalToJson;
@@ -669,6 +779,8 @@ static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters)
   else if (type == TYPE_AUTOINCREMENT) {
     generator->init        = &AutoIncrementInit;
     generator->generate    = &AutoIncrementGenerate;
+    generator->generateKey = &AutoIncrementGenerateKey;
+    generator->validateKey = &AutoIncrementValidateKey;
     generator->free        = &AutoIncrementFree;
     generator->track       = &AutoIncrementTrack;
     generator->toJson      = &AutoIncrementToJson;
