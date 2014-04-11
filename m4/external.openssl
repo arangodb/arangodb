@@ -70,6 +70,7 @@ else
   AC_MSG_RESULT([SSL_METHOD*])
 fi
 
+
 dnl -----------------------------------------------------------------------------------------
 dnl fix include and static libraries
 dnl -----------------------------------------------------------------------------------------
@@ -105,6 +106,24 @@ AC_MSG_RESULT([$TRI_OPENSSL_VERSION])
 rm -f conftest*
 
 dnl -----------------------------------------------------------------------------------------
+dnl verify version number
+dnl -----------------------------------------------------------------------------------------
+
+OPENSSL_WARNING=""
+
+AC_TRY_COMPILE(
+[#include <openssl/opensslv.h>
+],
+[#if OPENSSL_VERSION_NUMBER < 0x1000107fL
+#error OpenSSL version is too old ...
+#endif],
+[ ],
+[OPENSSL_WARNING=" WARNING: OpenSSL version should be 1.0.1g or higher"
+AC_MSG_WARN([OpenSSL version should be 1.0.1g or higher.])
+])
+
+
+dnl -----------------------------------------------------------------------------------------
 dnl restore flags
 dnl -----------------------------------------------------------------------------------------
 
@@ -118,7 +137,7 @@ dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-LIB_INFO="$LIB_INFO|OPENSSL VERSION: ${TRI_OPENSSL_VERSION}"
+LIB_INFO="$LIB_INFO|OPENSSL VERSION: ${TRI_OPENSSL_VERSION}${OPENSSL_WARNING}"
 
 LIB_INFO="$LIB_INFO|OPENSSL_CPPFLAGS: ${OPENSSL_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
