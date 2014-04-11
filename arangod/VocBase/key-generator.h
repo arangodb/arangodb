@@ -29,6 +29,7 @@
 #define TRIAGENS_VOC_BASE_KEY_GENERATOR_H 1
 
 #include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/vocbase.h"
 
@@ -79,6 +80,8 @@ typedef struct TRI_key_generator_s {
 
   int (*init)(struct TRI_key_generator_s* const, const struct TRI_json_s* const);
   int (*generate)(struct TRI_key_generator_s* const, const size_t, const TRI_voc_tick_t, const char* const, char* const, size_t* const, bool);
+  std::string (*generateKey)(struct TRI_key_generator_s* const, TRI_voc_tick_t);
+  int (*validateKey)(struct TRI_key_generator_s* const, std::string const&);
   void (*track)(struct TRI_key_generator_s* const, const TRI_voc_key_t);
   void (*free)(struct TRI_key_generator_s* const);
   struct TRI_json_s* (*toJson)(const struct TRI_key_generator_s* const);

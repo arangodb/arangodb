@@ -26,8 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
-#include "VocBase/vocbase.h"
 #include "BasicsC/logging.h"
+#include "Utils/Exception.h"
+#include "VocBase/key-generator.h"
+#include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::transaction;
@@ -63,6 +66,46 @@ Collection::~Collection () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new revision
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_voc_tick_t Collection::generateRevision () {
+  return TRI_NewTickServer();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new key
+////////////////////////////////////////////////////////////////////////////////
+
+string Collection::generateKey (TRI_voc_tick_t revision) {
+  // no key specified, now create one
+  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary()->_keyGenerator);
+  
+  // create key using key generator
+  string key(keyGenerator->generateKey(keyGenerator, revision));
+
+  if (key.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_OUT_OF_KEYS);
+  }
+
+  return key;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a key
+////////////////////////////////////////////////////////////////////////////////
+
+void Collection::validateKey (std::string const& key) {
+  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary()->_keyGenerator);
+
+  int res = keyGenerator->validateKey(keyGenerator, key);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise usage of the collection

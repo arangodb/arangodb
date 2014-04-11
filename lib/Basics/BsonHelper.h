@@ -287,26 +287,46 @@ namespace triagens {
 
           return true;
         }
+        
+        bool fromJson (char const* value,
+                       size_t length) {
+          
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, value);  
+          if (json == 0) {
+            return false;
+          }
+
+          bool result = parseJson(json);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+          return result;
+        }
 
         bool fromJson (string const& value) {
           TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, value.c_str());  
+          if (json == 0) {
+            return false;
+          }
 
-          if (json == NULL) {
+          bool result = parseJson(json);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+          return result;
+        }
+
+        bool parseJson (TRI_json_t* json) {
+          if (json == 0) {
             return false;
           }
 
           if (json->_type != TRI_JSON_ARRAY) {
             // wrong type. must be document
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
             return false;
           }
 
           clear();
 
-          processJsonPart(json);
-
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          return true;
+          return processJsonPart(json);
         }
 
         bool toJson (string& result) {
@@ -353,7 +373,7 @@ namespace triagens {
           return static_cast<size_t>(bson_count_keys(&_bson));
         }
 
-        bool hasField (string key) {
+        bool hasField (string const& key) {
           return bson_has_field(&_bson, key.c_str());
         }
     };   // class Bson
