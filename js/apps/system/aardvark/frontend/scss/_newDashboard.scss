@@ -108,12 +108,12 @@ $dashboard-padding: 28px;
 .dashboard-tendency {
   @extend %pull-left;
   @extend %dashboard-chart-box;
+  font-size: 25px;
   height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
-  width: 50%;
+  position: relative;
   text-align: center;
-  font-size : 25px;
-  position : relative;
-  top : 15%;
+  top: 15%;
+  width: 50%;
 }
 
 .dashboard-row {

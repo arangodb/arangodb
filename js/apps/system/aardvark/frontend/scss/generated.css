@@ -3074,12 +3074,12 @@ pre.gv-object-view {
   width: 50%; }
 
 .dashboard-tendency {
-  height: 65px;
-  width: 50%;
-  text-align: center;
   font-size: 25px;
+  height: 65px;
   position: relative;
-  top: 15%; }
+  text-align: center;
+  top: 15%;
+  width: 50%; }
 
 .dashboard-row {
   border: 1px solid black;
