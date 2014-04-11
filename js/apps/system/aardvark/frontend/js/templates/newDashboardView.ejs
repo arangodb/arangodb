@@ -1,14 +1,14 @@
 <script id="newDashboardView.ejs" type="text/template">
   <% var largeChart = function(name) { %>
     <div class="dashboard-large-chart dashboard-chart" id="<%= name %>Container">
-      <div id="<%= name %>"></div>
-      <div class="dasboard-legend" id="<%= name %>Legend"></div>
+      <div id="<%= name %>" class="dashboard-interior-chart"></div>
+      <div class="dashboard-legend" id="<%= name %>Legend"></div>
     </div>
   <% } %>
   <% var smallChart = function(name) { %>
     <div class="dashboard-small-chart dashboard-chart"  id="<%= name %>Container">
-      <div id="<%= name %>"></div>
-      <div class="dasboard-legend" id="<%= name %>Legend"></div>
+      <div id="<%= name %>" class="dashboard-interior-chart"></div>
+      <div class="dashboard-legend" id="<%= name %>Legend"></div>
     </div>
   <% } %>
   <% var tendency = function(title, name) { %>
@@ -65,12 +65,12 @@
   <div class="dashboard-row">
     <div class="dashboard-medium-chart dashboard-chart" id="<%= name %>Container">
       <div class="dashboard-title-bar">Major Page Faults</div>
-      <div id="pageFaultsChart"></div>
+      <div id="pageFaultsChart" class="dashboard-interior-chart"></div>
     </div>
     <div class="dashboard-medium-chart dashboard-chart" id="<%= name %>Container">
       <div class="dashboard-title-bar">System User Time in seconds</div>
-      <div id="systemUserTimeChart"></div>
-      <div class="dasboard-legend" id="systemUserTimeChartLegend"></div>
+      <div id="systemUserTimeChart" class="dashboard-interior-chart"></div>
+      <div class="dashboard-legend" id="systemUserTimeChartLegend"></div>
     </div>
   </div>
 </script>

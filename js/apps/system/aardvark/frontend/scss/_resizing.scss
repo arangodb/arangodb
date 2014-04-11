@@ -50,15 +50,30 @@ div.resizecontainer {
     }
 
     .dashboard-large-chart {
-      width: ($content-size * 2 / 3);
+      $int-width: ($content-size * 2 / 3);
+      width: $int-width;
+
+      .dashboard-interior-chart {
+        width: $int-width - 106px;
+      }
     }
 
     .dashboard-medium-chart {
-      width: ($content-size / 2);
+      $int-width: ($content-size / 2);
+      width: $int-width;
+
+      .dashboard-interior-chart {
+        width: $int-width - 106px;
+      }
     }
 
     .dashboard-small-chart {
-      width: ($content-size / 3);
+      $int-width: ($content-size / 3);
+      width: $int-width;
+
+      .dashboard-interior-chart {
+        width: $int-width - 106px;
+      }
     }
   }
 }

@@ -11,23 +11,32 @@ $dashboard-height: 250px;
   }
 }
 
+.dashboard-interior-chart {
+  @extend %pull-left;
+  height: $dashboard-height - 30px;
+}
+
 .dashboard-large-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
 }
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
 }
 
 .dashboard-small-chart {
   @extend %dashboard-chart-box;
+  @extend %pull-left;
   height: $dashboard-height;
 }
 
 .dashboard-legend {
-  display: block;
+  @extend %pull-left;
+  width: 100px;
 }
 
 .dashboard-half-height-chart {

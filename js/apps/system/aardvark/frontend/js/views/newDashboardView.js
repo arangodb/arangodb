@@ -41,7 +41,7 @@
         $('#modal-dialog').toggleClass("modalChartDetail", true);
         $('#modal-body').toggleClass("modal-body", true);
 
-        var dimensions = self.getCurrentSize("lineChartDetail");
+        var dimensions = self.getCurrentSize("#lineChartDetail");
         options.height = dimensions.height;
         options.width = dimensions.width;
 
@@ -62,14 +62,8 @@
 
     getCurrentSize : function (div) {
         var height, width;
-        div.replace(/div#/g,  "");
-        if (div !== "lineChartDetail") {
-            height = $('#' + div).parent().height() * 0.9;
-            width = $('#' + div).parent().width() * 0.9;
-        } else {
-            height = $('#lineChartDetail').height() - 34 -29;
-            width = $('#lineChartDetail').width() -10;
-        }
+        height = $(div).height();
+        width = $(div).width();
         return {
             height : height,
             width: width
@@ -239,6 +233,7 @@
       var self = this, dimensions;
       Object.keys(this.graphs).forEach(function (f) {
           var g = self.graphs[f];
+          console.log(g.maindiv_, $(g.maindiv_));
           dimensions = self.getCurrentSize(g.maindiv_.id);
           g.resize(dimensions.width , dimensions.height);
       });
