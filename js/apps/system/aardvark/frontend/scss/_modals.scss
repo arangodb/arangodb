@@ -56,7 +56,8 @@
   }
 
   .collapse {
-    position: inherit;
+    margin-right: -14px;
+    position: relative;
   }
 
   .accordion-inner {
@@ -66,12 +67,40 @@
     padding-right: 0;
   }
 
+  .accordion-toggle {
+
+    span {
+
+      b.caret {
+        border-top-color: $c-black;
+        float: right;
+        margin-top: 5px;
+      }
+    }
+
+    &.collapsed {
+      span {
+
+        b.caret {
+          -ms-transform: rotate(90deg);
+          -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+        }
+      }
+
+    }
+  }
+
   input {
     width: 384px;
   }
 
   select {
     width: 398px;
+  }
+
+  .tab-content {
+    min-height: 200px;
   }
 }
 
@@ -87,7 +116,7 @@
 }
 
 .modalChartDetail {
-  height: 70%;
+  height: 570px;
   margin-left: 0;
   width: 70%;
 }
@@ -206,6 +235,36 @@ pre.gv-object-view {
   }
 }
 
-.createModalDialog table {
-  width: 100%;
+.createModalDialog {
+
+  table {
+    width: 100%;
+  }
+
+  .collection-info-figures table {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    min-width: 200px;
+    padding: 3px;
+    text-align: left;
+  }
+
+  .figures1,
+  .figures2 {
+    margin-bottom: 20px;
+    width: 255px;
+  }
+
+  .figures2 {
+    margin-left: 20px !important;
+  }
+
+  .figures3 {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+
 }

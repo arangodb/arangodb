@@ -9,7 +9,10 @@
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,
-        patch: parseInt(parts[2], 10) || 0
+        patch: parseInt(parts[2], 10) || 0,
+        toString: function() {
+          return this.major + "." + this.minor + "." + this.patch;
+        }
       };
     },
     toString: function (v) {
@@ -119,8 +122,21 @@
     },
 
     isSystemCollection: function (val) {
-      //return val && val.name && val.name.substr(0, 1) === '_';
-      return val.substr(0, 1) === '_';
+      var returnVal = false;
+      $.ajax({
+        type: "GET",
+        url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          returnVal = data.isSystem;
+        },
+        error: function(data) {
+          returnVal = false;
+        }
+      });
+      return returnVal;
     },
 
     collectionApiType: function (identifier, refresh) {
@@ -150,7 +166,7 @@
         type = "unknown";
       }
 
-      if (val.name.substr(0, 1) === '_') {
+      if (this.isSystemCollection(val.name)) {
         type += " (system)";
       }
 
