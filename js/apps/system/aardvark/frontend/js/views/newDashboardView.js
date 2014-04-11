@@ -199,13 +199,11 @@
             url+= "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
             this.alreadyCalledDetailChart.push(figure);
         }
-        console.log(url);
         $.ajax(
             url,
             {async: false}
         ).done(
             function(d) {
-                console.log(d);
                 self.mergeHistory(d)
             }
         );
@@ -235,7 +233,6 @@
       var self = this, dimensions;
       Object.keys(this.graphs).forEach(function (f) {
           var g = self.graphs[f];
-          console.log(g.maindiv_, $(g.maindiv_));
           dimensions = self.getCurrentSize(g.maindiv_.id);
           g.resize(dimensions.width , dimensions.height);
       });
