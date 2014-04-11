@@ -9,7 +9,10 @@
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,
-        patch: parseInt(parts[2], 10) || 0
+        patch: parseInt(parts[2], 10) || 0,
+        toString: function() {
+          return this.major + "." + this.minor + "." + this.patch;
+        }
       };
     },
     toString: function (v) {
