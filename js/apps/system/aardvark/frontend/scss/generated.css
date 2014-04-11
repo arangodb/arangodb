@@ -1397,55 +1397,55 @@ nav.navbar, footer.footer {
 
 .button-danger {
   background-color: #da4f49; }
-  .button-danger:hover {
+  .button-danger:hover, .button-danger:focus {
     background-color: #be342e; }
 
 .deleteButton, .contentTables td span, .edit-index-table .icon_arangodb_roundminus {
   color: #da4f49; }
-  .deleteButton:hover, .contentTables td span:hover, .edit-index-table .icon_arangodb_roundminus:hover {
+  .deleteButton:hover, .contentTables td span:hover, .edit-index-table .icon_arangodb_roundminus:hover, .deleteButton:focus, .contentTables td span:focus, .edit-index-table .icon_arangodb_roundminus:focus {
     color: #be342e; }
 
 .button-success {
   background-color: #8aa051; }
-  .button-success:hover {
+  .button-success:hover, .button-success:focus {
     background-color: #788f3d; }
 
 .addButton, .contentTables td.dbThSecond span {
   color: #8aa051; }
-  .addButton:hover, .contentTables td.dbThSecond span:hover {
+  .addButton:hover, .contentTables td.dbThSecond span:hover, .addButton:focus, .contentTables td.dbThSecond span:focus {
     color: #788f3d; }
 
 .button-warning {
   background-color: #faa732; }
-  .button-warning:hover {
+  .button-warning:hover, .button-warning:focus {
     background-color: #f89406; }
 
 .button-neutral, .button-close {
   background-color: #8f8d8c; }
-  .button-neutral:hover, .button-close:hover {
+  .button-neutral:hover, .button-close:hover, .button-neutral:focus, .button-close:focus {
     background-color: #736b68; }
 
 .button-primary {
   background-color: #564e4a; }
-  .button-primary:hover {
+  .button-primary:hover, .button-primary:focus {
     background-color: #3a322e; }
 
 .button-header, a.headerButton, a.button-gui {
   background-color: #dddddd;
   border: 1px solid #222222;
   color: #555555; }
-  .button-header:hover, a.headerButton:hover, a.button-gui:hover {
+  .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
     background-color: white;
     color: black; }
 
 .button-notification {
   background-color: #faa020; }
-  .button-notification:hover {
+  .button-notification:hover, .button-notification:focus {
     background-color: #f87c0f; }
 
 .button-inactive {
   background-color: lightgray; }
-  .button-inactive:hover {
+  .button-inactive:hover, .button-inactive:focus {
     background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
