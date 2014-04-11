@@ -61,6 +61,7 @@
                 "optionsPerSecond", "othersPerSecond"],
             requestsAsync : ["times", "asyncsPerSecond"]
         },
+
         //colors for dygraphs
         colors: ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
             "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
@@ -210,7 +211,7 @@
                 result = this.mergeObjects(
                     result, this.figureDependedOptions[figure], ["axes"]
                 );
-                if (result.div && result.labels && figure !== "pageFaults") {
+                if (result.div && result.labels) {
                     result.colors = this.getColors(result.labels);
                     result.labelsDiv = document.getElementById(result.div + "Legend");
                     result.legend = "always";

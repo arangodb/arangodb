@@ -97,7 +97,8 @@ $dashboard-padding: 28px;
   @extend %pull-left;
   @extend %dashboard-chart-box;
   border-bottom: 1px solid $c-black;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: bold;
   height: 36px;
   line-height: 36px;
   text-align: center;
@@ -107,7 +108,11 @@ $dashboard-padding: 28px;
 .dashboard-tendency {
   @extend %pull-left;
   @extend %dashboard-chart-box;
+  font-size: 25px;
   height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
+  position: relative;
+  text-align: center;
+  top: 15%;
   width: 50%;
 }
 
