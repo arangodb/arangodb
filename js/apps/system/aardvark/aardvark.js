@@ -34,7 +34,8 @@
 var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
-  underscore = require("underscore");
+  underscore = require("underscore"),
+  db = require("internal").db;
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var docus = new (require("lib/swagger").Swagger)();
@@ -47,7 +48,34 @@ controller.get("/whoAmI", function(req, res) {
 
 controller.get("/unauthorized", function(req, res) {
   throw new ArangoError();
-}).errorResponse(ArangoError, 401, "unauthorized");;
+}).errorResponse(ArangoError, 401, "unauthorized");
+
+/** Is version check allowed
+ *
+ * Check if version check is allowed
+ */
+controller.get("shouldCheckVersion", function(req, res) {
+  var cfg = db._collection("_versionCheckConfig");
+  if (cfg) {
+    // First version, existence of collection indicates
+    // that user does not want version checks.
+    // Will be more finegrained later
+    res.json(false);
+  } else {
+    res.json(true);
+  }
+});
+
+/** Disable version check
+ *
+ * Disable the version check in web interface
+ */
+controller.post("disableVersionCheck", function(req, res) {
+  if (!db._collection("_versionCheckConfig")) {
+    db._create("_versionCheckConfig", {isSystem: true, journalSize: 1024 * 1024});
+  }
+  res.json("ok");
+});
 
 /** Fetch a foxx from temp folder
  *

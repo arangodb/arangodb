@@ -20,10 +20,10 @@
 
     it("should define the swagger UI on create", function() {
       var fakeURL = "/fake/url",
-          fakeKey = "fakeKey";
+          fakeKey = "fakeKey", view;
       spyOn(internal.arango, "databasePrefix").andReturn(fakeURL);
       spyOn(window, "SwaggerUi");
-      var view = new window.AppDocumentationView({
+      view = new window.AppDocumentationView({
         key: fakeKey
       });
       expect(internal.arango.databasePrefix).toHaveBeenCalledWith(
