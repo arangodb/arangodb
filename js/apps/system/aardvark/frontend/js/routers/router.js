@@ -11,7 +11,6 @@
       "dashboard": "dashboard",
       "collection/:colid": "collection",
       "collections": "collections",
-      "collectionInfo/:colid": "collectionInfo",
       "new": "newCollection",
       "login": "login",
       "collection/:colid/documents/:pageid": "documents",
@@ -279,14 +278,6 @@
       }
       this.collectionView.setColId(colid);
       this.collectionView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
-    collectionInfo: function (colid) {
-      if (!this.collectionInfoView) {
-        this.collectionInfoView = new window.CollectionInfoView();
-      }
-      this.collectionInfoView.setColId(colid);
-      this.collectionInfoView.render();
       this.naviView.selectMenuItem('collections-menu');
     },
 
