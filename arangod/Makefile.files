@@ -86,6 +86,7 @@ bin_arangod_SOURCES = \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Transaction/WorkUnit.cpp \
 	arangod/Utils/DocumentHelper.cpp \
+	arangod/Utils/Exception.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
 	arangod/V8Server/V8PeriodicJob.cpp \

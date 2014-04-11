@@ -29,6 +29,7 @@
 #define TRIAGENS_TRANSACTION_WORK_UNIT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/BsonHelper.h"
 #include "Transaction/Collection.h"
 #include "Transaction/State.h"
 #include "Transaction/Transaction.h"
@@ -94,23 +95,33 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the unit, assert a specific collection type
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* addCollection (std::string const&,
+                                   Collection::AccessType,
+                                   TRI_col_type_e,
+                                   bool = true,
+                                   bool = false);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to the unit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollection (std::string const&,
-                           Collection::AccessType,
-                           bool = true,
-                           bool = false);
+        Collection* addCollection (std::string const&,
+                                   Collection::AccessType,
+                                   bool = true,
+                                   bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to the unit
 ////////////////////////////////////////////////////////////////////////////////
         
-        int addCollection (TRI_voc_cid_t,
-                           TRI_vocbase_col_t*,
-                           Collection::AccessType,
-                           bool = true,
-                           bool = false);
+        Collection* addCollection (TRI_voc_cid_t,
+                                   TRI_vocbase_col_t*,
+                                   Collection::AccessType,
+                                   bool = true,
+                                   bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a collection in a unit of work
@@ -135,6 +146,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int rollback ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a single document
+////////////////////////////////////////////////////////////////////////////////
+
+        int saveDocument (Collection*,
+                          triagens::basics::Bson const&,
+                          bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

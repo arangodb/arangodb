@@ -27,7 +27,9 @@
 
 #include "Collection.h"
 #include "VocBase/vocbase.h"
+#include "BasicsC/logging.h"
 
+using namespace std;
 using namespace triagens::transaction;
 
 // -----------------------------------------------------------------------------
@@ -38,13 +40,12 @@ using namespace triagens::transaction;
 /// @brief create the transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Collection::Collection (TRI_voc_cid_t id,
-                        TRI_vocbase_col_t* collection,
+Collection::Collection (TRI_vocbase_col_t* collection,
                         Collection::AccessType accessType,
                         bool responsibility,
                         bool locked) 
-  : _id(id),
-    _collection(collection),
+  : _collection(collection),
+    _initialRevision(0),
     _accessType(accessType),
     _responsibility(responsibility),
     _locked(locked),
@@ -56,7 +57,7 @@ Collection::Collection (TRI_voc_cid_t id,
 ////////////////////////////////////////////////////////////////////////////////
 
 Collection::~Collection () {
-  unlock();
+  done();
 }
 
 // -----------------------------------------------------------------------------
@@ -64,13 +65,24 @@ Collection::~Collection () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finalise usage of the collection
+////////////////////////////////////////////////////////////////////////////////
+
+int Collection::done () {
+  int res = unlock();
+  unuse(); 
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief use the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int Collection::use (TRI_vocbase_t* vocbase) {
+int Collection::use () {
   if (hasResponsibility()) {
     if (! _used) {
-      TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, _id);
+      TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(_collection->_vocbase, id());
   
       if (collection == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -91,10 +103,10 @@ int Collection::use (TRI_vocbase_t* vocbase) {
 /// @brief unuse the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int Collection::unuse (TRI_vocbase_t* vocbase) {
+int Collection::unuse () {
   if (hasResponsibility()) {
     if (_used) {
-      TRI_ReleaseCollectionVocBase(vocbase, _collection);
+      TRI_ReleaseCollectionVocBase(_collection->_vocbase, _collection);
       _used = false;
     }
   }

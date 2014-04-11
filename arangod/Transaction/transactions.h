@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations interface
+/// @brief transaction macros
 ///
 /// @file
 ///
@@ -25,66 +25,45 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Operations.h"
+#ifndef TRIAGENS_TRANSACTION_TRANSACTIONS_H
+#define TRIAGENS_TRANSACTION_TRANSACTIONS_H 1
 
+#include "Basics/Common.h"
 #include "BasicsC/logging.h"
-
-using namespace std;
-using namespace triagens::transaction;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document
-////////////////////////////////////////////////////////////////////////////////
-
-int getDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
+#include "Transaction/Context.h"
+#include "Transaction/Manager.h"
+#include "Transaction/Transaction.h"
+#include "Transaction/WorkUnit.h"
+#include "Utils/Exception.h"
+#include "Wal/LogfileManager.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save a document
+/// @brief try block for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int saveDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
+#define TRANSACTION_TRY(vocbase, context, globalContext)                       \
+  try {                                                                        \
+    triagens::transaction::Manager* manager = new triagens::transaction::Manager(); \
+    triagens::transaction::Context* context = triagens::transaction::Context::getContext(manager, triagens::wal::LogfileManager::instance(), vocbase, globalContext);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a document
+/// @brief catch block for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int removeDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
+#define TRANSACTION_CATCH(ex)                                                  \
+  }                                                                            \
+  catch (triagens::arango::Exception const &ex) {                              \
+    LOG_INFO("transaction exception: %s", ex.what());                          \
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
+/// @brief final block for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int updateDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
+#define TRANSACTION_FINALLY                                                    \
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document
-////////////////////////////////////////////////////////////////////////////////
-
-int replaceDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate a collection
-////////////////////////////////////////////////////////////////////////////////
-
-int truncate () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor

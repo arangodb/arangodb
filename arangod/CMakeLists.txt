@@ -120,6 +120,7 @@ add_executable(
     Transaction/Transaction.cpp
     Transaction/WorkUnit.cpp
     Utils/DocumentHelper.cpp
+    Utils/Exception.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8PeriodicTask.cpp
     V8Server/V8PeriodicJob.cpp

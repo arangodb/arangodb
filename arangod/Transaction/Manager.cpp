@@ -32,13 +32,14 @@
 #include "Transaction/State.h"
 #include "VocBase/vocbase.h"
 
+using namespace std;
 using namespace triagens::transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the transaction manager singleton
 ////////////////////////////////////////////////////////////////////////////////
 
-static Manager* ManagerInstance = 0;
+static Manager* Instance = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -48,7 +49,7 @@ static Manager* ManagerInstance = 0;
 /// @brief create the transaction manager
 ////////////////////////////////////////////////////////////////////////////////
 
-Manager::Manager () 
+Manager::Manager ()
   : _generator(),
     _lock(),
     _transactions() {
@@ -72,17 +73,13 @@ Manager::~Manager () {
   _transactions.clear();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the transaction manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
 Manager* Manager::instance () {
-  assert(ManagerInstance != 0);
-  return ManagerInstance;
+  assert(Instance != nullptr);
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,9 +87,9 @@ Manager* Manager::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Manager::initialise () {
-  assert(ManagerInstance == 0);
+  assert(Instance == nullptr);
 
-  ManagerInstance = new Manager();
+  Instance = new Manager();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,9 +97,9 @@ void Manager::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Manager::shutdown () {
-  if (ManagerInstance != 0) {
-    delete ManagerInstance;
-    ManagerInstance = 0;
+  if (Instance != nullptr) {
+    delete Instance;
+    Instance = nullptr;
   }
 }
 

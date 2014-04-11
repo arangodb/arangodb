@@ -26,12 +26,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkUnit.h"
+#include "BasicsC/logging.h"
 #include "Transaction/Collection.h"
 #include "Transaction/Context.h"
+#include "Transaction/Marker.h"
 #include "Transaction/Transaction.h"
+#include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
 
+#define WORKUNIT_LOG(msg) LOG_INFO("workunit #%llu: %s", (unsigned long long) _id, msg)
+
+using namespace std;
 using namespace triagens::transaction;
+using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -51,7 +59,9 @@ WorkUnit::WorkUnit (Context* context,
     _done(false) {
 
   _context->increaseRefCount();
+  
   _context->startWorkUnit(this);
+  WORKUNIT_LOG("starting");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +69,9 @@ WorkUnit::WorkUnit (Context* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 WorkUnit::~WorkUnit () {
+  WORKUNIT_LOG("destroyed");
   done();
+  
   _context->decreaseRefCount();
 }
 
@@ -68,17 +80,39 @@ WorkUnit::~WorkUnit () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the unit, assert a specific collection type
+////////////////////////////////////////////////////////////////////////////////
+
+Collection* WorkUnit::addCollection (string const& name,
+                                     Collection::AccessType accessType,
+                                     TRI_col_type_e collectionType,
+                                     bool lockResponsibility,
+                                     bool locked) {
+  TRI_vocbase_col_t* collection = _context->resolveCollection(name);
+ 
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+  }
+
+  if (collection->_type != static_cast<TRI_col_type_t>(collectionType)) {
+    THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, name);
+  }
+   
+  return addCollection(collection->_cid, collection, accessType, lockResponsibility, locked);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to the unit
 ////////////////////////////////////////////////////////////////////////////////
 
-int WorkUnit::addCollection (string const& name,
-                             Collection::AccessType accessType,
-                             bool lockResponsibility,
-                             bool locked) {
+Collection* WorkUnit::addCollection (string const& name,
+                                     Collection::AccessType accessType,
+                                     bool lockResponsibility,
+                                     bool locked) {
   TRI_vocbase_col_t* collection = _context->resolveCollection(name);
   
   if (collection == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
   }
    
   return addCollection(collection->_cid, collection, accessType, lockResponsibility, locked);
@@ -88,37 +122,36 @@ int WorkUnit::addCollection (string const& name,
 /// @brief add a collection to the unit
 ////////////////////////////////////////////////////////////////////////////////
         
-int WorkUnit::addCollection (TRI_voc_cid_t id,
-                             TRI_vocbase_col_t* collection,
-                             Collection::AccessType accessType,
-                             bool lockResponsibility,
-                             bool locked) {
+Collection* WorkUnit::addCollection (TRI_voc_cid_t id,
+                                     TRI_vocbase_col_t* collection,
+                                     Collection::AccessType accessType,
+                                     bool lockResponsibility,
+                                     bool locked) {
   if (id == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   auto it = _collections.find(id);
 
   if (it != _collections.end()) {
-    Collection* collection = (*it).second;
     if (accessType == Collection::AccessType::WRITE &&
-        ! collection->allowWriteAccess()) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
+        ! (*it).second->allowWriteAccess()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_INTERNAL);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return (*it).second;
   }
 
-  Collection* previous = _context->findCollection(id);
+  Collection* c = _context->findCollection(id);
 
-  if (previous != nullptr) {
-    // collection already present in a top-level work unit
-    return TRI_ERROR_NO_ERROR;
+  if (c == nullptr) {
+    // no previous collection found, now insert it
+    c = new Collection(collection, accessType, lockResponsibility, locked);
+
+    _collections.insert(make_pair(id, c));
   }
 
-  _collections.insert(make_pair(id, new Collection(id, collection, accessType, lockResponsibility, locked)));
-
-  return TRI_ERROR_NO_ERROR;
+  return c;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,9 +175,22 @@ int WorkUnit::begin () {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
  
-  int res;
+  WORKUNIT_LOG("begin"); 
+  
+  int res = TRI_ERROR_NO_ERROR;  
+  for (auto& it : _collections) {
+    res = it.second->use();
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    res = it.second->lock();
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+ 
   if (! isTopLevel()) {
-    // TODO: implement begin
     res = TRI_ERROR_NO_ERROR;
   }
   else {
@@ -165,10 +211,11 @@ int WorkUnit::commit (bool waitForSync) {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  WORKUNIT_LOG("commit"); 
    
   int res;
   if (! isTopLevel()) {
-    // TODO: implement commit
     res = TRI_ERROR_NO_ERROR;
   }
   else {
@@ -176,8 +223,8 @@ int WorkUnit::commit (bool waitForSync) {
     res = transaction->commit(waitForSync);
   }
   
-  setState(State::StateType::COMMITTED);
   done();
+  setState(State::StateType::COMMITTED);
 
   return res;
 }
@@ -190,10 +237,11 @@ int WorkUnit::rollback () {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  WORKUNIT_LOG("rollback"); 
 
   int res;
   if (! isTopLevel()) {
-    // TODO: implement rollback
     res = TRI_ERROR_NO_ERROR;
   }
   else {
@@ -201,8 +249,27 @@ int WorkUnit::rollback () {
     res = transaction->rollback();
   }
   
-  setState(State::StateType::ABORTED);
   done();
+  setState(State::StateType::ABORTED);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a single document
+////////////////////////////////////////////////////////////////////////////////
+
+int WorkUnit::saveDocument (Collection* collection,
+                            triagens::basics::Bson const& document,
+                            bool waitForSync) {
+
+  DocumentMarker marker(collection->databaseId(), collection->id(), document);
+
+  LogfileManager* logfileManager = _context->logfileManager();
+       
+  int res = logfileManager->allocateAndWrite(marker.buffer, 
+                                             marker.size, 
+                                             waitForSync);
 
   return res;
 }
@@ -217,9 +284,14 @@ int WorkUnit::rollback () {
 
 void WorkUnit::done () {
   if (! _done) {
+    for (auto& it : _collections) {
+      it.second->done();
+    }
+
     _context->endWorkUnit(this);
     _done = true;
   }
+
   cleanup();
 }
 

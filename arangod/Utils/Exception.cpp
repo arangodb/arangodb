@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations interface
+/// @brief arango exceptions
 ///
 /// @file
 ///
@@ -22,68 +22,72 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Operations.h"
-
-#include "BasicsC/logging.h"
+#include "Exception.h"
+#include "Basics/StringUtils.h"
 
 using namespace std;
-using namespace triagens::transaction;
+using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
+Exception::Exception (int code,
+                      string const& details, 
+                      char const* file, 
+                      int line)
+  : _details(details),
+    _file(file),
+    _line(line),
+    _code(code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save a document
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-int saveDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
+Exception::~Exception () throw () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a document
+/// @brief return exception message
 ////////////////////////////////////////////////////////////////////////////////
 
-int removeDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
+char const* Exception::what () const throw () {
+  string message("exception in '");
+  message.append(_file);
+  message.append("' at line ");
+  message.append(basics::StringUtils::itoa(_line));
+  message.append(": ");
+  message += this->message();
+
+  return message.c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
+/// @brief return exception message
 ////////////////////////////////////////////////////////////////////////////////
 
-int updateDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
+string Exception::message () const throw () {
+  string message(TRI_errno_string(_code));
+    
+  if (! _details.empty()) {
+    message.append(": ");
+    message.append(_details);
+  }
+
+  return message;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document
+/// @brief return exception code
 ////////////////////////////////////////////////////////////////////////////////
 
-int replaceDocument () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate a collection
-////////////////////////////////////////////////////////////////////////////////
-
-int truncate () { 
-  int res = TRI_ERROR_NO_ERROR;
-  return res;
+int Exception::code () const throw () {
+  return _code;
 }
 
 // Local Variables:
