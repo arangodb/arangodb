@@ -218,12 +218,17 @@
             }
 
             if (update !== undefined) {
-              var msg = "A newer version of ArangoDB (" + update.version +
-                        ") has become available. You may want to check the " +
-                        "changelog at <a href=\"" + update.changes + "\">" +
-                        update.changes + "</a>";
-              arangoHelper.arangoNotification(msg, 15000);
-
+              var buttons = [];
+              buttons.push(window.modalView.createSuccessButton("Download Page", function() {
+                window.open('https://www.arangodb.org/download','_blank');
+              }));
+              var infos = {
+                newVersion: update.version,
+                oldVersion: currentVersion.toString()
+              };
+              window.modalView.show(
+                "modalNewVersion.ejs", "New Version Available", buttons, infos
+              );
             }
           },
           error: function () {
