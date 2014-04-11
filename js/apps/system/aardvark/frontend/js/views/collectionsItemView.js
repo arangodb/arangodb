@@ -44,9 +44,12 @@
 
     showProperties: function(event) {
       event.stopPropagation();
+      this.createInfoModal();
+/*
       window.App.navigate(
         "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
       );
+*/
     },
     
     selectCollection: function() {
@@ -243,6 +246,18 @@
         buttons,
         tableContent
       );
+    },
+
+    createInfoModal: function() {
+      var buttons = [],
+        tableContent = this.model;
+      window.modalView.show(
+        "modalCollectionInfo.ejs",
+        "Collection: " + this.model.get('name'),
+        buttons,
+        tableContent
+      );
+
     }
 
   });

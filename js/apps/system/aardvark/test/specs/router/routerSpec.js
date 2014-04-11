@@ -77,7 +77,7 @@
                 }
             };
 
-            dashboardDummy = {
+            /*dashboardDummy = {
                 id: "dashboard",
                 resize: function () {
                 },
@@ -85,7 +85,7 @@
                 },
                 render: function () {
                 }
-            };
+            };*/
             statisticsDescriptionCollectionDummy = {
                 id: "statisticsDescription",
                 fetch: function () {
@@ -208,7 +208,7 @@
                 expect(window.FoxxCollection).toHaveBeenCalled();
             });
 
-            it("should delete the dashboardview", function () {
+           /* it("should delete the dashboardview", function () {
                 var e = new window.Router();
                 spyOn(e, "bind").andCallFake(function (a, func) {
                     expect(a).toEqual("all");
@@ -218,9 +218,9 @@
                 });
                 e.initialize();
                 expect(e.bind).toHaveBeenCalled();
-            });
+            });*/
 
-            it("should stop the updating of the dashboardview", function () {
+           /* it("should stop the updating of the dashboardview", function () {
                 var e = new window.Router();
                 e.dashboardView = dashboardDummy;
                 spyOn(dashboardDummy, "stopUpdating");
@@ -234,7 +234,7 @@
                 e.initialize();
                 expect(e.bind).toHaveBeenCalled();
             });
-
+*/
 
             it("should bind a resize event and call the handle Resize Method", function () {
                 var e = new window.Router();
