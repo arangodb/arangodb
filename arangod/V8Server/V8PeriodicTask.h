@@ -57,7 +57,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicTask (TRI_vocbase_t*,
+        V8PeriodicTask (const string& name,
+                        TRI_vocbase_t*,
                         ApplicationV8*,
                         rest::Scheduler*,
                         rest::Dispatcher*,
@@ -66,6 +67,20 @@ namespace triagens {
                         const string& module,
                         const string& func,
                         const string& parameter);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task is user-defined
+////////////////////////////////////////////////////////////////////////////////
+ 
+        bool isUserDefined () const {
+          return true;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              PeriodicTask methods
