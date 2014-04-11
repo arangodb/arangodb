@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2599,6 +2599,8 @@ div.breadcrumb a.disabledBread {
     width: 384px; }
   .modal-body select {
     width: 398px; }
+  .modal-body .tab-content {
+    min-height: 200px; }
 
 .modal-text {
   font-weight: 300;
@@ -2702,6 +2704,23 @@ pre.gv-object-view {
       margin-right: -18px; }
 
 .createModalDialog table {
+  width: 100%; }
+.createModalDialog .collection-info-figures table {
+  float: left;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  min-width: 200px;
+  padding: 3px;
+  text-align: left; }
+.createModalDialog .figures1,
+.createModalDialog .figures2 {
+  margin-bottom: 20px;
+  width: 255px; }
+.createModalDialog .figures2 {
+  margin-left: 20px !important; }
+.createModalDialog .figures3 {
+  margin-bottom: 0;
   width: 100%; }
 
 .navlogo .stat_cpu {
@@ -2834,7 +2853,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -3406,7 +3425,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
@@ -3735,18 +3754,6 @@ input.gv-radio-button {
   min-width: 200px;
   padding: 3px;
   text-align: left; }
-
-.figures1,
-.figures2 {
-  margin-bottom: 20px;
-  width: 255px; }
-
-.figures2 {
-  margin-left: 20px !important; }
-
-.figures3 {
-  margin-bottom: 0;
-  width: 100%; }
 
 .figuresHeader {
   border-bottom: 1px solid #c2c2c2; }
