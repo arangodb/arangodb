@@ -1153,7 +1153,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
 
 #ifdef TRI_ENABLE_CLUSTER
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
 #endif
 
   // we need a scheduler and a dispatcher to define periodic tasks
