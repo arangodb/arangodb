@@ -175,7 +175,7 @@
       if (buttons.length > 0) {
         buttons.forEach(function (b) {
             if (b.type === self.buttons.CLOSE) {
-                closeButtonFound = true
+                closeButtonFound = true;
             }
         });
         if (!closeButtonFound) {

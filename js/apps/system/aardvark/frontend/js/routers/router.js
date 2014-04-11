@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper, dashboardView, arangoDatabase, _*/
+/*global arangoHelper,dashboardView,arangoDatabase, _*/
 
 (function () {
   "use strict";
@@ -11,7 +11,6 @@
       "dashboard": "dashboard",
       "collection/:colid": "collection",
       "collections": "collections",
-      "collectionInfo/:colid": "collectionInfo",
       "new": "newCollection",
       "login": "login",
       "collection/:colid/documents/:pageid": "documents",
@@ -181,14 +180,6 @@
       this.collectionView.render();
       this.naviView.selectMenuItem('collections-menu');
     },
-    collectionInfo: function (colid) {
-      if (!this.collectionInfoView) {
-        this.collectionInfoView = new window.CollectionInfoView();
-      }
-      this.collectionInfoView.setColId(colid);
-      this.collectionInfoView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
 
     documents: function (colid, pageid) {
       if (!window.documentsView) {
@@ -276,7 +267,7 @@
     dashboard: function () {
       this.naviView.selectMenuItem('dashboard-menu');
       if (this.dashboardView === undefined) {
-        this.dashboardView = new newDashboardView({
+        this.dashboardView = new window.newDashboardView({
           dygraphConfig: window.newDygraphConfig
         });
       }
