@@ -174,15 +174,17 @@ function computeStatisticsRaw (start) {
           getsPerSecond: null,
           deletesPerSecond: null,
           othersPerSecond: null,
-          pathessPerSecond: null,
-          asyncsPerSecond: null,
+          patchesPerSecond: null,
+          asyncPerSecond: null,
           virtualSize: null,
           residentSize: null,
           residentSizePercent: null,
           majorPageFaultsPerSecond: null,
           minorPageFaultsPerSecond: null,
           userTime: null,
-          systemTime: null
+          systemTime: null,
+          numberOfThreads: null,
+          clientConnections: null
         });
       }
 
@@ -267,7 +269,7 @@ function computeStatisticsRaw (start) {
         raw.http.requestsPatch, 
         lastRaw.http.requestsPatch);
 
-      data.asyncsPerSecond = perTimeSlice(
+      data.asyncPerSecond = perTimeSlice(
         d,
         raw.http.requestsAsync,
         lastRaw.http.requestsAsync);
@@ -276,6 +278,9 @@ function computeStatisticsRaw (start) {
       data.virtualSize = raw.system.virtualSize;
       data.residentSize = raw.system.residentSize;
       data.residentSizePercent = raw.system.residentSizePercent;
+
+      data.numberOfThreads = raw.system.numberOfThreads;
+      data.clientConnections = raw.client.httpConnections;
 
       // page faults
       data.majorPageFaultsPerSecond = perTimeSlice(
@@ -323,7 +328,9 @@ function computeStatisticsRaw (start) {
       clientConnections: 0,
       clientConnectionsPercentChange: 0,
       numberOfThreads: 0,
-      numberOfThreadsPercentChange: 0
+      numberOfThreadsPercentChange: 0,
+      virtualSize: 0,
+      virtualSizePercentChange: 0
     };
   }
   else {
@@ -339,7 +346,9 @@ function computeStatisticsRaw (start) {
         clientConnections: lastRaw.client.httpConnections,
         clientConnectionsPercentChange: 0,
         numberOfThreads: lastRaw.system.numberOfThreads,
-        numberOfThreadsPercentChange: 0
+        numberOfThreadsPercentChange: 0,
+        virtualSize: lastRaw.system.virtualSize,
+        virtualSizePercentChange: 0
       };
 
       distribution = {
@@ -394,13 +403,23 @@ function computeStatisticsRaw (start) {
         d3 = (n3 - m3) / n3;
       }
 
+      var n4 = lastRaw.system.virtualSize;
+      var m4 = lastLastRaw.system.virtualSize;
+      var d4 = 0;
+
+      if (m4 !== 0) {
+        d4 = (n4 - m4) / n4;
+      }
+
       current = {
         asyncRequests: n1,
         asyncRequestsPercentChange: d1,
         clientConnections: n2,
         clientConnectionsPercentChange: d2,
         numberOfThreads: n3,
-        numberOfThreadsPercentChange: d3
+        numberOfThreadsPercentChange: d3,
+        virtualSize: n4,
+        virtualSizePercentChange: d4
       };
 
       distribution = {
@@ -460,12 +479,12 @@ function computeStatisticsRaw15M (start) {
 
   var lastRaw = null;
   var count = 0;
-  var sumAsyncs = 0;
+  var sumasync = 0;
   var sumConnections = 0;
   var sumThreads = 0;
   var sumVirtualSize = 0;
 
-  var firstAsyncs = null;
+  var firstasync = null;
   var firstConnections = null;
   var firstThreads = null;
   var firstVirtualSize = null;
@@ -486,13 +505,13 @@ function computeStatisticsRaw15M (start) {
         var n4 = raw.virtualSize;
 
         count++;
-        sumAsyncs += n1;
+        sumasync += n1;
         sumConnections += n2;
         sumThreads += n3;
         sumVirtualSize += n4;
 
-        if (firstAsyncs === null) {
-          firstAsyncs = n1;
+        if (firstasync === null) {
+          firstasync = n1;
         }
 
         if (firstConnections === null) {
@@ -511,17 +530,17 @@ function computeStatisticsRaw15M (start) {
   }
 
   if (count !== 0) {
-    sumAsyncs /= count;
+    sumasync /= count;
     sumConnections /= count;
     sumThreads /= count;
     sumVirtualSize /= count;
   }
 
-  if (firstAsyncs === null) {
-    firstAsyncs = 0;
+  if (firstasync === null) {
+    firstasync = 0;
   }
-  else if (firstAsyncs !== 0) {
-    firstAsyncs = (sumAsyncs - firstAsyncs) / firstAsyncs;
+  else if (firstasync !== 0) {
+    firstasync = (sumasync - firstasync) / firstasync;
   }
 
   if (firstConnections === null) {
@@ -546,8 +565,8 @@ function computeStatisticsRaw15M (start) {
   }
 
   return {
-    asyncsPerSecond: sumAsyncs,
-    asyncsPerSecondPercentChange: firstAsyncs,
+    asyncPerSecond: sumasync,
+    asyncPerSecondPercentChange: firstasync,
     clientConnections: sumConnections,
     clientConnectionsPercentChange: firstConnections,
     numberOfThreads: sumThreads,
@@ -664,8 +683,8 @@ function computeStatisticsSeries (start, attrs) {
     result.patchesPerSecond = convertSeries(raw.series, "patchesPerSecond");
   }
 
-  if (attrs === null || attrs.asyncsPerSecond) {
-    result.asyncsPerSecond = convertSeries(raw.series, "asyncsPerSecond");
+  if (attrs === null || attrs.asyncPerSecond) {
+    result.asyncPerSecond = convertSeries(raw.series, "asyncPerSecond");
   }
 
   if (attrs === null || attrs.asyncRequestsCurrent) {
@@ -676,12 +695,20 @@ function computeStatisticsSeries (start, attrs) {
     result.asyncRequestsCurrentPercentChange = raw.current.asyncRequestsPercentChange;
   }
 
+  if (attrs === null || attrs.clientConnections) {
+      result.clientConnections = convertSeries(raw.series, "clientConnections");
+  }
+
   if (attrs === null || attrs.clientConnectionsCurrent) {
     result.clientConnectionsCurrent = raw.current.clientConnections;
   }
 
   if (attrs === null || attrs.clientConnectionsCurrentPercentChange) {
     result.clientConnectionsCurrentPercentChange = raw.current.clientConnectionsPercentChange;
+  }
+
+  if (attrs === null || attrs.numberOfThreads) {
+      result.numberOfThreads = convertSeries(raw.series, "numberOfThreads");
   }
 
   if (attrs === null || attrs.numberOfThreadsCurrent) {
@@ -702,6 +729,18 @@ function computeStatisticsSeries (start, attrs) {
 
   if (attrs === null || attrs.virtualSize) {
     result.virtualSize = convertSeries(raw.series, "virtualSize");
+  }
+
+  if (attrs === null || attrs.asyncRequestsCurrentPercentChange) {
+    result.asyncRequestsCurrentPercentChange = raw.current.asyncRequestsPercentChange;
+  }
+
+  if (attrs === null || attrs.virtualSizeCurrent) {
+    result.virtualSizeCurrent = raw.current.virtualSize;
+  }
+
+  if (attrs === null || attrs.virtualSizePercentChange) {
+    result.virtualSizePercentChange = raw.current.virtualSizePercentChange;
   }
 
   if (attrs === null || attrs.majorPageFaultsPerSecond) {
@@ -731,12 +770,12 @@ function computeStatisticsSeries (start, attrs) {
   if (result.next !== null) {
     var raw15 = computeStatisticsRaw15M(raw.next);
 
-    if (attrs === null || attrs.asyncsPerSecond15M) {
-      result.asyncsPerSecond15M = raw15.asyncsPerSecond;
+    if (attrs === null || attrs.asyncPerSecond15M) {
+      result.asyncPerSecond15M = raw15.asyncPerSecond;
     }
 
-    if (attrs === null || attrs.asyncsPerSecondPercentChange15M) {
-      result.asyncsPerSecondPercentChange15M = raw15.asyncsPerSecondPercentChange;
+    if (attrs === null || attrs.asyncPerSecondPercentChange15M) {
+      result.asyncPerSecondPercentChange15M = raw15.asyncPerSecondPercentChange;
     }
 
     if (attrs === null || attrs.clientConnections15M) {
@@ -763,7 +802,6 @@ function computeStatisticsSeries (start, attrs) {
       result.virtualSizePercentChange15M = raw15.virtualSizePercentChange;
     }
   }
-
   return result;
 }
 

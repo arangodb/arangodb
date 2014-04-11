@@ -16,12 +16,24 @@
 
     events: {
       "click .dashboard-chart" : "showDetail",
-      "mousedown .dygraph-rangesel-zoomhandle" : "stopRendering",
-      "mouseup .dygraph-rangesel-zoomhandle" : "startRendering",
-      "mouseleave .dygraph-rangesel-zoomhandle" : "startRendering",
+      "mousedown .dygraph-rangesel-zoomhandle" : "stopUpdating",
+      "mouseup .dygraph-rangesel-zoomhandle" : "startUpdating",
+      "mouseleave .dygraph-rangesel-zoomhandle" : "startUpdating",
       "click #backToCluster" : "returnToClusterView"
     },
-    
+
+    tendencies : {
+
+      asyncRequestsCurrent : ["asyncRequestsCurrent", "asyncRequestsCurrentPercentChange"],
+      asyncRequestsAverage : ["asyncPerSecond15M", "asyncPerSecondPercentChange15M"],
+      clientConnectionsCurrent : ["clientConnectionsCurrent", "clientConnectionsCurrentPercentChange"],
+      clientConnectionsAverage : ["clientConnections15M", "clientConnectionsPercentChange15M"],
+      numberOfThreadsCurrent : ["numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"],
+      numberOfThreadsAverage : ["numberOfThreads15M", "numberOfThreadsPercentChange15M"],
+      virtualSizeCurrent : ["virtualSizeCurrent", "virtualSizePercentChange"],
+      virtualSizeAverage : ["virtualSize15M", "virtualSizePercentChange15M"]
+    },
+
     showDetail : function(e) {
         var self = this;
         var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g , "");
@@ -97,10 +109,24 @@
             return
         }
         this.updateD3Charts();
+        this.updateTendencies();
         Object.keys(this.graphs).forEach(function(f) {
             self.updateLineChart(f);
         });
     },
+
+    updateTendencies : function () {
+        var self = this, map = this.tendencies;
+
+        Object.keys(map).forEach(function (a) {
+            $("#" + a).text(self.history[a][0] + " (" + self.history[a][1] + " %)");
+        });
+
+
+
+        /*$( "div.second" ).replaceWith( "<h2>New heading</h2>" );$( "div.second" ).replaceWith( "<h2>New heading</h2>" );*/
+    },
+
 
     updateD3Charts : function () {
 
@@ -148,16 +174,16 @@
         } else {
             this.graphs[figure].updateOptions(opts);
         }
-
-
-
-
-
     },
 
 
     mergeHistory : function (newData) {
         var self = this, valueList, i, figures = this.dygraphConfig.getDashBoardFigures(true);
+        /*Object.keys(this.tendencies).forEach(function (a) {
+          figures.push(self.tendencies[a][0])
+          figures.push(self.tendencies[a][1])
+        });*/
+
 
         for (i = 0;  i < newData["times"].length;  ++i) {
             figures.forEach(function (f) {
@@ -180,9 +206,21 @@
                 }
             });
         };
+        Object.keys(this.tendencies).forEach(function (a) {
+            if (a === "virtualSizeCurrent" ||
+                a === "virtualSizeAverage") {
+                newData[self.tendencies[a][0]] = newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
+            } else if (a === "clientConnectionsCurrent" ||
+                a === "numberOfThreadsCurrent") {
+                newData[self.tendencies[a][0]] = newData[self.tendencies[a][0]];
+            }
+            self.history[a] = [
+                Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
+                Math.round(newData[self.tendencies[a][1]] * 1000) / 1000
+            ];
+        });
         this.nextStart = newData.nextStart;
     },
-
 
     getStatistics : function (figure) {
         var url = "statistics/full?", self = this, d;
@@ -204,6 +242,7 @@
             {async: false}
         ).done(
             function(d) {
+                console.log(d);
                 self.mergeHistory(d)
             }
         );
@@ -245,6 +284,7 @@
     this.getStatistics();
     this.prepareDygraphs();
     this.prepareD3Charts();
+    this.updateTendencies();
     this.startUpdating();
   },
 

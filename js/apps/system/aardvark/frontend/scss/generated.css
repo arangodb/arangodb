@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2955,7 +2955,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -3047,7 +3047,8 @@ pre.gv-object-view {
 
 .dashboard-subtitle-bar {
   border-bottom: 1px solid black;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: bold;
   height: 36px;
   line-height: 36px;
   text-align: center;
@@ -3055,7 +3056,11 @@ pre.gv-object-view {
 
 .dashboard-tendency {
   height: 65px;
-  width: 50%; }
+  width: 50%;
+  text-align: center;
+  font-size: 25px;
+  position: relative;
+  top: 15%; }
 
 .dashboard-row {
   border: 1px solid black;
@@ -3546,7 +3551,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
