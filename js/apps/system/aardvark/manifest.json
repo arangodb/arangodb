@@ -157,17 +157,18 @@
     },
 
     "cluster.js": {
-       "files": [
-        "frontend/js/arango/templateEngine.js",
-        "frontend/js/models/arangoStatistics.js",
-        "frontend/js/models/arangoStatisticsDescription.js",
+      "files": [
         "clusterFrontend/js/models/**",
         "clusterFrontend/js/collections/**",
-        "frontend/js/views/footerView.js",
-        "frontend/js/views/dashboardView.js",
+        "frontend/js/models/arangoDocument.js",
+        "frontend/js/models/arangoStatistics.js",
+        "frontend/js/models/arangoStatisticsDescription.js",
+        "frontend/js/collections/_paginatedCollection.js",
         "frontend/js/collections/arangoStatisticsCollection.js",
         "frontend/js/collections/arangoDocuments.js",
-        "frontend/js/models/arangoDocument.js",
+        "frontend/js/arango/templateEngine.js",
+        "frontend/js/views/footerView.js",
+        "frontend/js/views/dashboardView.js",
         "frontend/js/config/dygraphConfig.js",
         "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
         "clusterFrontend/js/views/**",
