@@ -84,15 +84,17 @@ namespace triagens {
     struct DocumentMarker : public Marker {
       DocumentMarker (TRI_voc_tick_t databaseId,
                       TRI_voc_cid_t collectionId,
+                      TRI_voc_tid_t transactionId,
                       std::string const& key,
                       TRI_voc_tick_t revision,
                       triagens::basics::Bson const& document)
-        : Marker(TRI_WAL_MARKER_DOCUMENT_STANDALONE, 
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tick_t) + key.size() + 2 + document.getSize()) {
+        : Marker(TRI_WAL_MARKER_DOCUMENT, 
+                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + sizeof(TRI_voc_tick_t) + key.size() + 2 + document.getSize()) {
 
         char* p = data();
         store<TRI_voc_tick_t>(p, databaseId);
         store<TRI_voc_cid_t>(p, collectionId);
+        store<TRI_voc_tid_t>(p, transactionId);
         store<TRI_voc_tick_t>(p, revision);
 
         // store key
@@ -105,6 +107,30 @@ namespace triagens {
       }
 
       ~DocumentMarker () {
+      }
+
+    };
+    
+    struct RemoveMarker : public Marker {
+      RemoveMarker (TRI_voc_tick_t databaseId,
+                    TRI_voc_cid_t collectionId,
+                    TRI_voc_tid_t transactionId,
+                    std::string const& key) 
+        : Marker(TRI_WAL_MARKER_REMOVE,
+                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + key.size() + 2) {
+
+        char* p = data();
+        store<TRI_voc_tick_t>(p, databaseId);
+        store<TRI_voc_cid_t>(p, collectionId);
+        store<TRI_voc_tid_t>(p, transactionId);
+
+        // store key
+        store<uint8_t>(p, (uint8_t) key.size()); 
+        store(p, key.c_str(), key.size());
+        store<unsigned char>(p, '\0');
+      }
+
+      ~RemoveMarker () {
       }
 
     };

@@ -30,6 +30,7 @@
 
 #include "Basics/Common.h"
 #include "Transaction/State.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace transaction {
@@ -51,12 +52,6 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction id type
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef uint64_t IdType;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +70,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Transaction (Manager*,
-                     IdType,
+                     TRI_voc_tid_t,
                      bool,
                      bool = false);
 
@@ -95,8 +90,19 @@ namespace triagens {
 /// @brief get the transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline IdType id () const {
+        inline TRI_voc_tid_t id () const {
           return _id;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction id for writing it into a marker
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_voc_tid_t idForMarker () const {
+          if (_singleOperation) {
+            return 0;
+          }
+          return id();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +174,7 @@ namespace triagens {
 /// @brief transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-        IdType const _id;
+        TRI_voc_tid_t const _id;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction consists of a single operation
@@ -196,8 +202,9 @@ namespace triagens {
 // --SECTION--                                                   TransactionInfo
 // -----------------------------------------------------------------------------
     
+    // TODO: move to separate file
     struct TransactionInfo {
-      TransactionInfo (Transaction::IdType id, 
+      TransactionInfo (TRI_voc_tid_t id, 
                        double elapsedTime) 
         : _id(id),
           _elapsedTime(elapsedTime) {
@@ -208,8 +215,8 @@ namespace triagens {
           _elapsedTime(0.0) {
       }
 
-      Transaction::IdType const _id;
-      double const              _elapsedTime;
+      TRI_voc_tid_t const  _id;
+      double const         _elapsedTime;
     };
 
   }
