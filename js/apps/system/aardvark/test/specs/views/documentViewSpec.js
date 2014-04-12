@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global arangoHelper*/
 
 (function() {
   "use strict";
@@ -81,11 +82,12 @@
       spyOn(view, "fillEditor");
 
       spyOn(view.collection, "getEdge").andReturn(true);
+      spyOn(view.collection, "getDocument").andReturn(true);
       var result = view.typeCheck('edge');
       expect(result).toEqual(true);
-
-      spyOn(view.collection, "getDocument").andReturn(true);
-      var result2 = view.typeCheck('document');
+      expect(view.collection.getEdge).toHaveBeenCalled();
+      result = view.typeCheck('document');
+      expect(view.collection.getDocument).toHaveBeenCalled();
       expect(result).toEqual(true);
     });
 
@@ -96,10 +98,10 @@
       var result = view.typeCheck('easddge');
       expect(result).not.toEqual(true);
 
-      var result2 = view.typeCheck(false);
+      result = view.typeCheck(false);
       expect(result).not.toEqual(true);
 
-      var result3 = view.typeCheck(123);
+      result = view.typeCheck(123);
       expect(result).not.toEqual(true);
     });
 

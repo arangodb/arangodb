@@ -111,6 +111,7 @@
   "clusterFrontend/js/models/clusterType.js",
 
   "frontend/js/config/dygraphConfig.js",
+  "frontend/js/config/newDygraphConfig.js",
 
   "frontend/js/collections/_paginatedCollection.js",
   "frontend/js/collections/arangoCollections.js",
@@ -145,6 +146,7 @@
   "frontend/js/views/queryView.js",
   "frontend/js/views/shellView.js",
   "frontend/js/views/dashboardView.js",
+  "frontend/js/views/newDashboardView.js",
   "frontend/js/views/collectionsView.js",
   "frontend/js/views/collectionView.js",
   "frontend/js/views/collectionsItemView.js",
@@ -184,6 +186,7 @@
 
   "clusterFrontend/js/views/showClusterView.js",
 
+  "frontend/js/routers/versionCheck.js",
   "frontend/js/routers/router.js",
   "clusterFrontend/js/routers/clusterRouter.js",
 

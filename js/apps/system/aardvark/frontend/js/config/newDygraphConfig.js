@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
-/*global require, _, Dygraph, window */
+/*global require, _, Dygraph, window, document */
 
 (function () {
     "use strict";
@@ -161,7 +161,7 @@
                 if (self.figureDependedOptions[k].div || all) {
                     result.push(k);
                 }
-            })
+            });
             return result;
         },
 
