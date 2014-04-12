@@ -7,7 +7,7 @@
 
   describe("The new logs view", function() {
 
-    var view, allLogs, debugLogs, infoLogs, warnLogs, errLogs, div, fakeCall, model;
+    var view, allLogs, debugLogs, infoLogs, warnLogs, errLogs, div, fakeCall;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -29,7 +29,8 @@
         {loglevel: 1}
       );
 
-      fakeCall = function(options) {
+      fakeCall = function() {
+        return;
       };
 
       spyOn(allLogs, "fetch").andCallFake(function(options) {
@@ -43,15 +44,6 @@
         logwarning: warnLogs,
         logerror: errLogs
       });
-
-      model = {defaults: {
-        lid: "1",
-        level: "1",
-        timestamp: "12312323",
-        text: "Hallo",
-        totalAmount: "20"
-        }
-      },
 
       expect(allLogs.fetch).toHaveBeenCalled();
       view.render();
@@ -91,7 +83,7 @@
         currentTarget: {
           id: "logdebug"
         }
-      }
+      };
       spyOn(view, "convertModelToJSON");
       view.setActiveLoglevel(button);
       expect(view.convertModelToJSON).toHaveBeenCalled();
@@ -103,7 +95,7 @@
         currentTarget: {
           id: "logall"
         }
-      }
+      };
       spyOn(view, "convertModelToJSON");
       view.setActiveLoglevel(button);
       expect(view.convertModelToJSON).not.toHaveBeenCalled();
