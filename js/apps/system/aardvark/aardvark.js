@@ -35,6 +35,7 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore"),
+  notifications = require("org/arangodb/configuration").notifications,
   db = require("internal").db;
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
@@ -55,11 +56,9 @@ controller.get("/unauthorized", function(req, res) {
  * Check if version check is allowed
  */
 controller.get("shouldCheckVersion", function(req, res) {
-  var cfg = db._collection("_versionCheckConfig");
-  if (cfg) {
-    // First version, existence of collection indicates
-    // that user does not want version checks.
-    // Will be more finegrained later
+  var versions = notifications.versions();
+  require("console").log(JSON.stringify(versions));
+  if (!versions || versions.enableVersionNotification === false) {
     res.json(false);
   } else {
     res.json(true);
@@ -71,9 +70,9 @@ controller.get("shouldCheckVersion", function(req, res) {
  * Disable the version check in web interface
  */
 controller.post("disableVersionCheck", function(req, res) {
-  if (!db._collection("_versionCheckConfig")) {
-    db._create("_versionCheckConfig", {isSystem: true, journalSize: 1024 * 1024});
-  }
+  notifications.setVersions({
+    enableVersionNotification: false
+  });
   res.json("ok");
 });
 
