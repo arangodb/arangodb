@@ -61,7 +61,7 @@
       parse: function(response)  {
         var self = this;
         _.each(response.collections, function(val) {
-          val.isSystem = arangoHelper.isSystemCollection(val.name);
+          val.isSystem = arangoHelper.isSystemCollection(val);
           val.type = arangoHelper.collectionType(val);
           val.status = self.translateStatus(val.status);
           val.picture = self.translateTypePicture(val.type);
