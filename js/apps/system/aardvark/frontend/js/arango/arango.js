@@ -3,6 +3,23 @@
 
 (function() {
   "use strict";
+  var isCoordinator;
+
+  window.isCoordinator = function() {
+    if (isCoordinator === undefined) {
+      $.ajax(
+        "cluster/amICoordinator",
+        {
+          async: false,
+          success: function(d) {
+            isCoordinator = d;
+          }
+        }
+      );
+    }
+    return isCoordinator;
+  };
+
   window.versionHelper = {
     fromString: function (s) {
       var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');

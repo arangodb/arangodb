@@ -11,11 +11,6 @@
 
     initialize: function () {
       var self = this;
-      $.ajax("cluster/amICoordinator", {
-        async: false
-      }).done(function(d) {
-          self.isCoordinator = d;
-        });
     },
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
@@ -241,7 +236,7 @@
       var collSync = $('#new-collection-sync').val();
       var shards = 1;
       var shardBy = [];
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         shards = $('#new-collection-shards').val();
         if (shards === "") {
           shards = 1;
@@ -315,7 +310,7 @@
           [{value: 2, label: "Document"}, {value: 3, label: "Edge"}]
         )
       );
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         tableContent.push(
           window.modalView.createTextEntry(
             "new-collection-shards",
