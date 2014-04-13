@@ -1297,7 +1297,7 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
 /// @brief dynamically replace %d, %e, %u in the prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string BuildPrompt (V8ClientConnection* connection) {
+static std::string BuildPrompt () {
   string result;
 
   char const* p = Prompt.c_str();
@@ -1396,7 +1396,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     // set up prompts
     string dynamicPrompt;
     if (ClientConnection != 0) {
-      dynamicPrompt = BuildPrompt(ClientConnection);
+      dynamicPrompt = BuildPrompt();
     }
     else {
       dynamicPrompt = "-";
@@ -1404,6 +1404,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     
     string goodPrompt;
     string badPrompt;
+
 
 #ifdef __APPLE__
 
@@ -1428,6 +1429,14 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 #else
 
     if (BaseClient.colors()) {
+
+#ifdef TRI_HAVE_LINENOISE
+      // linenoise doesn't need escape sequences for escape sequences
+      goodPrompt = string(TRI_SHELL_COLOR_BOLD_GREEN) + dynamicPrompt + string(TRI_SHELL_COLOR_RESET);
+      badPrompt  = string(TRI_SHELL_COLOR_BOLD_RED)   + dynamicPrompt + string(TRI_SHELL_COLOR_RESET);
+
+#else
+      // readline does...
       goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
                    dynamicPrompt +
                    string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
@@ -1435,6 +1444,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) +
                    dynamicPrompt + 
                    string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
+#endif
     }
     else {
       goodPrompt = badPrompt = dynamicPrompt;

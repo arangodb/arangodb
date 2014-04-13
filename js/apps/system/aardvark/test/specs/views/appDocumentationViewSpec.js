@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
-/*global window, document, hljs, $, internal*/
+/*global window, document, hljs, $, require*/
 
 (function() {
   "use strict";
@@ -20,10 +20,12 @@
 
     it("should define the swagger UI on create", function() {
       var fakeURL = "/fake/url",
-          fakeKey = "fakeKey";
+          fakeKey = "fakeKey",
+          view,
+          internal = require("internal");
       spyOn(internal.arango, "databasePrefix").andReturn(fakeURL);
       spyOn(window, "SwaggerUi");
-      var view = new window.AppDocumentationView({
+      view = new window.AppDocumentationView({
         key: fakeKey
       });
       expect(internal.arango.databasePrefix).toHaveBeenCalledWith(

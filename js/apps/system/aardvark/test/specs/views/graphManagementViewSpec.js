@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, runs, expect, waitsFor*/
-/*global GraphManagementView, _, jasmine$*/
+/*global GraphManagementView, _, jasmine, $*/
 
 (function() {
   "use strict";
@@ -28,9 +28,6 @@
       view = new window.GraphManagementView({
         collection: graphs
       }); 
-      window.App = window.App || {
-        navigate: function(){}
-      };
     });
 
     afterEach(function() {
@@ -111,7 +108,7 @@
               }));
             });
             $("#modalButton1").click();
-            expect($.ajax).toHaveBeenCalled()
+            expect($.ajax).toHaveBeenCalled();
           });
         });
 

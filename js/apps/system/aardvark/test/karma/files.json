@@ -22,6 +22,7 @@
   "frontend/js/lib/ColVis.js",
   "frontend/js/lib/bootstrap.js",
   "frontend/js/lib/bootstrap-pagination.js",
+  "frontend/js/lib/jsoneditor-min.js",
   "frontend/src/ace.js",
   "frontend/js/lib/jqconsole.min.js",
   "frontend/js/lib/swagger.js",
@@ -110,6 +111,7 @@
   "clusterFrontend/js/models/clusterType.js",
 
   "frontend/js/config/dygraphConfig.js",
+  "frontend/js/config/newDygraphConfig.js",
 
   "frontend/js/collections/_paginatedCollection.js",
   "frontend/js/collections/arangoCollections.js",
@@ -144,9 +146,9 @@
   "frontend/js/views/queryView.js",
   "frontend/js/views/shellView.js",
   "frontend/js/views/dashboardView.js",
+  "frontend/js/views/newDashboardView.js",
   "frontend/js/views/collectionsView.js",
   "frontend/js/views/collectionView.js",
-  "frontend/js/views/collectionInfoView.js",
   "frontend/js/views/collectionsItemView.js",
   "frontend/js/views/documentsView.js",
   "frontend/js/views/documentView.js",
@@ -184,6 +186,7 @@
 
   "clusterFrontend/js/views/showClusterView.js",
 
+  "frontend/js/routers/versionCheck.js",
   "frontend/js/routers/router.js",
   "clusterFrontend/js/routers/clusterRouter.js",
 

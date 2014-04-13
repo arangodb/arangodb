@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
-/*global require, _, Dygraph, window */
+/*global require, _, Dygraph, window, document */
 
 (function () {
     "use strict";
@@ -61,6 +61,7 @@
                 "optionsPerSecond", "othersPerSecond"],
             requestsAsync : ["times", "asyncsPerSecond"]
         },
+
         //colors for dygraphs
         colors: ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
             "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
@@ -160,7 +161,7 @@
                 if (self.figureDependedOptions[k].div || all) {
                     result.push(k);
                 }
-            })
+            });
             return result;
         },
 
@@ -177,6 +178,7 @@
                 strokeBorderWidth: 1,
                 includeZero: true,
                 highlightCircleSize: 0,
+                labelsSeparateLines : true,
                 strokeBorderColor: '#ffffff',
                 interactionModel: {},
                 maxNumberWidth : 10,
@@ -209,7 +211,7 @@
                 result = this.mergeObjects(
                     result, this.figureDependedOptions[figure], ["axes"]
                 );
-                if (result.div && result.labels && figure !== "pageFaults") {
+                if (result.div && result.labels) {
                     result.colors = this.getColors(result.labels);
                     result.labelsDiv = document.getElementById(result.div + "Legend");
                     result.legend = "always";

@@ -6,6 +6,7 @@
     "use strict";
     describe("Collections View", function () {
         var myStore,
+            isCoordinator,
             myView,
             div,
             edgeCol,
@@ -13,6 +14,7 @@
             sysCol;
 
         beforeEach(function () {
+          isCoordinator = false;
             div = document.createElement("div");
             div.id = "content";
             document.body.appendChild(div);
@@ -44,6 +46,7 @@
               return {done:function() {}};
             });
             myStore = new window.arangoCollections(cols);
+            spyOn(window, "isCoordinator").andReturn(isCoordinator);
             myView = new window.CollectionsView({
                 collection: myStore
             });

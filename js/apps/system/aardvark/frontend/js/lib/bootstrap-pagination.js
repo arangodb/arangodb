@@ -34,7 +34,7 @@
         li.addClass('disabledPag');
       }
       a.click(stopPropagation);
-      if (page === options.page) { li.addClass('active'); }
+      if (page === options.page) { li.addClass('active active-arango-pagination-button'); }
       return li;
     }
     function newUL() {
