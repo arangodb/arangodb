@@ -60,9 +60,6 @@
       success: function(data) {
         var currentVersion =
           window.versionHelper.fromString(data.version);
-        currentVersion.major = 1;
-        currentVersion.minor = 4;
-        currentVersion.bugfix = 1;
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
             //No new version.
