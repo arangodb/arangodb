@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2586,6 +2586,14 @@ pre.gv-object-view {
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px; }
 
+.modal-delete-confirmation {
+  display: none; }
+  .modal-delete-confirmation button {
+    margin-right: 10px;
+    margin-top: -4px; }
+    .modal-delete-confirmation button .modal-confirm-delete {
+      margin-right: -18px; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;
@@ -2719,7 +2727,7 @@ pre.gv-object-view {
   width: 100%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -3235,7 +3243,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: gray; }
+  background-color: grey; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }

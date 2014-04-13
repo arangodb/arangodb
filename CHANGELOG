@@ -1,3 +1,12 @@
+v2.0.3 (2014-04-14)
+
+* fixed AQL optimizer bug
+
+* fixed front-end issues
+
+* added password change dialog
+
+
 v2.0.2 (2014-04-06)
 -------------------
 
