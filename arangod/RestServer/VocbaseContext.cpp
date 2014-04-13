@@ -119,9 +119,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
+  const char* path = _request->requestPath();
+
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
-    const char* path = _request->requestPath();
 
     if (path != 0) {
       // check if path starts with /_
@@ -132,6 +133,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
         return HttpResponse::OK;
       }
     }
+  }
+
+  if (TRI_IsPrefixString(path, "/_open/")) {
+    return HttpResponse::OK;
   }
   
   // authentication required
