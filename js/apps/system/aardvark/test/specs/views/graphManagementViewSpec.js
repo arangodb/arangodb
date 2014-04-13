@@ -28,9 +28,6 @@
       view = new window.GraphManagementView({
         collection: graphs
       }); 
-      window.App = window.App || {
-        navigate: function(){}
-      };
     });
 
     afterEach(function() {
