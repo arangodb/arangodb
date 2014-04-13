@@ -232,7 +232,7 @@
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/collection/" + id + "/figures",
+          url: "/_api/collection/" + encodeURIComponent(id) + "/figures",
           contentType: "application/json",
           processData: false,
           async: false,
