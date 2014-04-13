@@ -57,7 +57,6 @@ controller.get("/unauthorized", function(req, res) {
  */
 controller.get("shouldCheckVersion", function(req, res) {
   var versions = notifications.versions();
-  require("console").log(JSON.stringify(versions));
   if (!versions || versions.enableVersionNotification === false) {
     res.json(false);
   } else {
