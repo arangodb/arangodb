@@ -15,8 +15,8 @@ the query, the total number of documents in the result set might or might not be
 known in advance. In order to free server resources the client should delete the
 cursor as soon as it is no longer needed.
 
-To run a selected query, the query details need to be shipped from the client to
-the server via a HTTP POST request.
+To execute a query, the query details need to be shipped from the client to
+the server via an HTTP POST request.
 
 Retrieving query results {#HttpCursorResults}
 =============================================
