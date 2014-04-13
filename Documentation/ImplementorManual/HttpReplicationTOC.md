@@ -6,7 +6,7 @@ TOC {#HttpReplicationTOC}
   - @ref HttpReplicationDumpCommands
     - @ref HttpReplicationInventory "GET /_api/replication/inventory"
     - @ref HttpReplicationDump "GET /_api/replication/dump"
-    - @ref HttpReplicationSync "GET /_api/replication/sync"
+    - @ref HttpReplicationSync "PUT /_api/replication/sync"
   - @ref HttpReplicationLoggerCommands
     - @ref HttpReplicationLoggerGetConfig "GET /_api/replication/logger-config"
     - @ref HttpReplicationLoggerSetConfig "PUT /_api/replication/logger-config"
