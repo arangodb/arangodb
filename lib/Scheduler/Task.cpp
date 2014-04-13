@@ -40,8 +40,8 @@ using namespace std;
 Task::Task (uint64_t id, string const& name)
   : _scheduler(0), 
     _loop(0), 
-    _id(id), 
     _name(name), 
+    _id(id), 
     _active(1) {
 }
 
