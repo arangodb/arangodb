@@ -644,7 +644,7 @@
     // create the _statistics collection
     addTask("createStatistics", "setup _statistics collection", function () {
       var name = "_statistics";
-      var result = createSystemCollection(name, { waitForSync : false });
+      var result = createSystemCollection(name, { waitForSync: false });
 
       if (result) {
         var collection = getCollection(name);
@@ -656,6 +656,18 @@
       return result;
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createConfiguration
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _statistics collection
+    addTask("createConfiguration", "setup _configuration collection", function () {
+      var name = "_configuration";
+      var result = createSystemCollection(name, { waitForSync: true });
+
+      return result;
+    });
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the upgrade tasks
 ////////////////////////////////////////////////////////////////////////////////
@@ -757,16 +769,17 @@
     return runUpgrade(currentVersion);
   }
 
+  // version match!
   if (lastVersion === currentVersion) {
-    // version match!
     if (internal.upgrade) {
       runUpgrade(currentVersion);
     }
+
     return true;
   }
 
+  // downgrade??
   if (lastVersion > currentVersion) {
-    // downgrade??
     logger.error("Database directory version (" + lastVersion 
                   + ") is higher than server version (" + currentVersion + ").");
 
@@ -778,8 +791,8 @@
     return true;
   }
 
+  // upgrade
   if (lastVersion < currentVersion) {
-    // upgrade
     if (internal.upgrade) {
       return runUpgrade(currentVersion);
     }
