@@ -666,8 +666,7 @@ To start, we'll define a simple action handler in a module `/own/test`:
 
     arangosh> db._modules.save({ 
       path: "/own/test",
-      content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };",
-      autoload: true 
+      content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };"
     });
 
 This does nothing but register a do action handler in a module `/own/test`.  The
@@ -888,8 +887,8 @@ whereas this definition allows HTTP `GET`, `POST`, and `PUT`:
 
     { 
       url: { 
-       match: "/hello/world", 
-       methods: [ "get", "post", "put" ] 
+        match: "/hello/world", 
+        methods: [ "get", "post", "put" ] 
       }
     }
 

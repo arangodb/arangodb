@@ -7,13 +7,18 @@
 
   describe("Collection View", function() {
 
-    var myView, oldRouter;
+    var myView, isCoordinator;
 
 
     beforeEach(function() {
-      oldRouter = window.App;
-      window.App = function() {};
-      window.App.navigate = function() {};
+      isCoordinator = false;
+      window.App = {
+        navigate: function() {
+          throw "This should be a spy";
+        }
+      };
+      spyOn(window.App, "navigate");
+      spyOn(window, "isCoordinator").andReturn(isCoordinator);
       $('body').append('<div id="content" class="removeMe"></div>');
 
       myView = new window.CollectionView({
@@ -24,7 +29,7 @@
 
     afterEach(function() {
       $('.removeMe').remove();
-      window.App = oldRouter;
+      delete window.App;
     });
 
 

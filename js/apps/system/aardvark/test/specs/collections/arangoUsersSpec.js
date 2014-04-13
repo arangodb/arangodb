@@ -10,8 +10,17 @@
         var col;
 
         beforeEach(function () {
-            col = new window.ArangoUsers();
-            window.App = jasmine.createSpyObj(window.Router, ["navigate"]);
+          window.App = {
+            navigate: function() {
+              throw "This should be spy";
+            }
+          };
+          col = new window.ArangoUsers();
+          spyOn(window.App, "navigate");
+        });
+
+        afterEach(function() {
+          delete window.App;
         });
 
         it("comparator", function () {
