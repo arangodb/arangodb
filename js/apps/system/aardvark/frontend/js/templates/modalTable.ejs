@@ -1,0 +1,115 @@
+<script id="modalTable.ejs" type="text/template">
+  <%
+  var createTR = function(row) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
+    %>
+      <tr>
+        <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+        <th class="collectionTh">
+          <%
+            switch(row.type) {
+              case "text":
+          %>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "password":
+          %>
+          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "readonly":
+          %>
+          <div class="modal-text" id="<%=row.id%>"><%=row.value||''%></div>
+          <%
+              break;
+              case "checkbox":
+                var checked = '',
+                  disabled = '';
+                if (row.checked) {
+                  checked = 'checked';
+                }
+                if (row.disabled) {
+                  disabled = 'disabled';
+                }
+          %>
+          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+          <%
+              break;
+              case "select":
+          %>
+          <select id="<%=row.id%>" class="modalSelect">
+          <%
+                _.each(row.options, function(opt) {
+          %>
+            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+          <%
+                });
+          %>
+          </select>
+          <%
+              break;
+              case "select2":
+          %>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            }
+
+            if (row.info) {
+          %>
+        <th>
+          <a class="modalTooltips" title="<%=row.info%>">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
+      <%
+        }
+      %>
+      </tr>
+    <%
+  }//createTR
+  %>
+
+  <table>
+    <tbody>
+      <%
+      _.each(content, function(row) {
+        createTR(row);
+      });
+      %>
+
+    </tbody>
+  </table>
+    <%
+    if (advancedContent) {
+    %>
+    <div class="accordion" id="accordion2">
+      <div class="accordion-group">
+        <div class="accordion-heading">
+          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+          </a>
+        </div>
+        <div id="collapseOne" class="accordion-body collapse out">
+          <div class="accordion-inner">
+            <table>
+              <tbody>
+                <%
+                _.each(advancedContent.content, function(row) {
+                  createTR(row);
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <%
+    }
+    %>
+</script>

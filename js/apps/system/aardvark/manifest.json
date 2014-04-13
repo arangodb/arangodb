@@ -68,6 +68,7 @@
         "frontend/js/collections/**",
         "frontend/js/views/**",
         "frontend/js/routers/router.js",
+        "frontend/js/routers/versionCheck.js",
         "frontend/js/routers/startApp.js"
       ]
     },
