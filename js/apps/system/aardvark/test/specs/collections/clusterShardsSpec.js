@@ -8,18 +8,23 @@
 
     describe("ClusterShards Collection", function () {
 
-        var col, list, c1, c2, c3, oldRouter;
+        var col, list, c1, c2, c3;
 
         beforeEach(function () {
-            oldRouter = window.App;
-            window.App = {
-                registerForUpdate: function () {
-                },
-                addAuth: function () {
-                },
-                getNewRoute: function () {
-                }
-            };
+          window.App = {
+            addAuth: function() {
+              throw "This should be a spy";
+            },
+            getNewRoute: function() {
+              throw "This should be a spy";
+            },
+            registerForUpdate: function() {
+              throw "This should be a spy";
+            }
+          };
+          spyOn(window.App, "addAuth"); 
+          spyOn(window.App, "getNewRoute"); 
+          spyOn(window.App, "registerForUpdate"); 
             list = [];
             c1 = {name: "Documents", shards: "123"};
             c2 = {name: "Edges", shards: "321"};
@@ -32,8 +37,8 @@
             });
         });
 
-        afterEach(function () {
-            window.App = oldRouter;
+        afterEach(function() {
+          delete window.App;
         });
 
         describe("list overview", function () {

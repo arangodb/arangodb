@@ -12,7 +12,9 @@
     beforeEach(function() {
         $('body').append('<div id="content" class="removeMe"></div>');
         window.App = {
-            navigate: function() {}
+          navigate: function() {
+            throw "This should be a spy";
+          }
         };
         spyOn(window.App, "navigate");
         myView = new window.PlanScenarioSelectorView();
@@ -22,24 +24,25 @@
 
     afterEach(function() {
       $('.removeMe').remove();
+      delete window.App;
     });
 
 
     describe("select scenario", function() {
         it("multiServerSymmetrical", function() {
             $("#multiServerSymmetrical").click();
-            expect(App.navigate).toHaveBeenCalledWith("planSymmetrical", {trigger: true});
+            expect(window.App.navigate).toHaveBeenCalledWith("planSymmetrical", {trigger: true});
 
         });
 
         it("multiServerAsymmetrical", function() {
           $("#multiServerAsymmetrical").click();
-          expect(App.navigate).toHaveBeenCalledWith("planAsymmetrical", {trigger: true});
+          expect(window.App.navigate).toHaveBeenCalledWith("planAsymmetrical", {trigger: true});
 
         });
         it("singleServer", function() {
           $("#singleServer").click();
-          expect(App.navigate).toHaveBeenCalledWith("planTest", {trigger: true});
+          expect(window.App.navigate).toHaveBeenCalledWith("planTest", {trigger: true});
         });
     });
   });
