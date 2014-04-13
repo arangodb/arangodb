@@ -10,7 +10,7 @@ Conventions {#ExtendingAqlConventions}
 AQL comes with a built-in set of functions, but it is no
 full-feature programming language.
 
-To add missing functionality or to simplifiy queries, users
+To add missing functionality or to simplify queries, users
 may add own functions to AQL. These functions can be written
 in Javascript, and must be registered via an API. 
 
@@ -30,7 +30,7 @@ Examples:
 
     RETURN myfunctions::math::random()
 
-Note: as all function names in AQL, user function names are also
+Note: As all function names in AQL, user function names are also
 case-insensitive.
 
 Built-in AQL functions reside in the namespace `_aql`, which is also
