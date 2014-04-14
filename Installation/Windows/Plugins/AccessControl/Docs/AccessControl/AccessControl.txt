@@ -1,0 +1,249 @@
+ACCESS CONTROL PLUGIN
+---------------------
+
+Written by Mathias Hasselmann <mathias@taschenorakel.de>
+Modifications by:
+* Afrow UK <afrowuk@afrowsoft.co.uk>
+* AndersK <anders_k@users.sf.net>
+
+The AccessControl plugin for NSIS provides a set of functions related 
+Windows NT access control list (ACL) management.
+
+
+MODIFICATIONS
+-------------
+
+v1.0.8.0 - 24th March 2014 - AndersK
+* Added basic String SID parsing in the emulated ConvertStringSidToSid (Broken in v1.0.6)
+* Fixed WinNT4 and Win95 support? (Unicode DLL will not load on Win95 but will probably load on Win98)
+* Fixed leaks from ParseSid and ConvertSidToStringSid
+* NameToSid and SidToName now pushes "error" and error details
+* Better GetCurrentUserName error handling (Still returns the problematic "error" string)
+
+v1.0.7.0 - 25th February 2012 - Afrow UK
+* Fixed DisableFileInheritance (broken in v1.0.5.0).
+
+v1.0.6.0 - 26th January 2012 - Afrow UK
+* Wrote replacements for ConvertSidToStringSid/ConvertStringSidToSid for
+  backwards compatibility with Windows NT4/ME (ANSI build only).
+* Loads RegSetKeySecurity/RegGetKeySecurity functions at run-time for
+  backwards compatibility with Windows NT4/ME (ANSI build only).
+* Removed commented out legacy code.
+
+v1.0.5.0 - 25th January 2012 - Afrow UK
+* Removed IsUserTheAdministrator.
+* Added NameToSid.
+* Major code cleanup/rewrite.
+* Proper Unicode build (with Unicode plugin API).
+* Support for 64-bit registry (SetRegView 64).
+* Functions now return "ok" on success or "error" otherwise. On "error",
+  the next item on the stack will be the error description.
+* Added version information resource.
+
+23rd January 2008 - Afrow UK
+* Added function IsUserTheAdministrator.
+* Cleaned up code. Rebuilt as pure cpp, decreasing DLL size.
+* No longer using gobal temp variable for strings.
+
+7th January 2008 - Afrow UK
+* Fixed registry instructions.
+
+8th November 2007 - Afrow UK
+* EnableInheritance/DisableInheritance names changed.
+* Functions added:
+    EnableFileInheritance
+    DisableFileInheritance
+    EnableRegKeyInheritance
+    DisableRegKeyInheritance
+    GetFileOwner
+    GetFileGroup
+    GetRegKeyOwner
+    GetRegKeyGroup
+    ClearOnFile
+    ClearOnRegKey
+    GetCurrentUserName
+    SidToName
+
+21st August 2007 - Afrow UK
+* Added /noinherit switch to prevent child objects inheriting a
+  particular permission.
+* Added EnableInheritance and DisableInheritance functions.
+* Removed code to print items in the install log.
+
+13th July 2007 - kichik
+* Return proper error codes (return value instead of GetLastError())
+
+30th June 2006 - Afrow UK
+* Error MessageBox removed.
+* Error messages are now just returned on NSIS stack.
+
+
+CONVENTIONS
+-----------
+
+<filename>
+  A valid Windows(tm) filename (ie. "C:\WINDOWS\" or
+  "\\HOSTNAME\SHARE").
+
+<rootkey>
+  The well-known root of a registry key. Following values are defined:
+
+    HKCR - HKEY_CLASSES_ROOT
+    HKLM - HKEY_LOCAL_MACHINE
+    HKCU - HKEY_CURRENT_USER
+    HKU  - HKEY_USERS
+
+<regkey>
+  The name of the registry to alter (ie. "Software\Microsoft\Windows").
+
+<trustee>
+  A valid Windows(tm) account. The account can be specified as relative 
+  account name (ie. "Administrator" or "Everyone"), a qualified account 
+    name (ie. "Domain\Administrator") or as security identifier (SID, 
+  ie. "(S-1-5-32-545)"). "BUILTIN\USERS" is also a valid account name.
+  For a list of trustee names, open up
+    Control Panel > Administrative Tools > Computer Management >
+    Local Users and Groups.
+  WinNT4 uses a emulated version of ConvertStringSidToSid and 
+  only supports the following SDDL strings: AN, AU, BA, BU, IU, SY and WD
+
+<permissions>
+  A combination of access rights (ie. "FullAccess" or 
+  "GenericRead + GenericWrite").
+  For a full list of access rights, open the AccessControl.cpp source
+  file in Notepad.
+
+/NOINHERIT
+  Ensures the specified ACEs (Access Control Entries) are not inherited
+  by child nodes (i.e for directory or registry key objects).
+
+HANDLING ERRORS
+---------------
+
+To handle errors, check the result on the stack:
+
+  AccessControl::SetOnRegKey HKLM Software\MyApp Stuart FullAccess
+  Pop $R0
+  ${If} $R0 == error
+    Pop $R0
+    DetailPrint `AccessControl error: $R0`
+  ${EndIf}
+
+FUNCTIONS
+---------
+
+GrantOnFile [/NOINHERIT] <filename> <trustee> <permissions>
+GrantOnRegKey [/NOINHERIT] <rootkey> <regkey> <trustee> <permissions>
+Pop $Result ; "ok" or "error" + error details
+
+  Makes sure that the trustee get the requested access rights on 
+  that object.
+
+---------
+
+SetOnFile [/NOINHERIT] <filename> <trustee> <permissions>
+SetOnRegKey [/NOINHERIT] <rootkey> <regkey> <trustee> <permissions>
+Pop $Result ; "ok" or "error" + error details
+
+  Replaces any existing access rights for the trustee on the object
+  with the specified access rights.
+
+---------
+
+ClearOnFile [/NOINHERIT] <filename> <trustee> <permissions>
+ClearOnRegKey [/NOINHERIT] <rootkey> <regkey> <trustee> <permissions>
+Pop $Result ; "ok" or "error" + error details
+
+  Replaces all trustees on the object with the specified trustee and
+  access rights.
+
+---------
+
+DenyOnFile [/NOINHERIT] <filename> <trustee> <permissions>
+DenyOnRegKey [/NOINHERIT] <rootkey> <regkey> <trustee> <permissions>
+Pop $Result ; "ok" or "error" + error details
+
+  Explicitly denies an access right on a object.
+
+---------
+
+RevokeOnFile [/NOINHERIT] <filename> <trustee> <permissions>
+RevokeOnRegKey [/NOINHERIT] <rootkey> <regkey> <trustee> <permissions>
+Pop $Result ; "ok" or "error" + error details
+
+  Removes a formerly defined access right for that object.
+  Note that access rights will still be revoked even if they are
+  inherited.
+
+---------
+
+SetFileOwner <filename> <trustee>
+SetRegKeyOwner <rootkey> <regkey> <trustee>
+Pop $Result ; "ok" or "error" + error details
+
+  Changes the owner of an object.
+
+---------
+
+GetFileOwner <filename>
+GetRegKeyOwner <rootkey> <regkey>
+Pop $Owner ; or "error" + error details
+
+  Gets the owner of an object.
+
+---------
+
+SetFileGroup <filename> <trustee>
+SetRegKeyGroup <rootkey> <regkey> <trustee>
+Pop $Result ; "ok" or "error" + error details
+
+  Changes the primary group of the object.
+
+---------
+
+GetFileGroup <filename>
+GetRegKeyGroup <rootkey> <regkey>
+Pop $Group ; or "error" + error details
+
+  Gets the primary group of the object.
+
+---------
+
+EnableFileInheritance <filename>
+EnableRegKeyInheritance <rootkey> <regkey>
+Pop $Result ; "ok" or "error" + error details
+
+  Enables inheritance of parent object permissions.
+
+---------
+
+DisableFileInheritance <filename>
+DisableRegKeyInheritance <rootkey> <regkey>
+Pop $Result ; "ok" or "error" + error details
+
+  Disables inheritance of parent object permissions.
+
+---------
+
+SidToName <sidstring>
+Pop $Domain ; or "error" + error details
+Pop $Username
+
+  Converts an SID on the local machine to the corresponding username and
+  domain name.
+
+---------
+
+NameToSid <username>
+Pop $SID ; or "error" + error details
+
+  Gets the SID of the specified username on the local machine.
+
+---------
+
+GetCurrentUserName
+Pop $Username ; or "error"
+
+  Gets the username of the current user running the setup.
+
+---------
