@@ -113,8 +113,10 @@
         this.statisticsUrl = this.options.server.endpoint
           + "/_admin/clusterStatistics"
           + "?DBserver=" + this.options.server.target;
+        this.isCluster = true;
       } else {
         this.statisticsUrl = "/_admin/statistics";
+        this.isCluster = false;
       }
       this.description = this.options.description.models[0];
       this.detailChart = {};
@@ -382,13 +384,11 @@
     },
 
     startUpdating: function () {
-      var self = this;
-      if (self.isUpdating) {
+      if (this.isUpdating) {
         return;
       }
-      self.isUpdating = true;
-      self.timer = window.setInterval(function() {
-        self.collection.fetch({
+      var self = this,
+        options = {
           url: self.statisticsUrl,
           success: function() {
             self.updateSeries({
@@ -409,7 +409,13 @@
                 self.detailChart.figure, self.detailChart.div);
             }
           }
-        });
+        };
+      self.isUpdating = true;
+      if (this.isCluster) {
+        options.beforeSend = window.App.addAuth.bind(window.App);
+      }
+      self.timer = window.setInterval(function() {
+        self.collection.fetch(options);
       },
       self.interval
     );
