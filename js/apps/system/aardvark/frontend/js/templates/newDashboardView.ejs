@@ -63,7 +63,13 @@
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <div class="dashboard-title-bar">Resident Size</div>
-      <div id="residentSizeChart"></div>
+      <div id="residentSizeChart">
+					<svg>
+					</svg>
+					<div class="residentSize">
+							<span id="residentSizeTotal"></span>
+					</div>
+			</div>
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <% tendency("Virtual Size in GB", "virtualSize"); %>
