@@ -221,7 +221,7 @@
           },
           url: "http://" + host + ":" + port + "/_api/version",
           success: function() {
-            if (connectionValidationKey === this.connectionValidationKey) {
+            if (connectionValidationKey === self.connectionValidationKey) {
               $(target).append(
                 '<span class="cluster-connection-check-success">Connection: ok</span>'
               );
@@ -230,7 +230,7 @@
             }
           },
           error: function(p) {
-            if (connectionValidationKey === this.connectionValidationKey) {
+            if (connectionValidationKey === self.connectionValidationKey) {
               $(target).append(
                 '<span class="cluster-connection-check-fail">Connection: fail</span>'
               );
