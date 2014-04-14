@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
-/*global require, _, Dygraph, window, document */
+/*global require, _, Dygraph, window */
 
 (function () {
     "use strict";
@@ -99,7 +99,7 @@
                 div: "systemUserTimeChart",
                 header: "System and User Time",
                 labels: ["datetime", "System Time", "User Time"],
-                stacked: true,
+                stackedGraph: true,
                 labelsKMG2: false,
                 axes: {
                     y: {
@@ -136,18 +136,18 @@
                         }
                     }
                 },
-                stacked: true
+                stackedGraph: true
             },
             dataTransfer: {
                 header: "Data Transfer",
                 labels: ["datetime", "Bytes sent", "Bytes received"],
-                stacked: true,
+                stackedGraph: true,
                 div: "dataTransferChart"
             },
             requests: {
                 header: "Requests",
                 labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
-                stacked: true,
+                stackedGraph: true,
                 div: "requestsChart"
             },
             requestsAsync: {
@@ -161,7 +161,7 @@
                 if (self.figureDependedOptions[k].div || all) {
                     result.push(k);
                 }
-            });
+            })
             return result;
         },
 
