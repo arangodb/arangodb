@@ -263,7 +263,7 @@
                 "color": this.dygraphConfig.colors[1],
                 "values": []
             };
-            for (i = 0; i < newData[attribList[0]].cuts.length; ++i) {
+            for (i = 0; i < newData[attribList[0]].values.length; ++i) {
                 v1.values.push({
                     label: this.getLabel(newData[attribList[0]].cuts, i),
                     value: newData[attribList[0]].values[i]
@@ -277,6 +277,9 @@
         },
 
         getLabel: function (cuts, counter) {
+            if (!cuts[counter]) {
+                return ">" + cuts[counter - 1];
+            }
             return counter === 0 ? "0 - " +
                 cuts[counter] : cuts[counter - 1] + " - " + cuts[counter];
         },
