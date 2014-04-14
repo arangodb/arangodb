@@ -1,4 +1,12 @@
+v2.0.4 (2014-04-14)
+-------------------
+
+* fixed cluster authentication front-end issues for Firefox and IE, there are
+  still problems with Chrome
+
+
 v2.0.3 (2014-04-14)
+-------------------
 
 * fixed AQL optimizer bug
 
