@@ -200,4 +200,3 @@ exports.reload = function () {
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
-
