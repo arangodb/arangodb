@@ -221,17 +221,21 @@
           },
           url: "http://" + host + ":" + port + "/_api/version",
           success: function() {
-            $(target).append(
-              '<span class="cluster-connection-check-success">Connection: ok</span>'
-            );
-            dispatcherArray[i] = true;
-            self.checkDispatcherArray(dispatcherArray, connectionValidationKey);
+            if (connectionValidationKey === this.connectionValidationKey) {
+              $(target).append(
+                '<span class="cluster-connection-check-success">Connection: ok</span>'
+              );
+              dispatcherArray[i] = true;
+              self.checkDispatcherArray(dispatcherArray, connectionValidationKey);
+            }
           },
           error: function(p) {
-            $(target).append(
-              '<span class="cluster-connection-check-fail">Connection: fail</span>'
-            );
-            dispatcherArray[i] = false;
+            if (connectionValidationKey === this.connectionValidationKey) {
+              $(target).append(
+                '<span class="cluster-connection-check-fail">Connection: fail</span>'
+              );
+              dispatcherArray[i] = false;
+            }
           },
           beforeSend: function(xhr) {
             xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + passwd));
@@ -245,7 +249,10 @@
     },
 
     checkDispatcherArray: function(dispatcherArray, connectionValidationKey) {
-      if((_.every(dispatcherArray, function (e) {return e})) && connectionValidationKey === this.connectionValidationKey) {
+      if(
+        (_.every(dispatcherArray, function (e) {return e;}))
+          && connectionValidationKey === this.connectionValidationKey
+        ) {
         this.enableLaunchButton();
       }
     },
