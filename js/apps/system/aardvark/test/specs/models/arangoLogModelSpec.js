@@ -10,7 +10,7 @@
     var model;
 
     beforeEach(function() {
-      model = new window.arangoLog();
+      model = new window.newArangoLog();
     });
 
     it("verifies urlRoot", function() {

@@ -9,6 +9,7 @@
     template: templateEngine.createTemplate("symmetricPlan.ejs"),
     entryTemplate: templateEngine.createTemplate("serverEntry.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
+    connectionValidationKey: null,
 
     events: {
       "click #startSymmetricPlan"   : "startPlan",
@@ -206,10 +207,10 @@
       }
     },
 
-    checkConnection: function(host, port, user, passwd, target) {
+    checkConnection: function(host, port, user, passwd, target, i, dispatcherArray, connectionValidationKey) {
+      var self = this;
       $(target).find('.cluster-connection-check-success').remove();
       $(target).find('.cluster-connection-check-fail').remove();
-      var result = false;
       try {
         $.ajax({
           async: true,
@@ -220,15 +221,21 @@
           },
           url: "http://" + host + ":" + port + "/_api/version",
           success: function() {
-            $(target).append(
-              '<span class="cluster-connection-check-success">Connection: ok</span>'
-            );
-            result = true;
+            if (connectionValidationKey === this.connectionValidationKey) {
+              $(target).append(
+                '<span class="cluster-connection-check-success">Connection: ok</span>'
+              );
+              dispatcherArray[i] = true;
+              self.checkDispatcherArray(dispatcherArray, connectionValidationKey);
+            }
           },
           error: function(p) {
-            $(target).append(
-              '<span class="cluster-connection-check-fail">Connection: fail</span>'
-            );
+            if (connectionValidationKey === this.connectionValidationKey) {
+              $(target).append(
+                '<span class="cluster-connection-check-fail">Connection: fail</span>'
+              );
+              dispatcherArray[i] = false;
+            }
           },
           beforeSend: function(xhr) {
             xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + passwd));
@@ -239,12 +246,28 @@
       } catch (e) {
         this.disableLaunchButton();
       }
-      return result;
+    },
+
+    checkDispatcherArray: function(dispatcherArray, connectionValidationKey) {
+      if(
+        (_.every(dispatcherArray, function (e) {return e;}))
+          && connectionValidationKey === this.connectionValidationKey
+        ) {
+        this.enableLaunchButton();
+      }
     },
 
     checkAllConnections: function() {
+      this.connectionValidationKey = Math.random();
+      this.disableLaunchButton();
+      var numOfDispatcher = $('.dispatcher').length,
+        dispatcherArray = [];
+      for (var idx = 0; idx < numOfDispatcher; idx++) {
+        dispatcherArray.push(false);
+      }
+
+      //Object mit #dispatcher + random key
       var self = this;
-      var hasError = false;
       $('.dispatcher').each(
         function(i, dispatcher) {
           var target = $('.controls', dispatcher)[0];
@@ -252,16 +275,9 @@
           var port = $('.port', dispatcher).val();
           var user = $('.user', dispatcher).val();
           var passwd = $('.passwd', dispatcher).val();
-          if (!self.checkConnection(host, port, user, passwd, target)) {
-            hasError = true;
-          }
+          self.checkConnection(host, port, user, passwd, target, i, dispatcherArray, self.connectionValidationKey);
         }
       );
-      if (!hasError) {
-        this.enableLaunchButton();
-      } else {
-        this.disableLaunchButton();
-      }
     },
 
     disableLaunchButton: function() {
