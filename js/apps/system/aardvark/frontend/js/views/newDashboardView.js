@@ -12,7 +12,6 @@
         defaultDetailFrame: 14 * 24 * 60 * 60 * 1000,
         history: {},
         graphs: {},
-        drawedLegend : false,
         alreadyCalledDetailChart: [],
 
         events: {
@@ -52,7 +51,10 @@
 
         showDetail: function (e) {
             var self = this;
+            console.log(e);
             var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
+            var figure = $(e.currentTarget).attr("id").replace(/DistributionContainer/g, "");
+            console.log(figure);
             this.getStatistics(figure);
             var options = this.dygraphConfig.getDetailChartConfig(figure);
 
@@ -125,6 +127,7 @@
                 return;
             }
             this.prepareD3Charts();
+            this.prepareResidentSize();
             this.updateTendencies();
             Object.keys(this.graphs).forEach(function (f) {
                 self.updateLineChart(f);
@@ -206,15 +209,35 @@
             });
 
             Object.keys(this.barCharts).forEach(function (a) {
-                /*if (a === "virtualSizeCurrent" ||
-                    a === "virtualSizeAverage") {
-                    newData[self.tendencies[a][0]] =
-                        newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
-                }*/
-
-
                 self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
             });
+            self.history["residentSizeChart"] =
+                [
+                    {
+                        "key": "",
+                        "color": this.dygraphConfig.colors[1],
+                        "values": [
+                            {
+                                label : "used",
+                                value : newData.residentSizePercent[newData.residentSizePercent.length-1] * 100
+                            }
+                        ]
+                    },
+                {
+                    "key": "",
+                    "color": this.dygraphConfig.colors[0],
+                    "values": [
+                        {
+                            label : "used",
+                            value : 100 - newData.residentSizePercent[newData.residentSizePercent.length-1] * 100
+                        }
+                    ]
+                }
+
+                ]
+            ;
+
+
             this.nextStart = newData.nextStart;
         },
 
@@ -273,6 +296,49 @@
 
         },
 
+        prepareResidentSize: function () {
+            var dimensions = this.getCurrentSize('#residentSizeChart'),
+            self = this;
+            nv.addGraph(function () {
+                var chart = nv.models.multiBarHorizontalChart()
+                    .width(dimensions.width * 0.3)
+                    .height(dimensions.height)
+                    .x(function (d) {
+                        return d.label;
+                    })
+                    .y(function (d) {
+                        return d.value;
+                    })
+                    .margin({left: 80})
+                    .showValues(true)
+                    .showYAxis(true)
+                    .showXAxis(false)
+                    .transitionDuration(350)
+                    .tooltips(false)
+                    .showLegend(false)
+                    .stacked(true)
+                    .showControls(false);
+
+                chart.xAxis.showMaxMin(false);
+                chart.yAxis.showMaxMin(false);
+                d3.select('#residentSizeChart svg')
+                    .datum(self.history.residentSizeChart)
+                    .call(chart)
+                    .append("text")
+                    .attr("x", 20)
+                    .attr("y", 16)
+                    .style("font-size", "20px")
+                    .style("font-weight", 400)
+                    .style("font-family", "Open Sans");
+
+                nv.utils.windowResize(chart.update);
+            });
+            $("#residentSizeTotal").text(
+                Math.round(self.history["virtualSizeCurrent"][0] * 1000) / 1000
+            );
+        },
+
+
         prepareD3Charts: function () {
             //distribution bar charts
             var v, self = this, barCharts = {
@@ -292,12 +358,12 @@
                         })
                         //.margin({top: 30, right: 20, bottom: 50, left: 175})
                         .margin({left: 80})
-                        .showValues(true)
+                        .showValues(false)
                         .showYAxis(true)
                         .showXAxis(true)
                         .transitionDuration(350)
                         .tooltips(false)
-                        .showLegend(true)
+                        .showLegend(false)
                         .showControls(false);
 
                     /*chart.yAxis
@@ -310,7 +376,7 @@
                         .datum(self.history[k])
                         .call(chart)
                         .append("text")
-                        .attr("x", 0)
+                        .attr("x", 20)
                         .attr("y", 16)
                         .style("font-size", "20px")
                         .style("font-weight", 400)
@@ -318,23 +384,22 @@
                         .text("Distribution");
 
                     nv.utils.windowResize(chart.update);
-                    if (!self.drawedLegend) {
+                    if ($('#' + k + "Legend")[0].children.length === 0) {
                         var v1 = self.history[k][0]["key"];
                         var v2 = self.history[k][1]["key"];
                         $('#' + k + "Legend").append(
                             '<span style="font-weight: bold; color: ' + self.history[k][0].color + ';">' +
                             '<div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em;' +
-                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][0].color + ';"></div>' +
+                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][0].color + ';"></div>'
                                 + " " + v1 + '</span><br>' +
                             '<span style="font-weight: bold; color: ' + self.history[k][1].color + ';">' +
                             '<div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em;' +
-                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][1].color + ';"></div>' +
+                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][1].color + ';"></div>'
                             + " " + v2 + '</span><br>'
                         );
                     }
                 });
             });
-            this.drawedLegend = true;
 
         },
 
@@ -373,6 +438,7 @@
             this.getStatistics();
             this.prepareDygraphs();
             this.prepareD3Charts();
+            this.prepareResidentSize();
             this.updateTendencies();
             this.startUpdating();
         },
