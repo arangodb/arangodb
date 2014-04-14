@@ -1387,85 +1387,85 @@ nav.navbar, footer.footer {
 
 .button-danger {
   background-color: #da4f49; }
-  .button-danger:hover {
+  .button-danger:hover, .button-danger:focus {
     background-color: #be342e; }
 
 .deleteButton, a.danger.coordinator, a.danger.dbserver {
   color: #da4f49; }
-  .deleteButton:hover, a.danger.coordinator:hover, a.danger.dbserver:hover {
+  .deleteButton:hover, a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
     color: #be342e; }
 
 a.danger.coordinator, a.danger.dbserver {
   fill: #da4f49; }
-  a.danger.coordinator:hover, a.danger.dbserver:hover {
+  a.danger.coordinator:hover, a.danger.dbserver:hover, a.danger.coordinator:focus, a.danger.dbserver:focus {
     fill: #be342e; }
 
 .button-success {
   background-color: #8aa051; }
-  .button-success:hover {
+  .button-success:hover, .button-success:focus {
     background-color: #788f3d; }
 
 .addButton, a.success.coordinator, a.success.dbserver {
   color: #8aa051; }
-  .addButton:hover, a.success.coordinator:hover, a.success.dbserver:hover {
+  .addButton:hover, a.success.coordinator:hover, a.success.dbserver:hover, .addButton:focus, a.success.coordinator:focus, a.success.dbserver:focus {
     color: #788f3d; }
 
 a.success.coordinator, a.success.dbserver {
   fill: #8aa051; }
-  a.success.coordinator:hover, a.success.dbserver:hover {
+  a.success.coordinator:hover, a.success.dbserver:hover, a.success.coordinator:focus, a.success.dbserver:focus {
     fill: #788f3d; }
 
 .button-warning {
   background-color: #faa732; }
-  .button-warning:hover {
+  .button-warning:hover, .button-warning:focus {
     background-color: #f89406; }
 
 a.warning.coordinator, a.warning.dbserver {
   color: #faa732; }
-  a.warning.coordinator:hover, a.warning.dbserver:hover {
+  a.warning.coordinator:hover, a.warning.dbserver:hover, a.warning.coordinator:focus, a.warning.dbserver:focus {
     color: #f89406; }
 
 a.warning.coordinator, a.warning.dbserver {
   fill: #faa732; }
-  a.warning.coordinator:hover, a.warning.dbserver:hover {
+  a.warning.coordinator:hover, a.warning.dbserver:hover, a.warning.coordinator:focus, a.warning.dbserver:focus {
     fill: #f89406; }
 
 .button-neutral, .button-close {
   background-color: #8f8d8c; }
-  .button-neutral:hover, .button-close:hover {
+  .button-neutral:hover, .button-close:hover, .button-neutral:focus, .button-close:focus {
     background-color: #736b68; }
 
 .button-primary {
   background-color: #564e4a; }
-  .button-primary:hover {
+  .button-primary:hover, .button-primary:focus {
     background-color: #3a322e; }
 
 .button-header, a.headerButton, a.button-gui {
   background-color: #dddddd;
   border: 1px solid #222222;
   color: #555555; }
-  .button-header:hover, a.headerButton:hover, a.button-gui:hover {
+  .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
     background-color: white;
     color: black; }
 
 .button-notification {
   background-color: #faa020; }
-  .button-notification:hover {
+  .button-notification:hover, .button-notification:focus {
     background-color: #f87c0f; }
 
 .button-inactive {
   background-color: lightgray; }
-  .button-inactive:hover {
+  .button-inactive:hover, .button-inactive:focus {
     background-color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   color: lightgray; }
-  a.inactive.coordinator:hover, a.inactive.dbserver:hover {
+  a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   fill: lightgray; }
-  a.inactive.coordinator:hover, a.inactive.dbserver:hover {
+  a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     fill: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
@@ -2058,10 +2058,10 @@ div .tile, div .bigtile {
 
 div .tile {
   height: 100px;
-  width: 230px; }
+  width: 228px; }
 div .bigtile {
   height: 309px;
-  width: 460px; }
+  width: 456px; }
   div .bigtile div.shardContainer {
     font-size: 30px; }
     div .bigtile div.shardContainer span {
@@ -2094,102 +2094,314 @@ div.resizecontainer {
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 14px; } }
-@media (min-width: 6px) and (max-width: 247px) {
+@media (min-width: 240px) and (max-width: 479px) {
   div.resizecontainer {
-    width: 0px; }
+    width: 228px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: 0px;
-    width: 0px; } }
-@media (min-width: 248px) and (max-width: 489px) {
+    margin-left: -114px;
+    width: 228px; }
+
+  .dashboard-large-chart {
+    width: 152px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: -48px; }
+
+  .dashboard-medium-chart {
+    width: 114px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: -86px; }
+
+  .dashboard-small-chart {
+    width: 76px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: -124px; }
+
+  .dashboard-tendency-chart {
+    width: 76px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: -124px; } }
+@media (min-width: 480px) and (max-width: 719px) {
   div.resizecontainer {
-    width: 242px; }
+    width: 468px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -121px;
-    width: 242px; } }
-@media (min-width: 490px) and (max-width: 731px) {
+    margin-left: -234px;
+    width: 468px; }
+
+  .dashboard-large-chart {
+    width: 312px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 112px; }
+
+  .dashboard-medium-chart {
+    width: 234px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 34px; }
+
+  .dashboard-small-chart {
+    width: 156px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: -44px; }
+
+  .dashboard-tendency-chart {
+    width: 156px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: -44px; } }
+@media (min-width: 720px) and (max-width: 959px) {
   div.resizecontainer {
-    width: 484px; }
+    width: 708px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -242px;
-    width: 484px; } }
-@media (min-width: 732px) and (max-width: 973px) {
+    margin-left: -354px;
+    width: 708px; }
+
+  .dashboard-large-chart {
+    width: 472px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 272px; }
+
+  .dashboard-medium-chart {
+    width: 354px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 154px; }
+
+  .dashboard-small-chart {
+    width: 236px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 36px; }
+
+  .dashboard-tendency-chart {
+    width: 236px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 36px; } }
+@media (min-width: 960px) and (max-width: 1199px) {
   div.resizecontainer {
-    width: 726px; }
+    width: 948px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -363px;
-    width: 726px; } }
-@media (min-width: 974px) and (max-width: 1215px) {
+    margin-left: -474px;
+    width: 948px; }
+
+  .dashboard-large-chart {
+    width: 632px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 432px; }
+
+  .dashboard-medium-chart {
+    width: 474px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 274px; }
+
+  .dashboard-small-chart {
+    width: 316px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 116px; }
+
+  .dashboard-tendency-chart {
+    width: 316px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 116px; } }
+@media (min-width: 1200px) and (max-width: 1439px) {
   div.resizecontainer {
-    width: 968px; }
+    width: 1188px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -484px;
-    width: 968px; } }
-@media (min-width: 1216px) and (max-width: 1457px) {
+    margin-left: -594px;
+    width: 1188px; }
+
+  .dashboard-large-chart {
+    width: 792px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 592px; }
+
+  .dashboard-medium-chart {
+    width: 594px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 394px; }
+
+  .dashboard-small-chart {
+    width: 396px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 196px; }
+
+  .dashboard-tendency-chart {
+    width: 396px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 196px; } }
+@media (min-width: 1440px) and (max-width: 1679px) {
   div.resizecontainer {
-    width: 1210px; }
+    width: 1428px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -605px;
-    width: 1210px; } }
-@media (min-width: 1458px) and (max-width: 1699px) {
+    margin-left: -714px;
+    width: 1428px; }
+
+  .dashboard-large-chart {
+    width: 952px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 752px; }
+
+  .dashboard-medium-chart {
+    width: 714px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 514px; }
+
+  .dashboard-small-chart {
+    width: 476px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 276px; }
+
+  .dashboard-tendency-chart {
+    width: 476px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 276px; } }
+@media (min-width: 1680px) and (max-width: 1919px) {
   div.resizecontainer {
-    width: 1452px; }
+    width: 1668px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -726px;
-    width: 1452px; } }
-@media (min-width: 1700px) and (max-width: 1941px) {
+    margin-left: -834px;
+    width: 1668px; }
+
+  .dashboard-large-chart {
+    width: 1112px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 912px; }
+
+  .dashboard-medium-chart {
+    width: 834px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 634px; }
+
+  .dashboard-small-chart {
+    width: 556px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 356px; }
+
+  .dashboard-tendency-chart {
+    width: 556px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 356px; } }
+@media (min-width: 1920px) and (max-width: 2159px) {
   div.resizecontainer {
-    width: 1694px; }
+    width: 1908px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -847px;
-    width: 1694px; } }
-@media (min-width: 1942px) and (max-width: 2183px) {
+    margin-left: -954px;
+    width: 1908px; }
+
+  .dashboard-large-chart {
+    width: 1272px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1072px; }
+
+  .dashboard-medium-chart {
+    width: 954px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 754px; }
+
+  .dashboard-small-chart {
+    width: 636px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 436px; }
+
+  .dashboard-tendency-chart {
+    width: 636px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 436px; } }
+@media (min-width: 2160px) and (max-width: 2399px) {
   div.resizecontainer {
-    width: 1936px; }
+    width: 2148px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -968px;
-    width: 1936px; } }
-@media (min-width: 2184px) and (max-width: 2425px) {
+    margin-left: -1074px;
+    width: 2148px; }
+
+  .dashboard-large-chart {
+    width: 1432px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1232px; }
+
+  .dashboard-medium-chart {
+    width: 1074px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 874px; }
+
+  .dashboard-small-chart {
+    width: 716px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 516px; }
+
+  .dashboard-tendency-chart {
+    width: 716px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 516px; } }
+@media (min-width: 2400px) and (max-width: 2639px) {
   div.resizecontainer {
-    width: 2178px; }
+    width: 2388px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -1089px;
-    width: 2178px; } }
-@media (min-width: 2426px) and (max-width: 2667px) {
+    margin-left: -1194px;
+    width: 2388px; }
+
+  .dashboard-large-chart {
+    width: 1592px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1392px; }
+
+  .dashboard-medium-chart {
+    width: 1194px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 994px; }
+
+  .dashboard-small-chart {
+    width: 796px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 596px; }
+
+  .dashboard-tendency-chart {
+    width: 796px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 596px; } }
+@media (min-width: 2640px) and (max-width: 2879px) {
   div.resizecontainer {
-    width: 2420px; }
+    width: 2628px; }
 
   div.modalChartDetail {
     left: 50%;
-    margin-left: -1210px;
-    width: 2420px; } }
-@media (min-width: 2668px) and (max-width: 2909px) {
-  div.resizecontainer {
-    width: 2662px; }
+    margin-left: -1314px;
+    width: 2628px; }
 
-  div.modalChartDetail {
-    left: 50%;
-    margin-left: -1331px;
-    width: 2662px; } }
+  .dashboard-large-chart {
+    width: 1752px; }
+    .dashboard-large-chart .dashboard-interior-chart {
+      width: 1552px; }
+
+  .dashboard-medium-chart {
+    width: 1314px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      width: 1114px; }
+
+  .dashboard-small-chart {
+    width: 876px; }
+    .dashboard-small-chart .dashboard-interior-chart {
+      width: 676px; }
+
+  .dashboard-tendency-chart {
+    width: 876px; }
+    .dashboard-tendency-chart .dashboard-interior-chart {
+      width: 676px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -2498,6 +2710,9 @@ div.breadcrumb a.disabledBread {
     width: 300px; }
     .modal-body th .valueCell input {
       width: 290px; }
+  .modal-body th div.select2-container {
+    margin-bottom: 10px;
+    margin-top: 10px; }
   .modal-body .icon-info-sign {
     margin-bottom: 10px;
     margin-left: 10px;
@@ -2505,13 +2720,28 @@ div.breadcrumb a.disabledBread {
     padding-bottom: 5px; }
   .modal-body .icon-info-sign:hover {
     opacity: 1; }
+  .modal-body .collapse {
+    margin-right: -14px;
+    position: relative; }
   .modal-body .accordion-inner {
+    border-top: 0;
     margin-left: 0;
-    padding-left: 0; }
+    padding-left: 0;
+    padding-right: 0; }
+  .modal-body .accordion-toggle span b.caret {
+    border-top-color: black;
+    float: right;
+    margin-top: 5px; }
+  .modal-body .accordion-toggle.collapsed span b.caret {
+    -ms-transform: rotate(90deg);
+    -webkit-transform: rotate(90deg);
+    transform: rotate(90deg); }
   .modal-body input {
-    width: 320px; }
+    width: 384px; }
   .modal-body select {
-    width: 334px; }
+    width: 398px; }
+  .modal-body .tab-content {
+    min-height: 200px; }
 
 .modal-text {
   font-weight: 300;
@@ -2523,7 +2753,7 @@ div.breadcrumb a.disabledBread {
   opacity: .4; }
 
 .modalChartDetail {
-  height: 70%;
+  height: 570px;
   margin-left: 0;
   width: 70%; }
 
@@ -2605,6 +2835,34 @@ pre.gv-object-view {
 
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px; }
+
+.modal-delete-confirmation {
+  display: none; }
+  .modal-delete-confirmation button {
+    margin-right: 10px;
+    margin-top: -4px; }
+    .modal-delete-confirmation button .modal-confirm-delete {
+      margin-right: -18px; }
+
+.createModalDialog table {
+  width: 100%; }
+.createModalDialog .collection-info-figures table {
+  float: left;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  min-width: 200px;
+  padding: 3px;
+  text-align: left; }
+.createModalDialog .figures1,
+.createModalDialog .figures2 {
+  margin-bottom: 20px;
+  width: 255px; }
+.createModalDialog .figures2 {
+  margin-left: 20px !important; }
+.createModalDialog .figures3 {
+  margin-bottom: 0;
+  width: 100%; }
 
 .scenarioImage {
   height: 70%;
@@ -2700,7 +2958,7 @@ a.dbserver.double {
   background-color: white;
   border: 1px solid rgba(0, 0, 0, 0.19);
   height: 257px;
-  margin-right: 20px;
+  margin-right: 17px;
   position: relative;
   width: 110px; }
   .scenarioMachine:last-child {
@@ -2824,10 +3082,10 @@ div .tile, div .bigtile {
 
 div .tile {
   height: 100px;
-  width: 230px; }
+  width: 228px; }
 div .bigtile {
   height: 309px;
-  width: 460px; }
+  width: 456px; }
   div .bigtile div.shardContainer {
     font-size: 30px; }
     div .bigtile div.shardContainer span {

@@ -6,11 +6,6 @@
     el: '#modalPlaceholder',
     initialize: function () {
       var self = this;
-      $.ajax("cluster/amICoordinator", {
-       async: false  
-     }).done(function(d) {
-        self.isCoordinator = d;
-      });
     },
 
     template: templateEngine.createTemplate("collectionView.ejs"),
@@ -18,13 +13,13 @@
     render: function() {
       var self = this;
       $(this.el).html(this.template.render({
-        isCoordinator: self.isCoordinator
+        isCoordinator: window.isCoordinator()
       }));
       $('#change-collection').modal('show');
       $('#change-collection').on('hidden', function () {
       });
       $('#change-collection').on('shown', function () {
-        if (! self.isCoordinator) {
+        if (! window.isCoordinator()) {
           $('#change-collection-name').focus();
         }
       });
@@ -110,7 +105,7 @@
     },
     saveModifiedCollection: function() {
       var newname;
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         newname = this.myCollection.name;
       }
       else {

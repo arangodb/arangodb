@@ -1063,50 +1063,57 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<offset>, <period>, <module>, <funcname>, <string-parameter>)");
+  if (argv.Length() < 6) {
+    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<name>, <offset>, <period>, <module>, <funcname>, <string-parameter>)");
   }
+  
+  // job name
+  string name = TRI_ObjectToString(argv[0]);
 
   // offset in seconds into period
-  double offset = TRI_ObjectToDouble(argv[0]);
+  double offset = TRI_ObjectToDouble(argv[1]);
 
   // period in seconds
-  double period = TRI_ObjectToDouble(argv[1]);
+  double period = TRI_ObjectToDouble(argv[2]);
 
   if (period <= 0.0) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<period> must be positive");
   }
 
   // extract the module name
-  TRI_Utf8ValueNFC moduleName(TRI_UNKNOWN_MEM_ZONE, argv[2]);
+  TRI_Utf8ValueNFC moduleName(TRI_UNKNOWN_MEM_ZONE, argv[3]);
 
   if (*moduleName == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<module> must be an UTF-8 string");
+    TRI_V8_TYPE_ERROR(scope, "<module> must be a UTF-8 string");
   }
 
   string module = *moduleName;
 
   // extract the function name
-  TRI_Utf8ValueNFC funcName(TRI_UNKNOWN_MEM_ZONE, argv[3]);
+  TRI_Utf8ValueNFC funcName(TRI_UNKNOWN_MEM_ZONE, argv[4]);
 
   if (*funcName == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<funcname> must be an UTF-8 string");
+    TRI_V8_TYPE_ERROR(scope, "<funcname> must be a UTF-8 string");
   }
 
   string func = *funcName;
 
   // extract the parameter
-  TRI_Utf8ValueNFC parameterString(TRI_UNKNOWN_MEM_ZONE, argv[4]);
+  TRI_Utf8ValueNFC parameterString(TRI_UNKNOWN_MEM_ZONE, argv[5]);
 
   if (*parameterString == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<parameter> must be an UTF-8 string");
+    TRI_V8_TYPE_ERROR(scope, "<parameter> must be a UTF-8 string");
   }
 
   string parameter = *parameterString;
 
   // create a new periodic task
-  if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
-    V8PeriodicTask* task = new V8PeriodicTask(
+  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+  }
+    
+  V8PeriodicTask* task = new V8PeriodicTask(
+      name,
       GlobalVocbase,
       GlobalV8Dealer,
       GlobalScheduler,
@@ -1117,10 +1124,73 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
       func,
       parameter);
 
-    GlobalScheduler->registerTask(task);
+  if (! GlobalScheduler->registerTask(task)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "setting up task failed");
   }
 
-  return scope.Close(v8::Undefined());
+  string const id = StringUtils::itoa(task->id()); 
+  return scope.Close(v8::String::New(id.c_str(), (int) id.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a periodic task
+///
+/// @FUN{internal.deletePeriodic(@FA{id}}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DeletePeriodic (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "deletePeriodic(<id>)");
+  }
+
+  uint64_t id = TRI_ObjectToUInt64(argv[0], true);
+
+  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+  }
+   
+  if (! GlobalScheduler->unregisterUserTask(id)) { 
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "setting up task failed");
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets all registered periodic tasks
+///
+/// @FUN{internal.listPeriodic(}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetPeriodic (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getPeriodic()");
+  }
+
+  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+  }
+  
+  vector<pair<uint64_t, string> > const tasks = GlobalScheduler->getUserTasks();
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  uint32_t j = 0;
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    string const id = StringUtils::itoa(tasks[i].first);
+ 
+    v8::Handle<v8::Object> task = v8::Object::New();
+    task->Set(v8::String::New("id"), v8::String::New(id.c_str(), (int) id.size()));
+    task->Set(v8::String::New("name"), v8::String::New(tasks[i].second.c_str())); 
+    
+    result->Set(j++, task);
+  }
+   
+  return scope.Close(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -1153,7 +1223,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
 
 #ifdef TRI_ENABLE_CLUSTER
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
 #endif
 
   // we need a scheduler and a dispatcher to define periodic tasks
@@ -1162,6 +1232,8 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
 
   if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
     TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_PERIODIC", JS_DefinePeriodic);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_DELETE_PERIODIC", JS_DeletePeriodic);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_PERIODIC", JS_GetPeriodic);
   }
   else {
     LOG_ERROR("cannot initialise definePeriodic, scheduler or dispatcher unknown");

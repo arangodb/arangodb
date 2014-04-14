@@ -22,6 +22,7 @@
   "frontend/js/lib/ColVis.js",
   "frontend/js/lib/bootstrap.js",
   "frontend/js/lib/bootstrap-pagination.js",
+  "frontend/js/lib/jsoneditor-min.js",
   "frontend/src/ace.js",
   "frontend/js/lib/jqconsole.min.js",
   "frontend/js/lib/swagger.js",
@@ -110,6 +111,7 @@
   "clusterFrontend/js/models/clusterType.js",
 
   "frontend/js/config/dygraphConfig.js",
+  "frontend/js/config/newDygraphConfig.js",
 
   "frontend/js/collections/_paginatedCollection.js",
   "frontend/js/collections/arangoCollections.js",
@@ -144,10 +146,9 @@
   "frontend/js/views/queryView.js",
   "frontend/js/views/shellView.js",
   "frontend/js/views/dashboardView.js",
+  "frontend/js/views/newDashboardView.js",
   "frontend/js/views/collectionsView.js",
   "frontend/js/views/collectionView.js",
-  "frontend/js/views/collectionInfoView.js",
-  "frontend/js/views/newCollectionView.js",
   "frontend/js/views/collectionsItemView.js",
   "frontend/js/views/documentsView.js",
   "frontend/js/views/documentView.js",
@@ -163,13 +164,10 @@
   "frontend/js/views/appDocumentationView.js",
   "frontend/js/views/graphView.js",
   "frontend/js/views/graphManagementView.js",
-  "frontend/js/views/addNewGraphView.js",
-  "frontend/js/views/deleteGraphView.js",
   "frontend/js/views/dbSelectionView.js",
   "frontend/js/views/editListEntryView.js",
   "frontend/js/views/loginView.js",
   "frontend/js/views/userManagementView.js",
-  "frontend/js/views/userProfileView.js",
   "frontend/js/views/userBarView.js",
 
   "frontend/js/views/statisticBarView.js",
@@ -188,6 +186,7 @@
 
   "clusterFrontend/js/views/showClusterView.js",
 
+  "frontend/js/routers/versionCheck.js",
   "frontend/js/routers/router.js",
   "clusterFrontend/js/routers/clusterRouter.js",
 
@@ -251,6 +250,8 @@
   "test/specs/collections/ClusterStatisticsCollectionSpec.js",
 
 
+  "test/specs/views/apiViewSpec.js",
+  "test/specs/views/appDocumentationViewSpec.js",
   "test/specs/views/modalViewSpec.js",
   "test/specs/views/editListEntryViewSpec.js",
   "test/specs/views/collectionViewSpec.js",
@@ -261,9 +262,11 @@
   "test/specs/views/documentsViewSpec.js",
   "test/specs/views/documentViewSpec.js",
   "test/specs/views/graphManagementViewSpec.js",
-  "test/specs/views/addNewGraphViewSpec.js",
   "test/specs/views/newLogsViewSpec.js",
+
   "test/specs/router/routerSpec.js",
-  "test/specs/router/clusterRouterSpec.js"
+  "test/specs/router/clusterRouterSpec.js",
+
+  "test/specs/router/versionCheckSpec.js"
 ]
 }

@@ -41,7 +41,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 SignalTask::SignalTask ()
-  : Task("SignalTask") {
+  : Task(0, "SignalTask") {
   for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
     watcher[i] = 0;
   }
@@ -64,14 +64,14 @@ bool SignalTask::addSignal (int signal) {
     return false;
   }
   else {
-    if (scheduler != 0) {
-      scheduler->unregisterTask(this);
+    if (_scheduler != 0) {
+      _scheduler->unregisterTask(this);
     }
 
     signals.insert(signal);
 
-    if (scheduler != 0) {
-      scheduler->registerTask(this);
+    if (_scheduler != 0) {
+      _scheduler->registerTask(this);
     }
 
     return true;
@@ -83,8 +83,8 @@ bool SignalTask::addSignal (int signal) {
 // -----------------------------------------------------------------------------
 
 bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
-  this->scheduler = scheduler;
-  this->loop = loop;
+  this->_scheduler = scheduler;
+  this->_loop = loop;
 
   size_t pos = 0;
 
@@ -97,12 +97,12 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void SignalTask::cleanup () {
-  if (scheduler == 0) {
+  if (_scheduler == 0) {
     LOG_WARNING("In SignalTask::cleanup the scheduler has disappeared -- invalid pointer");
   }
   for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
-    if (scheduler != 0) {
-      scheduler->uninstallEvent(watcher[pos]);
+    if (_scheduler != 0) {
+      _scheduler->uninstallEvent(watcher[pos]);
     }
     watcher[pos] = 0;
   }

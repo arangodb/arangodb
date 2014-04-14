@@ -20,9 +20,9 @@ opaque string when they store or use it locally. This will allow ArangoDB
 to change the format of revision ids later if this should be required.
 Clients can use revisions ids to perform simple equality/non-equality 
 comparisons (e.g. to check whether a document has changed or not), but 
-they should not use revision ids to perform greater/less than comparisions
+they should not use revision ids to perform greater/less than comparisons
 with them to check if a document revision is older than one another,
 even if this might work for some cases. 
 
-Note: revision ids have been returned as integers up to including 
+Note: Revision ids have been returned as integers up to including 
 ArangoDB 1.1

@@ -11,11 +11,6 @@
 
     initialize: function () {
       var self = this;
-      $.ajax("cluster/amICoordinator", {
-        async: false
-      }).done(function(d) {
-          self.isCoordinator = d;
-        });
     },
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
@@ -241,7 +236,7 @@
       var collSync = $('#new-collection-sync').val();
       var shards = 1;
       var shardBy = [];
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         shards = $('#new-collection-shards').val();
         if (shards === "") {
           shards = 1;
@@ -258,7 +253,13 @@
           shardBy.push("_key");
         }
       }
-      var isSystem = (collName.substr(0, 1) === '_');
+      //no new system collections via webinterface
+      //var isSystem = (collName.substr(0, 1) === '_');
+      if (collName.substr(0, 1) === '_') {
+        arangoHelper.arangoError('No "_" allowed as first character!');
+        return 0;
+      }
+      var isSystem = false;
       var wfs = (collSync === "true");
       if (collSize > 0) {
         try {
@@ -309,7 +310,7 @@
           [{value: 2, label: "Document"}, {value: 3, label: "Edge"}]
         )
       );
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         tableContent.push(
           window.modalView.createTextEntry(
             "new-collection-shards",

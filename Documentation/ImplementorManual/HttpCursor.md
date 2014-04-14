@@ -7,7 +7,7 @@ HTTP Interface for AQL Query Cursors {#HttpCursor}
 Database Cursors {#HttpCursorIntro}
 ===================================
 
-This is an introduction to ArangoDB's Http interface for Queries. Results of AQL
+This is an introduction to ArangoDB's HTTP Interface for Queries. Results of AQL
 and simple queries are returned as cursors in order to batch the communication
 between server and client. Each call returns a number of documents in a batch
 and an indication, if the current batch has been the final batch. Depending on
@@ -15,8 +15,8 @@ the query, the total number of documents in the result set might or might not be
 known in advance. In order to free server resources the client should delete the
 cursor as soon as it is no longer needed.
 
-To run a select query, the query details need to be shipped from the client to
-the server via a HTTP POST request.
+To execute a query, the query details need to be shipped from the client to
+the server via an HTTP POST request.
 
 Retrieving query results {#HttpCursorResults}
 =============================================
@@ -26,15 +26,15 @@ set will be returned back to the client.
 
 There are two ways the client can get the result set from the server:
 
-- in a single roundtrip
-- using a cursor
+- In a single roundtrip
+- Using a cursor
 
 Single roundtrip {#HttpCursorResultsSingle}
 -------------------------------------------
 
 The server will only transfer a certain number of result documents back to the
 client in one roundtrip. This number is controllable by the client by setting
-the `batchSize` attribute when issueing the query.
+the `batchSize` attribute when issuing the query.
 
 If the complete result can be transferred to the client in one go, the client
 does not need to issue any further request. The client can check whether it has

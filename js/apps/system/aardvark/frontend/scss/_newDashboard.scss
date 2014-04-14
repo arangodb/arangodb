@@ -1,0 +1,125 @@
+$dashboard-height: 250px;
+$dashboard-padding: 28px;
+
+%dashboard-chart-box {
+  @extend %pull-left;
+  border-left: 1px solid $c-black;
+  margin-left: -1px;
+
+  &:first-child {
+    border-left: 0;
+    margin-left: 0;
+  }
+}
+
+.dashboard-interior-chart {
+  @extend %pull-left;
+  height: $dashboard-height - $dashboard-padding;
+}
+
+.dashboard-large-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  height: $dashboard-height;
+  padding-top: $dashboard-padding;
+}
+
+.dashboard-medium-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  height: $dashboard-height;
+  padding-top: $dashboard-padding;
+}
+
+.dashboard-small-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  height: $dashboard-height;
+  padding-top: $dashboard-padding;
+}
+
+.dashboard-tendency-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  height: $dashboard-height + $dashboard-padding;
+}
+
+.dashboard-legend {
+  @extend %pull-left;
+  height: $dashboard-height;
+  width: $legend-width;
+
+  .dashboard-legend-inner {
+    padding-top: 20px;
+  }
+}
+
+.dashboard-half-height-chart {
+  @extend %clear-float;
+  height: ($dashboard-height + $dashboard-padding) / 2;
+}
+
+.dashboard-title-bar {
+  background-color: $c-bar-bg;
+  border: {
+    bottom: 1px;
+    bottom-color: $c-black;
+    left: 1px;
+    left-color: $c-black;
+    right: 1px;
+    right-color: $c-black;
+    style: solid;
+    top: 1px;
+    top-color: $c-black;
+  }
+  color: $c-white;
+  font-size: 16px;
+  height: 36px;
+  line-height: 36px;
+  margin-left: -1px;
+  margin-right: -1px;
+  text-align: center;
+
+  .dashboard-half-title-bar {
+    @extend %pull-left;
+    border-left: 1px solid $c-black;
+    margin-left: -1px;
+    width: 50%;
+
+    &:first-child {
+      border-left: 0;
+      margin-left: 0;
+    }
+  }
+}
+
+.dashboard-subtitle-bar {
+  @extend %pull-left;
+  @extend %dashboard-chart-box;
+  border-bottom: 1px solid $c-black;
+  font-size: 20px;
+  font-weight: bold;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  width: 50%;
+}
+
+.dashboard-tendency {
+  @extend %pull-left;
+  @extend %dashboard-chart-box;
+  font-size: 25px;
+  height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
+  position: relative;
+  text-align: center;
+  top: 15%;
+  width: 50%;
+}
+
+.dashboard-row {
+  @extend %clear-float;
+  border: 1px solid $c-black;
+  margin-bottom: 5px;
+  margin-left: -1px;
+  margin-right: -1px;
+}

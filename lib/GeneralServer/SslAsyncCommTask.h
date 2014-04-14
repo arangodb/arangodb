@@ -64,7 +64,7 @@ namespace triagens {
                           ConnectionInfo const& info,
                           double keepAliveTimeout,
                           BIO* bio)
-        : Task("SslAsyncCommTask"),
+        : Task(0, "SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           accepted(false),
           readBlocked(false),
@@ -109,7 +109,7 @@ namespace triagens {
 
           if (result) {
             if (readBlockedOnWrite) {
-              this->scheduler->startSocketEvents(this->writeWatcher);
+              this->_scheduler->startSocketEvents(this->writeWatcher);
             }
           }
 
@@ -373,7 +373,7 @@ again:
           }
 
           // we might have a new write buffer
-          this->scheduler->sendAsync(this->SocketTask::watcher);
+          this->_scheduler->sendAsync(this->SocketTask::watcher);
 
           return true;
         }

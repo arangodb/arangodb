@@ -61,7 +61,7 @@
       parse: function(response)  {
         var self = this;
         _.each(response.collections, function(val) {
-          val.isSystem = arangoHelper.isSystemCollection(val.name);
+          val.isSystem = arangoHelper.isSystemCollection(val);
           val.type = arangoHelper.collectionType(val);
           val.status = self.translateStatus(val.status);
           val.picture = self.translateTypePicture(val.type);
@@ -232,7 +232,7 @@
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/collection/" + id + "/figures",
+          url: "/_api/collection/" + encodeURIComponent(id) + "/figures",
           contentType: "application/json",
           processData: false,
           async: false,

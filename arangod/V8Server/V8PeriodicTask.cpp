@@ -30,6 +30,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "V8Server/V8PeriodicJob.h"
+#include "VocBase/server.h"
 
 using namespace std;
 using namespace triagens::rest;
@@ -43,7 +44,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (TRI_vocbase_t* vocbase,
+V8PeriodicTask::V8PeriodicTask (const string& name,
+                                TRI_vocbase_t* vocbase,
                                 ApplicationV8* v8Dealer,
                                 Scheduler* scheduler,
                                 Dispatcher* dispatcher,
@@ -52,7 +54,7 @@ V8PeriodicTask::V8PeriodicTask (TRI_vocbase_t* vocbase,
                                 const string& module,
                                 const string& func,
                                 const string& parameter)
-  : Task("V8 Periodic Task"),
+  : Task(TRI_NewTickServer(), name),
     PeriodicTask(offset, period),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
