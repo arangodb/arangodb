@@ -37,24 +37,18 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 void TaskManager::deactivateTask (Task* task) {
-  task->active = 0;
+  task->_active = 0;
 }
-
-
 
 void TaskManager::deleteTask (Task* task) {
   delete task;
 }
-
-
 
 bool TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
   bool ok = task->setup(scheduler, loop);
   return ok;
   // TODO: respond when not ok
 }
-
-
 
 void TaskManager::cleanupTask (Task* task) {
   task->cleanup();

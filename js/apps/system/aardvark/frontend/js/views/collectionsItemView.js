@@ -12,14 +12,6 @@
 
     initialize: function () {
       var self = this;
-      $.ajax(
-        "cluster/amICoordinator",
-        {async: false}
-      ).done(
-        function(d) {
-          self.isCoordinator = d;
-        }
-      );
     },
     events: {
       'click .iconSet.icon_arangodb_settings2': 'createEditPropertiesModal',
@@ -44,9 +36,12 @@
 
     showProperties: function(event) {
       event.stopPropagation();
+      this.createInfoModal();
+/*
       window.App.navigate(
         "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
       );
+*/
     },
     
     selectCollection: function() {
@@ -77,7 +72,7 @@
     },
     saveModifiedCollection: function() {
       var newname;
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         newname = this.model.get('name');
       }
       else {
@@ -159,7 +154,7 @@
       var buttons = [],
         tableContent = [];
 
-      if (! this.isCoordinator) {
+      if (! window.isCoordinator()) {
         tableContent.push(
           window.modalView.createTextEntry(
             "change-collection-name", "Name", this.model.get('name'), false, "", true
@@ -171,7 +166,12 @@
       journalSize = journalSize/(1024*1024);
       tableContent.push(
         window.modalView.createTextEntry(
-          "change-collection-size", "Journal size", journalSize, false, "", true
+          "change-collection-size",
+          "Journal size",
+          journalSize,
+          "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+          "",
+          true
         )
       );
 
@@ -238,6 +238,18 @@
         buttons,
         tableContent
       );
+    },
+
+    createInfoModal: function() {
+      var buttons = [],
+        tableContent = this.model;
+      window.modalView.show(
+        "modalCollectionInfo.ejs",
+        "Collection: " + this.model.get('name'),
+        buttons,
+        tableContent
+      );
+
     }
 
   });

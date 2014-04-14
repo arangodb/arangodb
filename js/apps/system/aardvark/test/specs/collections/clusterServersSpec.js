@@ -8,12 +8,32 @@
 
     describe("Cluster Servers Collection", function () {
 
-        var col, list, prim1, prim2, prim3, sec1, sec2, sec3, oldRouter;
+        var col;
 
         beforeEach(function () {
-            window.App = jasmine.createSpyObj(window.Router, ["getNewRoute",
-                "registerForUpdate",  "addAuth", "requestAuth"]);
-            col = new window.ClusterServers();
+          window.App = {
+            addAuth: function() {
+              throw "This should be a spy";
+            },
+            getNewRoute: function() {
+              throw "This should be a spy";
+            },
+            requestAuth: function() {
+              throw "This should be a spy";
+            },
+            registerForUpdate: function() {
+              throw "This should be a spy";
+            }
+          };
+          spyOn(window.App, "addAuth"); 
+          spyOn(window.App, "requestAuth"); 
+          spyOn(window.App, "getNewRoute"); 
+          spyOn(window.App, "registerForUpdate"); 
+          col = new window.ClusterServers();
+        });
+
+        afterEach(function() {
+          delete window.App;
         });
 
         it("updateUrl", function () {

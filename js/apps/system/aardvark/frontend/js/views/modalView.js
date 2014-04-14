@@ -43,7 +43,8 @@
       SUCCESS: "success",
       NOTIFICATION: "notification",
       DELETE: "danger",
-      NEUTRAL: "neutral"
+      NEUTRAL: "neutral",
+      CLOSE: "close"
     },
     tables: {
       READONLY: "readonly",
@@ -67,6 +68,15 @@
       };
       //this.hide.bind(this);
     },
+
+    createCloseButton: function(cb) {
+      var self = this;
+      return createButtonStub(this.buttons.CLOSE, this.closeButton.title, function () {
+          self.closeButton.callback();
+          cb();
+      });
+    },
+
 
     createSuccessButton: function(title, cb) {
       return createButtonStub(this.buttons.SUCCESS, title, cb);
@@ -159,13 +169,20 @@
     },
 
     show: function(templateName, title, buttons, tableContent, advancedContent) {
-      var self = this, lastBtn;
+      var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
       // Insert close as second from right
       if (buttons.length > 0) {
-        lastBtn = buttons.pop();
-        buttons.push(this.closeButton);
-        buttons.push(lastBtn);
+        buttons.forEach(function (b) {
+            if (b.type === self.buttons.CLOSE) {
+                closeButtonFound = true;
+            }
+        });
+        if (!closeButtonFound) {
+            lastBtn = buttons.pop();
+            buttons.push(self.closeButton);
+            buttons.push(lastBtn);
+        }
       } else {
         buttons.push(this.closeButton);
       }

@@ -7,30 +7,44 @@
 
     describe("ClusterStatisticsCollection", function () {
 
-        var col, oldrouter;
+        var col;
 
         beforeEach(function () {
+          var clusterPlan = {
+            getCoordinator: function() {
+              return "fritz";
+            }
+          };
+          window.App = {
+            addAuth: function() {
+              throw "This should be a spy";
+            },
+            getNewRoute: function() {
+              throw "This should be a spy";
+            },
+            registerForUpdate: function() {
+              throw "This should be a spy";
+            }
+          };
+          spyOn(window.App, "getNewRoute").andCallFake(function(last) {
+            if (last === "statistics") {
+                return clusterPlan.getCoordinator()
+                    + "/_admin/"
+                    + last;
+            }
+            return clusterPlan.getCoordinator()
+                + "/_admin/aardvark/cluster/"
+                + last;
+          });
+          spyOn(window.App, "registerForUpdate").andCallFake(function(o) {
+            o.updateUrl();
+          }); 
+          spyOn(window.App, "addAuth");
+          col = new window.ClusterStatisticsCollection();
+        });
 
-            oldrouter = window.App;
-
-            window.App = {
-                registerForUpdate: function(o) {
-                    o.updateUrl();
-                },
-                getNewRoute: function(last) {
-                    if (last === "statistics") {
-                        return this.clusterPlan.getCoordinator()
-                            + "/_admin/"
-                            + last;
-                    }
-                    return this.clusterPlan.getCoordinator()
-                        + "/_admin/aardvark/cluster/"
-                        + last;
-                },
-                clusterPlan : {getCoordinator : function() {return "fritz";}},
-                addAuth : {bind: function() {return function() {};}}
-            };
-            col = new window.ClusterStatisticsCollection();
+        afterEach(function() {
+          delete window.App;
         });
 
         it("inititalize", function () {
@@ -40,7 +54,6 @@
             col.initialize();
             expect(col.updateUrl).toHaveBeenCalled();
         });
-
 
         it("fetch", function () {
             var m1 = new window.Statistics(),m2 = new window.Statistics();
@@ -57,9 +70,6 @@
                 async: false,
                 beforeSend: jasmine.any(Function)
             });
-        });
-        afterEach(function() {
-           window.App = oldrouter;
         });
     });
 }());

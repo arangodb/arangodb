@@ -9,7 +9,16 @@
         var view, jQueryDummy;
 
         beforeEach(function () {
-            view = new window.DocumentsView();
+          window.App = {
+            navigate: function() {
+              throw "This should be a spy";
+            }
+          };
+          view = new window.DocumentsView();
+        });
+
+        afterEach(function() {
+          delete window.App;
         });
 
         it("assert the basics", function () {

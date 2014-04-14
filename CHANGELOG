@@ -1,6 +1,11 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* added OpenSSL version check for configure
+
+  It will report all OpenSSL versions < 1.0.1g as being too old.
+  `configure` will only complain about an outdated OpenSSL version but not stop.
+
 * require C++ compiler support (requires g++ 4.8, clang++ 3.4 or Visual Studio 13)
 
 * less string copying returning JSONified documents from ArangoDB, e.g. via
@@ -362,7 +367,20 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.14 (XXXX-XX-XX)
+v1.4.15 (XXXX-XX-XX)
+--------------------
+
+* bugfix for AQL query optimiser
+       
+  the following type of query was too eagerly optimised, leading to errors in code-generation:
+              
+      LET a = (FOR i IN [] RETURN i) LET b = (FOR i IN [] RETURN i) RETURN 1
+                           
+  the problem occurred when both lists in the subqueries were empty. In this case invalid code
+  was generated and the query couldn't be executed.
+
+
+v1.4.14 (2014-04-05)
 --------------------
 
 * fixed race conditions during shape / attribute insertion

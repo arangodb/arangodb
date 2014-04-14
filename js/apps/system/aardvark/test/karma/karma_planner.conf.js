@@ -119,7 +119,7 @@ module.exports = function(karma) {
 
       // Models
       'frontend/js/models/currentDatabase.js',
-      'frontend/js/models/arangoCollection.js',
+      '../../frontend/js/models/arangoCollectionModel.js',
       'frontend/js/models/arangoDatabase.js',
       'frontend/js/models/arangoDocument.js',
       'frontend/js/models/arangoLog.js',
@@ -159,8 +159,6 @@ module.exports = function(karma) {
       'frontend/js/views/dashboardView.js',
       'frontend/js/views/collectionsView.js',
       'frontend/js/views/collectionView.js',
-      'frontend/js/views/collectionInfoView.js',
-      'frontend/js/views/newCollectionView.js',
       'frontend/js/views/collectionsItemView.js',
       'frontend/js/views/documentsView.js',
       'frontend/js/views/documentView.js',

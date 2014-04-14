@@ -20,10 +20,10 @@
     typeCheck: function (type) {
       var result;
       if (type === 'edge') {
-        result = window.arangoDocumentStore.getEdge(this.colid, this.docid);
+        result = this.collection.getEdge(this.colid, this.docid);
       }
       else if (type === 'document') {
-        result = window.arangoDocumentStore.getDocument(this.colid, this.docid);
+        result = this.collection.getDocument(this.colid, this.docid);
       }
       if (result === true) {
         this.fillEditor();
@@ -32,8 +32,6 @@
     },
 
     fillEditor: function() {
-      var insert = this.collection.first().attributes;
-      insert = this.removeReadonlyKeys(insert);
       this.editor.set(this.collection.first().attributes);
     },
 
@@ -47,7 +45,7 @@
         mode: 'tree',
         modes: ['tree', 'code']
       };
-      this.editor = new jsoneditor.JSONEditor(container, options);
+      this.editor = new window.jsoneditor.JSONEditor(container, options);
 
       return this;
     },
@@ -66,14 +64,14 @@
       model = JSON.stringify(model);
 
       if (this.type === 'document') {
-        result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
+        result = this.collection.saveDocument(this.colid, this.docid, model);
         if (result === false) {
           arangoHelper.arangoError('Document error:','Could not save');
           return;
         }
       }
       else if (this.type === 'edge') {
-        result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
+        result = this.collection.saveEdge(this.colid, this.docid, model);
         if (result === false) {
           arangoHelper.arangoError('Edge error:', 'Could not save');
           return;
@@ -96,28 +94,6 @@
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
-    },
-
-    getLinkedDoc: function (handle) {
-      var self = this;
-      if (! self.documentCache.hasOwnProperty(handle)) {
-        $.ajax({
-          cache: false,
-          type: "GET",
-          async: false,
-          url: "/_api/document/" + handle,
-          contentType: "application/json",
-          processData: false,
-          success: function(data) {
-            self.documentCache[handle] = data;
-          },
-          error: function(data) {
-            self.documentCache[handle] = null; 
-          }
-        });
-      }
-
-      return self.documentCache[handle];
     },
 
     escaped: function (value) {

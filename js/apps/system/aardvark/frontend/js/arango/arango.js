@@ -3,13 +3,33 @@
 
 (function() {
   "use strict";
+  var isCoordinator;
+
+  window.isCoordinator = function() {
+    if (isCoordinator === undefined) {
+      $.ajax(
+        "cluster/amICoordinator",
+        {
+          async: false,
+          success: function(d) {
+            isCoordinator = d;
+          }
+        }
+      );
+    }
+    return isCoordinator;
+  };
+
   window.versionHelper = {
     fromString: function (s) {
       var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,
-        patch: parseInt(parts[2], 10) || 0
+        patch: parseInt(parts[2], 10) || 0,
+        toString: function() {
+          return this.major + "." + this.minor + "." + this.patch;
+        }
       };
     },
     toString: function (v) {
@@ -119,8 +139,29 @@
     },
 
     isSystemCollection: function (val) {
-      //return val && val.name && val.name.substr(0, 1) === '_';
-      return val.substr(0, 1) === '_';
+      return val.name.substr(0, 1) === '_';
+      // the below code is completely inappropriate as it will
+      // load the collection just for the check whether it
+      // is a system collection. as a consequence, the below
+      // code would load ALL collections when the web interface
+      // is called
+      /*
+      var returnVal = false;
+      $.ajax({
+        type: "GET",
+        url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          returnVal = data.isSystem;
+        },
+        error: function(data) {
+          returnVal = false;
+        }
+      });
+      return returnVal;
+      */
     },
 
     collectionApiType: function (identifier, refresh) {
@@ -150,7 +191,7 @@
         type = "unknown";
       }
 
-      if (val.name.substr(0, 1) === '_') {
+      if (this.isSystemCollection(val)) {
         type += " (system)";
       }
 
