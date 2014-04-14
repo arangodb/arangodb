@@ -207,7 +207,16 @@
       }
     },
 
-    checkConnection: function(host, port, user, passwd, target, i, dispatcherArray, connectionValidationKey) {
+    checkConnection: function(
+      host,
+      port,
+      user,
+      passwd,
+      target,
+      i,
+      dispatcherArray,
+      connectionValidationKey
+    ) {
       var self = this;
       $(target).find('.cluster-connection-check-success').remove();
       $(target).find('.cluster-connection-check-fail').remove();
@@ -221,7 +230,7 @@
           },
           url: "http://" + host + ":" + port + "/_api/version",
           success: function() {
-            if (connectionValidationKey === this.connectionValidationKey) {
+            if (connectionValidationKey === self.connectionValidationKey) {
               $(target).append(
                 '<span class="cluster-connection-check-success">Connection: ok</span>'
               );
@@ -230,7 +239,7 @@
             }
           },
           error: function(p) {
-            if (connectionValidationKey === this.connectionValidationKey) {
+            if (connectionValidationKey === self.connectionValidationKey) {
               $(target).append(
                 '<span class="cluster-connection-check-fail">Connection: fail</span>'
               );
@@ -261,8 +270,9 @@
       this.connectionValidationKey = Math.random();
       this.disableLaunchButton();
       var numOfDispatcher = $('.dispatcher').length,
-        dispatcherArray = [];
-      for (var idx = 0; idx < numOfDispatcher; idx++) {
+        dispatcherArray = [],
+        idx;
+      for (idx = 0; idx < numOfDispatcher; idx++) {
         dispatcherArray.push(false);
       }
 
@@ -275,7 +285,16 @@
           var port = $('.port', dispatcher).val();
           var user = $('.user', dispatcher).val();
           var passwd = $('.passwd', dispatcher).val();
-          self.checkConnection(host, port, user, passwd, target, i, dispatcherArray, self.connectionValidationKey);
+          self.checkConnection(
+            host,
+            port,
+            user,
+            passwd,
+            target,
+            i,
+            dispatcherArray,
+            self.connectionValidationKey
+          );
         }
       );
     },
