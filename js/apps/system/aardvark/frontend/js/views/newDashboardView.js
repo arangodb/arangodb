@@ -53,7 +53,8 @@
             var self = this;
             console.log(e);
             var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
-            var figure = $(e.currentTarget).attr("id").replace(/DistributionContainer/g, "");
+            figure = figure.replace(/DistributionContainer/g, "");
+            figure = figure.replace(/Container/g, "");
             console.log(figure);
             this.getStatistics(figure);
             var options = this.dygraphConfig.getDetailChartConfig(figure);
@@ -191,10 +192,13 @@
             });
         },
 
-        mergeHistory: function (newData) {
+        mergeHistory: function (newData, detailMode) {
             var self = this, i;
             for (i = 0; i < newData.times.length; ++i) {
                 this.mergeDygraphHistory(newData, i);
+            }
+            if (detailMode) {
+                return;
             }
             Object.keys(this.tendencies).forEach(function (a) {
                 if (a === "virtualSizeCurrent" ||
@@ -290,7 +294,7 @@
             ).done(
                 function (d) {
                     console.log("got result", d);
-                    self.mergeHistory(d);
+                    self.mergeHistory(d, !!figure);
                 }
             );
 
