@@ -29,24 +29,30 @@
             clientConnectionsCurrent: ["clientConnectionsCurrent",
                 "clientConnectionsCurrentPercentChange"
             ],
-            clientConnectionsAverage: ["clientConnections15M", "clientConnectionsPercentChange15M"],
-            numberOfThreadsCurrent: ["numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"],
+            clientConnectionsAverage: [
+                "clientConnections15M", "clientConnectionsPercentChange15M"
+            ],
+            numberOfThreadsCurrent: [
+                "numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"],
             numberOfThreadsAverage: ["numberOfThreads15M", "numberOfThreadsPercentChange15M"],
             virtualSizeCurrent: ["virtualSizeCurrent", "virtualSizePercentChange"],
             virtualSizeAverage: ["virtualSize15M", "virtualSizePercentChange15M"]
         },
 
-        barCharts : {
-            totalTimeDistribution  : ["queueTimeDistributionPercent", "requestTimeDistributionPercent"],
-            dataTransferDistribution : ["bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
+        barCharts: {
+            totalTimeDistribution: [
+                "queueTimeDistributionPercent", "requestTimeDistributionPercent"
+            ],
+            dataTransferDistribution: [
+                "bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
         },
 
 
-        barChartsElementNames : {
-            queueTimeDistributionPercent : "Queue Time",
-            requestTimeDistributionPercent : "Request Time",
-            bytesReceivedDistributionPercent : "Bytes received",
-            bytesSentDistributionPercent : "Bytes sent"
+        barChartsElementNames: {
+            queueTimeDistributionPercent: "Queue Time",
+            requestTimeDistributionPercent: "Request Time",
+            bytesReceivedDistributionPercent: "Bytes received",
+            bytesSentDistributionPercent: "Bytes sent"
         },
 
         showDetail: function (e) {
@@ -215,28 +221,30 @@
             Object.keys(this.barCharts).forEach(function (a) {
                 self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
             });
-            self.history["residentSizeChart"] =
+            self.history.residentSizeChart =
                 [
                     {
                         "key": "",
                         "color": this.dygraphConfig.colors[1],
                         "values": [
                             {
-                                label : "used",
-                                value : newData.residentSizePercent[newData.residentSizePercent.length-1] * 100
+                                label: "used",
+                                value: newData.residentSizePercent[
+                                    newData.residentSizePercent.length - 1] * 100
                             }
                         ]
                     },
-                {
-                    "key": "",
-                    "color": this.dygraphConfig.colors[0],
-                    "values": [
-                        {
-                            label : "used",
-                            value : 100 - newData.residentSizePercent[newData.residentSizePercent.length-1] * 100
-                        }
-                    ]
-                }
+                    {
+                        "key": "",
+                        "color": this.dygraphConfig.colors[0],
+                        "values": [
+                            {
+                                label: "used",
+                                value: 100 - newData.residentSizePercent[
+                                    newData.residentSizePercent.length - 1] * 100
+                            }
+                        ]
+                    }
 
                 ]
             ;
@@ -245,7 +253,7 @@
             this.nextStart = newData.nextStart;
         },
 
-        mergeBarChartData : function(attribList, newData) {
+        mergeBarChartData: function (attribList, newData) {
             var i, v1 = {
                 "key": this.barChartsElementNames[attribList[0]],
                 "color": this.dygraphConfig.colors[0],
@@ -257,19 +265,20 @@
             };
             for (i = 0; i < newData[attribList[0]].cuts.length; ++i) {
                 v1.values.push({
-                    label : this.getLabel(newData[attribList[0]].cuts, i),
-                    value : newData[attribList[0]].values[i]
+                    label: this.getLabel(newData[attribList[0]].cuts, i),
+                    value: newData[attribList[0]].values[i]
                 });
                 v2.values.push({
-                    label : this.getLabel(newData[attribList[1]].cuts, i),
-                    value : newData[attribList[1]].values[i]
+                    label: this.getLabel(newData[attribList[1]].cuts, i),
+                    value: newData[attribList[1]].values[i]
                 });
             }
             return [v1, v2];
         },
 
-        getLabel : function (cuts, counter) {
-            return counter === 0 ? "0 - " + cuts[counter] : cuts[counter -1] + " - " + cuts[counter]
+        getLabel: function (cuts, counter) {
+            return counter === 0 ? "0 - " +
+                cuts[counter] : cuts[counter - 1] + " - " + cuts[counter];
         },
 
         getStatistics: function (figure) {
@@ -302,7 +311,7 @@
 
         prepareResidentSize: function () {
             var dimensions = this.getCurrentSize('#residentSizeChart'),
-            self = this;
+                self = this;
             nv.addGraph(function () {
                 var chart = nv.models.multiBarHorizontalChart()
                     .width(dimensions.width * 0.3)
@@ -338,7 +347,7 @@
                 nv.utils.windowResize(chart.update);
             });
             $("#residentSizeTotal").text(
-                Math.round(self.history["virtualSizeCurrent"][0] * 1000) / 1000
+                Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000
             );
         },
 
@@ -346,8 +355,10 @@
         prepareD3Charts: function () {
             //distribution bar charts
             var v, self = this, barCharts = {
-                totalTimeDistribution : ["queueTimeDistributionPercent", "requestTimeDistributionPercent"],
-                dataTransferDistribution : ["bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
+                totalTimeDistribution: [
+                    "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
+                dataTransferDistribution: [
+                    "bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
             };
 
             _.each(Object.keys(barCharts), function (k) {
@@ -371,7 +382,9 @@
                         .showControls(false);
 
                     /*chart.yAxis
-                        .tickFormat(d3.format(',.2f'));*//**//**/
+                     .tickFormat(d3.format(',.2f'));*/
+                    /**/
+                    /**/
                     chart.xAxis.showMaxMin(false);
                     chart.yAxis.showMaxMin(false);
                     /*chart.xAxis
@@ -389,17 +402,23 @@
 
                     nv.utils.windowResize(chart.update);
                     if ($('#' + k + "Legend")[0].children.length === 0) {
-                        var v1 = self.history[k][0]["key"];
-                        var v2 = self.history[k][1]["key"];
+                        var v1 = self.history[k][0].key;
+                        var v2 = self.history[k][1].key;
                         $('#' + k + "Legend").append(
-                            '<span style="font-weight: bold; color: ' + self.history[k][0].color + ';">' +
-                            '<div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em;' +
-                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][0].color + ';"></div>'
+                            '<span style="font-weight: bold; color: ' +
+                                self.history[k][0].color + ';">' +
+                                '<div style="display: inline-block; position: relative;' +
+                                ' bottom: .5ex; padding-left: 1em;' +
+                                ' height: 1px; border-bottom: 2px solid ' +
+                                self.history[k][0].color + ';"></div>'
                                 + " " + v1 + '</span><br>' +
-                            '<span style="font-weight: bold; color: ' + self.history[k][1].color + ';">' +
-                            '<div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em;' +
-                            ' height: 1px; border-bottom: 2px solid ' + self.history[k][1].color + ';"></div>'
-                            + " " + v2 + '</span><br>'
+                                '<span style="font-weight: bold; color: ' +
+                                self.history[k][1].color + ';">' +
+                                '<div style="display: inline-block; position: ' +
+                                'relative; bottom: .5ex; padding-left: 1em;' +
+                                ' height: 1px; border-bottom: 2px solid ' +
+                                self.history[k][1].color + ';"></div>'
+                                + " " + v2 + '</span><br>'
                         );
                     }
                 });
