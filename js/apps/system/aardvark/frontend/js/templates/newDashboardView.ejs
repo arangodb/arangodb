@@ -9,7 +9,7 @@
   <% } %>
   <% var smallChart = function(name) { %>
     <div class="dashboard-small-chart dashboard-chart"  id="<%= name %>Container">
-      <div id="<%= name %>" class="dashboard-interior-chart">
+			<div id="<%= name %>" class="dashboard-interior-chart">
 					<svg></svg>
       </div>
       <div class="dashboard-legend">
@@ -24,10 +24,14 @@
       <div class="dashboard-subtitle-bar">current</div>
       <div class="dashboard-subtitle-bar">15-min-avg</div>
       <div class="dashboard-tendency">
+				<div class="dashboard-figure">
         <span id="<%= name %>Current"></span>
+				</div>
       </div>
       <div class="dashboard-tendency">
+				<div class="dashboard-figure">
         <span id="<%= name %>Average"></span>
+				</div>
       </div>
     </div>
   <% } %>
@@ -61,12 +65,12 @@
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <% tendency("Number of threads", "numberOfThreads"); %>
     </div>
-    <div class="dashboard-tendency-chart dashboard-half-height-chart">
+    <div class="dashboard-tendency-chart dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
       <div class="dashboard-title-bar">Resident Size</div>
       <div id="residentSizeChart">
 					<svg>
 					</svg>
-					<div class="residentSize">
+					<div class="dashboard-figure residentSize">
 							<span id="residentSizeTotal"></span>
 					</div>
 			</div>
@@ -80,13 +84,13 @@
       <div class="dashboard-half-title-bar">Major Page Faults</div>
       <div class="dashboard-half-title-bar">System User Time in seconds</div>
     </div>
-    <div class="dashboard-medium-chart dashboard-chart" id="<%= name %>Container">
+    <div class="dashboard-medium-chart dashboard-chart" id="pageFaultsChartContainer">
       <div id="pageFaultsChart" class="dashboard-interior-chart"></div>
       <div class="dashboard-legend">
         <div class="dashboard-legend-inner" id="pageFaultsChartLegend"></div>
       </div>
     </div>
-    <div class="dashboard-medium-chart dashboard-chart" id="<%= name %>Container">
+    <div class="dashboard-medium-chart dashboard-chart" id="systemUserTimeChartContainer">
       <div id="systemUserTimeChart" class="dashboard-interior-chart"></div>
       <div class="dashboard-legend">
         <div class="dashboard-legend-inner" id="systemUserTimeChartLegend"></div>
