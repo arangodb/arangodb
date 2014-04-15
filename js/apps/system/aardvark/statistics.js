@@ -83,7 +83,8 @@ function perTimeSlice (duration, now, last) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function avgPercentDistributon (now, last, cuts) {
-  var result = new Array(cuts.length - 1);
+  var n = cuts.length + 1;
+  var result = new Array(n);
   var count = 0;
   var i;
 
@@ -95,19 +96,19 @@ function avgPercentDistributon (now, last, cuts) {
   }
 
   if (count === 0) {
-    for (i = 0;  i < cuts.length;  ++i) {
+    for (i = 0;  i < n;  ++i) {
       result[i] = 0;
     }
   }
 
   else if (last === null) {
-    for (i = 0;  i < cuts.length;  ++i) {
+    for (i = 0;  i < n;  ++i) {
       result[i] = now.counts[i] / count;
     }
   }
 
   else  {
-    for (i = 0;  i < cuts.length;  ++i) {
+    for (i = 0;  i < n;  ++i) {
       result[i] = (now.counts[i] - last.counts[i]) / count;
     }
   }
@@ -215,7 +216,14 @@ function computeStatisticsRaw (start) {
         raw.client.queueTime,
         lastRaw.client.queueTime);
 
+      // there is a chance that the request and queue do not fit perfectly
+      // if io time get negative, simple ignore it
+
       data.ioTime = data.totalTime - data.requestTime - data.queueTime;
+
+      if (data.ioTime < 0.0) {
+        data.ioTime = 0;
+      }
 
       // data transfer figures
       data.bytesSent = avgPerTimeSlice(
@@ -412,7 +420,7 @@ function computeStatisticsRaw (start) {
       }
 
       current = {
-        asyncRequests: n1,
+        asyncRequests: n1 - m1,
         asyncRequestsPercentChange: d1,
         clientConnections: n2,
         clientConnectionsPercentChange: d2,

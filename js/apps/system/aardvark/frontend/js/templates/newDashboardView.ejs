@@ -9,11 +9,14 @@
   <% } %>
   <% var smallChart = function(name) { %>
     <div class="dashboard-small-chart dashboard-chart"  id="<%= name %>Container">
-      <div id="<%= name %>" class="dashboard-interior-chart"></div>
-      <div class="dashboard-legend">
-        <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+      <div id="<%= name %>" class="dashboard-interior-chart">
+					<svg></svg>
       </div>
-    </div>
+      <div class="dashboard-legend">
+        <div class="dashboard-legend-inner" id="<%= name %>Legend">
+        </div>
+      </div>
+	  </div>
   <% } %>
   <% var tendency = function(title, name) { %>
     <div class="dashboard-half-height-chart dashboard-chart"  id="<%= name %>Container">
@@ -60,7 +63,13 @@
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <div class="dashboard-title-bar">Resident Size</div>
-      <div id="residentSizeChart"></div>
+      <div id="residentSizeChart">
+					<svg>
+					</svg>
+					<div class="residentSize">
+							<span id="residentSizeTotal"></span>
+					</div>
+			</div>
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <% tendency("Virtual Size in GB", "virtualSize"); %>

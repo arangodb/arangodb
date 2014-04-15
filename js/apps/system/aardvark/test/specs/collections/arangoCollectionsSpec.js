@@ -39,25 +39,11 @@
             var response = {collections: [
                 {name: "_aSystemCollection", type: 2, status: 2}
             ]};
-            spyOn($, "ajax").andCallFake(function(opts) {
-              opts.success({
-                isSystem: true
-              });
-            });
             col.parse(response);
             expect(response.collections[0].isSystem).toEqual(true);
             expect(response.collections[0].type).toEqual("document (system)");
             expect(response.collections[0].status).toEqual("unloaded");
             expect(response.collections[0].picture).toEqual("img/icon_arango.png");
-            expect($.ajax).toHaveBeenCalledWith({
-              type: 'GET',
-              url: '/_api/collection/_aSystemCollection/properties',
-              contentType: 'application/json',
-              processData: false,
-              async: false,
-              success: jasmine.any(Function),
-              error: jasmine.any(Function)
-            });
         });
 
         it("should getPosition for loaded documents sorted by type", function () {
