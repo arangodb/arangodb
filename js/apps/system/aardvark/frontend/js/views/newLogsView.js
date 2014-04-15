@@ -7,6 +7,7 @@
     el: '#content',
     id: '#logContent',
     paginationDiv : "#logPaginationDiv",
+    idPrefix: "logTable",
 
     initialize: function () {
       this.convertModelToJSON();
@@ -82,45 +83,7 @@
     },
 
     rerender : function () {
-        this.convertModelToJSON();
-    },
-
-    renderPagination: function () {
-      var self = this;
-      var currentPage = this.collection.getPage();
-      var totalPages = this.collection.getLastPageNumber();
-      var target = $('#logPaginationDiv'),
-      options = {
-        page: currentPage,
-        lastPage: totalPages,
-        click: function(i) {
-          if (i === 1 && i !== currentPage) {
-            self.collection.setPage(1);
-          }
-          else if (i === totalPages && i !== currentPage) {
-            self.collection.setPage(totalPages);
-          }
-          else if (i !== currentPage) {
-            self.collection.setPage(i);
-          }
-          options.page = i;
-          self.collection.fetch({
-            success: function() {
-              self.convertModelToJSON();
-            }
-          });
-        }
-      };
-      target.html("");
-      target.pagination(options);
-      $('#logPaginationDiv').prepend(
-        '<ul class="pre-pagi"><li><a id="logTable_first" class="pagination-button">'+
-        '<span><i class="fa fa-angle-double-left"/></span></a></li></ul>'
-      );
-      $('#logPaginationDiv').append(
-        '<ul class="las-pagi"><li><a id="logTable_last" class="pagination-button">'+
-        '<span><i class="fa fa-angle-double-right"/></span></a></li></ul>'
-      );
+      this.convertModelToJSON();
     }
   });
 }());
