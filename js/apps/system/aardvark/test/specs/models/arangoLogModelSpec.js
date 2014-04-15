@@ -10,11 +10,7 @@
     var model;
 
     beforeEach(function() {
-      model = new window.arangoLog();
-    });
-
-    it("verifies urlRoot", function() {
-      expect(model.urlRoot).toEqual('/_admin/log');
+      model = new window.newArangoLog();
     });
 
     it("verifies defaults", function() {

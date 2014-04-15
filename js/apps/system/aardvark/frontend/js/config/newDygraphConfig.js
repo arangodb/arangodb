@@ -99,7 +99,7 @@
                 div: "systemUserTimeChart",
                 header: "System and User Time",
                 labels: ["datetime", "System Time", "User Time"],
-                stacked: true,
+                stackedGraph: true,
                 labelsKMG2: false,
                 axes: {
                     y: {
@@ -136,18 +136,18 @@
                         }
                     }
                 },
-                stacked: true
+                stackedGraph: true
             },
             dataTransfer: {
                 header: "Data Transfer",
                 labels: ["datetime", "Bytes sent", "Bytes received"],
-                stacked: true,
+                stackedGraph: true,
                 div: "dataTransferChart"
             },
             requests: {
                 header: "Requests",
                 labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
-                stacked: true,
+                stackedGraph: true,
                 div: "requestsChart"
             },
             requestsAsync: {

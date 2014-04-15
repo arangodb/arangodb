@@ -75,16 +75,7 @@
       // This should be the only global object
       window.modalView = new window.ModalView();
       var self = this;
-      /* this.bind('all', function (trigger, args) {
-       if (trigger === "route") {
-         if (self.currentRoute === "dashboard" && self.dashboardView) {
-           self.dashboardView.stopUpdating();
-         } else if (args === "dashboard") {
-           delete self.dashboardView;
-         }
-         self.currentRoute = args;
-       }
-       });*/
+
       this.graphs = new window.GraphCollection();
       this.notificationList = new window.NotificationCollection();
 
@@ -108,16 +99,6 @@
       window.documentView = new window.DocumentView({
         collection: window.arangoDocumentStore
       });
-      /*
-       window.arangoLogsStore = new window.ArangoLogs();
-       window.arangoLogsStore.fetch({
-         success: function () {
-           window.logsView = new window.LogsView({
-             collection: window.arangoLogsStore
-           });
-         }
-       });
-       */
       this.foxxList = new window.FoxxCollection();
 
       this.footerView = new window.FooterView();
@@ -132,11 +113,9 @@
         collection: window.arangoCollectionsStore
       });
 
-
       $(window).resize(function () {
         self.handleResize();
       });
-      //this.handleResize();
       window.checkVersion();
     },
 

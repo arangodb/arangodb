@@ -54,6 +54,16 @@ $dashboard-padding: 28px;
   }
 }
 
+.dashboard-half-height-legend {
+  @extend %pull-left;
+  height: $dashboard-height / 2;
+  width: $legend-width / 2;
+
+  .dashboard-legend-inner {
+    padding-top: 20px;
+  }
+}
+
 .dashboard-half-height-chart {
   @extend %clear-float;
   height: ($dashboard-height + $dashboard-padding) / 2;

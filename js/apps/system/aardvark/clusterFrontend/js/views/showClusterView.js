@@ -313,10 +313,7 @@
               + "/_admin/statistics";
             statCollect.add(stat);
         });
-        statCollect.fetch({
-          beforeSend: window.App.addAuth.bind(window.App),
-          async: false
-        });
+        statCollect.fetch();
         statCollect.forEach(function(m) {
           var uptime = m.get("server").uptime * 1000;
           var time = self.serverTime;
