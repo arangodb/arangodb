@@ -13,10 +13,6 @@
       model = new window.newArangoLog();
     });
 
-    it("verifies urlRoot", function() {
-      expect(model.urlRoot).toEqual('/_admin/log');
-    });
-
     it("verifies defaults", function() {
       expect(model.get('lid')).toEqual('');
       expect(model.get('level')).toEqual('');
