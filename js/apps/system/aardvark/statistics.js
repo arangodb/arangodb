@@ -420,7 +420,7 @@ function computeStatisticsRaw (start) {
       }
 
       current = {
-        asyncRequests: n1,
+        asyncRequests: n1 - m1,
         asyncRequestsPercentChange: d1,
         clientConnections: n2,
         clientConnectionsPercentChange: d2,
