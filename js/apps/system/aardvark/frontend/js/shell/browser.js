@@ -313,6 +313,7 @@ ArangoConnection.prototype.get = function (url) {
 
   $.ajax({
     async: false, 
+    cache: false,
     type: "GET",
     url: url, 
     contentType: "application/json",
