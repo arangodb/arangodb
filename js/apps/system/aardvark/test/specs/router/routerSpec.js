@@ -377,7 +377,6 @@
         expected = [
           "",
           "dashboard",
-          "collection/:colid",
           "collections",
           "new",
           "login",
@@ -423,22 +422,6 @@
           }
         });
         expect(available).toDefineTheRoutes(expected);
-      });
-
-      it("should route to a collection", function () {
-        var colid = 5;
-        simpleNavigationCheck(
-          {
-            url: "collection/:colid",
-            params: [colid]
-          },
-          "CollectionView",
-          "collections-menu",
-          undefined,
-          {
-            setColId: colid
-          }
-        );
       });
 
       it("should route to documents", function () {
