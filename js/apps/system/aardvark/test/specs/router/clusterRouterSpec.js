@@ -457,26 +457,15 @@
 
 
             it("should call dashboardView", function () {
-                spyOn(statisticsDescriptionCollectionDummy, "fetch");
-                spyOn(serverDashboardViewDummy, "stopUpdating");
                 spyOn(serverDashboardViewDummy, "render");
                 r.dashboardView = serverDashboardViewDummy;
                 r.serverToShow = "fritz";
                 r.dashboard();
 
-                expect(statisticsDescriptionCollectionDummy.fetch).toHaveBeenCalledWith({
-                    async: false,
-                    beforeSend: jasmine.any(Function)
-                });
-                expect(serverDashboardViewDummy.stopUpdating).toHaveBeenCalled();
-                expect(window.arangoDocuments).toHaveBeenCalled();
                 expect(serverDashboardViewDummy.render).toHaveBeenCalled();
                 expect(window.ServerDashboardView).toHaveBeenCalledWith({
-                    collection: statisticsCollectionDummy,
-                    description: statisticsDescriptionCollectionDummy,
-                    documentStore: arangoDocumentsDummy,
-                    server: "fritz",
-                    dygraphConfig: r.dygraphConfig
+                    dygraphConfig: window.newDygraphConfig,
+                    serverToShow: "fritz"
                 });
             });
 
