@@ -116,9 +116,10 @@
 }
 
 .modalChartDetail {
-  height: 570px;
-  margin-left: 0;
-  width: 70%;
+  height: 500px;
+  position: fixed;
+  padding-left: 10px;
+  width: 90%;
 }
 
 .modal {

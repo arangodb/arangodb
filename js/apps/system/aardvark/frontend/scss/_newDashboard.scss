@@ -5,6 +5,7 @@ $dashboard-padding: 28px;
   @extend %pull-left;
   border-left: 1px solid $c-black;
   margin-left: -1px;
+  cursor:pointer;
 
   &:first-child {
     border-left: 0;
@@ -12,6 +13,9 @@ $dashboard-padding: 28px;
   }
 }
 
+.detailChart {
+  @extend %pull-left;
+}
 .dashboard-interior-chart {
   @extend %pull-left;
   height: $dashboard-height - $dashboard-padding;
@@ -51,7 +55,23 @@ $dashboard-padding: 28px;
 
   .dashboard-legend-inner {
     padding-top: 20px;
+    padding-left: 20px;
   }
+}
+
+.dashboard-detailLegend {
+  @extend %pull-left;
+  height: $dashboard-height;
+  width: $legend-width;
+  position: fixed;
+  left: 90%;
+  top: 40%;
+
+  .dashboard-legend-inner {
+    padding-top: 20px;
+    padding-left: 20px;
+  }
+
 }
 
 .dashboard-half-height-legend {
@@ -120,9 +140,8 @@ $dashboard-padding: 28px;
   @extend %dashboard-chart-box;
   font-size: 25px;
   height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
-  position: relative;
-  text-align: center;
   top: 15%;
+  text-align: center;
   width: 50%;
 }
 
@@ -132,4 +151,12 @@ $dashboard-padding: 28px;
   margin-bottom: 5px;
   margin-left: -1px;
   margin-right: -1px;
+}
+
+.dashboard-figure {
+  @extend %pull-left;
+  margin-bottom: 10%;
+  margin-top: 7%;
+  margin-left: 19%;
+  text-align: center;
 }
