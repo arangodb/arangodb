@@ -7,7 +7,7 @@
 
     window.newDashboardView = Backbone.View.extend({
         el: '#content',
-        interval: 15000, // in milliseconds
+        interval: 10000, // in milliseconds
         defaultFrame: 20 * 60 * 1000,
         defaultDetailFrame: 14 * 24 * 60 * 60 * 1000,
         history: {},
@@ -44,50 +44,65 @@
                 "queueTimeDistributionPercent", "requestTimeDistributionPercent"
             ],
             dataTransferDistribution: [
-                "bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
+                "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
         },
 
 
         barChartsElementNames: {
             queueTimeDistributionPercent: "Queue Time",
             requestTimeDistributionPercent: "Request Time",
-            bytesReceivedDistributionPercent: "Bytes received",
-            bytesSentDistributionPercent: "Bytes sent"
+            bytesSentDistributionPercent: "Bytes sent",
+            bytesReceivedDistributionPercent: "Bytes received"
+
         },
 
-        showDetail: function (e) {
-            var self = this;
-            console.log(e);
+
+        getDetailFigure : function (e) {
             var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
             figure = figure.replace(/DistributionContainer/g, "");
             figure = figure.replace(/Container/g, "");
-            console.log(figure);
-            this.getStatistics(figure);
-            var options = this.dygraphConfig.getDetailChartConfig(figure);
+            if (figure === "asyncRequests") {
+                figure = "requestsAsync";
+            } else if (figure === "clientConnections") {
+                figure = "httpConnections";
+            }
+            return figure;
+        },
 
+        showDetail: function (e) {
+            var self = this,
+            figure = this.getDetailFigure(e), options;
+            this.getStatistics(figure);
             this.detailGraphFigure = figure;
+            options = this.dygraphConfig.getDetailChartConfig(figure);
+            window.modalView.hideFooter = true;
             window.modalView.show(
                 "modalGraph.ejs",
                 options.header,
-                [window.modalView.createCloseButton(
-                    this.hidden.bind(this)
-                )
-                ]
+                undefined,
+                undefined,
+                undefined,
+                this.events
+
             );
 
+            options = this.dygraphConfig.getDetailChartConfig(figure);
+            window.modalView.hideFooter = false;
+
+            $('#modal-dialog').on('hidden', function () {
+                self.hidden();
+            });
+            $('.modal-body').css({"max-height": "90%" });
             $('#modal-dialog').toggleClass("modalChartDetail", true);
-            $('#modal-body').toggleClass("modal-body", true);
 
             var dimensions = self.getCurrentSize("#lineChartDetail");
-            options.height = dimensions.height;
-            options.width = dimensions.width;
-
-            self.detailGraph = new Dygraph(
+            options.height = dimensions.height * 0.85;
+            options.width = dimensions.width * 0.88;
+            this.detailGraph = new Dygraph(
                 document.getElementById("lineChartDetail"),
-                self.history[figure],
+                this.history[figure],
                 options
             );
-
         },
 
         hidden: function () {
@@ -137,7 +152,7 @@
             this.prepareResidentSize();
             this.updateTendencies();
             Object.keys(this.graphs).forEach(function (f) {
-                self.updateLineChart(f);
+                self.updateLineChart(f, false);
             });
         },
 
@@ -153,26 +168,24 @@
         updateDateWindow: function (graph, isDetailChart) {
             var t = new Date().getTime();
             var borderLeft, borderRight;
-            /*    if (isDetailChart) {
-             } else {
-             }
-             */
-            return [new Date().getTime() - this.defaultFrame, new Date().getTime()];
+            if (isDetailChart && graph.dateWindow_) {
+                borderLeft = graph.dateWindow_[0];
+                borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0 ?
+                        graph.dateWindow_[1] : t;
+                return [borderLeft, borderRight];
+            }
+            return [t - this.defaultFrame, t];
 
 
         },
 
         updateLineChart: function (figure, isDetailChart) {
-
-            var opts = {
+            var g = isDetailChart ? this.detailGraph : this.graphs[figure],
+                opts = {
                 file: this.history[figure],
-                dateWindow: this.updateDateWindow(isDetailChart)
+                dateWindow: this.updateDateWindow(g, isDetailChart)
             };
-            if (isDetailChart) {
-                this.detailGraph.updateOptions(opts);
-            } else {
-                this.graphs[figure].updateOptions(opts);
-            }
+            g.updateOptions(opts);
         },
 
         mergeDygraphHistory: function (newData, i) {
@@ -305,7 +318,6 @@
                 {async: false}
             ).done(
                 function (d) {
-                    console.log("got result", d);
                     self.mergeHistory(d, !!figure);
                 }
             );
@@ -313,19 +325,26 @@
         },
 
         prepareResidentSize: function () {
-            var dimensions = this.getCurrentSize('#residentSizeChart'),
+            var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
                 self = this;
             nv.addGraph(function () {
                 var chart = nv.models.multiBarHorizontalChart()
-                    .width(dimensions.width * 0.3)
-                    .height(dimensions.height)
+                    /*.width(dimensions.width * 0.3)
+                    .height(dimensions.height)*/
                     .x(function (d) {
                         return d.label;
                     })
                     .y(function (d) {
                         return d.value;
                     })
-                    .margin({left: 80})
+                    .width(dimensions.width)
+                    .height(dimensions.height)
+                    .margin({
+                        //top: dimensions.height / 8,
+                        right: dimensions.width / 10
+                        //bottom: dimensions.height / 22,
+                        //left: dimensions.width / 6*/
+                    })
                     .showValues(true)
                     .showYAxis(true)
                     .showXAxis(false)
@@ -335,18 +354,13 @@
                     .stacked(true)
                     .showControls(false);
 
+                chart.yAxis
+                    .tickFormat(function (d) {return d + "%";});
                 chart.xAxis.showMaxMin(false);
                 chart.yAxis.showMaxMin(false);
                 d3.select('#residentSizeChart svg')
                     .datum(self.history.residentSizeChart)
-                    .call(chart)
-                    .append("text")
-                    .attr("x", 20)
-                    .attr("y", 16)
-                    .style("font-size", "20px")
-                    .style("font-weight", 400)
-                    .style("font-family", "Open Sans");
-
+                    .call(chart);
                 nv.utils.windowResize(chart.update);
             });
             $("#residentSizeTotal").text(
@@ -356,17 +370,16 @@
 
 
         prepareD3Charts: function () {
-            //distribution bar charts
             var v, self = this, barCharts = {
                 totalTimeDistribution: [
                     "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
                 dataTransferDistribution: [
-                    "bytesReceivedDistributionPercent", "bytesSentDistributionPercent"]
+                    "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
             };
 
             _.each(Object.keys(barCharts), function (k) {
+                var dimensions = self.getCurrentSize('#' + k + 'Container svg');
                 nv.addGraph(function () {
-                    console.log('#' + k + ' svg');
                     var chart = nv.models.multiBarHorizontalChart()
                         .x(function (d) {
                             return d.label;
@@ -374,8 +387,14 @@
                         .y(function (d) {
                             return d.value;
                         })
-                        //.margin({top: 30, right: 20, bottom: 50, left: 175})
-                        .margin({left: 80})
+                        .width(dimensions.width)
+                        .height(dimensions.height)
+                        .margin({
+                            top: dimensions.height / 8,
+                            right: dimensions.width / 35,
+                            bottom: dimensions.height / 22,
+                            left: dimensions.width / 6
+                        })
                         .showValues(false)
                         .showYAxis(true)
                         .showXAxis(true)
@@ -384,27 +403,25 @@
                         .showLegend(false)
                         .showControls(false);
 
-                    /*chart.yAxis
-                     .tickFormat(d3.format(',.2f'));*/
-                    /**/
-                    /**/
-                    chart.xAxis.showMaxMin(false);
-                    chart.yAxis.showMaxMin(false);
-                    /*chart.xAxis
-                     .tickFormat(d3.format(',.2f'));*/
+                    chart.yAxis
+                     .tickFormat(function (d) {return Math.round(d* 100 * 100) / 100 + "%";});
+
+
                     d3.select('#' + k + 'Container svg')
                         .datum(self.history[k])
-                        .call(chart)
-                        .append("text")
-                        .attr("x", 20)
-                        .attr("y", 16)
-                        .style("font-size", "20px")
-                        .style("font-weight", 400)
-                        .style("font-family", "Open Sans")
-                        .text("Distribution");
+                        .call(chart);
 
                     nv.utils.windowResize(chart.update);
                     if ($('#' + k + "Legend")[0].children.length === 0) {
+                        d3.select('#' + k + 'Container svg')
+                            .append("text")
+                            .attr("x", dimensions.width * 0.6)
+                            .attr("y", dimensions.height / 12)
+                            .style("font-size", dimensions.height / 12 + "px")
+                            .style("font-weight", 400)
+                            .classed("distributionHeader", true)
+                            .style("font-family", "Open Sans")
+                            .text("Distribution");
                         var v1 = self.history[k][0].key;
                         var v2 = self.history[k][1].key;
                         $('#' + k + "Legend").append(
@@ -430,6 +447,7 @@
         },
 
         stopUpdating: function () {
+            console.log("stoping any update");
             this.isUpdating = false;
         },
 
@@ -441,6 +459,11 @@
             self.isUpdating = true;
             self.timer = window.setInterval(function () {
                     self.getStatistics();
+                    if (self.isUpdating === false) {
+                        console.log("no chart rendering");
+                        return;
+                    }
+                    console.log("chart rendering");
                     self.updateCharts();
                 },
                 self.interval
@@ -455,6 +478,7 @@
                 dimensions = self.getCurrentSize(g.maindiv_.id);
                 g.resize(dimensions.width, dimensions.height);
             });
+            this.prepareD3Charts();
         },
 
         template: templateEngine.createTemplate("newDashboardView.ejs"),

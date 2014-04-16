@@ -48,18 +48,18 @@
         },
 
         mapStatToFigure : {
-            numberOfThreads : ["times", "numberOfThreadsCurrent"],
+            numberOfThreads : ["times", "numberOfThreads"],
             residentSize : ["times", "residentSizePercent"],
             virtualSize : ["times", "virtualSize"],
             pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
             systemUserTime : ["times", "cpuSystemTime", "cpuUserTime"],
-            httpConnections : ["times", "clientConnectionsCurrent"],
+            httpConnections : ["times", "clientConnections"],
             totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
             dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
             requests : ["times", "getsPerSecond", "putsPerSecond", "postsPerSecond",
                 "deletesPerSecond", "patchesPerSecond", "headsPerSecond",
                 "optionsPerSecond", "othersPerSecond"],
-            requestsAsync : ["times", "asyncsPerSecond"]
+            requestsAsync : ["times", "asyncPerSecond"]
         },
 
         //colors for dygraphs
@@ -104,13 +104,13 @@
                 axes: {
                     y: {
                         valueFormatter: function (y) {
-                            return y.toPrecision(3);
+                            return parseFloat(y.toPrecision(3));
                         },
                         axisLabelFormatter: function (y) {
                             if (y === 0) {
                                 return 0;
                             }
-                            return y.toPrecision(3);
+                            return parseFloat(y.toPrecision(3));
                         }
                     }
                 }
@@ -126,13 +126,13 @@
                 axes: {
                     y: {
                         valueFormatter: function (y) {
-                            return y.toPrecision(3);
+                            return parseFloat(y.toPrecision(3));
                         },
                         axisLabelFormatter: function (y) {
                             if (y === 0) {
                                 return 0;
                             }
-                            return y.toPrecision(3);
+                            return parseFloat(y.toPrecision(3));
                         }
                     }
                 },
@@ -229,7 +229,9 @@
                     showRangeSelector: true,
                     interactionModel: null,
                     showLabelsOnHighlight: true,
-                    highlightCircleSize: 3
+                    highlightCircleSize: 3,
+                    legend : "always",
+                    labelsDiv : document.getElementById("detailLegend")
                 }
             );
             if (figure === "pageFaults") {
