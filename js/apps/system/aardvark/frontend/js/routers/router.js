@@ -9,7 +9,6 @@
     routes: {
       "": "dashboard",
       "dashboard": "dashboard",
-      "collection/:colid": "collection",
       "collections": "collections",
       "new": "newCollection",
       "login": "login",
@@ -149,15 +148,6 @@
           naviView.selectMenuItem('collections-menu');
         }
       });
-    },
-
-    collection: function (colid) {
-      if (!this.collectionView) {
-        this.collectionView = new window.CollectionView();
-      }
-      this.collectionView.setColId(colid);
-      this.collectionView.render();
-      this.naviView.selectMenuItem('collections-menu');
     },
 
     documents: function (colid, pageid) {
