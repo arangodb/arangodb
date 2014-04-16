@@ -9,7 +9,7 @@
         el: '#content',
         interval: 10000, // in milliseconds
         defaultFrame: 20 * 60 * 1000,
-        defaultDetailFrame: 14 * 24 * 60 * 60 * 1000,
+        defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
         history: {},
         graphs: {},
         alreadyCalledDetailChart: [],
@@ -148,8 +148,8 @@
                 this.updateLineChart(this.detailGraphFigure, true);
                 return;
             }
-            this.prepareD3Charts();
-            this.prepareResidentSize();
+            this.prepareD3Charts(true);
+            this.prepareResidentSize(true);
             this.updateTendencies();
             Object.keys(this.graphs).forEach(function (f) {
                 self.updateLineChart(f, false);
@@ -234,6 +234,7 @@
             Object.keys(this.barCharts).forEach(function (a) {
                 self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
             });
+            console.log(newData.residentSizePercent, newData.residentSize);
             self.history.residentSizeChart =
                 [
                     {
@@ -324,9 +325,10 @@
 
         },
 
-        prepareResidentSize: function () {
+        prepareResidentSize: function (update) {
             var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
-                self = this;
+                self = this, currentP =
+                    Math.round(self.history.residentSizeChart[0].values[0].value * 100) /100;
             nv.addGraph(function () {
                 var chart = nv.models.multiBarHorizontalChart()
                     /*.width(dimensions.width * 0.3)
@@ -337,7 +339,7 @@
                     .y(function (d) {
                         return d.value;
                     })
-                    .width(dimensions.width)
+                    .width(dimensions.width * 0.95)
                     .height(dimensions.height)
                     .margin({
                         //top: dimensions.height / 8,
@@ -345,8 +347,8 @@
                         //bottom: dimensions.height / 22,
                         //left: dimensions.width / 6*/
                     })
-                    .showValues(true)
-                    .showYAxis(true)
+                    .showValues(false)
+                    .showYAxis(false)
                     .showXAxis(false)
                     .transitionDuration(350)
                     .tooltips(false)
@@ -361,15 +363,42 @@
                 d3.select('#residentSizeChart svg')
                     .datum(self.history.residentSizeChart)
                     .call(chart);
+                d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
+                if (update) {
+                    d3.select('#residentSizeChart svg').select('#total')
+                        .text(Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + " GB");
+                    d3.select('#residentSizeChart svg').select('#percentage')
+                        .text(currentP + " %");
+                } else {
+                    d3.select('#residentSizeChart svg').selectAll('#total')
+                    .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                    .enter()
+                    .append("text")
+                    .style("font-size", dimensions.height / 8 + "px")
+                    .style("font-weight", 400)
+                    .style("font-family", "Open Sans")
+                    .attr("id", "total")
+                    .attr("x", dimensions.width /1.15)
+                    .attr("y", dimensions.height/ 2.1)
+                    .text(function(d){return d;});
+                    d3.select('#residentSizeChart svg').selectAll('#percentage')
+                        .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                        .enter()
+                        .append("text")
+                        .style("font-size", dimensions.height / 10 + "px")
+                        .style("font-weight", 400)
+                        .style("font-family", "Open Sans")
+                        .attr("id", "percentage")
+                        .attr("x", dimensions.width * 0.1)
+                        .attr("y", dimensions.height/ 2.1)
+                        .text(currentP + " %");
+                }
                 nv.utils.windowResize(chart.update);
             });
-            $("#residentSizeTotal").text(
-                Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000
-            );
         },
 
 
-        prepareD3Charts: function () {
+        prepareD3Charts: function (update) {
             var v, self = this, barCharts = {
                 totalTimeDistribution: [
                     "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
@@ -412,7 +441,7 @@
                         .call(chart);
 
                     nv.utils.windowResize(chart.update);
-                    if ($('#' + k + "Legend")[0].children.length === 0) {
+                    if (!update) {
                         d3.select('#' + k + 'Container svg')
                             .append("text")
                             .attr("x", dimensions.width * 0.6)
@@ -452,6 +481,7 @@
         },
 
         startUpdating: function () {
+            console.log("starting update");
             var self = this;
             if (self.isUpdating) {
                 return;
@@ -478,7 +508,8 @@
                 dimensions = self.getCurrentSize(g.maindiv_.id);
                 g.resize(dimensions.width, dimensions.height);
             });
-            this.prepareD3Charts();
+            this.prepareD3Charts(true);
+            this.prepareResidentSize(true);
         },
 
         template: templateEngine.createTemplate("newDashboardView.ejs"),
