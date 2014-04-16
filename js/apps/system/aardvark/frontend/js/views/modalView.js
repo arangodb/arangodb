@@ -33,6 +33,7 @@
     tableTemplate: templateEngine.createTemplate("modalTable.ejs"),
     el: "#modalPlaceholder",
     contentEl: "#modalContent",
+    hideFooter: false,
     confirm: {
       list: "#modal-delete-confirmation",
       yes: "#modal-confirm-delete",
@@ -168,7 +169,8 @@
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent) {
+    show: function(templateName, title, buttons, tableContent, advancedContent,
+        events) {
       var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
       // Insert close as second from right
@@ -188,7 +190,8 @@
       }
       $(this.el).html(this.baseTemplate.render({
         title: title,
-        buttons: buttons
+        buttons: buttons,
+        hideFooter: this.hideFooter
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
@@ -231,6 +234,9 @@
           });
         }
       });//handle select2
+      if (events) {
+          this.delegateEvents(events);
+      }
 
       $("#modal-dialog").modal("show");
     },
