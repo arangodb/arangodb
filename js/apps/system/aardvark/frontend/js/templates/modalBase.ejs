@@ -8,6 +8,7 @@
 
     <div class="modal-body">
     </div>
+		<% if (!hideFooter) { %>
     <div class="modal-footer">
       <%
       _.each(buttons, function(value, key){
@@ -21,6 +22,7 @@
       <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
       <%});%>
     </div>
+		<% } %>
     <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
       <strong>Really delete?</strong>
       <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
