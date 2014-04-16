@@ -77,10 +77,10 @@
                     y: {
                         labelsKMG2: false,
                         axisLabelFormatter: function (y) {
-                            return y.toPrecision(2) + "%";
+                            return parseFloat(y.toPrecision(3) * 100) + "%";
                         },
                         valueFormatter: function (y) {
-                            return y.toPrecision(2) + "%";
+                            return parseFloat(y.toPrecision(3) * 100) + "%";
                         }
                     }
                 }

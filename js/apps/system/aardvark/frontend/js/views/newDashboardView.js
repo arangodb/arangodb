@@ -139,7 +139,7 @@
 
         initialize: function () {
             this.dygraphConfig = this.options.dygraphConfig;
-
+            this.server = this.options.serverToShow;
         },
 
         updateCharts: function () {
@@ -234,7 +234,6 @@
             Object.keys(this.barCharts).forEach(function (a) {
                 self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
             });
-            console.log(newData.residentSizePercent, newData.residentSize);
             self.history.residentSizeChart =
                 [
                     {
@@ -313,7 +312,9 @@
                 url += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
                 this.alreadyCalledDetailChart.push(figure);
             }
-            console.log(url);
+            if (this.server) {
+                url += "&server=" + this.server.target;
+            }
             $.ajax(
                 url,
                 {async: false}
@@ -476,12 +477,10 @@
         },
 
         stopUpdating: function () {
-            console.log("stoping any update");
             this.isUpdating = false;
         },
 
         startUpdating: function () {
-            console.log("starting update");
             var self = this;
             if (self.isUpdating) {
                 return;
@@ -490,10 +489,8 @@
             self.timer = window.setInterval(function () {
                     self.getStatistics();
                     if (self.isUpdating === false) {
-                        console.log("no chart rendering");
                         return;
                     }
-                    console.log("chart rendering");
                     self.updateCharts();
                 },
                 self.interval
@@ -514,8 +511,10 @@
 
         template: templateEngine.createTemplate("newDashboardView.ejs"),
 
-        render: function () {
-            $(this.el).html(this.template.render());
+        render: function (modalView) {
+            if (!modalView)  {
+                $(this.el).html(this.template.render());
+            }
             this.getStatistics();
             this.prepareDygraphs();
             this.prepareD3Charts();

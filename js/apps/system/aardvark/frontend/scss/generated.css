@@ -2734,8 +2734,8 @@ div.breadcrumb a.disabledBread {
 
 .modalChartDetail {
   height: 500px;
-  position: fixed;
   padding-left: 10px;
+  position: fixed;
   width: 90%; }
 
 .modal {
@@ -3007,8 +3007,8 @@ pre.gv-object-view {
 
 .dashboard-large-chart, .dashboard-medium-chart, .dashboard-small-chart, .dashboard-tendency-chart, .dashboard-subtitle-bar, .dashboard-tendency {
   border-left: 1px solid black;
-  margin-left: -1px;
-  cursor: pointer; }
+  cursor: pointer;
+  margin-left: -1px; }
   .dashboard-large-chart:first-child, .dashboard-medium-chart:first-child, .dashboard-small-chart:first-child, .dashboard-tendency-chart:first-child, .dashboard-subtitle-bar:first-child, .dashboard-tendency:first-child {
     border-left: 0;
     margin-left: 0; }
@@ -3020,33 +3020,45 @@ pre.gv-object-view {
   height: 250px;
   padding-top: 28px; }
 
+.modal-body .dashboard-large-chart {
+  width: 66.66666666%; }
+
 .dashboard-medium-chart {
   height: 250px;
   padding-top: 28px; }
+
+.modal-body .dashboard-medium-chart {
+  width: 66.666666666%; }
 
 .dashboard-small-chart {
   height: 250px;
   padding-top: 28px; }
 
+.modal-body .dashboard-small-chart {
+  width: 33.33333333%; }
+
 .dashboard-tendency-chart {
   height: 278px; }
+
+.modal-body .dashboard-tendency-chart {
+  width: 33.33333%; }
 
 .dashboard-legend {
   height: 250px;
   width: 200px; }
   .dashboard-legend .dashboard-legend-inner {
-    padding-top: 20px;
-    padding-left: 20px; }
+    padding-left: 20px;
+    padding-top: 20px; }
 
 .dashboard-detailLegend {
   height: 250px;
-  width: 200px;
-  position: fixed;
   left: 90%;
-  top: 40%; }
+  position: fixed;
+  top: 40%;
+  width: 200px; }
   .dashboard-detailLegend .dashboard-legend-inner {
-    padding-top: 20px;
-    padding-left: 20px; }
+    padding-left: 20px;
+    padding-top: 20px; }
 
 .dashboard-half-height-legend {
   height: 125px;
@@ -3095,8 +3107,8 @@ pre.gv-object-view {
 .dashboard-tendency {
   font-size: 25px;
   height: 65px;
-  top: 15%;
   text-align: center;
+  top: 15%;
   width: 50%; }
 
 .dashboard-row {
@@ -3107,8 +3119,8 @@ pre.gv-object-view {
 
 .dashboard-figure {
   margin-bottom: 10%;
-  margin-top: 7%;
   margin-left: 19%;
+  margin-top: 7%;
   text-align: center; }
 
 .dashboardModal {

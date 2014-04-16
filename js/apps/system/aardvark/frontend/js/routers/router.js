@@ -253,31 +253,6 @@
       this.dashboardView.render();
     },
 
-    /*
-     dashboard: function () {
-       this.naviView.selectMenuItem('dashboard-menu');
-       if (this.statisticsDescriptionCollection === undefined) {
-         this.statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
-         this.statisticsDescriptionCollection.fetch({
-           async: false
-         });
-       }
-       if (this.statistics === undefined) {
-         this.statisticsCollection = new window.StatisticsCollection();
-       }
-       if (this.dashboardView === undefined) {
-         this.dashboardView = new dashboardView({
-           collection: this.statisticsCollection,
-           description: this.statisticsDescriptionCollection,
-           documentStore: window.arangoDocumentsStore,
-           dygraphConfig: window.dygraphConfig
-         });
-       }
-       this.dashboardView.render();
-     },
-     */
-
-
     graph: function () {
       var self = this;
       window.arangoCollectionsStore.fetch({

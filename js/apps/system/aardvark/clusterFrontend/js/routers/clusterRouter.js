@@ -69,6 +69,7 @@ arangoDatabase, btoa, _*/
     initialize: function () {
       var self = this;
       this.dygraphConfig = window.dygraphConfig;
+      window.modalView = new window.ModalView();
       this.initial = this.planScenario;
       this.isCheckingUser = false;
       this.bind('all', function(trigger, args) {
@@ -164,23 +165,10 @@ arangoDatabase, btoa, _*/
         return;
       }
 
-      var statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
-      statisticsDescriptionCollection.fetch({
-        async: false,
-        beforeSend: this.addAuth.bind(this)
-      });
-      var statisticsCollection = new window.StatisticsCollection();
-      if (this.dashboardView) {
-        this.dashboardView.stopUpdating();
-      }
-      this.dashboardView = null;
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-        collection: statisticsCollection,
-        description: statisticsDescriptionCollection,
-        documentStore: new window.arangoDocuments(),
-        server : server,
-        dygraphConfig : this.dygraphConfig
+          dygraphConfig: window.newDygraphConfig,
+          serverToShow : this.serverToShow
       });
       this.dashboardView.render();
     }

@@ -4,8 +4,8 @@ $dashboard-padding: 28px;
 %dashboard-chart-box {
   @extend %pull-left;
   border-left: 1px solid $c-black;
+  cursor: pointer;
   margin-left: -1px;
-  cursor:pointer;
 
   &:first-child {
     border-left: 0;
@@ -16,6 +16,7 @@ $dashboard-padding: 28px;
 .detailChart {
   @extend %pull-left;
 }
+
 .dashboard-interior-chart {
   @extend %pull-left;
   height: $dashboard-height - $dashboard-padding;
@@ -26,6 +27,14 @@ $dashboard-padding: 28px;
   @extend %pull-left;
   height: $dashboard-height;
   padding-top: $dashboard-padding;
+
+}
+
+.modal-body {
+
+  .dashboard-large-chart {
+    width: 66.66666666%;
+  }
 }
 
 .dashboard-medium-chart {
@@ -35,6 +44,12 @@ $dashboard-padding: 28px;
   padding-top: $dashboard-padding;
 }
 
+.modal-body {
+  .dashboard-medium-chart {
+    width: 66.666666666%;
+  }
+}
+
 .dashboard-small-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
@@ -42,11 +57,25 @@ $dashboard-padding: 28px;
   padding-top: $dashboard-padding;
 }
 
+.modal-body {
+  .dashboard-small-chart {
+    width: 33.33333333%;
+  }
+}
+
+
 .dashboard-tendency-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
   height: $dashboard-height + $dashboard-padding;
 }
+
+.modal-body {
+  .dashboard-tendency-chart {
+    width: 33.33333%;
+  }
+}
+
 
 .dashboard-legend {
   @extend %pull-left;
@@ -54,22 +83,22 @@ $dashboard-padding: 28px;
   width: $legend-width;
 
   .dashboard-legend-inner {
-    padding-top: 20px;
     padding-left: 20px;
+    padding-top: 20px;
   }
 }
 
 .dashboard-detailLegend {
   @extend %pull-left;
   height: $dashboard-height;
-  width: $legend-width;
-  position: fixed;
   left: 90%;
+  position: fixed;
   top: 40%;
+  width: $legend-width;
 
   .dashboard-legend-inner {
-    padding-top: 20px;
     padding-left: 20px;
+    padding-top: 20px;
   }
 
 }
@@ -140,8 +169,8 @@ $dashboard-padding: 28px;
   @extend %dashboard-chart-box;
   font-size: 25px;
   height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
-  top: 15%;
   text-align: center;
+  top: 15%;
   width: 50%;
 }
 
@@ -156,7 +185,8 @@ $dashboard-padding: 28px;
 .dashboard-figure {
   @extend %pull-left;
   margin-bottom: 10%;
-  margin-top: 7%;
   margin-left: 19%;
+  margin-top: 7%;
   text-align: center;
 }
+

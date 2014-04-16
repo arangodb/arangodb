@@ -2753,9 +2753,10 @@ div.breadcrumb a.disabledBread {
   opacity: .4; }
 
 .modalChartDetail {
-  height: 570px;
-  margin-left: 0;
-  width: 70%; }
+  height: 500px;
+  padding-left: 10px;
+  position: fixed;
+  width: 90%; }
 
 .modal {
   border-radius: 0 !important; }
