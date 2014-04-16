@@ -349,7 +349,7 @@ ArangoDB will use some default configuration, but it cannot guess the endpoint (
 of the master database) the applier should connect to. Thus starting the applier without 
 configuration will fail.
 
-Note that the first time you start the applier, you should pass `0` as value for tick. Otherwise
+Note that the first time you start the applier, you should pass `1` as value for tick. Otherwise
 you might see the message
 
     "lastError" : { 
