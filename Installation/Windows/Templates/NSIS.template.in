@@ -3,12 +3,14 @@
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\AccessControl\Plugins'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\SharedMemory\Plugins'
 !addincludedir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
   !include "UAC.nsh"
+  !include WinMessages.nsh
 
 
 ;--------------------------------
@@ -55,7 +57,44 @@
   ; RequestExecutionLevel admin
   RequestExecutionLevel highest
 
+Function disableBackButton
+     GetDlgItem $0 $HWNDParent 3
+     EnableWindow $0 0
+FunctionEnd
+
 Function Tri_ChangePrivileges
+  ${IfNot} ${UAC_IsInnerInstance} 
+     Call disableBackButton
+     GetDlgItem $0 $HWNDParent 2
+     EnableWindow $0 0
+     GetDlgItem $0 $HWNDParent 1
+     EnableWindow $0 0
+  ${EndIf}
+    uac_tryagain:
+    !insertmacro UAC_RunElevated
+    ${Switch} $0
+    ${Case} 0
+    	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
+	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+	${EndIf}
+	;fall-through and die
+    ${Case} 1223
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
+	Quit
+    ${Case} 1062
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
+	Quit
+    ${Default}
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
+	Quit
+    ${EndSwitch}
+
+  SetShellVarContext all
+FunctionEnd
+
+Function un.Tri_ChangePrivileges
 uac_tryagain:
 !insertmacro UAC_RunElevated
 ${Switch} $0
@@ -593,7 +632,8 @@ FunctionEnd
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
 
-  Page custom InstallOptionsPage
+  Page custom InstallOptionsPage skip_page
+
   !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
@@ -806,34 +846,61 @@ Function skip_page
   ${EndIf}
 FunctionEnd
 
+; when I am a child proces
+; I read the state (from shared memory) of the install options page
+; these informations has to be written by the fathe process 
+Function read_options
+  ${If} ${UAC_IsInnerInstance} 
+     sharedmem::ReadIntoSharedMem 
+     pop $0
+     pop $1
+     ${If} $0 == 0
+        StrCpy  $TRI_INSTALL_TYPE $1 
+      ${Else}
+; when something is wrong arango is installed as Service
+        StrCpy  $TRI_INSTALL_TYPE 'Service'
+     ${EndIf}
+  ${EndIf}
+FunctionEnd
 ;--------------------------------
 Function default_installation_directory
 ; Read variables which defines if arango should be installed as Service 
-  Pop $R2
-  Pop $R3
-  Pop $R4
-  !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
   
-   ${If} $R2 == '1'
-     StrCpy $TRI_INSTALL_TYPE 'Service'
+  ${If} ${UAC_IsInnerInstance} 
+     Call disableBackButton
+  ${EndIf}
+  ${IfNot} ${UAC_IsInnerInstance} 
+    !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
+    !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
+    !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
+  
+     ${If} $R2 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'Service'
+     ${EndIf}
+
+     ${If} $R3 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'AllUsers'
+     ${EndIf}
+
+     ${If} $R4 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'SingleUser'
+     ${EndIf}
+     sharedmem::WriteIntoSharedMem  $TRI_INSTALL_TYPE
+     pop $0
+     ; $0 should be '0'
+     ; this value is read by child process
+   ${Else}
+     Call read_options
    ${EndIf}
 
-   ${If} $R3 == '1'
-     StrCpy $TRI_INSTALL_TYPE 'AllUsers'
-   ${EndIf}
-
-   ${If} $R4 == '1'
-     StrCpy $TRI_INSTALL_TYPE 'SingleUser'
-   ${EndIf}
+  
   ${If} $TRI_INSTALL_TYPE == 'Service' 
     Call Tri_ChangePrivileges
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
     SetShellVarContext all
-    Call skip_page
-    Abort
+    Return
    ${EndIf}
+
   ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
     SetShellVarContext current
     ${If}  ${UAC_IsAdmin}  
@@ -851,6 +918,7 @@ Function default_installation_directory
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
     SetShellVarContext all
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
    ${EndIf}
 FunctionEnd
 
@@ -889,28 +957,28 @@ FunctionEnd
 
 
 !macro triagens_init
-uac_tryagain:
-!insertmacro UAC_RunElevated
-${Switch} $0
-${Case} 0
-	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
-	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
-	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
-		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need requires admin privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
-	${EndIf}
-	;fall-through and die
-${Case} 1223
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
-	Quit
-${Case} 1062
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
-	Quit
-${Default}
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
-	Quit
-${EndSwitch}
- 
-SetShellVarContext all
+  ${If} ${UAC_IsInnerInstance} 
+  ; memory segment is created by father process
+  ; nothing to do
+SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
+    return
+  ${EndIf}
+  sharedmem::ExistsSharedMem
+  pop $0
+  ${If} $0 == '1'
+    MessageBox MB_OK "Installer is allready running" 
+    Quit
+  ${EndIf}
+  sharedmem::CreateSharedMemory
+  pop $0
+  ${Switch} $0
+  ${Case} 0
+  ; shared memory was created
+   ; return
+  ${Case} 5
+  ; what is to do, memory segment could no be created ?
+  ${EndSwitch}
+; SetShellVarContext all
 !macroend
 
 ;--------------------------------
@@ -955,7 +1023,7 @@ Function un.onInit
   ${EndIf}
   
   ${If} $R0 == "admin" 
-    !insertmacro triagens_init
+    Call un.Tri_ChangePrivileges
   ${EndIf}
  ; are we a child process? 
  ; when yes, we have administrator privileges
@@ -1146,7 +1214,7 @@ uninst_failed:
 
 
 inst:
-;  !insertmacro triagens_init
+  !insertmacro triagens_init
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
