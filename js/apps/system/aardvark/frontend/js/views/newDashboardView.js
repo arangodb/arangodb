@@ -117,14 +117,8 @@
                 div = "#" + div;
             }
             var height, width;
-            console.log(div);
-            console.log($(div))
             height = $(div).height();
             width = $(div).width();
-            console.log({
-                height: height,
-                width: width
-            })
             return {
                 height: height,
                 width: width
@@ -323,9 +317,10 @@
                 this.alreadyCalledDetailChart.push(figure);
             }
             if (this.server) {
-                url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) + "&isDbServer=" + this.server.isDBServer;
+                url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) +
+                    "&isDbServer=" + this.server.isDBServer;
             }
-            console.log(url)
+            console.log(url);
             $.ajax(
                 url,
                 {async: false}
