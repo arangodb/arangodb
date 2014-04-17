@@ -32,7 +32,8 @@
 
       this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
         $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
-          model: arango_collection
+          model: arango_collection,
+          collectionsView: this
         }).render().el);
       }, this);
 

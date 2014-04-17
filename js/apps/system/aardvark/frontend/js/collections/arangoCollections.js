@@ -298,6 +298,7 @@
         });
         return returnobj;
       },
+/*
       renameCollection: function (id, name) {
         var result = false;
         $.ajax({
@@ -323,6 +324,8 @@
         });
         return result;
       },
+*/
+/*
       changeCollection: function (id, wfs, journalSize) {
         var result = false;
 
@@ -349,6 +352,8 @@
         });
         return result;
       },
+*/
+/*
       deleteCollection: function (id) {
         var returnval = false;
         var self = this;
@@ -367,7 +372,9 @@
           }
         });
         return returnval;
-      },
+      }
+*/
+/*
       loadCollection: function (id) {
         $.ajax({
           cache: false,
@@ -386,6 +393,8 @@
           }
         });
       },
+*/
+/*
       unloadCollection: function (id) {
         $.ajax({
           cache: false,
@@ -404,5 +413,6 @@
           }
         });
       }
+*/
   });
 }());
