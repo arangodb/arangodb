@@ -457,7 +457,7 @@ exports.changePassword = function (token, password) {
 
   var hash = encodePassword(password);
 
-  users.update(current, { passwordToken: null, password: hash });
+  users.update(current, { passwordToken: null, password: hash, changePassword: false });
   exports.reload();
 
   return true;
