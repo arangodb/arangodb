@@ -12,6 +12,7 @@
 
     initialize: function () {
       var self = this;
+      this.collectionsView = this.options.collectionsView;
     },
     events: {
       'click .iconSet.icon_arangodb_settings2': 'createEditPropertiesModal',
@@ -21,6 +22,7 @@
       'click .spanInfo' : 'showProperties',
       'click': 'selectCollection'
     },
+
     render: function () {
       $(this.el).html(this.template.render({
         model: this.model
@@ -55,21 +57,29 @@
     },
 
     unloadCollection: function () {
-      window.arangoCollectionsStore.unloadCollection(this.model.get('id'));
+      this.model.unloadCollection();
+      this.render();
       window.modalView.hide();
     },
+
     loadCollection: function () {
-      window.arangoCollectionsStore.loadCollection(this.model.get('id'));
+      this.model.loadCollection();
+      this.render();
       window.modalView.hide();
     },
+
     deleteCollection: function () {
-      var collName = this.model.get('name');
-      var returnval = window.arangoCollectionsStore.deleteCollection(collName);
-      if (returnval === false) {
-        arangoHelper.arangoError('Could not delete collection.');
-      }
+      this.model.destroy(
+        {
+          error: function() {
+            arangoHelper.arangoError('Could not delete collection.');
+          }
+        }
+      );
+      this.collectionsView.render();
       window.modalView.hide();
     },
+
     saveModifiedCollection: function() {
       var newname;
       if (window.isCoordinator()) {
@@ -89,7 +99,7 @@
       if (status === 'loaded') {
         var result;
         if (this.model.get('name') !== newname) {
-          result = window.arangoCollectionsStore.renameCollection(collid, newname);
+          result = this.model.renameCollection(newname);
         }
 
         var wfs = $('#change-collection-sync').val();
@@ -101,7 +111,7 @@
           arangoHelper.arangoError('Please enter a valid number');
           return 0;
         }
-        var changeResult = window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
+        var changeResult = this.model.changeCollection(wfs, journalSize);
 
         if (result !== true) {
           if (result !== undefined) {
@@ -116,24 +126,15 @@
         }
 
         if (changeResult === true) {
-          window.arangoCollectionsStore.fetch({
-            success: function () {
-              window.collectionsView.render();
-            }
-          });
+          this.collectionsView.render();
           window.modalView.hide();
         }
       }
       else if (status === 'unloaded') {
         if (this.model.get('name') !== newname) {
-          var result2 = window.arangoCollectionsStore.renameCollection(collid, newname);
+          var result2 = this.model.renameCollection(newname);
           if (result2 === true) {
-
-            window.arangoCollectionsStore.fetch({
-              success: function () {
-                window.collectionsView.render();
-              }
-            });
+            this.collectionsView.render();
             window.modalView.hide();
           }
           else {
@@ -151,6 +152,13 @@
     //modal dialogs
 
     createEditPropertiesModal: function() {
+
+      var collectionIsLoaded = false;
+
+      if (this.model.get('status') === "loaded") {
+        collectionIsLoaded = true;
+      }
+
       var buttons = [],
         tableContent = [];
 
@@ -161,33 +169,42 @@
           )
         );
       }
-      // needs to be refactored. move getProperties into model
-      var journalSize = this.model.collection.getProperties(this.model.get('id')).journalSize;
-      journalSize = journalSize/(1024*1024);
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "change-collection-size",
-          "Journal size",
-          journalSize,
-          "The maximal size of a journal or datafile (in MB). Must be at least 1.",
-          "",
-          true
-        )
-      );
 
-      // prevent "unexpected sync method error"
-      /*jslint stupid: true */
-      var wfs = this.model.collection.getProperties(this.model.get('id')).waitForSync;
-      /*jslint stupid: false */
+      if (collectionIsLoaded) {
+        // needs to be refactored. move getProperties into model
+        var journalSize = this.model.collection.getProperties(this.model.get('id')).journalSize;
+        journalSize = journalSize/(1024*1024);
 
-      tableContent.push(
-        window.modalView.createSelectEntry(
-          "change-collection-sync",
-          "Wait for sync",
-          wfs,
-          "Synchronise to disk before returning from a create or update of a document.",
-          [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
-      );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            "change-collection-size",
+            "Journal size",
+            journalSize,
+            "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+            "",
+            true
+          )
+        );
+      }
+
+
+      if(collectionIsLoaded) {
+        // prevent "unexpected sync method error"
+        /*jslint stupid: true */
+        var wfs = this.model.collection.getProperties(this.model.get('id')).waitForSync;
+        /*jslint stupid: false */
+
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            "change-collection-sync",
+            "Wait for sync",
+            wfs,
+            "Synchronise to disk before returning from a create or update of a document.",
+            [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
+        );
+      }
+
+
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           "change-collection-id", "ID", this.model.get('id'), ""
@@ -203,7 +220,7 @@
           "change-collection-status", "Status", this.model.get('status'), ""
         )
       );
-      if(this.model.get('status') === "loaded") {
+      if(collectionIsLoaded) {
         buttons.push(
           window.modalView.createNotificationButton(
             "Unload",
@@ -217,8 +234,8 @@
             this.loadCollection.bind(this)
           )
         );
-
       }
+
       buttons.push(
         window.modalView.createDeleteButton(
           "Delete",
