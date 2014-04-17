@@ -1,10 +1,15 @@
 ; CPack install script designed for a nmake build
-;!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\AccessControl\Plugins'
+!addplugindir '..\..\..\..\Installation\Windows\Plugins\SharedMemory\Plugins'
+!addincludedir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
+  !include "UAC.nsh"
+  !include WinMessages.nsh
 
 
 ;--------------------------------
@@ -27,8 +32,8 @@
   Var INSTALL_DESKTOP
   Var IS_DEFAULT_INSTALLDIR
 ; Variables for definition of instdir
-  VAR TRI_INSTALL_AS_SERVICE
-  VAR TRI_INSTALL_SINGLE_USER
+; posible values: SingleUser | AllUsers | Service
+  VAR TRI_INSTALL_TYPE
 ;--------------------------------
 ;Include Modern UI
 
@@ -48,7 +53,70 @@
   SetCompressor @CPACK_NSIS_COMPRESSOR@
 
   ;Require administrator access
-  RequestExecutionLevel admin
+  ; RequestExecutionLevel admin
+  RequestExecutionLevel highest
+
+Function disableBackButton
+     GetDlgItem $0 $HWNDParent 3
+     EnableWindow $0 0
+FunctionEnd
+
+Function Tri_ChangePrivileges
+  ${IfNot} ${UAC_IsInnerInstance} 
+     Call disableBackButton
+     GetDlgItem $0 $HWNDParent 2
+     EnableWindow $0 0
+     GetDlgItem $0 $HWNDParent 1
+     EnableWindow $0 0
+  ${EndIf}
+    uac_tryagain:
+    !insertmacro UAC_RunElevated
+    ${Switch} $0
+    ${Case} 0
+    	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
+	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+	${EndIf}
+	;fall-through and die
+    ${Case} 1223
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
+	Quit
+    ${Case} 1062
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
+	Quit
+    ${Default}
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
+	Quit
+    ${EndSwitch}
+
+  SetShellVarContext all
+FunctionEnd
+
+Function un.Tri_ChangePrivileges
+uac_tryagain:
+!insertmacro UAC_RunElevated
+${Switch} $0
+${Case} 0
+	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
+	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
+	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+	${EndIf}
+	;fall-through and die
+${Case} 1223
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
+	Quit
+${Case} 1062
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
+	Quit
+${Default}
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
+	Quit
+${EndSwitch}
+ 
+SetShellVarContext all
+FunctionEnd
 
 @CPACK_NSIS_DEFINES@
 
@@ -557,11 +625,16 @@ FunctionEnd
 
 ;--------------------------------
 ;Pages
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_WELCOME
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
-  Page custom InstallOptionsPage
+
+  Page custom InstallOptionsPage skip_page
+
   !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
 
   ;Start Menu Folder Page Configuration
@@ -572,6 +645,7 @@ FunctionEnd
 
   @CPACK_NSIS_PAGE_COMPONENTS@
 
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
 
@@ -734,7 +808,7 @@ Section "-Core installation"
 
   
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
-   StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 nothing
+   StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      SimpleSC::StopService  'ArangoDB' 0 30
      SimpleSC::RemoveService  'ArangoDB' 
      SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' '' 
@@ -766,28 +840,161 @@ Function ArangoPreInstallationOptionsPage
 FunctionEnd
 
 ;--------------------------------
-Function default_installation_directory
-; Read variables which defines if arango should be installed as Service 
-  !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_AS_SERVICE "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $0 "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $TRI_INSTALL_SINGLE_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-
-  StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 checkSingleUser
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
-    SetShellVarContext all
+Function skip_page
+  ${If} ${UAC_IsInnerInstance} 
     Abort
-  checkSingleUser:
-    StrCmp $TRI_INSTALL_SINGLE_USER '1' 0 all_users
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "SingleUser"
-    SetShellVarContext current
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-    Return
-  all_users:
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" "Service"
-    SetShellVarContext all
-    StrCpy $TRI_INSTALL_AS_SERVICE '1'
+  ${EndIf}
 FunctionEnd
 
+; when I am a child proces
+; I read the state (from shared memory) of the install options page
+; these informations has to be written by the fathe process 
+Function read_options
+  ${If} ${UAC_IsInnerInstance} 
+     sharedmem::ReadIntoSharedMem 
+     pop $0
+     pop $1
+     ${If} $0 == 0
+        StrCpy  $TRI_INSTALL_TYPE $1 
+      ${Else}
+; when something is wrong arango is installed as Service
+        StrCpy  $TRI_INSTALL_TYPE 'Service'
+     ${EndIf}
+  ${EndIf}
+FunctionEnd
+;--------------------------------
+Function default_installation_directory
+; Read variables which defines if arango should be installed as Service 
+  
+  ${If} ${UAC_IsInnerInstance} 
+     Call disableBackButton
+  ${EndIf}
+  ${IfNot} ${UAC_IsInnerInstance} 
+    !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
+    !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
+    !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
+  
+     ${If} $R2 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'Service'
+     ${EndIf}
+
+     ${If} $R3 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'AllUsers'
+     ${EndIf}
+
+     ${If} $R4 == '1'
+       StrCpy $TRI_INSTALL_TYPE 'SingleUser'
+     ${EndIf}
+     sharedmem::WriteIntoSharedMem  $TRI_INSTALL_TYPE
+     pop $0
+     ; $0 should be '0'
+     ; this value is read by child process
+   ${Else}
+     Call read_options
+   ${EndIf}
+
+  
+  ${If} $TRI_INSTALL_TYPE == 'Service' 
+    Call Tri_ChangePrivileges
+    SetShellVarContext all
+    Return
+   ${EndIf}
+
+  ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
+    SetShellVarContext current
+    StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
+   ${EndIf}
+  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
+    Call Tri_ChangePrivileges
+    SetShellVarContext all
+    StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
+   ${EndIf}
+FunctionEnd
+
+Function assign_propertly_access_rigths
+    StrCpy $0 "0"
+    AccessControl::GrantOnFile \
+     "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
+    Pop $R0
+    ${If} $R0 == error
+      Pop $R0
+      StrCpy $0 "1"
+      DetailPrint `AccessControl error: $R0`
+      ; MessageBox MB_OK "target directory  $INSTDIR can not get cannot get correct access rigths"
+  ${EndIf}
+FunctionEnd
+
+Function is_writable 
+; is does not matter if we do some errors here
+   ${If} $TRI_INSTALL_ALL_USERS == '1'
+     CreateDirectory $INSTDIR
+     Call assign_propertly_access_rigths
+    ${EndIf}
+FunctionEnd
+
+Function check_installation_directory
+   ClearErrors
+    Call is_writable
+   StrCmp $1 "0" handle_error
+   return
+   handle_error:
+     MessageBox MB_YESNO "you aren't allowed to install arango in $INSTDIR do you want try once more?" IDNO no
+       Abort
+     no: Quit
+FunctionEnd
+
+Function insert_registration_keys
+  IfErrors there_are_erros
+
+  ${If} $TRI_INSTALL_TYPE == 'Service' 
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+    Return
+   ${EndIf}
+
+  ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
+    ${If}  ${UAC_IsAdmin}  
+      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+    ${Else}
+; normal user has not write rights to HKCC
+      WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+    ${EndIf}
+    Return
+   ${EndIf}
+  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
+   ${EndIf}
+
+ there_are_erros: ;nothing
+FunctionEnd
+
+!macro triagens_init
+  ${If} ${UAC_IsInnerInstance} 
+  ; memory segment is created by father process
+  ; nothing to do
+SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
+    return
+  ${EndIf}
+  sharedmem::ExistsSharedMem
+  pop $0
+  ${If} $0 == '1'
+    MessageBox MB_OK "Installer is allready running" 
+    Quit
+  ${EndIf}
+  sharedmem::CreateSharedMemory
+  pop $0
+  ${Switch} $0
+  ${Case} 0
+  ; shared memory was created
+   ; return
+  ${Case} 5
+  ; what is to do, memory segment could no be created ?
+  ${EndSwitch}
+; SetShellVarContext all
+!macroend
 
 ;--------------------------------
 ; determine admin versus local install
@@ -813,12 +1020,33 @@ Function un.onInit
 ;
 ;  done:
 
-    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
-  StrCmp $0 "Service" 0 +3
+; determine admin versus local install
+; arango may be installed on diferent places
+; determine if the arango was installed for a local user
+
+  Pop $0
+; temporary variable used as flag for decide the change to administration rights
+  StrCpy $R0 "admin"
+  ${If}  ${UAC_IsAdmin}  
+    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"   
+  ${Else}
+; see function default_installation_directory
+    ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
+    ${If}  $0 == "SingleUser"
+      StrCpy $R0 "user"
+    ${EndIf}
+  ${EndIf}
+  
+  ${If} $R0 == "admin" 
+    Call un.Tri_ChangePrivileges
+  ${EndIf}
+ ; are we a child process? 
+ ; when yes, we have administrator privileges
+  ${If} ${UAC_IsInnerInstance} 
     SetShellVarContext all
-     Goto tri_done
+  ${Else}
     SetShellVarContext current
-    tri_done:
+  ${EndIf} 
    
 FunctionEnd
 
@@ -878,7 +1106,7 @@ Section "Uninstall"
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
 @CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS@
-       StrCmp $TRI_INSTALL_AS_SERVICE  '1' 0 nothing
+       StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
          SimpleSC::StopService  'ArangoDB' 0 30
          SimpleSC::RemoveService  'ArangoDB' 
          Pop $0 ; returns an errorcode (<>0) otherwise success (0)
@@ -952,13 +1180,19 @@ Section "Uninstall"
   secondStartMenuDeleteLoopDone:
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
-  DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ; Delete flag which controls if arango is started as service or no
+  ${If} ${UAC_IsInnerInstance} 
+     DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ${Else}
+     DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" 
+  ${EndIf} 
 
   Push $INSTDIR\bin
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
     Call un.RemoveFromPath
   doNotRemoveFromPath:
 SectionEnd
+
 
 ;--------------------------------
 ; determine admin versus local install
@@ -995,6 +1229,7 @@ uninst_failed:
 
 
 inst:
+  !insertmacro triagens_init
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
@@ -1031,6 +1266,7 @@ inst:
 
   noLM:
     StrCpy $SV_ALLUSERS "AllUsers"
+    ;MessageBox MB_OK 'noLM'
     ;Get installation folder from registry if available
 
   done:
