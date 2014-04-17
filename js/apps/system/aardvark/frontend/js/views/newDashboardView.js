@@ -16,9 +16,6 @@
 
         events: {
             "click .dashboard-chart": "showDetail",
-            "mousedown .dygraph-rangesel-zoomhandle": "stopUpdating",
-            "mouseup .dygraph-rangesel-zoomhandle": "startUpdating",
-            "mouseleave .dygraph-rangesel-zoomhandle": "startUpdating",
             "click #backToCluster": "returnToClusterView"
         },
 
@@ -112,13 +109,17 @@
         },
 
 
-        getCurrentSize: function (div) {
+        getCurrentSize: function (div, diff) {
             if (div.substr(0,1) !== "#") {
                 div = "#" + div;
             }
             var height, width;
+            $(div).attr("style", "");
             height = $(div).height();
             width = $(div).width();
+            /*if (diff) {
+                width = width - $(div + " ." + diff).width();
+            }*/
             return {
                 height: height,
                 width: width
@@ -143,6 +144,10 @@
         initialize: function () {
             this.dygraphConfig = this.options.dygraphConfig;
             this.server = this.options.serverToShow;
+            this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
+            this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
+            this.events["mouseleave .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
+
             console.log(this.server);
         },
 
@@ -318,7 +323,7 @@
             }
             if (this.server) {
                 url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) +
-                    "&isDbServer=" + this.server.isDBServer;
+                    "&DbServer=" + this.server.target;
             }
             console.log(url);
             $.ajax(
@@ -372,11 +377,10 @@
                     .call(chart);
                 d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
                 if (update) {
-                    d3.select('#residentSizeChart svg').select('#total')
-                        .text(Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + " GB");
-                    d3.select('#residentSizeChart svg').select('#percentage')
-                        .text(currentP + " %");
-                } else {
+                    d3.select('#residentSizeChart svg').select('#total').remove();
+                    d3.select('#residentSizeChart svg').select('#percentage').remove();
+                }
+
                     d3.select('#residentSizeChart svg').selectAll('#total')
                     .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
                     .enter()
@@ -399,7 +403,6 @@
                         .attr("x", dimensions.width * 0.1)
                         .attr("y", dimensions.height/ 2.1)
                         .text(currentP + " %");
-                }
                 nv.utils.windowResize(chart.update);
             });
         },
@@ -453,6 +456,7 @@
                             .append("text")
                             .attr("x", dimensions.width * 0.6)
                             .attr("y", dimensions.height / 12)
+                            .attr("id", "distributionHead")
                             .style("font-size", dimensions.height / 12 + "px")
                             .style("font-weight", 400)
                             .classed("distributionHeader", true)
@@ -476,6 +480,18 @@
                                 self.history[k][1].color + ';"></div>'
                                 + " " + v2 + '</span><br>'
                         );
+                    } else {
+                        d3.select('#' + k + 'Container svg').select('.distributionHeader').remove();
+                        d3.select('#' + k + 'Container svg')
+                            .append("text")
+                            .attr("x", dimensions.width * 0.6)
+                            .attr("y", dimensions.height / 12)
+                            .attr("id", "distributionHead")
+                            .style("font-size", dimensions.height / 12 + "px")
+                            .style("font-weight", 400)
+                            .classed("distributionHeader", true)
+                            .style("font-family", "Open Sans")
+                            .text("Distribution");
                     }
                 });
             });
@@ -483,12 +499,13 @@
         },
 
         stopUpdating: function () {
+            console.log("i am stopping");
             this.isUpdating = false;
         },
 
         startUpdating: function () {
             var self = this;
-            if (self.isUpdating) {
+            if (self.timer) {
                 return;
             }
             self.isUpdating = true;
@@ -508,6 +525,8 @@
             var self = this, dimensions;
             Object.keys(this.graphs).forEach(function (f) {
                 var g = self.graphs[f];
+                console.log("oooooo",g.maindiv_)
+                //dimensions = self.getCurrentSize(g.maindiv_.parentElement.id, g.maindiv_.parentElement.children[1].className);
                 dimensions = self.getCurrentSize(g.maindiv_.id);
                 g.resize(dimensions.width, dimensions.height);
             });
