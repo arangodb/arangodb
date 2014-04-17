@@ -36,6 +36,7 @@
     "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" }, 
     "ERROR_CANNOT_CREATE_DIRECTORY" : { "code" : 19, "message" : "cannot create directory" }, 
     "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" }, 
+    "ERROR_REQUEST_CANCELED"       : { "code" : 21, "message" : "canceled request" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 

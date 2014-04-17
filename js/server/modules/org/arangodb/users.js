@@ -294,12 +294,10 @@ exports.remove = function (user) {
     throw err;
   }
 
-  var doc = users.remove(previous);
+  users.remove(previous);
 
   // not exports.reload() as this is an abstract method...
   require("org/arangodb/users").reload();
-
-  return doc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +457,7 @@ exports.changePassword = function (token, password) {
 
   var hash = encodePassword(password);
 
-  users.update(current, { passwordToken: null, password: hash });
+  users.update(current, { passwordToken: null, password: hash, changePassword: false });
   exports.reload();
 
   return true;

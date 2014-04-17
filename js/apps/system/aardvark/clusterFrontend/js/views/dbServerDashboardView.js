@@ -5,8 +5,7 @@
 (function() {
   "use strict";
 
-  window.ServerDashboardView = window.dashboardView.extend({
-    el: "#dbServerModal",
+  window.ServerDashboardView = window.newDashboardView.extend({
     modal : true,
 
     hide: function() {
@@ -15,9 +14,26 @@
     },
 
     render: function() {
-      window.dashboardView.prototype.render.bind(this)();
-      $(this.el).modal("show");
-      $(this.el).on("hidden", this.hide.bind(this));
+      var self = this;
+      window.modalView.hideFooter = true;
+      window.modalView.show(
+            "newDashboardView.ejs",
+            null,
+            undefined,
+            undefined,
+            undefined,
+            this.events
+
+      );
+      window.newDashboardView.prototype.render.bind(this)(true);
+      window.modalView.hideFooter = false;
+
+
+      $('#modal-dialog').on('hidden', function () {
+            self.hide();
+      });
+      $('.modal-body').css({"max-height": "90%" });
+      $('#modal-dialog').toggleClass("modalChartDetail", true);
     }
   });
 

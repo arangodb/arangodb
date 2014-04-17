@@ -40,6 +40,7 @@
 #include "GeneralServer/GeneralServer.h"
 
 using namespace triagens::arango;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -60,12 +61,9 @@ const string RestShardHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
-                                    void* data)
+                                    Dispatcher* data)
   : RestBaseHandler(request),
-    _dispatcher(0) {
-
-  _dispatcher = static_cast<triagens::rest::Dispatcher*>(data);
-
+    _dispatcher(data) {
   assert(_dispatcher != 0);
 }
 

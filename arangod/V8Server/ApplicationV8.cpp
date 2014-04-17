@@ -366,8 +366,6 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   CONDITION_LOCKER(guard, _contextCondition);
 
-  context->handleGlobalContextMethods();
-
   // update data for later garbage collection
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
   context->_hasDeadObjects = v8g->_hasDeadObjects;
@@ -376,6 +374,24 @@ void ApplicationV8::exitContext (V8Context* context) {
   // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
+
+  // try to execute new global context methods
+  bool runGlobal = false;
+  {
+    MUTEX_LOCKER(context->_globalMethodsLock);
+    runGlobal = ! context->_globalMethods.empty();
+  }
+
+  if (runGlobal) {
+    context->_isolate->Enter();
+    context->_context->Enter();
+
+    context->handleGlobalContextMethods();
+    
+    context->_context->Exit();
+    context->_isolate->Exit();
+  }
+
   delete context->_locker;
 
 

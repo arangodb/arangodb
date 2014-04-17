@@ -87,6 +87,51 @@ div.resizecontainer {
       }
     }
 
+
+    div.modalChartDetail {
+      $inner-content-size: $content-size - 200px;
+      left: 50%;
+      margin-left: -($inner-content-size + 50px)/2;
+      width: $inner-content-size + 50px;
+
+      .dashboard-large-chart {
+        $int-width: ($inner-content-size * 2 / 3);
+        width: $int-width;
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width;
+        }
+      }
+
+      .dashboard-medium-chart {
+        $int-width: ($inner-content-size / 2);
+        width: $int-width;
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width;
+        }
+      }
+
+      .dashboard-small-chart {
+        $int-width: ($inner-content-size / 3);
+        width: $int-width;
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width;
+        }
+      }
+
+      .dashboard-tendency-chart {
+        $int-width: ($inner-content-size / 3);
+        width: $int-width;
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width;
+        }
+      }
+
+    }
+
   }
 }
 
