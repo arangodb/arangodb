@@ -1,5 +1,4 @@
 ; CPack install script designed for a nmake build
-;!addplugindir 'c:\\\\Program Files (x86)\\\\NSIS\Plugins\\\\Simple_Service'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\NSIS_Simple_Service_Plugin_1.30'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\UAC-plug-in-NSIS\Ansi'
 !addplugindir '..\..\..\..\Installation\Windows\Plugins\AccessControl\Plugins'
@@ -646,6 +645,7 @@ FunctionEnd
 
   @CPACK_NSIS_PAGE_COMPONENTS@
 
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
 
@@ -896,26 +896,17 @@ Function default_installation_directory
   
   ${If} $TRI_INSTALL_TYPE == 'Service' 
     Call Tri_ChangePrivileges
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
     SetShellVarContext all
     Return
    ${EndIf}
 
   ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
     SetShellVarContext current
-    ${If}  ${UAC_IsAdmin}  
-      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-    ${Else}
-; normal user has not write rights to HKCC
-      WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-    ${EndIf}
-
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
    ${EndIf}
   ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
     Call Tri_ChangePrivileges
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
     SetShellVarContext all
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
@@ -954,7 +945,31 @@ Function check_installation_directory
      no: Quit
 FunctionEnd
 
+Function insert_registration_keys
+  IfErrors there_are_erros
 
+  ${If} $TRI_INSTALL_TYPE == 'Service' 
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+    Return
+   ${EndIf}
+
+  ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
+    ${If}  ${UAC_IsAdmin}  
+      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+    ${Else}
+; normal user has not write rights to HKCC
+      WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+    ${EndIf}
+    Return
+   ${EndIf}
+  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    Return
+   ${EndIf}
+
+ there_are_erros: ;nothing
+FunctionEnd
 
 !macro triagens_init
   ${If} ${UAC_IsInnerInstance} 
