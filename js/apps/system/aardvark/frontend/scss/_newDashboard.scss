@@ -30,14 +30,14 @@ $dashboard-padding: 28px;
 
 }
 
-/*
-.modal-body {
 
-  .dashboard-large-chart {
-    width: 66.66666666%;
-  }
-}
-*/
+//.modal-body {
+//
+//  .dashboard-large-chart {
+//    width: 66.66666666%;
+//  }
+//}
+
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
@@ -47,13 +47,11 @@ $dashboard-padding: 28px;
 }
 
 
-/*
-.modal-body {
-  .dashboard-medium-chart {
-    width: 50%;
-  }
-}
-*/
+//.modal-body {
+//  .dashboard-medium-chart {
+//    width: 50%;
+//  }
+//}
 
 
 .dashboard-small-chart {
@@ -64,14 +62,11 @@ $dashboard-padding: 28px;
 }
 
 
-/*
-.modal-body {
-  .dashboard-small-chart {
-    width: 33.33333333%;
-  }
-}
-
-*/
+//.modal-body {
+//  .dashboard-small-chart {
+//    width: 33.33333333%;
+//  }
+//}
 
 
 .dashboard-tendency-chart {
