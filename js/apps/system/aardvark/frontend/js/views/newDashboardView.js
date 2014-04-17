@@ -9,16 +9,13 @@
         el: '#content',
         interval: 10000, // in milliseconds
         defaultFrame: 20 * 60 * 1000,
-        defaultDetailFrame: 14 * 24 * 60 * 60 * 1000,
+        defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
         history: {},
         graphs: {},
         alreadyCalledDetailChart: [],
 
         events: {
             "click .dashboard-chart": "showDetail",
-            "mousedown .dygraph-rangesel-zoomhandle": "stopUpdating",
-            "mouseup .dygraph-rangesel-zoomhandle": "startUpdating",
-            "mouseleave .dygraph-rangesel-zoomhandle": "startUpdating",
             "click #backToCluster": "returnToClusterView"
         },
 
@@ -112,10 +109,17 @@
         },
 
 
-        getCurrentSize: function (div) {
+        getCurrentSize: function (div, diff) {
+            if (div.substr(0,1) !== "#") {
+                div = "#" + div;
+            }
             var height, width;
+            $(div).attr("style", "");
             height = $(div).height();
             width = $(div).width();
+            /*if (diff) {
+                width = width - $(div + " ." + diff).width();
+            }*/
             return {
                 height: height,
                 width: width
@@ -139,7 +143,12 @@
 
         initialize: function () {
             this.dygraphConfig = this.options.dygraphConfig;
+            this.server = this.options.serverToShow;
+            this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
+            this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
+            this.events["mouseleave .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
+            console.log(this.server);
         },
 
         updateCharts: function () {
@@ -148,8 +157,8 @@
                 this.updateLineChart(this.detailGraphFigure, true);
                 return;
             }
-            this.prepareD3Charts();
-            this.prepareResidentSize();
+            this.prepareD3Charts(true);
+            this.prepareResidentSize(true);
             this.updateTendencies();
             Object.keys(this.graphs).forEach(function (f) {
                 self.updateLineChart(f, false);
@@ -312,6 +321,10 @@
                 url += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
                 this.alreadyCalledDetailChart.push(figure);
             }
+            if (this.server) {
+                url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) +
+                    "&DbServer=" + this.server.target;
+            }
             console.log(url);
             $.ajax(
                 url,
@@ -324,9 +337,10 @@
 
         },
 
-        prepareResidentSize: function () {
+        prepareResidentSize: function (update) {
             var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
-                self = this;
+                self = this, currentP =
+                    Math.round(self.history.residentSizeChart[0].values[0].value * 100) /100;
             nv.addGraph(function () {
                 var chart = nv.models.multiBarHorizontalChart()
                     /*.width(dimensions.width * 0.3)
@@ -337,7 +351,7 @@
                     .y(function (d) {
                         return d.value;
                     })
-                    .width(dimensions.width)
+                    .width(dimensions.width * 0.95)
                     .height(dimensions.height)
                     .margin({
                         //top: dimensions.height / 8,
@@ -345,8 +359,8 @@
                         //bottom: dimensions.height / 22,
                         //left: dimensions.width / 6*/
                     })
-                    .showValues(true)
-                    .showYAxis(true)
+                    .showValues(false)
+                    .showYAxis(false)
                     .showXAxis(false)
                     .transitionDuration(350)
                     .tooltips(false)
@@ -361,15 +375,40 @@
                 d3.select('#residentSizeChart svg')
                     .datum(self.history.residentSizeChart)
                     .call(chart);
+                d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
+                if (update) {
+                    d3.select('#residentSizeChart svg').select('#total').remove();
+                    d3.select('#residentSizeChart svg').select('#percentage').remove();
+                }
+
+                    d3.select('#residentSizeChart svg').selectAll('#total')
+                    .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                    .enter()
+                    .append("text")
+                    .style("font-size", dimensions.height / 8 + "px")
+                    .style("font-weight", 400)
+                    .style("font-family", "Open Sans")
+                    .attr("id", "total")
+                    .attr("x", dimensions.width /1.15)
+                    .attr("y", dimensions.height/ 2.1)
+                    .text(function(d){return d;});
+                    d3.select('#residentSizeChart svg').selectAll('#percentage')
+                        .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                        .enter()
+                        .append("text")
+                        .style("font-size", dimensions.height / 10 + "px")
+                        .style("font-weight", 400)
+                        .style("font-family", "Open Sans")
+                        .attr("id", "percentage")
+                        .attr("x", dimensions.width * 0.1)
+                        .attr("y", dimensions.height/ 2.1)
+                        .text(currentP + " %");
                 nv.utils.windowResize(chart.update);
             });
-            $("#residentSizeTotal").text(
-                Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000
-            );
         },
 
 
-        prepareD3Charts: function () {
+        prepareD3Charts: function (update) {
             var v, self = this, barCharts = {
                 totalTimeDistribution: [
                     "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
@@ -412,11 +451,12 @@
                         .call(chart);
 
                     nv.utils.windowResize(chart.update);
-                    if ($('#' + k + "Legend")[0].children.length === 0) {
+                    if (!update) {
                         d3.select('#' + k + 'Container svg')
                             .append("text")
                             .attr("x", dimensions.width * 0.6)
                             .attr("y", dimensions.height / 12)
+                            .attr("id", "distributionHead")
                             .style("font-size", dimensions.height / 12 + "px")
                             .style("font-weight", 400)
                             .classed("distributionHeader", true)
@@ -440,6 +480,18 @@
                                 self.history[k][1].color + ';"></div>'
                                 + " " + v2 + '</span><br>'
                         );
+                    } else {
+                        d3.select('#' + k + 'Container svg').select('.distributionHeader').remove();
+                        d3.select('#' + k + 'Container svg')
+                            .append("text")
+                            .attr("x", dimensions.width * 0.6)
+                            .attr("y", dimensions.height / 12)
+                            .attr("id", "distributionHead")
+                            .style("font-size", dimensions.height / 12 + "px")
+                            .style("font-weight", 400)
+                            .classed("distributionHeader", true)
+                            .style("font-family", "Open Sans")
+                            .text("Distribution");
                     }
                 });
             });
@@ -447,23 +499,21 @@
         },
 
         stopUpdating: function () {
-            console.log("stoping any update");
+            console.log("i am stopping");
             this.isUpdating = false;
         },
 
         startUpdating: function () {
             var self = this;
-            if (self.isUpdating) {
+            if (self.timer) {
                 return;
             }
             self.isUpdating = true;
             self.timer = window.setInterval(function () {
                     self.getStatistics();
                     if (self.isUpdating === false) {
-                        console.log("no chart rendering");
                         return;
                     }
-                    console.log("chart rendering");
                     self.updateCharts();
                 },
                 self.interval
@@ -475,16 +525,21 @@
             var self = this, dimensions;
             Object.keys(this.graphs).forEach(function (f) {
                 var g = self.graphs[f];
+                console.log("oooooo",g.maindiv_)
+                //dimensions = self.getCurrentSize(g.maindiv_.parentElement.id, g.maindiv_.parentElement.children[1].className);
                 dimensions = self.getCurrentSize(g.maindiv_.id);
                 g.resize(dimensions.width, dimensions.height);
             });
-            this.prepareD3Charts();
+            this.prepareD3Charts(true);
+            this.prepareResidentSize(true);
         },
 
         template: templateEngine.createTemplate("newDashboardView.ejs"),
 
-        render: function () {
-            $(this.el).html(this.template.render());
+        render: function (modalView) {
+            if (!modalView)  {
+                $(this.el).html(this.template.render());
+            }
             this.getStatistics();
             this.prepareDygraphs();
             this.prepareD3Charts();

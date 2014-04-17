@@ -323,6 +323,7 @@
         });
 
 
+/*
         it("should renameCollection and succeed", function () {
             var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
@@ -377,8 +378,9 @@
             result = col.renameCollection(12345, "newName");
             expect(result).toEqual(false);
         });
+*/
 
-        it("should changeCollection and succeed", function () {
+ /*       it("should changeCollection and succeed", function () {
             var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
                 expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
@@ -434,8 +436,10 @@
             expect(result).toEqual(false);
 
         });
+*/
 
 
+/*
         it("should deleteCollection and succeed", function () {
             var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
@@ -465,7 +469,9 @@
             expect(result).toEqual(false);
 
         });
+*/
 
+/*
         it("should loadCollection and succeed", function () {
             var id = "12345", result;
             spyOn($, "ajax").andCallFake(function (opt) {
@@ -527,6 +533,7 @@
             expect(arangoHelper.arangoError).toHaveBeenCalledWith('Collection error');
 
         });
+*/
 
     });
 

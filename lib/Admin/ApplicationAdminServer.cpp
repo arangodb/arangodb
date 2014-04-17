@@ -123,12 +123,15 @@ void ApplicationAdminServer::allowLogViewer () {
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, 
                                                string const& prefix,
-                                               void* jobManager) {
+                                               Dispatcher* dispatcher,
+                                               AsyncJobManager* jobManager) {
   factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
     
+  pair<Dispatcher*, AsyncJobManager*>* data = new pair<Dispatcher*, AsyncJobManager*>(dispatcher, jobManager);
+
   factory->addPrefixHandler(prefix + "/job",
-                            RestHandlerCreator<RestJobHandler>::createData<void*>,
-                            jobManager);
+                            RestHandlerCreator<RestJobHandler>::createData< pair<Dispatcher*, AsyncJobManager*>* >,
+                            data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

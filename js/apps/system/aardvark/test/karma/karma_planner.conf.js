@@ -156,7 +156,6 @@ module.exports = function(karma) {
       'frontend/js/views/shellView.js',
       'frontend/js/views/dashboardView.js',
       'frontend/js/views/collectionsView.js',
-      'frontend/js/views/collectionView.js',
       'frontend/js/views/collectionsItemView.js',
       'frontend/js/views/documentsView.js',
       'frontend/js/views/documentView.js',

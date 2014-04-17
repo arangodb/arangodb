@@ -9,7 +9,6 @@
     routes: {
       "": "dashboard",
       "dashboard": "dashboard",
-      "collection/:colid": "collection",
       "collections": "collections",
       "new": "newCollection",
       "login": "login",
@@ -151,15 +150,6 @@
       });
     },
 
-    collection: function (colid) {
-      if (!this.collectionView) {
-        this.collectionView = new window.CollectionView();
-      }
-      this.collectionView.setColId(colid);
-      this.collectionView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
-
     documents: function (colid, pageid) {
       if (!window.documentsView) {
         window.documentsView = new window.DocumentsView({
@@ -252,31 +242,6 @@
       }
       this.dashboardView.render();
     },
-
-    /*
-     dashboard: function () {
-       this.naviView.selectMenuItem('dashboard-menu');
-       if (this.statisticsDescriptionCollection === undefined) {
-         this.statisticsDescriptionCollection = new window.StatisticsDescriptionCollection();
-         this.statisticsDescriptionCollection.fetch({
-           async: false
-         });
-       }
-       if (this.statistics === undefined) {
-         this.statisticsCollection = new window.StatisticsCollection();
-       }
-       if (this.dashboardView === undefined) {
-         this.dashboardView = new dashboardView({
-           collection: this.statisticsCollection,
-           description: this.statisticsDescriptionCollection,
-           documentStore: window.arangoDocumentsStore,
-           dygraphConfig: window.dygraphConfig
-         });
-       }
-       this.dashboardView.render();
-     },
-     */
-
 
     graph: function () {
       var self = this;

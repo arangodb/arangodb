@@ -115,7 +115,7 @@ class mr_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request, Mutex*, void**) {
       TRI_action_result_t result;
       ApplicationMR::MRContext* context = GlobalMRDealer->enterContext();
       mrb_state* mrb = context->_mrb;
@@ -143,6 +143,14 @@ class mr_action_t : public TRI_action_t {
       result.response = response;
 
       return result;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+    bool cancel (Mutex* dataLock, void** data) {
+      return false;
     }
 
   private:

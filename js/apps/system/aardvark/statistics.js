@@ -824,6 +824,8 @@ function computeStatisticsSeries (start, attrs) {
 controller.get("full", function (req, res) {
   var start = req.params("start");
   var filter = req.params("filter");
+  var serverEndpoint = decodeURIComponent(req.params("serverEndpoint"));
+  var DbServer = req.params("DbServer");
   var attrs = null;
 
   if (start !== null && start !== undefined) {

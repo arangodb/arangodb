@@ -349,6 +349,15 @@ ArangoDB will use some default configuration, but it cannot guess the endpoint (
 of the master database) the applier should connect to. Thus starting the applier without 
 configuration will fail.
 
+Note that the first time you start the applier, you should pass `1` as value for tick. Otherwise
+you might see the message
+
+    "lastError" : { 
+      "time" : "2014-04-16T16:59:16Z", 
+      "errorMessage" : "no start tick", 
+      "errorNum" : 1413 
+    }
+
 Note that starting a database's replication applier via the `start` command will not necessarily 
 start the applier on the next and following ArangoDB server restarts. Additionally, stopping a
 database's replication applier manually will not necessarily prevent the applier from being 
