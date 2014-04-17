@@ -235,7 +235,8 @@
         }
       });//handle select2
       if (events) {
-          this.delegateEvents(events);
+          this.events = events;
+          this.delegateEvents();
       }
 
       $("#modal-dialog").modal("show");

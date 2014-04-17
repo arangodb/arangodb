@@ -18,7 +18,7 @@
       window.modalView.hideFooter = true;
       window.modalView.show(
             "newDashboardView.ejs",
-            "",
+            null,
             undefined,
             undefined,
             undefined,
