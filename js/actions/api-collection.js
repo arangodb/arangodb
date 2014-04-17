@@ -66,13 +66,13 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 
   result.id = collection._id;
   result.name = collection.name();
+  result.isSystem = (result.name.charAt(0) === '_');
 
   if (showProperties) {
     var properties = collection.properties();
 
     result.doCompact     = properties.doCompact;
     result.isVolatile    = properties.isVolatile;
-    result.isSystem      = properties.isSystem;
     result.journalSize   = properties.journalSize;      
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
