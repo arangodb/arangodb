@@ -297,7 +297,7 @@
           }
         });
         return returnobj;
-      },
+      }
 /*
       renameCollection: function (id, name) {
         var result = false;
