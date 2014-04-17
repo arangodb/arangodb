@@ -89,12 +89,10 @@
             $('#modal-dialog').on('hidden', function () {
                 self.hidden();
             });
-            $('.modal-body').css({"max-height": "90%" });
-            $('#modal-dialog').toggleClass("modalChartDetail", true);
-
-            var dimensions = self.getCurrentSize("#lineChartDetail");
-            options.height = dimensions.height * 0.85;
-            options.width = dimensions.width * 0.88;
+            //$('.modal-body').css({"max-height": "100%" });
+            $('#modal-dialog').toggleClass("modal-chart-detail", true);
+            options.height = $('.modal-chart-detail').height() * 0.7;
+            options.width = $('.modal-chart-detail').width() * 0.86;
             this.detailGraph = new Dygraph(
                 document.getElementById("lineChartDetail"),
                 this.history[figure],
@@ -109,7 +107,7 @@
         },
 
 
-        getCurrentSize: function (div, diff) {
+        getCurrentSize: function (div) {
             if (div.substr(0,1) !== "#") {
                 div = "#" + div;
             }
@@ -117,9 +115,6 @@
             $(div).attr("style", "");
             height = $(div).height();
             width = $(div).width();
-            /*if (diff) {
-                width = width - $(div + " ." + diff).width();
-            }*/
             return {
                 height: height,
                 width: width
@@ -146,9 +141,6 @@
             this.server = this.options.serverToShow;
             this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
             this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
-            this.events["mouseleave .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
-
-            console.log(this.server);
         },
 
         updateCharts: function () {
@@ -236,7 +228,7 @@
                 }
                 self.history[a] = [
                     Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
-                    Math.round(newData[self.tendencies[a][1]] * 1000) / 1000
+                    Math.round(newData[self.tendencies[a][1]] * 1000 * 100) / 1000
                 ];
             });
 
@@ -325,7 +317,6 @@
                 url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) +
                     "&DbServer=" + this.server.target;
             }
-            console.log(url);
             $.ajax(
                 url,
                 {async: false}
@@ -499,7 +490,6 @@
         },
 
         stopUpdating: function () {
-            console.log("i am stopping");
             this.isUpdating = false;
         },
 
@@ -525,8 +515,6 @@
             var self = this, dimensions;
             Object.keys(this.graphs).forEach(function (f) {
                 var g = self.graphs[f];
-                console.log("oooooo",g.maindiv_)
-                //dimensions = self.getCurrentSize(g.maindiv_.parentElement.id, g.maindiv_.parentElement.children[1].className);
                 dimensions = self.getCurrentSize(g.maindiv_.id);
                 g.resize(dimensions.width, dimensions.height);
             });

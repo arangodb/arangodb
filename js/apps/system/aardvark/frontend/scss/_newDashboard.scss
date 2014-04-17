@@ -13,8 +13,8 @@ $dashboard-padding: 28px;
   }
 }
 
-.detailChart {
-  @extend %pull-left;
+.detail-chart {
+  @extend %clear-float;
 }
 
 .dashboard-interior-chart {
@@ -30,15 +30,6 @@ $dashboard-padding: 28px;
 
 }
 
-
-//.modal-body {
-//
-//  .dashboard-large-chart {
-//    width: 66.66666666%;
-//  }
-//}
-
-
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
@@ -47,26 +38,12 @@ $dashboard-padding: 28px;
 }
 
 
-//.modal-body {
-//  .dashboard-medium-chart {
-//    width: 50%;
-//  }
-//}
-
-
 .dashboard-small-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
   height: $dashboard-height;
   padding-top: $dashboard-padding;
 }
-
-
-//.modal-body {
-//  .dashboard-small-chart {
-//    width: 33.33333333%;
-//  }
-//}
 
 
 .dashboard-tendency-chart {
@@ -88,12 +65,24 @@ $dashboard-padding: 28px;
   }
 }
 
-.dashboard-detailLegend {
+.modal-chart-detail {
+  @extend %pull-left;
+  height: 75%;
+  width: 90%;
+
+  .modal-body {
+    max-height: 95%;
+  }
+}
+
+
+.modal-inner-detail {
+  @extend %pull-left;
+}
+
+.modal-dashboard-legend {
   @extend %pull-left;
   height: $dashboard-height;
-  left: 90%;
-  position: fixed;
-  top: 40%;
   width: $legend-width;
 
   .dashboard-legend-inner {
