@@ -25,6 +25,7 @@
             this.events
 
       );
+      $('#modal-dialog').toggleClass("modal-chart-detail", true);
       window.newDashboardView.prototype.render.bind(this)(true);
       window.modalView.hideFooter = false;
 
@@ -32,8 +33,6 @@
       $('#modal-dialog').on('hidden', function () {
             self.hide();
       });
-      $('.modal-body').css({"max-height": "90%" });
-      $('#modal-dialog').toggleClass("modalChartDetail", true);
     }
   });
 

@@ -45,10 +45,14 @@ div.resizecontainer {
       width: $content-size;
     }
 
-    div.modalChartDetail {
+    div.modal-chart-detail {
       left: 50%;
       margin-left: -($content-size)/2;
       width: $content-size;
+    }
+
+    .modal-inner-detail {
+      width: $content-size -30px - $legend-width;
     }
 
     .dashboard-large-chart {
@@ -88,12 +92,16 @@ div.resizecontainer {
     }
 
 
-    div.modalChartDetail {
-      $inner-content-size: $content-size - 200px;
-      left: 50%;
-      margin-left: -($inner-content-size + 50px)/2;
-      width: $inner-content-size + 50px;
+    div.modal-chart-detail {
 
+      $inner-content-size: $content-size - 100px;// - 200px;
+      margin-left: -($inner-content-size + 90px)/2;
+      width: $inner-content-size + 90px;
+
+      .modal-body {
+        width: $inner-content-size + 15px;
+      }
+      
       .dashboard-large-chart {
         $int-width: ($inner-content-size * 2 / 3);
         width: $int-width;
