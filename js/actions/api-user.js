@@ -107,6 +107,10 @@ function post_api_user (req, res) {
   }
 
   var doc = users.save(user, json.passwd, json.active, json.extra, json.changePassword);
+
+  if (json.passwordToken) {
+    users.setPasswordToken(user, json.passwordToken);
+  }
   users.reload();
 
   actions.resultOk(req, res, actions.HTTP_CREATED, doc);
