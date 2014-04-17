@@ -113,9 +113,18 @@
 
 
         getCurrentSize: function (div) {
+            if (div.substr(0,1) !== "#") {
+                div = "#" + div;
+            }
             var height, width;
+            console.log(div);
+            console.log($(div))
             height = $(div).height();
             width = $(div).width();
+            console.log({
+                height: height,
+                width: width
+            })
             return {
                 height: height,
                 width: width
@@ -140,6 +149,7 @@
         initialize: function () {
             this.dygraphConfig = this.options.dygraphConfig;
             this.server = this.options.serverToShow;
+            console.log(this.server);
         },
 
         updateCharts: function () {
@@ -313,8 +323,9 @@
                 this.alreadyCalledDetailChart.push(figure);
             }
             if (this.server) {
-                url += "&server=" + this.server.target;
+                url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) + "&isDbServer=" + this.server.isDBServer;
             }
+            console.log(url)
             $.ajax(
                 url,
                 {async: false}
