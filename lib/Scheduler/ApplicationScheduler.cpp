@@ -71,7 +71,7 @@ static SignalTask* localSignalTask;
   class ControlCTask : public SignalTask {
     public:
 
-      ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
+      ControlCTask (ApplicationServer* server) : Task(0, "Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
 
@@ -138,7 +138,7 @@ static SignalTask* localSignalTask;
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
-        : Task("Hangup"), SignalTask() {
+        : Task(0, "Hangup"), SignalTask() {
       }
 
     public:
