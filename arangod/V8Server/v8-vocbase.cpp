@@ -107,11 +107,6 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for read-only transaction class type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,18 +131,9 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
     what = 0;                                                             \
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "barrier"
@@ -203,10 +189,6 @@ static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 
 static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -214,11 +196,6 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster coordinator case, parse a key and possible revision
@@ -698,7 +675,9 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   // try to extract the collection name, key, and revision from the object passed
   if (! ExtractDocumentHandle(val, collectionName, key, rid)) {
-    return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
+    return scope.Close(TRI_CreateErrorObject(__FILE__,
+                                             __LINE__,
+                                             TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
   }
 
   // we have at least a key, we also might have a collection name
@@ -709,7 +688,9 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     // only a document key without collection name was passed
     if (collection == 0) {
       // we do not know the collection
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
+      return scope.Close(TRI_CreateErrorObject(__FILE__,
+                                               __LINE__,
+                                               TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
     }
     // we use the current collection's name
     collectionName = resolver.getCollectionName(collection->_cid);
@@ -719,7 +700,9 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     // check cross-collection requests
     if (collection != 0) {
       if (! EqualCollection(resolver, collectionName, collection)) {
-        return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
+        return scope.Close(TRI_CreateErrorObject(__FILE__,
+                                                 __LINE__,
+                                                 TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST));
       }
     }
   }
@@ -752,7 +735,9 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
     if (col == 0) {
       // collection not found
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+      return scope.Close(TRI_CreateErrorObject(__FILE__,
+                                               __LINE__,
+                                               TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
     }
 
     collection = col;
@@ -849,7 +834,9 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   if (col != 0) {
 #ifdef TRI_ENABLE_CLUSTER
     if (! col->_isLocal) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_NOT_IMPLEMENTED);
+      *err = TRI_CreateErrorObject(__FILE__,
+                                   __LINE__,
+                                   TRI_ERROR_NOT_IMPLEMENTED);
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       return 0;
     }
@@ -865,7 +852,7 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   }
 
   // some error occurred
-  *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
+  *err = TRI_CreateErrorObject(__FILE__, __LINE__, res, "cannot use/load collection", true);
   TRI_set_errno(res);
   return 0;
 }
@@ -3423,10 +3410,14 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
     std::string str(message);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
 
-    return scope.Close(TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str));
+    return scope.Close(TRI_CreateErrorObject(error->_file,
+                                             error->_line,
+                                             TRI_GetErrorCodeAql(error), str));
   }
 
-  return scope.Close(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY));
+  return scope.Close(TRI_CreateErrorObject(error->_file,
+                                           error->_line,
+                                           TRI_ERROR_OUT_OF_MEMORY));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3465,7 +3456,10 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
     else {
       // there is specific error data. return a more tailored error message
       const string errorMsg = "cannot execute query: " + string(TRI_errno_string(res)) + ": '" + errorData + "'";
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorMsg)));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(__FILE__,
+                                                                  __LINE__,
+                                                                  res,
+                                                                  errorMsg)));
     }
   }
 
@@ -3523,7 +3517,12 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   v8::Handle<v8::Value> result = ExecuteQueryNativeAhuacatl(context, parameters);
 
   if (tryCatch.HasCaught()) {
-    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    if (tryCatch.CanContinue()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(result);
+    }
   }
   
   if (! result->IsObject()) {
@@ -3595,10 +3594,6 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   return scope.Close(cursorObject);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   GENERAL CURSORS
 // -----------------------------------------------------------------------------
@@ -3606,11 +3601,6 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for general cursors
@@ -3655,6 +3645,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   if (! result.IsEmpty()) {
     TRI_general_cursor_t* c = (TRI_general_cursor_t*) cursor;
     TRI_UseGeneralCursor(c);
+
     // increase the reference-counter for the database
     TRI_UseVocBase(c->_vocbase);
 
@@ -3681,18 +3672,9 @@ static TRI_general_cursor_t* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorO
   return TRI_UnwrapClass<TRI_general_cursor_t>(cursorObject, WRP_GENERAL_CURSOR_TYPE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a transaction
@@ -3897,7 +3879,12 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   if (tryCatch.HasCaught()) {
     trx.abort();
 
-    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    if (tryCatch.CanContinue()) {
+      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+    }
+    else {
+      return scope.Close(result);
+    }
   }
 
   res = trx.commit();
@@ -4366,7 +4353,12 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     }
 
     if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      if (tryCatch.CanContinue()) {
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
+      else {
+        return scope.Close(v8::Undefined());
+      }
     }
   }
 
@@ -4438,7 +4430,12 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
     }
 
     if (tryCatch.HasCaught()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      if (tryCatch.CanContinue()) {
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
+      else {
+        return scope.Close(v8::Undefined());
+      }
     }
   }
 
@@ -4543,7 +4540,6 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
 
 static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
     TRI_V8_EXCEPTION_USAGE(scope, "hasNext()");
@@ -4637,18 +4633,9 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
   return scope.Close(v8::Boolean::New(found));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger manually
@@ -5291,18 +5278,9 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
   return scope.Close(v8::True());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          AHUACATL
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates code for an AQL query and runs it
@@ -5343,7 +5321,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   // -------------------------------------------------
 
   // return number of total records in cursor?
-  bool doCount       = false;
+  bool doCount = false;
   
   // maximum number of results to return at once
   uint32_t batchSize = UINT32_MAX;
@@ -5403,14 +5381,23 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
     
   if (tryCatch.HasCaught()) {
-    if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-      // we already have an ArangoError object
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
+    if (tryCatch.CanContinue()) {
+      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+        // we already have an ArangoError object
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
 
-    // create a new error object
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_QUERY_SCRIPT, TRI_ObjectToString(tryCatch.Exception()).c_str());
-    return scope.Close(v8::ThrowException(errorObject));
+      // create a new error object
+      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(
+        __FILE__,
+        __LINE__,
+        TRI_ERROR_QUERY_SCRIPT,
+        TRI_ObjectToString(tryCatch.Exception()).c_str());
+      return scope.Close(v8::ThrowException(errorObject));
+    }
+    else {
+      return scope.Close(result);
+    }
   }
 
   return scope.Close(result);
@@ -5503,7 +5490,10 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
     else {
       // there is specific error data. return a more tailored error message
       const string errorMsg = "cannot explain query: " + string(TRI_errno_string(res)) + ": '" + errorData + "'";
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorMsg)));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(__FILE__,
+                                                                  __LINE__,
+                                                                  res,
+                                                                  errorMsg)));
     }
   }
 
@@ -5523,14 +5513,23 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   guard.free();
 
   if (tryCatch.HasCaught()) {
-    if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-      // we already have an ArangoError object
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
+    if (tryCatch.CanContinue()) {
+      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+        // we already have an ArangoError object
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
 
-    // create a new error object
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_QUERY_SCRIPT, TRI_ObjectToString(tryCatch.Exception()).c_str());
-    return scope.Close(v8::ThrowException(errorObject));
+      // create a new error object
+      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(
+        __FILE__,
+        __LINE__,
+        TRI_ERROR_QUERY_SCRIPT,
+        TRI_ObjectToString(tryCatch.Exception()).c_str());
+      return scope.Close(v8::ThrowException(errorObject));
+    }
+    else {
+      return scope.Close(result);
+    }
   }
 
   return scope.Close(result);
@@ -5588,22 +5587,27 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   context.free();
 
   if (tryCatch.HasCaught()) {
-    if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-      // we already have an ArangoError object
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
+    if (tryCatch.CanContinue()) {
+      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+        // we already have an ArangoError object
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
 
-    // create a new error object
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_QUERY_SCRIPT, TRI_ObjectToString(tryCatch.Exception()).c_str());
-    return scope.Close(v8::ThrowException(errorObject));
+      // create a new error object
+      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(
+        __FILE__,
+        __LINE__,
+        TRI_ERROR_QUERY_SCRIPT,
+        TRI_ObjectToString(tryCatch.Exception()).c_str());
+      return scope.Close(v8::ThrowException(errorObject));
+    }
+    else {
+      return scope.Close(result);
+    }
   }
 
   return scope.Close(result);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          TRI_DATAFILE_T FUNCTIONS
@@ -5612,11 +5616,6 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief migrate an "old" collection to a newer version
@@ -6107,10 +6106,6 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                       TRI_VOCBASE_COL_T FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -6118,11 +6113,6 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
@@ -8221,10 +8211,6 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   return scope.Close(v8::Number::New((int) info._version));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -8232,11 +8218,6 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
@@ -8405,18 +8386,9 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieves a collection from a V8 argument
@@ -9860,10 +9832,6 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SHAPED JSON FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -9871,11 +9839,6 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for a barrier
@@ -10148,10 +10111,6 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
   return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
@@ -10229,7 +10188,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return 0;
     }
   }
@@ -10242,7 +10201,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
     v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return 0;
     }
   }
@@ -10252,7 +10211,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
     if (! EqualCollection(resolver, collectionName, collection)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
+      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
       return 0;
     }
   }
@@ -10261,7 +10220,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
 
   if (idx == 0) {
     if (! ignoreNotFound) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
 
@@ -10717,9 +10676,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

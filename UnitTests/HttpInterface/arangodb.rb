@@ -185,11 +185,9 @@ class ArangoDB
     h_sep = ""
 
     if headers
-      for k in [ "if-match", "if-none-match" ] do
-        if headers.key?(k)
-          h_option = h_option + h_sep + "'-H #{k}: #{headers[k]}'"
-          h_sep = " "
-        end
+      for k in headers.keys do
+        h_option = h_option + h_sep + "'-H #{k}: #{headers[k]}'"
+        h_sep = " "
       end
       h_option = h_option + h_sep
     end
@@ -243,6 +241,10 @@ class ArangoDB
 
     if result.headers.key?('etag')
       logfile.puts "etag: #{result.headers['etag']}"
+    end
+
+    if result.headers.key?('x-arango-async-id')
+      logfile.puts "x-arango-async-id: #{result.headers['x-arango-async-id']}"
     end
 
     if response != nil
