@@ -24,7 +24,6 @@ d8_g
 shell
 shell_g
 /build/Debug
-/build/gyp
 /build/Release
 /obj
 /out
