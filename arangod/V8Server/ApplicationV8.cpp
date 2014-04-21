@@ -360,6 +360,10 @@ void ApplicationV8::exitContext (V8Context* context) {
     LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
     performGarbageCollection = true;
   }
+  else if (context->_context->HasOutOfMemoryException()) {
+    LOG_INFO("V8 context has encountered out of memory and will be scheduled for GC");
+    performGarbageCollection = true;
+  }
   else {
     performGarbageCollection = false;
   }

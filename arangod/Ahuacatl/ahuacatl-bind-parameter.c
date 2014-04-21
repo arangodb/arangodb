@@ -66,19 +66,19 @@ static TRI_aql_node_t* FixAttributeAccess (TRI_aql_statement_walker_t* const wal
   valueNode = TRI_AQL_NODE_MEMBER(node, 1);
 
   if (valueNode == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
   
   if (valueNode->_type != TRI_AQL_NODE_VALUE || valueNode->_value._type != TRI_AQL_TYPE_STRING) {  
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
     return node;
   }
 
   stringValue = TRI_AQL_NODE_STRING(valueNode);
 
   if (stringValue == NULL || strlen(stringValue) == 0) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
     return node;
   }
 
@@ -134,7 +134,7 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
         node = TRI_CreateNodeCollectionAql(context, collectionName);
       }
       else {
-        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, name);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, name);
         node = NULL;
       }
     }
@@ -143,7 +143,7 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
     }
 
     if (node == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
     }
   }
 
@@ -270,7 +270,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
 
   if (parameters->_type != TRI_JSON_ARRAY) {
     // parameters must be a list
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
     return false;
   }
 
@@ -293,7 +293,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
                                 value);
 
     if (parameter == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
       return false;
     }
@@ -322,7 +322,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
     }
 
     if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._values, name)) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
       return false;
     }
   }
@@ -341,7 +341,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
     assert(parameter->_name);
 
     if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._names, parameter->_name)) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
       return false;
     }
   }
@@ -366,7 +366,7 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
   walker = TRI_CreateStatementWalkerAql(context, true, &InjectParameter, NULL, NULL);
 
   if (walker == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
@@ -378,7 +378,7 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
   walker = TRI_CreateStatementWalkerAql(context, true, &FixAttributeAccess, NULL, NULL);
 
   if (walker == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }

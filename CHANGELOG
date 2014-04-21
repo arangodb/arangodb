@@ -1,7 +1,13 @@
-v2.0.5 (2014-04-xx)
+v2.0.5 (2014-04-21)
 -------------------
 
 * Fixed a caching problem in IE JS Shell
+
+* added cancelation for async jobs
+
+* upgraded to new gyp for V8
+
+* new Windows installer
 
 
 v2.0.4 (2014-04-14)

@@ -49,30 +49,17 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ABORT_OOM \
-  TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+#define ABORT_OOM                                                \
+  TRI_SetErrorContextAql(                                        \
+    __FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
   return NULL;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all collection memory
@@ -165,18 +152,9 @@ static void ProcessOptions (TRI_aql_context_t* context) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create and initialize a context
@@ -344,7 +322,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
   if (context->_parser->_length == 0) {
     // query is empty, no need to parse it
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_EMPTY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_EMPTY, NULL);
     return false;
   }
 
@@ -534,7 +512,9 @@ char* TRI_RegisterString3Aql (TRI_aql_context_t* const context,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
+void TRI_SetErrorContextAql (const char* file,
+                             int line,
+                             TRI_aql_context_t* const context,
                              const int code,
                              const char* const data) {
 
@@ -546,6 +526,8 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
     TRI_set_errno(code);
     context->_error._code = code;
     context->_error._message = (char*) TRI_last_error();
+    context->_error._file = file;
+    context->_error._line = line;
 
     if (data) {
       context->_error._data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, data);
@@ -566,9 +548,9 @@ TRI_json_t* TRI_GetOptionContextAql (TRI_aql_context_t* const context,
   return TRI_LookupArrayJson(context->_userOptions, name);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

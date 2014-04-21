@@ -58,7 +58,7 @@
 
 #define ARG_CHECK                                                                                                   \
   if (! CheckArgumentType(parameter, &allowed)) {                                                                   \
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
     return false;                                                                                                   \
   }
 
@@ -914,7 +914,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate number of arguments
   if (n < function->_minArgs || n > function->_maxArgs) {
     // invalid number of arguments
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
     return false;
   }
 
