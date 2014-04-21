@@ -955,7 +955,12 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
     TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
 
     if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        cout << TRI_StringifyV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
@@ -1014,7 +1019,12 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     v8::Handle<v8::Value> result = main->Call(main, 1, args);
 
     if (tryCatch.HasCaught()) {
-      TRI_LogV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToDouble(result) == 0;

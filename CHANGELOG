@@ -75,7 +75,36 @@ v2.1.0 (XXXX-XX-XX)
 * export the sort attribute for graph traversals to the HTTP interface
 
 
-v2.0.2 (XXXX-XX-XX)
+v2.0.5 (2014-04-21)
+-------------------
+
+* Fixed a caching problem in IE JS Shell
+
+* added cancelation for async jobs
+
+* upgraded to new gyp for V8
+
+* new Windows installer
+
+
+v2.0.4 (2014-04-14)
+-------------------
+
+* fixed cluster authentication front-end issues for Firefox and IE, there are
+  still problems with Chrome
+
+
+v2.0.3 (2014-04-14)
+-------------------
+
+* fixed AQL optimizer bug
+
+* fixed front-end issues
+
+* added password change dialog
+
+
+v2.0.2 (2014-04-06)
 -------------------
 
 * during cluster startup, do not log (somewhat expected) connection errors with
@@ -90,7 +119,7 @@ v2.0.2 (XXXX-XX-XX)
   cluster later
 
 
-v2.0.1 (XXXX-XX-XX)
+v2.0.1 (2014-03-31)
 -------------------
 
 * make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
