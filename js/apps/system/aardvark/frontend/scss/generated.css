@@ -3308,10 +3308,10 @@ pre.gv-object-view {
     padding-top: 20px; }
 
 .modal-chart-detail {
-  height: 75%;
+  height: 85%;
   width: 90%; }
   .modal-chart-detail .modal-body {
-    max-height: 95%; }
+    max-height: 100%; }
 
 .modal-dashboard-legend {
   height: 250px;
