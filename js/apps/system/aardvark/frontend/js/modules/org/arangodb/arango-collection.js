@@ -318,6 +318,7 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     "doCompact": true,
     "journalSize": true,
+    "isSystem": false,
     "isVolatile": false,
     "waitForSync": true,
     "shardKeys": false,
