@@ -1,6 +1,12 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #796: Searching with newline chars broken?
+
+  fixed slightly different handling of backslash escape characters in a few
+  AQL functions. Now handling of escape sequences should be consistent, and 
+  searching for newline characters should work the same everywhere
+
 * added OpenSSL version check for configure
 
   It will report all OpenSSL versions < 1.0.1g as being too old.
