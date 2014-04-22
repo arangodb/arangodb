@@ -1251,6 +1251,10 @@ void TRI_Log (char const* func,
   TRI_tid_t threadId;
   va_list ap;
 
+  if (! LoggingActive) {
+    return;
+  }
+
   processId = TRI_CurrentProcessId();
   threadId = TRI_CurrentThreadId();
 
