@@ -409,7 +409,8 @@
             }, f;
 
             _.each(Object.keys(barCharts), function (k) {
-                var dimensions = self.getCurrentSize('#' + k + 'Container .dashboard-interior-chart');
+                var dimensions = self.getCurrentSize('#' + k
+                    + 'Container .dashboard-interior-chart');
                 if (dimensions.width > 400 ) {
                     f = 18;
                 } else if (dimensions.width > 300) {
