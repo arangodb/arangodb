@@ -77,6 +77,7 @@ function ReplicationSuite () {
   var compare = function (masterFunc, slaveFunc, applierConfiguration) {
     var state = { };
 
+    db._flushCache();
     masterFunc(state);  
 
     var masterState = replication.logger.state();
@@ -133,6 +134,7 @@ function ReplicationSuite () {
       sleep(1);
     }
 
+    db._flushCache();
     slaveFunc(state);
   };
 
@@ -623,6 +625,155 @@ function ReplicationSuite () {
         },
         {
           chunkSize: 2048
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rename collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameCollection1 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, { 
+            isVolatile : true, 
+            waitForSync : false, 
+            doCompact : false, 
+            journalSize : 1048576,
+            keyOptions : { 
+              allowUserKeys : false 
+            }, 
+          });
+
+          c.rename(cn2);
+          
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          try {
+            db._collection(cn).properties();
+            fail();
+          }
+          catch (err) {
+            // original collection was renamed
+          }
+
+          var properties = db._collection(cn2).properties();
+          assertEqual(state.cid, db._collection(cn2)._id);
+          assertEqual(cn2, db._collection(cn2).name());
+          assertTrue(properties.isVolatile);
+          assertFalse(properties.waitForSync);
+          assertFalse(properties.deleted);
+          assertFalse(properties.doCompact);
+          assertEqual(1048576, properties.journalSize);
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("traditional", properties.keyOptions.type);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rename collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameCollection2 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn); 
+          c.rename(cn2);
+          c.rename(cn);
+          
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          try {
+            db._collection(cn2).properties();
+            fail();
+          }
+          catch (err) {
+            // collection was renamed
+          }
+
+          var properties = db._collection(cn).properties();
+          assertEqual(state.cid, db._collection(cn)._id);
+          assertEqual(cn, db._collection(cn).name());
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test change collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testChangeCollection1 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, { 
+            waitForSync : false, 
+            doCompact : false, 
+            journalSize : 1048576
+          });
+          
+          var properties = c.properties();
+          assertFalse(properties.waitForSync);
+          assertFalse(properties.doCompact);
+          assertEqual(1048576, properties.journalSize);
+
+          properties = c.properties({ waitForSync: true, doCompact: true, journalSize: 2097152 });
+          assertTrue(properties.waitForSync);
+          assertTrue(properties.doCompact);
+          assertEqual(2097152, properties.journalSize);
+          
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(state.cid, db._collection(cn)._id);
+          assertEqual(cn, db._collection(cn).name());
+          assertTrue(properties.waitForSync);
+          assertTrue(properties.doCompact);
+          assertEqual(2097152, properties.journalSize);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test change collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testChangeCollection2 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn, { 
+            waitForSync : true, 
+            doCompact : true, 
+            journalSize : 2097152
+          });
+
+          var properties = c.properties();
+          assertTrue(properties.waitForSync);
+          assertTrue(properties.doCompact);
+          assertEqual(2097152, properties.journalSize);
+          
+          properties = c.properties({ waitForSync: false, doCompact: false, journalSize: 1048576 });
+          assertFalse(properties.waitForSync);
+          assertFalse(properties.doCompact);
+          assertEqual(1048576, properties.journalSize);
+          
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function (state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(state.cid, db._collection(cn)._id);
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.waitForSync);
+          assertFalse(properties.doCompact);
+          assertEqual(1048576, properties.journalSize);
         }
       );
     },
