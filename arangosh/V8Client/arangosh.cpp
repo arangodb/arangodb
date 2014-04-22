@@ -1288,7 +1288,9 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
     TRI_V8_EXCEPTION_USAGE(scope, "setDatabaseName(<name>)");
   }
 
-  connection->setDatabaseName(TRI_ObjectToString(argv[0]));
+  string const dbName = TRI_ObjectToString(argv[0]);
+  connection->setDatabaseName(dbName);
+  BaseClient.setDatabaseName(dbName);
 
   return scope.Close(v8::True());
 }
