@@ -6302,15 +6302,21 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// @FUN{@FA{collection}.document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given its identifier.  It returns
-/// the document. Note that the returned document contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
-/// document-handle and @LIT{_rev} the revision of the document.
+/// The @FN{document} method finds a document given its identifier or a document
+/// object containing the @LIT{_id} or @LIT{_key} attribute. The method returns
+/// the document if it can be found. 
 ///
-/// An error is thrown if the @LIT{_rev} does not longer match the current
-/// revision of the document.
+/// An error is thrown if @LIT{_rev} is specified but the document found has a
+/// different revision already. An error is also thrown if no document exists 
+/// with the given @LIT{_id} or @LIT{_key} value.
 ///
-/// An error is also thrown if the document does not exist.
+/// Please note that if the method is executed on the arangod server (e.g. from 
+/// inside a Foxx application), an immutable document object will be returned
+/// for performance reasons. It is not possible to change attributes of this 
+/// immutable object. To update or patch the returned document, it needs to be
+/// cloned/copied into a regular JavaScript object first. This is not necessary
+/// if the @LIT{document} method is called from out of arangosh or from any other 
+/// client.
 ///
 /// @FUN{@FA{collection}.document(@FA{document-handle})}
 ///
@@ -8850,14 +8856,18 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._document(@FA{document})}
 ///
-/// This method finds a document given its identifier.  It returns the document. 
-/// Note that the returned document contains some pseudo-attributes, namely 
-/// @LIT{_id}, @LIT{_key}, and @LIT{_rev}. @LIT{_id} and @LIT{_key} contain the 
-/// document handle and key, and @LIT{_rev} contains the revision of the 
-/// document.
+/// This method finds a document given its identifier.  It returns the document
+/// if the document exists. An error is throw if no document with the given
+/// identifier exists, or if the specified @LIT{_rev} value does not match the 
+/// current revision of the document.
 ///
-/// An error is thrown if the @LIT{_rev} does not longer match the current
-/// revision of the document.
+/// Please note that if the method is executed on the arangod server (e.g. from 
+/// inside a Foxx application), an immutable document object will be returned
+/// for performance reasons. It is not possible to change attributes of this 
+/// immutable object. To update or patch the returned document, it needs to be
+/// cloned/copied into a regular JavaScript object first. This is not necessary
+/// if the @LIT{_document} method is called from out of arangosh or from any 
+/// other client.
 ///
 /// @FUN{@FA{db}._document(@FA{document-handle})}
 ///
@@ -9902,7 +9912,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string const key = TRI_ObjectToString(name);
 
-  if (key.size() == 0) {
+  if (key.empty()) {
     // we must not throw a v8 exception here because this will cause follow up errors
     return scope.Close(v8::Handle<v8::Value>());
   }
@@ -9933,18 +9943,12 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
 
-  if (ok) {
-    if (shape == 0) {
-      return scope.Close(v8::Handle<v8::Value>());
-    }
-    else {
-      return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
-    }
+  if (ok && shape != 0) {
+    return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
   }
-  else {
-    // we must not throw a v8 exception here because this will cause follow up errors
-    return scope.Close(v8::Handle<v8::Value>());
-  }
+    
+  // we must not throw a v8 exception here because this will cause follow up errors
+  return scope.Close(v8::Handle<v8::Value>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
