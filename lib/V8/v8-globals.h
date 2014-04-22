@@ -77,50 +77,57 @@
 /// @brief shortcut for throwing an exception with an error code
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION(scope, code) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(code)))
+#define TRI_V8_EXCEPTION(scope, code)                 \
+  return scope.Close(v8::ThrowException(              \
+    TRI_CreateErrorObject(__FILE__, __LINE__, code)))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_MESSAGE(scope, code, message) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(code, message, true)))
+#define TRI_V8_EXCEPTION_MESSAGE(scope, code, message)               \
+  return scope.Close(v8::ThrowException(                             \
+    TRI_CreateErrorObject(__FILE__, __LINE__, code, message, true)))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a usage exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_USAGE(scope, usage)                           \
-  do {                                                                 \
-    std::string msg = "usage: ";                                       \
-    msg += usage;                                                      \
-    return scope.Close(                                                \
-      v8::ThrowException(                                              \
-        TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg.c_str()))); \
-  }                                                                    \
+#define TRI_V8_EXCEPTION_USAGE(scope, usage)                            \
+  do {                                                                  \
+    std::string msg = "usage: ";                                        \
+    msg += usage;                                                       \
+    return scope.Close(                                                 \
+      v8::ThrowException(                                               \
+        TRI_CreateErrorObject(__FILE__, __LINE__,                       \
+                              TRI_ERROR_BAD_PARAMETER,                  \
+                              msg.c_str())));                           \
+  }                                                                     \
   while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an internal exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_INTERNAL(scope, message) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, message)));
+#define TRI_V8_EXCEPTION_INTERNAL(scope, message)                            \
+  return scope.Close(v8::ThrowException(                                     \
+    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_INTERNAL, message)));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a parameter exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_PARAMETER(scope, message) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, message)));
+#define TRI_V8_EXCEPTION_PARAMETER(scope, message)                                 \
+  return scope.Close(v8::ThrowException(                                           \
+    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_BAD_PARAMETER, message)));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an out-of-memory exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_MEMORY(scope) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+#define TRI_V8_EXCEPTION_MEMORY(scope)                                   \
+  return scope.Close(v8::ThrowException(                                 \
+    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_OUT_OF_MEMORY)));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception for an system error
@@ -134,6 +141,7 @@
     msg += TRI_LAST_ERROR_STR;                                      \
     return scope.Close(v8::ThrowException(                          \
       TRI_CreateErrorObject(                                        \
+        __FILE__, __LINE__,                                         \
         TRI_errno(),                                                \
         msg.c_str())));                                             \
   }                                                                 \

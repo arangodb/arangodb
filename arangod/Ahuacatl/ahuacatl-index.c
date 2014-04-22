@@ -117,7 +117,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 
     if (pickedIndex == NULL) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
 
@@ -127,7 +127,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 
   if (pickedIndex == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -143,7 +143,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 
     if (pickedIndex->_fieldAccesses == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, pickedIndex);
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
 
@@ -241,7 +241,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     
     if (pickedIndex->_fieldAccesses == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, pickedIndex);
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
   }

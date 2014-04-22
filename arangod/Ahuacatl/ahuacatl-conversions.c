@@ -268,7 +268,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
             TRI_PushBackVectorPointer(&node->_members, (void*) member);
           }
           else {
-            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
         }
@@ -299,7 +299,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
                                        nameJson->_value._string.length - 1, 
                                        false);
           if (name == NULL) {
-            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
 
@@ -309,7 +309,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
 
           valueNode = TRI_JsonNodeAql(context, valueJson);
           if (! valueNode) {
-            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
 
@@ -318,7 +318,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
             TRI_PushBackVectorPointer(&node->_members, (void*) member);
           }
           else {
-            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }
         }
@@ -328,7 +328,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
   }
 
   if (node == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   return node;

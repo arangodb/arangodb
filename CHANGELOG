@@ -1,7 +1,19 @@
-v2.0.5 (2014-04-xx)
+v2.0.6 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #835: arangosh doesn't show correct database name
+
+
+v2.0.5 (2014-04-21)
 -------------------
 
 * Fixed a caching problem in IE JS Shell
+
+* added cancelation for async jobs
+
+* upgraded to new gyp for V8
+
+* new Windows installer
 
 
 v2.0.4 (2014-04-14)
@@ -336,7 +348,13 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.15 (XXXX-XX-XX)
+v1.4.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #826: Replication fails when a collection's configuration changes
+
+
+v1.4.15 (2014-04-19)
 --------------------
 
 * bugfix for AQL query optimiser

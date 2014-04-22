@@ -245,18 +245,19 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
 
   if (pids == 0) {
     // out of memory
-    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
+    *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_OUT_OF_MEMORY);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
+  values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+                                              n * sizeof(TRI_shaped_json_t*), false);
 
   if (values == 0) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
     pids = 0;
-    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
+    *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_OUT_OF_MEMORY);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -289,7 +290,9 @@ static int SetupExampleObject (v8::Handle<v8::Object> const& example,
     }
     else {
       CleanupExampleObject(shaper->_memoryZone, i, pids, values);
-      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+      *err = TRI_CreateErrorObject(__FILE__,
+                                   __LINE__,
+                                   TRI_ERROR_BAD_PARAMETER,
                                    "cannot convert attribute path to UTF8");
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -979,7 +982,10 @@ static int SetupSearchValue (TRI_vector_t const* paths,
 
     if (name == NULL) {
       DestroySearchValue(shaper->_memoryZone, result);
-      *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "shaper failed");
+      *err = TRI_CreateErrorObject(__FILE__,
+                                   __LINE__,
+                                   TRI_ERROR_INTERNAL,
+                                   "shaper failed");
       return TRI_ERROR_BAD_PARAMETER;
     }
 
@@ -999,7 +1005,10 @@ static int SetupSearchValue (TRI_vector_t const* paths,
       DestroySearchValue(shaper->_memoryZone, result);
 
       if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
-        *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+        *err = TRI_CreateErrorObject(__FILE__,
+                                     __LINE__,
+                                     res,
+                                     "cannot convert value to JSON");
       }
       return res;
     }

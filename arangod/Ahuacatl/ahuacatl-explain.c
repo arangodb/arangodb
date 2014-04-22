@@ -483,7 +483,7 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
   explain = CreateExplain(context);
 
   if (explain == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }
@@ -496,7 +496,7 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
 
   if (walker == NULL) {
     FreeExplain(explain);
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }

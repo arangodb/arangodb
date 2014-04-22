@@ -3101,7 +3101,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
   // errorCode might have changed.
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     // register the error
-    TRI_SetErrorContextAql(context, generator->_errorCode, generator->_errorValue);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, generator->_errorCode, generator->_errorValue);
   }
 
   assert(generator);

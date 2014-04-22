@@ -161,19 +161,28 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, using supplied text
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber,
+                                              std::string const& message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message, bool autoPrepend);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line, 
+                                              int errorNumber,
+                                              std::string const& message,
+                                              bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object
