@@ -203,7 +203,7 @@ describe ArangoDB do
       doc.parsed_response.should_not include(id)
     end
 
-    it "checks whether we can cancel a AQL query" do
+    it "checks whether we can cancel an AQL query" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..10000 for y in 1..10000 filter x == 1 && y == 1 return x"}'
       doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
@@ -231,7 +231,7 @@ describe ArangoDB do
 
     it "checks whether we can cancel a transaction" do
       cmd = "/_api/transaction"
-      body = '{"collections": {"write": "_graphs"}, "action": "function() {var i = 0; while (i < 90000000000) {i++;} return i;}"}'
+      body = '{"collections": {"write": "_graphs"}, "action": "function() {var i = 0; while (i < 90000000000) {i++; require(\\"internal\\").wait(0.1); } return i;}"}'
       doc = ArangoDB.log_post("#{prefix}-create-transaction", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
 
       doc.code.should eq(202)
