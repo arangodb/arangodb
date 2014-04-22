@@ -1034,6 +1034,11 @@ static void showBuffer(struct current * current, size_t pchars) {
     const char *buf = current->buf;
     size_t buf_len = strlen(buf);
     outputChars(current, buf, buf_len);
+    if (current->pos &&
+        current->pos == current->len &&
+        (current->pos+current->pchars) % current->cols == 0) {
+       newLine(current);
+    }
     return;
 }
 static void refreshMultiLine(const char *prompt, struct current *current)
