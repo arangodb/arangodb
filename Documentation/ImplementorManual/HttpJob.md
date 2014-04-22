@@ -232,7 +232,7 @@ result list. In this case, no `x-arango-async-id` HTTP header will be returned.
 
 @COMMENT{######################################################################}
 @CLEARPAGE
-
+@anchor HttpJobDelete
 @RESTHEADER{DELETE /_api/job/`type`,Deletes the result of async jobs}
 
 @RESTURLPARAMETERS
