@@ -98,7 +98,7 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcde\", \"_bcd%\")"));
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcde\", \"\\\\_bcd%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\\\abc\", \"\\\\\\\\%\")"));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\abc\", \"\\\\a%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\abc\", \"\\a%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[ ] ( ) \\% * . + -\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")"));
@@ -112,6 +112,26 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MöterTräNenMütterSöhne\", true)"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"mötertränenmüttersöhne\", true)"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MÖTERTRÄNENMÜTTERSÖHNE\", true)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testLikeSpecialChars : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+        
+      data.forEach(function(value) {
+        var actual = getQueryResults("RETURN LIKE(" + JSON.stringify(value) + ", 'foobar')");
+        assertEqual([ false ], actual);
+        
+        actual = getQueryResults("RETURN LIKE(" + JSON.stringify(value) + ", " + JSON.stringify(value) + ")");
+        assertEqual([ true ], actual);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,6 +216,26 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", false)"));
       assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", true)"));
       assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", false)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test contains with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testContainsSpecialChars : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+        
+      data.forEach(function(value) {
+        var actual = getQueryResults("RETURN CONTAINS(" + JSON.stringify(value) + ", 'foobar', false)");
+        assertEqual([ false ], actual);
+        
+        actual = getQueryResults("RETURN CONTAINS(" + JSON.stringify(value) + ", " + JSON.stringify(value) + ", false)");
+        assertEqual([ true ], actual);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

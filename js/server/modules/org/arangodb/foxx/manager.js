@@ -808,14 +808,14 @@ function routingAalApp (app, mount, options) {
   }
   catch (err) {
     console.errorLines(
-      "Cannot compute foxx application routes: %s", String(err.stack || err));
+      "Cannot compute Foxx application routes: %s", String(err.stack || err));
   }
 
   return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scans fetched FOXX applications
+/// @brief scans fetched Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
 function scanDirectory (path) {
@@ -870,7 +870,7 @@ function scanDirectory (path) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scans fetched FOXX applications
+/// @brief scans fetched Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.scanAppDirectory = function () {
@@ -888,10 +888,10 @@ exports.scanAppDirectory = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rescans the FOXX application directory
+/// @brief rescans the Foxx application directory
 /// this function is a trampoline for scanAppDirectory
 /// the shorter function name is only here to keep compatibility with the
-/// client-side foxx manager
+/// client-side Foxx manager
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.rescan = function () {
@@ -899,7 +899,7 @@ exports.rescan = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mounts a FOXX application
+/// @brief mounts a Foxx application
 ///
 /// Input:
 /// * appId: the application identifier
@@ -977,7 +977,7 @@ exports.mount = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a FOXX application
+/// @brief sets up a Foxx application
 ///
 /// Input:
 /// * mount: the mount identifier or path
@@ -1001,7 +1001,7 @@ exports.setup = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX application
+/// @brief tears down a Foxx application
 ///
 /// Input:
 /// * mount: the mount path starting with a "/"
@@ -1035,7 +1035,7 @@ exports.teardown = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unmounts a FOXX application
+/// @brief unmounts a Foxx application
 ///
 /// Input:
 /// * key: mount key or mount point
@@ -1068,7 +1068,7 @@ exports.unmount = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief purges a FOXX application
+/// @brief purges a Foxx application
 ///
 /// Input:
 /// * name: application name
@@ -1260,18 +1260,18 @@ exports.appRoutes = function () {
           var r = routingAalApp(app, mount, options);
 
           if (r === null) {
-            throw new Error("Cannot compute the routing table for foxx application '" 
+            throw new Error("Cannot compute the routing table for Foxx application '" 
                             + app._id + "', check the log file for errors!");
           }
 
           routes.push(r);
 
           if (!developmentMode) {
-            console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+            console.debug("Mounted Foxx application '%s' on '%s'", appId, mount);
           }
         }
         catch (err) {
-          console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+          console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
         }
       }
 
@@ -1320,7 +1320,7 @@ exports.developmentRoutes = function () {
         var r = routingAalApp(app, mount, options);
 
         if (r === null) {
-          throw new Error("Cannot compute the routing table for foxx application '" 
+          throw new Error("Cannot compute the routing table for Foxx application '" 
                           + app._id + "', check the log file for errors!");
         }
 
