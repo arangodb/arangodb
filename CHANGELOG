@@ -1,6 +1,8 @@
 v2.0.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #826: Replication fails when a collection's configuration changes
+
 * fixed issue #835: arangosh doesn't show correct database name
 
 
