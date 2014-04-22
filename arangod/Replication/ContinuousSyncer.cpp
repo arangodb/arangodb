@@ -635,6 +635,59 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
+  TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+  const string name = JsonHelper::getStringValue(collectionJson, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+
+  bool waitForSync = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
+  bool doCompact = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
+  int maximalSize = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+
+  TRI_vocbase_col_t* col = 0;
+
+  if (! cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+  }
+
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
+
+  if (col == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int res = TRI_UseCollectionVocBase(_vocbase, col);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+      
+  TRI_col_info_t parameters;
+ 
+  // only need to set these three properties as the others cannot be updated on the fly
+  parameters._doCompact   = doCompact;
+  parameters._maximalSize = maximalSize;
+  parameters._waitForSync = waitForSync;
+
+  res = TRI_UpdateCollectionInfo(_vocbase, &col->_collection->base, &parameters);
+
+  TRI_ReleaseCollectionVocBase(_vocbase, col);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -710,6 +763,12 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
     updateTick = true;
 
     return renameCollection(json);
+  }
+  
+  else if (type == COLLECTION_CHANGE) {
+    updateTick = true;
+
+    return changeCollection(json);
   }
   
   else if (type == INDEX_CREATE) {
@@ -791,7 +850,7 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
       if (ignoreCount == 0) {
         if (line.size() > 128) {
-          errorMsg += ", offending marker: " + line.substr(128) + "...";
+          errorMsg += ", offending marker: " + line.substr(0, 128) + "...";
         }
         else {
           errorMsg += ", offending marker: " + line;;

@@ -1,3 +1,9 @@
+v1.4.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #826: Replication fails when a collection's configuration changes
+
+
 v1.4.15 (2014-04-19)
 --------------------
 
