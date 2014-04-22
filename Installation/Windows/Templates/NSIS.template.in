@@ -908,7 +908,7 @@ Function default_installation_directory
   ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
     Call Tri_ChangePrivileges
     SetShellVarContext all
-    StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     Return
    ${EndIf}
 FunctionEnd
