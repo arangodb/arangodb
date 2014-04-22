@@ -336,10 +336,10 @@ ArangoCollection.prototype.properties = function (properties) {
     var body = {};
 
     for (a in attributes) {
-      if (attributes.hasOwnProperty(a)) {
-        if (properties.hasOwnProperty(a) && properties[a]) {
-          body[a] = properties[a];
-        }
+      if (attributes.hasOwnProperty(a) && 
+          attributes[a] &&
+          properties.hasOwnProperty(a)) {
+        body[a] = properties[a];
       }
     }
 
