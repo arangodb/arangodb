@@ -73,6 +73,7 @@
             this.detailGraphFigure = figure;
             options = this.dygraphConfig.getDetailChartConfig(figure);
             window.modalView.hideFooter = true;
+            window.modalView.hide();
             window.modalView.show(
                 "modalGraph.ejs",
                 options.header,
@@ -92,7 +93,7 @@
             //$('.modal-body').css({"max-height": "100%" });
             $('#modal-dialog').toggleClass("modal-chart-detail", true);
             options.height = $('.modal-chart-detail').height() * 0.7;
-            options.width = $('.modal-chart-detail').width() * 0.86;
+            options.width = $('.modal-chart-detail').width() * 0.84;
             this.detailGraph = new Dygraph(
                 document.getElementById("lineChartDetail"),
                 this.history[figure],
@@ -139,6 +140,7 @@
         initialize: function () {
             this.dygraphConfig = this.options.dygraphConfig;
             this.server = this.options.serverToShow;
+            this.events["click .dashboard-chart"] = this.showDetail.bind(this);
             this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
             this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
         },
@@ -358,7 +360,6 @@
                     .showLegend(false)
                     .stacked(true)
                     .showControls(false);
-
                 chart.yAxis
                     .tickFormat(function (d) {return d + "%";});
                 chart.xAxis.showMaxMin(false);
@@ -405,10 +406,21 @@
                     "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
                 dataTransferDistribution: [
                     "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
-            };
+            }, f;
 
             _.each(Object.keys(barCharts), function (k) {
-                var dimensions = self.getCurrentSize('#' + k + 'Container svg');
+                var dimensions = self.getCurrentSize('#' + k + 'Container .dashboard-interior-chart');
+                if (dimensions.width > 400 ) {
+                    f = 18;
+                } else if (dimensions.width > 300) {
+                    f = 16;
+                } else if (dimensions.width > 200) {
+                    f = 14;
+                } else if (dimensions.width > 100) {
+                    f = 12;
+                } else {
+                    f = 10;
+                }
                 nv.addGraph(function () {
                     var chart = nv.models.multiBarHorizontalChart()
                         .x(function (d) {
@@ -445,10 +457,10 @@
                     if (!update) {
                         d3.select('#' + k + 'Container svg')
                             .append("text")
-                            .attr("x", dimensions.width * 0.6)
+                            .attr("x", dimensions.width * 0.5)
                             .attr("y", dimensions.height / 12)
                             .attr("id", "distributionHead")
-                            .style("font-size", dimensions.height / 12 + "px")
+                            .style("font-size", f + "px")
                             .style("font-weight", 400)
                             .classed("distributionHeader", true)
                             .style("font-family", "Open Sans")
@@ -475,10 +487,10 @@
                         d3.select('#' + k + 'Container svg').select('.distributionHeader').remove();
                         d3.select('#' + k + 'Container svg')
                             .append("text")
-                            .attr("x", dimensions.width * 0.6)
+                            .attr("x", dimensions.width * 0.5)
                             .attr("y", dimensions.height / 12)
                             .attr("id", "distributionHead")
-                            .style("font-size", dimensions.height / 12 + "px")
+                            .style("font-size", f + "px")
                             .style("font-weight", 400)
                             .classed("distributionHeader", true)
                             .style("font-family", "Open Sans")
