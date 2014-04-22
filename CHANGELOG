@@ -1,8 +1,6 @@
 v2.0.6 (XXXX-XX-XX)
 -------------------
 
-* fixed issue #826: Replication fails when a collection's configuration changes
-
 * fixed issue #835: arangosh doesn't show correct database name
 
 
@@ -350,7 +348,13 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.15 (XXXX-XX-XX)
+v1.4.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #826: Replication fails when a collection's configuration changes
+
+
+v1.4.15 (2014-04-19)
 --------------------
 
 * bugfix for AQL query optimiser
