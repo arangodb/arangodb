@@ -1,4 +1,4 @@
-v2.0.6 (XXXX-XX-XX)
+v2.0.6 (2014-04-22)
 -------------------
 
 * fixed issue #835: arangosh doesn't show correct database name
