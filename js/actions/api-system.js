@@ -138,7 +138,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     internal.executeGlobalContextFunction("reloadRouting");
-    console.warn("about to flush the routing cache");
+    console.debug("about to flush the routing cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
@@ -182,7 +182,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     internal.executeGlobalContextFunction("flushModuleCache");
-    console.warn("about to flush the modules cache");
+    console.debug("about to flush the modules cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
