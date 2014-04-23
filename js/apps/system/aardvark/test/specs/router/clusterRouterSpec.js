@@ -464,7 +464,7 @@
 
                 expect(serverDashboardViewDummy.render).toHaveBeenCalled();
                 expect(window.ServerDashboardView).toHaveBeenCalledWith({
-                    dygraphConfig: window.newDygraphConfig,
+                    dygraphConfig: window.dygraphConfig,
                     serverToShow: "fritz"
                 });
             });

@@ -5,7 +5,7 @@
 (function() {
   "use strict";
 
-  window.ServerDashboardView = window.newDashboardView.extend({
+  window.ServerDashboardView = window.DashboardView.extend({
     modal : true,
 
     hide: function() {
@@ -17,7 +17,7 @@
       var self = this;
       window.modalView.hideFooter = true;
       window.modalView.show(
-            "newDashboardView.ejs",
+            "dashboardView.ejs",
             null,
             undefined,
             undefined,
@@ -26,7 +26,7 @@
 
       );
       $('#modal-dialog').toggleClass("modal-chart-detail", true);
-      window.newDashboardView.prototype.render.bind(this)(true);
+      window.DashboardView.prototype.render.bind(this)(true);
       window.modalView.hideFooter = false;
 
 
