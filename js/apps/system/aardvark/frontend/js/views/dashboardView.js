@@ -113,7 +113,9 @@
         div = "#" + div;
       }
       var height, width;
+        console.log(div, $(div).height(), $(div).width());
       $(div).attr("style", "");
+        console.log(div, $(div).height(), $(div).width());
       height = $(div).height();
       width = $(div).width();
       return {
@@ -536,7 +538,6 @@
       if (self.timer) {
         return;
       }
-      self.isUpdating = true;
       self.timer = window.setInterval(function () {
         self.getStatistics();
         if (self.isUpdating === false) {
@@ -550,15 +551,20 @@
 
 
   resize: function () {
-    if (!this.intiliazed) {
+    if (!this.isUpdating) {
       return;
     }
     var self = this, dimensions;
-    Object.keys(this.graphs).forEach(function (f) {
-      var g = self.graphs[f];
+      _.each(this.graphs,function (g) {
       dimensions = self.getCurrentSize(g.maindiv_.id);
       g.resize(dimensions.width, dimensions.height);
     });
+    if (this.detailGraph) {
+      console.log(this.detailGraph);
+      dimensions = self.getCurrentSize(this.detailGraph.maindiv_.id);
+      console.log(dimensions);
+      this.detailGraph.resize(dimensions.width, dimensions.height);
+    }
     this.prepareD3Charts(true);
     this.prepareResidentSize(true);
   },
@@ -571,7 +577,9 @@
     }
     this.getStatistics();
     this.prepareDygraphs();
+    console.log("STARTING");
     if (this.isUpdating) {
+      console.log("STARTING", this.isUpdating);
       this.prepareD3Charts();
       this.prepareResidentSize();
       this.updateTendencies();

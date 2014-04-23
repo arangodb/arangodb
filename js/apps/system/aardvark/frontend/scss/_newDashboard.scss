@@ -68,10 +68,9 @@ $dashboard-padding: 28px;
 .modal-chart-detail {
   @extend %pull-left;
   height: 85%;
-  width: 90%;
 
   .modal-body {
-    max-height: 100%;
+    max-height: 75%;
   }
 }
 
