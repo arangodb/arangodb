@@ -167,7 +167,7 @@ arangoDatabase, btoa, _*/
 
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-          dygraphConfig: window.newDygraphConfig,
+          dygraphConfig: window.dygraphConfig,
           serverToShow : this.serverToShow
       });
       this.dashboardView.render();

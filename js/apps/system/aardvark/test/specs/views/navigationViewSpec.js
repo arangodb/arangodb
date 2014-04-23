@@ -78,7 +78,9 @@
     describe("in any database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
 
@@ -130,7 +132,9 @@
     describe("in _system database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
 
@@ -147,7 +151,9 @@
       beforeEach(function() {
         curName = "firstDB";
         isSystem = false;
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
       

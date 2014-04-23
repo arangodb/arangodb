@@ -13,19 +13,19 @@
       div = document.createElement("div");
       div.id = "content";
       document.body.appendChild(div);
-      allLogs = new window.NewArangoLogs(
+      allLogs = new window.ArangoLogs(
         {upto: true, loglevel: 4}
       );
-      debugLogs = new window.NewArangoLogs(
+      debugLogs = new window.ArangoLogs(
         {loglevel: 4}
       );
-      infoLogs = new window.NewArangoLogs(
+      infoLogs = new window.ArangoLogs(
         {loglevel: 3}
       );
-      warnLogs = new window.NewArangoLogs(
+      warnLogs = new window.ArangoLogs(
         {loglevel: 2}
       );
-      errLogs = new window.NewArangoLogs(
+      errLogs = new window.ArangoLogs(
         {loglevel: 1}
       );
 
@@ -37,7 +37,7 @@
         return fakeCall(options);
       });
 
-      view = new window.NewLogsView({
+      view = new window.LogsView({
         logall: allLogs,
         logdebug: debugLogs,
         loginfo: infoLogs,
