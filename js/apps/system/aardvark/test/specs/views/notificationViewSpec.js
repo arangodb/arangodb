@@ -71,6 +71,15 @@
       expect(jQueryDummy.toggle).toHaveBeenCalled();
     });
 
+    it("toggleNotification should run function", function () {
+      spyOn(view.collection, "reset");
+      view.removeAllNotifications();
+      expect(view.collection.reset).toHaveBeenCalled();
+      expect($('#notification_menu').is(":visible")).toBeFalsy();
+    });
+
+
+
 
   });
 
