@@ -371,6 +371,9 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_hasDeadObjects = v8g->_hasDeadObjects;
   ++context->_numExecutions;
 
+  // HasOutOfMemoryException must be called while there is still an isolate!
+  bool const hasOutOfMemoryException = context->_context->HasOutOfMemoryException();
+
   // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
@@ -406,7 +409,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
     performGarbageCollection = true;
   }
-  else if (context->_context->HasOutOfMemoryException()) {
+  else if (hasOutOfMemoryException) {
     LOG_INFO("V8 context has encountered out of memory and will be scheduled for GC");
     performGarbageCollection = true;
   }
