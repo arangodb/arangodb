@@ -109,7 +109,6 @@ SERVER_OPT := \
 	--database.maximal-journal-size 1048576 \
 	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
-	--javascript.gc-interval 1 \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
 	--ruby.action-directory @top_srcdir@/mr/actions \
