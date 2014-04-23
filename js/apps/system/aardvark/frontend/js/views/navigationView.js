@@ -14,17 +14,20 @@
 
     initialize: function () {
       this.userCollection = this.options.userCollection;
+      this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: window.arangoDatabase,
-        current: window.currentDB
+        collection: this.options.database,
+        current: this.currentDB
       });
       this.userBarView = new window.UserBarView({
-        userCollection: window.userCollection
+        userCollection: this.userCollection
       });
       this.notificationView = new window.NotificationView({
         collection: this.options.notificationCollection
       });
-      this.statisticBarView = new window.StatisticBarView({});
+      this.statisticBarView = new window.StatisticBarView({
+          currentDB: this.currentDB
+      });
     },
 
     handleSelectDatabase: function () {
@@ -35,7 +38,7 @@
 
     render: function () {
       $(this.el).html(this.template.render({
-        isSystem: window.currentDB.get("isSystem")
+        isSystem: this.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));

@@ -210,7 +210,7 @@
       );
       spyOn(window, "StatisticsCollection").andReturn(statisticsCollectionDummy);
       spyOn(window, "CollectionsView").andReturn(collectionsViewDummy);
-      spyOn(window, "NewArangoLogs").andCallFake(function(opts) {
+      spyOn(window, "ArangoLogs").andCallFake(function(opts) {
         if (opts.upto) {
           return logsDummy.all;
         }
@@ -227,7 +227,7 @@
         expect(options.async).toBeFalsy();
       });
       spyOn(window, "DBSelectionView");
-      spyOn(window, "newDashboardView").andReturn(dashboardDummy);
+      spyOn(window, "DashboardView").andReturn(dashboardDummy);
       spyOn(window, "StatisticBarView").andReturn(statisticBarDummy);
       spyOn(window, "UserBarView").andReturn(userBarDummy);
 
@@ -265,30 +265,10 @@
         expect(e.handleResize).toHaveBeenCalled();
       });
 
-      it("should create a graph view", function () {
-        expect(window.GraphView).toHaveBeenCalledWith({
-          collection: storeDummy,
-          graphs: graphsDummy
-        });
-      });
-
-      it("should create a documentView", function () {
-        expect(window.DocumentView).toHaveBeenCalledWith(
-          {
-            collection: documentDummy
-          }
-        );
-      });
-
       it("should not create a documentsView", function () {
         expect(window.DocumentsView).not.toHaveBeenCalled();
       });
 
-      it("should create collectionsView", function () {
-        expect(window.CollectionsView).toHaveBeenCalledWith({
-          collection: storeDummy
-        });
-      });
 
       it("should fetch the collectionsStore", function () {
         expect(storeDummy.fetch).toHaveBeenCalled();
@@ -393,8 +373,6 @@
           "application/documentation/:key",
           "graph",
           "graphManagement",
-          "graphManagement/add",
-          "graphManagement/delete/:name",
           "userManagement",
           "userProfile" ,
           "testing"
@@ -443,7 +421,6 @@
           },
           true
         );
-        expect(documentsViewDummy.render).toHaveBeenCalled();
         expect(documentsViewDummy.setCollectionId).toHaveBeenCalledWith(colid, pageid);
 
 
@@ -465,12 +442,11 @@
           undefined,
           {
           },
-          true
+            true
         );
-        expect(window.documentView.colid).toEqual(colid);
-        expect(window.documentView.docid).toEqual(docid);
-        expect(window.documentView.type).toEqual(5);
-        expect(window.documentView.render).toHaveBeenCalled();
+        expect(r.documentView.colid).toEqual(colid);
+        expect(r.documentView.docid).toEqual(docid);
+        expect(r.documentView.type).toEqual(5);
         expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(colid);
         expect(documentViewDummy.typeCheck).toHaveBeenCalledWith(colid);
       });
@@ -513,10 +489,10 @@
         spyOn(dashboardDummy, "render");
         simpleNavigationCheck(
           "dashboard",
-          "newDashboardView",
+          "DashboardView",
           "dashboard-menu",
           {
-            dygraphConfig: window.newDygraphConfig
+            dygraphConfig: window.dygraphConfig
           },
           {
           },
@@ -586,11 +562,16 @@
       });
 
       it("should handle resizing", function () {
+        r.graphView =  graphDummy;
+        r.dashboardView = dashboardDummy;
         spyOn(graphDummy, "handleResize");
+        spyOn(dashboardDummy, "resize");
         spyOn($.fn, 'width').andReturn(500);
 
         r.handleResize();
         expect(graphDummy.handleResize).toHaveBeenCalledWith(241);
+        expect(dashboardDummy.resize).toHaveBeenCalled();
+        r.dashboardView = undefined;
       });
 
 
@@ -600,12 +581,30 @@
           "userManagementView",
           "tools-menu",
           {
-            collection: window.userCollection
+            collection: r.userCollection
           },
           {
           },
           false
         );
+      });
+
+      it("should navigate to the logs", function () {
+            simpleNavigationCheck(
+                "logs",
+                "LogsView",
+                "tools-menu",
+                {
+                    logall: logsDummy.all,
+                    logdebug: logsDummy["4"],
+                    loginfo: logsDummy["3"],
+                    logwarning: logsDummy["2"],
+                    logerror: logsDummy["1"]
+                },
+                {
+                },
+                false
+            );
       });
 
       it("should navigate to the userProfile", function () {
@@ -614,7 +613,7 @@
           "userManagementView",
           "tools-menu",
           {
-            collection: window.userCollection
+            collection: r.userCollection
           },
           {
           },
@@ -628,14 +627,6 @@
           "loginView",
           "",
           {collection: sessionDummy}
-        );
-      });
-
-      it("should route to the testView screen", function () {
-        simpleNavigationCheck(
-          "testing",
-          "testView",
-          ""
         );
       });
 
@@ -694,15 +685,6 @@
         r = new window.Router();
       });
 
-      it("logsAllowed", function () {
-        window.currentDB = new window.DatabaseModel({name: "_system"});
-        expect(r.logsAllowed()).toEqual(true);
-      });
-      it("logs not Allowed", function () {
-        window.currentDB = new window.DatabaseModel({name: "system"});
-        expect(r.logsAllowed()).toEqual(false);
-      });
-
       it("checkUser logged in", function () {
         sessionDummy.models = [1, 2];
         expect(r.checkUser()).toEqual(true);
@@ -715,12 +697,12 @@
       });
 
       it("collections", function () {
-        spyOn(window.collectionsView, "render");
+        spyOn(collectionsViewDummy, "render");
         storeDummy.fetch = function (a) {
           a.success();
         };
         r.collections();
-        expect(window.collectionsView.render).toHaveBeenCalled();
+        expect(collectionsViewDummy.render).toHaveBeenCalled();
         expect(naviDummy.selectMenuItem).toHaveBeenCalledWith('collections-menu');
       });
     });
