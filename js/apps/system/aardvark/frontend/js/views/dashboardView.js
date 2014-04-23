@@ -193,7 +193,10 @@
 
         mergeDygraphHistory: function (newData, i) {
             var self = this, valueList;
-            this.dygraphConfig.getDashBoardFigures(false).forEach(function (f) {
+            this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
+                if (!self.dygraphConfig.mapStatToFigure[f]) {
+                    return;
+                }
                 if (!self.history[f]) {
                     self.history[f] = [];
                 }
