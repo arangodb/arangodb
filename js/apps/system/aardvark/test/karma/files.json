@@ -154,7 +154,6 @@
   "frontend/js/views/foxxEditView.js",
   "frontend/js/views/databaseView.js",
   "frontend/js/views/foxxMountView.js",
-  "frontend/js/views/testView.js",
   "frontend/js/views/appDocumentationView.js",
   "frontend/js/views/graphView.js",
   "frontend/js/views/graphManagementView.js",
