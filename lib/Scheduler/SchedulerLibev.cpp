@@ -744,11 +744,11 @@ EventToken SchedulerLibev::registerWatcher (void* watcher, EventType type) {
   EventToken token;
 
   if (_frees.empty()) {
-    token = _watchers.size();
+    token = (EventToken) _watchers.size();
     _watchers.push_back(watcher);
   }
   else {
-    token = _frees.back();
+    token = (EventToken) _frees.back();
     _frees.pop_back();
     _watchers[token] = watcher;
   }
