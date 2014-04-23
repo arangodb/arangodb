@@ -571,7 +571,7 @@
     }
     this.getStatistics();
     this.prepareDygraphs();
-    if (self.isUpdating) {
+    if (this.isUpdating) {
       this.prepareD3Charts();
       this.prepareResidentSize();
       this.updateTendencies();
