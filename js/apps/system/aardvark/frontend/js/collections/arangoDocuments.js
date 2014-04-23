@@ -84,7 +84,10 @@
 
       queryObj = {
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        options: {
+          fullCount: true
+        }
       };
       $.ajax({
         cache: false,
