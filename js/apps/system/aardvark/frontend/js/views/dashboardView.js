@@ -133,7 +133,7 @@
         options.width = dimensions.width;
         self.graphs[f] = new Dygraph(
           document.getElementById(options.div),
-          self.history[f] ? self.history[f] : [],
+          self.history[f] || [],
           options
         );
       });
@@ -153,8 +153,8 @@
         this.updateLineChart(this.detailGraphFigure, true);
         return;
       }
-      this.prepareD3Charts(true && this.isUpdating);
-      this.prepareResidentSize(true && this.isUpdating);
+      this.prepareD3Charts(this.isUpdating);
+      this.prepareResidentSize(this.isUpdating);
       this.updateTendencies();
       Object.keys(this.graphs).forEach(function (f) {
         self.updateLineChart(f, false);
