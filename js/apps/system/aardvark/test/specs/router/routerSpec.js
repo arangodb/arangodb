@@ -565,7 +565,7 @@
         r.graphView =  graphDummy;
         r.dashboardView = dashboardDummy;
         spyOn(graphDummy, "handleResize");
-        spyOn(dashboardDummy, "resize")
+        spyOn(dashboardDummy, "resize");
         spyOn($.fn, 'width').andReturn(500);
 
         r.handleResize();
