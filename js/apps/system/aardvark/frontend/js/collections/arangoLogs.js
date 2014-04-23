@@ -4,7 +4,7 @@
 
   "use strict";
 
-  window.NewArangoLogs = window.PaginatedCollection.extend({
+  window.ArangoLogs = window.PaginatedCollection.extend({
     upto: false,
     loglevel: 0,
 
