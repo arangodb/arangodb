@@ -46,35 +46,6 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.onclick = callback;
   };
 
-  uiComponentsHelper.createListEntry = function(list, title, prefix, callback) {
-    var button = document.createElement("li"),
-      a = document.createElement("a"),
-      label = document.createElement("label");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(a);
-    a.className = "gv_dropdown_entry";
-    a.appendChild(label);
-    label.appendChild(document.createTextNode(title));
-    label.className = "gv_dropdown_label";
-    list.appendChild(button);
-    button.onclick = callback;
-  };
-  
-  uiComponentsHelper.createIconButtonBKP = function(icon, prefix, callback) {
-    var button = document.createElement("button");
-    button.className = "btn btn-icon gv-icon-btn " + icon;
-    button.id = prefix;
-    button.onclick = function() {
-      $(".gv-icon-btn").each(function(i, btn) {
-        $(btn).toggleClass("active", false);
-      });
-      $(button).toggleClass("active", true);
-      callback();
-    };
-    return button;
-  };
-  
   uiComponentsHelper.createIconButton = function(iconInfo, prefix, callback) {
     var button = document.createElement("div"),
         icon = document.createElement("h6"),
