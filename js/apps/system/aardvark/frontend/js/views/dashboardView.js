@@ -131,7 +131,7 @@
                 options.width = dimensions.width;
                 self.graphs[f] = new Dygraph(
                     document.getElementById(options.div),
-                    self.history[f],
+                    self.history[f] ? self.history[f] : [],
                     options
                 );
             });
@@ -151,8 +151,8 @@
                 this.updateLineChart(this.detailGraphFigure, true);
                 return;
             }
-            this.prepareD3Charts(true);
-            this.prepareResidentSize(true);
+            this.prepareD3Charts(true && this.isUpdating);
+            this.prepareResidentSize(true && this.isUpdating);
             this.updateTendencies();
             Object.keys(this.graphs).forEach(function (f) {
                 self.updateLineChart(f, false);
@@ -304,7 +304,7 @@
         },
 
         getStatistics: function (figure) {
-            var url = "statistics/full?start=", self = this, result = true;
+            var url = "statistics/full?start=", self = this;
             if (!figure && this.nextStart) {
                 url += this.nextStart;
             } else if (!figure && !this.nextStart) {
@@ -328,20 +328,17 @@
             ).done(
                 function (d) {
                     if (d.times.length > 0) {
+                        self.isUpdating = true;
                         self.mergeHistory(d, !!figure);
                     } else  {
                         window.modalView.show(
                             "modalWarning.ejs",
                             "WARNING !"
                         );
-                        $('#modal-dialog').on('hidden', function () {
-                            self.render();
-                        });
-                        result = false;
+                        self.isUpdating = false;
                     }
                 }
             );
-            return result;
         },
 
         prepareResidentSize: function (update) {
@@ -558,15 +555,14 @@
             if (!modalView)  {
                 $(this.el).html(this.template.render());
             }
-            this.intiliazed = false;
-            if (this.getStatistics() === true) {
-                this.intiliazed = true;
-                this.prepareDygraphs();
+            this.getStatistics();
+            this.prepareDygraphs();
+            if (self.isUpdating) {
                 this.prepareD3Charts();
                 this.prepareResidentSize();
                 this.updateTendencies();
-                this.startUpdating();
             }
+            this.startUpdating();
         },
 
 
