@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
-/*global $*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
+/*global $, arangoHelper*/
 
 (function() {
   "use strict";
@@ -45,45 +45,191 @@
       expect(myCollection.get('picture')).toEqual('');
     });
 
-    it("verifies getProperties", function() {
-      var id = "4711";
-      spyOn($, "ajax").andCallFake(function(opt) {
-        expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
-        expect(opt.type).toEqual("GET");
-      });
-      myCollection.set('id', id);
-      myCollection.getProperties();
-    });
+    describe("checking ajax", function() {
+      var url, type, shouldFail, successResult, failResult, id, data;
 
-    it("verifies getFigures", function() {
-      var id = "4711";
-      spyOn($, "ajax").andCallFake(function(opt) {
-        expect(opt.url).toEqual("/_api/collection/" + id + "/figures");
-        expect(opt.type).toEqual("GET");
+      beforeEach(function() {
+        id = "4711";
+        successResult = "success";
+        failResult = "fail";
+        myCollection.set('id', id);
+        spyOn($, "ajax").andCallFake(function(opt) {
+          expect(opt.url).toEqual(url);
+          expect(opt.type).toEqual(type);
+          expect(opt.success).toEqual(jasmine.any(Function));
+          expect(opt.error).toEqual(jasmine.any(Function));
+          if (opt.data) {
+            expect(opt.data).toEqual(data);
+          }
+          if (shouldFail) {
+            opt.error(failResult);
+          } else {
+            opt.success(successResult);
+          }
+        });
       });
-      myCollection.set('id', id);
-      myCollection.getFigures();
-    });
 
-    it("verifies getRevision", function() {
-      var id = "4711";
-      spyOn($, "ajax").andCallFake(function(opt) {
-        expect(opt.url).toEqual("/_api/collection/" + id + "/revision");
-        expect(opt.type).toEqual("GET");
-      });
-      myCollection.set('id', id);
-      myCollection.getRevision();
-    });
+      describe("getProperties", function() {
 
-    it("verifies getIndex", function() {
-      var id = "4711";
-      spyOn($, "ajax").andCallFake(function(opt) {
-        expect(opt.url).toEqual("/_api/index/?collection=" + id);
-        expect(opt.type).toEqual("GET");
+        beforeEach(function() {
+          url = "/_api/collection/" + id + "/properties";
+          type = "GET";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.getProperties()).toEqual(successResult);
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.getProperties()).toEqual(failResult);
+        });
       });
-      myCollection.set('id', id);
-      myCollection.getIndex();
+
+      describe("getFigures", function() {
+
+        beforeEach(function() {
+          url = "/_api/collection/" + id + "/figures";
+          type = "GET";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.getFigures()).toEqual(successResult);
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.getFigures()).toEqual(failResult);
+        });
+      });
+
+      describe("getRevision", function() {
+
+        beforeEach(function() {
+          url = "/_api/collection/" + id + "/revision";
+          type = "GET";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.getRevision()).toEqual(successResult);
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.getRevision()).toEqual(failResult);
+        });
+      });
+
+      describe("getFigures", function() {
+
+        beforeEach(function() {
+          url = "/_api/index/?collection=" + id;
+          type = "GET";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.getIndex()).toEqual(successResult);
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.getIndex()).toEqual(failResult);
+        });
+      });
+
+      describe("loadCollection", function() {
+
+        beforeEach(function() {
+          url = "/_api/collection/" + id + "/load";
+          type = "PUT";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          spyOn(arangoHelper, "arangoNotification");
+          myCollection.loadCollection();
+          expect(myCollection.get("status")).toEqual("loaded");
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          spyOn(arangoHelper, "arangoError");
+          myCollection.loadCollection();
+          expect(arangoHelper.arangoError).toHaveBeenCalledWith("Collection error");
+        });
+      });
+
+      describe("unloadCollection", function() {
+
+        beforeEach(function() {
+          url = "/_api/collection/" + id + "/unload";
+          type = "PUT";
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          spyOn(arangoHelper, "arangoNotification");
+          myCollection.unloadCollection();
+          expect(myCollection.get("status")).toEqual("unloaded");
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          spyOn(arangoHelper, "arangoError");
+          myCollection.unloadCollection();
+          expect(arangoHelper.arangoError).toHaveBeenCalledWith("Collection error");
+        });
+      });
+
+      describe("renameCollection", function() {
+
+        var name;
+
+        beforeEach(function() {
+          name = "newname";
+          url = "/_api/collection/" + id + "/rename";
+          type = "PUT";
+          data = JSON.stringify({name: name});
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.renameCollection(name)).toBeTruthy();
+          expect(myCollection.get("name")).toEqual(name);
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.renameCollection(name)).toBeFalsy();
+          expect(myCollection.get("name")).not.toEqual(name);
+        });
+      });
+
+      describe("changeCollection", function() {
+        var wfs, jns;
+
+        beforeEach(function() {
+          wfs = true;
+          jns = 10 * 100 * 1000;
+          url = "/_api/collection/" + id + "/properties";
+          type = "PUT";
+          data = JSON.stringify({waitForSync: wfs, journalSize: jns});
+        });
+
+        it("success", function() {
+          shouldFail = false;
+          expect(myCollection.changeCollection(wfs, jns)).toBeTruthy();
+        });
+
+        it("fail", function() {
+          shouldFail = true;
+          expect(myCollection.changeCollection(wfs, jns)).toBeFalsy();
+        });
+      });
     });
   });
-
 }());
