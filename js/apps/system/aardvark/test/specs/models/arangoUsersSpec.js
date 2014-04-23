@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
 /*global $*/
 
 (function() {
@@ -38,12 +38,19 @@
     });
 
     it("verifies checkPassword", function() {
-      var passwd = 'passwd';
+      var passwd = 'passwd',
+          goodResult = "goodResult",
+          result = "badResult";
       spyOn($, "ajax").andCallFake(function(opt) {
         expect(opt.url).toEqual("/_api/user/" + user);
         expect(opt.type).toEqual("POST");
+        expect(opt.success).toEqual(jasmine.any(Function));
+        opt.success({
+          result: goodResult
+        });
       });
-      myModel.checkPassword(passwd);
+      result = myModel.checkPassword(passwd);
+      expect(result).toEqual(goodResult);
     });
 
     it("verifies parse/isNew/url", function() {
