@@ -59,7 +59,7 @@ describe("Arango Helper", function() {
   describe("checking html escaping", function() {
     var input = "<&>\"'",
         expected = "&lt;&amp;&gt;&quot;&#39;";
-    expect(arangoHelper.escapeHTML(input)).toEqual(expected);
+    expect(arangoHelper.escapeHtml(input)).toEqual(expected);
   });
 
 });
