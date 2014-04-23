@@ -276,7 +276,7 @@
         return 0;
       }
 
-      var returnobj = window.arangoCollectionsStore.newCollection(
+      var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
       if (returnobj.status !== true) {

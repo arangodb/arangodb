@@ -3,349 +3,287 @@
 /*global arangoHelper,dashboardView,arangoDatabase, _*/
 
 (function () {
-  "use strict";
+    "use strict";
 
-  window.Router = Backbone.Router.extend({
-    routes: {
-      "": "dashboard",
-      "dashboard": "dashboard",
-      "collections": "collections",
-      "new": "newCollection",
-      "login": "login",
-      "collection/:colid/documents/:pageid": "documents",
-      "collection/:colid/:docid": "document",
-      "shell": "shell",
-      "query": "query",
-      "api": "api",
-      "databases": "databases",
-      "applications": "applications",
-      "application/documentation/:key": "appDocumentation",
-      "graph": "graph",
-      "graphManagement": "graphManagement",
-      "graphManagement/add": "graphAddNew",
-      "graphManagement/delete/:name": "graphDelete",
-      "userManagement": "userManagement",
-      "userProfile": "userProfile",
-      "testing": "testview",
-      "testModalView": "testmodalview",
-      "logs": "newLogsView"
-    },
+    window.Router = Backbone.Router.extend({
+        routes: {
+            "": "dashboard",
+            "dashboard": "dashboard",
+            "collections": "collections",
+            "new": "newCollection",
+            "login": "login",
+            "collection/:colid/documents/:pageid": "documents",
+            "collection/:colid/:docid": "document",
+            "shell": "shell",
+            "query": "query",
+            "api": "api",
+            "databases": "databases",
+            "applications": "applications",
+            "application/documentation/:key": "appDocumentation",
+            "graph": "graph",
+            "graphManagement": "graphManagement",
+            "userManagement": "userManagement",
+            "userProfile": "userProfile",
+            "logs": "logs"
+        },
 
-    newLogsView: function() {
-      if (!this.logsView) {
-        var newLogsAllCollection = new window.NewArangoLogs(
-          {upto: true, loglevel: 4}
-        ),
-        newLogsDebugCollection = new window.NewArangoLogs(
-          {loglevel: 4}
-        ),
-        newLogsInfoCollection = new window.NewArangoLogs(
-          {loglevel: 3}
-        ),
-        newLogsWarningCollection = new window.NewArangoLogs(
-          {loglevel: 2}
-        ),
-        newLogsErrorCollection = new window.NewArangoLogs(
-          {loglevel: 1}
-        );
-        this.logsView = new window.NewLogsView({
-          logall: newLogsAllCollection,
-          logdebug: newLogsDebugCollection,
-          loginfo: newLogsInfoCollection,
-          logwarning: newLogsWarningCollection,
-          logerror: newLogsErrorCollection
-        });
-      }
-      this.logsView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
+        logs: function () {
+            if (!this.logsView) {
+                var newLogsAllCollection = new window.ArangoLogs(
+                        {upto: true, loglevel: 4}
+                    ),
+                    newLogsDebugCollection = new window.ArangoLogs(
+                        {loglevel: 4}
+                    ),
+                    newLogsInfoCollection = new window.ArangoLogs(
+                        {loglevel: 3}
+                    ),
+                    newLogsWarningCollection = new window.ArangoLogs(
+                        {loglevel: 2}
+                    ),
+                    newLogsErrorCollection = new window.ArangoLogs(
+                        {loglevel: 1}
+                    );
+                this.logsView = new window.LogsView({
+                    logall: newLogsAllCollection,
+                    logdebug: newLogsDebugCollection,
+                    loginfo: newLogsInfoCollection,
+                    logwarning: newLogsWarningCollection,
+                    logerror: newLogsErrorCollection
+                });
+            }
+            this.logsView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
 
-    testmodalview: function() {
-      this.testModalView = new window.testModalView();
-      this.testModalView.render();
-    },
+        initialize: function () {
+            // This should be the only global object
+            window.modalView = new window.ModalView();
+            var self = this;
 
-    testview: function () {
-      this.testView = new window.testView();
-      this.testView.render();
-    },
+            this.currentDB = new window.CurrentDatabase();
+            this.currentDB.fetch({
+                async: false
+            });
 
-    initialize: function () {
-      // This should be the only global object
-      window.modalView = new window.ModalView();
-      var self = this;
+            this.userCollection = new window.ArangoUsers();
 
-      this.graphs = new window.GraphCollection();
-      this.notificationList = new window.NotificationCollection();
+            this.arangoCollectionsStore = new window.arangoCollections();
+            this.arangoDocumentStore = new window.arangoDocument();
+            arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-      window.currentDB = new window.CurrentDatabase();
-      window.currentDB.fetch({
-        async: false
-      });
+            this.arangoCollectionsStore.fetch();
+            this.foxxList = new window.FoxxCollection();
 
-      window.userCollection = new window.ArangoUsers();
+            this.footerView = new window.FooterView();
+            this.notificationList = new window.NotificationCollection();
+            this.naviView = new window.NavigationView({
+                database: new window.ArangoDatabase(),
+                currentDB: this.currentDB,
+                notificationCollection: new window.NotificationCollection(),
+                userCollection: this.userCollection
+            });
+            this.footerView.render();
+            this.naviView.render();
 
-      window.arangoDatabase = new window.ArangoDatabase();
+            $(window).resize(function () {
+                self.handleResize();
+            });
+            window.checkVersion();
+        },
 
-      window.arangoCollectionsStore = new window.arangoCollections();
-      window.arangoDocumentsStore = new window.arangoDocuments();
-      window.arangoDocumentStore = new window.arangoDocument();
+        checkUser: function () {
+            if (this.userCollection.models.length === 0) {
+                this.navigate("login", {trigger: true});
+                return false;
+            }
+            return true;
+        },
 
-      window.collectionsView = new window.CollectionsView({
-        collection: window.arangoCollectionsStore
-      });
-      window.arangoCollectionsStore.fetch();
-      window.documentView = new window.DocumentView({
-        collection: window.arangoDocumentStore
-      });
-      this.foxxList = new window.FoxxCollection();
+        login: function () {
+            if (!this.loginView) {
+                this.loginView = new window.loginView({
+                    collection: this.userCollection
+                });
+            }
+            this.loginView.render();
+            this.naviView.selectMenuItem('');
+        },
 
-      this.footerView = new window.FooterView();
-      this.naviView = new window.NavigationView({
-        notificationCollection: this.notificationList,
-        userCollection: window.userCollection
-      });
-      this.footerView.render();
-      this.naviView.render();
-      this.graphView = new window.GraphView({
-        graphs: this.graphs,
-        collection: window.arangoCollectionsStore
-      });
+        collections: function () {
+            var naviView = this.naviView, self = this;
+            if (!this.collectionsView) {
+                this.collectionsView = new window.CollectionsView({
+                    collection: this.arangoCollectionsStore
+                });
+            }
+            this.arangoCollectionsStore.fetch({
+                success: function () {
+                    self.collectionsView.render();
+                    naviView.selectMenuItem('collections-menu');
+                }
+            });
+        },
 
-      $(window).resize(function () {
-        self.handleResize();
-      });
-      window.checkVersion();
-    },
+        documents: function (colid, pageid) {
+            if (!this.documentsView) {
+                this.documentsView = new window.DocumentsView({
+                    collection: new window.arangoDocuments(),
+                    documentStore: this.arangoDocumentStore,
+                    collectionsStore: this.arangoCollectionsStore
+                });
+            }
+            this.documentsView.setCollectionId(colid, pageid);
+            this.documentsView.render();
 
-    logsAllowed: function () {
-      return (window.currentDB.get('name') === '_system');
-    },
+        },
 
-    checkUser: function () {
-      if (window.userCollection.models.length === 0) {
-        this.navigate("login", {trigger: true});
-        return false;
-      }
-      return true;
-    },
+        document: function (colid, docid) {
+            if (!this.documentView) {
+                this.documentView = new window.DocumentView({
+                    collection: this.arangoDocumentStore
+                });
+            }
+            this.documentView.colid = colid;
+            this.documentView.docid = docid;
+            this.documentView.render();
+            var type = arangoHelper.collectionApiType(colid);
+            this.documentView.type = type;
+            this.documentView.typeCheck(type);
+        },
 
-    login: function () {
-      if (!this.loginView) {
-        this.loginView = new window.loginView({
-          collection: window.userCollection
-        });
-      }
-      this.loginView.render();
-      this.naviView.selectMenuItem('');
-    },
+        shell: function () {
+            if (!this.shellView) {
+                this.shellView = new window.shellView();
+            }
+            this.shellView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
 
-    collections: function () {
-      var naviView = this.naviView;
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          window.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
+        query: function () {
+            if (!this.queryView) {
+                this.queryView = new window.queryView();
+            }
+            this.queryView.render();
+            this.naviView.selectMenuItem('query-menu');
+        },
+
+        api: function () {
+            if (!this.apiView) {
+                this.apiView = new window.ApiView();
+            }
+            this.apiView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
+
+        databases: function () {
+            if (arangoHelper.databaseAllowed() === true) {
+                if (!this.databaseView) {
+                    this.databaseView = new window.databaseView({
+                        collection: new window.ArangoDatabase()
+                    });
+                }
+                this.databaseView.render();
+                this.naviView.selectMenuItem('databases-menu');
+            }
+            else {
+                this.navigate("#", {trigger: true});
+                this.naviView.selectMenuItem('dashboard-menu');
+                $('#databaseNavi').css('display', 'none');
+                $('#databaseNaviSelect').css('display', 'none');
+            }
+        },
+
+        dashboard: function () {
+            this.naviView.selectMenuItem('dashboard-menu');
+            if (this.dashboardView === undefined) {
+                this.dashboardView = new window.DashboardView({
+                    dygraphConfig: window.dygraphConfig
+                });
+            }
+            this.dashboardView.render();
+        },
+
+        graph: function () {
+            var self = this;
+            if (!this.graphView) {
+                this.graphView = new window.GraphView({
+                    graphs: new window.GraphCollection(),
+                    collection: this.arangoCollectionsStore
+                });
+            }
+            this.arangoCollectionsStore.fetch({
+                success: function () {
+                    self.graphView.render();
+                    self.naviView.selectMenuItem('graphviewer-menu');
+                }
+            });
+        },
+
+        graphManagement: function () {
+            if (!this.graphManagementView) {
+                this.graphManagementView =
+                    new window.GraphManagementView({collection: new window.GraphCollection()});
+            }
+            this.graphManagementView.render();
+            this.naviView.selectMenuItem('graphviewer-menu');
+        },
+
+        applications: function () {
+            if (this.applicationsView === undefined) {
+                this.applicationsView = new window.ApplicationsView({
+                    collection: this.foxxList
+                });
+            }
+            this.applicationsView.reload();
+            this.naviView.selectMenuItem('applications-menu');
+        },
+
+        appDocumentation: function (key) {
+            var docuView = new window.AppDocumentationView({key: key});
+            docuView.render();
+            this.naviView.selectMenuItem('applications-menu');
+        },
+
+        handleSelectDatabase: function () {
+            this.naviView.handleSelectDatabase();
+        },
+
+        handleResize: function () {
+            if (this.dashboardView) {
+                this.dashboardView.resize();
+            }
+            var oldWidth = $('#content').width();
+            var containerWidth = $(window).width() - 70;
+            /*var spanWidth = 242;*/
+            var spanWidth = 243;
+            var divider = containerWidth / spanWidth;
+            var roundDiv = parseInt(divider, 10);
+            var newWidth = roundDiv * spanWidth - 2;
+            if (newWidth !== oldWidth && this.graphView) {
+                this.graphView.handleResize(newWidth);
+            }
+        },
+
+        userManagement: function () {
+            if (!this.userManagementView) {
+                this.userManagementView = new window.userManagementView({
+                    collection: this.userCollection
+                });
+            }
+            this.userManagementView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
+
+        userProfile: function () {
+            if (!this.userManagementView) {
+                this.userManagementView = new window.userManagementView({
+                    collection: this.userCollection
+                });
+            }
+            this.userManagementView.render(true);
+            this.naviView.selectMenuItem('tools-menu');
         }
-      });
-    },
-
-    documents: function (colid, pageid) {
-      if (!window.documentsView) {
-        window.documentsView = new window.DocumentsView({
-          collection : window.arangoDocumentsStore,
-          documentStore : window.arangoDocumentStore,
-          collectionsStore :  window.arangoCollectionsStore
-        });
-      }
-      window.documentsView.setCollectionId(colid, pageid);
-      window.documentsView.render();
-
-    },
-
-    document: function (colid, docid) {
-      window.documentView.colid = colid;
-      window.documentView.docid = docid;
-      window.documentView.render();
-      var type = arangoHelper.collectionApiType(colid);
-      window.documentView.type = type;
-      window.documentView.typeCheck(type);
-    },
-
-    shell: function () {
-      if (!this.shellView) {
-        this.shellView = new window.shellView();
-      }
-      this.shellView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    query: function () {
-      if (!this.queryView) {
-        this.queryView = new window.queryView();
-      }
-      this.queryView.render();
-      this.naviView.selectMenuItem('query-menu');
-    },
-
-    api: function () {
-      if (!this.apiView) {
-        this.apiView = new window.ApiView();
-      }
-      this.apiView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    databases: function () {
-      if (arangoHelper.databaseAllowed() === true) {
-        if (!this.databaseView) {
-          this.databaseView = new window.databaseView({
-            collection: arangoDatabase
-          });
-        }
-        this.databaseView.render();
-        this.naviView.selectMenuItem('databases-menu');
-      }
-      else {
-        this.navigate("#", {trigger: true});
-        this.naviView.selectMenuItem('dashboard-menu');
-        $('#databaseNavi').css('display', 'none');
-        $('#databaseNaviSelect').css('display', 'none');
-      }
-    },
-
-    /*
-     logs: function () {
-       if (!this.logsAllowed()) {
-         this.navigate('', { trigger: true });
-         return;
-       }
-
-       window.arangoLogsStore.fetch({
-         success: function () {
-           window.logsView.render();
-           $('#logNav a[href="#all"]').tab('show');
-           window.logsView.initLogTables();
-           window.logsView.drawTable();
-           $('#all-switch').click();
-         }
-       });
-       this.naviView.selectMenuItem('tools-menu');
-     },
-     */
-    dashboard: function () {
-      this.naviView.selectMenuItem('dashboard-menu');
-      if (this.dashboardView === undefined) {
-        this.dashboardView = new window.newDashboardView({
-          dygraphConfig: window.newDygraphConfig
-        });
-      }
-      this.dashboardView.render();
-    },
-
-    graph: function () {
-      var self = this;
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          self.graphView.render();
-          self.naviView.selectMenuItem('graphviewer-menu');
-        }
-      });
-    },
-
-    graphManagement: function () {
-      if (!this.graphManagementView) {
-        this.graphManagementView =
-        new window.GraphManagementView({collection: this.graphs});
-      }
-      this.graphManagementView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    graphAddNew: function () {
-      if (!this.addNewGraphView) {
-        this.addNewGraphView = new window.AddNewGraphView({
-          collection: window.arangoCollectionsStore,
-          graphs: this.graphs
-        });
-      }
-      this.addNewGraphView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    graphDelete: function (name) {
-      if (!this.deleteGraphView) {
-        this.deleteGraphView = new window.DeleteGraphView({
-          collection: this.graphs
-        });
-      }
-      this.deleteGraphView.render(name);
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    applications: function () {
-      if (this.applicationsView === undefined) {
-        this.applicationsView = new window.ApplicationsView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    appDocumentation: function (key) {
-      var docuView = new window.AppDocumentationView({key: key});
-      docuView.render();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    handleSelectDatabase: function () {
-      this.naviView.handleSelectDatabase();
-    },
-
-    handleResize: function () {
-      if (this.dashboardView) {
-        this.dashboardView.resize();
-      }
-      var oldWidth = $('#content').width();
-      var containerWidth = $(window).width() - 70;
-      /*var spanWidth = 242;*/
-      var spanWidth = 243;
-      var divider = containerWidth / spanWidth;
-      var roundDiv = parseInt(divider, 10);
-      var newWidth = roundDiv * spanWidth - 2;
-      /*
-       var marginWidth = ((containerWidth + 30) - newWidth) / 2;
-       $('#content').width(newWidth)
-       .css('margin-left', marginWidth)
-       .css('margin-right', marginWidth);
-       */
-      // $('.footer-right p').css('margin-right', marginWidth + 20);
-      // $('.footer-left p').css('margin-left', marginWidth + 20);
-      if (newWidth !== oldWidth) {
-        this.graphView.handleResize(newWidth);
-      }
-    },
-
-    userManagement: function () {
-      if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
-          collection: window.userCollection
-        });
-      }
-      this.userManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    userProfile: function () {
-      if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
-          collection: window.userCollection
-        });
-      }
-      this.userManagementView.render(true);
-      this.naviView.selectMenuItem('tools-menu');
-    }
-  });
+    });
 
 }());

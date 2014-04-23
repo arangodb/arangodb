@@ -111,7 +111,7 @@ window.arangoDocument = Backbone.Collection.extend({
     return self.collectionInfo;
   },
   getEdge: function (colid, docid){
-    var result = false;
+    var result = false, self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
@@ -121,7 +121,7 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        window.arangoDocumentStore.add(data);
+        self.add(data);
         result = true;
       },
       error: function(data) {
@@ -131,7 +131,7 @@ window.arangoDocument = Backbone.Collection.extend({
     return result;
   },
   getDocument: function (colid, docid) {
-    var result = false;
+    var result = false, self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
@@ -141,7 +141,7 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        window.arangoDocumentStore.add(data);
+        self.add(data);
         result = true;
       },
       error: function(data) {
@@ -195,7 +195,7 @@ window.arangoDocument = Backbone.Collection.extend({
     this.add(data);
   },
   clearDocument: function () {
-    window.arangoDocumentStore.reset();
+    this.reset();
   }
 
 });
