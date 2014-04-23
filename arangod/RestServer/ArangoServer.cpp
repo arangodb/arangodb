@@ -857,17 +857,19 @@ int ArangoServer::startupServer () {
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  int res;
+
   if (mode == OperationMode::MODE_CONSOLE) {
-    runConsole(vocbase);
+    res = runConsole(vocbase);
   }
   else if (mode == OperationMode::MODE_UNITTESTS) {
-    runUnitTests(vocbase);
+    res = runUnitTests(vocbase);
   }
   else if (mode == OperationMode::MODE_SCRIPT) {
-    runScript(vocbase);
+    res = runScript(vocbase);
   }
   else {
-    runServer(vocbase);
+    res = runServer(vocbase);
   }
 
   _applicationServer->stop();
@@ -878,7 +880,7 @@ int ArangoServer::startupServer () {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
 
-  return 0;
+  return res;
 }
 
 // -----------------------------------------------------------------------------
@@ -890,7 +892,6 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
-
   // just wait until we are signalled
   _applicationServer->wait();
 
