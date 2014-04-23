@@ -665,8 +665,8 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   TRI_js_exec_context_t* execContext;
   TRI_string_buffer_t* code;
   TRI_json_t* json;
-  size_t i;
-  size_t n;
+  size_t i, n;
+  int res;
 
   function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
   assert(function);
@@ -697,15 +697,30 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   // execute the function code
   execContext = TRI_CreateExecutionContext(code->_buffer);
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
-
-  if (! execContext) {
+  
+  if (execContext == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+  
+  res = TRI_GetErrorExecutionContext(execContext);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeExecutionContext(execContext);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
+
+  res = TRI_GetErrorExecutionContext(execContext);
   TRI_FreeExecutionContext(execContext);
-  if (! json) {
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return node;
+  }
+
+  if (json == NULL) {
     // cannot optimise the function call due to an internal error
 
     // TODO: check whether we can validate the arguments here already and return an error early
@@ -715,7 +730,8 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   // use the constant values instead of the function call node
   node = TRI_JsonNodeAql(context, json);
-  if (! node) {
+
+  if (node == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
@@ -1154,6 +1170,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   TRI_string_buffer_t* code;
   TRI_json_t* json;
   char* func;
+  int res;
 
   if (! lhs || ! TRI_IsConstantValueNodeAql(lhs) || ! rhs || ! TRI_IsConstantValueNodeAql(rhs)) {
     return node;
@@ -1207,8 +1224,35 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     return node;
   }
 
+  // check if an error occurred during context creation
+  res = TRI_GetErrorExecutionContext(execContext);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeExecutionContext(execContext);
+
+    if (res != TRI_ERROR_REQUEST_CANCELED) {
+      // we need to return this specific error code
+      res = TRI_ERROR_QUERY_SCRIPT;
+    }
+
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
+    return node;
+  }
+
   json = TRI_ExecuteResultContext(execContext);
+  res = TRI_GetErrorExecutionContext(execContext);
+
   TRI_FreeExecutionContext(execContext);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_REQUEST_CANCELED) {
+      // we need to return this specific error code
+      res = TRI_ERROR_QUERY_SCRIPT;
+    }
+
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
+    return NULL;
+  }
 
   if (json == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_SCRIPT, NULL);
