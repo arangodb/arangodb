@@ -24,7 +24,9 @@
         code: 201,
         error: false
       };
-      ajaxVerify = function() {};
+      ajaxVerify = function() {
+        return undefined;
+      };
       spyOn($, "ajax").andCallFake(function(opt) {
         ajaxVerify(opt);
         opt.success(server_result);
@@ -59,7 +61,24 @@
       expect(model.get("error")).toBeUndefined();
       expect(model.get("code")).toBeUndefined();
       expect(model.get("graph")).toBeUndefined();
-      
+    });
+
+    it("should be able to parse the raw graph", function() {
+      var id = "_graph/" + myKey,
+        rev = "12345",
+        tmpResult = server_result.graph;
+      server_result = tmpResult;
+      server_result._id = id;
+      server_result._rev = rev;
+      model.save();
+      expect(model.get("_id")).toEqual(id);
+      expect(model.get("_rev")).toEqual(rev);
+      expect(model.get("_key")).toEqual(myKey);
+      expect(model.get("edges")).toEqual(e);
+      expect(model.get("vertices")).toEqual(v);
+      expect(model.get("error")).toBeUndefined();
+      expect(model.get("code")).toBeUndefined();
+      expect(model.get("graph")).toBeUndefined();
     });
 
     it("should request /_api/graph/_key on delete", function() {
