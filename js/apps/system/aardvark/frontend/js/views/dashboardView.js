@@ -386,9 +386,10 @@
                     d3.select('#residentSizeChart svg').select('#total').remove();
                     d3.select('#residentSizeChart svg').select('#percentage').remove();
                 }
+                var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
 
                     d3.select('#residentSizeChart svg').selectAll('#total')
-                    .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                    .data(data)
                     .enter()
                     .append("text")
                     .style("font-size", dimensions.height / 8 + "px")
@@ -399,7 +400,7 @@
                     .attr("y", dimensions.height/ 2.1)
                     .text(function(d){return d;});
                     d3.select('#residentSizeChart svg').selectAll('#percentage')
-                        .data([Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"])
+                        .data(data)
                         .enter()
                         .append("text")
                         .style("font-size", dimensions.height / 10 + "px")
@@ -410,7 +411,13 @@
                         .attr("y", dimensions.height/ 2.1)
                         .text(currentP + " %");
                 nv.utils.windowResize(chart.update);
-            });
+              }, function() {
+                d3.selectAll("#residentSizeChart .nv-bar").on('click',
+                  function() {
+                    // no idea why this has to be empty, well anyways...
+                  }
+                );
+              });
         },
 
 
