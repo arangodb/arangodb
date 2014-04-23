@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
+/*jslint indent: 2, nomen: true, maxlen: 130, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,7 +726,7 @@ exports.run = function (args) {
              res.appId, 
              res.mount);
     }
-    else if (type === 'purge') {
+    else if (type === 'purge' || type === 'remove') {
       res = exports.purge(args[1]);
 
       printf("Application %s and %d mounts purged successfully\n", 
@@ -1445,37 +1445,45 @@ exports.help = function () {
   'use strict';
 
   var commands = {
-    "fetch"     : "fetches a foxx application from the central foxx-apps repository into the local repository",
-    "mount"     : "mounts a fetched foxx application to a local URL",
-    "setup"     : "setup executes the setup script (app must already be mounted)",
-    "install"   : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL " +
-                  "and sets it up",
-    "rescan"    : "rescans the foxx application directory on the server side (only needed if server-side apps " + 
-                  "directory is modified by other processes)",
-    "replace"   : "replaces an aleady existing foxx application with the current local version",
-    "teardown"  : "teardown execute the teardown script (app must be still be mounted)",
-    "unmount"   : "unmounts a mounted foxx application",
-    "uninstall" : "unmounts a mounted foxx application and calls its teardown method",
-    "purge"     : "physically removes a foxx application and all mounts",
-    "list"      : "lists all installed foxx applications",
-    "installed" : "lists all installed foxx applications (alias for list)",
-    "fetched"   : "lists all fetched foxx applications that were fetched into the local repository", 
-    "available" : "lists all foxx applications available in the local repository",
-    "info"      : "displays information about a foxx application",
-    "search"    : "searches the local foxx-apps repository",
-    "update"    : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-    "config"    : "returns configuration information from the server",
-    "help"      : "shows this help"
+    "fetch"        : "fetches a Foxx application from the central foxx-apps repository into the local repository",
+    "mount"        : "mounts a fetched Foxx application to a local URL",
+    "setup"        : "executes the setup script (app must already be mounted)",
+    "install"      : "fetches a Foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up",
+    "rescan"       : [ "rescans the Foxx application directory on the server side",
+                       "note: this is only required if the server-side apps directory was modified by other processes" ],
+    "replace"      : "replaces an existing Foxx application with the current local version found in the application directory",
+    "teardown"     : [ "executes the teardown script (app must be still be mounted)",
+                           "WARNING: this action will remove application data if the application implements teardown!" ],
+    "uninstall"    : "unmounts a mounted Foxx application and calls its teardown method",
+    "unmount"      : "unmounts a mounted Foxx application without calling its teardown method",
+    "purge"        : [ "uninstalls a Foxx application with all its mounts and physically removes the application directory",
+                       "WARNING: this will remove all data and code of the application!" ],
+    "remove"       : "alias for the 'purge' command",
+    "list"         : "lists all installed Foxx applications",
+    "installed"    : "alias for the 'list' command",
+    "fetched"      : "lists all fetched Foxx applications that were fetched into the local repository", 
+    "available"    : "lists all Foxx applications available in the local repository",
+    "info"         : "displays information about a Foxx application",
+    "search"       : "searches the local foxx-apps repository",
+    "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+    "config"       : "returns configuration information from the server",
+    "help"         : "shows this help"
   };
 
-  arangodb.print("\nThe following commands are available:");
+  arangodb.print("\nThe following commands are available:\n");
+  var keys = Object.keys(commands).sort();
 
-  var c;
-  for (c in commands) {
-    if (commands.hasOwnProperty(c)) {
-      var name = c + "                        ";
-      arangodb.printf(" %s %s\n", name.substr(0, 20), commands[c]);
+  var i;
+  for (i = 0; i < keys.length; ++i) {
+    var pad  = "                  ";
+    var name = keys[i] + pad;
+    var extra = commands[keys[i]];
+      
+    if (typeof extra !== 'string') {
+      // list of strings
+      extra = extra.join("\n  " + pad) + "\n";
     }
+    arangodb.printf(" %s %s\n", name.substr(0, pad.length), extra);
   }
 
   arangodb.print();
