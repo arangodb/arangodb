@@ -169,7 +169,7 @@ PUBLIC_FUNCTION(ReadIntoSharedMem)
   TCHAR * szName = SHARED_MEM_SEGMENT;
 
   hMapFile = OpenFileMapping(
-    FILE_MAP_ALL_ACCESS,   // read/write access
+    FILE_MAP_WRITE,        // read/write access
     FALSE,                 // do not inherit the name
     szName);               // name of mapping object
 

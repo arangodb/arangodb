@@ -226,9 +226,6 @@ describe ArangoDB do
 
       cmd = "/_api/job/" + id
       doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
-# TODO: sometimes this call returns HTTP 500, not 408
-# TODO: remove the print statement when fail reason is known
-p doc
       doc.code.should eq(408)
     end
 

@@ -2103,9 +2103,6 @@ div.resizecontainer {
     margin-left: -114px;
     width: 228px; }
 
-  .modal-inner-detail {
-    width: 228px -230px; }
-
   .dashboard-large-chart {
     width: 152px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2129,6 +2126,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -109px;
     width: 218px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: -102px; }
     div.modal-chart-detail .modal-body {
       width: 143px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2156,9 +2155,6 @@ div.resizecontainer {
     margin-left: -234px;
     width: 468px; }
 
-  .modal-inner-detail {
-    width: 468px -230px; }
-
   .dashboard-large-chart {
     width: 312px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2182,6 +2178,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -229px;
     width: 458px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 138px; }
     div.modal-chart-detail .modal-body {
       width: 383px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2209,9 +2207,6 @@ div.resizecontainer {
     margin-left: -354px;
     width: 708px; }
 
-  .modal-inner-detail {
-    width: 708px -230px; }
-
   .dashboard-large-chart {
     width: 472px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2235,6 +2230,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -349px;
     width: 698px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 378px; }
     div.modal-chart-detail .modal-body {
       width: 623px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2262,9 +2259,6 @@ div.resizecontainer {
     margin-left: -474px;
     width: 948px; }
 
-  .modal-inner-detail {
-    width: 948px -230px; }
-
   .dashboard-large-chart {
     width: 632px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2288,6 +2282,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -469px;
     width: 938px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 618px; }
     div.modal-chart-detail .modal-body {
       width: 863px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2315,9 +2311,6 @@ div.resizecontainer {
     margin-left: -594px;
     width: 1188px; }
 
-  .modal-inner-detail {
-    width: 1188px -230px; }
-
   .dashboard-large-chart {
     width: 792px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2341,6 +2334,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -589px;
     width: 1178px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 858px; }
     div.modal-chart-detail .modal-body {
       width: 1103px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2368,9 +2363,6 @@ div.resizecontainer {
     margin-left: -714px;
     width: 1428px; }
 
-  .modal-inner-detail {
-    width: 1428px -230px; }
-
   .dashboard-large-chart {
     width: 952px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2394,6 +2386,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -709px;
     width: 1418px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 1098px; }
     div.modal-chart-detail .modal-body {
       width: 1343px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2421,9 +2415,6 @@ div.resizecontainer {
     margin-left: -834px;
     width: 1668px; }
 
-  .modal-inner-detail {
-    width: 1668px -230px; }
-
   .dashboard-large-chart {
     width: 1112px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2447,6 +2438,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -829px;
     width: 1658px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 1338px; }
     div.modal-chart-detail .modal-body {
       width: 1583px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2474,9 +2467,6 @@ div.resizecontainer {
     margin-left: -954px;
     width: 1908px; }
 
-  .modal-inner-detail {
-    width: 1908px -230px; }
-
   .dashboard-large-chart {
     width: 1272px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2500,6 +2490,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -949px;
     width: 1898px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 1578px; }
     div.modal-chart-detail .modal-body {
       width: 1823px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2527,9 +2519,6 @@ div.resizecontainer {
     margin-left: -1074px;
     width: 2148px; }
 
-  .modal-inner-detail {
-    width: 2148px -230px; }
-
   .dashboard-large-chart {
     width: 1432px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2553,6 +2542,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -1069px;
     width: 2138px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 1818px; }
     div.modal-chart-detail .modal-body {
       width: 2063px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2580,9 +2571,6 @@ div.resizecontainer {
     margin-left: -1194px;
     width: 2388px; }
 
-  .modal-inner-detail {
-    width: 2388px -230px; }
-
   .dashboard-large-chart {
     width: 1592px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2606,6 +2594,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -1189px;
     width: 2378px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 2058px; }
     div.modal-chart-detail .modal-body {
       width: 2303px; }
     div.modal-chart-detail .dashboard-large-chart {
@@ -2633,9 +2623,6 @@ div.resizecontainer {
     margin-left: -1314px;
     width: 2628px; }
 
-  .modal-inner-detail {
-    width: 2628px -230px; }
-
   .dashboard-large-chart {
     width: 1752px; }
     .dashboard-large-chart .dashboard-interior-chart {
@@ -2659,6 +2646,8 @@ div.resizecontainer {
   div.modal-chart-detail {
     margin-left: -1309px;
     width: 2618px; }
+    div.modal-chart-detail .modal-inner-detail {
+      width: 2298px; }
     div.modal-chart-detail .modal-body {
       width: 2543px; }
     div.modal-chart-detail .dashboard-large-chart {
