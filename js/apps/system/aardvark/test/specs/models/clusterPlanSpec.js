@@ -83,10 +83,10 @@
                   done : function(f) {
                       f();
                   }
-              }
+              };
           });
           var result = cp.storeCredentials("name", "pw");
-          expect(cp.fetch).toHaveBeenCalled()
+          expect(cp.fetch).toHaveBeenCalled();
       });
 
       it("isSymmetricSetup with asymmetrical setup", function () {
