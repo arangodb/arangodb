@@ -35,6 +35,7 @@
         expect(testee.buttons.NOTIFICATION).toEqual("notification");
         expect(testee.buttons.NEUTRAL).toEqual("neutral");
         expect(testee.buttons.DELETE).toEqual("danger");
+        expect(testee.buttons.CLOSE).toEqual("close");
       });
 
       it("should automatically create the close button", function() {
@@ -49,7 +50,7 @@
       it("should be able to bind a callback to a button", function() {
         var btnObj = {},
           title = "Save",
-          buttons = [btnObj],
+          buttons = [],
           cbs = {
             callback: function() {
               testee.hide();
@@ -58,9 +59,8 @@
           btn;
 
         spyOn(cbs, "callback").andCallThrough();
-        btnObj.title = title;
-        btnObj.type = testee.buttons.SUCCESS;
-        btnObj.callback = cbs.callback;
+        btnObj = testee.createSuccessButton(title, cbs.callback);
+        buttons.push(btnObj);
         testShow(buttons);
         btn = $(".button-" + btnObj.type, $(div));
         expect(btn.length).toEqual(1);
@@ -74,7 +74,7 @@
           btnObj2 = {},
           btnObj3 = {},
           title = "Button_",
-          buttons = [btnObj1, btnObj2, btnObj3],
+          buttons = [],
           cbs = {
             cb1: function() {
               throw "Should never be invoked";
@@ -89,29 +89,29 @@
           btn;
 
         spyOn(cbs, "cb1");
-        btnObj1.title = title + 1;
-        btnObj1.type = testee.buttons.SUCCESS;
-        btnObj1.callback = cbs.cb1;
         spyOn(cbs, "cb2");
-        btnObj2.title = title + 2;
-        btnObj2.type = testee.buttons.NEUTRAL;
-        btnObj2.callback = cbs.cb2;
         spyOn(cbs, "cb3");
-        btnObj3.title = title + 3;
-        btnObj3.type = testee.buttons.NOTIFICATION;
-        btnObj3.callback = cbs.cb3;
+        btnObj1 = testee.createSuccessButton(title + 1, cbs.cb1);
+        btnObj2 = testee.createNeutralButton(title + 2, cbs.cb2);
+        btnObj3 = testee.createNotificationButton(title + 3, cbs.cb3);
+        buttons.push(btnObj1);
+        buttons.push(btnObj2);
+        buttons.push(btnObj3);
         testShow(buttons);
         btn = $("button[class*=button-]", $(div));
         //Three defined above + cancel + Yes & No from delete which are always present
         expect(btn.length).toEqual(6);
         //Check click events for all buttons
         btn = $(".button-" + btnObj1.type, $(div));
+        expect(btn.length).toEqual(1);
         btn.click();
         expect(cbs.cb1).toHaveBeenCalled();
-        btn = $(".button-" + btnObj2.type, $(div));
+        btn = $(".button-" + btnObj2.type + ":not(#modal-abort-delete)", $(div));
+        expect(btn.length).toEqual(1);
         btn.click();
         expect(cbs.cb2).toHaveBeenCalled();
         btn = $(".button-" + btnObj3.type, $(div));
+        expect(btn.length).toEqual(1);
         btn.click();
         expect(cbs.cb3).toHaveBeenCalled();
         testee.hide();
@@ -121,9 +121,9 @@
         var cbs;
 
         beforeEach(function() {
-          var btnObj = {},
+          var btnObj,
             title = "Delete",
-            buttons = [btnObj],
+            buttons = [],
             btn;
 
           cbs = {
@@ -132,9 +132,8 @@
             }
           };
           spyOn(cbs, "callback").andCallThrough();
-          btnObj.title = title;
-          btnObj.type = testee.buttons.DELETE;
-          btnObj.callback = cbs.callback;
+          btnObj = testee.createDeleteButton(title, cbs.callback);
+          buttons.push(btnObj);
           testShow(buttons);
           btn = $(".button-" + btnObj.type + ":not(#modal-confirm-delete)", $(div));
           expect(btn.length).toEqual(1);
@@ -158,6 +157,46 @@
 
       });
 
+      it("should create a custom close button", function() {
+        var btnObj = {},
+          title = "Cancel",
+          buttons = [],
+          cbs = {
+            callback: function() {
+              return undefined;
+            }
+          },
+          btn;
+
+        spyOn(cbs, "callback").andCallThrough();
+        btnObj = testee.createCloseButton(cbs.callback);
+        buttons.push(btnObj);
+        testShow(buttons);
+        btn = $(".button-close", $(div));
+        expect(btn.length).toEqual(1);
+        expect(btn.text()).toEqual(title);
+        spyOn(testee, "hide").andCallThrough();
+        btn.click();
+        expect(testee.hide).toHaveBeenCalled();
+        expect(cbs.callback).toHaveBeenCalled();
+      });
+
+      it("should create a disabled button", function() {
+        var btnObj = {},
+          title = "Disabled",
+          buttons = [],
+          btn;
+
+        btnObj = testee.createDisabledButton(title);
+        buttons.push(btnObj);
+        testShow(buttons);
+        btn = $(".button-neutral:not(#modal-abort-delete)", $(div));
+        expect(btn.length).toEqual(1);
+        expect(btn.text()).toEqual(title);
+        spyOn(testee, "hide").andCallThrough();
+        btn.click();
+        expect(testee.hide).not.toHaveBeenCalled();
+      });
     });
 
     describe("table content", function() {
@@ -168,57 +207,62 @@
         textDef,
         pwDef,
         cbxDef,
-        selectDef;
+        opt1Def,
+        opt2Def,
+        selectDef,
+        select2Def;
 
       beforeEach(function() {
         testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal", null);
         tdSelector = ".modal-body table tr th";
-        readOnlyDef = {
-          type: testee.tables.READONLY,
-          value: "Readonly text",
-          label: "ReadOnly",
-          info: "ReadOnly Description"
-        };
-        textDef = {
-          type: testee.tables.TEXT,
-          value: "Text value",
-          label: "Text",
-          info: "Text Description",
-          id: "textId",
-          placeholder: "Text Placeholder"
-        };
-        pwDef = {
-          type: testee.tables.PASSWORD,
-          value: "secret",
-          label: "Password",
-          info: "Password Description",
-          id: "pwdId",
-          placeholder: "PWD Placeholder"
-        };
-        cbxDef = {
-          type: testee.tables.CHECKBOX,
-          value: "myBox",
-          label: "Checkbox",
-          info: "Checkbox Description",
-          checked: true,
-          id: "cbxId"
-        };
-        selectDef = {
-          type: testee.tables.SELECT,
-          label: "Select",
-          id: "selectId",
-          selected: "v2",
-          options: [
-            {
-              value: "v1",
-              label: "l1"
-            },
-            {
-              value: "v2",
-              label: "l2"
-            }
-          ]
-        };
+        readOnlyDef = testee.createReadOnlyEntry(
+          "readOnly",
+          "Readonly text",
+          "ReadOnly",
+          "ReadOnly Description"
+        );
+        textDef = testee.createTextEntry(
+           "textId",
+           "Text",
+           "Text value",
+           "Text Description",
+           "Text Placeholder"
+        );
+        pwDef = testee.createPasswordEntry(
+          "pwdId",
+          "Password",
+          "secret",
+          "Password Description",
+          "PWD Placeholder"
+        );
+        cbxDef = testee.createCheckboxEntry(
+          "cbxId",
+          "Checkbox",
+          "myBox",
+          "Checkbox Description",
+          true
+        );
+        opt1Def = testee.createOptionEntry(
+          "l1"
+        );
+        opt2Def = testee.createOptionEntry(
+          "l2",
+          "v2"
+        );
+        selectDef = testee.createSelectEntry(
+          "selectId",
+          "Select",
+          "v2",
+          "Select Info",
+          [opt1Def, opt2Def]
+        );
+        select2Def = testee.createSelect2Entry(
+          "select2Id",
+          "Select2",
+          ["Select2Tag", "otherTag"],
+          "Select Info",
+          "Select your tags"
+        );
       });
 
       it("should render readonly", function() {
@@ -302,6 +346,19 @@
         // expect($(fields[2]).text()).toEqual(lbl);
       });
 
+      it("should render a select2", function() {
+        var content = [select2Def],
+          fields,
+          select;
+
+        testShow(content);
+        fields = $(tdSelector);
+        expect($(fields[0]).text()).toEqual(select2Def.label + ":");
+        select = $("#" + select2Def.id);
+        expect(_.pluck(select.select2("data"), "text")).toEqual(select2Def.value);
+        // expect($(fields[2]).text()).toEqual(lbl);
+      });
+
       it("should render several types in a mix", function() {
         var content = [
             readOnlyDef,
@@ -312,15 +369,25 @@
           ],
           rows;
 
+        testShow(content);
         rows = $(".modal-body table tr");
+        expect(rows.length).toEqual(content.length);
         _.each(rows, function(v, k) {
-          expect($("td:first-child", $(v)).text()).toEqual(content[k].label + ":");
+          expect($("th:first-child", $(v)).text()).toEqual(content[k].label + ":");
         });
-        
-
       });
 
-      
+    });
+
+    it("should delegate more events", function() {
+      var myEvents = {
+        "my": "events"
+      };
+      expect(testee.events).not.toEqual(myEvents);
+      spyOn(testee, "delegateEvents");
+      testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, myEvents);
+      expect(testee.events).toEqual(myEvents);
+      expect(testee.delegateEvents).toHaveBeenCalled();
     });
 
   });
