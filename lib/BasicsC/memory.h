@@ -178,6 +178,17 @@ void TRI_SystemFree (void*);
 void* TRI_WrappedReallocate (void*, long);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief align a pointer to 64 bytes by adding up to 63 bytes, this is
+/// to be in line with cache lines on most machines. Do not forget to
+/// allocate an additional 64 bytes and to free the original pointer, 
+/// not the aligned one!
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void* TRI_Align64 (void* p) {
+  return (void*) ( ((uintptr_t) p + 63) & (~((uintptr_t) 63)) );
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
