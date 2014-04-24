@@ -124,6 +124,9 @@ arangoDatabase, btoa, _*/
         if (this.dashboardView) {
             this.dashboardView.resize();
         }
+        if (this.showClusterView) {
+            this.showClusterView.resize();
+        }
     },
 
     planTest: function() {
@@ -167,7 +170,7 @@ arangoDatabase, btoa, _*/
 
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-          dygraphConfig: window.dygraphConfig,
+          dygraphConfig: this.dygraphConfig,
           serverToShow : this.serverToShow
       });
       this.dashboardView.render();

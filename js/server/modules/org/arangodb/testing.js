@@ -119,7 +119,6 @@ function makeTestingArgs () {
            "--server.keyfile",       fs.join(topDir,"UnitTests","server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
-           "--javascript.gc-interval",         "1",
            "--javascript.app-path",            fs.join(topDir,"js","apps"),
            "--javascript.startup-directory",   fs.join(topDir,"js"),
            "--ruby.action-directory",          fs.join(topDir,"mr","actions"),
