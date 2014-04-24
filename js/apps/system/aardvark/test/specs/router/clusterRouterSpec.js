@@ -32,6 +32,8 @@
                 stopUpdating: function () {
                 },
                 render: function () {
+                },
+                resize: function () {
                 }
             };
             shutdownButtonViewDummy = {
@@ -450,9 +452,12 @@
 
             it("should resize the dashboardView", function () {
                 spyOn(serverDashboardViewDummy, "resize");
+                spyOn(showClusterViewDummy, "resize");
                 r.dashboardView = serverDashboardViewDummy;
+                r.showClusterView = showClusterViewDummy;
                 r.handleResize();
                 expect(serverDashboardViewDummy.resize).toHaveBeenCalled();
+                expect(showClusterViewDummy.resize).toHaveBeenCalled();
             });
 
 

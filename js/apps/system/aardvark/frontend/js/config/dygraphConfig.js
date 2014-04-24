@@ -66,6 +66,7 @@
         colors: ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
             "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
+
         //figure dependend options
         figureDependedOptions: {
             clusterAverageRequestTime : {
