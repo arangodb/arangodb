@@ -81,8 +81,7 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                  sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE+64, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  array->_table = (TRI_multi_pointer_entry_t*) 
-                  (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
+  array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
 
   array->_nrAlloc = INITIAL_SIZE;
 
@@ -638,8 +637,7 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   array->_nrAlloc = TRI_NearPrime((uint64_t) size);
   array->_table_alloc = TRI_Allocate(array->_memoryZone, 
                  array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
-  array->_table = (TRI_multi_pointer_entry_t*) 
-                  (((uint64_t) array->_table_alloc + 63) & ~((uint64_t)63));
+  array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;

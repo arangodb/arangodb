@@ -42,8 +42,6 @@ window.Users = Backbone.Model.extend({
       processData: false,
       success: function(data) {
         result = data.result;
-      },
-      error: function(data) {
       }
     });
     return result;
@@ -57,11 +55,7 @@ window.Users = Backbone.Model.extend({
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
-      processData: false,
-      success: function(data) {
-      },
-      error: function(data) {
-      }
+      processData: false
     });
   },
 
@@ -73,11 +67,7 @@ window.Users = Backbone.Model.extend({
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({"extra": {"name":name, "img":img}}),
       contentType: "application/json",
-      processData: false,
-      success: function(data) {
-      },
-      error: function(data) {
-      }
+      processData: false
     });
   }
 

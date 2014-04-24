@@ -935,7 +935,7 @@ int main (int argc, char* argv[]) {
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "Invalid server version '" << versionString << "'" << endl;
+    cerr << "invalid server version '" << versionString << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
@@ -943,7 +943,7 @@ int main (int argc, char* argv[]) {
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "Got an incompatible server version '" << versionString << "'" << endl;
+    cerr << "got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }

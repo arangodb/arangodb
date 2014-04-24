@@ -15,8 +15,7 @@
     alreadyCalledDetailChart: [],
 
     events: {
-      "click .dashboard-chart": "showDetail",
-      "click #backToCluster": "returnToClusterView"
+      "click .dashboard-chart": "showDetail"
     },
 
     tendencies: {
@@ -90,7 +89,6 @@
       $('#modal-dialog').on('hidden', function () {
         self.hidden();
       });
-      //$('.modal-body').css({"max-height": "100%" });
       $('#modal-dialog').toggleClass("modal-chart-detail", true);
       options.height = $('.modal-chart-detail').height() * 0.7;
       options.width = $('.modal-chart-detail').width() * 0.84;
@@ -113,9 +111,7 @@
         div = "#" + div;
       }
       var height, width;
-        console.log(div, $(div).height(), $(div).width());
       $(div).attr("style", "");
-        console.log(div, $(div).height(), $(div).width());
       height = $(div).height();
       width = $(div).width();
       return {
@@ -560,9 +556,7 @@
       g.resize(dimensions.width, dimensions.height);
     });
     if (this.detailGraph) {
-      console.log(this.detailGraph);
-      dimensions = self.getCurrentSize(this.detailGraph.maindiv_.id);
-      console.log(dimensions);
+      dimensions = this.getCurrentSize(this.detailGraph.maindiv_.id);
       this.detailGraph.resize(dimensions.width, dimensions.height);
     }
     this.prepareD3Charts(true);
@@ -577,19 +571,12 @@
     }
     this.getStatistics();
     this.prepareDygraphs();
-    console.log("STARTING");
     if (this.isUpdating) {
-      console.log("STARTING", this.isUpdating);
       this.prepareD3Charts();
       this.prepareResidentSize();
       this.updateTendencies();
     }
     this.startUpdating();
-  },
-
-
-  returnToClusterView: function () {
-    window.history.back();
   }
 });
 }());
