@@ -194,7 +194,7 @@ static void refreshLine(const char *prompt, struct current *current);
 static void refreshMultiLine(const char *prompt, struct current *current);
 static void refreshPage(const struct linenoiseCompletions * lc, struct current *current);
 static void initLinenoiseLine(struct current *current);
-static size_t new_line_numbers(size_t pos, int cols, size_t pchars);
+static size_t new_line_numbers(size_t pos, struct current *current);
 static int next_allowed_x(size_t pos, int cols, int pchars);
 static void setCursorPosXY(struct current *current, int x, int y);
 static void initPrompt(struct current *current, const char *prompt);
@@ -320,7 +320,7 @@ static void cursorToLeft(struct current *current)
      * how many lines are need to display the current->pos characters of the
      * current buffer 
      */
-    size_t number_lines = new_line_numbers(current->pos, current->cols, current->pchars);
+    size_t number_lines = new_line_numbers(current->pos, current);
     /**
      * move cursor number_lines above
      */ 
@@ -355,7 +355,7 @@ static void eraseEol(struct current *current)
     /**
      * number of additional lines to display chars characters (the quite buffer)
      */ 
-    size_t number_lines = new_line_numbers(current->chars, current->cols, current->pchars);
+    size_t number_lines = new_line_numbers(current->chars, current);
 
     size_t i;
    /**
@@ -834,7 +834,8 @@ static void eraseEol(struct current *current)
   DWORD n;
   int pchars = current->cols;
   size_t plen = utf8_strlen(current->buf, strlen(current->buf));
-  size_t num_lines = new_line_numbers(current->chars, current->cols, plen);
+  // aufassen, plen
+  size_t num_lines = new_line_numbers(current->chars, current);
 
   pos.X = plen;
   pos.Y = current->iy;
@@ -1076,7 +1077,7 @@ static void refreshMultiLine(const char *prompt, struct current *current)
  //   fd_printf(current->fd, "\x1b[u");
 
     x = next_allowed_x(current->pos, current->cols, pchars);
-    y = (int)new_line_numbers(current->pos, current->cols, pchars);
+    y = (int)new_line_numbers(current->pos, current);
     /* move cursor to: */
     if(x == 0) { 
       setCursorPosXY(current, x, y);
@@ -1087,14 +1088,14 @@ static void refreshMultiLine(const char *prompt, struct current *current)
 }
 #endif
 
-static size_t new_line_numbers(size_t pos, int cols, size_t pchars) 
+static size_t new_line_numbers(size_t pos, struct current * current)
 {
-  if (pos < cols - pchars)
+  if (pos < current->cols - current->pchars)
   {
     return 0;
   }
   else {
-    return ((pos - (cols - pchars)) / cols) + 1;
+    return ((pos - (current->cols - current->pchars)) / current->cols) + 1;
   }
 }
 
@@ -1192,11 +1193,11 @@ static void refreshLine(const char *prompt, struct current *current)
   /*move cursor to initial coordinates of the editing line*/
   setCursorPosXY(current, current->ix, current->iy);
   /*when cursor is at the last line of the buffer scroll the content n lines above*/
-  scrollWhenNeed(current, new_line_numbers(current->chars, current->cols, pchars), 0);
+  scrollWhenNeed(current, new_line_numbers(current->chars, current), 0);
   /*show characters*/
   outputChars(current, buf, chars);
   int new_x = next_allowed_x(pos, current->cols, pchars);
-  size_t new_lines = new_line_numbers(pos, current->cols, pchars);
+  size_t new_lines = new_line_numbers(pos, current);
   size_t new_y = current->y + new_lines;
 
   if (new_y >= current->rows) 
@@ -1220,7 +1221,7 @@ static void refreshLine(const char *prompt, struct current *current)
  * We assume that the actual position of the cursor is at the END of the buffer.
  */ 
 static void setCursorPosXY(struct current *current, int x, int y) {
-    int total_new_lines = (int)new_line_numbers(current->chars, current->cols, current->pchars);
+    int total_new_lines = (int)new_line_numbers(current->chars, current);
     // check if we are at the last column of the terminal
     if ((current->chars+current->pchars) % current->cols == 0) {
     // linenumbers assumes that some characters are alreay in the last row
