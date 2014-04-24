@@ -113,9 +113,7 @@
         div = "#" + div;
       }
       var height, width;
-        console.log(div, $(div).height(), $(div).width());
       $(div).attr("style", "");
-        console.log(div, $(div).height(), $(div).width());
       height = $(div).height();
       width = $(div).width();
       return {
@@ -560,9 +558,7 @@
       g.resize(dimensions.width, dimensions.height);
     });
     if (this.detailGraph) {
-      console.log(this.detailGraph);
-      dimensions = self.getCurrentSize(this.detailGraph.maindiv_.id);
-      console.log(dimensions);
+      dimensions = this.getCurrentSize(this.detailGraph.maindiv_.id);
       this.detailGraph.resize(dimensions.width, dimensions.height);
     }
     this.prepareD3Charts(true);
@@ -577,9 +573,7 @@
     }
     this.getStatistics();
     this.prepareDygraphs();
-    console.log("STARTING");
     if (this.isUpdating) {
-      console.log("STARTING", this.isUpdating);
       this.prepareD3Charts();
       this.prepareResidentSize();
       this.updateTendencies();

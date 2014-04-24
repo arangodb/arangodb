@@ -18,6 +18,7 @@
   "frontend/js/lib/backbone.js",
   "frontend/js/lib/d3.v3.min.js",
   "frontend/js/lib/nv.d3.js",
+  "frontend/js/lib/dygraph-combined.js",
   "frontend/js/lib/d3.fisheye.js",
   "frontend/js/lib/ColVis.js",
   "frontend/js/lib/bootstrap.js",
@@ -118,9 +119,9 @@
   "frontend/js/collections/arangoDatabase.js",
   "frontend/js/collections/arangoReplication.js",
   "frontend/js/collections/arangoUsers.js",
+  "frontend/js/collections/arangoLogs.js",
   "frontend/js/collections/arangoStatisticsCollection.js",
   "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
-  "frontend/js/collections/arangoUsers.js",
   "frontend/js/collections/foxxCollection.js",
   "frontend/js/collections/graphCollection.js",
   "frontend/js/collections/notificationCollection.js",
@@ -130,9 +131,6 @@
   "clusterFrontend/js/collections/clusterCollections.js",
   "clusterFrontend/js/collections/clusterShards.js",
   "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
-  "frontend/js/collections/notificationCollection.js",
-  "frontend/js/collections/_paginatedCollection.js",
-  "frontend/js/collections/arangoLogs.js",
 
   "frontend/js/views/_paginationView.js",
   "frontend/js/views/modalView.js",
@@ -212,6 +210,7 @@
   "test/specs/arango/arangoSpec.js",
 
   "test/specs/models/currentDatabaseSpec.js",
+  "test/specs/models/clusterPlanSpec.js",
   "test/specs/models/graphSpec.js",
   "test/specs/models/arangoCollectionModelSpec.js",
   "test/specs/models/arangoDatabaseSpec.js",
@@ -223,6 +222,8 @@
   "test/specs/models/foxxSpec.js",
   "test/specs/models/clusterCoordinatorSpec.js",
 
+  "test/specs/config/dygraphConfigSpec.js",
+
   "test/specs/collections/clusterServersSpec.js",
   "test/specs/collections/clusterDatabasesSpec.js",
   "test/specs/collections/clusterCollectionsSpec.js",
@@ -232,6 +233,7 @@
   "test/specs/collections/arangoDatabaseSpec.js",
   "test/specs/collections/arangoDocumentSpec.js",
   "test/specs/collections/arangoDocumentsSpec.js",
+  "test/specs/collections/arangoLogsSpec.js",
   "test/specs/collections/arangoReplicationSpec.js",
   "test/specs/collections/arangoStatisticsCollectionSpec.js",
   "test/specs/collections/arangoStatisticsDescriptionCollectionSpec.js",

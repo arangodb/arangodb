@@ -169,12 +169,7 @@
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState === 4 && xhr.status === 201) {
-            result =  xhr.responseText;
-            try {
-              result =  true;
-            } catch (e) {
-              result =  "Error: " + e;
-            }
+            result =  true;
           } else {
             result =  "Upload error";
           }
