@@ -13,7 +13,7 @@
     };
   };
 
-  var createTextStub = function(type, label, value, info) {
+  var createTextStub = function(type, label, value, info, placeholder, mandatory) {
     var obj = {
       type: type,
       label: label
@@ -23,6 +23,12 @@
     }
     if (info) {
       obj.info = info;
+    }
+    if (placeholder) {
+      obj.placeholder = placeholder;
+    }
+    if (mandatory) {
+      obj.mandatory = mandatory;
     }
     return obj;
   };
@@ -108,38 +114,20 @@
     },
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info);
+      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
     createSelect2Entry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.SELECT2, label, value, info);
+      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
     createPasswordEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.PASSWORD, label, value, info);
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
