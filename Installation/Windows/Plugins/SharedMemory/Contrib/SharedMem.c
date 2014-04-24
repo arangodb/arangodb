@@ -34,19 +34,19 @@ extra_parameters* g_extra = NULL;
 /// handle for the memory segment
 ///////////////////////////////////////////////////////////
 
-HANDLE hMapFile = NULL;
+// HANDLE hMapFile = NULL;
 
 ///////////////////////////////////////////////////////////
 /// content of the memory segment
 ///////////////////////////////////////////////////////////
 
-LPCTSTR pBuf = NULL;
+// LPCTSTR pBuf = NULL;
 
 ///////////////////////////////////////////////////////////
 /// content of the memory segment
 ///////////////////////////////////////////////////////////
 
-TCHAR * SHARED_MEM_SEGMENT = "__TRIANGES_INSTALLER_STATE__"; 
+TCHAR * SHARED_MEM_SEGMENT = "__TRIANGES_INSTALLER_STATE__";
 
 ///////////////////////////////////////////////////////////
 ///                                    PLUG-IN Handling
@@ -55,7 +55,7 @@ TCHAR * SHARED_MEM_SEGMENT = "__TRIANGES_INSTALLER_STATE__";
 
 
 #define PUBLIC_FUNCTION(Name) \
-EXTERN_C void __declspec(dllexport) __cdecl Name(HWND hWndParent, int string_size, TCHAR* variables, stack_t** stacktop, extra_parameters* extra) \
+  EXTERN_C void __declspec(dllexport) __cdecl Name(HWND hWndParent, int string_size, TCHAR* variables, stack_t** stacktop, extra_parameters* extra) \
 { \
   EXDLL_INIT(); \
   g_string_size = string_size; \
@@ -86,9 +86,10 @@ void PushReturnValue(int value);
 ///
 ///////////////////////////////////////////////////////////
 
-PUBLIC_FUNCTION(CreateSharedMemory) 
+PUBLIC_FUNCTION(CreateSharedMemory)
 {
-
+  HANDLE hMapFile = NULL;
+  LPCTSTR pBuf = NULL;
   TCHAR * szName = SHARED_MEM_SEGMENT;
   SECURITY_ATTRIBUTES attr;
   attr.bInheritHandle = 1;
@@ -106,12 +107,12 @@ PUBLIC_FUNCTION(CreateSharedMemory)
 
   if (hMapFile == NULL)
   {
- 
-     PushReturnValue(GetLastError()); // Could not create file mapping object
-     return;
+
+    PushReturnValue(GetLastError()); // Could not create file mapping object
+    return;
   }
   // memory was created succefull
-   // generate the buffer for input/output operatíons
+  // generate the buffer for input/output operatíons
   pBuf = (LPTSTR)MapViewOfFile(hMapFile,   // handle to map object
     FILE_MAP_ALL_ACCESS, // read/write permission
     0,
@@ -126,7 +127,7 @@ PUBLIC_FUNCTION(CreateSharedMemory)
   }
 
 
-    PushReturnValue(0);
+  PushReturnValue(0);
 }
 
 PUBLIC_FUNCTION_END
@@ -137,22 +138,51 @@ PUBLIC_FUNCTION_END
 ///
 ///////////////////////////////////////////////////////////
 
-PUBLIC_FUNCTION(WriteIntoSharedMem) 
+PUBLIC_FUNCTION(WriteIntoSharedMem)
 {
-   if(!pBuf) {
-    PushReturnValue(-1);
-     return;
-   }
+  HANDLE hMapFile = NULL;
+  LPCTSTR pBuf = NULL;
 
-   TCHAR * szMsg = (TCHAR*) LocalAlloc(LPTR, g_string_size * sizeof(TCHAR));
-   if(!szMsg) {
+  TCHAR * szMsg = (TCHAR*)LocalAlloc(LPTR, g_string_size * sizeof(TCHAR));
+  if (!szMsg) {
     PushReturnValue(-2); // memory could not be allocated
-     return;
-   }
-   // read name for mem segment from stack
+    return;
+  }
+  hMapFile = OpenFileMapping(
+    FILE_MAP_WRITE,        // read/write access
+    FALSE,                 // do not inherit the name
+    SHARED_MEM_SEGMENT);               // name of mapping object
+
+  if (hMapFile == NULL)
+  {
+    PushReturnValue(GetLastError());
+    // _tprintf(TEXT("Could not open file mapping object (%d).\n"),
+    //  GetLastError());
+    return;
+  }
+
+  pBuf = (LPTSTR)MapViewOfFile(hMapFile, // handle to map object
+    FILE_MAP_ALL_ACCESS,  // read/write permission
+    0,
+    0,
+    BUF_SIZE);
+
+  if (pBuf == NULL)
+  {
+    // _tprintf(TEXT("Could not map view of file (%d).\n"),
+    //   GetLastError());
+
+    PushReturnValue(GetLastError());
+
+    CloseHandle(hMapFile);
+
+    return;
+  }
+
+  // read name for mem segment from stack
   popstring(szMsg);
   CopyMemory((PVOID)pBuf, szMsg, (_tcslen(szMsg) * sizeof(TCHAR)));
-  PushReturnValue(0); 
+  PushReturnValue(0);
 }
 PUBLIC_FUNCTION_END
 
@@ -162,21 +192,20 @@ PUBLIC_FUNCTION_END
 ///
 ///////////////////////////////////////////////////////////
 
-PUBLIC_FUNCTION(ReadIntoSharedMem) 
+PUBLIC_FUNCTION(ReadIntoSharedMem)
 {
-  HANDLE hMapFile;
-  LPCTSTR pBuf;
-  TCHAR * szName = SHARED_MEM_SEGMENT;
+  HANDLE hMapFile = NULL;
+  LPCTSTR pBuf = NULL;
 
   hMapFile = OpenFileMapping(
     FILE_MAP_WRITE,        // read/write access
     FALSE,                 // do not inherit the name
-    szName);               // name of mapping object
+    SHARED_MEM_SEGMENT);               // name of mapping object
 
   if (hMapFile == NULL)
   {
     PushReturnValue(GetLastError());
-   // _tprintf(TEXT("Could not open file mapping object (%d).\n"),
+    // _tprintf(TEXT("Could not open file mapping object (%d).\n"),
     //  GetLastError());
     return;
   }
@@ -210,17 +239,22 @@ PUBLIC_FUNCTION(ReadIntoSharedMem)
 }
 PUBLIC_FUNCTION_END
 
-PUBLIC_FUNCTION(RemoveSharedMem) 
-{
-  if(pBuf) { 
-    UnmapViewOfFile(pBuf);
-    CloseHandle(hMapFile);
-    pBuf = NULL;
-    hMapFile = NULL;
-    PushReturnValue(0);
+PUBLIC_FUNCTION(ExistsSharedMem)
+{ 
+  HANDLE hMapFile = NULL;
+
+  hMapFile = OpenFileMapping(
+    FILE_MAP_WRITE,        // read/write access
+    FALSE,                 // do not inherit the name
+    SHARED_MEM_SEGMENT);               // name of mapping object
+
+  if (hMapFile == NULL)
+  {
+    PushReturnValue(GetLastError());
+    // _tprintf(TEXT("Could not open file mapping object (%d).\n"),
+    //  GetLastError());
     return;
   }
-  PushReturnValue(GetLastError());
 }
 
 PUBLIC_FUNCTION_END
