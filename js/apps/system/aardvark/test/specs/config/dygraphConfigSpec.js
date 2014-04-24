@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, Backbone, it, spyOn, expect*/
+/*global describe, jasmine, beforeEach, afterEach, Backbone, it, spyOn, expect*/
 /*global $*/
 
 (function () {
@@ -39,7 +39,7 @@
                 c : {
                     x : 2
                 }
-            }
+            };
 
 
             expect(col.mergeObjects(o1, o2, ["b", "c"])).toEqual(
@@ -68,7 +68,7 @@
                     b : {
                         x : 2
                     }
-                }
+                };
 
 
             expect(col.mergeObjects(o1, o2)).toEqual(
@@ -178,7 +178,8 @@
                     },
                     requests: {
                         header: "Requests",
-                        labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
+                        labels: ["datetime", "GET", "PUT", "POST", "DELETE",
+                            "PATCH", "HEAD", "OPTIONS", "OTHER"],
                         stackedGraph: true,
                         div: "requestsChart"
                     },
@@ -187,20 +188,31 @@
                     }
                 }
             );
-            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.axisLabelFormatter(0)).toEqual(0);
-            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.axisLabelFormatter(3.4567)).toEqual(3.46);
-            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.valueFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.
+                axisLabelFormatter(0)).toEqual(0);
+            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.
+                axisLabelFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.clusterAverageRequestTime.axes.y.
+                valueFormatter(3.4567)).toEqual(3.46);
 
-            expect(col.figureDependedOptions.systemUserTime.axes.y.axisLabelFormatter(0)).toEqual(0);
-            expect(col.figureDependedOptions.systemUserTime.axes.y.axisLabelFormatter(3.4567)).toEqual(3.46);
-            expect(col.figureDependedOptions.systemUserTime.axes.y.valueFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.systemUserTime.axes.y.
+                axisLabelFormatter(0)).toEqual(0);
+            expect(col.figureDependedOptions.systemUserTime.axes.y.
+                axisLabelFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.systemUserTime.axes.y.
+                valueFormatter(3.4567)).toEqual(3.46);
 
-            expect(col.figureDependedOptions.totalTime.axes.y.axisLabelFormatter(0)).toEqual(0);
-            expect(col.figureDependedOptions.totalTime.axes.y.axisLabelFormatter(3.4567)).toEqual(3.46);
-            expect(col.figureDependedOptions.totalTime.axes.y.valueFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.totalTime.axes.y.
+                axisLabelFormatter(0)).toEqual(0);
+            expect(col.figureDependedOptions.totalTime.axes.y.
+                axisLabelFormatter(3.4567)).toEqual(3.46);
+            expect(col.figureDependedOptions.totalTime.axes.y.
+                valueFormatter(3.4567)).toEqual(3.46);
 
-            expect(col.figureDependedOptions.residentSize.axes.y.axisLabelFormatter(3.4567)).toEqual("346%");
-            expect(col.figureDependedOptions.residentSize.axes.y.valueFormatter(3.4567)).toEqual("346%");
+            expect(col.figureDependedOptions.residentSize.axes.y.
+                axisLabelFormatter(3.4567)).toEqual("346%");
+            expect(col.figureDependedOptions.residentSize.axes.y.
+                valueFormatter(3.4567)).toEqual("346%");
 
         });
 
@@ -256,10 +268,12 @@
             });
             expect(res.div).toEqual("systemUserTimeChart");
             expect(res.header).toEqual("System and User Time");
-            expect(res.labels).toEqual(["datetime", "System Time", "User Time"]);
+            expect(res.labels).toEqual(["datetime",
+                "System Time", "User Time"]);
             expect(res.labelsDiv ).toEqual(null);
             expect(res.legend ).toEqual("always");
-            expect(res.axes.x.valueFormatter(-1)).toEqual(col.xAxisFormat(-1));
+            expect(res.axes.x.valueFormatter(-1)).toEqual(
+                col.xAxisFormat(-1));
         });
 
 
@@ -288,7 +302,8 @@
             expect(res.labelsKMG2 ).toEqual(false);
             expect(res.div).toEqual("pageFaultsChart");
             expect(res.header).toEqual("Page Faults");
-            expect(res.labels).toEqual(["datetime", "Major Page Faults", "Minor Page Faults"]);
+            expect(res.labels).toEqual(["datetime", "Major Page Faults",
+                "Minor Page Faults"]);
             expect(res.legend ).toEqual("always");
             expect(res.visibility).toEqual([true, true]);
         });
