@@ -3675,7 +3675,7 @@ function SLEEP (duration) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
   }
 
-  INTERNAL.wait(duration);
+  INTERNAL.sleep(duration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

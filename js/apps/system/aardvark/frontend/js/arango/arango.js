@@ -34,26 +34,6 @@
     },
     toString: function (v) {
       return v.major + '.' + v.minor + '.' + v.patch;
-    },
-    toStringMainLine: function (v) {
-      return v.major + '.' + v.minor;
-    },
-    compareVersions: function (l, r) {
-      if (l.major === r.major) {
-        if (l.minor === r.minor) {
-          if (l.patch === r.patch) {
-            return 0;
-          }
-          return l.patch - r.patch;
-        }
-        return l.minor - r.minor;
-      }
-      return l.major - r.major;
-    },
-    compareVersionStrings: function (l, r) {
-      l = window.versionHelper.fromString(l);
-      r = window.versionHelper.fromString(r);
-      return window.versionHelper.compareVersions(l, r);
     }
   };
 
@@ -164,10 +144,14 @@
       */
     },
 
+    setDocumentStore : function (a) {
+        this.arangoDocumentStore = a;
+    },
+
     collectionApiType: function (identifier, refresh) {
       // set "refresh" to disable caching collection type
       if (refresh || this.CollectionTypes[identifier] === undefined) {
-        this.CollectionTypes[identifier] = window.arangoDocumentStore
+        this.CollectionTypes[identifier] = this.arangoDocumentStore
         .getCollectionInfo(identifier).type;
       }
       if (this.CollectionTypes[identifier] === 3) {

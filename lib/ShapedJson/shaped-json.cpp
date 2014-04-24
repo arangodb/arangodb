@@ -1596,10 +1596,8 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
                                                TRI_shape_t const* shape,
                                                char const* data,
                                                uint64_t size) {
-  TRI_shape_length_short_string_t l;
   int res;
 
-  l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
   res = TRI_AppendCharStringBuffer(buffer, '"');
@@ -1632,10 +1630,8 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
                                               TRI_shape_t const* shape,
                                               char const* data,
                                               uint64_t size) {
-  TRI_shape_length_long_string_t l;
   int res;
 
-  l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
   res = TRI_AppendCharStringBuffer(buffer, '"');

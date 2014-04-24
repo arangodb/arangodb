@@ -121,29 +121,32 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
                                                  const char* file,
                                                  int line) {
   v8::HandleScope scope;
-
-  if (errorNumber == 3) {
+  
+  if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_ERROR("encountered out-of-memory error in %s at line %d", file, line);
+  }
+
+  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
+  if (errorMessage.IsEmpty()) {
     return scope.Close(v8::Object::New());
   }
-  else {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-    v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
-
-    v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
-
-    errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
-    errorObject->Set(v8::String::New("errorMessage"), errorMessage);
-
-    v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
-
-    if (! proto.IsEmpty()) {
-      errorObject->SetPrototype(proto);
-    }
-
-    return scope.Close(errorObject);
+  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  if (errorObject.IsEmpty()) {
+    return scope.Close(v8::Object::New());
   }
+
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
+  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
+
+  if (! proto.IsEmpty()) {
+    errorObject->SetPrototype(proto);
+  }
+
+  return scope.Close(errorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

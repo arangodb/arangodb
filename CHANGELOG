@@ -81,7 +81,20 @@ v2.1.0 (XXXX-XX-XX)
 * export the sort attribute for graph traversals to the HTTP interface
 
 
-v2.0.6 (XXXX-XX-XX)
+v2.0.7 (XXXX-XX-XX)
+-------------------
+
+* issue #839: Foxx Manager missing "unfetch"
+
+* fixed a race condition at startup
+
+  this fixes undefined behavior in case the logger was involved directly at 
+  startup, before the logger initialization code was called. This should have
+  occurred only for code that was executed before the invocation of main(), 
+  e.g. during ctor calls of statically defined objects.
+
+
+v2.0.6 (2014-04-22)
 -------------------
 
 * fixed issue #835: arangosh doesn't show correct database name

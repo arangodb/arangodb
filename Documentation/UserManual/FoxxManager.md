@@ -106,6 +106,10 @@ Now let's remove the instance mounted under `/hello`.
     unix> foxx-manager uninstall /hello
     Application app:hello-foxx:1.2.2 unmounted successfully from mount point /hello
 
+Note that "uninstall" is a combination of "teardown" and "unmount". This allows the 
+application to clean up its own data. Internally, this will call the application's 
+`teardown` script as defined in the application manifest.
+
 Behind the Foxx Manager scenes{#UserManualFoxxManagerBehindScences}
 ===================================================================
 
@@ -121,8 +125,8 @@ There are five steps when installing or uninstalling applications.
 * `unmount` the application
 
 When installing an application, the steps "fetch", "mount", and "setup" are 
-executed automatically. When uninstalling an application, the steps `teardown` 
-and `unmount` are executed automatically.
+executed automatically. When uninstalling an application, the steps "teardown" 
+and "unmount" are executed automatically.
 
 Installing an application manually
 ----------------------------------
@@ -163,7 +167,7 @@ If you execute
 
     unix> foxx-manager fetch github "fceller/hello-foxx" "v1.2.1"
 
-then the version 1.2.1 of the application will be downloaded. The command `fetched` lists all fetched application.
+then the version 1.2.1 of the application will be downloaded. The command `fetched` lists all fetched applications.
 
     unix> foxx-manager fetched
     Name          Author          Description                      AppID                   Version    Path             
@@ -241,6 +245,17 @@ This will drop the collection `hello_exists`. The application is,
 however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
+
+Removing all mounts of an application
+-------------------------------------
+
+The same application might be mounted multiple times under different mount
+paths. To get rid of all mounted instances of an application, there is the
+"purge" command. "purge" will unmount and tear down all mounted instances
+of the application, and finally will remove the application directory, too.
+
+This will remove all data of all instances of the application and also the
+application directory, code and configured. Use with care!
 
 Making changes to an existing application
 -----------------------------------------
@@ -341,24 +356,34 @@ Use `help` to see all commands
     unix> foxx-manager help
 
     The following commands are available:
-     fetch                fetches a foxx application from the central foxx-apps repository into the local repository
-     mount                mounts a fetched foxx application to a local URL
-     setup                setup executes the setup script (app must already be mounted)
-     install              fetches a foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up
-     replace              replaces an aleady existing foxx application with the current local version
-     teardown             teardown execute the teardown script (app must be still be mounted)
-     unmount              unmounts a mounted foxx application
-     uninstall            unmounts a mounted foxx application and calls its teardown method
-     purge                physically removes a foxx application and all mounts
-     list                 lists all installed foxx applications
-     installed            lists all installed foxx applications (alias for list)
-     fetched              lists all fetched foxx applications that were fetched into the local repository
-     available            lists all foxx applications available in the local repository
-     info                 displays information about a foxx application
-     search               searches the local foxx-apps repository
-     update               updates the local foxx-apps repository with data from the central foxx-apps repository
-     config               returns configuration information from the server
-     help                 shows this help
+
+     available          lists all Foxx applications available in the local repository
+     config             returns configuration information from the server
+     fetch              fetches a Foxx application from the central foxx-apps repository into the local repository
+     fetched            lists all fetched Foxx applications that were fetched into the local repository
+     help               shows this help
+     info               displays information about a Foxx application
+     install            fetches a Foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up
+     installed          alias for the 'list' command
+     list               lists all installed Foxx applications
+     mount              mounts a fetched Foxx application to a local URL
+     purge              uninstalls a Foxx application with all its mounts and physically removes the application directory
+                        WARNING: this will remove all data and code of the application!
+                               
+     remove             alias for the 'purge' command
+     replace            replaces an existing Foxx application with the current local version found in the application directory
+     rescan             rescans the Foxx application directory on the server side
+                        note: this is only required if the server-side apps directory was modified by other processes
+                                                     
+     search             searches the local foxx-apps repository
+     setup              executes the setup script (app must already be mounted)
+     teardown           executes the teardown script (app must be still be mounted)
+                        WARNING: this action will remove application data if the application implements teardown!
+                                                                     
+     uninstall          unmounts a mounted Foxx application and calls its teardown method
+     unmount            unmounts a mounted Foxx application without calling its teardown method
+     update             updates the local foxx-apps repository with data from the central foxx-apps repository
+                                                                                
 
 Frequently Used Options {#UserManualFoxxManagerOptions}
 =======================================================
