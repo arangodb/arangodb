@@ -166,7 +166,7 @@
         it("assert the basics", function () {
 
 
-            expect(view.interval).toEqual(11000);
+            expect(view.interval).toEqual(10000);
             expect(view.defaultFrame).toEqual(20 * 60 * 1000);
             expect(view.defaultDetailFrame).toEqual(2 * 24 * 60 * 60 * 1000);
             expect(view.history).toEqual({});
@@ -860,6 +860,7 @@
                 }
 
             ]};
+            view.d3NotInitialised = false;
             view.prepareD3Charts(true);
 
             expect(view.getCurrentSize).toHaveBeenCalledWith(
@@ -1157,7 +1158,6 @@
             spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
 
             spyOn(d3, "select").andReturn(d3ChartDummy);
-
 
             spyOn(view, "getCurrentSize").andReturn({height : 190, width : 11});
 

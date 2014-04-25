@@ -7,7 +7,7 @@
 
   window.DashboardView = Backbone.View.extend({
     el: '#content',
-    interval: 11000, // in milliseconds
+    interval: 10000, // in milliseconds
     defaultFrame: 20 * 60 * 1000,
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     history: {},
@@ -138,6 +138,7 @@
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
       this.server = this.options.serverToShow;
+      this.d3NotInitialised = true;
       this.events["click .dashboard-chart"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
@@ -328,7 +329,7 @@
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d, !!figure);
-          } else  {
+          } else if (self.isUpdating !== true)  {
             window.modalView.show(
               "modalWarning.ejs",
               "WARNING !"
@@ -423,7 +424,10 @@
         dataTransferDistribution: [
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
       }, f;
-
+      if (this.d3NotInitialised) {
+          update = false;
+          this.d3NotInitialised = false;
+      }
       _.each(Object.keys(barCharts), function (k) {
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
