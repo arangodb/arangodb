@@ -127,11 +127,19 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
   }
 
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
+
   if (errorMessage.IsEmpty()) {
     return scope.Close(v8::Object::New());
   }
+  
+  v8::Handle<v8::Value> err = v8::Exception::Error(errorMessage);
 
-  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  if (err.IsEmpty()) {
+    return scope.Close(v8::Object::New());
+  }
+
+  v8::Handle<v8::Object> errorObject = err->ToObject();
+
   if (errorObject.IsEmpty()) {
     return scope.Close(v8::Object::New());
   }
