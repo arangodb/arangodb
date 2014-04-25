@@ -72,12 +72,14 @@ int TRI_GetErrorExecutionContext (TRI_js_exec_context_t const context) {
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
+TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
+                                                  size_t length) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   js_exec_context_t* ctx = new js_exec_context_t;
+  ctx->_error = TRI_ERROR_NO_ERROR;
 
   // execute script inside the context
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script),
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script, (int) length),
                                                         v8::String::New("--script--"));
 
   // compilation failed, return

@@ -3406,18 +3406,14 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 
   char* message = TRI_GetErrorMessageAql(error);
 
-  if (message) {
+  if (message != 0) {
     std::string str(message);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
 
-    return scope.Close(TRI_CreateErrorObject(error->_file,
-                                             error->_line,
-                                             TRI_GetErrorCodeAql(error), str));
+    return scope.Close(TRI_CreateErrorObject(error->_file, error->_line, TRI_GetErrorCodeAql(error), str));
   }
 
-  return scope.Close(TRI_CreateErrorObject(error->_file,
-                                           error->_line,
-                                           TRI_ERROR_OUT_OF_MEMORY));
+  return scope.Close(TRI_CreateErrorObject(error->_file, error->_line, TRI_ERROR_OUT_OF_MEMORY));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
