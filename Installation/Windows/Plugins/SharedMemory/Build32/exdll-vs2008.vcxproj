@@ -134,7 +134,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>nsis\pluginapi.lib;LIBCMT.LIB;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Debug/exdll.dll</OutputFile>
+      <OutputFile>.\Debug/sharedmem.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
