@@ -10,7 +10,7 @@
 #include <tchar.h>
 #include <sddl.h>
 #include <stdio.h>
-
+ 
 #ifdef UNICODE
 #include "nsis_unicode/pluginapi.h"
 #else
@@ -329,9 +329,9 @@ BOOL CreateMyDACL(SECURITY_ATTRIBUTES * pSA)
 
 
 void PushReturnValue(int value) {
-  char str[6];
-  memset(str, '\0', 6);
-  sprintf_s(str, 6, "%d", value);
+  char str[256];
+  memset(str, '\0', 256);
+  sprintf_s(str, 256, "%d", value);
   pushstring(str);
 }
 
