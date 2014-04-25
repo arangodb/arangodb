@@ -231,8 +231,8 @@
           newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
         }
         self.history[a] = [
-          Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
-          Math.round(newData[self.tendencies[a][1]] * 1000 * 100) / 1000
+          Math.round(newData[self.tendencies[a][0]] * 100) / 100,
+          Math.round(newData[self.tendencies[a][1]] * 100 * 100) / 100
         ];
       });
 
@@ -382,7 +382,7 @@
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
-        var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
+        var data = [Math.round(self.history.virtualSizeCurrent[0] * 100) / 100 + "GB"];
 
         d3.select('#residentSizeChart svg').selectAll('#total')
         .data(data)

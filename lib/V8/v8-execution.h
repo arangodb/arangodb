@@ -64,7 +64,7 @@ int TRI_GetErrorExecutionContext (TRI_js_exec_context_t const);
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_js_exec_context_t TRI_CreateExecutionContext (const char* script);
+TRI_js_exec_context_t TRI_CreateExecutionContext (const char*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an new execution context
