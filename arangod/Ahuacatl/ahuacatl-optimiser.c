@@ -689,13 +689,14 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   // all arguments are constants
   // create the function code
   code = FcallCode(function->_internalName, args);
-  if (! code) {
+
+  if (code == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   // execute the function code
-  execContext = TRI_CreateExecutionContext(code->_buffer);
+  execContext = TRI_CreateExecutionContext(TRI_BeginStringBuffer(code), TRI_LengthStringBuffer(code));
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
   
   if (execContext == NULL) {
@@ -717,6 +718,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   TRI_FreeExecutionContext(execContext);
   
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
   }
 
@@ -1216,7 +1218,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
 
   // execute the function code
-  execContext = TRI_CreateExecutionContext(code->_buffer);
+  execContext = TRI_CreateExecutionContext(TRI_BeginStringBuffer(code), TRI_LengthStringBuffer(code));
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
 
   if (execContext == NULL) {
