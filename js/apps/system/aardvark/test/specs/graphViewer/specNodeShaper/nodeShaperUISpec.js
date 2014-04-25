@@ -313,6 +313,13 @@
       expect($(green2).text()).toEqual("een");
     
     });
+
+    it("should not create the colour list twice", function() {
+      shaperUI.createColourMappingList();
+      spyOn(document, "createElement");
+      shaperUI.createColourMappingList();
+      expect(document.createElement).not.toHaveBeenCalled();
+    });
     
     
     it('should be able to submit the controls with return', function() {
