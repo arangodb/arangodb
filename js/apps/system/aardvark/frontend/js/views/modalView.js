@@ -71,9 +71,52 @@
       Object.freeze(this.tables);
       var self = this;
       this.closeButton.callback = function() {
-        self.hide(); 
+        self.hide();
       };
-      //this.hide.bind(this);
+    },
+
+    createModalHotkeys: function() {
+      var self = this;
+      //submit modal
+      $(this.el).bind('keydown', 'ctrl+return', function(){
+        $('.button-success').click();
+      });
+      $("#modalPlaceholder input").bind('keydown', 'return', function(){
+        $('.button-success').click();
+      });
+      $("#modalPlaceholder select").bind('keydown', 'return', function(){
+        $('.button-success').click();
+      });
+      //navigate through modal buttons
+      //left cursor
+      $(this.el).bind('keydown', 'left', function(){
+        self.navigateThroughButtons('left');
+      });
+      //right cursor
+      $(this.el).bind('keydown', 'right', function(){
+        self.navigateThroughButtons('right');
+      });
+    },
+
+    navigateThroughButtons: function(direction) {
+      var hasFocus = $('.modal-footer button').is(':focus');
+      if (hasFocus === false) {
+        if (direction === 'left') {
+          $('.modal-footer button').first().focus();
+        }
+        else if (direction === 'right') {
+          $('.modal-footer button').last().focus();
+        }
+      }
+      else if (hasFocus === true) {
+        if (direction === 'left') {
+          $(':focus').prev().focus();
+        }
+        else if (direction === 'right') {
+          $(':focus').next().focus();
+        }
+      }
+
     },
 
     createCloseButton: function(cb) {
@@ -83,7 +126,6 @@
           cb();
       });
     },
-
 
     createSuccessButton: function(title, cb) {
       return createButtonStub(this.buttons.SUCCESS, title, cb);
@@ -191,7 +233,7 @@
             $(self.confirm.yes).bind("click", b.callback);
             $(self.confirm.list).css("display", "block");
           });
-          return;  
+          return;
         }
         $("#modalButton" + i).bind("click", b.callback);
       });
@@ -228,6 +270,9 @@
       }
 
       $("#modal-dialog").modal("show");
+
+      //enable modal hotkeys after rendering is complete
+      this.createModalHotkeys();
     },
 
     hide: function() {
