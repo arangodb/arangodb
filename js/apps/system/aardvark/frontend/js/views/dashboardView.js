@@ -511,12 +511,6 @@
             .append("text")
             .attr("x", dimensions.width * 0.5)
             .attr("y", dimensions.height / 12)
-            .margin({
-                top: dimensions.height / 8,
-                right: dimensions.width / 35,
-                bottom: dimensions.height / 22,
-                left: dimensions.width / 6
-            })
             .attr("id", "distributionHead")
             .style("font-size", f + "px")
             .style("font-weight", 400)
