@@ -716,7 +716,8 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   res = TRI_GetErrorExecutionContext(execContext);
   TRI_FreeExecutionContext(execContext);
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
   }
 
@@ -1230,12 +1231,10 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeExecutionContext(execContext);
 
-    if (res != TRI_ERROR_REQUEST_CANCELED) {
-      // we need to return this specific error code
-      res = TRI_ERROR_QUERY_SCRIPT;
+    if (res == TRI_ERROR_REQUEST_CANCELED) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     }
 
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
   }
 
@@ -1244,14 +1243,9 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
 
   TRI_FreeExecutionContext(execContext);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res != TRI_ERROR_REQUEST_CANCELED) {
-      // we need to return this specific error code
-      res = TRI_ERROR_QUERY_SCRIPT;
-    }
-
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
-    return NULL;
+    return node;
   }
 
   if (json == NULL) {
