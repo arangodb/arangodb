@@ -121,9 +121,11 @@ PUBLIC_FUNCTION(CreateSharedMemory)
 
   if (pBuf == NULL)
   {
-    CloseHandle(hMapFile);
-    hMapFile = NULL;
     PushReturnValue(GetLastError());  // Could not map view of file
+
+    CloseHandle(hMapFile);
+
+    hMapFile = NULL;
   }
 
 
@@ -162,7 +164,7 @@ PUBLIC_FUNCTION(WriteIntoSharedMem)
   }
 
   pBuf = (LPTSTR)MapViewOfFile(hMapFile, // handle to map object
-    FILE_MAP_ALL_ACCESS,  // read/write permission
+    FILE_MAP_WRITE,  // read/write permission
     0,
     0,
     BUF_SIZE);
@@ -182,6 +184,9 @@ PUBLIC_FUNCTION(WriteIntoSharedMem)
   // read name for mem segment from stack
   popstring(szMsg);
   CopyMemory((PVOID)pBuf, szMsg, (_tcslen(szMsg) * sizeof(TCHAR)));
+
+  CloseHandle(hMapFile);
+
   PushReturnValue(0);
 }
 PUBLIC_FUNCTION_END
@@ -204,6 +209,9 @@ PUBLIC_FUNCTION(ReadIntoSharedMem)
 
   if (hMapFile == NULL)
   {
+
+    pushstring(TEXT("Could not open file mapping object"));
+
     PushReturnValue(GetLastError());
     // _tprintf(TEXT("Could not open file mapping object (%d).\n"),
     //  GetLastError());
@@ -220,6 +228,7 @@ PUBLIC_FUNCTION(ReadIntoSharedMem)
   {
     // _tprintf(TEXT("Could not map view of file (%d).\n"),
     //   GetLastError());
+    pushstring(TEXT("Could not map view of file"));
 
     PushReturnValue(GetLastError());
 
@@ -229,13 +238,14 @@ PUBLIC_FUNCTION(ReadIntoSharedMem)
   }
 
 
+  pushstring(TEXT(pBuf));
+
+  PushReturnValue(0);
+
   UnmapViewOfFile(pBuf);
 
   CloseHandle(hMapFile);
 
-  PushReturnValue(0);
-
-  pushstring(TEXT(pBuf));
 }
 PUBLIC_FUNCTION_END
 
@@ -255,6 +265,10 @@ PUBLIC_FUNCTION(ExistsSharedMem)
     //  GetLastError());
     return;
   }
+
+  CloseHandle(hMapFile);
+
+  PushReturnValue(1);
 }
 
 PUBLIC_FUNCTION_END
