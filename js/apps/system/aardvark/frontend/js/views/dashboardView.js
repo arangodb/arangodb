@@ -138,6 +138,7 @@
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
       this.server = this.options.serverToShow;
+      this.d3NotInitialised = true;
       this.events["click .dashboard-chart"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
@@ -230,8 +231,8 @@
           newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
         }
         self.history[a] = [
-          Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
-          Math.round(newData[self.tendencies[a][1]] * 1000 * 100) / 1000
+          Math.round(newData[self.tendencies[a][0]] * 100) / 100,
+          Math.round(newData[self.tendencies[a][1]] * 100 * 100) / 100
         ];
       });
 
@@ -328,7 +329,7 @@
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d, !!figure);
-          } else  {
+          } else if (self.isUpdating !== true)  {
             window.modalView.show(
               "modalWarning.ejs",
               "WARNING !"
@@ -381,7 +382,7 @@
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
-        var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
+        var data = [Math.round(self.history.virtualSizeCurrent[0] * 100) / 100 + "GB"];
 
         d3.select('#residentSizeChart svg').selectAll('#total')
         .data(data)
@@ -423,7 +424,10 @@
         dataTransferDistribution: [
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
       }, f;
-
+      if (this.d3NotInitialised) {
+          update = false;
+          this.d3NotInitialised = false;
+      }
       _.each(Object.keys(barCharts), function (k) {
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');

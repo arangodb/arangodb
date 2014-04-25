@@ -7,12 +7,15 @@
 
   describe("The notification view", function() {
 
-    var view, div, fakeNotification, dummyCollection, jQueryDummy;
+    var view, div, div2, fakeNotification, dummyCollection, jQueryDummy;
 
     beforeEach(function() {
       div = document.createElement("div");
       div.id = "navigationBar";
+      div2 = document.createElement("div");
+      div2.id = "notificationBar";
       document.body.appendChild(div);
+      document.body.appendChild(div2);
 
       dummyCollection = new window.NotificationCollection();
 
@@ -34,6 +37,7 @@
 
     afterEach(function() {
       document.body.removeChild(div);
+      document.body.removeChild(div2);
     });
 
     it("assert basics", function () {
@@ -78,6 +82,86 @@
       expect($('#notification_menu').is(":visible")).toBeFalsy();
     });
 
+    it("renderNotifications function with collection length 0", function () {
+      jQueryDummy = {
+        html: function () {
+        },
+        text: function () {
+        },
+        removeClass: function() {
+        },
+        hide: function () {
+        }
+      };
+
+      spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "text");
+      spyOn(jQueryDummy, "removeClass");
+      spyOn(jQueryDummy, "hide");
+
+      spyOn(window, "$").andReturn(
+        jQueryDummy
+      );
+
+      view.renderNotifications();
+      expect(jQueryDummy.text).toHaveBeenCalled();
+      expect(jQueryDummy.removeClass).toHaveBeenCalled();
+      expect(jQueryDummy.hide).toHaveBeenCalled();
+      expect(jQueryDummy.html).toHaveBeenCalled();
+    });
+
+    it("renderNotifications function with collection length > 0", function () {
+      view.collection.add(fakeNotification);
+
+      jQueryDummy = {
+        html: function () {
+        },
+        text: function () {
+        },
+        addClass: function() {
+        }
+      };
+
+      spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "text");
+      spyOn(jQueryDummy, "addClass");
+
+      spyOn(window, "$").andReturn(
+        jQueryDummy
+      );
+
+      view.renderNotifications();
+      expect(jQueryDummy.text).toHaveBeenCalled();
+      expect(jQueryDummy.addClass).toHaveBeenCalled();
+      expect(jQueryDummy.html).toHaveBeenCalled();
+    });
+
+    it("remove a single notification", function () {
+
+
+      view.render();
+
+      view.collection.add(fakeNotification);
+      view.collection.add(fakeNotification);
+      view.collection.add(fakeNotification);
+
+      var firstModel = view.collection.first();
+
+      var getDummy = {
+        destroy: function() {
+        }
+      };
+
+      spyOn(getDummy, "destroy");
+      spyOn(view.collection, "get").andReturn(
+        getDummy
+      );
+
+      $('#stat_hd').click();
+      $('#'+firstModel.cid).click();
+
+      expect(getDummy.destroy).toHaveBeenCalled();
+    });
 
 
 
