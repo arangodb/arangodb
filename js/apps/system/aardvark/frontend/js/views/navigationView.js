@@ -28,6 +28,7 @@
       this.statisticBarView = new window.StatisticBarView({
           currentDB: this.currentDB
       });
+      this.handleKeyboardHotkeys();
     },
 
     handleSelectDatabase: function () {
@@ -52,6 +53,10 @@
     navigateBySelect: function () {
       var navigateTo = $("#arangoCollectionSelect").find("option:selected").val();
       window.App.navigate(navigateTo, {trigger: true});
+    },
+
+    handleKeyboardHotkeys: function () {
+      arangoHelper.enableKeyboardHotkeys(true);
     },
 
     navigateByTab: function (e) {
