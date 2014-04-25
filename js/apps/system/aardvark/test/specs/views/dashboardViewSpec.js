@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global $, arangoHelper, jasmine, describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect*/
 
 (function () {
     "use strict";
 
     describe("The dashboard view", function () {
 
-        var view, dyGraphConfigDummy, modalDummy;
+        var view, dyGraphConfigDummy, modalDummy, nvDummy, d3ChartDummy;
 
         beforeEach(function () {
             window.App = {
@@ -47,6 +47,115 @@
             };
             window.modalView = modalDummy;
 
+            d3ChartDummy = {
+
+                x : function(a) {
+                    a({label : 1});
+                    return d3ChartDummy;
+                },
+                y : function(a) {
+                    a({label : 1});
+                    return d3ChartDummy;
+                },
+                width : function(a) {
+                    return d3ChartDummy;
+                },
+                height : function(a) {
+                    return d3ChartDummy;
+                },
+                margin : function(a) {
+                    return d3ChartDummy;
+                },
+                showValues : function(a) {
+                    return d3ChartDummy;
+                },
+                showYAxis : function(a) {
+                    return d3ChartDummy;
+                },
+                showXAxis : function(a) {
+                    return d3ChartDummy;
+                },
+                transitionDuration : function(a) {
+                    return d3ChartDummy;
+                },
+                tooltips : function(a) {
+                    return d3ChartDummy;
+                },
+                showLegend : function(a) {
+                    return d3ChartDummy;
+                },
+                stacked : function(a) {
+                    return d3ChartDummy;
+                },
+                showControls : function(a) {
+                    return d3ChartDummy;
+                },
+
+                classed : function(a) {
+                    return d3ChartDummy;
+                },
+
+                yAxis : {
+                    tickFormat : function(a) {
+                        a();
+                    },
+
+                    showMaxMin : function() {
+                    }
+                },
+
+                xAxis : {
+                    tickFormat : function(a) {
+                        a();
+                    },
+
+                    showMaxMin : function() {
+                    }
+                },
+
+                datum : function(a) {
+                    return d3ChartDummy;
+                },
+                call : function(a) {
+                    return d3ChartDummy;
+                },
+                data : function(a) {
+                    return d3ChartDummy;
+                },
+                enter : function(a) {
+                    return d3ChartDummy;
+                },
+                append : function(a) {
+                    return d3ChartDummy;
+                },
+                style : function(a) {
+                    return d3ChartDummy;
+                },
+                attr : function(a) {
+                    return d3ChartDummy;
+                },
+                text : function(a) {
+                    if (a instanceof Function) {
+                        a();
+                    }
+                    return d3ChartDummy;
+                },
+                select : function (a) {
+                    return d3ChartDummy;
+                },
+                remove : function (a) {
+                    return d3ChartDummy;
+                },
+                selectAll : function (a) {
+                    return d3ChartDummy;
+                },
+                on : function (a) {
+                    return d3ChartDummy;
+                }
+
+            };
+
+
             view = new window.DashboardView({dygraphConfig: dyGraphConfigDummy});
         });
 
@@ -57,7 +166,7 @@
         it("assert the basics", function () {
 
 
-            expect(view.interval).toEqual(10000);
+            expect(view.interval).toEqual(11000);
             expect(view.defaultFrame).toEqual(20 * 60 * 1000);
             expect(view.defaultDetailFrame).toEqual(2 * 24 * 60 * 60 * 1000);
             expect(view.history).toEqual({});
@@ -649,199 +758,464 @@
 
         });
 
+        it("prepare ResidentSize", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
 
-        /*
-
-         prepareResidentSize: function (update) {
-         var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
-         self = this, currentP =
-         Math.round(self.history.residentSizeChart[0].values[0].value * 100) /100;
-         nv.addGraph(function () {
-         var chart = nv.models.multiBarHorizontalChart()
-         */
-        /*.width(dimensions.width * 0.3)
-         .height(dimensions.height)*/
-        /*
-
-         .x(function (d) {
-         return d.label;
-         })
-         .y(function (d) {
-         return d.value;
-         })
-         .width(dimensions.width * 0.95)
-         .height(dimensions.height)
-         .margin({
-         //top: dimensions.height / 8,
-         right: dimensions.width / 10
-         //bottom: dimensions.height / 22,
-         //left: dimensions.width / 6*/
-        /*
-
-         })
-         .showValues(false)
-         .showYAxis(false)
-         .showXAxis(false)
-         .transitionDuration(350)
-         .tooltips(false)
-         .showLegend(false)
-         .stacked(true)
-         .showControls(false);
-         chart.yAxis
-         .tickFormat(function (d) {return d + "%";});
-         chart.xAxis.showMaxMin(false);
-         chart.yAxis.showMaxMin(false);
-         d3.select('#residentSizeChart svg')
-         .datum(self.history.residentSizeChart)
-         .call(chart);
-         d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
-         if (update) {
-         d3.select('#residentSizeChart svg').select('#total').remove();
-         d3.select('#residentSizeChart svg').select('#percentage').remove();
-         }
-         var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
-
-         d3.select('#residentSizeChart svg').selectAll('#total')
-         .data(data)
-         .enter()
-         .append("text")
-         .style("font-size", dimensions.height / 8 + "px")
-         .style("font-weight", 400)
-         .style("font-family", "Open Sans")
-         .attr("id", "total")
-         .attr("x", dimensions.width /1.15)
-         .attr("y", dimensions.height/ 2.1)
-         .text(function(d){return d;});
-         d3.select('#residentSizeChart svg').selectAll('#percentage')
-         .data(data)
-         .enter()
-         .append("text")
-         .style("font-size", dimensions.height / 10 + "px")
-         .style("font-weight", 400)
-         .style("font-family", "Open Sans")
-         .attr("id", "percentage")
-         .attr("x", dimensions.width * 0.1)
-         .attr("y", dimensions.height/ 2.1)
-         .text(currentP + " %");
-         nv.utils.windowResize(chart.update);
-         }, function() {
-         d3.selectAll("#residentSizeChart .nv-bar").on('click',
-         function() {
-         // no idea why this has to be empty, well anyways...
-         }
-         );
-         });
-         },
+            spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-         prepareD3Charts: function (update) {
-         var v, self = this, barCharts = {
-         totalTimeDistribution: [
-         "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
-         dataTransferDistribution: [
-         "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
-         }, f;
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
 
-         _.each(Object.keys(barCharts), function (k) {
-         var dimensions = self.getCurrentSize('#' + k
-         + 'Container .dashboard-interior-chart');
-         if (dimensions.width > 400 ) {
-         f = 18;
-         } else if (dimensions.width > 300) {
-         f = 16;
-         } else if (dimensions.width > 200) {
-         f = 14;
-         } else if (dimensions.width > 100) {
-         f = 12;
-         } else {
-         f = 10;
-         }
-         var selector = "#" + k + "Container svg";
-         nv.addGraph(function () {
-         var chart = nv.models.multiBarHorizontalChart()
-         .x(function (d) {
-         return d.label;
-         })
-         .y(function (d) {
-         return d.value;
-         })
-         .width(dimensions.width)
-         .height(dimensions.height)
-         .margin({
-         top: dimensions.height / 8,
-         right: dimensions.width / 35,
-         bottom: dimensions.height / 22,
-         left: dimensions.width / 6
-         })
-         .showValues(false)
-         .showYAxis(true)
-         .showXAxis(true)
-         .transitionDuration(350)
-         .tooltips(false)
-         .showLegend(false)
-         .showControls(false);
+            view.history = {residentSizeChart : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
 
-         chart.yAxis
-         .tickFormat(function (d) {return Math.round(d* 100 * 100) / 100 + "%";});
+            ], virtualSizeCurrent : [10, 20]};
+            view.prepareResidentSize(true);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith('#residentSizeChartContainer');
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
 
 
-         d3.select(selector)
-         .datum(self.history[k])
-         .call(chart);
+        it("prepare D3Charts", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
 
-         nv.utils.windowResize(chart.update);
-         if (!update) {
-         d3.select(selector)
-         .append("text")
-         .attr("x", dimensions.width * 0.5)
-         .attr("y", dimensions.height / 12)
-         .attr("id", "distributionHead")
-         .style("font-size", f + "px")
-         .style("font-weight", 400)
-         .classed("distributionHeader", true)
-         .style("font-family", "Open Sans")
-         .text("Distribution");
-         var v1 = self.history[k][0].key;
-         var v2 = self.history[k][1].key;
-         $('#' + k + "Legend").append(
-         '<span style="font-weight: bold; color: ' +
-         self.history[k][0].color + ';">' +
-         '<div style="display: inline-block; position: relative;' +
-         ' bottom: .5ex; padding-left: 1em;' +
-         ' height: 1px; border-bottom: 2px solid ' +
-         self.history[k][0].color + ';"></div>'
-         + " " + v1 + '</span><br>' +
-         '<span style="font-weight: bold; color: ' +
-         self.history[k][1].color + ';">' +
-         '<div style="display: inline-block; position: ' +
-         'relative; bottom: .5ex; padding-left: 1em;' +
-         ' height: 1px; border-bottom: 2px solid ' +
-         self.history[k][1].color + ';"></div>'
-         + " " + v2 + '</span><br>'
-         );
-         } else {
-         d3.select(selector).select('.distributionHeader').remove();
-         d3.select(selector)
-         .append("text")
-         .attr("x", dimensions.width * 0.5)
-         .attr("y", dimensions.height / 12)
-         .attr("id", "distributionHead")
-         .style("font-size", f + "px")
-         .style("font-weight", 400)
-         .classed("distributionHeader", true)
-         .style("font-family", "Open Sans")
-         .text("Distribution");
-         }
-         }, function() {
-         d3.selectAll(selector + " .nv-bar").on('click',
-         function() {
-         // no idea why this has to be empty, well anyways...
-         }
-         );
-         });
-         });
+            spyOn(d3, "select").andReturn(d3ChartDummy);
 
-         },*/
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(true);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
+
+        it("prepare D3Charts no update", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(false);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
+
+        it("prepare D3Charts no update width > 400", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 404});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(false);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
+
+        it("prepare D3Charts no update width > 300", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 304});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(false);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
+
+        it("prepare D3Charts no update width > 200", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 204});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(false);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
+
+
+        it("prepare D3Charts no update width smaller 100", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 11});
+
+            view.history = {totalTimeDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], dataTransferDistribution : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ]};
+            view.prepareD3Charts(false);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#totalTimeDistributionContainer .dashboard-interior-chart');
+            expect(view.getCurrentSize).toHaveBeenCalledWith(
+                '#dataTransferDistributionContainer .dashboard-interior-chart');
+
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
 
         it("stopUpdating", function () {
             view.stopUpdating();
