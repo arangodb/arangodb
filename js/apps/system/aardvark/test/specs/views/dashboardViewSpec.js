@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global $, arangoHelper, jasmine, describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect*/
 
 (function () {
     "use strict";
 
     describe("The dashboard view", function () {
 
-        var view, dyGraphConfigDummy, modalDummy;
+        var view, dyGraphConfigDummy, modalDummy, nvDummy, d3ChartDummy;
 
         beforeEach(function () {
             window.App = {
@@ -47,6 +47,111 @@
             };
             window.modalView = modalDummy;
 
+            d3ChartDummy = {
+
+                x : function(a) {
+                    a({label : 1});
+                    return d3ChartDummy;
+                },
+                y : function(a) {
+                    a({label : 1});
+                    return d3ChartDummy;
+                },
+                width : function(a) {
+                    return d3ChartDummy;
+                },
+                height : function(a) {
+                    return d3ChartDummy;
+                },
+                margin : function(a) {
+                    return d3ChartDummy;
+                },
+                showValues : function(a) {
+                    return d3ChartDummy;
+                },
+                showYAxis : function(a) {
+                    return d3ChartDummy;
+                },
+                showXAxis : function(a) {
+                    return d3ChartDummy;
+                },
+                transitionDuration : function(a) {
+                    return d3ChartDummy;
+                },
+                tooltips : function(a) {
+                    return d3ChartDummy;
+                },
+                showLegend : function(a) {
+                    return d3ChartDummy;
+                },
+                stacked : function(a) {
+                    return d3ChartDummy;
+                },
+                showControls : function(a) {
+                    return d3ChartDummy;
+                },
+
+                yAxis : {
+                    tickFormat : function(a) {
+                        a();
+                    },
+
+                    showMaxMin : function() {
+                    }
+                },
+
+                xAxis : {
+                    tickFormat : function(a) {
+                        a();
+                    },
+
+                    showMaxMin : function() {
+                    }
+                },
+
+                datum : function(a) {
+                    return d3ChartDummy;
+                },
+                call : function(a) {
+                    return d3ChartDummy;
+                },
+                data : function(a) {
+                    return d3ChartDummy;
+                },
+                enter : function(a) {
+                    return d3ChartDummy;
+                },
+                append : function(a) {
+                    return d3ChartDummy;
+                },
+                style : function(a) {
+                    return d3ChartDummy;
+                },
+                attr : function(a) {
+                    return d3ChartDummy;
+                },
+                text : function(a) {
+                    if (a instanceof Function) {
+                        a();
+                    }
+                    return d3ChartDummy;
+                },
+                select : function (a) {
+                    return d3ChartDummy;
+                },
+                remove : function (a) {
+                    return d3ChartDummy;
+                },
+                selectAll : function (a) {
+                    return d3ChartDummy;
+                },
+                on : function (a) {
+                    return d3ChartDummy;
+                }
+
+            };
+
+
             view = new window.DashboardView({dygraphConfig: dyGraphConfigDummy});
         });
 
@@ -57,7 +162,7 @@
         it("assert the basics", function () {
 
 
-            expect(view.interval).toEqual(10000);
+            expect(view.interval).toEqual(11000);
             expect(view.defaultFrame).toEqual(20 * 60 * 1000);
             expect(view.defaultDetailFrame).toEqual(2 * 24 * 60 * 60 * 1000);
             expect(view.history).toEqual({});
@@ -649,89 +754,50 @@
 
         });
 
+        it("prepare ResidentSize", function () {
+            spyOn(nv, "addGraph").andCallFake(function (a, b) {
+                a();
+                b();
+            });
+            spyOn(nv.utils, "windowResize");
+            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
+
+            spyOn(d3, "select").andReturn(d3ChartDummy);
+
+
+            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+
+            view.history = {residentSizeChart : [
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[1],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 20
+                        }
+                    ]
+                },
+                {
+                    "key": "",
+                    "color": dyGraphConfigDummy.colors[0],
+                    "values": [
+                        {
+                            label: "used",
+                            value: 80
+                        }
+                    ]
+                }
+
+            ], virtualSizeCurrent : [10, 20]};
+            view.prepareResidentSize(true);
+
+            expect(view.getCurrentSize).toHaveBeenCalledWith('#residentSizeChartContainer');
+            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
+
+        });
 
         /*
-
-         prepareResidentSize: function (update) {
-         var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
-         self = this, currentP =
-         Math.round(self.history.residentSizeChart[0].values[0].value * 100) /100;
-         nv.addGraph(function () {
-         var chart = nv.models.multiBarHorizontalChart()
-         */
-        /*.width(dimensions.width * 0.3)
-         .height(dimensions.height)*/
-        /*
-
-         .x(function (d) {
-         return d.label;
-         })
-         .y(function (d) {
-         return d.value;
-         })
-         .width(dimensions.width * 0.95)
-         .height(dimensions.height)
-         .margin({
-         //top: dimensions.height / 8,
-         right: dimensions.width / 10
-         //bottom: dimensions.height / 22,
-         //left: dimensions.width / 6*/
-        /*
-
-         })
-         .showValues(false)
-         .showYAxis(false)
-         .showXAxis(false)
-         .transitionDuration(350)
-         .tooltips(false)
-         .showLegend(false)
-         .stacked(true)
-         .showControls(false);
-         chart.yAxis
-         .tickFormat(function (d) {return d + "%";});
-         chart.xAxis.showMaxMin(false);
-         chart.yAxis.showMaxMin(false);
-         d3.select('#residentSizeChart svg')
-         .datum(self.history.residentSizeChart)
-         .call(chart);
-         d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
-         if (update) {
-         d3.select('#residentSizeChart svg').select('#total').remove();
-         d3.select('#residentSizeChart svg').select('#percentage').remove();
-         }
-         var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
-
-         d3.select('#residentSizeChart svg').selectAll('#total')
-         .data(data)
-         .enter()
-         .append("text")
-         .style("font-size", dimensions.height / 8 + "px")
-         .style("font-weight", 400)
-         .style("font-family", "Open Sans")
-         .attr("id", "total")
-         .attr("x", dimensions.width /1.15)
-         .attr("y", dimensions.height/ 2.1)
-         .text(function(d){return d;});
-         d3.select('#residentSizeChart svg').selectAll('#percentage')
-         .data(data)
-         .enter()
-         .append("text")
-         .style("font-size", dimensions.height / 10 + "px")
-         .style("font-weight", 400)
-         .style("font-family", "Open Sans")
-         .attr("id", "percentage")
-         .attr("x", dimensions.width * 0.1)
-         .attr("y", dimensions.height/ 2.1)
-         .text(currentP + " %");
-         nv.utils.windowResize(chart.update);
-         }, function() {
-         d3.selectAll("#residentSizeChart .nv-bar").on('click',
-         function() {
-         // no idea why this has to be empty, well anyways...
-         }
-         );
-         });
-         },
 
 
          prepareD3Charts: function (update) {
