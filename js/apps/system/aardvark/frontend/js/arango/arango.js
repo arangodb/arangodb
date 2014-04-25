@@ -81,6 +81,24 @@
       return returnVal;
     },
 
+    hotkeysFunctions: {
+      scrollDown: function () {
+        window.scrollBy(0,180);
+      },
+      scrollUp: function () {
+        window.scrollBy(0,-180);
+      }
+    },
+
+    enableKeyboardHotkeys: function (enable) {
+      var hotkeys = window.arangoHelper.hotkeysFunctions;
+      if (enable === true) {
+        $(document).on('keydown', null, 'j', hotkeys.scrollDown);
+        $(document).on('keydown', null, 'k', hotkeys.scrollUp);
+      }
+
+    },
+
     databaseAllowed: function () {
       var currentDB = this.currentDatabase(),
         returnVal = false;
