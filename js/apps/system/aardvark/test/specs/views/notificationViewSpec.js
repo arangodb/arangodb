@@ -78,7 +78,59 @@
       expect($('#notification_menu').is(":visible")).toBeFalsy();
     });
 
+    it("renderNotifications function with collection length 0", function () {
+      jQueryDummy = {
+        html: function () {
+        },
+        text: function () {
+        },
+        removeClass: function() {
+        },
+        hide: function () {
+        }
+      };
 
+      spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "text");
+      spyOn(jQueryDummy, "removeClass");
+      spyOn(jQueryDummy, "hide");
+
+      spyOn(window, "$").andReturn(
+        jQueryDummy
+      );
+
+      view.renderNotifications();
+      expect(jQueryDummy.text).toHaveBeenCalled();
+      expect(jQueryDummy.removeClass).toHaveBeenCalled();
+      expect(jQueryDummy.hide).toHaveBeenCalled();
+      expect(jQueryDummy.html).toHaveBeenCalled();
+    });
+
+    it("renderNotifications function with collection length > 0", function () {
+      view.collection.add(fakeNotification);
+
+      jQueryDummy = {
+        html: function () {
+        },
+        text: function () {
+        },
+        addClass: function() {
+        }
+      };
+
+      spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "text");
+      spyOn(jQueryDummy, "addClass");
+
+      spyOn(window, "$").andReturn(
+        jQueryDummy
+      );
+
+      view.renderNotifications();
+      expect(jQueryDummy.text).toHaveBeenCalled();
+      expect(jQueryDummy.addClass).toHaveBeenCalled();
+      expect(jQueryDummy.html).toHaveBeenCalled();
+    });
 
 
   });
