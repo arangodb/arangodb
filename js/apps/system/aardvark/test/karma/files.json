@@ -167,7 +167,6 @@
   "frontend/js/views/userBarView.js",
 
   "clusterFrontend/js/views/clusterDownView.js",
-  "clusterFrontend/js/views/downloadView.js",
   "clusterFrontend/js/views/loginModalView.js",
   "clusterFrontend/js/views/planScenarioSelectorView.js",
   "clusterFrontend/js/views/planSymmetricView.js",
