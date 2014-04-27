@@ -15,6 +15,17 @@
           async: false
         }).done(function(script) {
           $(document.head).append(script);
+        }).error(function() {
+          path = "../../base/clusterFrontend/js/templates/" + id;
+          $.ajax({
+            url: path,
+            type: "GET",
+            async: false
+          }).done(function(script) {
+            $(document.head).append(script);
+          }).error(function() {
+            throw "Could not load template " + id;
+          });
         });
       }
       template = $(ref).html();
