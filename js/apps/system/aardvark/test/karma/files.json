@@ -263,6 +263,7 @@
 
 
   "test/clusterSpecs/views/loginModalViewSpec.js",
+  "test/clusterSpecs/views/planScenarioSelectorViewSpec.js",
 
   "test/specs/router/routerSpec.js",
   "test/specs/router/clusterRouterSpec.js",
