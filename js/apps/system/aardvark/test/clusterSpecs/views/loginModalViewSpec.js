@@ -27,6 +27,7 @@
 
     afterEach(function() {
       document.body.removeChild(div);
+      delete window.App;
     });
 
     it("should show the modal on render", function() {
