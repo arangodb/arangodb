@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, $  */
+/*global window, $, document */
 
 (function() {
   "use strict";
@@ -74,7 +74,7 @@
         success: function(data) {
           returnVal = data.result.name;
         },
-        error: function(data) {
+        error: function() {
           returnVal = false;
         }
       });
@@ -109,10 +109,10 @@
         contentType: "application/json",
         processData: false,
         async: false,
-        success: function(data) {
+        success: function() {
           returnVal = true;
         },
-        error: function(data) {
+        error: function() {
           returnVal = false;
         }
       });

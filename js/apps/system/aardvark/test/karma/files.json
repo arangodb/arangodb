@@ -2,6 +2,7 @@
   "test/lib/jasmine-1.3.1/jasmine-html.js",
   "test/lib/jslint.js",
   { "pattern": "frontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
+  { "pattern": "clusterFrontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
   "frontend/js/lib/jquery-2.1.0.min.js",
   "test/mocks/overwriteAjax.js",
   "frontend/js/lib/jquery-ui-1.9.2.custom.js",
@@ -166,7 +167,6 @@
   "frontend/js/views/userBarView.js",
 
   "clusterFrontend/js/views/clusterDownView.js",
-  "clusterFrontend/js/views/downloadView.js",
   "clusterFrontend/js/views/loginModalView.js",
   "clusterFrontend/js/views/planScenarioSelectorView.js",
   "clusterFrontend/js/views/planSymmetricView.js",
@@ -259,6 +259,12 @@
   "test/specs/views/graphManagementViewSpec.js",
   "test/specs/views/newLogsViewSpec.js",
   "test/specs/views/notificationViewSpec.js",
+
+
+
+  "test/clusterSpecs/views/loginModalViewSpec.js",
+  "test/clusterSpecs/views/planScenarioSelectorViewSpec.js",
+  "test/clusterSpecs/views/planTestViewSpec.js",
 
   "test/specs/router/routerSpec.js",
   "test/specs/router/clusterRouterSpec.js",

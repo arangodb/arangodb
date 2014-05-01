@@ -51,6 +51,7 @@
     it("toggleNotification should run function", function () {
       jQueryDummy = {
         toggle: function () {
+          throw "Should be a spy";
         }
       };
       spyOn(jQueryDummy, "toggle");
@@ -65,6 +66,7 @@
       view.collection.add(fakeNotification);
       jQueryDummy = {
         toggle: function () {
+          throw "Should be a spy";
         }
       };
       spyOn(jQueryDummy, "toggle");
@@ -85,12 +87,16 @@
     it("renderNotifications function with collection length 0", function () {
       jQueryDummy = {
         html: function () {
+          throw "Should be a spy";
         },
         text: function () {
+          throw "Should be a spy";
         },
         removeClass: function() {
+          throw "Should be a spy";
         },
         hide: function () {
+          throw "Should be a spy";
         }
       };
 
@@ -115,10 +121,13 @@
 
       jQueryDummy = {
         html: function () {
+          throw "Should be a spy";
         },
         text: function () {
+          throw "Should be a spy";
         },
         addClass: function() {
+          throw "Should be a spy";
         }
       };
 
@@ -145,12 +154,12 @@
       view.collection.add(fakeNotification);
       view.collection.add(fakeNotification);
 
-      var firstModel = view.collection.first();
-
-      var getDummy = {
-        destroy: function() {
-        }
-      };
+      var firstModel = view.collection.first(),
+        getDummy = {
+          destroy: function() {
+            throw "Should be a spy";
+          }
+        };
 
       spyOn(getDummy, "destroy");
       spyOn(view.collection, "get").andReturn(
