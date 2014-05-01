@@ -390,5 +390,20 @@
       expect(testee.delegateEvents).toHaveBeenCalled();
     });
 
+    it("should call keyboard bind function", function() {
+      spyOn(testee, "createModalHotkeys");
+      testee.enabledHotkey = false;
+      testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
+      expect(testee.createModalHotkeys).toHaveBeenCalled();
+
+    });
+
+    it("should not call keyboard bind function", function() {
+      spyOn(testee, "createModalHotkeys");
+      testee.enabledHotkey = true;
+      testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
+      expect(testee.createModalHotkeys).not.toHaveBeenCalled();
+    });
+
   });
 }());
