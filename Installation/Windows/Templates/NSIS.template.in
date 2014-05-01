@@ -897,18 +897,21 @@ Function default_installation_directory
   ${If} $TRI_INSTALL_TYPE == 'Service' 
     Call Tri_ChangePrivileges
     SetShellVarContext all
+;MessageBox MB_OK "Service : $INSTDIR"
     Return
    ${EndIf}
 
   ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
     SetShellVarContext current
     StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+;MessageBox MB_OK "SingleUser : $INSTDIR"
     Return
    ${EndIf}
   ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
     Call Tri_ChangePrivileges
     SetShellVarContext all
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+;MessageBox MB_OK "AllUsers : $INSTDIR"
     Return
    ${EndIf}
 FunctionEnd
@@ -946,29 +949,37 @@ Function check_installation_directory
 FunctionEnd
 
 Function insert_registration_keys
-  IfErrors there_are_erros
-
+  ClearErrors
   ${If} $TRI_INSTALL_TYPE == 'Service' 
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+; MessageBox MB_OK "Sevice in HKCC"
+  IfErrors there_are_erros
     Return
    ${EndIf}
 
   ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
     ${If}  ${UAC_IsAdmin}  
       WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+; MessageBox MB_OK "SingleUser in HKCC"
     ${Else}
 ; normal user has not write rights to HKCC
       WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+; MessageBox MB_OK "SingleUser in HKCU"
+  IfErrors there_are_erros
     ${EndIf}
     Return
    ${EndIf}
   ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+; MessageBox MB_OK "AllUsers in HKCC"
+  IfErrors there_are_erros
     Return
    ${EndIf}
 
  there_are_erros: ;nothing
+MessageBox MB_OK "There is an error during registration of installation keys$\nArango will work fine but there will be trouble during deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
+
 FunctionEnd
 
 !macro triagens_init
