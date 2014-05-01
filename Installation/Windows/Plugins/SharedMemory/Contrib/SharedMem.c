@@ -305,11 +305,9 @@ BOOL CreateMyDACL(SECURITY_ATTRIBUTES * pSA)
   // Modify these values as needed to generate the proper
   // DACL for your application. 
   TCHAR * szSD = TEXT("D:")       // Discretionary ACL
-    TEXT("(D;OICI;GA;;;BG)")     // Deny access to 
-    // built-in guests
-    TEXT("(D;OICI;GA;;;AN)")     // Deny access to 
-    // anonymous logon
-    TEXT("(A;OICI;GWGR;;;AU)")
+    TEXT("(A;OICI;GA;;;BG)")     // Allow built-in guests
+    TEXT("(A;OICI;GA;;;AN)")     // Allow anonymous logon
+    TEXT("(A;OICI;GA;;;AU)")
     //TEXT("(A;OICI;GRGWGX;;;AU)") // Allow 
     // read/write/execute 
     // to authenticated 
