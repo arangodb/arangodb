@@ -59,6 +59,18 @@ describe("Arango Helper", function () {
           expect(jQueryDummy.on).toHaveBeenCalled();
         });
 
+        it("check enabling keyboard hotkeys scrollUp function", function() {
+          spyOn(window, "scrollBy");
+          arangoHelper.hotkeysFunctions.scrollDown();
+          expect(window.scrollBy).toHaveBeenCalledWith(0, 180);
+        });
+
+        it("check enabling keyboard hotkeys scrollUp function", function() {
+          spyOn(window, "scrollBy");
+          arangoHelper.hotkeysFunctions.scrollUp();
+          expect(window.scrollBy).toHaveBeenCalledWith(0, -180);
+        });
+
         it("if blank collection name", function () {
           var myObject = {}, dummy;
           myObject.name = "";
