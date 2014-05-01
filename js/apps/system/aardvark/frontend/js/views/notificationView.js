@@ -23,7 +23,7 @@
 
     template: templateEngine.createTemplate("notificationView.ejs"),
 
-    toggleNotification: function (e) {
+    toggleNotification: function () {
       var counter = this.collection.length;
       if (counter !== 0) {
         $('#notification_menu').toggle();
