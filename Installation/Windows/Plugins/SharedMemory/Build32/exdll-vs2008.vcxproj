@@ -85,11 +85,11 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>LIBCMT.LIB;msvcrt.lib;nsis\pluginapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Release/exdll.dll</OutputFile>
+      <AdditionalDependencies>msvcrt.lib;nsis\pluginapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>.\Release/sharedmem.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <IgnoreSpecificDefaultLibraries>libc.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib;libc.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>.\Release/exdll.pdb</ProgramDatabaseFile>
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
