@@ -46,6 +46,8 @@
       no: "#modal-abort-delete"
     },
 
+    enabledHotkey: false,
+
     buttons: {
       SUCCESS: "success",
       NOTIFICATION: "notification",
@@ -272,7 +274,10 @@
       $("#modal-dialog").modal("show");
 
       //enable modal hotkeys after rendering is complete
-      this.createModalHotkeys();
+      if (this.enabledHotkey === false) {
+        this.createModalHotkeys();
+        this.enabledHotkey = true;
+      }
     },
 
     hide: function() {
