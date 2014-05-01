@@ -8,7 +8,7 @@ describe("Arango Helper", function () {
 
     describe("Checking collection types converter", function () {
 
-        var ajaxCB;
+        var ajaxCB, jQueryDummy;
 
         beforeEach(function () {
             ajaxCB = function (url, opts) {
@@ -33,11 +33,36 @@ describe("Arango Helper", function () {
             });
         });
 
+        it("check available hotkeys function", function () {
+          var dummy =  {
+            scrollDown: function () {
+              window.scrollBy(0,180);
+            },
+            scrollUp: function () {
+              window.scrollBy(0,-180);
+            }
+          };
+
+          expect(JSON.stringify(dummy)).toEqual(JSON.stringify(arangoHelper.hotkeysFunctions));
+        });
+
+        it("check enabling keyboard hotkeys", function() {
+          jQueryDummy = {
+            on: function () {
+            }
+          };
+          spyOn(jQueryDummy, "on");
+          spyOn(window, "$").andReturn(
+            jQueryDummy
+          );
+          arangoHelper.enableKeyboardHotkeys(true);
+          expect(jQueryDummy.on).toHaveBeenCalled();
+        });
+
         it("if blank collection name", function () {
-            var myObject = {},
-                dummy;
-            myObject.name = "";
-            dummy = arangoHelper.collectionType(myObject);
+          var myObject = {}, dummy;
+          myObject.name = "";
+          dummy = arangoHelper.collectionType(myObject);
             expect(dummy).toBe("-");
         });
 
