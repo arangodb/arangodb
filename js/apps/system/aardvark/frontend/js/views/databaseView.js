@@ -17,7 +17,6 @@
       "click .editDatabase"         : "editDatabase",
       "click .icon"                 : "editDatabase",
       "click #selectDatabase"       : "updateDatabase",
-      "click #deleteDatabase"       : "deleteDatabase",
       "click #submitDeleteDatabase" : "submitDeleteDatabase",
       "click .contentRowInactive a" : "changeDatabase",
       "keyup #databaseSearchInput"  : "search",
@@ -124,6 +123,11 @@
       var toDelete = this.collection.where({name: dbname});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+dbname});
       this.updateDatabases();
+      window.App.naviView.dbSelectionView.collection.fetch({
+        success: function() {
+          window.App.naviView.dbSelectionView.render($("#dbSelect"));
+        }
+      });
       window.modalView.hide();
     },
 
