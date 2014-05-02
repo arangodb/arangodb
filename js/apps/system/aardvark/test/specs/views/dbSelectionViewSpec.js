@@ -54,8 +54,7 @@
 
       expect(div.childElementCount).toEqual(2);
       childs = $(dbList).children();
-      expect(childs.length).toEqual(3);
-
+      expect(childs.length).toEqual(4);
 
       expect($("a", $(childs[1])).attr("id")).toEqual(list[0]);
       expect($("a", $(childs[2])).attr("id")).toEqual(list[1]);
