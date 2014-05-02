@@ -155,6 +155,7 @@ module.exports = function(karma) {
 
       // Views
       'frontend/js/views/navigationView.js',
+      'frontend/js/views/notificationView.js',
       'frontend/js/views/apiView.js',
       'frontend/js/views/footerView.js',
       'frontend/js/views/queryView.js',
@@ -258,6 +259,7 @@ module.exports = function(karma) {
       'test/specs/views/graphViewSpec.js',
       'test/specs/views/graphManagementViewSpec.js',
       'test/specs/views/addNewGraphViewSpec.js',
+      /*
       'test/specs/views/clusterDashboardViewSpec.js',
       'test/specs/views/clusterOverviewViewSpec.js',
       'test/specs/views/clusterServerViewSpec.js',
@@ -265,16 +267,17 @@ module.exports = function(karma) {
       'test/specs/views/clusterDatabaseViewSpec.js',
       'test/specs/views/clusterCollectionViewSpec.js',
       'test/specs/views/clusterShardsViewSpec.js',
+      */
       // Router
       'test/specs/router/routerSpec.js',
 
       //Planner
       //Router
-      'test/specs/planner/router/routerSpec.js',
+//      'test/specs/planner/router/routerSpec.js',
       //View
-      'test/specs/planner/views/planSymmetricViewSpec.js',
-      'test/specs/planner/views/planTestViewSpec.js',
-      'test/specs/planner/views/planScenarioSelectorViewSpec.js',
+//      'test/specs/planner/views/planSymmetricViewSpec.js',
+//      'test/specs/planner/views/planTestViewSpec.js',
+//      'test/specs/planner/views/planScenarioSelectorViewSpec.js',
       'test/specJSLint/jsLintSpec.js'
     ],
 

@@ -311,6 +311,7 @@ typedef struct TRI_primary_collection_s {
 
   int64_t                      _numberDocuments;
   TRI_read_write_lock_t        _compactionLock;
+  double                       _lastCompaction;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);

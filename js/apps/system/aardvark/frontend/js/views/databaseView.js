@@ -158,7 +158,7 @@
     },
 
     editDatabase: function(e) {
-      var dbName = $(e.currentTarget).attr("id");
+      var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database');
       $('#editDatabaseName').html(dbName);
       var button = $('#deleteDatabase');
       if(dbName === this.currentDB) {
@@ -213,7 +213,13 @@
           img.replaceWith(svg);
         }, "xml");
       });
+    },
+
+    evaluateDatabaseName : function(str, substr) {
+      var index = str.lastIndexOf(substr);
+      return str.substring(0, index);
     }
+
 
 
   });

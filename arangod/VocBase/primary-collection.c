@@ -582,6 +582,7 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   primary->_capConstraint      = NULL;
   primary->_keyGenerator       = NULL;
   primary->_numberDocuments    = 0;
+  primary->_lastCompaction     = 0.0;
 
   primary->figures             = Figures;
   primary->size                = Count;

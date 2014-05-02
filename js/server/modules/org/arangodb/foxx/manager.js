@@ -38,7 +38,7 @@ var _ = require("underscore");
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
 var checkParameter = arangodb.checkParameter;
-var transformScript = require("org/arangodb/foxx/preprocessor").preprocess;
+var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
 
 var developmentMode = require("internal").developmentMode;
 
@@ -55,6 +55,20 @@ var DEVELOPMENTMOUNTS = null;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the transform script
+////////////////////////////////////////////////////////////////////////////////
+
+function transformScript (file) {
+  if (/\.coffee$/.test(file)) {
+    return function (content) {
+      return preprocess(content, "coffee");
+    };
+  }
+
+  return preprocess;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the aal collection
@@ -741,7 +755,7 @@ function routingAalApp (app, mount, options) {
 
         extendContext(context, app, root);
 
-        app.loadAppScript(context.appModule, file, context, { transform: transformScript });
+        app.loadAppScript(context.appModule, file, context, { transform: transformScript(file) });
 
         // .............................................................................
         // routingInfo
@@ -793,9 +807,8 @@ function routingAalApp (app, mount, options) {
     return routes;
   }
   catch (err) {
-    console.error("Cannot compute foxx application routes: %s - %s", 
-                  String(err), 
-                  String(err.stack));
+    console.errorLines(
+      "Cannot compute foxx application routes: %s", String(err.stack || err));
   }
 
   return null;
@@ -837,16 +850,16 @@ function scanDirectory (path) {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("Cannot read thumbnail referenced by manifest '%s': %s", 
-                          m, 
-                          String(err2.stack || err2));
+            console.errorLines(
+              "Cannot read thumbnail referenced by manifest '%s': %s", m, String(err2.stack || err2));
           }
         }
 
         upsertAalAppEntry(mf, thumbnail, files[j]);
       }
       catch (err) {
-        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.errorLines(
+          "Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
@@ -957,7 +970,7 @@ exports.mount = function (appId, mount, options) {
   }
 
   if (typeof options.reload === "undefined" || options.reload === true) {
-    executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    executeGlobalContextFunction("reloadRouting");
   }
 
   return { appId: app._id, mountId: doc._key, mount: mount };
@@ -1016,7 +1029,8 @@ exports.teardown = function (mount) {
     teardownApp(app, mount, doc.options.collectionPrefix);
   }
   catch (err) {
-    console.error("Teardown not possible for mount '%s': %s", mount, String(err));
+    console.errorLines(
+      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
   }
 };
 
@@ -1048,7 +1062,7 @@ exports.unmount = function (mount) {
 
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   return { appId: doc.app, mount: doc.mount, options: doc.options };
 };
@@ -1104,7 +1118,7 @@ exports.purge = function (key) {
   // remove the app
   getStorage().remove(doc);
 
-  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("reloadRouting");
 
   // we can be sure this is a database-specific app and no system app
   var path = fs.join(module.appPath(), doc.path);
@@ -1215,45 +1229,55 @@ exports.devTeardown = function (filename) {
 
 exports.appRoutes = function () {
   'use strict';
-
+  
   var aal = getStorage();
-  var find = aal.byExample({ type: "mount", active: true });
 
-  var routes = [];
+  return arangodb.db._executeTransaction({
+    collections: {
+      read: [ aal.name() ]
+    },
+    params: {
+      aal : aal
+    },
+    action: function (params) {
+      var find = params.aal.byExample({ type: "mount", active: true });
 
-  while (find.hasNext()) {
-    var doc = find.next();
+      var routes = [];
 
-    var appId = doc.app;
-    var mount = doc.mount;
-    var options = doc.options || { };
+      while (find.hasNext()) {
+        var doc = find.next();
+        var appId = doc.app;
+        var mount = doc.mount;
+        var options = doc.options || { };
 
-    try {
-      var app = module.createApp(appId, options || {});
+        try {
+          var app = module.createApp(appId, options || {});
 
-      if (app === null) {
-        throw new Error("Cannot find application '" + appId + "'");
+          if (app === null) {
+            throw new Error("Cannot find application '" + appId + "'");
+          }
+
+          var r = routingAalApp(app, mount, options);
+
+          if (r === null) {
+            throw new Error("Cannot compute the routing table for foxx application '" 
+                            + app._id + "', check the log file for errors!");
+          }
+
+          routes.push(r);
+
+          if (!developmentMode) {
+            console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+          }
+        }
+        catch (err) {
+          console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+        }
       }
 
-      var r = routingAalApp(app, mount, options);
-
-      if (r === null) {
-        throw new Error("Cannot compute the routing table for foxx application '" 
-                        + app._id + "', check the log file for errors!");
-      }
-
-      routes.push(r);
-
-      if (!developmentMode) {
-        console.log("Mounted foxx app '%s' on '%s'", appId, mount);
-      }
+      return routes;
     }
-    catch (err) {
-      console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
-    }
-  }
-
-  return routes;
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1320,7 +1344,8 @@ exports.developmentRoutes = function () {
         mounts.push(desc);
       }
       catch (err) {
-        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.errorLines(
+          "Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }

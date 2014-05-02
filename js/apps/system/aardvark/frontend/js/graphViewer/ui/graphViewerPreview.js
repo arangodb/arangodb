@@ -58,7 +58,7 @@ function GraphViewerPreview(container, viewerConfig) {
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "graphViewer")
+        .attr("class", "graph-viewer")
         .attr("style", "width:" + width + "px;height:" + height + ";");
     },
     

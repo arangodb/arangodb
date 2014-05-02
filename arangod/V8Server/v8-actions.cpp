@@ -784,7 +784,7 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "executeGlobalContextFunction(<function-definition>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "executeGlobalContextFunction(<function-type>)");
   }
 
   // extract the action name
@@ -794,10 +794,12 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
     TRI_V8_TYPE_ERROR(scope, "<definition> must be a UTF-8 function definition");
   }
 
-  string def = *utf8def;
+  string const def = *utf8def;
 
   // and pass it to the V8 contexts
-  GlobalV8Dealer->addGlobalContextMethod(def);
+  if (! GlobalV8Dealer->addGlobalContextMethod(def)) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "invalid action definition");
+  }
 
   return scope.Close(v8::Undefined());
 }

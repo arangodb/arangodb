@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 140, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST, SYS_TEST_PORT, ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
+/*global require, exports, module, SYS_CLUSTER_TEST, ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -580,7 +580,7 @@ actions.defineHttp({
       return;
     }
     try {
-      var r = SYS_TEST_PORT("tcp://0.0.0.0:"+port);
+      var r = internal.testPort("tcp://0.0.0.0:"+port);
       res.responseCode = actions.HTTP_OK;
       res.contentType = "application/json; charset=utf-8";
       res.body = JSON.stringify(r);

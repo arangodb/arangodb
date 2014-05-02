@@ -27,6 +27,7 @@ test -f ${OUTPUT} || exit 1
 
 cat ${OUTPUT} \
   | sed -e 's:yy_n_chars, (size_t) num_to_read );:yy_n_chars, (int) num_to_read );:' \
+  | sed -e 's:register ::g' \
   > ${OUTPUT}.tmp
 
 # give some information

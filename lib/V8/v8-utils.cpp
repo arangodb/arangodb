@@ -218,7 +218,7 @@ static bool LoadJavaScriptDirectory (char const* path,
 
     filename = files._buffer[i];
 
-    if (! regexec(&re, filename, 0, 0, 0) == 0) {
+    if (regexec(&re, filename, 0, 0, 0) != 0) {
       continue;
     }
 
@@ -832,6 +832,27 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   else {
     return scope.Close(result);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers the executes file function
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "registerExecuteCallback(<func>)");
+  }
+
+  v8g->ExecuteFileCallback
+  = v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(argv[0]));
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2275,7 +2296,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   if (gc) {
     // wait with gc
     v8::V8::LowMemoryNotification();
-    while(! v8::V8::IdleNotification()) {
+    while (! v8::V8::IdleNotification()) {
     }
 
     size_t i = 0;
@@ -3134,7 +3155,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialisation
+// --SECTION--                                             module initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3246,6 +3267,9 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_TEST_PORT", JS_TestPort);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
+
+  // register callback functions
+  TRI_AddGlobalFunctionVocbase(context, "REGISTER_EXECUTE_FILE", JS_RegisterExecuteFile);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SEGFAULT", JS_DebugSegfault);

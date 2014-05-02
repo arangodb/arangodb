@@ -16,3 +16,25 @@
     font-size: 20px;
   }
 }
+
+.icon-info-sign {
+  @extend %clickable;
+}
+
+.icon_arangodb_info {
+  color: $c-icon-with-opacity;
+  font-size: 23px;
+}
+
+.arangoicon {
+  @extend %clickable
+}
+
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
+  font-size: 18px;
+  position: absolute;
+  right: 4px;
+  top: 2px;
+}
+

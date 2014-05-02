@@ -1,0 +1,117 @@
+.arangoDataTable {
+  border-spacing: 0 0;
+  position: relative;
+  table-layout: fixed !important;
+  width: 100% !important;
+
+  thead {
+    background-color: #fff !important;
+    font-weight: 400 !important;
+    text-align: left;
+
+    th {
+      border-bottom: 0;
+      cursor: default !important;
+      font-weight: 400 !important;
+      padding: 10px 14px !important;
+    }
+
+    tr {
+      border-bottom: 1px solid #c2c2c2;
+    }
+
+  }
+
+  tr {
+    cursor: pointer;
+  }
+
+  td {
+    padding: 10px 18px !important;
+  }
+
+  .key {
+    margin-top: 4px;
+  }
+
+  .dataTable {
+    .noPointer tr {
+      cursor: default;
+    }
+  }
+}
+
+// Odd / Even coloring
+.api-container #resources > li.resource:nth-child(even),
+table.arangoDataTable tr.even {
+  background-color: #fff;
+}
+
+.api-container #resources > li.resource:nth-child(odd),
+table.arangoDataTable tr.odd {
+  background-color: #f1f0ee;
+}
+
+// TODO Hard cleanup
+#tableDiv table.dataTable td {
+  padding: 12px 18px !important;
+}
+
+#documentsTableID_length,
+#documentsTableID_filter {
+  display: none;
+}
+
+#documentsTableID_wrapper {
+  min-height: 513px !important;
+  padding-bottom: 0 !important;
+}
+
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden;
+}
+
+#documentsTableID_paginate,
+#documentsTableID_filter,
+#documentsTableID_length {
+  visibility: hidden;
+}
+
+.snippet-no-num {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 1em;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+.cuttedContent,
+.prettify ul li,
+.writeable a {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.totalDocuments {
+  color: #000;
+  float: left;
+  margin-top: -54px !important;
+  padding-left: 10px;
+}
+
+.prettify {
+  border: none !important;
+  font-size: 1em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+table .sorting {
+  background: none !important;
+}
+
+// i think it is removed
+.sorting_asc,
+.sorting_desc {
+  background: #e4e0dd;
+}

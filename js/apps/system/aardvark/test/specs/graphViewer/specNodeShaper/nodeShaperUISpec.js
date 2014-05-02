@@ -442,11 +442,11 @@
           expect($(lblAttrPrefix + "4").length).toEqual(1);
           expect($(lblAttrPrefix + "5").length).toEqual(1);
           
-          expect($(lblAttrPrefix + "1").attr("value")).toEqual("");
-          expect($(lblAttrPrefix + "2").attr("value")).toEqual("");
-          expect($(lblAttrPrefix + "3").attr("value")).toEqual("");
-          expect($(lblAttrPrefix + "4").attr("value")).toEqual("");
-          expect($(lblAttrPrefix + "5").attr("value")).toEqual("");
+          expect($(lblAttrPrefix + "1").val()).toEqual("");
+          expect($(lblAttrPrefix + "2").val()).toEqual("");
+          expect($(lblAttrPrefix + "3").val()).toEqual("");
+          expect($(lblAttrPrefix + "4").val()).toEqual("");
+          expect($(lblAttrPrefix + "5").val()).toEqual("");
           
           expect($("#" + addLabelLineId).length).toEqual(1);
           $(lblAttrPrefix + "1").attr("value", lbl1);

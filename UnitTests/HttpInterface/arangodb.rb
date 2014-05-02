@@ -8,6 +8,7 @@ $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 $user = ENV['ARANGO_USER']
 $password = ENV['ARANGO_PASSWORD']
 $ssl = ENV['ARANGO_SSL']
+$silent = ENV['ARANGO_NO_LOG'] || ''
 
 begin
   $address = RSpec.configuration.ARANGO_SERVER
@@ -162,6 +163,9 @@ class ArangoDB
 ################################################################################
 
   def self.log (args)
+    # disable logging if requested
+    return if not ($silent.nil? || $silent.empty? || $silent == "0")
+
     if args.key?(:output)
       logfile = File.new("logs/#{args[:output]}", "a")
     else

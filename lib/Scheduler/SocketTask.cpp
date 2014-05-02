@@ -429,7 +429,13 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
     return false;
   }
 
-  int res = _open_osfhandle(_commSocket.fileHandle, 0);
+  // For the official version of libev we would do this:
+  // int res = _open_osfhandle(_commSocket.fileHandle, 0);
+  // However, this opens a whole lot of problems and in general one should
+  // never use _open_osfhandle for sockets.
+  // Therefore, we do the following, although it has the potential to
+  // lose the higher bits of the socket handle:
+  int res = (int)_commSocket.fileHandle;
 
   if (res == -1) {
     LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");

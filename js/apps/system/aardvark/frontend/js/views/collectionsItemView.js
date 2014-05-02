@@ -6,8 +6,7 @@
 
   window.CollectionListItemView = Backbone.View.extend({
 
-    tagName: "li",
-//    className: "span3",
+    tagName: "div",
     className: "tile",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
@@ -17,12 +16,16 @@
     },
     events: {
       'click .pull-left' : 'noop',
-      'click #editCollection' : 'editProperties',
+      'click .icon_arangodb_settings2' : 'editProperties',
+//      'click #editCollection' : 'editProperties',
       'click .spanInfo' : 'showProperties',
       'click': 'selectCollection'
     },
     render: function () {
-      $(this.el).html(this.template.render(this.model));
+      $(this.el).html(this.template.render({
+        model: this.model
+      }));
+      $(this.el).attr('id', 'collection_' + this.model.get('name'));
       return this;
     },
 

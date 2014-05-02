@@ -100,7 +100,11 @@ Managing Async Results via HTTP {#HttpJobHttp}
 @copydetails triagens::admin::RestJobHandler::deleteJob
 
 @CLEARPAGE
-@anchor HttpJobGet
-@copydetails triagens::admin::RestJobHandler::getJob
+@anchor HttpJobGetId
+@copydetails triagens::admin::RestJobHandler::getJobId
+
+@CLEARPAGE
+@anchor HttpJobGetType
+@copydetails triagens::admin::RestJobHandler::getJobType
 
 @BNAVIGATE_HttpJob

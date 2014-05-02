@@ -8,11 +8,14 @@
   describe("The navigation bar", function() {
 
     var div, view, currentDBFake, curName, isSystem,
-      DBSelectionViewDummy, StatisticBarViewDummy, UserBarViewDummy;
+      DBSelectionViewDummy, StatisticBarViewDummy, UserBarViewDummy,
+      NotificationViewDummy, UserCollectionDummy, oldRouter;
 
     beforeEach(function() {
       curName = "_system";
       isSystem = true;
+      oldRouter = window.App;
+      window.App = {navigate : function(){}};
 
       window.currentDB = window.currentDB || {
         get: function() {}
@@ -33,9 +36,22 @@
         render : function(){}
       };
 
+      NotificationViewDummy = {
+        id : "NotificationViewDummy",
+        render : function(){}
+      };
+
+      UserCollectionDummy = {
+        id      : "UserCollectionDummy",
+        whoAmI  : function () {return "root";}
+      };
+
+
+
       spyOn(window, "UserBarView").andReturn(UserBarViewDummy);
       spyOn(window, "StatisticBarView").andReturn(StatisticBarViewDummy);
       spyOn(window, "DBSelectionView").andReturn(DBSelectionViewDummy);
+      spyOn(window, "NotificationView").andReturn(NotificationViewDummy);
       spyOn(window.currentDB, "get").andCallFake(function(key) {
         if (key === "name") {
           return curName;
@@ -52,12 +68,13 @@
 
     afterEach(function() {
       document.body.removeChild(div);
+      window.App = oldRouter;
     });
 
     describe("in any database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView();
+        view = new window.NavigationView({userCollection : UserCollectionDummy});
         view.render();
       });
 
@@ -115,7 +132,7 @@
     describe("in _system database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView();
+        view = new window.NavigationView({userCollection : UserCollectionDummy});
         view.render();
       });
 
@@ -133,7 +150,7 @@
       beforeEach(function() {
         curName = "firstDB";
         isSystem = false;
-        view = new window.NavigationView();
+        view = new window.NavigationView({userCollection : UserCollectionDummy});
         view.render();
       });
       

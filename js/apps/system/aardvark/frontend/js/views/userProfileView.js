@@ -30,6 +30,13 @@
         username : this.user.get("user")
 
       }));
+
+      $("[data-toggle=tooltip]").tooltip();
+
+      $('.modalInfoTooltips').tooltip({
+        placement: "left"
+      });
+
       return this;
     },
 

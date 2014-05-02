@@ -112,8 +112,7 @@ var uiMatchers = uiMatchers || {};
         expect(li).toBeTag("li");
         expect(li).toBeOfClass("graph_control");
         expect(btn).toBeTag("button");
-        expect(btn).toBeOfClass("btn");
-        expect(btn).toBeOfClass("btn-primary");
+        expect(btn).toBeOfClass("button-primary");
         expect(btn).toBeOfClass("gv_dropdown_entry");
         return true;
       }

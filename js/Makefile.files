@@ -70,14 +70,17 @@ JAVASCRIPT_JSLINT = \
 .PHONY: jslint
 
 jslint:
-	@for file in $(JAVASCRIPT_JSLINT); do \
+	@RESULT=0; \
+	for file in $(JAVASCRIPT_JSLINT); do \
 		@builddir@/bin/arangosh \
 			-c none \
 			--log.level error \
 			--server.password "" \
 			--javascript.startup-directory @srcdir@/js \
 			--jslint $$file; \
-	done
+                if [ "$$?x" != "0x" ]; then RESULT=1; fi; \
+	done; \
+	exit $$RESULT
 
 ################################################################################
 ### @brief sets up the directories

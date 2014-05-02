@@ -451,8 +451,8 @@ int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* pos
   block->_free = block->_free | tempInt;
   equality = false;
   vectorInsertPos = compareIndexOf(mt, position->_blockNum, &equality);
-  if (!equality) {
-    TRI_InsertVector(&(mt->_freeBlockPosition), &(position->_blockNum), vectorInsertPos);
+  if (! equality) {
+    return TRI_InsertVector(&(mt->_freeBlockPosition), &(position->_blockNum), vectorInsertPos);
   }
 
   return TRI_ERROR_NO_ERROR;

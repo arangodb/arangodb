@@ -54,6 +54,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     //  Informational 1xx
     case CONTINUE:                        return "100 Continue";
     case SWITCHING_PROTOCOLS:             return "101 Switching Protocols";
+    case PROCESSING:                      return "102 Processing";
 
     //  Success 2xx
     case OK:                              return "200 OK";
@@ -121,6 +122,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
   switch (number) {
     case 100: return CONTINUE;
     case 101: return SWITCHING_PROTOCOLS;
+    case 102: return PROCESSING;
 
     case 200: return OK;
     case 201: return CREATED;

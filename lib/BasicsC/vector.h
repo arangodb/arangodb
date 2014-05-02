@@ -180,7 +180,7 @@ void* TRI_AtVector (TRI_vector_t const*, size_t);
 /// @brief inserts an element at a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position);
+int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an element at a given position

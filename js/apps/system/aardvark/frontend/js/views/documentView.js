@@ -6,7 +6,6 @@
   "use strict";
   window.DocumentView = Backbone.View.extend({
     el: '#content',
-    table: '#documentTableID',
     colid: 0,
     docid: 0,
 

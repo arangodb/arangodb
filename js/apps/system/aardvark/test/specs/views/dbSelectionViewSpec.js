@@ -77,7 +77,7 @@
 */
     it("should not render the selection if the list has only one element", function() {
       var oneCollection = new window.ArangoDatabase();
-      oneCollection.add({name: current});
+      oneCollection.add(current);
       spyOn(oneCollection, "fetch");
       view = new DBSelectionView(
         {

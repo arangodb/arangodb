@@ -551,6 +551,20 @@ static int RemoveHashIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief provides a size hint for the hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int SizeHintHashIndex (TRI_index_t* idx,
+                              size_t size) {
+  TRI_hash_index_t* hashIndex;
+
+  hashIndex = (TRI_hash_index_t*) idx;
+  TRI_ResizeHashArray(&hashIndex->_hashArray, size);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -571,8 +585,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
                                   TRI_idx_iid_t iid,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
-                                  bool unique,
-                                  size_t initialDocumentCount) {
+                                  bool unique) {
   TRI_hash_index_t* hashIndex;
   TRI_index_t* idx;
   int res;
@@ -589,6 +602,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   idx->json     = JsonHashIndex;
   idx->insert   = InsertHashIndex;
   idx->remove   = RemoveHashIndex;
+  idx->sizeHint = SizeHintHashIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
@@ -601,7 +615,6 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
 
   // create a index preallocated for the current number of documents
   res = TRI_InitHashArray(&hashIndex->_hashArray,
-                          initialDocumentCount,
                           hashIndex->_paths._length);
 
   // oops, out of memory?
