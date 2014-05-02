@@ -163,14 +163,30 @@ exports.Foxxes = function () {
 
   // TODO: merge with functionality js/client/modules/org/arangodb/foxx/manager.js
   this.inspectUploadedFile = function (filename) {
+    var console = require("console");
+
     if (! fs.isFile(filename)) {
       throw "Unable to find zip file"; 
     }
 
     var i;
-    var path = fs.getTempFile("zip", false); 
+    var path;
 
-    fs.unzipFile(filename, path, false, true);
+    try {
+      path = fs.getTempFile("zip", false); 
+    }
+    catch (err1) {
+      console.error("cannot get temp file: %s", String(err1));
+      throw err1;
+    }
+
+    try {
+      fs.unzipFile(filename, path, false, true);
+    }
+    catch (err2) {
+      console.error("cannot unzip file '%s' into directory '%s': %s", filename, path, String(err2));
+      throw err2;
+    }
 
     // .............................................................................
     // locate the manifest file

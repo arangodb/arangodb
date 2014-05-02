@@ -316,7 +316,7 @@ function post_api_collection (req, res) {
   try {
     var collection;
     if (typeof(r.type) === "string") {
-      if (r.type.toLowerCase() === "edge") {
+      if (r.type.toLowerCase() === "edge" || r.type === "3") {
         r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }

@@ -41,7 +41,6 @@ exports.Communication = function() {
     mapCollectionIDsToNames,
     updateCollectionRouteForName,
     updateDatabaseRoutes,
-    difference,
     self = this,
     _ = require("underscore");
 
@@ -76,13 +75,6 @@ exports.Communication = function() {
 
   AgencyWrapper = function() {
     var _agency = exports._createAgency();
-    var routes = { 
-      vision: "Vision/",
-      target: "Target/",
-      plan: "Plan/",
-      current: "Current/",
-      fail: "Fail/"
-    };
     var stubs = {
       get: function(route, recursive) {
         return _agency.get(route, recursive);
@@ -307,7 +299,7 @@ exports.Communication = function() {
     };
     if (writeAccess) {
       this.add = function(name) {
-        return route.set(name, true);
+        return route.set(name, "none");
       };
       this.remove = function(name) {
         return route.remove(name);

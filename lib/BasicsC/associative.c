@@ -93,7 +93,8 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ResizeAssociativeArray (TRI_associative_array_t* array) {
+static void ResizeAssociativeArray (TRI_associative_array_t* array,
+                                    uint32_t targetSize) {
   char * oldTable;
   uint32_t oldAlloc;
   uint32_t oldUsed;
@@ -102,7 +103,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
+  array->_nrAlloc = targetSize;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
 #endif
@@ -366,7 +367,7 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeArray(array);
+    ResizeAssociativeArray(array, (uint32_t) (2 * array->_nrAlloc + 1));
   }
 
   return true;
@@ -419,7 +420,7 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeArray(array);
+    ResizeAssociativeArray(array, (uint32_t) (2 * array->_nrAlloc + 1));
   }
 
   return true;
@@ -1195,7 +1196,8 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 /// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
+static void ResizeAssociativeSynced (TRI_associative_synced_t* array, 
+                                     uint32_t targetSize) {
   void** oldTable;
   uint32_t oldAlloc;
   uint32_t j;
@@ -1203,7 +1205,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
+  array->_nrAlloc = targetSize;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
 #endif
@@ -1441,7 +1443,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeSynced(array);
+    ResizeAssociativeSynced(array, (uint32_t) (2 * array->_nrAlloc + 1));
   }
 
   TRI_WriteUnlockReadWriteLock(&array->_lock);
@@ -1498,7 +1500,7 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeAssociativeSynced(array);
+    ResizeAssociativeSynced(array, (uint32_t) (2 * array->_nrAlloc + 1));
   }
 
   TRI_WriteUnlockReadWriteLock(&array->_lock);

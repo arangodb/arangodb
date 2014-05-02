@@ -33,7 +33,6 @@
 .button-notification {
   @extend %btn;
   @extend %notification;
-  margin-right: 5px;
 }
 
 .button-success {
@@ -79,6 +78,19 @@
   top: 3px;
 }
 
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
+
+
+button.large-distance {
+  margin-left: 12px;
+}
+
+button.short-distance {
+  margin-left: 6px;
+}
+
 ul.headerButtonList {
   display: inline-block;
   margin-bottom: 0;
@@ -86,8 +98,8 @@ ul.headerButtonList {
   padding-left: 0 !important;
 
   li {
+    @extend %pull-right;
     display: inline;
-    margin-right: 2px;
   }
 }
 
@@ -105,7 +117,7 @@ button.shutdown {
 
   margin: {
     left: 5px;
-    right: 3px;
+    right: 5px;
   }
   padding: {
     left: 9px;
@@ -156,7 +168,11 @@ a.headerButton {
 
 //Graph Viewer
 
-div.toolbox > {
+div.toolbox {
+  @include border-radius(2px);
+  border: 3px solid $c-nav-bg;
+  margin-right: 5px;
+  position: absolute;
 
   div.gv_action_button {
     @extend %clickable;
@@ -317,8 +333,8 @@ button.gv-zoom-btn {
   }
 }
 
-a.paginationButton,
-ul.arangoPagination a {
+a.pagination-button,
+ul.arango-pagination a {
   @include border-radius(2px);
 }
 
@@ -345,10 +361,6 @@ button {
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important;
-}
-
-.btn-group.open .btn-inverse.dropdown-toggle {
-  background-color: $c-btn-inverse;
 }
 
 // Cluster View
@@ -423,3 +435,4 @@ a.button-gui {
     }
   }
 }
+

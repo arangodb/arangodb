@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +68,8 @@
 ///   - `test`: path to single test to execute for "single" test target
 ///   - `skipServer`: flag for "single" test target to skip the server test
 ///   - `skipClient`: flag for "single" test target to skip the client test
+///   - `cleanup`: if set to true (the default), the cluster data files
+///     and logs are removed after termination of the test.
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
@@ -86,6 +88,8 @@ var PortFinder = require("org/arangodb/cluster").PortFinder;
 var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
 
+var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+
 var optionsDefaults = { "cluster": false,
                         "valgrind": false,
                         "force": true,
@@ -97,7 +101,8 @@ var optionsDefaults = { "cluster": false,
                         "password": "",
                         "test": undefined,
                         "skipServer": false,
-                        "skipClient": false };
+                        "skipClient": false,
+                        "cleanup": true };
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
@@ -111,6 +116,7 @@ function findTopDir () {
 function makeTestingArgs () {
   var topDir = findTopDir();
   return [ "--configuration",                  "none",
+           "--server.keyfile",       fs.join(topDir,"UnitTests","server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
            "--javascript.gc-interval",         "1",
@@ -154,7 +160,7 @@ function startInstance (protocol, options, addArgs) {
   var pos;
   var dispatcher;
   if (options.cluster) {
-    // FIXME: protocol and valgrind currently ignored!
+    // FIXME: valgrind currently ignored!
     dispatcher = {"endpoint":"tcp://localhost:",
                   "arangodExtraArgs":makeTestingArgs(),
                   "username": "root",
@@ -162,11 +168,13 @@ function startInstance (protocol, options, addArgs) {
     if (addArgs !== undefined) {
       dispatcher.arangodExtraArgs = addArgs;
     }
+    print("Temporary cluster data and logs are in",tmpDataDir);
     var p = new Planner({"numberOfDBservers":2, 
                          "numberOfCoordinators":1,
                          "dispatchers": {"me": dispatcher},
                          "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir});
+                         "logPath": tmpDataDir,
+                         "useSSLonCoordinators": protocol === "ssl"});
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -206,15 +214,7 @@ function startInstance (protocol, options, addArgs) {
   }
 
   // Wait until the server/coordinator is up:
-  var url;
-  if (protocol === "ssl") {
-    url = "https";
-  }
-  else {
-    url = "http";
-  }
-  pos = endpoint.indexOf("://");
-  url += endpoint.substr(pos);
+  var url = endpointToURL(endpoint);
   while (true) {
     wait(0.5);
     var r = download(url+"/_api/version","",makeAuthorisationHeaders(options));
@@ -232,7 +232,9 @@ function startInstance (protocol, options, addArgs) {
 function shutdownInstance (instanceInfo, options) {
   if (options.cluster) {
     instanceInfo.kickstarter.shutdown();
-    instanceInfo.kickstarter.cleanup();
+    if (options.cleanup) {
+      instanceInfo.kickstarter.cleanup();
+    }
   }
   else {
     download(instanceInfo.url+"/_admin/shutdown","",
@@ -240,7 +242,9 @@ function shutdownInstance (instanceInfo, options) {
     wait(10);
     killExternal(instanceInfo.pid);
   }
-  fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+  if (options.cleanup) {
+    fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+  }
 }
 
 function makePath (path) {
@@ -557,7 +561,6 @@ function rubyTests (options, ssl) {
       }
     }
   }
-  fs.removeDirectoryRecursive(logsdir, true);
   
   print("Shutting down...");
   fs.remove(tmpname);
@@ -643,6 +646,11 @@ var impTodo = [
 ];
 
 testFuncs.importing = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
+    
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
@@ -735,6 +743,10 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.dump = function (options) {
+  if (options.cluster) {
+    print("Skipped because of cluster.");
+    return {"ok":true, "skipped":0};
+  }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
@@ -760,7 +772,9 @@ testFuncs.dump = function (options) {
 var benchTodo = [
   ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
   ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
-  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16"],
+  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16", "--complexity","2"],
+  ["--requests","100000","--concurrency","2","--test","shapes-append", "--batch-size","16", "--complexity","4"],
+  ["--requests","100000","--concurrency","2","--test","random-shapes", "--batch-size","16", "--complexity","2"],
   ["--requests","1000","--concurrency","2","--test","version", "--batch-size", "16"],
   ["--requests","100","--concurrency","1","--test","version", "--batch-size", "0"],
   ["--requests","100","--concurrency","2","--test","document", "--batch-size",
@@ -784,7 +798,7 @@ testFuncs.arangob = function (options) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
-         benchTodo[i].indexOf("multitdx") === -1)) {
+         benchTodo[i].indexOf("multitrx") === -1)) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
       if (r !== 0 && !options.force) {
@@ -942,6 +956,7 @@ function UnitTest (which, options) {
     var results = {};
     var allok = true;
     for (n = 0;n < allTests.length;n++) {
+      print("Doing test",allTests[n],"with options",options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
       for (i in r) {

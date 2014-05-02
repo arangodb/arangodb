@@ -197,7 +197,7 @@
     },
 
     logsAllowed: function () {
-      return (window.databaseName === '_system');
+      return (window.currentDB.get('name') === '_system');
     },
 
     checkUser: function () {

@@ -86,7 +86,6 @@
       spyOn(window, "CollectionsView");
       spyOn(window, "DocumentsView");
       spyOn(window, "DocumentView");
-      spyOn(window, "DocumentSourceView");
       spyOn(window, "ArangoLogs").andReturn(logsDummy);
       spyOn(logsDummy, "fetch");
       spyOn(window, "FooterView").andReturn(footerDummy);
@@ -142,11 +141,11 @@
       });
 
       it("should create a documentView", function() {
-        expect(window.DocumentView).toHaveBeenCalledWith();
-      });
-
-      it("should create a documentSourceView", function() {
-        expect(window.DocumentSourceView).toHaveBeenCalledWith();
+        expect(window.DocumentView).toHaveBeenCalledWith(
+          {
+            collection : documentDummy
+          }
+        );
       });
 
       it("should create a documentsView", function() {
@@ -408,32 +407,6 @@
         simpleNavigationCheck(
           "applications",
           "ApplicationsView",
-          "applications-menu",
-          { collection: foxxDummy},
-          {
-            reload: undefined
-          },
-          true
-        );
-      });
-
-      it("should route to the insalled applications", function() {
-        simpleNavigationCheck(
-          "applications/installed",
-          "FoxxActiveListView",
-          "applications-menu",
-          { collection: foxxDummy},
-          {
-            reload: undefined
-          },
-          true
-        );
-      });
-
-      it("should route to the available applications", function() {
-        simpleNavigationCheck(
-          "applications/available",
-          "FoxxInstalledListView",
           "applications-menu",
           { collection: foxxDummy},
           {

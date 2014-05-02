@@ -4,7 +4,7 @@
   word-wrap: break-word !important;
 }
 
-.indexTooltip {
+.index-tooltip {
   color: $c-btn-inverse;
 
   &:hover {
@@ -14,4 +14,8 @@
   span.arangoicon {
     font-size: 18px !important;
   }
+}
+
+.tooltipInfoTh {
+  width: 10%;
 }

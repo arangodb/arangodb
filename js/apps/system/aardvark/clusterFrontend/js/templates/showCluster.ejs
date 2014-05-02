@@ -24,7 +24,7 @@
     </select>
   </div>
 </div>
-<ul id="clusterLayout" class="tileList">
+<div id="clusterLayout" class="tileList">
   <% if(type === "testPlan") { 
     _.each(byAddress, function(s, a) { 
       _.each(s.coords, function(c) {
@@ -87,7 +87,7 @@
     });
   }
   %>
-</ul>
+</div>
 
 <div class="headerBar">
   <a class="arangoHeader">Cluster Statistics</a>

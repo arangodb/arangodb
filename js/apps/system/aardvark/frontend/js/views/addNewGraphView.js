@@ -15,7 +15,7 @@
     events: {
       "click #cancel": "hide",
       "hidden": "hidden",
-      "click #createGraph": "createGraph"
+      "click #createNewGraph": "createGraph"
     },
 
     createGraph: function() {

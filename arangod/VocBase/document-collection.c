@@ -3747,6 +3747,12 @@ static int FillIndex (TRI_document_collection_t* document,
   // update index
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
+    
+  if (idx->sizeHint != NULL) {
+    // give the index a size hint
+    idx->sizeHint(idx, primary->_primaryIndex._nrUsed);
+  }
+
 
   inserted = 0;
 
@@ -5094,8 +5100,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             iid,
                             &fields,
                             &paths,
-                            unique,
-                            document->base._primaryIndex._nrUsed);
+                            unique);
   
   if (idx == NULL) {
     TRI_DestroyVector(&paths);

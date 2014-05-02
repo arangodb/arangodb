@@ -43,20 +43,29 @@
 
     insertNewLabelLine: function() {
       this.labelId++;
-      var next = this.newLineTmpl.render({id: this.labelId});
+      var next = this.newLineTmpl.render({
+        id: this.labelId,
+        type: "label"
+      });
       $("#label_list").append(next);
     },
 
     insertNewColourLine: function() {
       this.colourId++;
-      var next = this.newLineTmpl.render({id: this.colourId});
+      var next = this.newLineTmpl.render({
+        id: this.colourId,
+        type: "colour"
+      });
       $("#colour_list").append(next);
     },
 
 
     insertNewGroupLine: function() {
       this.groupId++;
-      var next = this.newLineTmpl.render({id: this.groupId});
+      var next = this.newLineTmpl.render({
+        id: this.groupId,
+        type: "group_by"
+      });
       $("#group_by_list").append(next);
     },
 

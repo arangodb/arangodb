@@ -1,4 +1,5 @@
 function main (argv) {
+  var fs = require("fs");
   var print = require("internal").print;
   if (argv.length < 2) {
     print("Usage: unittest TESTNAME [OPTIONS]");
@@ -11,5 +12,8 @@ function main (argv) {
   }
   var UnitTest = require("org/arangodb/testing").UnitTest;
   start_pretty_print();
-  print(UnitTest(test,options));
+  var r = UnitTest(test,options); 
+  fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
+  fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(r.all_ok));
+  print(r);
 }

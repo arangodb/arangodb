@@ -80,6 +80,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
+#include "Wal/Configuration.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
@@ -289,6 +290,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
+    _walConfiguration(0),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -313,7 +315,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _unusedForceSyncShapes(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
-    _removeOnCompacted(true),
     _removeOnDrop(true),
     _server(0) {
 
@@ -385,11 +386,14 @@ void ArangoServer::buildApplicationServer () {
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
-
+/* 
+  _walConfiguration = new wal::Configuration(); 
+  _applicationServer->addFeature(_walConfiguration);
+*/
   // .............................................................................
   // dispatcher
   // .............................................................................
-
+  
   _applicationDispatcher = new ApplicationDispatcher();
 
   if (_applicationDispatcher == 0) {
@@ -470,10 +474,15 @@ void ArangoServer::buildApplicationServer () {
   // define server options
   // .............................................................................
 
+  // command-line only options
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
-    ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
+  ;
+ 
+  // other options 
+  additional[ApplicationServer::OPTIONS_SERVER]
+    ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
@@ -527,10 +536,6 @@ void ArangoServer::buildApplicationServer () {
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
-  ;
-
-  additional["DATABASE Options:help-devel"]
-    ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
 
   // deprecated options
@@ -1016,7 +1021,6 @@ void ArangoServer::openDatabases () {
   // override with command-line options
   defaults.defaultMaximalSize               = _defaultMaximalSize;
   defaults.removeOnDrop                     = _removeOnDrop;
-  defaults.removeOnCompacted                = _removeOnCompacted;
   defaults.defaultWaitForSync               = _defaultWaitForSync;
   defaults.forceSyncProperties              = _forceSyncProperties;
   defaults.requireAuthentication            = ! _disableAuthentication;

@@ -1,7 +1,11 @@
-ul.tileList {
+div.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
+
+  & legend {
+    padding-left: 5px;
+  }
 }
 
 $iconsize: 50px;
@@ -11,6 +15,7 @@ $iconsize: 50px;
   @include box-shadow(none);
 
   background-color: $c-very-transp;
+  font-size: 14px;
   list-style: none;
   margin: {
     bottom: 13px;
@@ -28,6 +33,7 @@ $iconsize: 50px;
   }
 
   a {
+
     span {
 
       &.add-Icon {
@@ -37,6 +43,8 @@ $iconsize: 50px;
         margin-right: 10px;
         margin-top: -5px;
         position: relative;
+        right: 4px;
+        top: 2px;
       }
 
       &.icon {
@@ -157,15 +165,15 @@ $iconsize: 50px;
   }
 }
 
-li {
+div {
 
-  &.tile {
+  & .tile {
     @extend %tile;
     height: 100px;
     width: 230px;
   }
 
-  &.bigtile {
+  & .bigtile {
     @extend %clickable;
     @extend %tile;
     height: 309px;

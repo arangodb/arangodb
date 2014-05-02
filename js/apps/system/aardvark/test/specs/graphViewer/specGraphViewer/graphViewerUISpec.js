@@ -178,14 +178,13 @@
         expect(valfield).toBeOfClass("searchInput");
         expect(valfield.placeholder).toEqual("Attribute value");
         expect(btn).toBeTag("img");
-        expect(btn.className).toEqual("searchSubmit");
+        expect(btn.className).toEqual("gv-search-submit-icon");
       });
       
       it('should contain a position for the layout buttons', function() {
         var buttonBar = $("#contentDiv #menubar #modifiers");
         expect(buttonBar.length).toEqual(1);
         expect(buttonBar).toBeOfClass("headerButtonBar");
-        expect(buttonBar).toBeOfClass("pull-right");
       });
       
       it('should contain a general configure menu', function() {
@@ -227,7 +226,7 @@
       });
       
       it('should have the correct css class', function() {
-        expect(map).toBeOfClass("gv_colour_list");
+        expect(map).toBeOfClass("gv-colour-list");
       });
       
     });

@@ -511,7 +511,7 @@ static int GenerateMessage (char* buffer,
   m += n;
 
   // .............................................................................
-  // check if we must disply the line number
+  // check if we must display the line number
   // .............................................................................
 
   sln = ShowLineNumber;

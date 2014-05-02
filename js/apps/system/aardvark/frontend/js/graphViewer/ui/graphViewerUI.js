@@ -130,7 +130,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchValueField.type = "text";
       searchValueField.placeholder = "Attribute value";
       searchStart.id = "loadnode";
-      searchStart.className = "searchSubmit";
+      searchStart.className = "gv-search-submit-icon";
       equalsField.className = "searchEqualsLabel";
       equalsField.appendChild(document.createTextNode("=="));
 
@@ -190,24 +190,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
     makeConfigure = function (div, idConf, idFilter) {
       var ul, liConf, aConf, spanConf, liFilter, aFilter, spanFilter, lists;
-      div.className = "headerButtonBar pull-right";
+      div.className = "headerButtonBar";
       ul = document.createElement("ul");
       ul.className = "headerButtonList";
 
       div.appendChild(ul);
-
-      liFilter = document.createElement("li");
-      liFilter.className = "enabled";
-      aFilter = document.createElement("a");
-      aFilter.id = idFilter;
-      aFilter.className = "headerButton";
-      spanFilter = document.createElement("span");
-      spanFilter.className = "icon_arangodb_filter";
-      $(spanFilter).attr("title", "Filter");
-      
-      ul.appendChild(liFilter);
-      liFilter.appendChild(aFilter);
-      aFilter.appendChild(spanFilter);
 
       liConf = document.createElement("li");
       liConf.className = "enabled";
@@ -222,6 +209,18 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       liConf.appendChild(aConf);
       aConf.appendChild(spanConf);
 
+      liFilter = document.createElement("li");
+      liFilter.className = "enabled";
+      aFilter = document.createElement("a");
+      aFilter.id = idFilter;
+      aFilter.className = "headerButton";
+      spanFilter = document.createElement("span");
+      spanFilter.className = "icon_arangodb_filter";
+      $(spanFilter).attr("title", "Filter");
+      
+      ul.appendChild(liFilter);
+      liFilter.appendChild(aFilter);
+      aFilter.appendChild(spanFilter);
       lists = makeConfigureDiv();
       lists.filter = makeFilterDiv();
       aConf.onclick = function () {
@@ -247,7 +246,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "graphViewer")
+        .attr("class", "graph-viewer")
         .style("width", width + "px")
         .style("height", height + "px");
     },
@@ -414,12 +413,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     
     createColourList = function() {
       colourList = nodeShaperUI.createColourMappingList();
-      colourList.className = "gv_colour_list";
+      colourList.className = "gv-colour-list";
       background.insertBefore(colourList, svg[0][0]);
     };
   container.appendChild(menubar);
   container.appendChild(background);
-  background.className = "contentDiv gv_background ";
+  background.className = "contentDiv gv-background ";
   background.id = "background";
   
   viewerConfig = viewerConfig || {};

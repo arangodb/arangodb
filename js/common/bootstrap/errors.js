@@ -34,6 +34,8 @@
     "ERROR_CANNOT_OVERWRITE_FILE"  : { "code" : 16, "message" : "cannot overwrite file" }, 
     "ERROR_TYPE_ERROR"             : { "code" : 17, "message" : "type error" }, 
     "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" }, 
+    "ERROR_CANNOT_CREATE_DIRECTORY" : { "code" : 19, "message" : "cannot create directory" }, 
+    "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 

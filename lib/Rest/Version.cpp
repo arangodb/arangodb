@@ -77,6 +77,7 @@ void Version::initialise () {
   Values["build-date"] = getBuildDate();
   Values["repository-version"] = getRepositoryVersion();
   Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
+  Values["sizeof void*"] = triagens::basics::StringUtils::itoa(sizeof(void*));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

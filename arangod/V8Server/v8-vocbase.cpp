@@ -6076,6 +6076,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   result->Set(v8::String::New("endPosition"), v8::Number::New(scan._endPosition));
   result->Set(v8::String::New("numberMarkers"), v8::Number::New(scan._numberMarkers));
   result->Set(v8::String::New("status"), v8::Number::New(scan._status));
+  result->Set(v8::String::New("isSealed"), v8::Boolean::New(scan._isSealed));
 
   v8::Handle<v8::Array> entries = v8::Array::New();
   result->Set(v8::String::New("entries"), entries);
@@ -9490,7 +9491,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
   
   v8::Local<v8::String> keyRemoveOnDrop = v8::String::New("removeOnDrop");
-  v8::Local<v8::String> keyRemoveOnCompacted = v8::String::New("removeOnCompacted");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
@@ -9504,10 +9504,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyRemoveOnDrop)) {
       defaults.removeOnDrop = options->Get(keyRemoveOnDrop)->BooleanValue();
-    }
-
-    if (options->Has(keyRemoveOnCompacted)) {
-      defaults.removeOnCompacted = options->Get(keyRemoveOnCompacted)->BooleanValue();
     }
 
     if (options->Has(keyDefaultMaximalSize)) {
@@ -10465,7 +10461,7 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;      
 
   TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require('internal').executeGlobalContextFunction('require(\\'org/arangodb/actions\\').reloadRouting()')"),
+                              v8::String::New("require('internal').executeGlobalContextFunction('reloadRouting')"),
                               v8::String::New("reload routing"),
                               false);
 }

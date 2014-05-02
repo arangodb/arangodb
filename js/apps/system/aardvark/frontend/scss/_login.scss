@@ -1,0 +1,22 @@
+.login-window {
+  background-color: $c-login-window-bg;
+  border: 1px solid $c-login-window-border;
+  border-radius: 2px;
+  height: 300px;
+  left: 50%;
+  margin-left: -220px !important;
+  margin-top: -150px;
+  padding-left: 10px;
+  padding-right: 10px;
+  position: absolute;
+  top: 50%;
+  width: 400px;
+}
+
+.login-space {
+  height: 50px;
+}
+
+.login-input {
+  width: 387px;
+}

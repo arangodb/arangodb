@@ -157,30 +157,13 @@
       return type;
     },
 
-    FormatJSON: function (oData, sIndent) {
-      return JSON.stringify(oData, undefined, 2);
-    },
-
-    RealTypeOf: function (v) {
-      if (typeof v === "object") {
-        if (v === null) {
-          return "null";
-        }
-        var array = [];
-        if (v.constructor === array.constructor) {
-          return "array";
-        }
-        var date = new Date();
-        if (v.constructor === date.constructor) {
-          return "date";
-        }
-        var regexp = new RegExp();
-        if (v.constructor === regexp.constructor) {
-          return "regex";
-        }
-        return "object";
-      }
-      return typeof v;
+    escapeHtml: function (val) {
+      // HTML-escape a string
+      return String(val).replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
     }
 
   };

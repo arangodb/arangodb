@@ -46,7 +46,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 35
+#define YY_FLEX_SUBMINOR_VERSION 37
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -84,7 +84,6 @@ typedef int16_t flex_int16_t;
 typedef uint16_t flex_uint16_t;
 typedef int32_t flex_int32_t;
 typedef uint32_t flex_uint32_t;
-typedef uint64_t flex_uint64_t;
 #else
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
@@ -92,7 +91,6 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
-#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -122,6 +120,8 @@ typedef unsigned int flex_uint32_t;
 #ifndef UINT32_MAX
 #define UINT32_MAX             (4294967295U)
 #endif
+
+#endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
 
@@ -363,7 +363,7 @@ void tri_v8_free (void * ,yyscan_t yyscanner );
 
 /* Begin user sect3 */
 
-#define tri_v8_wrap(n) 1
+#define tri_v8_wrap(yyscanner) 1
 #define YY_SKIP_YYWRAP
 
 typedef unsigned char YY_CHAR;
@@ -382,7 +382,7 @@ static void yy_fatal_error (yyconst char msg[] ,yyscan_t yyscanner );
  */
 #define YY_DO_BEFORE_ACTION \
 	yyg->yytext_ptr = yy_bp; \
-	yyleng = (yy_size_t) (yy_cp - yy_bp); \
+	yyleng = (size_t) (yy_cp - yy_bp); \
 	yyg->yy_hold_char = *yy_cp; \
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
@@ -610,6 +610,10 @@ int tri_v8_get_lineno (yyscan_t yyscanner );
 
 void tri_v8_set_lineno (int line_number ,yyscan_t yyscanner );
 
+int tri_v8_get_column  (yyscan_t yyscanner );
+
+void tri_v8_set_column (int column_no ,yyscan_t yyscanner );
+
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
  */
@@ -650,7 +654,7 @@ static int input (yyscan_t yyscanner );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO fwrite( yytext, yyleng, 1, yyout )
+#define ECHO do { if (fwrite( yytext, yyleng, 1, yyout )) {} } while (0)
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -661,7 +665,7 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		yy_size_t n; \
+		size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -739,9 +743,9 @@ extern int tri_v8_lex (yyscan_t yyscanner);
  */
 YY_DECL
 {
-	register yy_state_type yy_current_state;
-	register char *yy_cp, *yy_bp;
-	register int yy_act;
+	yy_state_type yy_current_state;
+	char *yy_cp, *yy_bp;
+	int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
  /* -----------------------------------------------------------------------------
@@ -790,7 +794,7 @@ YY_DECL
 yy_match:
 		do
 			{
-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
 			if ( yy_accept[yy_current_state] )
 				{
 				yyg->yy_last_accepting_state = yy_current_state;
@@ -1064,9 +1068,9 @@ case YY_STATE_EOF(INITIAL):
 static int yy_get_next_buffer (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-	register char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
-	register char *source = yyg->yytext_ptr;
-	register int number_to_move, i;
+	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
+	char *source = yyg->yytext_ptr;
+	int number_to_move, i;
 	int ret_val;
 
 	if ( yyg->yy_c_buf_p > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] )
@@ -1115,7 +1119,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 			{ /* Not enough room in the buffer - grow it. */
 
 			/* just a shorter name for the current buffer */
-			YY_BUFFER_STATE b = YY_CURRENT_BUFFER;
+			YY_BUFFER_STATE b = YY_CURRENT_BUFFER_LVALUE;
 
 			int yy_c_buf_p_offset =
 				(int) (yyg->yy_c_buf_p - b->yy_ch_buf);
@@ -1198,15 +1202,15 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 
     static yy_state_type yy_get_previous_state (yyscan_t yyscanner)
 {
-	register yy_state_type yy_current_state;
-	register char *yy_cp;
+	yy_state_type yy_current_state;
+	char *yy_cp;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
 	yy_current_state = yyg->yy_start;
 
 	for ( yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p; ++yy_cp )
 		{
-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
 		if ( yy_accept[yy_current_state] )
 			{
 			yyg->yy_last_accepting_state = yy_current_state;
@@ -1231,11 +1235,11 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
  */
     static yy_state_type yy_try_NUL_trans  (yy_state_type yy_current_state , yyscan_t yyscanner)
 {
-	register int yy_is_jam;
+	int yy_is_jam;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner; /* This var may be unused depending upon options. */
-	register char *yy_cp = yyg->yy_c_buf_p;
+	char *yy_cp = yyg->yy_c_buf_p;
 
-	register YY_CHAR yy_c = 1;
+	YY_CHAR yy_c = 1;
 	if ( yy_accept[yy_current_state] )
 		{
 		yyg->yy_last_accepting_state = yy_current_state;
@@ -1250,6 +1254,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 	yy_is_jam = (yy_current_state == 42);
 
+	(void)yyg;
 	return yy_is_jam ? 0 : yy_current_state;
 }
 
@@ -1302,7 +1307,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 				case EOB_ACT_END_OF_FILE:
 					{
 					if ( tri_v8_wrap(yyscanner ) )
-						return 0;
+						return EOF;
 
 					if ( ! yyg->yy_did_buffer_switch_on_eof )
 						YY_NEW_FILE;
@@ -1442,10 +1447,6 @@ static void tri_v8__load_buffer_state  (yyscan_t yyscanner)
 	tri_v8_free((void *) b ,yyscanner );
 }
 
-#ifndef __cplusplus
-extern int isatty (int );
-#endif /* __cplusplus */
-    
 /* Initializes or reinitializes a buffer.
  * This function is sometimes called more than once on the same buffer,
  * such as during a tri_v8_restart() or at EOF.
@@ -1655,8 +1656,8 @@ YY_BUFFER_STATE tri_v8__scan_string (yyconst char * yystr , yyscan_t yyscanner)
 
 /** Setup the input buffer state to scan the given bytes. The next call to tri_v8_lex() will
  * scan from a @e copy of @a bytes.
- * @param bytes the byte buffer to scan
- * @param len the number of bytes in the buffer pointed to by @a bytes.
+ * @param yybytes the byte buffer to scan
+ * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
  * @param yyscanner The scanner object.
  * @return the newly allocated buffer state object.
  */
@@ -1664,7 +1665,8 @@ YY_BUFFER_STATE tri_v8__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes
 {
 	YY_BUFFER_STATE b;
 	char *buf;
-	yy_size_t n, i;
+	yy_size_t n;
+	int i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
@@ -1810,7 +1812,7 @@ void tri_v8_set_lineno (int  line_number , yyscan_t yyscanner)
 
         /* lineno is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_v8_set_lineno called with no buffer" , yyscanner); 
+           YY_FATAL_ERROR( "tri_v8_set_lineno called with no buffer" );
     
     yylineno = line_number;
 }
@@ -1825,7 +1827,7 @@ void tri_v8_set_column (int  column_no , yyscan_t yyscanner)
 
         /* column is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_v8_set_column called with no buffer" , yyscanner); 
+           YY_FATAL_ERROR( "tri_v8_set_column called with no buffer" );
     
     yycolumn = column_no;
 }
@@ -1996,7 +1998,7 @@ int tri_v8_lex_destroy  (yyscan_t yyscanner)
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char* s1, yyconst char * s2, int n , yyscan_t yyscanner)
 {
-	register int i;
+	int i;
 	for ( i = 0; i < n; ++i )
 		s1[i] = s2[i];
 }
@@ -2005,7 +2007,7 @@ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n , yyscan_t yysca
 #ifdef YY_NEED_STRLEN
 static int yy_flex_strlen (yyconst char * s , yyscan_t yyscanner)
 {
-	register int n;
+	int n;
 	for ( n = 0; s[n]; ++n )
 		;
 
@@ -2059,7 +2061,7 @@ static v8::Handle<v8::Value> ParseList (yyscan_t scanner) {
 
   v8::Handle<v8::Array> list = v8::Array::New();
   bool comma = false;
-  uint32_t pos = 0;
+  size_t pos = 0;
 
   int c = tri_v8_lex(scanner);
 
@@ -2164,7 +2166,7 @@ static v8::Handle<v8::Value> ParseArray (yyscan_t scanner) {
       return scope.Close(v8::Undefined());
     }
 
-    array->Set(v8::String::New(name, (int) outLength), sub);
+    array->Set(v8::String::New(name, outLength), sub);
 
     TRI_FreeString(yyextra._memoryZone, name);
 
@@ -2245,17 +2247,13 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
         // string is not empty
         ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-        if (ptr == 0 || outLength == 0) {
-          if (ptr != 0) {
-            TRI_Free(yyextra._memoryZone, ptr);
-          }
-
+        if (ptr == NULL || outLength == 0) {
           yyextra._message = "out-of-memory";
           return scope.Close(v8::Undefined());
         }
       }
 
-      str = v8::String::New(ptr, (int) outLength);
+      str = v8::String::New(ptr, outLength);
 
       if (0 < outLength) {
         TRI_FreeString(yyextra._memoryZone, ptr);
@@ -2315,7 +2313,6 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
   int c;
   struct yyguts_t * yyg;
   yyscan_t scanner;
-  const char* em = 0;
 
   tri_v8_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
@@ -2327,22 +2324,23 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
   object = ParseObject(scanner, c);
 
   if (object->IsUndefined()) {
-    em = yyextra._message;
+    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
   }
   else {
     c = tri_v8_lex(scanner);
 
     if (c != END_OF_FILE) {
       object = v8::Undefined();
-      em = "expecting EOF";
+      LOG_DEBUG("failed to parse json object: expecting EOF");
     }
   }
 
-  if (em != 0) {
-    LOG_DEBUG("failed to parse json object: '%s'", em);
-
-    if (error != NULL) {
-      *error = TRI_DuplicateString(em);
+  if (error != NULL) {
+    if (yyextra._message != 0) {
+      *error = TRI_DuplicateString(yyextra._message);
+    }
+    else {
+      *error = NULL;
     }
   }
 

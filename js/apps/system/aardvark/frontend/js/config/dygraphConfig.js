@@ -84,7 +84,9 @@
             requestsPatch: differenceBasedLineChartType,
             requestsDelete: differenceBasedLineChartType,
             requestsOptions: differenceBasedLineChartType,
-            requestsOther: differenceBasedLineChartType
+            requestsOther: differenceBasedLineChartType,
+            systemTime: differenceBasedLineChartType,
+            userTime: differenceBasedLineChartType
 
     };
     chartTypeExceptions[distributionChartType] = {
@@ -107,7 +109,7 @@
     };
 
     //colors for dygraphs
-    var colors = ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#f6fbac", "#3c3c3c",
+    var colors = ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
         "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"];
 
         //figure dependend options
@@ -123,7 +125,10 @@
                 axes : {
                 y: {
                     labelsKMG2: false,
-                        axisLabelFormatter: function(y) {
+                    axisLabelFormatter: function(y) {
+                        return y.toPrecision(2) + "%";
+                    },
+                    valueFormatter: function(y) {
                         return y.toPrecision(2) + "%";
                     }
                 }
@@ -145,7 +150,7 @@
         },
         systemUserTime : {
             div : "#systemResources",
-            title : "System and User Time",
+            title : "System and User Time in seconds",
             stacked : true
         },
         httpConnections : {
@@ -162,6 +167,9 @@
                         return y.toPrecision(3);
                     },
                     axisLabelFormatter: function(y) {
+                        if (y === 0) {
+                            return 0;
+                        }
                         y = y * 1000;
                         return y.toPrecision(3);
                     }
@@ -213,6 +221,9 @@
                         return y.toPrecision(3);
                     },
                     axisLabelFormatter: function(y) {
+                        if (y === 0) {
+                            return "0";
+                        }
                         y = y * 1000;
                         return y.toPrecision(3);
                     }
@@ -269,6 +280,7 @@
             showLabelsOnHighlight : false,
             strokeWidth: 2,
             strokeBorderWidth: 1,
+            includeZero: true,
             highlightCircleSize: 0,
             strokeBorderColor: '#ffffff',
             interactionModel :  {},
@@ -320,9 +332,7 @@
 
     var updateDateWindow = function(chart) {
         chart.options.dateWindow =   [new Date().getTime() -
-                Math.min(
-                    20 * 60 * 1000,
-                    chart.data.length * 10 * 1000)
+                    20 * 60 * 1000
                 ,new Date().getTime()];
     };
     window.dygraphConfig = {

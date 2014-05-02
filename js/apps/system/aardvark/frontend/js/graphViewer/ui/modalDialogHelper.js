@@ -155,7 +155,7 @@ var modalDialogHelper = modalDialogHelper || {};
       table.appendChild(firstRow);
       firstRow.appendChild(firstCell);
       firstCell.appendChild(pre);
-      pre.className = "gv_object_view";
+      pre.className = "gv-object-view";
       pre.innerHTML = JSON.stringify(object, null, 2);
       $("#" + idprefix + "modal").modal('show');
     },
@@ -217,7 +217,7 @@ var modalDialogHelper = modalDialogHelper || {};
       input.id = id;
       input.type = "radio";
       input.name = group;
-      input.className = "gv_radio_button";
+      input.className = "gv-radio-button";
       lbl.className = "radio";
       contentTh.appendChild(lbl);
       lbl.appendChild(input);

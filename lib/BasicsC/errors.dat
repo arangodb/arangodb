@@ -21,6 +21,8 @@ ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file canno
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
 ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
 ERROR_LOCK_TIMEOUT,18,"lock timeout","Will be raised when there's a timeout waiting for a lock."
+ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when an attempt to create a directory fails."
+ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 
 ################################################################################
 ## HTTP standard errors

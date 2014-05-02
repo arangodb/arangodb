@@ -1,3 +1,14 @@
+.footer {
+  background-color: $c-nav-bg;
+  bottom: 0;
+  font-size: 14px;
+  left: 0;
+  position: fixed;
+  right: 0;
+  text-align: center;
+  z-index: 1000;
+}
+
 footer.footer {
   @extend %fixedbar;
   bottom: 0;
@@ -12,8 +23,23 @@ footer.footer {
 
 div.footer-left {
   @extend %pull-left;
+  background: none repeat scroll 0 0 $c-nav-bg;
+  color: $c-white;
+  width: 45%;
+
+  p {
+    @extend %pull-left;
+  }
 }
 
 div.footer-right {
   @extend %pull-right;
+  background: none repeat scroll 0 0 $c-nav-bg;
+  color: $c-nav-bg;
+  width: 45%;
+
+  p {
+    @extend %pull-right;
+    color: $c-white;
+  }
 }

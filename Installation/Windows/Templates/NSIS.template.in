@@ -761,7 +761,7 @@ FunctionEnd
 ;------------------------
 ; Create 
 Function ArangoPreInstallationOptionsPage
-  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as Service?"
+  !insertmacro MUI_HEADER_TEXT "@CPACK_NSIS_PACKAGE_NAME@ als Service?" "Install @CPACK_NSIS_PACKAGE_NAME@ as a service?"
   !insertmacro MUI_INSTALLOPTIONS_DISPLAY "NSIS.ArangoDB.ini"
 FunctionEnd
 

@@ -259,11 +259,11 @@
           expect($("#" + idPrefix + "4").length).toEqual(1);
           expect($("#" + idPrefix + "5").length).toEqual(1);
           
-          expect($("#" + idPrefix + "1").attr("value")).toEqual("");
-          expect($("#" + idPrefix + "2").attr("value")).toEqual("");
-          expect($("#" + idPrefix + "3").attr("value")).toEqual("");
-          expect($("#" + idPrefix + "4").attr("value")).toEqual("");
-          expect($("#" + idPrefix + "5").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "1").val()).toEqual("");
+          expect($("#" + idPrefix + "2").val()).toEqual("");
+          expect($("#" + idPrefix + "3").val()).toEqual("");
+          expect($("#" + idPrefix + "4").val()).toEqual("");
+          expect($("#" + idPrefix + "5").val()).toEqual("");
           
           expect($("#" + idPrefix + "addLine").length).toEqual(1);
           $("#" + idPrefix + "1").attr("value", "foo");
