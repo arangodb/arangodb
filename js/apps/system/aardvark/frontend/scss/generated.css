@@ -21,37 +21,31 @@ textarea,
   font-style: normal;
   font-weight: 300;
   src: local("Open Sans Light"), local("OpenSans-Light"), url("../fonts/opensans/OpenSansLight.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
   src: local("Open Sans"), local("OpenSans"), url("../fonts/opensans/OpenSans.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 700;
   src: local("Open Sans Bold"), local("OpenSans-Bold"), url("../fonts/opensans/OpenSansBold.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 300;
   src: local("Open Sans Light Italic"), local("OpenSansLight-Italic"), url("../fonts/opensans/OpenSansLightItalic.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 400;
   src: local("Open Sans Italic"), local("OpenSans-Italic"), url("../fonts/opensans/OpenSansItalic.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
-
 /*!
  *  Font Awesome 4.0.3 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
@@ -64,7 +58,6 @@ textarea,
   src: url("../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.0.3") format("embedded-opentype"), url("../fonts/fontawesome/fontawesome-webfont.woff?v=4.0.3") format("woff"), url("../fonts/fontawesome/fontawesome-webfont.ttf?v=4.0.3") format("truetype"), url("../fonts/fontawesome/fontawesome-webfont.svg?v=4.0.3#fontawesomeregular") format("svg");
   font-weight: normal;
   font-style: normal; }
-
 .fa {
   display: inline-block;
   font-family: FontAwesome;
@@ -140,35 +133,30 @@ textarea,
 
   100% {
     -moz-transform: rotate(359deg); } }
-
 @-webkit-keyframes spin {
   0% {
     -webkit-transform: rotate(0deg); }
 
   100% {
     -webkit-transform: rotate(359deg); } }
-
 @-o-keyframes spin {
   0% {
     -o-transform: rotate(0deg); }
 
   100% {
     -o-transform: rotate(359deg); } }
-
 @-ms-keyframes spin {
   0% {
     -ms-transform: rotate(0deg); }
 
   100% {
     -ms-transform: rotate(359deg); } }
-
 @keyframes spin {
   0% {
     transform: rotate(0deg); }
 
   100% {
     transform: rotate(359deg); } }
-
 .fa-rotate-90 {
   filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=$rotation);
   -webkit-transform: rotate(90deg);
@@ -1456,7 +1444,7 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
     background-color: gray; }
 
@@ -1485,7 +1473,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
-    padding: 0 20px; }
+    padding: 0 15px; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
@@ -1659,6 +1647,16 @@ div.footer-right {
   width: 45%; }
   div.footer-right p {
     color: white; }
+  div.footer-right i {
+    color: #da4f49;
+    font-size: 16px; }
+  div.footer-right a {
+    color: #fff;
+    margin-left: 5px;
+    position: relative;
+    top: -1px; }
+  div.footer-right .isOnline {
+    color: #8aa051 !important; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
   -moz-border-radius: 4px;
@@ -3246,7 +3244,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
