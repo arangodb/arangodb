@@ -42,4 +42,21 @@ div.footer-right {
     @extend %pull-right;
     color: $c-white;
   }
+
+  i {
+    color: $c-negative;
+    font-size: 18px;
+  }
+
+  a {
+    color: #fff;
+    margin-left: 5px;
+    position: relative;
+    top: -1px;
+  }
+
+  .isOnline {
+    color: $c-positive !important;
+  }
+
 }
