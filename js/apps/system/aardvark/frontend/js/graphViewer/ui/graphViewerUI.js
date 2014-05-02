@@ -50,6 +50,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     background = document.createElement("div"),
     colourList,
     nodeShaperUI,
+    edgeShaperUI,
     adapterUI,
     slider,
     searchAttrField,
@@ -162,7 +163,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     },
 
     makeConfigureDiv = function () {
-      var div, innerDiv, nodeList, nodeHeader, colList, colHeader;
+      var div, innerDiv, nodeList, nodeHeader, colList, colHeader,
+          edgeList, edgeHeader;
       div = document.createElement("div");
       div.id = "configureDropdown";
       div.className = "headerDropdown";
@@ -172,18 +174,25 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       nodeHeader = document.createElement("li");
       nodeHeader.className = "nav-header";
       nodeHeader.appendChild(document.createTextNode("Vertices"));
+      edgeList = document.createElement("ul");
+      edgeHeader = document.createElement("li");
+      edgeHeader.className = "nav-header";
+      edgeHeader.appendChild(document.createTextNode("Edges"));
       colList = document.createElement("ul");
       colHeader = document.createElement("li");
       colHeader.className = "nav-header";
       colHeader.appendChild(document.createTextNode("Connection"));
       nodeList.appendChild(nodeHeader);
+      edgeList.appendChild(edgeHeader);
       colList.appendChild(colHeader);
       innerDiv.appendChild(nodeList);
+      innerDiv.appendChild(edgeList);
       innerDiv.appendChild(colList);
       div.appendChild(innerDiv);
       return {
         configure: div,
         nodes: nodeList,
+        edges: edgeList,
         col: colList
       };
     },
@@ -362,6 +371,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         configureLists.nodes,
         graphViewer.nodeShaper
       );
+      edgeShaperUI = new EdgeShaperControls(
+        configureLists.edges,
+        graphViewer.edgeShaper
+      );
       adapterUI = new ArangoAdapterControls(
         configureLists.col,
         graphViewer.adapter
@@ -396,6 +409,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       adapterUI.addControlChangePriority();
       // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
       nodeShaperUI.addControlOpticLabelAndColourList(graphViewer.adapter);
+      edgeShaperUI.addControlOpticLabelList();
       
       /*
       buttons.appendChild(nodeShaperDropDown);

@@ -330,7 +330,6 @@ function NodeShaperControls(list, shaper) {
           if (colourDiv === undefined) {
             colourDiv = self.createColourMappingList();
           }
-          
         }
       );
     });
