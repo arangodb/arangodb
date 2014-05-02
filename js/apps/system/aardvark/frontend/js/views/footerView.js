@@ -21,6 +21,19 @@
 
     template: templateEngine.createTemplate("footerView.ejs"),
 
+    showServerStatus: function(isOnline) {
+      if (isOnline === true) {
+        $('.serverStatusIndicator').addClass('isOnline');
+        $('.serverStatusIndicator').addClass('fa-check-circle-o');
+        $('.serverStatusIndicator').removeClass('fa-times-circle-o');
+      }
+      else {
+        $('.serverStatusIndicator').removeClass('isOnline');
+        $('.serverStatusIndicator').removeClass('fa-check-circle-o');
+        $('.serverStatusIndicator').addClass('fa-times-circle-o');
+      }
+    },
+
     getVersion: function () {
       var self = this;
 
@@ -33,12 +46,13 @@
         processData: false,
         async: true,
         success: function(data) {
+          self.showServerStatus(true);
           if (self.isOffline === true) {
             self.isOffline = false;
             self.isOfflineCounter = 0;
             if (!self.firstLogin) {
               window.setTimeout(function(){
-                //Heiko: notification for connected server
+                self.showServerStatus(true);
               }, 1000);
             } else {
               self.firstLogin = false;
@@ -51,8 +65,9 @@
         error: function (data) {
           self.isOffline = true;
           self.isOfflineCounter++;
-          if (self.isOfflineCounter >= 2) {
-            arangoHelper.arangoError("Server", "Server is offline");
+          if (self.isOfflineCounter >= 1) {
+            //arangoHelper.arangoError("Server", "Server is offline");
+            self.showServerStatus(false);
           }
         }
       });
