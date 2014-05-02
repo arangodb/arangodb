@@ -22,7 +22,7 @@
     events: {
       'click .icon_arangodb_info' : 'showDocu',
       'click .icon_arangodb_settings2' : 'editFoxxDialog',
-      'click' : 'openAppInNewTab'
+      'click .icon' : 'openAppInNewTab'
     },
 
     initialize: function(){
