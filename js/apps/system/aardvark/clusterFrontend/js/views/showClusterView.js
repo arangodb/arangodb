@@ -588,19 +588,6 @@
       showDetail : function() {
           var self = this;
           delete self.graph;
-          /*$(self.detailEl).html(this.detailTemplate.render({
-            figure: "Average request time in milliseconds"
-          }));
-          self.setShowAll();
-          self.renderLineChart(true);
-          $('#lineChartDetail').modal('show');
-          $('#lineChartDetail').on('hidden', function () {
-              delete self.graph;
-              self.resetShowAll();
-          });
-          $('.modalTooltips').tooltip({
-              placement: "left"
-          });*/
           window.modalView.hideFooter = true;
           window.modalView.hide();
           window.modalView.show(
@@ -622,6 +609,28 @@
           self.setShowAll();
           self.renderLineChart(true);
           return self;
+      },
+
+      getCurrentSize: function (div) {
+          if (div.substr(0,1) !== "#") {
+              div = "#" + div;
+          }
+          var height, width;
+          $(div).attr("style", "");
+          height = $(div).height();
+          width = $(div).width();
+          return {
+              height: height,
+              width: width
+          };
+      },
+
+      resize: function () {
+          var dimensions;
+          if (this.graph) {
+              dimensions = this.getCurrentSize(this.graph.graph.maindiv_.id);
+              this.graph.graph.resize(dimensions.width, dimensions.height);
+          }
       }
     });
 

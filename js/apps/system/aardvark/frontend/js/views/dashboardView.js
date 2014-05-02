@@ -15,8 +15,7 @@
     alreadyCalledDetailChart: [],
 
     events: {
-      "click .dashboard-chart": "showDetail",
-      "click #backToCluster": "returnToClusterView"
+      "click .dashboard-chart": "showDetail"
     },
 
     tendencies: {
@@ -90,7 +89,6 @@
       $('#modal-dialog').on('hidden', function () {
         self.hidden();
       });
-      //$('.modal-body').css({"max-height": "100%" });
       $('#modal-dialog').toggleClass("modal-chart-detail", true);
       options.height = $('.modal-chart-detail').height() * 0.7;
       options.width = $('.modal-chart-detail').width() * 0.84;
@@ -113,9 +111,7 @@
         div = "#" + div;
       }
       var height, width;
-        console.log(div, $(div).height(), $(div).width());
       $(div).attr("style", "");
-        console.log(div, $(div).height(), $(div).width());
       height = $(div).height();
       width = $(div).width();
       return {
@@ -142,6 +138,7 @@
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
       this.server = this.options.serverToShow;
+      this.d3NotInitialised = true;
       this.events["click .dashboard-chart"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
@@ -234,8 +231,8 @@
           newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
         }
         self.history[a] = [
-          Math.round(newData[self.tendencies[a][0]] * 1000) / 1000,
-          Math.round(newData[self.tendencies[a][1]] * 1000 * 100) / 1000
+          Math.round(newData[self.tendencies[a][0]] * 100) / 100,
+          Math.round(newData[self.tendencies[a][1]] * 100 * 100) / 100
         ];
       });
 
@@ -332,7 +329,7 @@
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d, !!figure);
-          } else  {
+          } else if (self.isUpdating !== true)  {
             window.modalView.show(
               "modalWarning.ejs",
               "WARNING !"
@@ -385,7 +382,7 @@
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
-        var data = [Math.round(self.history.virtualSizeCurrent[0] * 1000) / 1000 + "GB"];
+        var data = [Math.round(self.history.virtualSizeCurrent[0] * 100) / 100 + "GB"];
 
         d3.select('#residentSizeChart svg').selectAll('#total')
         .data(data)
@@ -427,7 +424,10 @@
         dataTransferDistribution: [
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
       }, f;
-
+      if (this.d3NotInitialised) {
+          update = false;
+          this.d3NotInitialised = false;
+      }
       _.each(Object.keys(barCharts), function (k) {
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
@@ -560,9 +560,7 @@
       g.resize(dimensions.width, dimensions.height);
     });
     if (this.detailGraph) {
-      console.log(this.detailGraph);
-      dimensions = self.getCurrentSize(this.detailGraph.maindiv_.id);
-      console.log(dimensions);
+      dimensions = this.getCurrentSize(this.detailGraph.maindiv_.id);
       this.detailGraph.resize(dimensions.width, dimensions.height);
     }
     this.prepareD3Charts(true);
@@ -577,19 +575,12 @@
     }
     this.getStatistics();
     this.prepareDygraphs();
-    console.log("STARTING");
     if (this.isUpdating) {
-      console.log("STARTING", this.isUpdating);
       this.prepareD3Charts();
       this.prepareResidentSize();
       this.updateTendencies();
     }
     this.startUpdating();
-  },
-
-
-  returnToClusterView: function () {
-    window.history.back();
   }
 });
 }());
