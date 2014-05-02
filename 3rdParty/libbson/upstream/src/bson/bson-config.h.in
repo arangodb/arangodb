@@ -1,0 +1,82 @@
+#ifndef BSON_CONFIG_H
+#define BSON_CONFIG_H
+
+/*
+ * Define to 1234 for Little Endian, 4321 for Big Endian.
+ */
+#define BSON_BYTE_ORDER @BSON_BYTE_ORDER@
+
+
+/*
+ * Define to 1 if you have stdbool.h
+ */
+#define BSON_HAVE_STDBOOL_H @BSON_HAVE_STDBOOL_H@
+#if BSON_HAVE_STDBOOL_H != 1
+# undef BSON_HAVE_STDBOOL_H
+#endif
+
+
+/*
+ * Define to 1 for POSIX-like systems, 2 for Windows.
+ */
+#define BSON_OS @BSON_OS@
+
+
+/*
+ * Define to 1 if your system requires {} around PTHREAD_ONCE_INIT.
+ * This is typically just Solaris 8-10.
+ */
+#define BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES @BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES@
+#if BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES != 1
+# undef BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES
+#endif
+
+
+/*
+ * Define to 1 if you have clock_gettime() available.
+ */
+#define BSON_HAVE_CLOCK_GETTIME @BSON_HAVE_CLOCK_GETTIME@
+#if BSON_HAVE_CLOCK_GETTIME != 1
+# undef BSON_HAVE_CLOCK_GETTIME
+#endif
+
+
+/*
+ * Define to 1 if you have strnlen available on your platform.
+ */
+#define BSON_HAVE_STRNLEN @BSON_HAVE_STRNLEN@
+#if BSON_HAVE_STRNLEN != 1
+# undef BSON_HAVE_STRNLEN
+#endif
+
+
+/*
+ * Define to 1 if you have strnlen available on your platform.
+ */
+#define BSON_HAVE_SNPRINTF @BSON_HAVE_SNPRINTF@
+#if BSON_HAVE_SNPRINTF != 1
+# undef BSON_HAVE_SNPRINTF
+#endif
+
+
+/*
+ * Define to 1 if 32-bit atomics are not available and pthreads should be
+ * used to emulate them.
+ */
+#define BSON_WITH_OID32_PT @BSON_WITH_OID32_PT@
+#if BSON_WITH_OID32_PT != 1
+# undef BSON_WITH_OID32_PT
+#endif
+
+
+/*
+ * Define to 1 if 64-bit atomics are not available and pthreads should be
+ * used to emulate them.
+ */
+#define BSON_WITH_OID64_PT @BSON_WITH_OID64_PT@
+#if BSON_WITH_OID64_PT != 1
+# undef BSON_WITH_OID64_PT
+#endif
+
+
+#endif /* BSON_CONFIG_H */

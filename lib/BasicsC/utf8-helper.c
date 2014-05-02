@@ -53,7 +53,7 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
   // 1. convert utf8 string to utf16
   // calculate utf16 string length
   status = U_ZERO_ERROR;
-  u_strFromUTF8(NULL, 0, &utf16Length, utf8, inLength, &status);
+  u_strFromUTF8(NULL, 0, &utf16Length, utf8, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
     return NULL;
   }
@@ -66,7 +66,7 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
   // now convert
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strFromUTF8(utf16, utf16Length + 1, NULL, utf8, inLength, &status);
+  u_strFromUTF8(utf16, utf16Length + 1, NULL, utf8, (int32_t) inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf16);
     return 0;
@@ -91,7 +91,7 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
 
   // calculate utf8 string length
   status = U_ZERO_ERROR;
-  u_strToUTF8(NULL, 0, &utf8Length, uchar, inLength, &status);
+  u_strToUTF8(NULL, 0, &utf8Length, uchar, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
     return NULL;
   }
@@ -104,7 +104,7 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
   // convert to utf8
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strToUTF8(utf8, utf8Length + 1, NULL, uchar, inLength, &status);
+  u_strToUTF8(utf8, utf8Length + 1, NULL, uchar, (int32_t) inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf8);
     return NULL;
@@ -212,7 +212,7 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   }
 
   status = U_ZERO_ERROR;
-  utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, inLength, utf16Dest, inLength + 1, &status);
+  utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + 1), &status);
   if (status != U_ZERO_ERROR) {
     if (mustFree) {
       TRI_Free(zone, utf16Dest);

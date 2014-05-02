@@ -284,7 +284,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
   if (hint == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return;
   }
 
@@ -296,7 +296,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   collection = TRI_GetCollectionAql(context, collectionName);
 
   if (collection == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return;
   }
@@ -313,7 +313,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   hint->_collection = collection;
 
   if (availableIndexes == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return;
   }
@@ -665,8 +665,8 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   TRI_js_exec_context_t* execContext;
   TRI_string_buffer_t* code;
   TRI_json_t* json;
-  size_t i;
-  size_t n;
+  size_t i, n;
+  int res;
 
   function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
   assert(function);
@@ -689,34 +689,52 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   // all arguments are constants
   // create the function code
   code = FcallCode(function->_internalName, args);
-  if (! code) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+  if (code == NULL) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   // execute the function code
-  execContext = TRI_CreateExecutionContext(code->_buffer);
+  execContext = TRI_CreateExecutionContext(TRI_BeginStringBuffer(code), TRI_LengthStringBuffer(code));
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
+  
+  if (execContext == NULL) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+  
+  res = TRI_GetErrorExecutionContext(execContext);
 
-  if (! execContext) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeExecutionContext(execContext);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
+
+  res = TRI_GetErrorExecutionContext(execContext);
   TRI_FreeExecutionContext(execContext);
-  if (! json) {
+  
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
+    return node;
+  }
+
+  if (json == NULL) {
     // cannot optimise the function call due to an internal error
 
     // TODO: check whether we can validate the arguments here already and return an error early
-    // TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
+    // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_SCRIPT, "function optimisation");
     return node;
   }
 
   // use the constant values instead of the function call node
   node = TRI_JsonNodeAql(context, json);
-  if (! node) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+  if (node == NULL) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -741,7 +759,7 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
     // list is empty => we can eliminate the for statement
     LOG_TRACE("optimised away empty for loop");
 
-    return TRI_GetDummyReturnEmptyNodeAql();
+    TRI_EmptyScopeStatementWalkerAql(walker);
   }
 
   return node;
@@ -830,7 +848,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     limitValue = (int64_t) TRI_AQL_NODE_BOOL(limit);
   }
   else {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return node;
   }
 
@@ -839,7 +857,8 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     // LIMIT x, 0 makes the complete scope useless
     LOG_TRACE("optimised away limit");
 
-    return TRI_GetDummyReturnEmptyNodeAql();
+    TRI_EmptyScopeStatementWalkerAql(walker);
+    return node; 
   }
 
   // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
@@ -870,8 +889,10 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
 /// that will remove the complete scope on statement list compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
-  if (TRI_GetBooleanNodeValueAql(node)) {
+static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_statement_walker_t* const walker,
+                                               TRI_aql_node_t* const node,
+                                               TRI_aql_node_t* const expression) {
+  if (TRI_GetBooleanNodeValueAql(expression)) {
     // filter expression is always true => remove it
     LOG_TRACE("optimised away constant (true) filter");
 
@@ -881,7 +902,9 @@ static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
   // filter expression is always false => invalidate surrounding scope(s)
   LOG_TRACE("optimised away scope");
 
-  return TRI_GetDummyReturnEmptyNodeAql();
+  TRI_EmptyScopeStatementWalkerAql(walker);
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -905,7 +928,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
     if (TRI_IsConstantValueNodeAql(expression)) {
       // filter expression is a constant value
-      return OptimiseConstantFilter(expression);
+      return OptimiseConstantFilter(walker, node, expression);
     }
 
     // filter expression is non-constant
@@ -999,7 +1022,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
   }
 
   if (! TRI_IsNumericValueNodeAql(operand)) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
@@ -1018,20 +1041,20 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
       // if the architecture does not use IEEE754 values then this shouldn't do
       // any harm either
       LOG_TRACE("nan value detected after arithmetic optimisation");
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
       return NULL;
     }
 
     // test for infinity
     if (value == HUGE_VAL || value == -HUGE_VAL) {
       LOG_TRACE("inf value detected after arithmetic optimisation");
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
       return NULL;
     }
 
     node = TRI_CreateNodeValueDoubleAql(context, value);
     if (node == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
   }
 
@@ -1055,14 +1078,14 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
 
   if (! TRI_IsBooleanValueNodeAql(operand)) {
     // value type is not boolean => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   // ! (bool value) => evaluate and replace with result
   node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
   if (! node) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   LOG_TRACE("optimised away unary logical operation");
@@ -1091,13 +1114,13 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
 
   if (isEligibleLhs && ! TRI_IsBooleanValueNodeAql(lhs)) {
     // value type is not boolean => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
   if (isEligibleRhs && ! TRI_IsBooleanValueNodeAql(rhs)) {
     // value type is not boolean => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
@@ -1149,6 +1172,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   TRI_string_buffer_t* code;
   TRI_json_t* json;
   char* func;
+  int res;
 
   if (! lhs || ! TRI_IsConstantValueNodeAql(lhs) || ! rhs || ! TRI_IsConstantValueNodeAql(rhs)) {
     return node;
@@ -1175,7 +1199,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     if (rhs->_type != TRI_AQL_NODE_LIST) {
       // oops, rhs is no list. cannot run IN operator
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
       return node;
     }
 
@@ -1189,24 +1213,44 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   code = RelationCode(func, lhs, rhs);
 
   if (code == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   // execute the function code
-  execContext = TRI_CreateExecutionContext(code->_buffer);
+  execContext = TRI_CreateExecutionContext(TRI_BeginStringBuffer(code), TRI_LengthStringBuffer(code));
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
 
   if (execContext == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return node;
+  }
+
+  // check if an error occurred during context creation
+  res = TRI_GetErrorExecutionContext(execContext);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeExecutionContext(execContext);
+
+    if (res == TRI_ERROR_REQUEST_CANCELED) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
+    }
+
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
+  res = TRI_GetErrorExecutionContext(execContext);
+
   TRI_FreeExecutionContext(execContext);
 
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
+    return node;
+  }
+
   if (json == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_SCRIPT, NULL);
     return NULL;
   }
 
@@ -1214,7 +1258,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   node = TRI_JsonNodeAql(context, json);
 
   if (node == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   LOG_TRACE("optimised away binary relational operation");
@@ -1245,14 +1289,14 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
 
   if (isEligibleLhs && ! TRI_IsNumericValueNodeAql(lhs)) {
     // node is not a numeric value => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
 
   if (isEligibleRhs && ! TRI_IsNumericValueNodeAql(rhs)) {
     // node is not a numeric value => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
@@ -1279,7 +1323,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_DIV) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // division by zero
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = TRI_GetNumericNodeValueAql(lhs) / TRI_GetNumericNodeValueAql(rhs);
@@ -1287,7 +1331,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_MOD) {
     if (TRI_GetNumericNodeValueAql(rhs) == 0.0) {
       // division by zero
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_DIVISION_BY_ZERO, NULL);
       return node;
     }
     value = fmod(TRI_GetNumericNodeValueAql(lhs), TRI_GetNumericNodeValueAql(rhs));
@@ -1302,21 +1346,21 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
     LOG_TRACE("nan value detected after arithmetic optimisation");
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return NULL;
   }
 
   // test for infinity
   if (value == HUGE_VAL || value == -HUGE_VAL) {
     LOG_TRACE("inf value detected after arithmetic optimisation");
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return NULL;
   }
 
   node = TRI_CreateNodeValueDoubleAql(context, value);
 
   if (node == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1344,7 +1388,7 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
 
   if (! TRI_IsBooleanValueNodeAql(condition)) {
     // node is not a boolean value => error
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
@@ -1478,7 +1522,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 
     if (variableName == NULL) {
       // out of memory!
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
 
@@ -1563,7 +1607,7 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
   optimiser = walker->_data;
   
   if (offset->_type != TRI_AQL_NODE_VALUE || limit->_type != TRI_AQL_NODE_VALUE) {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
 
@@ -1574,12 +1618,12 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
     offsetValue = (int64_t) TRI_AQL_NODE_DOUBLE(offset);
   }
   else {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
 
   if (offsetValue < 0) {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
 
@@ -1590,12 +1634,12 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
     limitValue = (int64_t) TRI_AQL_NODE_DOUBLE(limit);
   }
   else {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
   
   if (limitValue < 0) {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
 
@@ -1660,7 +1704,7 @@ static bool OptimiseAst (aql_optimiser_t* const optimiser) {
                                         NULL,
                                         &ProcessStatement);
   if (walker == NULL) {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
@@ -1684,7 +1728,7 @@ static bool DetermineIndexes (aql_optimiser_t* const optimiser) {
                                         &AnnotateLoop,
                                         NULL);
   if (walker == NULL) {
-    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
@@ -1719,7 +1763,7 @@ bool TRI_OptimiseAql (TRI_aql_context_t* const context) {
 
   optimiser = CreateOptimiser(context);
   if (optimiser == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 

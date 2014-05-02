@@ -1,0 +1,11 @@
+The directory "upstream" contains the checkout of commit
+  ce9fd5d34fd25d0ad3e2ca8f6527f78cc231da3e
+of
+  ssh://git@github.com/mongodb/libbson
+of
+  3 April 2014
+with "autogen.sh" run.
+
+We chose this version since there have been quite a lot of fixes since 
+the latest release which is 
+  Version 0.6.4 of 13 March 2014

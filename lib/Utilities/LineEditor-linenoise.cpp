@@ -100,8 +100,17 @@ bool LineEditor::close () {
 string LineEditor::historyPath () {
   string path;
 
-  path = TRI_HomeDirectory();
-  path += '/';
+  // get home directory
+  char* p = TRI_HomeDirectory();
+
+  if (p != 0) {
+    path.append(p);
+    TRI_Free(TRI_CORE_MEM_ZONE, p);
+
+    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+      path.push_back(TRI_DIR_SEPARATOR_CHAR);
+    }
+  }
 
   path.append(_historyFilename);
 

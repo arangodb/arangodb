@@ -119,7 +119,6 @@ function makeTestingArgs () {
            "--server.keyfile",       fs.join(topDir,"UnitTests","server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
-           "--javascript.gc-interval",         "1",
            "--javascript.app-path",            fs.join(topDir,"js","apps"),
            "--javascript.startup-directory",   fs.join(topDir,"js"),
            "--ruby.action-directory",          fs.join(topDir,"mr","actions"),
@@ -770,6 +769,7 @@ testFuncs.dump = function (options) {
 };
 
 var benchTodo = [
+  ["--requests","10000","--concurrency","2","--test","version", "--keep-alive","false"],
   ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
   ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
   ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16", "--complexity","2"],

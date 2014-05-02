@@ -1,0 +1,47 @@
+bson_reader_destroy(3)
+======================
+
+
+NAME
+----
+
+bson_reader_destroy - destroy and release resources of a bson_reader_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_reader_destroy (bson_reader_t *reader);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_reader_destroy()_ function shall release all resources associated with a _bson_reader_t_.
+
+_reader_ *MUST* be a previously initialized _bson_reader_t_.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_reader_new_from_fd[3]
+linkbson:bson_reader_new_from_data[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

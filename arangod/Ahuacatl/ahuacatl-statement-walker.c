@@ -277,6 +277,32 @@ TRI_aql_scope_t* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a scope as being empty and infect surrounding scopes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_EmptyScopeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+  size_t n = walker->_currentScopes._length;
+
+  while (n > 0) {
+    TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, n - 1);
+
+    if (scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+      break; 
+    }
+    
+    scope->_empty = true;
+
+    if (scope->_type != TRI_AQL_SCOPE_FOR && 
+        scope->_type != TRI_AQL_SCOPE_FOR_NESTED && 
+        scope->_type != TRI_AQL_SCOPE_MAIN) {
+      break;
+    }
+
+    --n;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to a variable, identified by its name
 ///
 /// The variable will be searched in the current and the surrounding scopes.

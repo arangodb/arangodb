@@ -1,0 +1,111 @@
+bson_new(3)
+===========
+
+
+NAME
+----
+
+bson_init, bson_init_static, bson_new, bson_sized_new - allocate and initialize a bson_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_init (bson_t *bson);
+
+bool
+bson_init_static (bson_t        *bson,
+                  const uint8_t *data,
+                  uint32_t       length);
+
+bson_t *
+bson_new (void);
+
+bson_t *
+bson_new_from_data (const uint8_t *data,
+                    uint32_t       length);
+
+bson_t *
+bson_sized_new (size_t size);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_init()_ function shall initialize a `bson_t` that is placed on the
+stack. This is equivalent to initializing a `bson_t` to `BSON_INITIALIZER`.
+
+The _bson_init_static()_ function shall shall initialize a read-only `bson_t`
+on the stack using the data provided. No copies of the data will be made and
+therefore must remain valid for the lifetime of the `bson_t`.
+
+The _bson_new()_ function shall create a new `bson_t` structure on the heap. It
+should be freed with `bson_destroy()` when it is no longer in use.
+
+The _bson_new_from_data()_ function shall create a new `bson_t` on the heap and
+copy the contents of `data`. This may be helpful when working with language
+bindings but is generally expected to be slower.
+
+The _bson_sized_new()_ function shall create a new `bson_t` on the heap with a
+preallocated buffer. This is useful if you have a good idea of the size of the
+resulting document.
+
+_bson_destroy()_ *MUST* be called when no longer using the `bson_t`.
+
+
+RETURN VALUE
+------------
+
+_bson_init_static()_ will return `TRUE` if the `bson_t` was successfully
+initialized.
+
+
+ERRORS
+------
+
+_bson_init_static()_ and _bson_new_from_data()_ can fail if the buffer length
+does not match the discovered length within the buffer.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_destroy[3]
+linkbson:bson_append_array_begin[3]
+linkbson:bson_append_array[3]
+linkbson:bson_append_binary[3]
+linkbson:bson_append_bool[3]
+linkbson:bson_append_code[3]
+linkbson:bson_append_code_with_scope[3]
+linkbson:bson_append_date_time[3]
+linkbson:bson_append_dbpointer[3]
+linkbson:bson_append_document_begin[3]
+linkbson:bson_append_document[3]
+linkbson:bson_append_double[3]
+linkbson:bson_append_int32[3]
+linkbson:bson_append_int64[3]
+linkbson:bson_append_iter[3]
+linkbson:bson_append_maxkey[3]
+linkbson:bson_append_minkey[3]
+linkbson:bson_append_now_utc[3]
+linkbson:bson_append_null[3]
+linkbson:bson_append_oid[3]
+linkbson:bson_append_regex[3]
+linkbson:bson_append_symbol[3]
+linkbson:bson_append_timestamp[3]
+linkbson:bson_append_time_t[3]
+linkbson:bson_append_timeval[3]
+linkbson:bson_append_undefined[3]
+linkbson:bson_append_utf8[3]
+
+
+AUTHORS
+-------
+This page was written by MongoDB, Inc.
+

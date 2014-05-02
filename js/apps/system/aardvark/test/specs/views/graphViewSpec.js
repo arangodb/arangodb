@@ -11,7 +11,6 @@
       div;  
     
     beforeEach(function() {
-      window.App = {navigate : function(){}};
       div = document.createElement("div");
       div.id = "content"; 
       document.body.appendChild(div);
@@ -36,7 +35,7 @@
       beforeEach(function() {
 
         var createCol = function(name, type, isSystem) {
-          return new window.arangoCollection({
+          return new window.arangoCollectionModel({
             id: name,
             type: type,
             isSystem: isSystem || false,
@@ -209,9 +208,16 @@
       describe("Graph Management", function () {
 
         it("should navigate to the management view", function () {
+          //Simulate the router locally
+          window.App = {
+            navigate: function() {
+              throw "This should be a spy";
+            }
+          };
           spyOn(window.App, "navigate");
           $("#manageGraphs").click();
           expect(window.App.navigate).toHaveBeenCalledWith("graphManagement", {trigger: true});
+          delete window.App;
         });
       });
 

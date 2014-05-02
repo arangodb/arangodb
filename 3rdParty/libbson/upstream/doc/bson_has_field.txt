@@ -1,0 +1,45 @@
+bson_has_field(3)
+=================
+
+
+NAME
+----
+
+bson_has_field - check if a bson document contains a given field
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_has_field (const bson_t *bson,
+                const char   *key);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_has_field()_ function shall return TRUE if _bson_ contains an element named _key_.
+
+
+RETURN VALUE
+------------
+
+TRUE if _key_ is found. Otherwise FALSE.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

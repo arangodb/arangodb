@@ -10,7 +10,7 @@ Conventions {#ExtendingAqlConventions}
 AQL comes with a built-in set of functions, but it is no
 full-feature programming language.
 
-To add missing functionality or to simplifiy queries, users
+To add missing functionality or to simplify queries, users
 may add own functions to AQL. These functions can be written
 in Javascript, and must be registered via an API. 
 
@@ -20,7 +20,7 @@ namespaces. Invoking a user functions is then possible by referring
 to the fully-qualified function name, which includes the namespace,
 too. 
 
-The `:` symbol is used inside AQL as the namespace separator. Using 
+The `::` symbol is used inside AQL as the namespace separator. Using 
 the namespace separator, users can create a multi-level hierarchy of 
 function groups if required.
 
@@ -30,7 +30,7 @@ Examples:
 
     RETURN myfunctions::math::random()
 
-Note: as all function names in AQL, user function names are also
+Note: As all function names in AQL, user function names are also
 case-insensitive.
 
 Built-in AQL functions reside in the namespace `_aql`, which is also
@@ -56,6 +56,10 @@ documents) composed of these types.
 Returning any other Javascript object type from a user function may lead 
 to undefined behavior and should be avoided.
 
+Internally, user functions are stored in a system collection named
+`_aqlfunctions`. That means that by default they are excluded from dumps
+created with arangodump. To include AQL user functions in a dump, the
+dump should be started with the option `--include-system-collections true`.
 
 Registering and Unregistering User Functions {#ExtendingAqlHowTo}
 =================================================================

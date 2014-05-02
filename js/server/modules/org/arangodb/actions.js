@@ -892,6 +892,84 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief routing function
+////////////////////////////////////////////////////////////////////////////////
+
+function routeRequest (req, res) {
+  var action;
+  var execute;
+  var next;
+  var path = req.suffix.join("/");
+
+  action = exports.firstRouting(req.requestType, req.suffix);
+
+  execute = function () {
+    if (action.route === undefined) {
+      exports.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, 
+        "unknown path '" + path + "'");
+      return;
+    }
+
+    if (action.route.path !== undefined) {
+      req.path = action.route.path;
+    }
+    else {
+      delete req.path;
+    }
+
+    if (action.prefix !== undefined) {
+      req.prefix = action.prefix;
+    }
+    else {
+      delete req.prefix;
+    }
+
+    if (action.suffix !== undefined) {
+      req.suffix = action.suffix;
+    }
+    else {
+      delete req.suffix;
+    }
+
+    if (action.urlParameters !== undefined) {
+      req.urlParameters = action.urlParameters;
+    }
+    else {
+      req.urlParameters = {};
+    }
+
+    var func = action.route.callback.controller;
+
+    if (func === null || typeof func !== 'function') {
+      func = exports.errorFunction(action.route,
+                                   'Invalid callback definition found for route ' 
+                                   + JSON.stringify(action.route));
+    }
+
+    try {
+      func(req, res, action.route.callback.options, next);
+    }
+    catch (err) {
+      if (err instanceof internal.SleepAndRequeue) {
+        throw err;
+      }
+
+      var msg = 'A runtime error occurred while executing an action: '
+              + String(err) + " " + String(err.stack) + " " + (typeof err);
+
+      exports.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
+    }
+  };
+
+  next = function () {
+    action = exports.nextRouting(action);
+    execute();
+  };
+
+  execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
 ///
 /// @FUN{actions.defineHttp(@FA{options})}
@@ -1100,8 +1178,9 @@ function reloadRouting () {
   // .............................................................................
   // clear the routing cache
   // .............................................................................
-  
-  var routingCache = RoutingCache[arangodb.db._name()] = {};
+ 
+  // work with a local variable first 
+  var routingCache = { };
           
   routingCache.flat = {};
   routingCache.routes = {};
@@ -1205,7 +1284,7 @@ function reloadRouting () {
         for (i = 0;  i < r.length;  ++i) {
           var context = { appModule: appModule };
 
-          installRoute(RoutingCache[arangodb.db._name()][key], 
+          installRoute(routingCache[key], 
                        urlPrefix, 
                        modulePrefix, 
                        context, 
@@ -1256,6 +1335,11 @@ function reloadRouting () {
 
     routingCache.flat[method] = b.concat(a);
   }
+ 
+  // once we're done, we can set the complete routing cache for database
+  // doing this here instead of above ensures we don't have a half-updated routing
+  // cache if this function fails somewhere in the middle
+  RoutingCache[arangodb.db._name()] = routingCache;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1752,6 +1836,10 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_USER_NOT_FOUND: 
         code = exports.HTTP_NOT_FOUND;
         break; 
+      
+      case arangodb.ERROR_REQUEST_TIMEOUT: 
+        code = exports.HTTP_REQUEST_TIMEOUT;
+        break; 
 
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
@@ -1971,6 +2059,7 @@ function stringifyRequestAddress (req) {
 // -----------------------------------------------------------------------------
 
 // public functions
+exports.routeRequest             = routeRequest;
 exports.defineHttp               = defineHttp;
 exports.getErrorMessage          = getErrorMessage;
 exports.getJsonBody              = getJsonBody;
@@ -2038,6 +2127,7 @@ exports.HTTP_PAYMENT             = 402;
 exports.HTTP_FORBIDDEN           = 403;
 exports.HTTP_NOT_FOUND           = 404;
 exports.HTTP_METHOD_NOT_ALLOWED  = 405;
+exports.HTTP_REQUEST_TIMEOUT     = 408;
 exports.HTTP_CONFLICT            = 409;
 exports.HTTP_PRECONDITION_FAILED = 412;
 exports.HTTP_ENTITY_TOO_LARGE    = 413;

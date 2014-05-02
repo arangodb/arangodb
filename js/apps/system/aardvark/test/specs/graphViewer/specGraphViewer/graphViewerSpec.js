@@ -174,6 +174,45 @@ describe("Graph Viewer", function() {
         jasmine.any(Object)
       );
     });
+
+    it('should throw an error if initialised with an invalid adapter', function() {
+      var adapterConfig = {type: "unknown"};
+      expect(function() {
+        var gv = new GraphViewer(svg, 10, 10, adapterConfig);
+      }).toThrow("Sorry unknown adapter type.");
+    });
+
+    describe("layouter config", function() {
+      var adapterConfig;
+
+      beforeEach(function() {
+        adapterConfig = {type: "json", path: "../test_data/"};
+      });
+
+      it("should support a force layout", function() {
+        spyOn(window, "ForceLayouter").andCallThrough();
+        var viewer = new GraphViewer(svg, 10, 10, adapterConfig, {
+          layouter: {type: "force"}
+        });
+        expect(window.ForceLayouter).toHaveBeenCalledWith({
+          type: "force",
+          nodes: [],
+          links: [],
+          width: 10,
+          height: 10
+        });
+      });
+
+      it("should throw an error for unknown layouts", function() {
+        expect(function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig, {
+            layouter: {type: "unkown"}
+          });
+        }).toThrow("Sorry unknown layout type.");
+
+      });
+    });
+
   });
   
   describe('set up correctly', function() {
@@ -245,8 +284,6 @@ describe("Graph Viewer", function() {
         edges: [],
         adapter: jasmine.any(Object)
       });
-      
-      
     });
     
     it('should offer to load a new graph', function() {
@@ -283,7 +320,6 @@ describe("Graph Viewer", function() {
             return nonDisplayed.length === 0;
           }
         });
-        
         viewer.loadGraph(0);
       });
   
@@ -291,11 +327,23 @@ describe("Graph Viewer", function() {
       // Unfortunately there is no handle to check for changes
       waits(waittime);
   
-      runs (function() {
+      runs(function() {
         expect([0, 1, 2, 3, 4]).toBeDisplayed();
       });
     });
-    
+
+    /*
+    it("should change the width of all elements", function() {
+      var width = 500;
+      spyOn(viewer.layouter, "changeWidth");
+      spyOn(viewer.zoomManager, "changeWidth");
+      spyOn(viewer.adapter, "setWidth");
+      viewer.changeWidth(width);
+      expect(viewer.layouter.changeWidth).toHaveBeenCalledWith(width);
+      expect(viewer.zoomManager.changeWidth).toHaveBeenCalledWith(width);
+      expect(viewer.adapter.setWidth).toHaveBeenCalledWith(width);
+    });
+    */
   });
 
   describe('set up to support zoom', function() {
@@ -348,7 +396,8 @@ describe("Graph Viewer", function() {
       expect(viewer.edgeShaper.resetColourMap).toHaveBeenCalled();
       expect(viewer.nodeShaper.resetColourMap).toHaveBeenCalled();
     });
-    
+
   });
+
 
 });

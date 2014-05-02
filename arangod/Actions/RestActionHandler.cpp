@@ -49,7 +49,9 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
   : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
-    _allowed(false) {
+    _allowed(false),
+    _dataLock(),
+    _data(0) {
 
   _action = TRI_LookupActionVocBase(request);
 
@@ -72,8 +74,8 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
     _queue = data->_queue;
   }
 
+  // must have a queue
   if (_queue.empty()) {
-    // must have a queue
     _queue = "STANDARD";
   }
 }
@@ -158,6 +160,20 @@ HttpHandler::status_t RestActionHandler::execute () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestActionHandler::cancel (bool running) {
+  if (running) {
+    return _action->cancel(&_dataLock, &_data);
+  }
+  else {
+    generateCanceled();
+    return true;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -167,10 +183,14 @@ HttpHandler::status_t RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_result_t RestActionHandler::executeAction () {
-  TRI_action_result_t result = _action->execute(_vocbase, _request);
+  TRI_action_result_t result = _action->execute(_vocbase, _request, &_dataLock, &_data);
 
   if (result.isValid) {
     _response = result.response;
+  }
+  else if (result.canceled) {
+    result.isValid = true;
+    generateCanceled();
   }
   else {
     result.isValid = true;

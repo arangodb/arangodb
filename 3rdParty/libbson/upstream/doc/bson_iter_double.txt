@@ -1,0 +1,50 @@
+bson_iter_double(3)
+===================
+
+
+NAME
+----
+
+bson_iter_double - retrieve a double element from a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+#define BSON_ITER_HOLDS_DOUBLE(iter) \
+   (bson_iter_type ((iter)) == BSON_TYPE_DOUBLE)
+
+double
+bson_iter_double (const bson_iter_t *iter);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_double()_ function shall return the contents of a BSON_TYPE_DOUBLE element currently observed by _iter_.
+
+It is invalid to call this function while observing an element other than BSON_TYPE_DOUBLE.
+You can verify this with _BSON_ITER_HOLDS_DOUBLE()_.
+
+
+RETURN VALUE
+------------
+
+A double.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

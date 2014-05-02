@@ -588,14 +588,21 @@ struct signalfd_siginfo
     #define ECB_MEMORY_FENCE         __sync_synchronize ()
     /*#define ECB_MEMORY_FENCE_ACQUIRE ({ char dummy = 0; __sync_lock_test_and_set (&dummy, 1); }) */
     /*#define ECB_MEMORY_FENCE_RELEASE ({ char dummy = 1; __sync_lock_release      (&dummy   ); }) */
+
+  #elif _MSC_VER >= 1500 /* VC++ 2008 */
+    /* apparently, microsoft broke all the memory barrier stuff in Visual Studio 2008... */
+    #pragma intrinsic(_ReadBarrier,_WriteBarrier,_ReadWriteBarrier)
+    #define ECB_MEMORY_FENCE _ReadWriteBarrier (); MemoryBarrier()
+    #define ECB_MEMORY_FENCE_ACQUIRE _ReadWriteBarrier (); MemoryBarrier() /* according to msdn, _ReadBarrier is not a load fence */
+    #define ECB_MEMORY_FENCE_RELEASE _WriteBarrier (); MemoryBarrier()
   #elif _MSC_VER >= 1400 /* VC++ 2005 */
     #pragma intrinsic(_ReadBarrier,_WriteBarrier,_ReadWriteBarrier)
-    #define ECB_MEMORY_FENCE         _ReadWriteBarrier ()
+    #define ECB_MEMORY_FENCE _ReadWriteBarrier ()
     #define ECB_MEMORY_FENCE_ACQUIRE _ReadWriteBarrier () /* according to msdn, _ReadBarrier is not a load fence */
     #define ECB_MEMORY_FENCE_RELEASE _WriteBarrier ()
-  #elif defined(_WIN32)
+  #elif defined _WIN32
     #include <WinNT.h>
-    #define ECB_MEMORY_FENCE         MemoryBarrier () /* actually just xchg on x86... scary */
+    #define ECB_MEMORY_FENCE MemoryBarrier () /* actually just xchg on x86... scary */
   #elif __SUNPRO_C >= 0x5110 || __SUNPRO_CC >= 0x5110
     #include <mbarrier.h>
     #define ECB_MEMORY_FENCE         __machine_rw_barrier ()

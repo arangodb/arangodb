@@ -1,0 +1,60 @@
+bson_iter_utf8(3)
+=================
+
+
+NAME
+----
+
+bson_iter_utf8 - retrieve a utf8 element from a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+#define BSON_ITER_HOLDS_UTF8(iter) \
+   (bson_iter_type ((iter)) == BSON_TYPE_UTF8)
+
+const char *
+bson_iter_utf8 (const bson_iter_t *iter,
+                uint32_t          *length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_utf8()_ function shall retrieve the contents of a BSON_TYPE_UTF8 element currently observed by _iter_.
+
+It is invalid to call this function while ovserving an element other than BSON_TYPE_UTF8.
+
+
+RETURN VALUE
+------------
+
+A UTF-8 encoded string that has not been modified or freed.
+
+It is suggested that the caller validate the content is valid UTF-8 before using this in other places. That can be done by calling _bson_utf8_validate()_ or validating the underlying _bson_t_ before iterating it.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+linkbson:bson_utf8_validate[3]
+linkbson:bson_append_utf8[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

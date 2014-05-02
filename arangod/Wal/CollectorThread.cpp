@@ -34,6 +34,16 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class CollectorThread
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait interval for the collector thread when idle
+////////////////////////////////////////////////////////////////////////////////
+
+const uint64_t CollectorThread::Interval = 1000000;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -78,6 +88,15 @@ void CollectorThread::stop () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signal the thread that there is something to do
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::signal () {
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
@@ -89,13 +108,16 @@ void CollectorThread::stop () {
 void CollectorThread::run () {
   while (_stop == 0) {
     // collect a logfile if any qualifies
-    this->collect();
+    bool worked = this->collectLogfiles();
 
     // delete a logfile if any qualifies
-    this->remove();
+    worked |= this->removeLogfiles();
     
     CONDITION_LOCKER(guard, _condition);
-    guard.wait(1000000);
+    if (! worked) {
+      // sleep only if there was nothing to do
+      guard.wait(Interval);
+    }
   }
 
   _stop = 2;
@@ -109,33 +131,36 @@ void CollectorThread::run () {
 /// @brief perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::collect () {
+bool CollectorThread::collectLogfiles () {
   Logfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
-    return;
+    return false;
   }
 
   _logfileManager->setCollectionRequested(logfile);
-  // TODO: implement collection
+
+  // TODO: implement the actual logfile collection
       
-  LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
+  LOG_TRACE("collecting logfile %llu", (unsigned long long) logfile->id());
 
   _logfileManager->setCollectionDone(logfile);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform removal of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::remove () {
+bool CollectorThread::removeLogfiles () {
   Logfile* logfile = _logfileManager->getRemovableLogfile();
 
   if (logfile == nullptr) {
-    return;
+    return false;
   }
 
-  _logfileManager->removeLogfile(logfile);
+  _logfileManager->removeLogfile(logfile, true);
+  return true;
 }
 
 // Local Variables:

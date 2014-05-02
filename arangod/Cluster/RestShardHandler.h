@@ -45,7 +45,7 @@ namespace triagens {
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestShardHandler : public triagens::admin::RestBaseHandler {
+    class RestShardHandler : public admin::RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -57,8 +57,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestShardHandler (triagens::rest::HttpRequest* request,
-                          void*);
+        RestShardHandler (rest::HttpRequest* request,
+                          rest::Dispatcher*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -94,7 +94,7 @@ namespace triagens {
 /// @brief dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::rest::Dispatcher* _dispatcher;
+        rest::Dispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue

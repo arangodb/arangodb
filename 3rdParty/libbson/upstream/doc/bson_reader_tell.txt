@@ -1,0 +1,45 @@
+bson_reader_tell(3)
+===================
+
+
+NAME
+----
+
+bson_reader_tell - tell the current offset in the underlying file or buffer
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+off_t
+bson_reader_tell (bson_reader_t *reader);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_reader_tell()_ function shall return the current offset in the underlying file or buffer.
+This value should always be set to the boundry of a bson document or end-of-file.
+
+
+RETURN VALUE
+------------
+
+An _off_t_ containing the file or buffer offset.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

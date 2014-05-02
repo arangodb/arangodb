@@ -10,8 +10,8 @@ Introduction {#AqlPurpose}
 The ArangoDB query language (AQL) can be used to retrieve data that is stored in
 ArangoDB. The general workflow when executing a query is as follows:
 
-- a client application ships an AQL query to the ArangoDB server. The query text
-  contains everything ArangoDB needs to compile the result set.
+- A client application ships an AQL query to the ArangoDB server. The query text
+  contains everything ArangoDB needs to compile the result set
 - ArangoDB will parse the query, execute it and compile the results. If the
   query is invalid or cannot be executed, the server will return an error that
   the client can process and react to. If the query can be executed
@@ -121,20 +121,20 @@ number of total results from the result set:
     arangosh> c.count();
     4
 
-Please note that the `count` method returns nothing if you did not specifiy the `count`
+Please note that the `count` method returns nothing if you did not specify the `count`
 attribute when creating the query. 
 
-This is intentional so that the server may apply optimisations when executing the query and 
+This is intentional so that the server may apply optimizations when executing the query and 
 construct the result set incrementally. Incremental creating of the result sets would not be possible
 if the total number of results needs to be shipped to the client anyway. Therefore, the client
 has the choice to specify `count` and retrieve the total number of results for a query (and
 disable potential incremental result set creation on the server), or to not retrieve the total
-number of results, and allow the server to apply optimisations.
+number of results and allow the server to apply optimizations.
 
 Please note that at the moment the server will always create the full result set for each query so 
 specifying or omitting the `count` attribute currently does not have any impact on query execution.
 This might change in the future. Future versions of ArangoDB might create result sets incrementally 
-on the server-side and might be able to apply optimisations if a result set is not fully fetched by 
+on the server-side and might be able to apply optimizations if a result set is not fully fetched by 
 a client.
 
 Query results {#AqlQueryResults}
@@ -144,12 +144,12 @@ Result sets {#AqlQueryResultsSet}
 ---------------------------------
 
 The result of an AQL query is a list of values. The individual values in the
-result list may or may not have a homogenuous structure, depending on what is
+result list may or may not have a homogeneous structure, depending on what is
 actually queried.
 
-For example, when returning data from a collection with inhomogenuous documents
+For example, when returning data from a collection with inhomogeneous documents
 (the individual documents in the collection have different attribute names)
-without modification, the result values will as well have an inhomogenuous
+without modification, the result values will as well have an inhomogeneous
 structure. Each result value itself is a document:
 
     FOR u IN users
@@ -160,7 +160,7 @@ structure. Each result value itself is a document:
       { "friends" : [ "John", "Vanessa" ], "id" : 3, "name" : "Amy" } ]
 
 However, if a fixed set of attributes from the collection is queried, then the 
-query result values will have a homogenuous structure. Each result value is
+query result values will have a homogeneous structure. Each result value is
 still a document:
 
     FOR u IN users
@@ -196,21 +196,21 @@ will be opened. If any of the referenced collections is not present, query
 execution will again be aborted and an appropriate error message will be
 returned.
 
-Executing a query might also produce run-time errors under some circumstances
+Under some circumstances, executing a query might also produce run-time errors 
 that cannot be predicted from inspecting the query text alone. This is because
-queries might use data from collections that might also be inhomogenuous.  Some
+queries might use data from collections that might also be inhomogeneous.  Some
 examples that will cause run-time errors are:
 
-- division by zero: will be triggered when an attempt is made to use the value
+- Division by zero: Will be triggered when an attempt is made to use the value
   `0` as the divisor in an arithmetic division or modulus operation
-- invalid operands for arithmetic operations: will be triggered when an attempt
+- Invalid operands for arithmetic operations: Will be triggered when an attempt
   is made to use any non-numeric values as operands in arithmetic operations.
   This includes unary (unary minus, unary plus) and binary operations (plus,
   minus, multiplication, division, and modulus)
-- invalid operands for logical operations: will be triggered when an attempt is
+- Invalid operands for logical operations: Will be triggered when an attempt is
   made to use any non-boolean values as operand(s) in logical operations. This
   includes unary (logical not/negation), binary (logical and, logical or), and
-  the ternary operators.
+  the ternary operators
 
 Please refer to the @ref ArangoErrors page for a list of error codes and
 meanings.
@@ -235,10 +235,10 @@ comment is ignored by the AQL parser. Comments cannot be nested, meaning
 the comment text may not contain another comment.
 
 AQL supports two types of comments:
-- single line comments: these start with a double forward slash and end at
+- Single line comments: These start with a double forward slash and end at
   the end of the line, or the end of the query string (whichever is first).
-- multi line comments: these start with a forward slash and asterisk, and
-  end with an asterik and a following forward slash. They can span as many
+- Multi line comments: These start with a forward slash and asterisk, and
+  end with an asterisk and a following forward slash. They can span as many
   lines as necessary.
 
 @code
@@ -280,7 +280,7 @@ higher-level operation according to their name. These terms are also keywords,
 meaning that they have a special meaning in the language.
 
 For example, the query parser will use the keywords to find out which high-level
-operations to execute. That also means keywords can only be used at certains
+operations to execute. That also means keywords can only be used at certain
 locations in a query. This also makes all keywords reserved words that must not
 be used for other purposes than they are intended for.
 
@@ -384,14 +384,14 @@ Data types {#AqlTypes}
 AQL supports both primitive and compound data types. The following types are
 available:
 
-- primitive types: consisting of exactly one value
-  - null: an empty value, also: the absence of a value
-  - bool: boolean truth value with possible values `false` and `true`
-  - number: signed (real) number
+- Primitive types: Consisting of exactly one value
+  - null: An empty value, also: The absence of a value
+  - bool: Boolean truth value with possible values `false` and `true`
+  - number: Signed (real) number
   - string: UTF-8 encoded text value
-- compound types: consisting of multiple values
-  - list: sequence of values, referred to by their positions
-  - document: sequence of values, referred to by their names
+- Compound types: Consisting of multiple values
+  - list: Sequence of values, referred to by their positions
+  - document: Sequence of values, referred to by their names
 
 @subsubsection AqlLiteralsNumber Numeric literals
 
@@ -437,15 +437,15 @@ side before storing, and decoding it on application side after retrieval.
 
 AQL supports two compound types:
 
-- lists: a composition of unnamed values, each accessible by their positions
-- documents: a composition of named values, each accessible by their names
+- lists: A composition of unnamed values, each accessible by their positions
+- documents: A composition of named values, each accessible by their names
 
 The first supported compound type is the list type. Lists are effectively
 sequences of (unnamed/anonymous) values. Individual list elements can be
 accessed by their positions. The order of elements in a list is important.
 
-An `list-declaration` starts with the `[` symbol and ends with the `]` symbol. A
-`list-declaration` contains zero or many `expression`s, seperated from each
+A `list-declaration` starts with the `[` symbol and ends with the `]` symbol. A
+`list-declaration` contains zero or many `expression`s, separated from each
 other with the `,` symbol.
 
 In the easiest case, a list is empty and thus looks like:
@@ -485,7 +485,7 @@ composition of zero to many attributes. Each attribute is a name/value pair.
 Document attributes can be accessed individually by their names.
 
 Document declarations start with the `{` symbol and end with the `}` symbol. A
-document contains zero to many attribute declarations, seperated from each other
+document contains zero to many attribute declarations, separated from each other
 with the `,` symbol.  In the simplest case, a document is empty. Its
 declaration would then be:
 
@@ -521,7 +521,7 @@ injection of keywords and other collection names into an existing query. This
 injection would be dangerous because it might change the meaning of an existing
 query.
 
-Using bind parameters, the meaning of an existing query cannot be changed.  Bind
+Using bind parameters, the meaning of an existing query cannot be changed. Bind
 parameters can be used everywhere in a query where literals can be used.
 
 The syntax for bind parameters is `@nameparameter` where `nameparameter` is the
@@ -536,11 +536,11 @@ pass the bind parameter values to the server.
 
 Bind parameter names must start with any of the letters `a` to `z` (both in
 lower and upper case) or a digit (`0` to `9`), and can be followed by any
-letter, digit, or the underscore symbol.
+letter, digit or the underscore symbol.
 
 A special type of bind parameter exists for injecting collection names. This
 type of bind parameter has a name prefixed with an additional `@` symbol (thus
-when using the bind parameter in a query, two `@` symbols must be used.
+when using the bind parameter in a query, two `@` symbols must be used).
 
     FOR u IN @@collection
       FILTER u.active == true
@@ -560,14 +560,14 @@ The following type order is used when comparing data types:
 
     null < bool  < number < string < list < document
 
-This means `null` is the smallest type in AQL, and `document` is the type with
+This means `null` is the smallest type in AQL and `document` is the type with
 the highest order. If the compared operands have a different type, then the
 comparison result is determined and the comparison is finished.
 
 For example, the boolean `true` value will always be less than any numeric or
 string value, any list (even an empty list) or any document. Additionally, any
 string value (even an empty string) will always be greater than any numeric
-value, a boolean value, `true`, or `false`.
+value, a boolean value, `true` or `false`.
 
     null < false
     null < true
@@ -616,7 +616,7 @@ are compared. For the primitive types (null, boolean, number, and string), the
 result is defined as follows:
 
 - null: `null` is equal to `null`
-- boolean:`false` is less than `true`
+- boolean: `false` is less than `true`
 - number: numeric values are ordered by their cardinal value
 - string: string values are ordered using a localized comparison,
   see @ref CommandLineDefaultLanguage "--default-language"
@@ -635,7 +635,7 @@ the other list still has an element at a compared position, then `null` will be
 used as the element value of the fully traversed list.
 
 If a list element is itself a compound value (a list or a document), then the
-comparison algorithm will check the element's sub values recursively.  element's
+comparison algorithm will check the element's sub values recursively. The element's
 sub elements are compared recursively.
 
     [ ] < [ 0 ]
@@ -655,7 +655,7 @@ The combined and sorted list of attribute names is then traversed, and the
 respective attributes from the two compared operands are then looked up. If one
 of the documents does not have an attribute with the sought name, its attribute
 value is considered to be `null`.  Finally, the attribute value of both
-documents is compared using the beforementioned data type and value comparison.
+documents is compared using the before mentioned data type and value comparison.
 The comparisons are performed for all document attributes until there is an
 unambiguous comparison result. If an unambiguous comparison result is found, the
 comparison is finished. If there is no unambiguous comparison result, the two
@@ -704,7 +704,7 @@ Furthermore, `null` is less than any other value (excluding `null` itself). That
 means documents with non-existing attributes might be included in the result
 when comparing attribute values with the less than or less equal operators.
 
-For example, the following query with return all documents from the collection
+For example, the following query will return all documents from the collection
 `users` that have an attribute `age` with a value less than `39`, but also all
 documents from the collection that do not have the attribute `age` at all.
 
@@ -782,7 +782,7 @@ checking the first operand alone.
 
 Arithmetic operators perform an arithmetic operation on two numeric
 operands. The result of an arithmetic operation is again a numeric value.
-operators are supported:
+Operators are supported.
 
 AQL supports the following arithmetic operators:
 
@@ -823,7 +823,7 @@ Example:
 
 @subsubsection AQLOperatorRange Range operator
 
-AQL supports expressing simple numeric ranges with the operator `..`.
+AQL supports expressing simple numeric ranges with the `..` operator.
 This operator can be used to easily iterate over a sequence of numeric
 values.    
 
@@ -911,7 +911,7 @@ As all AQL function names, user function names are also case-insensitive.
 As mentioned before, some of the operators expect their operands to have a
 certain data type. For example, the logical operators expect their operands to
 be boolean values, and the arithmetic operators expect their operands to be
-numeric values.  If an operation is performed with operands of an unexpect type,
+numeric values.  If an operation is performed with operands of an unexpected type,
 the operation will fail with an error. To avoid such failures, value types can
 be converted explicitly in a query. This is called type casting.
 
@@ -922,7 +922,7 @@ task. Each of the these functions takes an operand of any data type and returns
 a result value of type corresponding to the function name (e.g. `TO_NUMBER()`
 will return a number value):
 
-- @FN{TO_BOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
+- @FN{TO_BOOL(@FA{value})}: Takes an input @FA{value} of any type and converts it 
   into the appropriate boolean value as follows:
   - `null` is converted to `false`.
   - Numbers are converted to `true` if they are unequal to 0, and to `false` otherwise. 
@@ -930,23 +930,23 @@ will return a number value):
   - Lists are converted to `true` if they are non-empty, and to `false` otherwise.
   - Documents are converted to `true` if they are non-empty, and to `false` otherwise.
 
-- @FN{TO_NUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
+- @FN{TO_NUMBER(@FA{value})}: Takes an input @FA{value} of any type and converts it 
   into a numeric value as follows:
   - `null`, `false`, lists, and documents are converted to the value `0`.
   - `true` is converted to `1`.
   - Strings are converted to their numeric equivalent if the full string content is
     is a valid number, and to `0` otherwise.
 
-- @FN{TO_STRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
+- @FN{TO_STRING(@FA{value})}: Takes an input @FA{value} of any type and converts it 
   into a string value as follows:
   - `null` is converted to the string `"null"`
   - `false` is converted to the string `"false"`, `true` to the string `"true"`
-  - numbers, lists, and documents are converted to their string equivalents. 
+  - Numbers, lists and documents are converted to their string equivalents. 
 
-- @FN{TO_LIST(@FA{value})}: takes an input @FA{value} of any type and converts it 
+- @FN{TO_LIST(@FA{value})}: Takes an input @FA{value} of any type and converts it 
   into a list value as follows:
   - `null` is converted to an empty list
-  - Boolean values, numbers, and strings are converted to a list containing the original
+  - Boolean values, numbers and strings are converted to a list containing the original
     value as its single element
   - Documents are converted to a list containing their attribute values as list elements
 
@@ -959,56 +959,56 @@ checked for, and false otherwise.
 
 The following type check functions are available:
 
-- @FN{IS_NULL(@FA{value})}: checks whether @FA{value} is a `null` value
+- @FN{IS_NULL(@FA{value})}: Checks whether @FA{value} is a `null` value
 
-- @FN{IS_BOOL(@FA{value})}: checks whether @FA{value} is a boolean value
+- @FN{IS_BOOL(@FA{value})}: Checks whether @FA{value} is a boolean value
 
-- @FN{IS_NUMBER(@FA{value})}: checks whether @FA{value} is a numeric value
+- @FN{IS_NUMBER(@FA{value})}: Checks whether @FA{value} is a numeric value
 
-- @FN{IS_STRING(@FA{value})}: checks whether @FA{value} is a string value
+- @FN{IS_STRING(@FA{value})}: Checks whether @FA{value} is a string value
 
-- @FN{IS_LIST(@FA{value})}: checks whether @FA{value} is a list value
+- @FN{IS_LIST(@FA{value})}: Checks whether @FA{value} is a list value
 
-- @FN{IS_DOCUMENT(@FA{value})}: checks whether @FA{value} is a document value
+- @FN{IS_DOCUMENT(@FA{value})}: Checks whether @FA{value} is a document value
 
 @subsubsection AqlFunctionsString String functions
 
 For string processing, AQL offers the following functions:
 
-- @FN{CONCAT(@FA{value1}, @FA{value2}, ... @FA{valuen})}: concatenate the strings 
-  passed as in @FA{value1} to @FA{valuen}. `null` values are ignored.
+- @FN{CONCAT(@FA{value1}, @FA{value2}, ... @FA{valuen})}: Concatenate the strings 
+  passed as in @FA{value1} to @FA{valuen}. `null` values are ignored
 
 - @FN{CONCAT_SEPARATOR(@FA{separator}, @FA{value1}, @FA{value2}, ... @FA{valuen})}: 
-  concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
-  @FA{separator} string. `null` values are ignored.
+  Concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
+  @FA{separator} string. `null` values are ignored
 
-- @FN{CHAR_LENGTH(@FA{value})}: return the number of characters in @FA{value}. This is
-  a synonym for @FN{LENGTH(@FA{value})}.
+- @FN{CHAR_LENGTH(@FA{value})}: Return the number of characters in @FA{value}. This is
+  a synonym for @FN{LENGTH(@FA{value})}
 
-- @FN{LOWER(@FA{value})}: lower-case @FA{value}
+- @FN{LOWER(@FA{value})}: Lower-case @FA{value}
 
-- @FN{UPPER(@FA{value})}: upper-case @FA{value}
+- @FN{UPPER(@FA{value})}: Upper-case @FA{value}
 
-- @FN{SUBSTRING(@FA{value}, @FA{offset}, @FA{length})}: return a substring of @FA{value},
+- @FN{SUBSTRING(@FA{value}, @FA{offset}, @FA{length})}: Return a substring of @FA{value},
   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
-  start at position 0.
+  start at position 0
 
-- @FN{LEFT(@FA{value}, @FA{LENGTH})}: returns the @FA{LENGTH} leftmost characters of
-  the string @FA{VALUE}.
+- @FN{LEFT(@FA{value}, @FA{LENGTH})}: Returns the @FA{LENGTH} leftmost characters of
+  the string @FA{VALUE}
 
-- @FN{RIGHT(@FA{value}, @FA{LENGTH})}: returns the @FA{LENGTH} rightmost characters of
-  the string @FA{VALUE}.
+- @FN{RIGHT(@FA{value}, @FA{LENGTH})}: Returns the @FA{LENGTH} rightmost characters of
+  the string @FA{VALUE}
 
-- @FN{TRIM(@FA{value}, @FA{type})}: returns the string @FA{VALUE} with whitespace stripped 
+- @FN{TRIM(@FA{value}, @FA{type})}: Returns the string @FA{VALUE} with whitespace stripped 
   from the start and/or end. The optional @FA{type} parameter specifies from which parts
   of the string the whitespace is stripped:
   - @FA{type} 0 will strip whitespace from the start and end of the string
   - @FA{type} 1 will strip whitespace from the start of the string only
   - @FA{type} 2 will strip whitespace from the end of the string only
 
-- @FN{REVERSE(@FA{value})}: returns the reverse of the string @FA{value}.
+- @FN{REVERSE(@FA{value})}: Returns the reverse of the string @FA{value}
 
-- @FN{CONTAINS(@FA{text}, @FA{search}, @FA{return-index})}: checks whether the string
+- @FN{CONTAINS(@FA{text}, @FA{search}, @FA{return-index})}: Checks whether the string
   @FA{search} is contained in the string @FA{text}. By default, this function returns 
   `true` if @FA{search} is contained in @FA{text}, and `false` otherwise. By
   passing `true` as the third function parameter @FA{return-index}, the function
@@ -1017,7 +1017,7 @@ For string processing, AQL offers the following functions:
 
   The string matching performed by @FN{CONTAINS} is case-sensitive.
 
-- @FN{LIKE(@FA{text}, @FA{search}, @FA{case-insensitive})}: checks whether the pattern
+- @FN{LIKE(@FA{text}, @FA{search}, @FA{case-insensitive})}: Checks whether the pattern
   @FA{search} is contained in the string @FA{text}, using wildcard matching. 
   Returns `true` if the pattern is contained in @FA{text}, and `false` otherwise. 
   The @FA{pattern} string can contain the wildcard characters `%` (meaning any
@@ -1034,86 +1034,86 @@ For string processing, AQL offers the following functions:
 AQL offers some numeric functions for calculations. The following functions are
 supported:
 
-- @FN{FLOOR(@FA{value})}: returns the integer closest but not greater to @FA{value}
+- @FN{FLOOR(@FA{value})}: Returns the integer closest but not greater to @FA{value}
 
-- @FN{CEIL(@FA{value})}: returns the integer closest but not less than @FA{value}
+- @FN{CEIL(@FA{value})}: Returns the integer closest but not less than @FA{value}
 
-- @FN{ROUND(@FA{value})}: returns the integer closest to @FA{value}
+- @FN{ROUND(@FA{value})}: Returns the integer closest to @FA{value}
 
-- @FN{ABS(@FA{value})}: returns the absolute part of @FA{value}
+- @FN{ABS(@FA{value})}: Returns the absolute part of @FA{value}
 
-- @FN{SQRT(@FA{value})}: returns the square root of @FA{value}
+- @FN{SQRT(@FA{value})}: Returns the square root of @FA{value}
 
-- @FN{RAND()}: returns a pseudo-random number between 0 and 1
+- @FN{RAND()}: Returns a pseudo-random number between 0 and 1
 
 @subsubsection AqlFunctionsList List functions
 
 AQL supports the following functions to operate on list values:
 
-- @FN{LENGTH(@FA{list})}: returns the length (number of list elements) of @FA{list}. If 
+- @FN{LENGTH(@FA{list})}: Returns the length (number of list elements) of @FA{list}. If 
   @FA{list} is a document, returns the number of attribute keys of the document, 
   regardless of their values.
 
-- @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. `null` values
+- @FN{MIN(@FA{list})}: Returns the smallest element of @FA{list}. `null` values
   are ignored. If the list is empty or only `null` values are contained in the list, the
   function will return `null`.
 
-- @FN{MAX(@FA{list})}: returns the greatest element of @FA{list}. `null` values
+- @FN{MAX(@FA{list})}: Returns the greatest element of @FA{list}. `null` values
   are ignored. If the list is empty or only `null` values are contained in the list, the
   function will return `null`.
 
-- @FN{AVERAGE(@FA{list})}: returns the average (arithmetic mean) of the values in @FA{list}. 
+- @FN{AVERAGE(@FA{list})}: Returns the average (arithmetic mean) of the values in @FA{list}. 
   This requires the elements in @FA{list} to be numbers. `null` values are ignored. 
   If the list is empty or only `null` values are contained in the list, the function 
   will return `null`.
 
-- @FN{SUM(@FA{list})}: returns the sum of the values in @FA{list}. This
+- @FN{SUM(@FA{list})}: Returns the sum of the values in @FA{list}. This
   requires the elements in @FA{list} to be numbers. `null` values are ignored. 
 
-- @FN{MEDIAN(@FA{list})}: returns the median value of the values in @FA{list}. This 
+- @FN{MEDIAN(@FA{list})}: Returns the median value of the values in @FA{list}. This 
   requires the elements in @FA{list} to be numbers. `null` values are ignored. If the 
   list is empty or only `null` values are contained in the list, the function will return 
   `null`.
 
-- @FN{VARIANCE_POPULATION(@FA{list})}: returns the population variance of the values in 
+- @FN{VARIANCE_POPULATION(@FA{list})}: Returns the population variance of the values in 
   @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
   are ignored. If the list is empty or only `null` values are contained in the list, 
   the function will return `null`.
 
-- @FN{VARIANCE_SAMPLE(@FA{list})}: returns the sample variance of the values in 
+- @FN{VARIANCE_SAMPLE(@FA{list})}: Returns the sample variance of the values in 
   @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
   are ignored. If the list is empty or only `null` values are contained in the list, 
   the function will return `null`.
 
-- @FN{STDDEV_POPULATION(@FA{list})}: returns the population standard deviation of the 
+- @FN{STDDEV_POPULATION(@FA{list})}: Returns the population standard deviation of the 
   values in @FA{list}. This requires the elements in @FA{list} to be numbers. `null` 
   values are ignored. If the list is empty or only `null` values are contained in the list, 
   the function will return `null`.
 
-- @FN{STDDEV_SAMPLE(@FA{list})}: returns the sample standard deviation of the values in 
+- @FN{STDDEV_SAMPLE(@FA{list})}: Returns the sample standard deviation of the values in 
   @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
   are ignored. If the list is empty or only `null` values are contained in the list, 
   the function will return `null`.
 
-- @FN{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
+- @FN{REVERSE(@FA{list})}: Returns the elements in @FA{list} in reversed order.
 
-- @FN{FIRST(@FA{list})}: returns the first element in @FA{list} or `null` if the
+- @FN{FIRST(@FA{list})}: Returns the first element in @FA{list} or `null` if the
   list is empty.
 
-- @FN{LAST(@FA{list})}: returns the last element in @FA{list} or `null` if the
+- @FN{LAST(@FA{list})}: Returns the last element in @FA{list} or `null` if the
   list is empty.
 
-- @FN{NTH(@FA{list}, @FA{position})}: returns the list element at position @FA{position}.
+- @FN{NTH(@FA{list}, @FA{position})}: Returns the list element at position @FA{position}.
   Positions start at 0. If @FA{position} is negative or beyond the upper bound of the list
   specified by @FA{list}, then `null` will be returned.
 
-- @FN{POSITION(@FA{list}, @FA{search}, @FA{return-index})}: returns the position of the
+- @FN{POSITION(@FA{list}, @FA{search}, @FA{return-index})}: Returns the position of the
   element @FA{search} in list @FA{list}. Positions start at 0. If the element is not 
   found, then `-1` is returned. If @FA{return-index} is `false`, then instead of the
   position only `true` or `false` are returned, depending on whether the sought element
   is contained in the list.
 
-- @FN{SLICE(@FA{list}, @FA{start}, @FA{length})}: extracts a slice of the list specified
+- @FN{SLICE(@FA{list}, @FA{start}, @FA{length})}: Extracts a slice of the list specified
   by @FA{list}. The extraction will start at list element with position @FA{start}. 
   Positions start at 0. Up to @FA{length} elements will be extracted. If @FA{length} is
   not specified, all list elements starting at @FA{start} will be returned.
@@ -1142,15 +1142,15 @@ AQL supports the following functions to operate on list values:
       
   will return `[ 1, 2, 3 ]`
 
-- @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
+- @FN{UNIQUE(@FA{list})}: Returns all unique elements in @FA{list}. To determine
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.
 
-- @FN{UNION(@FA{list1, list2, ...})}: returns the union of all lists specified.
+- @FN{UNION(@FA{list1, list2, ...})}: Returns the union of all lists specified.
   The function expects at least two list values as its arguments. The result is a list
   of values in an undefined order.
 
-  Note: no duplicates will be removed. In order to remove duplicates, please use either
+  Note: No duplicates will be removed. In order to remove duplicates, please use either
   @LIT{UNION_DISTINCT} function or apply the @LIT{UNIQUE} on the result of @LIT{union}.
 
   Example:
@@ -1177,21 +1177,22 @@ AQL supports the following functions to operate on list values:
 
       [ [ 1, 2, 3 ] ]
 
-- @FN{UNION_DISTINCT(@FA{list1, list2, ...})}: returns the union of distinct values of
+- @FN{UNION_DISTINCT(@FA{list1, list2, ...})}: Returns the union of distinct values of
   all lists specified. The function expects at least two list values as its arguments. 
   The result is a list of values in an undefined order.
 
-- @FN{MINUS(@FA{list1, list2, ...})}: returns the difference of all lists specified.
+- @FN{MINUS(@FA{list1, list2, ...})}: Returns the difference of all lists specified.
   The function expects at least two list values as its arguments.
   The result is a list of values that occur in the first list but not in any of the
   subsequent lists. The order of the result list is undefined and should not be relied on.
   Note: duplicates will be removed.
 
-- @FN{INTERSECTION(@FA{list1, list2, ...})}: returns the intersection of all lists specified.
+- @FN{INTERSECTION(@FA{list1, list2, ...})}: Returns the intersection of all lists specified.
   The function expects at least two list values as its arguments.
   The result is a list of values that occur in all arguments. The order of the result list
   is undefined and should not be relied on.
-  Note: duplicates will be removed.
+  
+  Note: Duplicates will be removed.
 
 
 Apart from these functions, AQL also offers several language constructs (e.g.
@@ -1201,7 +1202,7 @@ Apart from these functions, AQL also offers several language constructs (e.g.
 
 AQL supports the following functions to operate on document values:
 
-- @FN{MATCHES(@FA{document}, @FA{examples}, @FA{return-index})}: compares the document
+- @FN{MATCHES(@FA{document}, @FA{examples}, @FA{return-index})}: Compares the document
   @FA{document} against each example document provided in the list @FA{examples}. 
   If @FA{document} matches one of the examples, `true` is returned, and if there is
   no match `false` will be returned. The default return value type can be changed by
@@ -1229,7 +1230,7 @@ AQL supports the following functions to operate on document values:
   This will return `2`, because the third example matches, and because the 
   `return-index` flag is set to `true`.
 
-- @FN{MERGE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: merges the documents
+- @FN{MERGE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: Merges the documents
   in @FA{document1} to @FA{documentn} into a single document. If document attribute
   keys are ambiguous, the merged result will contain the values of the documents 
   contained later in the argument list.
@@ -1261,7 +1262,7 @@ AQL supports the following functions to operate on document values:
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using `MERGE_RECURSIVE` instead.
 
-- @FN{MERGE_RECURSIVE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: recursively
+- @FN{MERGE_RECURSIVE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: Recursively
   merges the documents in @FA{document1} to @FA{documentn} into a single document. If 
   document attribute keys are ambiguous, the merged result will contain the values of the 
   documents contained later in the argument list.
@@ -1278,30 +1279,30 @@ AQL supports the following functions to operate on document values:
       ]
 
 
-- @FN{HAS(@FA{document}, @FA{attributename})}: returns `true` if @FA{document} has an
+- @FN{HAS(@FA{document}, @FA{attributename})}: Returns `true` if @FA{document} has an
   attribute named @FA{attributename}, and `false` otherwise.
 
-- @FN{ATTRIBUTES(@FA{document}, @FA{removeInternal}, @FA{sort})}: returns the attribute
+- @FN{ATTRIBUTES(@FA{document}, @FA{removeInternal}, @FA{sort})}: Returns the attribute
   names of the document @FA{document} as a list. 
   If @FA{removeInternal} is set to `true`, then all internal attributes (such as `_id`, 
   `_key` etc.) are removed from the result. If @FA{sort} is set to `true`, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
 
-- @FN{UNSET(@FA{document}, @FA{attributename}, ...)}: removes the attributes @FA{attributename}
+- @FN{UNSET(@FA{document}, @FA{attributename}, ...)}: Removes the attributes @FA{attributename}
   (can be one or many) from @FA{document}. All other attributes will be preserved.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
       RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
 
-- @FN{KEEP(@FA{document}, @FA{attributename}, ...)}: keeps only the attributes @FA{attributename}
+- @FN{KEEP(@FA{document}, @FA{attributename}, ...)}: Keeps only the attributes @FA{attributename}
   (can be one or many) from @FA{document}. All other attributes will be removed from the result.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
       RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
-- @FN{PARSE_IDENTIFIER(@FA{document-handle})}: parses the document handle specified in 
+- @FN{PARSE_IDENTIFIER(@FA{document-handle})}: Parses the document handle specified in 
   @FA{document-handle} and returns a the handle's individual parts a separate attributes.
   This function can be used to easily determine the collection name and key from a given document.
   The @FA{document-handle} can either be a regular document from a collection, or a document
@@ -1325,7 +1326,7 @@ AQL supports the following functions to operate on document values:
 AQL offers the following functions to filter data based on geo indexes:
 
 - @FN{NEAR(@FA{collection}, @FA{latitude}, @FA{longitude}, @FA{limit}, @FA{distancename})}: 
-  returns at most @FA{limit} documents from collection @FA{collection} that are near
+  Returns at most @FA{limit} documents from collection @FA{collection} that are near
   @FA{latitude} and @FA{longitude}. The result contains at most @FA{limit} documents, returned in
   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
   documents are returned. Optionally, the distances between the specified coordinate
@@ -1337,7 +1338,7 @@ AQL offers the following functions to filter data based on geo indexes:
   value of 100 will be applied.
 
 - @FN{WITHIN(@FA{collection}, @FA{latitude}, @FA{longitude}, @FA{radius}, @FA{distancename})}: 
-  returns all documents from collection @FA{collection} that are within a radius of
+  Returns all documents from collection @FA{collection} that are within a radius of
   @FA{radius} around that specified coordinate (@FA{latitude} and @FA{longitude}). The order
   in which the result documents are returned is undefined. Optionally, the distance between the
   coordinate and the document coordinates can be returned as well.
@@ -1354,7 +1355,7 @@ with an error.
 AQL offers the following functions to filter data based on fulltext indexes:
 
 - @FN{FULLTEXT(@FA{collection}, @FA{attribute}, @FA{query})}: 
-  returns all documents from collection @FA{collection} for which the attribute @FA{attribute}
+  Returns all documents from collection @FA{collection} for which the attribute @FA{attribute}
   matches the fulltext query @FA{query}.
   @FA{query} is a comma-separated list of sought words (or prefixes of sought words). To 
   distinguish between prefix searches and complete-match searches, each word can optionally be
@@ -1362,21 +1363,21 @@ AQL offers the following functions to filter data based on fulltext indexes:
   be mixed in the same query. Not specifying a qualifier for a search word will implicitly
   execute a complete-match search for the given word:
 
-  - `FULLTEXT(emails, "body", "banana")` will look for the word `banana` in the 
+  - `FULLTEXT(emails, "body", "banana")` Will look for the word `banana` in the 
     attribute `body` of the collection `collection`.
 
-  - `FULLTEXT(emails, "body", "banana,orange")` will look for boths the words 
+  - `FULLTEXT(emails, "body", "banana,orange")` Will look for boths the words 
     `banana` and `orange` in the mentioned attribute. Only those documents will be
     returned that contain both words.
 
-  - `FULLTEXT(emails, "body", "prefix:head")` will look for documents that contain any
+  - `FULLTEXT(emails, "body", "prefix:head")` Will look for documents that contain any
     words starting with the prefix `head`.
 
-  - `FULLTEXT(emails, "body", "prefix:head,complete:aspirin")` will look for all 
+  - `FULLTEXT(emails, "body", "prefix:head,complete:aspirin")` Will look for all 
     documents that contain a word starting with the prefix `head` and that also contain 
     the (complete) word `aspirin`. Note: specifying `complete` is optional here.
 
-  - `FULLTEXT(emails, "body", "prefix:cent,prefix:subst")` will look for all documents 
+  - `FULLTEXT(emails, "body", "prefix:cent,prefix:subst")` Will look for all documents 
     that contain a word starting with the prefix `cent` and that also contain a word
     starting with the prefix `subst`.
 
@@ -1384,16 +1385,16 @@ AQL offers the following functions to filter data based on fulltext indexes:
   AND-combined, meaning only the logical intersection of all searches will be returned. 
   It is also possible to combine partial results with a logical OR, and with a logical NOT:
 
-  - `FULLTEXT(emails, "body", "+this,+text,+document")` will return all documents that 
+  - `FULLTEXT(emails, "body", "+this,+text,+document")` Will return all documents that 
     contain all the mentioned words. Note: specifying the `+` symbols is optional here.
 
-  - `FULLTEXT(emails, "body", "banana,|apple")` will return all documents that contain
+  - `FULLTEXT(emails, "body", "banana,|apple")` Will return all documents that contain
     either (or both) words `banana` or `apple`.
 
-  - `FULLTEXT(emails, "body", "banana,-apple")` will return all documents that contain
+  - `FULLTEXT(emails, "body", "banana,-apple")` Will return all documents that contain
     the word `banana` but do not contain the word `apple`.
 
-  - `FULLTEXT(emails, "body", "banana,pear,-cranberry")` will return all documents that 
+  - `FULLTEXT(emails, "body", "banana,pear,-cranberry")` Will return all documents that 
     contain both the words `banana` and `pear` but do not contain the word 
     `cranberry`.
 
@@ -1413,9 +1414,9 @@ AQL has the following functions to traverse graphs:
   @FA{vertexcollection} and edges in the collection @FA{edgecollection}. For each vertex
   in @FA{vertexcollection}, it will determine the paths through the graph depending on the
   value of @FA{direction}:
-  - `"outbound"`: follow all paths that start at the current vertex and lead to another vertex
-  - `"inbound"`: follow all paths that lead from another vertex to the current vertex
-  - `"any"`: combination of `"outbound"` and `"inbound"`.
+  - `"outbound"`: Follow all paths that start at the current vertex and lead to another vertex
+  - `"inbound"`: Follow all paths that lead from another vertex to the current vertex
+  - `"any"`: Combination of `"outbound"` and `"inbound"`
   The default value for @FA{direction} is `"outbound"`.
   If @FA{followcycles} is true, cyclic paths will be followed as well. This is turned off by
   default.
@@ -1436,50 +1437,50 @@ AQL has the following functions to traverse graphs:
         RETURN p.vertices[*].name
 
 - @FN{TRAVERSAL(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{options})}: 
-  traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
+  Traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
   starting at the vertex identified by id @FA{startVertex}. Vertex connectivity is
   specified by the @FA{direction} parameter:
-  - `"outbound"`: vertices are connected in `_from` to `_to` order
-  - `"inbound"`: vertices are connected in `_to` to `_from` order
-  - `"any"`: vertices are connected in both `_to` to `_from` and in 
+  - `"outbound"`: Vertices are connected in `_from` to `_to` order
+  - `"inbound"`: Vertices are connected in `_to` to `_from` order
+  - `"any"`: Vertices are connected in both `_to` to `_from` and in 
     `_from` to `_to` order
 
   Additional options for the traversal can be provided via the @FA{options} document:
-  - `strategy`: defines the traversal strategy. Possible values are `depthfirst` 
+  - `strategy`: Defines the traversal strategy. Possible values are `depthfirst` 
     and `breadthfirst`. Defaults to `depthfirst`
-  - `order`: defines the traversal order: Possible values are `preorder` and
+  - `order`: Defines the traversal order: Possible values are `preorder` and
     `postorder`. Defaults to `preorder`
   - `itemOrder`: Defines the level item order. Can be `forward` or 
     `backward`. Defaults to `forward`
   - `minDepth`: Minimum path depths for vertices to be included. This can be used to
     include only vertices in the result that are found after a certain minimum depth.
-    Defaults to 0. 
+    Defaults to 0 
   - `maxIterations`: Maximum number of iterations in each traversal. This number can be
     set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
     as many iterations as the `maxIterations` value, the traversal will abort with an
-    error. If `maxIterations` is not set, a server-defined value may be used.
+    error. If `maxIterations` is not set, a server-defined value may be used
   - `maxDepth`: Maximum path depth for sub-edges expansion. This can be used to 
     limit the depth of the traversal to a sensible amount. This should especially be used
     for big graphs to limit the traversal to some sensible amount, and for graphs 
     containing cycles to prevent infinite traversals. The maximum depth defaults to 256, 
     with the chance of this value being non-sensical. For several graphs, a much lower
     maximum depth is sensible, whereas for other, more list-oriented graphs a higher
-    depth should be used.
-  - `paths`: if `true`, the paths encountered during the traversal will
+    depth should be used
+  - `paths`: If `true`, the paths encountered during the traversal will
     also be returned along with each traversed vertex. If `false`, only the 
     encountered vertices will be returned.
-  - `uniqueness`: an optional document with the following attributes:
+  - `uniqueness`: An optional document with the following attributes:
     - `vertices`: 
-      - `none`: no vertex uniqueness is enforced
-      - `global`: a vertex may be visited at most once. This is the default.
-      - `path`: a vertex is visited only if not already contained in the current
+      - `none`: No vertex uniqueness is enforced
+      - `global`: A vertex may be visited at most once. This is the default.
+      - `path`: A vertex is visited only if not already contained in the current
         traversal path
     - `edges`: 
-      - `none`: no edge uniqueness is enforced
-      - `global`: an edge may be visited at most once. This is the default.
-      - `path`: an edge is visited only if not already contained in the current
+      - `none`: No edge uniqueness is enforced
+      - `global`: An edge may be visited at most once. This is the default
+      - `path`: An edge is visited only if not already contained in the current
         traversal path
-  - `followEdges`: an optional list of example edge documents that the traversal will
+  - `followEdges`: An optional list of example edge documents that the traversal will
     expand into. If no examples are given, the traversal will follow all edges. If one
     or many edge examples are given, the traversal will only follow an edge if it matches
     at least one of the specified examples. `followEdges` can also be a string with the
@@ -1489,10 +1490,10 @@ AQL has the following functions to traverse graphs:
 
         function (config, vertex, edge, path)
 
-    The function is expected to return a boolean value. If ìt returns `true`, the edge
+    The function is expected to return a boolean value. If it returns `true`, the edge
     will be followed. If `false` is returned, the edge will be ignored.
 
-  - `filterVertices`: an optional list of example vertex documents that the traversal will
+  - `filterVertices`: An optional list of example vertex documents that the traversal will
     treat specially. If no examples are given, the traversal will handle all encountered
     vertices equally. If one or many vertex examples are given, the traversal will exclude
     any non-matching vertex from the result and/or not descend into it. Optionally,
@@ -1502,24 +1503,24 @@ AQL has the following functions to traverse graphs:
         function (config, vertex, path)
 
     If a custom AQL function is used, it is expected to return one of the following values:
-    - `[ ]`: include the vertex in the result and descend into its connected edges
-    - `[ "prune" ]`: will include the vertex in the result but not descend into its connected edges
-    - `[ "exclude" ]`: will not include the vertex in the result but descend into its connected edges
-    - `[ "prune", "exclude" ]`: will completely ignore the vertex and its connected edges
+    - `[ ]`: Include the vertex in the result and descend into its connected edges
+    - `[ "prune" ]`: Will include the vertex in the result but not descend into its connected edges
+    - `[ "exclude" ]`: Will not include the vertex in the result but descend into its connected edges
+    - `[ "prune", "exclude" ]`: Will completely ignore the vertex and its connected edges
 
-  - `vertexFilterMethod`: only useful in conjunction with `filterVertices` and if no user-defined
-    AQL function is used.. If specified, it will influence how vertices are handled that don't match 
+  - `vertexFilterMethod`: Only useful in conjunction with `filterVertices` and if no user-defined
+    AQL function is used. If specified, it will influence how vertices are handled that don't match 
     the examples in `filterVertices`:
-    - `[ "prune" ]`: will include non-matching vertices in the result but not descend into them
-    - `[ "exclude" ]`: will not include non-matching vertices in the result but descend into them
-    - `[ "prune", "exclude" ]`: will neither include non-matching vertices in the result nor descend into them
+    - `[ "prune" ]`: Will include non-matching vertices in the result but not descend into them
+    - `[ "exclude" ]`: Will not include non-matching vertices in the result but descend into them
+    - `[ "prune", "exclude" ]`: Will neither include non-matching vertices in the result nor descend into them
 
   The result of the TRAVERSAL function is a list of traversed points. Each point is a 
   document consisting of the following attributes:
-  - `vertex`: the vertex at the traversal point
+  - `vertex`: The vertex at the traversal point
   - `path`: The path history for the traversal point. The path is a document with the
     attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
-    in the result if the `paths` attribute is set in the @FA{options}. 
+    in the result if the `paths` attribute is set in the @FA{options}
 
   Example calls:
 
@@ -1572,7 +1573,7 @@ AQL has the following functions to traverse graphs:
       }, false);
 
 - @FN{TRAVERSAL_TREE(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{connectName}, @FA{options})}: 
-  traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
+  Traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
   starting at the vertex identified by id @FA{startVertex} and creates a hierchical result.
   Vertex connectivity is establish by inserted an attribute which has the name specified via
   the @FA{connectName} parameter. Connected vertices will be placed in this attribute as a 
@@ -1596,13 +1597,13 @@ and even in a non-cyclic graph, traversing far into the graph might consume a lo
 time and memory for the result set.
 
 - @FN{SHORTEST_PATH(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{endVertex}, @FA{direction}, @FA{options})}: 
-  determines the first shortest path from the @FA{startVertex} to the @FA{endVertex}.
+  Determines the first shortest path from the @FA{startVertex} to the @FA{endVertex}.
   Both vertices must be present in the vertex collection specified in @FA{vertexcollection},
   and any connecting edges must be present in the collection specified by @FA{edgecollection}.
   Vertex connectivity is specified by the @FA{direction} parameter:
-  - `"outbound"`: vertices are connected in `_from` to `_to` order
-  - `"inbound"`: vertices are connected in `_to` to `_from` order
-  - `"any"`: vertices are connected in both `_to` to `_from` and in 
+  - `"outbound"`: Vertices are connected in `_from` to `_to` order
+  - `"inbound"`: Vertices are connected in `_to` to `_from` order
+  - `"any"`: Vertices are connected in both `_to` to `_from` and in 
     `_from` to `_to` order
   The search is aborted when a shortest path is found. Only the first shortest path will be
   returned. Any vertex will be visited at most once by the search.
@@ -1612,10 +1613,10 @@ time and memory for the result set.
     set to bound long-running searches. When a search performs as many iterations as the 
     `maxIterations` value, the search will abort with an error. If `maxIterations` is not 
     set, a server-defined value may be used.
-  - `paths`: if `true`, the result will not only contain the vertices along the shortest
+  - `paths`: If `true`, the result will not only contain the vertices along the shortest
     path, but also the connecting edges. If `false`, only the encountered vertices will 
     be returned.
-  - `distance`: an optional custom function to be used when calculating the distance 
+  - `distance`: An optional custom function to be used when calculating the distance 
     between a vertex and a neighboring vertex. The expected function signature is:
 
         function (config, vertex1, vertex2, edge)
@@ -1628,7 +1629,7 @@ time and memory for the result set.
     same distance (1) to each other. If a function name is specified, it must have been
     registered as a regular user-defined AQL function.
 
-  - `followEdges`: an optional list of example edge documents that the search will
+  - `followEdges`: An optional list of example edge documents that the search will
     expand into. If no examples are given, the search will follow all edges. If one
     or many edge examples are given, the search will only follow an edge if it matches
     at least one of the specified examples. `followEdges` can also be a string with the
@@ -1638,10 +1639,10 @@ time and memory for the result set.
 
         function (config, vertex, edge, path)
 
-    The function is expected to return a boolean value. If ìt returns `true`, the edge
+    The function is expected to return a boolean value. If it returns `true`, the edge
     will be followed. If `false` is returned, the edge will be ignored.
 
-  - `filterVertices`: an optional list of example vertex documents that the search will
+  - `filterVertices`: An optional list of example vertex documents that the search will
     treat specially. If no examples are given, the search will handle all encountered
     vertices equally. If one or many vertex examples are given, the search will exclude
     the vertex from the result and/or not descend into it. Optionally, `filterVertices` can 
@@ -1651,14 +1652,14 @@ time and memory for the result set.
         function (config, vertex, path)
 
     If a custom AQL function is used, it is expected to return one of the following values:
-    - `[ ]`: include the vertex in the result and descend into its connected edges
-    - `[ "prune" ]`: will include the vertex in the result but not descend into its connected edges
-    - `[ "exclude" ]`: will not include the vertex in the result but descend into its connected edges
-    - `[ "prune", "exclude" ]`: will completely ignore the vertex and its connected edges
+    - `[ ]`: Include the vertex in the result and descend into its connected edges
+    - `[ "prune" ]`: Will include the vertex in the result but not descend into its connected edges
+    - `[ "exclude" ]`: Will not include the vertex in the result but descend into its connected edges
+    - `[ "prune", "exclude" ]`: Will completely ignore the vertex and its connected edges
 
   The result of the SHORTEST_PATH function is a list with the components of the shortest
   path. Each component is a document consisting of the following attributes:
-  - `vertex`: the vertex at the traversal point
+  - `vertex`: The vertex at the traversal point
   - `path`: The path history for the traversal point. The path is a document with the
     attributes `vertices` and `edges`, which are both lists. Note that `path` is only present
     in the result if the `paths` attribute is set in the @FA{options}. 
@@ -1696,11 +1697,11 @@ time and memory for the result set.
       }, false);
 
 - @FN{EDGES(@FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
-  return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
+  Return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
   @FA{direction} are:
-  - `outbound`: return all outbound edges
-  - `inbound`: return all inbound edges
-  - `any`: return outbound and inbound edges
+  - `outbound`: Return all outbound edges
+  - `inbound`: Return all inbound edges
+  - `any`: Return outbound and inbound edges
   
   The @FA{edgeexamples} parameter can optionally be used to restrict the results to specific
   edge connections only. The matching is then done via the @LIT{MATCHES} function.
@@ -1713,11 +1714,11 @@ time and memory for the result set.
       EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
 - @FN{NEIGHBORS(@FA{vertexcollection}, @FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
-  return all neighbors that are directly connected to the vertex @FA{startvertex} as a list. 
+  Return all neighbors that are directly connected to the vertex @FA{startvertex} as a list. 
   The possible values for @FA{direction} are:
-  - `outbound`: return all outbound edges
-  - `inbound`: return all inbound edges
-  - `any`: return outbound and inbound edges
+  - `outbound`: Return all outbound edges
+  - `inbound`: Return all inbound edges
+  - `any`: Return outbound and inbound edges
 
   The @FA{edgeexamples} parameter can optionally be used to restrict the results to specific
   edge connections only. The matching is then done via the @LIT{MATCHES} function.
@@ -1733,24 +1734,29 @@ time and memory for the result set.
 
 AQL offers the following functions to let the user control the flow of operations:
 
-- @FN{NOT_NULL(@FA{alternative}, ...)}: returns the first alternative that is not `null`, 
-  and `null` if all alternatives are `null` themselves.
+- @FN{NOT_NULL(@FA{alternative}, ...)}: Returns the first alternative that is not `null`, 
+  and `null` if all alternatives are `null` themselves
 
-- @FN{FIRST_LIST(@FA{alternative}, ...)}: returns the first alternative that is a list, and
-  `null` if none of the alternatives is a list.
+- @FN{FIRST_LIST(@FA{alternative}, ...)}: Returns the first alternative that is a list, and
+  `null` if none of the alternatives is a list
 
-- @FN{FIRST_DOCUMENT(@FA{alternative}, ...)}: returns the first alternative that is a document,
-  and `null` if none of the alternatives is a document.
+- @FN{FIRST_DOCUMENT(@FA{alternative}, ...)}: Returns the first alternative that is a document,
+  and `null` if none of the alternatives is a document
 
 @subsubsection AqlFunctionsMisc Miscellaneous functions
 
 Finally, AQL supports the following functions that do not belong to any of the other
 function categories:
 
-- @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
-  with attributes `name` and `_id`.
+- @FN{COLLECTIONS()}: Returns a list of collections. Each collection is returned as a document
+  with attributes `name` and `_id`
 
-- @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document which is uniquely identified by
+- @FN{CURRENT_USER()}: Returns the name of the current user. The current user is the user 
+  account name that was specified in the `Authorization` HTTP header of the request. It will
+  only be populated if authentication on the server is turned on, and if the query was executed
+  inside a request context. Otherwise, the return value of this function will be `null`.
+
+- @FN{DOCUMENT(@FA{collection}, @FA{id})}: Returns the document which is uniquely identified by
   the @FA{id}. ArangoDB will try to find the document using the `_id` value of the document
   in the specified collection. If there is a mismatch between the @FA{collection} passed and
   the collection specified in @FA{id}, then `null` will be returned. Additionally, if the
@@ -1766,16 +1772,16 @@ function categories:
       DOCUMENT(users, [ "users/john", "users/amy" ])
       DOCUMENT(users, [ "john", "amy" ])
 
-  Note: the @FN{DOCUMENT} function is polymorphic since ArangoDB 1.4. It can now be used with
+  Note: The @FN{DOCUMENT} function is polymorphic since ArangoDB 1.4. It can now be used with
   a single parameter @FA{id} as follows:
 
-- @FN{DOCUMENT(@FA{id})}: in this case, @FA{id} must either be a document handle string
+- @FN{DOCUMENT(@FA{id})}: In this case, @FA{id} must either be a document handle string
   (consisting of collection name and document key) or a list of document handle strings, e.g.
 
       DOCUMENT("users/john")
       DOCUMENT([ "users/john", "users/amy" ])
 
-- @FN{SKIPLIST(@FA{collection}, @FA{condition}, @FA{skip}, @FA{limit})}: return all documents 
+- @FN{SKIPLIST(@FA{collection}, @FA{condition}, @FA{skip}, @FA{limit})}: Return all documents 
   from a skiplist index on collection @FA{collection} that match the specified @FA{condition}.
   This is a shortcut method to use a skiplist index for retrieving specific documents in 
   indexed order. The skiplist index supports equality and less than/greater than queries. The
@@ -1816,7 +1822,7 @@ consists of all documents from the collection named "users" in this case) and
 make the current list element available in variable `u`. `u` is not modified in
 this example but simply pushed into the result using the `RETURN` keyword.
 
-Note: when iterating over collection-based lists as shown here, the order of
+Note: When iterating over collection-based lists as shown here, the order of
 documents is undefined unless an explicit sort order is defined using a `SORT`
 statement.
 
@@ -1866,14 +1872,14 @@ As `RETURN` allows specifying an expression, arbitrary computations can be
 performed to calculate the result elements. Any of the variables valid in the
 scope the `RETURN` is placed in can be used for the computations.
 
-Note: return will close the current scope and eliminate all local variables in
+Note: Return will close the current scope and eliminate all local variables in
 it.
 
 FILTER {#AqlOperationFilter}
 ----------------------------
 
 The `FILTER` statement can be used to restrict the results to elements that
-match an arbitrary logical condition.  The general syntax is:
+match an arbitrary logical condition. The general syntax is:
 
     FILTER condition
 
@@ -1891,7 +1897,7 @@ an attribute `active` with value `true` and that have an attribute `age` with a
 value less than `39`. All other elements from `users` will be skipped and not be
 included the result produced by `RETURN`.
 
-It is allowed to specifiy multiple `FILTER` statements in a query, and even in
+It is allowed to specify multiple `FILTER` statements in a query, and even in
 the same block. If multiple `FILTER` statements are used, their results will be
 combined with a logical and, meaning all filter conditions must be true to
 include an element.
@@ -1910,7 +1916,7 @@ multiple sort criteria and directions.  The general syntax is:
 
     SORT expression direction
 
-Specifiyng the `direction` is optional. The default (implict) direction for a
+Specifying the `direction` is optional. The default (implicit) direction for a
 sort is the ascending order. To explicitly specify the sort direction, the
 keywords `ASC` (ascending) and `DESC` can be used. Multiple sort criteria can be
 separated using commas.
@@ -1992,7 +1998,7 @@ criteria.  The two general syntaxes for `COLLECT` are:
 
 The first form only groups the result by the defined group criteria defined by
 `expression`. In order to further process the results produced by `COLLECT`, a
-new variable (specified by `variable-name` is introduced.  This variable
+new variable (specified by `variable-name`) is introduced. This variable
 contains the group value.
 
 The second form does the same as the first form, but additionally introduces a
@@ -2019,7 +2025,7 @@ In the above example, the list of `users` is grouped by first names and ages
 first, and for each distinct combination of first name and age, the number of
 users found is returned.
 
-Note: the `COLLECT` statement eliminates all local variables in the current
+Note: The `COLLECT` statement eliminates all local variables in the current
 scope. After `COLLECT` only the variables introduced by `COLLECT` itself are
 available.
 
@@ -2029,7 +2035,7 @@ Advanced features {#AqlAdvanced}
 Subqueries {#AqlSubqueries}
 ---------------------------
 
-Whereever an expression is allowed in AQL, a subquery can be placed. A subquery
+Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting
 variables and values in its outer scope(s).
 

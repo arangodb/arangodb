@@ -52,7 +52,10 @@ function ArangoStatement (database, data) {
   this._batchSize = null;
   this._bindVars = {};
   this._options = undefined;
-  
+ 
+  if (typeof data === "string") {
+    data = { query: data };
+  }
   if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
   }

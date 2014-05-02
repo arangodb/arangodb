@@ -323,10 +323,11 @@ returned adjacently:
       ...
     ]
 
-Note that the order of items returned for the same level is undefined. This is because there
-is no natural order of edges for a vertex with multiple connected edges.
-To explicitly set the order for edges on the same level, you can specify an edge comparator
-function with the `sort` attribute:
+Note that the order of items returned for the same level is undefined.
+This is because there is no natural order of edges for a vertex with
+multiple connected edges. To explicitly set the order for edges on the
+same level, you can specify an edge comparator function with the `sort`
+attribute:
     
     var config = {
       ...
@@ -334,6 +335,7 @@ function with the `sort` attribute:
       ...
     };
  
+The arguments l and r are edge documents.
 This will traverse edges of the same vertex in backward `_key` order:
 
     [
@@ -352,6 +354,13 @@ This will traverse edges of the same vertex in backward `_key` order:
       "Argentina (country)", 
       ...
     ]
+
+Note that this attribute only works for the usual expanders
+`traversal.inboundExpander`, `traversal.outboundExpander`,
+`traversal.anyExpander` and their corresponding "WithLabels" variants.
+If you are using custom expanders (see @ref TraversalsCustomExpanders)
+you have to organise the sorting within the specified expander.
+
 
 Writing Custom Visitors{#TraversalsObjectVisitors}
 --------------------------------------------------
@@ -480,8 +489,8 @@ of edges:
       }
     };
 
-Writing Custom Expanders
-------------------------
+Writing Custom Expanders{#TraversalsCustomExpanders}
+----------------------------------------------------
 
 The edges connected to a vertex are determined by the expander. So far we have used a 
 default expander (the default inbound expander to be precise). The default inbound 
@@ -507,6 +516,11 @@ The full path from the start vertex up to the current vertex is also supplied vi
 the `path` variable.
 An expander is expected to return a list of objects, which need to have an `edge`
 and a `vertex` attribute each.
+
+Note that if you want to rely on a particular order in which the edges
+are traversed, you have to sort the edges returned by your expander
+within the code of the expander. The functions to get outbound, inbound
+or any edges from a vertex do not guarantee any particular order!
 
 A custom implementation of an inbound expander could look like this (this is a
 non-deterministic expander, which randomly decides whether or not to include

@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [2.0.1-rc1], [info@triagens.de], [arangodb], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [2.1.0-devel], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -74,7 +74,7 @@ dnl LIBEV
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(all-in-one-libev,
-  AS_HELP_STRING([--enable-all-in-one-libev], [use supplied LIBEV from 3rdParty directory]),
+  AS_HELP_STRING([--enable-all-in-one-libev], [use supplied LIBEV from 3rdParty directory (default: yes)]),
   [tr_ALL_IN_ONE_LIBEV="${enableval:-yes}"],
   [tr_ALL_IN_ONE_LIBEV=yes]
 )
@@ -86,7 +86,7 @@ dnl V8
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(all-in-one-v8,
-  AS_HELP_STRING([--enable-all-in-one-v8], [use supplied V8 from 3rdParty directory]),
+  AS_HELP_STRING([--enable-all-in-one-v8], [use supplied V8 from 3rdParty directory (default: yes)]),
   [tr_ALL_IN_ONE_V8="${enableval:-yes}"],
   [tr_ALL_IN_ONE_V8=yes]
 )
@@ -259,6 +259,12 @@ else
   m4_include([m4/external.boost])
   BASIC_INFO="$BASIC_INFO|ALL-IN-ONE-BOOST: disabled"
 fi
+
+dnl ----------------------------------------------------------------------------
+dnl LIBBSON
+dnl ----------------------------------------------------------------------------
+
+m4_include([m4/internal.libbson])
 
 
 dnl ============================================================================

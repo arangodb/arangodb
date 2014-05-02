@@ -1,0 +1,55 @@
+bson_append_symbol(3)
+=====================
+
+
+NAME
+----
+
+bson_append_symbol - append a new symbol element to a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_append_symbol (bson_t     *bson,
+                    const char *key,
+                    int         key_length,
+                    const char *value,
+                    int         length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+Appends a new field to _bson_ of type BSON_TYPE_SYMBOL. This BSON type is
+deprecated and should not be used in new code.
+
+
+RETURN VALUE
+------------
+
+TRUE if successful. Otherwise FALSE and no modifications are made.
+
+
+ERRORS
+------
+
+FALSE is returned if there was insufficient space to append the element.
+
+
+SEE ALSO
+--------
+
+http://bsonspec.org/#/specification
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Wal/Slot.h"
+#include "BasicsC/hashes.h"
 
 using namespace triagens::wal;
 
@@ -43,7 +44,6 @@ Slot::Slot ()
     _mem(nullptr),
     _size(0),
     _status(StatusType::UNUSED) {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +69,8 @@ std::string Slot::statusText () const {
       return "used";
     case StatusType::RETURNED:
       return "returned";
+    case StatusType::RETURNED_WFS:
+      return "returned (wfs)";
   }
 
   // listen, damn compilers!!
@@ -77,6 +79,30 @@ std::string Slot::statusText () const {
   // stop stelling me that the control flow will reach the end of a non-void
   // function. this cannot happen!!!!!
   assert(false); 
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the CRC value for the source region (this will modify
+/// the source region) and copy the calculated marker data into the slot
+////////////////////////////////////////////////////////////////////////////////
+
+void Slot::fill (void* src,
+                 size_t size) {
+  assert(size == _size);         
+
+  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
+  
+  // set tick
+  marker->_tick = _tick;
+  
+  // calculate the crc
+  marker->_crc = 0;
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_BlockCrc32(crc, (char const*) marker, static_cast<TRI_voc_size_t>(size));
+  marker->_crc = TRI_FinalCrc32(crc);
+  
+  memcpy(_mem, src, size);
 }
 
 // -----------------------------------------------------------------------------
@@ -89,11 +115,11 @@ std::string Slot::statusText () const {
 
 void Slot::setUnused () {
   assert(isReturned());
-  _tick      = 0;
-  _logfileId = 0;
-  _mem       = nullptr;
-  _size      = 0;
-  _status    = StatusType::UNUSED;
+  _tick        = 0;
+  _logfileId   = 0;
+  _mem         = nullptr;
+  _size        = 0;
+  _status      = StatusType::UNUSED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,9 +142,14 @@ void Slot::setUsed (void* mem,
 /// @brief mark as slot as returned
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slot::setReturned () {
+void Slot::setReturned (bool waitForSync) {
   assert(isUsed());
-  _status = StatusType::RETURNED;
+  if (waitForSync) {
+    _status = StatusType::RETURNED_WFS;
+  }
+  else {
+    _status = StatusType::RETURNED;
+  }
 }
 
 // Local Variables:

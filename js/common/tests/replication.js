@@ -3140,7 +3140,7 @@ function ReplicationSyncSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(ReplicationLoggerSuite);
+jsunity.run(ReplicationLoggerSuite);
 jsunity.run(ReplicationApplierSuite);
 jsunity.run(ReplicationSyncSuite);
 

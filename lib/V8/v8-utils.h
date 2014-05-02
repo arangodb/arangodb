@@ -153,27 +153,36 @@ bool TRI_ParseJavaScriptFile (char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> source,
-                                                   v8::Handle<v8::Value> name,
+                                                   v8::Handle<v8::String> const& source,
+                                                   v8::Handle<v8::Value> const& name,
                                                    bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, using supplied text
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber,
+                                              std::string const& message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message, bool autoPrepend);
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line, 
+                                              int errorNumber,
+                                              std::string const& message,
+                                              bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object

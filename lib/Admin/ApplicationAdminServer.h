@@ -38,6 +38,7 @@
 namespace triagens {
   namespace rest {
     class ApplicationServer;
+    class AsyncJobManager;
     class HttpHandlerFactory;
     class HttpResponse;
     class HttpRequest;
@@ -119,7 +120,8 @@ namespace triagens {
 
         void addBasicHandlers (rest::HttpHandlerFactory*, 
                                string const &prefix,
-                               void*);
+                               rest::Dispatcher*,
+                               rest::AsyncJobManager*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the http handlers for administration
@@ -189,6 +191,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void* _pathOptions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data that needs to be freed at shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>* _jobPayload;
 
     };
   }

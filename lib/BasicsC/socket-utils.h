@@ -106,11 +106,11 @@ static inline TRI_socket_t TRI_socket (int domain, int type, int protocol) {
 /// @brief listen abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_listen (TRI_socket_t socket, int backlog) {
+static inline int TRI_listen (TRI_socket_t s, int backlog) {
 #ifdef _WIN32
-  return listen(socket.fileHandle, backlog);
+  return listen(s.fileHandle, backlog);
 #else
-  return listen(socket.fileDescriptor, backlog);
+  return listen(s.fileDescriptor, backlog);
 #endif
 }
 

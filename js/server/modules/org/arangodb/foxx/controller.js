@@ -572,7 +572,45 @@ extend(Controller.prototype, {
       route,
       authentication.createStandardRegistrationHandler(this.getAuth(), this.getUsers(), opts)
     ).errorResponse(authentication.UserAlreadyExistsError, 400, "User already exists");
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_changePassword
+/// @brief Add a change password handler
+///
+/// @FUN{FoxxController::changePassword(@FA{route}, @FA{opts})}
+///
+/// Add a route for the logged in user to change the password.
+/// You can provide further customizations via the
+/// the options:
+///
+/// `passwordField` can be used to adjust the expected attribute
+/// in the `post` request. It defaults to `password`.
+/// `onSuccess` is a function that you can define to do something if the change was
+/// successful. This includes sending a response to the user. This defaults to a
+/// function that returns a JSON with `notice` set to "Changed password!".
+/// `onError` is a function that you can define to do something if the login did not
+/// work. This includes sending a response to the user. This defaults to a function
+/// that sets the response to 401 and returns a JSON with `error` set to
+/// "No session was found".
+/// Both `onSuccess` and `onError` should take request and result as arguments.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.changePassword('/changePassword', {
+///       onSuccess: function (req, res) {
+///         res.json({"success": true});
+///       }
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  changePassword: function (route, opts) {
+    'use strict';
+    var authentication = require("org/arangodb/foxx/authentication");
+    return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
   }
+
 });
 
 exports.Controller = Controller;

@@ -58,7 +58,7 @@
 
 #define ARG_CHECK                                                                                                   \
   if (! CheckArgumentType(parameter, &allowed)) {                                                                   \
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
     return false;                                                                                                   \
   }
 
@@ -719,6 +719,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("FIRST_DOCUMENT", "FIRST_DOCUMENT", true, false, ".|+", NULL);
   REGISTER_FUNCTION("PARSE_IDENTIFIER", "PARSE_IDENTIFIER", true, false, ".", NULL);
   REGISTER_FUNCTION("SKIPLIST", "SKIPLIST_QUERY", false, false, "h,a|n,n", NULL);
+  REGISTER_FUNCTION("CURRENT_USER", "CURRENT_USER", false, false, "", NULL);
 
   if (! result) {
     TRI_FreeFunctionsAql(functions);
@@ -914,7 +915,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate number of arguments
   if (n < function->_minArgs || n > function->_maxArgs) {
     // invalid number of arguments
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
     return false;
   }
 

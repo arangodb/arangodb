@@ -1,0 +1,38 @@
+bson_context_get_default(3)
+===========================
+
+
+NAME
+----
+
+bson_context_get_default - get the default bson_context_t for the process
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bson_context_t *
+bson_context_get_default (void);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_context_get_default()_ function shall return the default, thread-safe, _bson_context_t_ for the process.
+
+
+RETURN VALUE
+------------
+
+A _bson_context_t_ that is owned by the process.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

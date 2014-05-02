@@ -208,7 +208,26 @@ same way as you previously used the `launch` method:
 
     arangodb> k.relaunch();
 
-You can now check, whether or not, all your cluster processes are still
+Note that if you have destroyed the object `k` for example because you
+have shutdown the ArangoDB instance in which you planned the cluster,
+then you can reproduce it for a `relaunch` operation, provided you have
+kept the cluster plan object provided by the `getPlan` method. If you
+had for example done:
+
+    arangodb> var plan = p.getPlan();
+    arangodb> require("fs").write("saved_plan.json",JSON.stringify(plan));
+
+Then you can later do (in another session):
+
+    arangodb> var plan = require("fs").read("saved_plan.json");
+    arangodb> plan = JSON.parse(plan);
+    arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+    arangodb> var k = new Kickstarter(plan);
+    arangodb> k.relaunch();
+
+to start the existing cluster anew.
+
+You can check, whether or not, all your cluster processes are still
 running, by issuing:
 
     arangodb> k.isHealthy();

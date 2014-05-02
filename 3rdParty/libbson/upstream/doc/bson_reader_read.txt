@@ -1,0 +1,75 @@
+bson_reader_read(3)
+===================
+
+
+NAME
+----
+
+bson_reader_read - read the next document from bson_reader_t
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+const bson_t *
+bson_reader_read (bson_reader_t *reader,
+                  bool          *reached_eof);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_reader_read()_ function shall read the next document from the underlying file-descriptor or buffer.
+
+If there are no further documents or a failure was detected, then NULL is returned.
+
+If we reached the end of the sequence, _reached_eof_ is set to TRUE.
+
+To detect an error, check for NULL and _reached_of_ is FALSE.
+
+
+EXAMPLE
+-------
+
+[source, c]
+-----------------------
+const bson_t *doc;
+bool reached_eof = false;
+
+while ((doc = bson_reader_read (reader, &reached_eof))) {
+	/* do something */
+}
+
+if (!reached_eof) {
+	fprintf (stderr, "Failed to read all documents.\n");
+}
+-----------------------
+
+
+RETURN VALUE
+------------
+
+A _bson_t_ that should not be modified or freed.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_reader_tell[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

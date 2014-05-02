@@ -1,0 +1,54 @@
+bson_append_null(3)
+===================
+
+
+NAME
+----
+
+bson_append_null - append an element of type BSON_TYPE_NULL to a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_append_null (bson_t     *bson,
+                  const char *key,
+                  int         key_length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_append_null()_ function shall append a new element to _bson_ of type BSON_TYPE_NULL.
+
+If _key_ is NULL terminated, -1 may be passed for _key_length_.
+
+
+RETURN VALUE
+------------
+
+TRUE if successful. Otherwise FALSE and no modifications are made.
+
+
+ERRORS
+------
+
+FALSE is returned if there was insufficient space to append the element.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_append_undefined[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

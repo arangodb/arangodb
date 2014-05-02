@@ -1,0 +1,41 @@
+bson_strndup(3)
+===============
+
+
+NAME
+----
+
+bson_strndup - copy n bytes from a string
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+char *
+bson_strndup (const char *str,
+              size_t      n_bytes);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_strndup()_ function shall create a new string that contains up to _n_bytes_ of _str_.
+
+The result should be freed with _bson_free()_.
+
+
+RETURN VALUE
+------------
+
+A newly allocated string that should be freed with _bson_free()_.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, window */
-window.StatisticsDescription = Backbone.Collection.extend({
+window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,
   url: "/_admin/statistics-description",
   parse: function(response) {

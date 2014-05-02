@@ -156,7 +156,7 @@ static bool SetupCollections (TRI_aql_context_t* const context) {
 
     if (collection == NULL) {
       result = false;
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
     }
 
@@ -409,7 +409,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     if (ce == NULL) {      
       // couldn't create the barrier
       result = false;
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
     }
     else {
@@ -468,7 +468,7 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* context,
   TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
 
   if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
 
     return false;
   }

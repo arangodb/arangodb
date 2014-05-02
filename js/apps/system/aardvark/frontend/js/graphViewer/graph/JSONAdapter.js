@@ -205,6 +205,9 @@ function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
   self.expandCommunity = function (commNode, callback) {
   
   };
+
+  self.setWidth = function() {
+  };
   
   self.explore = absAdapter.explore;
   

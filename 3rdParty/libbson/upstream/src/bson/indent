@@ -1,0 +1,3 @@
+#!/bin/sh
+
+uncrustify --replace -l C -c uncrustify.cfg --no-backup "$@"

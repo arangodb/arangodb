@@ -79,7 +79,7 @@ add_executable(
     ${TEST_GEO_SUITE}
     Geo/Runner.cpp
     Geo/georeg.cpp
-    ../arangod/GeoIndex/GeoIndex.c
+    ../arangod/GeoIndex/GeoIndex.cpp
 )
 
 target_link_libraries(

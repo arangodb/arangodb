@@ -7,10 +7,9 @@
   window.ShowClusterView = Backbone.View.extend({
     detailEl: '#modalPlaceholder',
     el: "#content",
-
+    defaultFrame: 20 * 60 * 1000,
     template: templateEngine.createTemplate("showCluster.ejs"),
     modal: templateEngine.createTemplate("waitModal.ejs"),
-    modalDummy: templateEngine.createTemplate("modalDashboardDummy.ejs"),
     detailTemplate: templateEngine.createTemplate("detailView.ejs"),
 
     events: {
@@ -107,16 +106,21 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+//        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "dbserver " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "dbserver " + type + " " + stat);
       });
       this.coordinators.getStatuses(function(stat, serv) {
-        var id = serv.replace(":", "\\:"),
+        var id = serv,
           type;
-        type = $("#" + id).attr("class").split(/\s+/)[1];
-        $("#" + id).attr("class", "coordinator " + type + " " + stat);
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        type = $("#id" + id).attr("class").split(/\s+/)[1];
+        $("#id" + id).attr("class", "coordinator " + type + " " + stat);
       });
     },
 
@@ -308,10 +312,7 @@
               + "/_admin/statistics";
             statCollect.add(stat);
         });
-        statCollect.fetch({
-          beforeSend: window.App.addAuth.bind(window.App),
-          async: false
-        });
+        statCollect.fetch();
         statCollect.forEach(function(m) {
           var uptime = m.get("server").uptime * 1000;
           var time = self.serverTime;
@@ -479,38 +480,54 @@
                 opts.labels = this.chartData.labelsNormal;
                 opts.visibility = this.chartData.visibilityNormal;
               }
+              opts.dateWindow = this.updateDateWindow( this.graph.graph, this.graphShowAll);
               this.graph.graph.updateOptions(opts);
               return;
           }
 
           var makeGraph = function(remake) {
-            self.graph = new self.dygraphConfig.Chart(
-                "clusterAverageRequestTime",
-                self.dygraphConfig.regularLineChartType,
-                true,
-                'Average request time in milliseconds'
-            );
+            self.graph = {data : null, options :
+                self.dygraphConfig.getDefaultConfig("clusterAverageRequestTime")
+            };
             getData();
             self.graph.data = self.chartData.data;
-            self.graph.updateDateWindow();
             self.graph.options.visibility = self.chartData.visibilityNormal;
-            self.graph.updateLabels(self.chartData.labelsNormal);
+            self.graph.options.labels = self.chartData.labelsNormal;
+            self.graph.options.colors =
+                self.dygraphConfig.getColors(self.chartData.labelsNormal);
             if (remake) {
-                self.graph.detailChartConfig();
-                self.graph.updateLabels(self.chartData.labelsShowAll);
+                self.graph.options =
+                    self.dygraphConfig.getDetailChartConfig("clusterAverageRequestTime");
+                self.graph.options.labels = self.chartData.labelsShowAll;
+                self.graph.options.colors =
+                    self.dygraphConfig.getColors(self.chartData.labelsShowAll);
                 self.graph.options.visibility = self.chartData.visibilityShowAll;
-                self.graph.options.height = $('#lineChartDetail').height() - 34 -29;
-                self.graph.options.width = $('#lineChartDetail').width() -10;
+                self.graph.options.height = $('.modal-chart-detail').height() * 0.7;
+                self.graph.options.width = $('.modal-chart-detail').width() * 0.84;
                 self.graph.options.title = "";
             }
             self.graph.graph = new Dygraph(
-                  document.getElementById(remake ? 'detailGraph' : 'lineGraph'),
-                self.graph.data,
-                self.graph.options
+                  document.getElementById(remake ? 'lineChartDetail' : 'lineGraph'),
+                  self.graph.data,
+                  self.graph.options
             );
             self.graph.graph.setSelection(false, 'ClusterAverage', true);
           };
         makeGraph(remake);
+
+      },
+
+      updateDateWindow: function (graph, isDetailChart) {
+          var t = new Date().getTime();
+          var borderLeft, borderRight;
+          if (isDetailChart && graph.dateWindow_) {
+              borderLeft = graph.dateWindow_[0];
+              borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0 ?
+                  graph.dateWindow_[1] : t;
+              return [borderLeft, borderRight];
+          }
+          return [t - this.defaultFrame, t];
+
 
       },
 
@@ -538,8 +555,12 @@
         var serv = {};
         var cur;
         var coord;
-        $("#modalPlaceholder").html(this.modalDummy.render({}));
-        serv.raw = tar.attr("id");
+        $("#waitModalLayer").remove();
+        var ip_port = tar.attr("id");
+        ip_port = ip_port.replace(/\-/g,'.');
+        ip_port = ip_port.replace(/\_/g,':');
+        ip_port = ip_port.substr(2);
+        serv.raw = ip_port;
         serv.isDBServer = tar.hasClass("dbserver");
         if (serv.isDBServer) {
           cur = this.dbservers.findWhere({
@@ -567,20 +588,49 @@
       showDetail : function() {
           var self = this;
           delete self.graph;
-          $(self.detailEl).html(this.detailTemplate.render({
-            figure: "Average request time in milliseconds"
-          }));
-          self.setShowAll();
-          self.renderLineChart(true);
-          $('#lineChartDetail').modal('show');
-          $('#lineChartDetail').on('hidden', function () {
+          window.modalView.hideFooter = true;
+          window.modalView.hide();
+          window.modalView.show(
+              "modalGraph.ejs",
+              "Average request time in milliseconds",
+              undefined,
+              undefined,
+              undefined
+          );
+
+          window.modalView.hideFooter = false;
+
+          $('#modal-dialog').on('hidden', function () {
               delete self.graph;
               self.resetShowAll();
           });
-          $('.modalTooltips').tooltip({
-              placement: "left"
-          });
+          //$('.modal-body').css({"max-height": "100%" });
+          $('#modal-dialog').toggleClass("modal-chart-detail", true);
+          self.setShowAll();
+          self.renderLineChart(true);
           return self;
+      },
+
+      getCurrentSize: function (div) {
+          if (div.substr(0,1) !== "#") {
+              div = "#" + div;
+          }
+          var height, width;
+          $(div).attr("style", "");
+          height = $(div).height();
+          width = $(div).width();
+          return {
+              height: height,
+              width: width
+          };
+      },
+
+      resize: function () {
+          var dimensions;
+          if (this.graph) {
+              dimensions = this.getCurrentSize(this.graph.graph.maindiv_.id);
+              this.graph.graph.resize(dimensions.width, dimensions.height);
+          }
       }
     });
 

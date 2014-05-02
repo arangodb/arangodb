@@ -1037,6 +1037,22 @@ function CollectionDocumentSuite () {
       figures = collection.figures();
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test saving and searching for special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialChars : function () {
+      [ "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"' ].forEach(function(value) {
+        var doc = collection.save({ text: value });
+
+        var result = collection.byExample({ text: value }).toArray();
+        assertEqual(1, result.length);
+        assertEqual(value, result[0].text);
+      });
     }
 
   };

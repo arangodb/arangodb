@@ -41,7 +41,8 @@ namespace triagens {
           mem(nullptr),
           size(0),
           firstSlotIndex(0),
-          lastSlotIndex(0) {
+          lastSlotIndex(0),
+          waitForSync(false) {
       }
 
       ~SyncRegion () {
@@ -52,6 +53,7 @@ namespace triagens {
       uint32_t        size;
       size_t          firstSlotIndex;
       size_t          lastSlotIndex;
+      bool            waitForSync;
     };
 
   }

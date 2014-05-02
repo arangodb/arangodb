@@ -188,8 +188,7 @@ pack-arm:
 		--localstatedir=/var \
 		--disable-all-in-one-icu \
 		--disable-all-in-one-v8 \
-		--disable-all-in-one-libev \
-		--with-libev=./3rdParty-ARM \
+		--enable-all-in-one-libev \
 		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
@@ -247,6 +246,8 @@ pack-winXX-cmake:
 	cd Build$(BITS) && cmake --build . --config Release
 
 	cd Build$(BITS) && cpack -G NSIS
+          
+	./installer-generator.sh $(BITS) 
 
 ################################################################################
 ### @brief Windows Vista 64-bit bundle
@@ -279,6 +280,8 @@ pack-vistaXX-cmake:
 	cd Build$(BITS) && cmake --build . --config Release
 
 	cd Build$(BITS) && cpack -G NSIS
+
+	./installer-generator.sh $(BITS) 
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

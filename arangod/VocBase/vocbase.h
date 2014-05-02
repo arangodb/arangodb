@@ -419,7 +419,6 @@ typedef struct TRI_vocbase_col_s {
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
   char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
-//  TRI_voc_cid_t                     _planId;     // id in plan
 
   bool                              _isLocal;    // if true, the collection is local. if false,
                                                  // the collection is a remote (cluster) collection

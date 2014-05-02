@@ -62,7 +62,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ListenTask::ListenTask (Endpoint* endpoint)
-  : Task("ListenTask"),
+  : Task(0, "ListenTask"),
     readWatcher(0),
     _endpoint(endpoint),
     acceptFailures(0) {
@@ -73,7 +73,7 @@ ListenTask::ListenTask (Endpoint* endpoint)
 
 ListenTask::~ListenTask () {
   if (readWatcher != 0) {
-    scheduler->uninstallEvent(readWatcher);
+    _scheduler->uninstallEvent(readWatcher);
   }
 }
 
@@ -95,7 +95,6 @@ bool ListenTask::isBound () const {
 
 
 bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
-
   if (! isBound()) {
     return true;
   }
@@ -138,8 +137,8 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 #endif
 
-  this->scheduler = scheduler;
-  this->loop = loop;
+  this->_scheduler = scheduler;
+  this->_loop = loop;
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
 
   if (readWatcher == -1) {
@@ -151,12 +150,12 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void ListenTask::cleanup () {
-  if (scheduler == 0) {
+  if (_scheduler == 0) {
     LOG_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
     readWatcher = 0;
     return;
   }
-  scheduler->uninstallEvent(readWatcher);
+  _scheduler->uninstallEvent(readWatcher);
   readWatcher = 0;
 }
 
@@ -253,7 +252,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 bool ListenTask::bindSocket () {
   _listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
 
-  if (!TRI_isvalidsocket(_listenSocket)) {
+  if (! TRI_isvalidsocket(_listenSocket)) {
     return false;
   }
 

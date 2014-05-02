@@ -1,0 +1,69 @@
+bson_iter_find(3)
+=================
+
+
+NAME
+----
+
+bson_iter_find, bson_iter_find_case, bson_iter_find_descendant - advance a bson_iter_t to a given element
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_iter_find (bson_iter_t *iter,
+                const char  *key);
+
+bool
+bson_iter_find_case (bson_iter_t *iter,
+                     const char  *key);
+
+bool
+bson_iter_find_descendant (bson_iter_t *iter,
+                           const char  *dotkey,
+                           bson_iter_t *descendant);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_iter_find()_ function shall advance _iter_ to the element named _key_ or exhaust all elements of _iter_.
+If _iter_ is exhausted, FALSE is returned and _iter_ should be considered invalid.
+
+The _bson_iter_find_case()_ function shall advance _iter_ to the element named _key_ while ignoring case-sensitivity or exhaust all element of _iter_.
+If _iter_ is exhausted, FALSE is returned and _iter_ should be considered invalid.
+
+The _bson_iter_find_descendant()_ function shall follow standard MongoDB dot notation to recurse into subdocuments.
+_descendant_ will be initialized and advanced to the descendant.
+If FALSE is returned, both _iter_ and _descendant_ should be considered invalid.
+
+
+RETURN VALUE
+------------
+
+TRUE is returned if the requested key was found. If not, _iter_ was exhausted and should now be considered invalid.
+
+
+ERRORS
+------
+
+FALSE is returned if the requested key could not be found.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_t[3]
+linkbson:bson_iter_recurse[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

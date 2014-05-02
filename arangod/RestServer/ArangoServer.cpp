@@ -80,7 +80,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
-#include "Wal/Configuration.h"
+#include "Wal/LogfileManager.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
@@ -117,7 +117,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_api", dispatcher->dispatcher(), jobManager);
 
   // add a upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
@@ -150,8 +150,8 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 #ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
-                            RestHandlerCreator<RestShardHandler>::createData<void*>,
-                            (void*) dispatcher->dispatcher());
+                            RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
+                            dispatcher->dispatcher());
 #endif
 }
 
@@ -166,7 +166,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationServer* applicationServer) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_admin", dispatcher->dispatcher(), jobManager);
 
   // add "/_admin/shutdown" handler
   factory->addPrefixHandler("/_admin/shutdown",
@@ -290,7 +290,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
-    _walConfiguration(0),
+    _logfileManager(0),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -386,9 +386,10 @@ void ArangoServer::buildApplicationServer () {
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
-/* 
-  _walConfiguration = new wal::Configuration(); 
-  _applicationServer->addFeature(_walConfiguration);
+
+/*
+  _logfileManager = new wal::LogfileManager(&_databasePath); 
+  _applicationServer->addFeature(_logfileManager);
 */
   // .............................................................................
   // dispatcher
@@ -700,6 +701,15 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationEndpointServer->setBasePath(_databasePath);
 
+
+  // disable certain options in unittest or script mode
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+
+  if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
+    _dispatcherThreads = 1;
+    _disableAuthentication = true;
+  }
+
   // .............................................................................
   // now run arangod
   // .............................................................................
@@ -765,6 +775,11 @@ int ArangoServer::startupServer () {
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  if (vocbase == 0) {
+    LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
+  }
+
   assert(vocbase != 0);
 
   // initialise V8
@@ -842,17 +857,19 @@ int ArangoServer::startupServer () {
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  int res;
+
   if (mode == OperationMode::MODE_CONSOLE) {
-    runConsole(vocbase);
+    res = runConsole(vocbase);
   }
   else if (mode == OperationMode::MODE_UNITTESTS) {
-    runUnitTests(vocbase);
+    res = runUnitTests(vocbase);
   }
   else if (mode == OperationMode::MODE_SCRIPT) {
-    runScript(vocbase);
+    res = runScript(vocbase);
   }
   else {
-    runServer(vocbase);
+    res = runServer(vocbase);
   }
 
   _applicationServer->stop();
@@ -863,7 +880,7 @@ int ArangoServer::startupServer () {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
 
-  return 0;
+  return res;
 }
 
 // -----------------------------------------------------------------------------
@@ -875,7 +892,6 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
-
   // just wait until we are signalled
   _applicationServer->wait();
 
@@ -940,7 +956,12 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
     TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
 
     if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        cout << TRI_StringifyV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
@@ -999,7 +1020,12 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     v8::Handle<v8::Value> result = main->Call(main, 1, args);
 
     if (tryCatch.HasCaught()) {
-      TRI_LogV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToDouble(result) == 0;

@@ -46,7 +46,7 @@ int utf8_charlen(int c);
  *
  * Does not support unicode code points > \uffff
  */
-int utf8_strlen(const char *str, int bytelen);
+size_t utf8_strlen(const char *str, size_t bytelen);
 
 /**
  * Returns the byte index of the given character in the utf-8 string.
@@ -56,7 +56,7 @@ int utf8_strlen(const char *str, int bytelen);
  * This will return the byte length of a utf-8 string
  * if given the char length.
  */
-int utf8_index(const char *str, int charindex);
+int utf8_index(const char *str, size_t charindex);
 
 /**
  * Returns the unicode codepoint corresponding to the

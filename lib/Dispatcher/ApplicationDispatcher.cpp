@@ -53,7 +53,9 @@ namespace {
   class DispatcherReporterTask : public PeriodicTask {
     public:
       DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
-        : Task("Dispatcher-Reporter"), PeriodicTask(0.0, reportInterval), _dispatcher(dispatcher) {
+        : Task(0, "Dispatcher-Reporter"), 
+          PeriodicTask(0.0, reportInterval), 
+          _dispatcher(dispatcher) {
       }
 
     public:
@@ -84,7 +86,7 @@ ApplicationDispatcher::ApplicationDispatcher ()
     _applicationScheduler(0),
     _dispatcher(0),
     _dispatcherReporterTask(0),
-    _reportInterval(60.0) {
+    _reportInterval(0.0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

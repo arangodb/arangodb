@@ -4,8 +4,8 @@ HTTP Interface for Databases {#HttpDatabase}
 @NAVIGATE_HttpDatabase
 @EMBEDTOC{HttpDatabaseTOC}
 
-Address of a Database {#HttpDatabaseAddress}
-============================================
+Address of a Database{#HttpDatabaseAddress}
+===========================================
 
 Any operation triggered via ArangoDB's HTTP REST API is executed in the context of exactly
 one database. To explicitly specify the database in a request, the request URI must contain
@@ -116,6 +116,6 @@ applications until they are explicitly installed for the particular database.
 
 @copydoc GlossaryDatabaseName
 
-@copydoc GlossaryDatabaseOrganisation
+@copydoc GlossaryDatabaseOrganization
 
 @BNAVIGATE_HttpDatabase

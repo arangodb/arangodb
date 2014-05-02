@@ -1,6 +1,62 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL CURRENT_USER() function
+
+  This function returns the current user from an AQL query. The current user is the
+  username that was specified in the `Authorization` HTTP header of the request. If
+  authentication is turned off or the query was executed outside a request context,
+  the function will return `null`.
+
+* fixed issue #796: Searching with newline chars broken?
+
+  fixed slightly different handling of backslash escape characters in a few
+  AQL functions. Now handling of escape sequences should be consistent, and 
+  searching for newline characters should work the same everywhere
+
+* added OpenSSL version check for configure
+
+  It will report all OpenSSL versions < 1.0.1g as being too old.
+  `configure` will only complain about an outdated OpenSSL version but not stop.
+
+* require C++ compiler support (requires g++ 4.8, clang++ 3.4 or Visual Studio 13)
+
+* less string copying returning JSONified documents from ArangoDB, e.g. via
+  HTTP GET `/_api/document/<collection>/<document>`
+
+* issue #798: Lower case http headers from arango
+        
+  This change allows returning capitalized HTTP headers, e.g.
+  `Content-Length` instead of `content-length`.
+  The HTTP spec says that headers are case-insensitive, but
+  in fact several clients rely on a specific case in response
+  headers.
+  This change will capitalize HTTP headers if the `X-Arango-Version`
+  request header is sent by the client and contains a value of at
+  least `20100` (for version 2.1). The default value for the
+  compatibility can also be set at server start, using the
+  `--server.default-api-compatibility` option.
+
+* simplified usage of `db._createStatement()`
+
+  Previously, the function could not be called with a query string parameter as 
+  follows:
+
+      db._createStatement(queryString);
+
+  Calling it as above resulted in an error because the function expected an
+  object as its parameter. From now on, it's possible to call the function with 
+  just the query string.
+
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
+
 * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
   async job without potentially fetching it from the list of done jobs
 
@@ -11,7 +67,13 @@ v2.1.0 (XXXX-XX-XX)
   the job is kept in the list of queryable jobs so its result can be fetched
   by a subsequent request.
 
-* use half the number of malloc operations when filling edge indexes
+* use a new data structure for the edge index of an edge collection. This
+  improves the performance for the creation of the edge index and in 
+  particular speeds up removal of edges in graphs. Note however that
+  this change might change the order in which edges starting at 
+  or ending in a vertex are returned. However, this order was never
+  guaranteed anyway and it is not sensible to guarantee any particular 
+  order.
 
 * provide a size hint to edge and hash indexes when initially filling them
   this will lead to less re-allocations when populating these indexes
@@ -23,9 +85,92 @@ v2.1.0 (XXXX-XX-XX)
 
 * removed arangod command line option `--database.remove-on-compacted`
 
+* export the sort attribute for graph traversals to the HTTP interface
 
-v2.0.1 (XXXX-XX-XX)
+
+v2.0.7 (XXXX-XX-XX)
 -------------------
+
+* issue #839: Foxx Manager missing "unfetch"
+
+* fixed a race condition at startup
+
+  this fixes undefined behavior in case the logger was involved directly at 
+  startup, before the logger initialization code was called. This should have
+  occurred only for code that was executed before the invocation of main(), 
+  e.g. during ctor calls of statically defined objects.
+
+
+v2.0.6 (2014-04-22)
+-------------------
+
+* fixed issue #835: arangosh doesn't show correct database name
+
+
+
+v2.0.5 (2014-04-21)
+-------------------
+
+* Fixed a caching problem in IE JS Shell
+
+* added cancelation for async jobs
+
+* upgraded to new gyp for V8
+
+* new Windows installer
+
+
+v2.0.4 (2014-04-14)
+-------------------
+
+* fixed cluster authentication front-end issues for Firefox and IE, there are
+  still problems with Chrome
+
+
+v2.0.3 (2014-04-14)
+-------------------
+
+* fixed AQL optimizer bug
+
+* fixed front-end issues
+
+* added password change dialog
+
+
+v2.0.2 (2014-04-06)
+-------------------
+
+* during cluster startup, do not log (somewhat expected) connection errors with
+  log level error, but with log level info
+
+* fixed dashboard modals
+
+* fixed connection check for cluster planning front end: firefox does 
+  not support async:false
+
+* document how to persist a cluster plan in order to relaunch an existing
+  cluster later
+
+
+v2.0.1 (2014-03-31)
+-------------------
+
+* make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
+  client sends the `X-Omit-WWW-Authenticate` HTTP header.
+
+  This is done to prevent browsers from showing their built-in HTTP authentication 
+  dialog for AJAX requests that require authentication.
+  ArangoDB will still return an HTTP 401 (Unauthorized) if the request doesn't
+  contain valid credentials, but it will omit the `WWW-Authenticate` header, 
+  allowing clients to bypass the browser's authentication dialog.
+
+* fixed isses in arango-dfdb:
+
+  the dfdb was not able to unload certain system collections, so these couldn't be
+  inspected with the dfdb sometimes. Additionally, it did not truncate corrupt
+  markers from datafiles under some circumstances
+
+* added `changePassword` attribute for users
 
 * fixed non-working "save" button in collection edit view of web interface
   clicking the save button did nothing. one had to press enter in one of the input
@@ -37,6 +182,8 @@ v2.0.1 (XXXX-XX-XX)
   some Foxx HTTP responses
 
 * fixed several bugs in web interface dashboard
+
+* fixed issue #783: coffee script not working in manifest file
 
 * fixed issue #783: coffee script not working in manifest file
 
@@ -284,7 +431,47 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.13 (XXXX-XX-XX)
+v1.4.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #826: Replication fails when a collection's configuration changes
+
+
+v1.4.15 (2014-04-19)
+--------------------
+
+* bugfix for AQL query optimiser
+       
+  the following type of query was too eagerly optimised, leading to errors in code-generation:
+              
+      LET a = (FOR i IN [] RETURN i) LET b = (FOR i IN [] RETURN i) RETURN 1
+                           
+  the problem occurred when both lists in the subqueries were empty. In this case invalid code
+  was generated and the query couldn't be executed.
+
+
+v1.4.14 (2014-04-05)
+--------------------
+
+* fixed race conditions during shape / attribute insertion
+
+  A race condition could have led to spurios `cannot find attribute #xx` or
+  `cannot find shape #xx` (where xx is a number) warning messages being logged 
+  by the server. This happened when a new attribute was inserted and at the same 
+  time was queried by another thread.
+
+  Also fixed a race condition that may have occurred when a thread tried to
+  access the shapes / attributes hash tables while they were resized. In this
+  cases, the shape / attribute may have been hashed to a wrong slot.
+
+* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+  Windows with Visual Studio 2013 (probably earlier versions are affected, too)
+  
+  The issue is described in detail here:
+  http://lists.schmorp.de/pipermail/libev/2014q1/002318.html
+
+
+v1.4.13 (2014-03-14)
 --------------------
 
 * added diagnostic output for Foxx application upload

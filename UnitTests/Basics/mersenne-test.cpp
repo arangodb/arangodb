@@ -25,9 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/test/unit_test.hpp>
-
 #include "BasicsC/mersenne.h"
+#include <boost/test/unit_test.hpp>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

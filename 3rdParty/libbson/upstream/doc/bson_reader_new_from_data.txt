@@ -1,0 +1,52 @@
+bson_reader_new_from_data(3)
+============================
+
+
+NAME
+----
+
+bson_reader_new_from_data - create a new bson_reader_t from memory
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bson_reader_t *
+bson_reader_new_from_data (const uint8_t *data,
+                           size_t         length);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_reader_new_from_data()_ function shall create a new _bson_reader_t_ using the buffer supplied.
+_data_ is not copied and *MUST* be valid for the lifetime of the resulting _bson_reader_t_.
+
+
+RETURN VALUE
+------------
+
+A newly allocated _bson_reader_t_.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_reader_new_from_fd[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

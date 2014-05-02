@@ -1,0 +1,47 @@
+bson_copy_to(3)
+===============
+
+
+NAME
+----
+
+bson_copy_to - copy a bson document into another document.
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+void
+bson_copy_to (const bson_t *src,
+              bson_t       *dst);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_copy_to()_ function shall initialize _dst_ with a copy of the contents of _src_.
+
+_dst_ *MUST* be an uninitialized _bson_t_ to avoid leaking memory.
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_copy[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

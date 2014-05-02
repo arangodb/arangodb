@@ -53,6 +53,8 @@ extern "C" {
 ///   Will be raised when an attempt to create a directory fails.
 /// - 20: @LIT{cannot create temporary file}
 ///   Will be raised when an attempt to create a temporary file fails.
+/// - 21: @LIT{canceled request}
+///   Will be raised when a request is canceled by the user.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -89,7 +91,9 @@ extern "C" {
 ///   Internal error that will be raised when a identifier duplicate is
 ///   detected.
 /// - 1006: @LIT{datafile unreadable}
-///   Internal error that will be raised when the datafile is unreadable.
+///   Internal error that will be raised when a datafile is unreadable.
+/// - 1007: @LIT{datafile empty}
+///   Internal error that will be raised when a datafile is empty.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @LIT{illegal parameter file}
@@ -393,13 +397,15 @@ extern "C" {
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
 /// - 1700: @LIT{invalid user name}
-///   Will be raised when an invalid user name is used
+///   Will be raised when an invalid user name is used.
 /// - 1701: @LIT{invalid password}
-///   Will be raised when an invalid password is used
+///   Will be raised when an invalid password is used.
 /// - 1702: @LIT{duplicate user}
-///   Will be raised when a user name already exists
+///   Will be raised when a user name already exists.
 /// - 1703: @LIT{user not found}
-///   Will be raised when a user name is updated that does not exist
+///   Will be raised when a user name is updated that does not exist.
+/// - 1704: @LIT{user must change his password}
+///   Will be raised when the user must change his password.
 /// - 1750: @LIT{invalid application name}
 ///   Will be raised when an invalid application name is specified.
 /// - 1751: @LIT{invalid mount}
@@ -714,6 +720,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CANNOT_CREATE_TEMP_FILE                                 (20)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 21: ERROR_REQUEST_CANCELED
+///
+/// canceled request
+///
+/// Will be raised when a request is canceled by the user.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REQUEST_CANCELED                                        (21)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
 ///
 /// bad parameter
@@ -872,10 +888,20 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// datafile unreadable
 ///
-/// Internal error that will be raised when the datafile is unreadable.
+/// Internal error that will be raised when a datafile is unreadable.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_UNREADABLE                              (1006)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1007: ERROR_ARANGO_DATAFILE_EMPTY
+///
+/// datafile empty
+///
+/// Internal error that will be raised when a datafile is empty.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATAFILE_EMPTY                                   (1007)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
@@ -2102,7 +2128,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid user name
 ///
-/// Will be raised when an invalid user name is used
+/// Will be raised when an invalid user name is used.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_INVALID_NAME                                       (1700)
@@ -2112,7 +2138,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid password
 ///
-/// Will be raised when an invalid password is used
+/// Will be raised when an invalid password is used.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_INVALID_PASSWORD                                   (1701)
@@ -2122,7 +2148,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// duplicate user
 ///
-/// Will be raised when a user name already exists
+/// Will be raised when a user name already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_DUPLICATE                                          (1702)
@@ -2132,10 +2158,20 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// user not found
 ///
-/// Will be raised when a user name is updated that does not exist
+/// Will be raised when a user name is updated that does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1704: ERROR_USER_CHANGE_PASSWORD
+///
+/// user must change his password
+///
+/// Will be raised when the user must change his password.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_CHANGE_PASSWORD                                    (1704)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1750: ERROR_APPLICATION_INVALID_NAME

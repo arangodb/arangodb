@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
-/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
 (function() {
   "use strict";
 
   window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
-      model: arangoCollection,
+      model: arangoCollectionModel,
 
       searchOptions : {
         searchPhrase: null,
@@ -20,54 +20,51 @@
       },
 
       translateStatus : function (status) {
-        var returnString;
-        if (status === 0) {
-          returnString = 'corrupted';
+        switch (status) {
+          case 0:
+            return 'corrupted';
+          case 1: 
+            return 'new born collection';
+          case 2:
+            return 'unloaded';
+          case 3:
+            return 'loaded';
+          case 4:
+            return 'in the process of being unloaded';
+          case 5:
+            return 'deleted';
+          case 6:
+            return 'loading';
+          default:
+            return;
         }
-        if (status === 1) {
-          returnString = 'new born collection';
-        }
-        else if (status === 2) {
-          returnString = 'unloaded';
-        }
-        else if (status === 3) {
-          returnString = 'loaded';
-        }
-        else if (status === 4) {
-          returnString = 'in the process of being unloaded';
-        }
-        else if (status === 5) {
-          returnString = 'deleted';
-        }
-        else if (status === 6) {
-          returnString = 'loading';
-        }
-        return returnString;
       },
-      translateTypePicture : function (type) {
-        var returnString;
-        if (type === 'document') {
-          returnString = "img/icon_document.png";
-        }
-        else if (type === 'edge') {
-          returnString = "img/icon_node.png";
-        }
-        else if (type === 'unknown') {
-          returnString = "img/icon_unknown.png";
-        }
-        else {
-          returnString = "img/icon_arango.png";
-        }
-        return returnString;
-      },
-      parse: function(response)  {
-        var that = this;
 
-        $.each(response.collections, function(key, val) {
-          val.isSystem = arangoHelper.isSystemCollection(val.name);
+      translateTypePicture : function (type) {
+        var returnString = "img/icon_";
+        switch (type) {
+          case 'document':
+            returnString += "document.png";
+            break;
+          case 'edge':
+            returnString += "node.png";
+            break;
+          case 'unknown':
+            returnString += "unknown.png";
+            break;
+          default:
+            returnString += "arango.png";
+        }
+        return returnString;
+      },
+
+      parse: function(response)  {
+        var self = this;
+        _.each(response.collections, function(val) {
+          val.isSystem = arangoHelper.isSystemCollection(val);
           val.type = arangoHelper.collectionType(val);
-          val.status = that.translateStatus(val.status);
-          val.picture = that.translateTypePicture(val.type);
+          val.status = self.translateStatus(val.status);
+          val.picture = self.translateTypePicture(val.type);
         });
         return response.collections;
       },
@@ -155,6 +152,7 @@
 
         return result;
       },
+
       getIndex: function (id) {
         var data2;
         $.ajax({
@@ -173,6 +171,7 @@
         });
         return data2;
       },
+
       createIndex: function (collection, postParameter) {
         var returnVal = false;
 
@@ -193,9 +192,9 @@
         });
         return returnVal;
       },
+
       deleteIndex: function (collection, id) {
         var returnval = false;
-        var self = this;
         $.ajax({
           cache: false,
           type: 'DELETE',
@@ -233,7 +232,7 @@
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/collection/" + id + "/figures",
+          url: "/_api/collection/" + encodeURIComponent(id) + "/figures",
           contentType: "application/json",
           processData: false,
           async: false,
@@ -264,13 +263,15 @@
         });
         return data2;
       },
-      checkCollectionName: function (name) {
-      },
+
       newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
         var returnobj = {};
         var data = {};
         data.name = collName;
         data.waitForSync = wfs;
+        if (journalSize > 0) {
+          data.journalSize = journalSize;
+        }
         data.isSystem = isSystem;
         data.type = parseInt(collType, 10);
         if (shards) {
@@ -296,7 +297,8 @@
           }
         });
         return returnobj;
-      },
+      }
+/*
       renameCollection: function (id, name) {
         var result = false;
         $.ajax({
@@ -309,7 +311,6 @@
           processData: false,
           success: function(data) {
             result = true;
-            this.alreadyRenamed = true;
           },
           error: function(data) {
             try {
@@ -323,8 +324,9 @@
         });
         return result;
       },
+*/
+/*
       changeCollection: function (id, wfs, journalSize) {
-        var self = this;
         var result = false;
 
         $.ajax({
@@ -337,10 +339,7 @@
           processData: false,
           success: function(data) {
             result = true;
-            if (self.alreadyRenamed === true) {
-              self.alreadyRenamed = false;
-            }
-          },
+         },
           error: function(data) {
             try {
               var parsed = JSON.parse(data.responseText);
@@ -353,6 +352,8 @@
         });
         return result;
       },
+*/
+/*
       deleteCollection: function (id) {
         var returnval = false;
         var self = this;
@@ -371,7 +372,9 @@
           }
         });
         return returnval;
-      },
+      }
+*/
+/*
       loadCollection: function (id) {
         $.ajax({
           cache: false,
@@ -385,12 +388,13 @@
               }
             });
           },
-          error: function (data) {
-            var temp = JSON.parse(data.responseText);
+          error: function () {
             arangoHelper.arangoError('Collection error');
           }
         });
       },
+*/
+/*
       unloadCollection: function (id) {
         $.ajax({
           cache: false,
@@ -405,10 +409,10 @@
             });
           },
           error: function () {
-            var temp = JSON.parse(data.responseText);
             arangoHelper.arangoError('Collection error');
           }
         });
       }
+*/
   });
 }());

@@ -42,17 +42,12 @@ using namespace triagens::arango;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoServer
+// --SECTION--                                              class VocbaseContext
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -77,18 +72,9 @@ VocbaseContext::~VocbaseContext () {
   TRI_ReleaseVocBase(_vocbase);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -133,9 +119,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
+  const char* path = _request->requestPath();
+
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
-    const char* path = _request->requestPath();
 
     if (path != 0) {
       // check if path starts with /_
@@ -146,6 +133,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
         return HttpResponse::OK;
       }
     }
+  }
+
+  if (TRI_IsPrefixString(path, "/_open/")) {
+    return HttpResponse::OK;
   }
   
   // authentication required
@@ -175,6 +166,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
     string const up = StringUtils::decodeBase64(auth);    
     std::string::size_type n = up.find(':', 0);
+
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG_TRACE("invalid authentication data found, cannot extract username/password");
   
@@ -188,49 +180,53 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   }
 #endif
 
-
   // look up the info in the cache first
-  char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth);
+  bool mustChange;
+  char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth, &mustChange);
+  string username;
 
-
+  // found a cached entry, access must be granted
   if (cached != 0) {
-    // found a cached entry, access must be granted
-    _request->setUser(string(cached));
+    username = string(cached);
     TRI_Free(TRI_CORE_MEM_ZONE, cached);
-
-    return HttpResponse::OK;
   }
 
   // no entry found in cache, decode the basic auth info and look it up
+  else {
+    string const up = StringUtils::decodeBase64(auth);    
+    std::string::size_type n = up.find(':', 0);
 
-  string const up = StringUtils::decodeBase64(auth);    
-
-  std::string::size_type n = up.find(':', 0);
-  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG_TRACE("invalid authentication data found, cannot extract username/password");
-
-    return HttpResponse::BAD;
-  }
+    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+      LOG_TRACE("invalid authentication data found, cannot extract username/password");
+      return HttpResponse::BAD;
+    }
    
-  string const username = up.substr(0, n);
+    username = up.substr(0, n);
     
-  LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
-
-  bool res = TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(), up.substr(n + 1).c_str());
+    LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
+    bool res = TRI_CheckAuthenticationAuthInfo(
+                 _vocbase, auth, username.c_str(), up.substr(n + 1).c_str(), &mustChange);
     
-  if (! res) {
-    return HttpResponse::UNAUTHORIZED;
+    if (! res) {
+      return HttpResponse::UNAUTHORIZED;
+    }
   }
 
   // TODO: create a user object for the VocbaseContext
   _request->setUser(username);
 
+  if (mustChange) {
+    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT
+         || _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH)
+        && TRI_EqualString2(_request->requestPath(), "/_api/user/", 11)) {
+      return HttpResponse::OK;
+    }
+
+    return HttpResponse::FORBIDDEN;
+  }
+
   return HttpResponse::OK;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

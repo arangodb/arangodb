@@ -1,0 +1,9 @@
+<script id="arangoTabbar.ejs" type="text/template">
+<div class="arango-tabbar" id="<%=content.id%>">
+  <% _.each(content.titles, function(k,v) { %>
+  <% var name = content.titles[v][0];  %>
+  <% var elid = content.titles[v][1];  %>
+  <button class="arangodb-tabbar" id="<%=elid%>"><%=name%></button>
+  <%});%>
+</div>
+</script>

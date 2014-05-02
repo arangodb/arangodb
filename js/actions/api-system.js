@@ -35,88 +35,6 @@ var console = require("console");
 var users = require("org/arangodb/users");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief routing function
-////////////////////////////////////////////////////////////////////////////////
-
-function routing (req, res) {
-  var action;
-  var execute;
-  var next;
-  var path = req.suffix.join("/");
-
-  action = actions.firstRouting(req.requestType, req.suffix);
-
-  execute = function () {
-    if (action.route === undefined) {
-      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, 
-        "unknown path '" + path + "'");
-      return;
-    }
-
-    if (action.route.path !== undefined) {
-      req.path = action.route.path;
-    }
-    else {
-      delete req.path;
-    }
-
-    if (action.prefix !== undefined) {
-      req.prefix = action.prefix;
-    }
-    else {
-      delete req.prefix;
-    }
-
-    if (action.suffix !== undefined) {
-      req.suffix = action.suffix;
-    }
-    else {
-      delete req.suffix;
-    }
-
-    if (action.urlParameters !== undefined) {
-      req.urlParameters = action.urlParameters;
-    }
-    else {
-      req.urlParameters = {};
-    }
-
-    var func = action.route.callback.controller;
-
-    if (func === null || typeof func !== 'function') {
-      func = actions.errorFunction(action.route,
-                                   'Invalid callback definition found for route ' 
-                                   + JSON.stringify(action.route));
-    }
-
-    try {
-      func(req, res, action.route.callback.options, next);
-    }
-    catch (err) {
-      if (err instanceof internal.SleepAndRequeue) {
-        throw err;
-      }
-
-      var msg = 'A runtime error occurred while executing an action: '
-              + String(err) + " " + String(err.stack) + " " + (typeof err);
-
-      actions.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
-    }
-  };
-
-  next = function () {
-    action = actions.nextRouting(action);
-    execute();
-  };
-
-  execute();
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -129,7 +47,7 @@ actions.defineHttp({
   prefix : true,
   context : "admin",
 
-  callback : routing
+  callback : actions.routeRequest
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +138,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     internal.executeGlobalContextFunction("reloadRouting");
-    console.warn("about to flush the routing cache");
+    console.debug("about to flush the routing cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
@@ -264,7 +182,7 @@ actions.defineHttp({
 
   callback : function (req, res) {
     internal.executeGlobalContextFunction("flushModuleCache");
-    console.warn("about to flush the modules cache");
+    console.debug("about to flush the modules cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
@@ -517,7 +435,7 @@ actions.defineHttp({
             identifier: "userTime",
             name: "User Time",
             description: "Amount of time that this process has been scheduled in user mode, " + 
-                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+                         "measured in seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -527,7 +445,7 @@ actions.defineHttp({
             identifier: "systemTime",
             name: "System Time",
             description: "Amount of time that this process has been scheduled in kernel mode, " +
-                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+                         "measured in seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -536,7 +454,7 @@ actions.defineHttp({
             group: "system",
             identifier: "numberOfThreads",
             name: "Number of Threads",
-            description: "Number of threads in this process.",
+            description: "Number of threads in the arangod process.",
             type: "current",
             units: "number"
           },
@@ -557,7 +475,8 @@ actions.defineHttp({
             group: "system",
             identifier: "residentSizePercent",
             name: "Resident Set Size",
-            description: "The percentage of physical memory used as resident set size",
+            description: "The percentage of physical memory used by the process as resident " +
+                         "set size.",
             type: "current",
             units: "percent"
           },
@@ -566,7 +485,10 @@ actions.defineHttp({
             group: "system",
             identifier: "virtualSize",
             name: "Virtual Memory Size",
-            description: "The size of the virtual memory the process is using.",
+            description: "On Windows, this figure contains the total amount of memory that the " +
+                         "memory manager has committed for the arangod process. On other " +
+                         "systems, this figure contains The size of the virtual memory the " +
+                         "process is using.",
             type: "current",
             units: "bytes"
           },
@@ -576,7 +498,8 @@ actions.defineHttp({
             identifier: "minorPageFaults",
             name: "Minor Page Faults",
             description: "The number of minor faults the process has made which have " +
-                         "not required loading a memory page from disk.",
+                         "not required loading a memory page from disk. This figure is " +
+                         "not reported on Windows.",
             type: "accumulated",
             units: "number"
           },
@@ -585,8 +508,9 @@ actions.defineHttp({
             group: "system",
             identifier: "majorPageFaults",
             name: "Major Page Faults",
-            description: "The number of major faults the process has made which have required " +
-                         "loading a memory page from disk.",
+            description: "On Windows, this figure contains the total number of page faults. " +
+                         "On other system, this figure contains the number of major faults the " +
+                         "process has made which have required loading a memory page from disk.",
             type: "accumulated",
             units: "number"
           },

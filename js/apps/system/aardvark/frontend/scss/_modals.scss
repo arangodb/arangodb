@@ -37,6 +37,11 @@
         width: 290px;
       }
     }
+
+    div.select2-container {
+      margin-bottom: 10px;
+      margin-top: 10px;
+    }
   }
 
   .icon-info-sign {
@@ -50,17 +55,52 @@
     opacity: 1;
   }
 
+  .collapse {
+    margin-right: -14px;
+    position: relative;
+  }
+
   .accordion-inner {
+    border-top: 0;
     margin-left: 0;
     padding-left: 0;
+    padding-right: 0;
+  }
+
+  .accordion-toggle {
+
+    span {
+
+      b.caret {
+        border-top-color: $c-black;
+        float: right;
+        margin-top: 5px;
+      }
+    }
+
+    &.collapsed {
+      span {
+
+        b.caret {
+          -ms-transform: rotate(90deg);
+          -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+        }
+      }
+
+    }
   }
 
   input {
-    width: 320px;
+    width: 384px;
   }
 
   select {
-    width: 334px;
+    width: 398px;
+  }
+
+  .tab-content {
+    min-height: 200px;
   }
 }
 
@@ -75,11 +115,7 @@
   opacity: .4;
 }
 
-.modalChartDetail {
-  height: 70%;
-  margin-left: 0;
-  width: 70%;
-}
+
 
 .modal {
   border-radius: 0 !important;
@@ -180,4 +216,51 @@ pre.gv-object-view {
 
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px;
+}
+
+.modal-delete-confirmation {
+  display: none;
+
+  button {
+    margin-right: 10px;
+    margin-top: -4px;
+
+    .modal-confirm-delete {
+      margin-right: -18px;
+    }
+  }
+}
+
+.createModalDialog {
+
+  table {
+    width: 100%;
+  }
+
+  .collection-info-figures table {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    min-width: 200px;
+    padding: 3px;
+    text-align: left;
+  }
+
+  .figures1,
+  .figures2 {
+    margin-bottom: 20px;
+    width: 255px;
+  }
+
+  .figures2 {
+    margin-left: 20px !important;
+  }
+
+  .figures3 {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+
 }

@@ -72,11 +72,40 @@ function EdgeShaperControls(list, shaper) {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
-          id: "key"
+          id: "key",
+          text: "Edge label attribute",
+          value: shaper.getLabel()
         }], function () {
           var key = $("#" + idprefix + "key").attr("value");
           shaper.changeTo({
             label: key
+          });
+        }
+      );
+    });
+  };
+  
+  this.addControlOpticLabelList = function() {
+    var prefix = "control_edge_label",
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+      modalDialogHelper.createModalDialog("Change Label Attribute",
+        idprefix, [{
+          type: "extendable",
+          id: "label",
+          text: "Edge label attribute",
+          objects: shaper.getLabel()
+        }], function () {
+          var lblList = $("input[id^=" + idprefix + "label_]"),
+            labels = [];
+          lblList.each(function(i, t) {
+            var val = $(t).val();
+            if (val !== "") {
+              labels.push(val);
+            }
+          });
+          shaper.changeTo({
+            label: labels
           });
         }
       );

@@ -45,7 +45,9 @@ Transaction::Transaction (Manager* manager,
   : _manager(manager),
     _id(id),
     _state(StateType::STATE_UNINITIALISED),
-    _vocbase(vocbase) {
+    _vocbase(vocbase),
+    _operations(),
+    _startTime() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +55,8 @@ Transaction::Transaction (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::~Transaction () {
-  if (state() != StateType::STATE_COMMITTED && state() != StateType::STATE_ABORTED) {
+  if (state() != StateType::STATE_COMMITTED && 
+      state() != StateType::STATE_ABORTED) {
     this->abort();
   }
 }

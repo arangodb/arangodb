@@ -50,9 +50,9 @@ int utf8_charlen(int c)
     return -1;
 }
 
-int utf8_strlen(const char *str, int bytelen)
+size_t utf8_strlen(const char *str, size_t bytelen)
 {
-    int charlen = 0;
+    size_t charlen = 0;
     if (bytelen < 0) {
         bytelen = strlen(str);
     }
@@ -66,7 +66,7 @@ int utf8_strlen(const char *str, int bytelen)
     return charlen;
 }
 
-int utf8_index(const char *str, int index)
+int utf8_index(const char *str, size_t index)
 {
     const char *s = str;
     while (index--) {

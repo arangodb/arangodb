@@ -1,0 +1,51 @@
+bson_compare(3)
+===============
+
+
+NAME
+----
+
+bson_compare - compare two bson documents for equality
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+int
+bson_compare (const bson_t *bson,
+              const bson_t *other);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_compare()_ function shall compare two bson documents for equality.
+
+This can be useful in conjunction with _qsort()_.
+
+If equal, 0 is returned.
+
+This function uses _memcmp()_ internally, so the semantics are the same.
+
+
+RETURN VALUE
+------------
+
+0 if equal, otherwise -1 or 1 depending on memcmp().
+
+
+ERRORS
+------
+
+No errors are defined.
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

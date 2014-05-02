@@ -1,0 +1,110 @@
+bson_iter_t(3)
+==============
+
+
+NAME
+----
+
+bson_iter_t, bson_iter_init, bson_iter_init_find, bson_iter_init_find_case - iterate through a bson document
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+typedef struct
+{
+	/*< private >*/
+} bson_iter_t;
+
+bool
+bson_iter_init (bson_iter_t  *iter,
+                const bson_t *bson);
+
+bool
+bson_iter_init_find (bson_iter_t  *iter,
+                     const bson_t *bson,
+                     const char   *key);
+
+bool
+bson_iter_init_find_case (bson_iter_t  *iter,
+                          const bson_t *bson,
+                          const char   *key);
+-----------------------
+
+DESCRIPTION
+-----------
+
+_bson_iter_t_ is a structure used to iterate through the elements of a BSON document.
+It is meant to be used on the stack and can be discarded at any time as it contains no external allocation.
+The contents of the structure should be considered private and may change between releases, however the structure size will not change.
+
+_bson_ *MUST* be valid for the lifetime of _iter_ and it is an error to modify _bson_ while using _iter_.
+
+The _bson_iter_init()_ function shall initialize _iter_ to iterate upon the BSON document _bson_.
+Upon initialization, _iter_ is placed before the first element.
+Callers must call _bson_iter_next()_, _bson_iter_find()_, or _bson_iter_find_case()_ to advance to an element.
+
+The _bson_iter_init_find()_ function shall initialize _iter_ to iterate upon the BSON document _bson_.
+Upon initialization, _iter_ will be advanced to the first element named _key_.
+_key_ is case-sensitive.
+If _key_ was not found, FALSE is returned.
+
+The _bson_iter_init_find_case()_ function shall initialize _iter_ to iterate upon the BSON document _bson_.
+Upon initialization, _iter_ will be advanced to the first element named _key_.
+_key_ is case-insensitive, and therefore "Foo" would match an element named "foo".
+If _key_ was not found, FALSE is returned.
+
+
+RETURN VALUE
+------------
+
+_bson_iter_init()_, _bson_iter_init_find()_, and _bson_iter_init_find_case()_ return TRUE if _iter_ is valid for further use.
+_iter_ should be considered invalid if any of these return FALSE.
+
+
+ERRORS
+------
+
+If _bson_ is invalid or there was another failure initializing _iter_, FALSE is returned and _iter_ should be considered invalid.
+
+
+EXAMPLES
+--------
+
+[source, c]
+-----------------------
+static void
+print_doc_id (const bson_t *doc)
+{
+	bson_iter_t iter;
+	bson_oid_t oid;
+	char oidstr[25];
+
+	if (bson_iter_init (&iter, doc) &&
+	    bson_iter_find (&iter, "_id") &&
+	    BSON_ITER_HOLDS_OID (&iter)) {
+		bson_iter_oid (&iter, &oid);
+		bson_oid_to_string (&oid, oidstr);
+		printf ("%s\n", oidstr);
+	} else {
+		printf ("Document is missing _id.\n");
+	}
+}
+-----------------------
+
+
+SEE ALSO
+--------
+
+linkbson:bson_iter_next[3]
+linkbson:bson_iter_find[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

@@ -1,0 +1,67 @@
+bson_append_document(3)
+=======================
+
+
+NAME
+----
+
+bson_append_document, bson_append_document_begin, bson_append_document_end - append a sub-document to a bson document.
+
+
+SYNOPSIS
+--------
+
+[source, c]
+-----------------------
+#include <bson.h>
+
+bool
+bson_append_document (bson_t       *bson,
+                      const char   *key,
+                      int           key_length,
+                      const bson_t *value);
+
+bool
+bson_append_document_begin (bson_t     *bson,
+                            const char *key,
+                            int         key_length,
+                            bson_t     *child);
+
+bool
+bson_append_document_end (bson_t *bson,
+                          bson_t *child);
+-----------------------
+
+
+DESCRIPTION
+-----------
+
+The _bson_append_document()_ function shall append *child* to *bson* using the specified key. The type of the field will be a document.
+
+The _bson_append_document_begin()_ function shall begin appending a sub-document to *bson*. Use *child* to add fields to the sub-document. When completed, call _bson_append_document_end()_ to complete the element.
+
+The _bson_append_document_end()_ function shall complete the appending of a document with _bson_append_document_begin()_. *child* is invalid after calling this function.
+
+
+RETURN VALUE
+------------
+
+TRUE if the element was appended. Otherwise FALSE.
+
+
+ERRORS
+------
+
+This function will only return FALSE if there was not enough space to store the element.
+
+
+SEE ALSO
+--------
+
+linkbson:bson_append_array[3]
+
+
+AUTHORS
+-------
+
+This page was written by MongoDB, Inc.

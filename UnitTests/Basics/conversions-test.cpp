@@ -25,9 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/conversions.h"
 #include <boost/test/unit_test.hpp>
-
-#include "BasicsC/conversions.c"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
 #include "VocBase/datafile.h"
+#include "VocBase/marker.h"
 
 namespace triagens {
   namespace wal {
@@ -54,23 +55,16 @@ namespace triagens {
         typedef TRI_voc_fid_t IdType;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logfile seal status
+/// @brief logfile status
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum class SealStatusType : uint32_t {
+        enum class StatusType : uint32_t {
           UNKNOWN,
-          UNSEALED,
-          REQUESTED,
-          SEALED
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logfile collection status
-////////////////////////////////////////////////////////////////////////////////
-
-        enum class CollectionStatusType : uint32_t {
-          UNCOLLECTED,
-          REQUESTED,
+          EMPTY,
+          OPEN,
+          SEAL_REQUESTED,
+          SEALED,
+          COLLECTION_REQUESTED,
           COLLECTED
         };
 
@@ -95,8 +89,7 @@ namespace triagens {
 
         Logfile (Logfile::IdType,
                  TRI_datafile_t*,
-                 SealStatusType,
-                 CollectionStatusType);
+                 StatusType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a logfile
@@ -105,23 +98,34 @@ namespace triagens {
         ~Logfile ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* create (std::string const&,
-                              Logfile::IdType,
-                              uint32_t);
+      static Logfile* createNew (std::string const&,
+                                 Logfile::IdType,
+                                 uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open an existing logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* open (std::string const&,
-                            Logfile::IdType);
+      static Logfile* openExisting (std::string const&,
+                                    Logfile::IdType,
+                                    bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a logfile is empty
+////////////////////////////////////////////////////////////////////////////////
+
+      static int judge (std::string const&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the datafile pointer
@@ -148,6 +152,14 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status
+////////////////////////////////////////////////////////////////////////////////
+
+      inline Logfile::StatusType status () const {
+        return _status;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the allocated size of the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,7 +176,7 @@ namespace triagens {
           return 0;
         }
 
-        return static_cast<uint64_t>(allocatedSize() - _df->_footerSize - _df->_currentSize);
+        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize - overhead());
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +200,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool isSealed () const {
-        return (_sealStatus == SealStatusType::SEALED);
+        return (_status == StatusType::SEAL_REQUESTED ||
+                _status == StatusType::SEALED ||
+                _status == StatusType::COLLECTION_REQUESTED ||
+                _status == StatusType::COLLECTED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +211,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeSealed () const {
-        return (_sealStatus == SealStatusType::REQUESTED);
+        return (_status == StatusType::SEAL_REQUESTED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +219,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeCollected () const {
-        return (isSealed() && (_collectionStatus == CollectionStatusType::UNCOLLECTED));
+        return (_status == StatusType::SEALED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,43 +227,97 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeRemoved () const {
-        return (isSealed() && (_collectionStatus == CollectionStatusType::COLLECTED));
+        return (_status == StatusType::COLLECTED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the logfile to status requested
+/// @brief return the logfile overhead
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setCollectionRequested () {
-        LOG_INFO("requesting collection for logfile %llu", (unsigned long long) id());
-        _collectionStatus = CollectionStatusType::REQUESTED;
+      static inline uint32_t overhead () {
+        return TRI_JOURNAL_OVERHEAD;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the logfile to status collected
+/// @brief return the logfile status as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setCollectionDone () {
-        LOG_INFO("collection done for logfile %llu", (unsigned long long) id());
-        _collectionStatus = CollectionStatusType::COLLECTED;
+      static std::string statusText (StatusType status) {
+        switch (status) {
+          case StatusType::EMPTY:
+            return "empty";
+          case StatusType::OPEN:
+            return "open";
+          case StatusType::SEAL_REQUESTED:
+            return "seal-requested";
+          case StatusType::SEALED:
+            return "sealed";
+          case StatusType::COLLECTION_REQUESTED:
+            return "collection-requested";
+          case StatusType::COLLECTED:
+            return "collected";
+          case StatusType::UNKNOWN:
+          default:
+            return "unknown";
+        }
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief request sealing of the logfile
+/// @brief change the logfile status
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setSealRequested () {
-        LOG_INFO("sealing logfile %llu", (unsigned long long) id());
+      void setStatus (StatusType status) {
+        switch (status) {
+          case StatusType::UNKNOWN:
+          case StatusType::EMPTY:
+            assert(false);
+            break;
 
-        assert(_sealStatus == SealStatusType::UNSEALED);
-        _sealStatus = SealStatusType::REQUESTED;
+          case StatusType::OPEN:
+            assert(_status == StatusType::EMPTY);
+            break;
+
+          case StatusType::SEAL_REQUESTED:
+            assert(_status == StatusType::OPEN);
+            break;
+
+          case StatusType::SEALED:
+            assert(_status == StatusType::SEAL_REQUESTED);
+            break;
+
+          case StatusType::COLLECTION_REQUESTED:
+            assert(_status == StatusType::SEALED);
+            break;
+
+          case StatusType::COLLECTED:
+            assert(_status == StatusType::COLLECTION_REQUESTED);
+            break;
+        }
+
+        LOG_TRACE("changing logfile status from %s to %s for logfile %llu", 
+                  statusText(_status).c_str(), 
+                  statusText(status).c_str(),
+                  (unsigned long long) id());
+        _status = status;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief seal the logfile
+/// @brief reserve space and update the current write position
 ////////////////////////////////////////////////////////////////////////////////
 
-      int seal ();
+      char* reserve (size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a header marker
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_df_header_marker_t getHeaderMarker () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a footer marker
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_df_footer_marker_t getFooterMarker () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -267,16 +336,10 @@ namespace triagens {
       TRI_datafile_t* _df;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logfile seal status
+/// @brief logfile status
 ////////////////////////////////////////////////////////////////////////////////
       
-      SealStatusType _sealStatus;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logfile collection status
-////////////////////////////////////////////////////////////////////////////////
-      
-      CollectionStatusType _collectionStatus;
+      StatusType _status;
 
     };
 

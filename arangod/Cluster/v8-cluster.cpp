@@ -57,7 +57,7 @@ static v8::Handle<v8::Value> CreateAgencyException (AgencyCommResult const& resu
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   const std::string errorDetails = result.errorDetails();
-  v8::Handle<v8::String> errorMessage = v8::String::New(errorDetails.c_str(), errorDetails.size());
+  v8::Handle<v8::String> errorMessage = v8::String::New(errorDetails.c_str(), (int) errorDetails.size());
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
 
   errorObject->Set(v8::String::New("code"), v8::Number::New(result.httpCode()));
@@ -235,9 +235,9 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
         v8::Handle<v8::Object> sub = v8::Object::New();
 
         sub->Set(v8::String::New("value"), TRI_ObjectJson(json));
-        sub->Set(v8::String::New("index"), v8::String::New(idx.c_str(), idx.size()));
+        sub->Set(v8::String::New("index"), v8::String::New(idx.c_str(), (int) idx.size()));
 
-        l->Set(v8::String::New(key.c_str(), key.size()), sub);
+        l->Set(v8::String::New(key.c_str(), (int) key.size()), sub);
       }
 
       ++it;
@@ -252,7 +252,7 @@ static v8::Handle<v8::Value> JS_GetAgency (v8::Arguments const& argv) {
       TRI_json_t const* json = (*it).second._json;
 
       if (json != 0) {
-        l->Set(v8::String::New(key.c_str(), key.size()), TRI_ObjectJson(json));
+        l->Set(v8::String::New(key.c_str(), (int) key.size()), TRI_ObjectJson(json));
       }
 
       ++it;
@@ -308,7 +308,7 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
     while (it != result._values.end()) {
       const std::string key = (*it).first;
 
-      l->Set(i++, v8::String::New(key.c_str(), key.size()));
+      l->Set(i++, v8::String::New(key.c_str(), (int) key.size()));
       ++it;
     }
     return scope.Close(l);
@@ -321,7 +321,7 @@ static v8::Handle<v8::Value> JS_ListAgency (v8::Arguments const& argv) {
       const std::string key = (*it).first;
       const bool isDirectory = (*it).second._isDir;
 
-      l->Set(v8::String::New(key.c_str(), key.size()), v8::Boolean::New(isDirectory));
+      l->Set(v8::String::New(key.c_str(), (int) key.size()), v8::Boolean::New(isDirectory));
       ++it;
     }
     return scope.Close(l);
@@ -554,7 +554,7 @@ static v8::Handle<v8::Value> JS_WatchAgency (v8::Arguments const& argv) {
     TRI_json_t* json = (*it).second._json;
 
     if (json != 0) {
-      l->Set(v8::String::New(key.c_str(), key.size()), TRI_ObjectJson(json));
+      l->Set(v8::String::New(key.c_str(), (int) key.size()), TRI_ObjectJson(json));
     }
 
     ++it;
@@ -584,7 +584,7 @@ static v8::Handle<v8::Value> JS_EndpointsAgency (v8::Arguments const& argv) {
   for (size_t i = 0; i < endpoints.size(); ++i) {
     const std::string endpoint = endpoints[i];
 
-    l->Set((uint32_t) i, v8::String::New(endpoint.c_str(), endpoint.size()));
+    l->Set((uint32_t) i, v8::String::New(endpoint.c_str(), (int) endpoint.size()));
   }
 
   return scope.Close(l);
@@ -609,10 +609,10 @@ static v8::Handle<v8::Value> JS_PrefixAgency (v8::Arguments const& argv) {
   const std::string prefix = AgencyComm::prefix();
 
   if (strip && prefix.size() > 2) {
-    return scope.Close(v8::String::New(prefix.c_str() + 1, prefix.size() - 2));
+    return scope.Close(v8::String::New(prefix.c_str() + 1, (int) prefix.size() - 2));
   }
 
-  return scope.Close(v8::String::New(prefix.c_str(), prefix.size()));
+  return scope.Close(v8::String::New(prefix.c_str(), (int) prefix.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,7 +667,7 @@ static v8::Handle<v8::Value> JS_UniqidAgency (v8::Arguments const& argv) {
 
   const std::string value = StringUtils::itoa(result._index);
 
-  return scope.Close(v8::String::New(value.c_str(), value.size()));
+  return scope.Close(v8::String::New(value.c_str(), (int) value.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,7 +684,7 @@ static v8::Handle<v8::Value> JS_VersionAgency (v8::Arguments const& argv) {
   AgencyComm comm;
   const std::string version = comm.getVersion();
 
-  return scope.Close(v8::String::New(version.c_str(), version.size()));
+  return scope.Close(v8::String::New(version.c_str(), (int) version.size()));
 }
 
 // -----------------------------------------------------------------------------
@@ -719,11 +719,11 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
   }
 
   vector<DatabaseID> res = ClusterInfo::instance()->listDatabases(true);
-  v8::Handle<v8::Array> a = v8::Array::New(res.size());
+  v8::Handle<v8::Array> a = v8::Array::New((int) res.size());
   vector<DatabaseID>::iterator it;
   int count = 0;
   for (it = res.begin(); it != res.end(); ++it) {
-    a->Set(count++, v8::String::New(it->c_str(), it->size()));
+    a->Set(count++, v8::String::New(it->c_str(), (int) it->size()));
   }
   return scope.Close(a);
 }
@@ -762,14 +762,14 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   v8::Handle<v8::Object> result = v8::Object::New();
   const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
   const std::string& name = ci->name();
-  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
-  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
+  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), (int) cid.size()));
+  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), (int) name.size()));
   result->Set(v8::String::New("type"), v8::Number::New((int) ci->type()));
   result->Set(v8::String::New("status"), v8::Number::New((int) ci->status()));
 
   const string statusString = ci->statusString();
   result->Set(v8::String::New("statusString"),
-              v8::String::New(statusString.c_str(), statusString.size()));
+              v8::String::New(statusString.c_str(), (int) statusString.size()));
 
   result->Set(v8::String::New("deleted"), v8::Boolean::New(ci->deleted()));
   result->Set(v8::String::New("doCompact"), v8::Boolean::New(ci->doCompact()));
@@ -779,9 +779,9 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   result->Set(v8::String::New("journalSize"), v8::Number::New(ci->journalSize()));
 
   const std::vector<std::string>& sks = ci->shardKeys();
-  v8::Handle<v8::Array> shardKeys = v8::Array::New(sks.size());
-  for (uint32_t i = 0, n = sks.size(); i < n; ++i) {
-    shardKeys->Set(i, v8::String::New(sks[i].c_str(), sks[i].size()));
+  v8::Handle<v8::Array> shardKeys = v8::Array::New((int) sks.size());
+  for (uint32_t i = 0, n = (uint32_t) sks.size(); i < n; ++i) {
+    shardKeys->Set(i, v8::String::New(sks[i].c_str(), (int) sks[i].size()));
   }
   result->Set(v8::String::New("shardKeys"), shardKeys);
 
@@ -789,8 +789,8 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
   v8::Handle<v8::Object> shardIds = v8::Object::New();
   std::map<std::string, std::string>::const_iterator it = sis.begin();
   while (it != sis.end()) {
-    shardIds->Set(v8::String::New((*it).first.c_str(), (*it).first.size()),
-                  v8::String::New((*it).second.c_str(), (*it).second.size()));
+    shardIds->Set(v8::String::New((*it).first.c_str(), (int) (*it).first.size()),
+                  v8::String::New((*it).second.c_str(), (int) (*it).second.size()));
     ++it;
   }
   result->Set(v8::String::New("shards"), shardIds);
@@ -822,8 +822,8 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   // First some stuff from Plan for which Current does not make sense:
   const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
   const std::string& name = ci->name();
-  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), cid.size()));
-  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), name.size()));
+  result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), (int) cid.size()));
+  result->Set(v8::String::New("name"), v8::String::New(name.c_str(), (int) name.size()));
 
   TRI_shared_ptr<CollectionInfoCurrent> cic
           = ClusterInfo::instance()->getCollectionCurrent(
@@ -838,7 +838,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   }
   const string statusString = TRI_GetStatusStringCollectionVocBase(s);
   result->Set(v8::String::New("statusString"),
-              v8::String::New(statusString.c_str(), statusString.size()));
+              v8::String::New(statusString.c_str(), (int) statusString.size()));
 
   result->Set(v8::String::New("deleted"), v8::Boolean::New(cic->deleted(shardID)));
   result->Set(v8::String::New("doCompact"), v8::Boolean::New(cic->doCompact(shardID)));
@@ -847,7 +847,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   result->Set(v8::String::New("waitForSync"), v8::Boolean::New(cic->waitForSync(shardID)));
   result->Set(v8::String::New("journalSize"), v8::Number::New(cic->journalSize(shardID)));
   const std::string serverID = cic->responsibleServer(shardID);
-  result->Set(v8::String::New("DBServer"), v8::String::New(serverID.c_str(), serverID.size()));
+  result->Set(v8::String::New("DBServer"), v8::String::New(serverID.c_str(), (int) serverID.size()));
 
   // TODO: fill "indexes"
   v8::Handle<v8::Array> indexes = v8::Array::New();
@@ -860,7 +860,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
     result->Set(v8::String::New("errorNum"), v8::Number::New(cic->errorNum(shardID)));
     const string errorMessage = cic->errorMessage(shardID);
     result->Set(v8::String::New("errorMessage"),
-                v8::String::New(errorMessage.c_str(), errorMessage.size()));
+                v8::String::New(errorMessage.c_str(), (int) errorMessage.size()));
   }
 
   return scope.Close(result);
@@ -879,7 +879,7 @@ static v8::Handle<v8::Value> JS_GetResponsibleServerClusterInfo (v8::Arguments c
 
   const std::string result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(argv[0]));
 
-  return scope.Close(v8::String::New(result.c_str(), result.size()));
+  return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -895,7 +895,7 @@ static v8::Handle<v8::Value> JS_GetServerEndpointClusterInfo (v8::Arguments cons
 
   const std::string result = ClusterInfo::instance()->getServerEndpoint(TRI_ObjectToString(argv[0]));
 
-  return scope.Close(v8::String::New(result.c_str(), result.size()));
+  return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +916,7 @@ static v8::Handle<v8::Value> JS_GetDBServers (v8::Arguments const& argv) {
   for (size_t i = 0; i < DBServers.size(); ++i) {
     ServerID const sid = DBServers[i];
 
-    l->Set((uint32_t) i, v8::String::New(sid.c_str(), sid.size()));
+    l->Set((uint32_t) i, v8::String::New(sid.c_str(), (int) sid.size()));
   }
 
   return scope.Close(l);
@@ -965,7 +965,7 @@ static v8::Handle<v8::Value> JS_UniqidClusterInfo (v8::Arguments const& argv) {
 
   const std::string id = StringUtils::itoa(value);
 
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
+  return scope.Close(v8::String::New(id.c_str(), (int) id.size()));
 }
 
 // -----------------------------------------------------------------------------
@@ -984,7 +984,7 @@ static v8::Handle<v8::Value> JS_AddressServerState (v8::Arguments const& argv) {
   }
 
   const std::string address = ServerState::instance()->getAddress();
-  return scope.Close(v8::String::New(address.c_str(), address.size()));
+  return scope.Close(v8::String::New(address.c_str(), (int) address.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1015,7 @@ static v8::Handle<v8::Value> JS_IdServerState (v8::Arguments const& argv) {
   }
 
   const std::string id = ServerState::instance()->getId();
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
+  return scope.Close(v8::String::New(id.c_str(), (int) id.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1030,7 +1030,7 @@ static v8::Handle<v8::Value> JS_DataPathServerState (v8::Arguments const& argv) 
   }
 
   const std::string path = ServerState::instance()->getDataPath();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1045,7 +1045,7 @@ static v8::Handle<v8::Value> JS_LogPathServerState (v8::Arguments const& argv) {
   }
 
   const std::string path = ServerState::instance()->getLogPath();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1060,7 +1060,7 @@ static v8::Handle<v8::Value> JS_AgentPathServerState (v8::Arguments const& argv)
   }
 
   const std::string path = ServerState::instance()->getAgentPath();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,7 +1075,7 @@ static v8::Handle<v8::Value> JS_ArangodPathServerState (v8::Arguments const& arg
   }
 
   const std::string path = ServerState::instance()->getArangodPath();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1090,7 +1090,7 @@ static v8::Handle<v8::Value> JS_JavaScriptPathServerState (v8::Arguments const& 
   }
 
   const std::string path = ServerState::instance()->getJavaScriptPath();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1105,7 +1105,7 @@ static v8::Handle<v8::Value> JS_DBserverConfigServerState (v8::Arguments const& 
   }
 
   const std::string path = ServerState::instance()->getDBserverConfig();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1120,7 +1120,7 @@ static v8::Handle<v8::Value> JS_CoordinatorConfigServerState (v8::Arguments cons
   }
 
   const std::string path = ServerState::instance()->getCoordinatorConfig();
-  return scope.Close(v8::String::New(path.c_str(), path.size()));
+  return scope.Close(v8::String::New(path.c_str(), (int) path.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1192,7 +1192,7 @@ static v8::Handle<v8::Value> JS_RoleServerState (v8::Arguments const& argv) {
 
   const std::string role = ServerState::roleToString(ServerState::instance()->getRole());
 
-  return scope.Close(v8::String::New(role.c_str(), role.size()));
+  return scope.Close(v8::String::New(role.c_str(), (int) role.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1248,7 +1248,7 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
 
   const std::string state = ServerState::stateToString(ServerState::instance()->getState());
 
-  return scope.Close(v8::String::New(state.c_str(), state.size()));
+  return scope.Close(v8::String::New(state.c_str(), (int) state.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1358,17 +1358,17 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
   } else {
     r->Set(v8g->ClientTransactionIDKey,
            v8::String::New(res->clientTransactionID.c_str(),
-                           res->clientTransactionID.size()));
+                           (int) res->clientTransactionID.size()));
 
     // convert the ids to strings as uint64_t might be too big for JavaScript numbers
     std::string id = StringUtils::itoa(res->coordTransactionID);
-    r->Set(v8g->CoordTransactionIDKey, v8::String::New(id.c_str(), id.size()));
+    r->Set(v8g->CoordTransactionIDKey, v8::String::New(id.c_str(), (int) id.size()));
 
     id = StringUtils::itoa(res->operationID);
-    r->Set(v8g->OperationIDKey, v8::String::New(id.c_str(), id.size()));
+    r->Set(v8g->OperationIDKey, v8::String::New(id.c_str(), (int) id.size()));
 
     r->Set(v8g->ShardIDKey,
-           v8::String::New(res->shardID.c_str(), res->shardID.size()));
+           v8::String::New(res->shardID.c_str(), (int) res->shardID.size()));
     if (res->status == CL_COMM_SUBMITTED) {
       r->Set(v8g->StatusKey, v8::String::New("SUBMITTED"));
     }
@@ -1390,7 +1390,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
         v8::Handle<v8::Object> details = v8::Object::New();
         details->Set(v8::String::New("code"), v8::Number::New(res->result->getHttpReturnCode()));
         details->Set(v8::String::New("message"), v8::String::New(res->result->getHttpReturnMessage().c_str()));
-        details->Set(v8::String::New("body"), v8::String::New(res->result->getBody().str().c_str(), res->result->getBody().str().length()));
+        details->Set(v8::String::New("body"), v8::String::New(res->result->getBody().str().c_str(), (int) res->result->getBody().str().length()));
 
         r->Set(v8::String::New("details"), details);
         r->Set(v8g->ErrorMessageKey,
@@ -1422,7 +1422,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
       // The body:
       if (0 != res->answer->body()) {
         r->Set(v8::String::New("body"), v8::String::New(res->answer->body(),
-                                                    res->answer->bodySize()));
+                                                    (int) res->answer->bodySize()));
       }
     }
   }

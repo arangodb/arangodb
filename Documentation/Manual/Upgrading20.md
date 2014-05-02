@@ -56,7 +56,24 @@ the `--upgrade` option:
 
     unix> arangod data --upgrade
 
-where `data` is the database directory. This will run a database version and
+where `data` is the database directory. 
+
+Note: here the same database should be specified that is also specified when arangod
+is started regularly. Please do not run the `--upgrade` command on each individual
+database subfolder (named `database-<some number>`).
+ 
+For example, if you regularly start your ArangoDB server with
+
+    unix> arangod mydatabasefolder
+
+then running
+
+    unix> arangod mydatabasefolder --upgrade
+
+will perform the upgrade for the whole ArangoDB instance, including all of
+its databases.
+
+Starting with `--upgrade` will run a database version check and perform
 any necessary migrations. As usual, you should create a backup of your database
 directory before performing the upgrade.
 

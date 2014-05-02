@@ -434,6 +434,11 @@ function COMPILE_REGEX (regex, modifiers) {
         pattern += '\\' + c;
       }
       else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          pattern += '\\\\';
+        }
+
         // literal character
         pattern += c;
       }
@@ -441,7 +446,7 @@ function COMPILE_REGEX (regex, modifiers) {
       escaped = false;
     }
   }
- 
+        
   return new RegExp('^' + pattern + '$', modifiers);
 }
 
@@ -2082,7 +2087,7 @@ function STRING_LIKE (value, regex, caseInsensitive) {
   if (RegexCache[modifiers][regex] === undefined) {
     RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
   }
-  
+        
   try {
     return RegexCache[modifiers][regex].test(value);
   }
@@ -3670,7 +3675,25 @@ function SLEEP (duration) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
   }
 
-  INTERNAL.wait(duration);
+  INTERNAL.sleep(duration);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current user
+/// note: this might be null if the query is not executed in a context that
+/// has a user
+////////////////////////////////////////////////////////////////////////////////
+
+function CURRENT_USER () {
+  "use strict";
+
+  var req = INTERNAL.getCurrentRequest();
+
+  if (typeof req === 'object') {
+    return req.user;
+  }
+
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4363,6 +4386,7 @@ exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;
+exports.CURRENT_USER = CURRENT_USER;
 exports.FAIL = FAIL;
 
 exports.reload = reloadUserFunctions;

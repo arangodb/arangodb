@@ -1,3 +1,5 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*global window, Backbone, $, _*/
 (function() {
 
   "use strict";
@@ -7,12 +9,5 @@
     defaults: {
       "type": "testPlan"
     }
-    /*
-    url: "/_admin/aardvark/cluster/ClusterType";
-
-    updateUrl: function() {
-      this.url = window.getNewRoute("ClusterType");
-    }
-    */
   });
 }());

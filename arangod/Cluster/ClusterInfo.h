@@ -243,7 +243,7 @@ namespace triagens {
         int numberOfShards () const {
           TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
           if (TRI_IsArrayJson(node)) {
-            return (node->_value._objects._length / 2);
+            return (int) (node->_value._objects._length / 2);
           }
           return 0;
         }

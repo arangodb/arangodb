@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Backbone, EJS, $, window, arangoHelper, templateEngine, _, console */
+/*global Backbone, $, window, arangoHelper, templateEngine, _*/
 
 window.ApplicationsView = Backbone.View.extend({
   el: '#content',
@@ -43,7 +43,6 @@ window.ApplicationsView = Backbone.View.extend({
                 data: res.responseText,
                 contentType: "application/json"
               }).done(function(res) {
-                console.log(res);
                 $.ajax({
                   type: "POST",
                   async: false,
@@ -153,10 +152,16 @@ window.ApplicationsView = Backbone.View.extend({
         self.collection.each(function (foxx) {
           var subView;
           if (foxx.get("type") === "app") {
-            subView = new window.FoxxInstalledView({model: foxx});
+            subView = new window.FoxxInstalledView({
+              model: foxx,
+              appsView: self
+            });
             self._availableSubViews[foxx.get('_id')] = subView;
           } else if (foxx.get("type") === "mount") {
-            subView = new window.FoxxActiveView({model: foxx});
+            subView = new window.FoxxActiveView({
+              model: foxx,
+              appsView: self
+            });
             self._installedSubViews[foxx.get('_id')] = subView;
           }
         });
