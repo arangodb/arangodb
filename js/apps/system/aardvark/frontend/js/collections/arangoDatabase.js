@@ -8,11 +8,15 @@
 
     model: window.DatabaseModel,
 
-    comparator: function(item) { return item.get('name').toLowerCase(); },
+    shouldFetchUser: false,
+
+    comparator: function(item) {return item.get('name').toLowerCase();},
 
     sync: function(method, model, options) {
       if (method === "read") {
-        options.url = model.url() + "user";
+        if (this.shouldFetchUser) {
+          options.url = model.url() + "user";
+        }
       }
       return Backbone.sync(method, model, options);
     },
@@ -30,17 +34,18 @@
       });
     },
 
-    initialize: function() {
-      var self = this; 
+    initialize: function(values, options) {
+      this.shouldFetchUser = options.shouldFetchUser;
+      var self = this;
       this.fetch().done(function() {
-        self.sort();  
+        self.sort();
       });
     },
 
     getDatabases: function() {
-      var self = this; 
+      var self = this;
       this.fetch().done(function() {
-        self.sort();  
+        self.sort();
       });
       return this.models;
     },
@@ -52,7 +57,7 @@
         if (protocol === "SSL" || protocol === "https:") {
           protocol = "https:";
         } else {
-          protocol = "http:"; 
+          protocol = "http:";
         }
       } else {
         protocol = loc.protocol;
