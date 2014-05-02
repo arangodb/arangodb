@@ -3679,6 +3679,24 @@ function SLEEP (duration) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current user
+/// note: this might be null if the query is not executed in a context that
+/// has a user
+////////////////////////////////////////////////////////////////////////////////
+
+function CURRENT_USER () {
+  "use strict";
+
+  var req = INTERNAL.getCurrentRequest();
+
+  if (typeof req === 'object') {
+    return req.user;
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief always fail
 ///
 /// this function is non-deterministic so it is not executed at query 
@@ -4368,6 +4386,7 @@ exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;
+exports.CURRENT_USER = CURRENT_USER;
 exports.FAIL = FAIL;
 
 exports.reload = reloadUserFunctions;
