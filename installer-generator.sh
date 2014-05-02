@@ -9,5 +9,5 @@ if [ ! -f Build$bits/$INSTALLERNAME-internal.exe ]; then
 fi
 cat Installation/Windows/Templates/arango-packer-template.nsi | sed -e "s/@BITS@/$bits/g" | sed -e  "s/@INSTALLERNAME@/${INSTALLERNAME}/g" > Build$bits/$INSTALLERNAME.nsi
 
-"$NSIS_PATH"/bin/makensis.exe   Build$bits/$INSTALLERNAME.nsi
+"$NSIS_PATH"/makensis.exe   Build$bits/$INSTALLERNAME.nsi
 
