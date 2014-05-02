@@ -111,6 +111,11 @@
         success: function(data) {
           self.updateDatabases();
           window.modalView.hide();
+          window.App.naviView.dbSelectionView.collection.fetch({
+            success: function() {
+              window.App.naviView.dbSelectionView.render($("#dbSelect"));
+            }
+          });
         }
       });
     },
