@@ -1751,6 +1751,11 @@ function categories:
 - @FN{COLLECTIONS()}: Returns a list of collections. Each collection is returned as a document
   with attributes `name` and `_id`
 
+- @FN{CURRENT_USER()}: Returns the name of the current user. The current user is the user 
+  account name that was specified in the `Authorization` HTTP header of the request. It will
+  only be populated if authentication on the server is turned on, and if the query was executed
+  inside a request context. Otherwise, the return value of this function will be `null`.
+
 - @FN{DOCUMENT(@FA{collection}, @FA{id})}: Returns the document which is uniquely identified by
   the @FA{id}. ArangoDB will try to find the document using the `_id` value of the document
   in the specified collection. If there is a mismatch between the @FA{collection} passed and
