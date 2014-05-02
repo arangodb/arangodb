@@ -7,7 +7,7 @@
   "use strict";
 
   describe("The Modal view Singleton", function() {
-    
+
     var testee, div, jQueryDummy;
 
     beforeEach(function() {
@@ -392,17 +392,21 @@
 
     it("should call keyboard bind function", function() {
       spyOn(testee, "createModalHotkeys");
+      spyOn(testee, "createInitModalHotkeys");
       testee.enabledHotkey = false;
       testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
       expect(testee.createModalHotkeys).toHaveBeenCalled();
+      expect(testee.createInitModalHotkeys).toHaveBeenCalled();
 
     });
 
     it("should not call keyboard bind function", function() {
       spyOn(testee, "createModalHotkeys");
+      spyOn(testee, "createInitModalHotkeys");
       testee.enabledHotkey = true;
       testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
-      expect(testee.createModalHotkeys).not.toHaveBeenCalled();
+      expect(testee.createModalHotkeys).toHaveBeenCalled();
+      expect(testee.createInitModalHotkeys).not.toHaveBeenCalled();
     });
 
     it("should call function bind function for view.el", function() {

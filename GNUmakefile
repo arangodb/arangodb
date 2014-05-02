@@ -246,6 +246,8 @@ pack-winXX-cmake:
 	cd Build$(BITS) && cmake --build . --config Release
 
 	cd Build$(BITS) && cpack -G NSIS
+          
+	./installer-generator.sh $(BITS) 
 
 ################################################################################
 ### @brief Windows Vista 64-bit bundle
