@@ -15,7 +15,13 @@
       div;
 
     beforeEach(function() {
-      dbCollection = new window.ArangoDatabase();
+      dbCollection =  new window.ArangoDatabase(
+        [],
+        {shouldFetchUser: true}
+      );
+
+
+      //dbCollection = new window.ArangoDatabase();
       list = ["_system", "second", "first"];
       current = new window.CurrentDatabase({
         name: "first",
@@ -76,7 +82,12 @@
     });
 */
     it("should not render the selection if the list has only one element", function() {
-      var oneCollection = new window.ArangoDatabase();
+      //var oneCollection = new window.ArangoDatabase();
+      var oneCollection =  new window.ArangoDatabase(
+        [],
+        {shouldFetchUser: true}
+      );
+
       oneCollection.add(current);
       spyOn(oneCollection, "fetch");
       view = new DBSelectionView(

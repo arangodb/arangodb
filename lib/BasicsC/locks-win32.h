@@ -69,8 +69,8 @@ typedef struct TRI_read_write_lock_s {
   CRITICAL_SECTION _lockReaders;
 #else
   SRWLOCK _lock;
-}
 #endif
+}
 TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -125,13 +125,21 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
   if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_ERROR("encountered out-of-memory error in %s at line %d", file, line);
   }
-
+  
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
+
   if (errorMessage.IsEmpty()) {
     return scope.Close(v8::Object::New());
   }
 
-  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  v8::Handle<v8::Value> err = v8::Exception::Error(errorMessage);
+
+  if (err.IsEmpty()) {
+    return scope.Close(v8::Object::New());
+  }
+
+  v8::Handle<v8::Object> errorObject = err->ToObject();
+
   if (errorObject.IsEmpty()) {
     return scope.Close(v8::Object::New());
   }
@@ -3048,8 +3056,8 @@ bool TRI_ParseJavaScriptFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> source,
-                                                   v8::Handle<v8::Value> name,
+                                                   v8::Handle<v8::String> const& source,
+                                                   v8::Handle<v8::Value> const& name,
                                                    bool printResult) {
   v8::HandleScope scope;
 

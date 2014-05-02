@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, $  */
+/*global window, $, document */
 
 (function() {
   "use strict";
@@ -74,11 +74,29 @@
         success: function(data) {
           returnVal = data.result.name;
         },
-        error: function(data) {
+        error: function() {
           returnVal = false;
         }
       });
       return returnVal;
+    },
+
+    hotkeysFunctions: {
+      scrollDown: function () {
+        window.scrollBy(0,180);
+      },
+      scrollUp: function () {
+        window.scrollBy(0,-180);
+      }
+    },
+
+    enableKeyboardHotkeys: function (enable) {
+      var hotkeys = window.arangoHelper.hotkeysFunctions;
+      if (enable === true) {
+        $(document).on('keydown', null, 'j', hotkeys.scrollDown);
+        $(document).on('keydown', null, 'k', hotkeys.scrollUp);
+      }
+
     },
 
     databaseAllowed: function () {
@@ -91,10 +109,10 @@
         contentType: "application/json",
         processData: false,
         async: false,
-        success: function(data) {
+        success: function() {
           returnVal = true;
         },
-        error: function(data) {
+        error: function() {
           returnVal = false;
         }
       });

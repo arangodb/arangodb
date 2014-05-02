@@ -1,6 +1,13 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL CURRENT_USER() function
+
+  This function returns the current user from an AQL query. The current user is the
+  username that was specified in the `Authorization` HTTP header of the request. If
+  authentication is turned off or the query was executed outside a request context,
+  the function will return `null`.
+
 * fixed issue #796: Searching with newline chars broken?
 
   fixed slightly different handling of backslash escape characters in a few
