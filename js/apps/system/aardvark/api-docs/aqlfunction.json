@@ -8,7 +8,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "if success <em>HTTP 200</em> is returned. ",
+                            "reason": "if success <em>HTTP 200</em> is returned. <br><br>",
                             "code": "200"
                         }
                     ],
@@ -16,14 +16,15 @@
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "namespace",
-                            "description": "Returns all registered AQL user functions from namespace <em>namespace</em>. "
+                            "description": "Returns all registered AQL user functions from namespace <em>namespace</em>. <br><br>"
                         }
                     ],
-                    "notes": "Returns all registered AQL user functions. <br><br>The call will return a JSON list with all user functions found. Each user function will at least have the following attributes: <br><br>- <em>name</em>: The fully qualified name of the user function<br><br>- <em>code</em>: A string representation of the function body<br><br>",
+                    "notes": "Returns all registered AQL user functions. <br><br> The call will return a JSON list with all user functions found. Each user function will at least have the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>name</em>: The fully qualified name of the user function  <li><em>code</em>: A string representation of the function body",
                     "summary": "returns registered AQL user functions",
                     "httpMethod": "GET",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/aqlfunction\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ ]\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl --dump - http://localhost:8529/_api/aqlfunction\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ ]\n\n</code></pre><br>",
                     "nickname": "returnsRegisteredAqlUserFunctions"
                 }
             ],
@@ -34,15 +35,15 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "If the function already existed and was replaced by the call, the server will respond with <em>HTTP 200</em>. ",
+                            "reason": "If the function already existed and was replaced by the call, the server will respond with <em>HTTP 200</em>. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "If the function can be registered by the server, the server will respond with  <em>HTTP 201</em>. ",
+                            "reason": "If the function can be registered by the server, the server will respond with  <em>HTTP 201</em>. <br><br>",
                             "code": "201"
                         },
                         {
-                            "reason": "If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. ",
+                            "reason": "If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with <em>HTTP 400</em>. <br><br>",
                             "code": "400"
                         }
                     ],
@@ -52,13 +53,13 @@
                             "paramType": "body",
                             "required": "true",
                             "name": "body",
-                            "description": "the body with name and code of the aql user function. "
+                            "description": "the body with name and code of the aql user function. <br><br>"
                         }
                     ],
-                    "notes": "<br><br>The following data need to be passed in a JSON representation in the body of the POST request: <br><br>- <em>name</em>: the fully qualified name of the user functions.<br><br>- <em>code</em>: a string representation of the function body.<br><br>- <em>isDeterministic</em>: an optional boolean value to indicate that the function  results are fully deterministic (function return value solely depends on    the input value and return value is the same for repeated calls with same   input). The <em>isDeterministic</em> attribute is currently not used but may be   used later for optimisations. <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> The following data need to be passed in a JSON representation in the body of the POST request: <br><br>  <ul class=\"swagger-list\"><li><em>name</em>: the fully qualified name of the user functions.  <li><em>code</em>: a string representation of the function body.  <li><em>isDeterministic</em>: an optional boolean value to indicate that the function results are fully deterministic (function return value solely depends on  the input value and return value is the same for repeated calls with same input). The <em>isDeterministic</em> attribute is currently not used but may be used later for optimisations.  </ul> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "creates or replaces an AQL user function",
                     "httpMethod": "POST",
-                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction\n{ \"name\" : \"myfunctions::temperature::celsiustofahrenheit\", \"code\" : \"function (celsius) { return celsius * 1.8 + 32; }\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction\n{ \"name\" : \"myfunctions::temperature::celsiustofahrenheit\", \"code\" : \"function (celsius) { return celsius * 1.8 + 32; }\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
                     "nickname": "createsOrReplacesAnAqlUserFunction"
                 }
             ],
@@ -69,15 +70,15 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "If the function can be removed by the server, the server will respond with  <em>HTTP 200</em>. ",
+                            "reason": "If the function can be removed by the server, the server will respond with  <em>HTTP 200</em>. <br><br>",
                             "code": "200"
                         },
                         {
-                            "reason": "If the user function name is malformed, the server will respond with <em>HTTP 400</em>. ",
+                            "reason": "If the user function name is malformed, the server will respond with <em>HTTP 400</em>. <br><br>",
                             "code": "400"
                         },
                         {
-                            "reason": "If the specified user user function does not exist, the server will respond with <em>HTTP 404</em>. ",
+                            "reason": "If the specified user user function does not exist, the server will respond with <em>HTTP 404</em>. <br><br>",
                             "code": "404"
                         }
                     ],
@@ -87,19 +88,20 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "name",
-                            "description": "the name of the AQL user function. "
+                            "description": "the name of the AQL user function. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
+                            "required": "false",
                             "name": "group",
-                            "description": "If set to <em>true</em>, then the function name provided in <em>name</em> is treated as a namespace prefix, and all functions in the specified namespace will be deleted. If set to <em>false</em>, the function name provided in <em>name</em> must be fully  qualified, including any namespaces. "
+                            "description": "If set to <em>true</em>, then the function name provided in <em>name</em> is treated as a namespace prefix, and all functions in the specified namespace will be deleted. If set to <em>false</em>, the function name provided in <em>name</em> must be fully  qualified, including any namespaces. <br><br>"
                         }
                     ],
-                    "notes": "<br><br>Removes an existing AQL user function, identified by <em>name</em>.  <br><br>In case of success, the returned JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>",
+                    "notes": "<br><br> Removes an existing AQL user function, identified by <em>name</em>.  <br><br> In case of success, the returned JSON object has the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>false</em> in this case)  <li><em>code</em>: the HTTP status code  </ul> The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)  <li><em>code</em>: the HTTP status code  <li><em>errorNum</em>: the server error number  <li><em>errorMessage</em>: a descriptive error message",
                     "summary": "remove an existing AQL user function",
                     "httpMethod": "DELETE",
-                    "examples": "deletes a function: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/aqlfunction/square::x::y\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>function not found: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/aqlfunction/myfunction::x::y\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 1582, \n  \"errorMessage\" : \"user function '%s()' not found\" \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> deletes a function: <br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/aqlfunction/square::x::y\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br><br><br> function not found: <br><br><br><br><pre><code class=\"json\">unix> curl -X DELETE --dump - http://localhost:8529/_api/aqlfunction/myfunction::x::y\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 1582, \n  \"errorMessage\" : \"user function '%s()' not found\" \n}\n\n</code></pre><br>",
                     "nickname": "removeAnExistingAqlUserFunction"
                 }
             ],

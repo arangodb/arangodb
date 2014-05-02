@@ -115,7 +115,7 @@ class mr_action_t : public TRI_action_t {
 /// @brief creates callback for a context
 ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
+    TRI_action_result_t execute (TRI_vocbase_t* vocbase, HttpRequest* request, Mutex*, void**) {
       TRI_action_result_t result;
       ApplicationMR::MRContext* context = GlobalMRDealer->enterContext();
       mrb_state* mrb = context->_mrb;
@@ -128,7 +128,7 @@ class mr_action_t : public TRI_action_t {
         LOG_WARNING("no callback function for Ruby action '%s'", _url.c_str());
 
         result.isValid = true;
-        result.response = new HttpResponse(HttpResponse::NOT_FOUND);
+        result.response = new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -143,6 +143,14 @@ class mr_action_t : public TRI_action_t {
       result.response = response;
 
       return result;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+    bool cancel (Mutex* dataLock, void** data) {
+      return false;
     }
 
   private:
@@ -305,7 +313,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   if (mrb->exc) {
     TRI_LogRubyException(mrb, mrb->exc);
     mrb->exc = 0;
-    return new HttpResponse(HttpResponse::SERVER_ERROR);
+    return new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
   }
 
   // set status code
@@ -318,7 +326,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   }
 
   // generate response
-  HttpResponse* response = new HttpResponse(code);
+  HttpResponse* response = new HttpResponse(code, request->compatibility());
 
   // set content type
   id = mrb_intern(mrb, "@content_type");

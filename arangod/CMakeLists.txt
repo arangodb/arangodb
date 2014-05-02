@@ -69,9 +69,9 @@ add_executable(
     Ahuacatl/ahuacatl-statementlist.c
     Ahuacatl/ahuacatl-tokens.c
     Ahuacatl/ahuacatl-variable.c
-    BitIndexes/bitarray.c
-    BitIndexes/bitarrayIndex.c
-    CapConstraint/cap-constraint.c
+    BitIndexes/bitarray.cpp
+    BitIndexes/bitarrayIndex.cpp
+    CapConstraint/cap-constraint.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
@@ -82,18 +82,18 @@ add_executable(
     Cluster/ServerJob.cpp
     Cluster/ServerState.cpp
     Cluster/v8-cluster.cpp
-    FulltextIndex/fulltext-handles.c
-    FulltextIndex/fulltext-index.c
-    FulltextIndex/fulltext-list.c
-    FulltextIndex/fulltext-query.c
-    FulltextIndex/fulltext-result.c
-    FulltextIndex/fulltext-wordlist.c
-    GeoIndex/GeoIndex.c
-    GeoIndex/geo-index.c
-    HashIndex/hash-array.c
-    HashIndex/hash-index.c
-    IndexIterators/index-iterator.c
-    IndexOperators/index-operator.c
+    FulltextIndex/fulltext-handles.cpp
+    FulltextIndex/fulltext-index.cpp
+    FulltextIndex/fulltext-list.cpp
+    FulltextIndex/fulltext-query.cpp
+    FulltextIndex/fulltext-result.cpp
+    FulltextIndex/fulltext-wordlist.cpp
+    GeoIndex/GeoIndex.cpp
+    GeoIndex/geo-index.cpp
+    HashIndex/hash-array.cpp
+    HashIndex/hash-index.cpp
+    IndexIterators/index-iterator.cpp
+    IndexOperators/index-operator.cpp
     Replication/replication-static.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
@@ -110,9 +110,10 @@ add_executable(
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
-    SkipLists/skiplistIndex.c
+    SkipLists/skiplistIndex.cpp
     Transaction/IdGenerator.cpp
     Transaction/Manager.cpp
+    Transaction/Operations.cpp
     Transaction/Transaction.cpp
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp
@@ -121,40 +122,40 @@ add_executable(
     V8Server/v8-actions.cpp
     V8Server/v8-query.cpp
     V8Server/v8-vocbase.cpp
-    VocBase/auth.c
-    VocBase/barrier.c
-    VocBase/cleanup.c
-    VocBase/collection.c
-    VocBase/compactor.c
-    VocBase/datafile.c
-    VocBase/document-collection.c
-    VocBase/edge-collection.c
-    VocBase/general-cursor.c
-    VocBase/headers.c
-    VocBase/index.c
-    VocBase/key-generator.c
-    VocBase/marker.c
-    VocBase/primary-collection.c
-    VocBase/replication-applier.c
-    VocBase/replication-common.c
-    VocBase/replication-dump.c
-    VocBase/replication-logger.c
-    VocBase/replication-master.c
-    VocBase/server.c
-    VocBase/synchroniser.c
-    VocBase/transaction.c
-    VocBase/update-policy.c
-    VocBase/voc-shaper.c
-    VocBase/vocbase.c
-    VocBase/vocbase-defaults.c
+    VocBase/auth.cpp
+    VocBase/barrier.cpp
+    VocBase/cleanup.cpp
+    VocBase/collection.cpp
+    VocBase/compactor.cpp
+    VocBase/datafile.cpp
+    VocBase/document-collection.cpp
+    VocBase/edge-collection.cpp
+    VocBase/general-cursor.cpp
+    VocBase/headers.cpp
+    VocBase/index.cpp
+    VocBase/key-generator.cpp
+    VocBase/marker.cpp
+    VocBase/primary-collection.cpp
+    VocBase/replication-applier.cpp
+    VocBase/replication-common.cpp
+    VocBase/replication-dump.cpp
+    VocBase/replication-logger.cpp
+    VocBase/replication-master.cpp
+    VocBase/server.cpp
+    VocBase/synchroniser.cpp
+    VocBase/transaction.cpp
+    VocBase/update-policy.cpp
+    VocBase/voc-shaper.cpp
+    VocBase/vocbase.cpp
+    VocBase/vocbase-defaults.cpp
     Wal/AllocatorThread.cpp
     Wal/CollectorThread.cpp
-    Wal/Configuration.cpp 
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
+    Wal/TestThread.cpp
     ${ARANGOD_MRUBY_SOURCE}
 )
 

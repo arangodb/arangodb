@@ -116,18 +116,38 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
 /// @brief create a Javascript error object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
+static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
+                                                 string const& message,
+                                                 const char* file,
+                                                 int line) {
   v8::HandleScope scope;
-
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
+  
+  if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
+    LOG_ERROR("encountered out-of-memory error in %s at line %d", file, line);
+  }
+  
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
 
-  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  if (errorMessage.IsEmpty()) {
+    return scope.Close(v8::Object::New());
+  }
+
+  v8::Handle<v8::Value> err = v8::Exception::Error(errorMessage);
+
+  if (err.IsEmpty()) {
+    return scope.Close(v8::Object::New());
+  }
+
+  v8::Handle<v8::Object> errorObject = err->ToObject();
+
+  if (errorObject.IsEmpty()) {
+    return scope.Close(v8::Object::New());
+  }
 
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
 
   if (! proto.IsEmpty()) {
@@ -230,7 +250,9 @@ static bool LoadJavaScriptDirectory (char const* path,
     result = result && ok;
 
     if (! ok) {
-      TRI_LogV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
     }
   }
 
@@ -376,9 +398,14 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
-    string err = TRI_StringifyV8Exception(&tryCatch);
+    if (tryCatch.CanContinue()) {
+      string err = TRI_StringifyV8Exception(&tryCatch);
 
-    TRI_V8_SYNTAX_ERROR(scope, err.c_str());
+      TRI_V8_SYNTAX_ERROR(scope, err.c_str());
+    }
+    else {
+      return scope.Close(v8::Undefined());
+    }
   }
 
   // compilation failed, we don't know why
@@ -781,8 +808,13 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         context->Exit();
       }
 
-      TRI_LogV8Exception(&tryCatch);
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
+      else {
+        return scope.Close(v8::Undefined());
+      }
     }
 
     // compilation succeeded, run the script
@@ -794,8 +826,13 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         context->Exit();
       }
 
-      TRI_LogV8Exception(&tryCatch);
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+        return scope.Close(v8::ThrowException(tryCatch.Exception()));
+      }
+      else {
+        return scope.Close(v8::Undefined());
+      }
     }
   }
 
@@ -1519,7 +1556,6 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
     TRI_V8_EXCEPTION_USAGE(scope, "genRandomNumbers(<length>)");
@@ -1743,7 +1779,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   double rssp = 0;
 
   if (TRI_PhysicalMemory != 0) {
-    rssp = 100.0 * rss / TRI_PhysicalMemory;
+    rssp = rss / TRI_PhysicalMemory;
   }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
@@ -3020,8 +3056,8 @@ bool TRI_ParseJavaScriptFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> source,
-                                                   v8::Handle<v8::Value> name,
+                                                   v8::Handle<v8::String> const& source,
+                                                   v8::Handle<v8::Value> const& name,
                                                    bool printResult) {
   v8::HandleScope scope;
 
@@ -3052,7 +3088,12 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
       print->Call(print, 1, args);
 
       if (tryCatch.HasCaught()) {
-        TRI_LogV8Exception(&tryCatch);
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(&tryCatch);
+        }
+        else {
+          return scope.Close(v8::Undefined());
+        }
       }
     }
 
@@ -3064,34 +3105,43 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber) {
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber) {
   v8::HandleScope scope;
 
-  return scope.Close(CreateErrorObject(errorNumber, TRI_errno_string(errorNumber)));
+  return scope.Close(CreateErrorObject(errorNumber, TRI_errno_string(errorNumber), file, line));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, using supplied text
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message) {
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber,
+                                              string const& message) {
   v8::HandleScope scope;
 
-  return scope.Close(CreateErrorObject(errorNumber, message));
+  return scope.Close(CreateErrorObject(errorNumber, message, file, line));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message, bool autoPrepend) {
+v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
+                                              int line,
+                                              int errorNumber,
+                                              string const& message,
+                                              bool autoPrepend) {
   v8::HandleScope scope;
 
   if (autoPrepend) {
-    return scope.Close(CreateErrorObject(errorNumber, message + ": " + string(TRI_errno_string(errorNumber))));
+    return scope.Close(CreateErrorObject(errorNumber, message + ": " + string(TRI_errno_string(errorNumber)), file, line));
   }
   else {
-    return scope.Close(CreateErrorObject(errorNumber, message));
+    return scope.Close(CreateErrorObject(errorNumber, message, file, line));
   }
 }
 

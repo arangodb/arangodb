@@ -51,7 +51,7 @@
         error: function (data) {
           self.isOffline = true;
           self.isOfflineCounter++;
-          if (self.isOfflineCounter >= 3) {
+          if (self.isOfflineCounter >= 2) {
             arangoHelper.arangoError("Server", "Server is offline");
           }
         }

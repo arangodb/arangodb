@@ -50,6 +50,41 @@ function EdgeShaper(parent, config, idfunc) {
     edges = [],
     communityNodes = {},
     contextMenu = new ContextMenu("gv_edge_cm"),
+    findFirstValue = function(list, data) {
+      if (_.isArray(list)) {
+        return data[_.find(list, function(val) {
+          return data[val];
+        })];
+      }
+      return data[list];
+    },
+    splitLabel = function(label) {
+      if (label === undefined) {
+        return [""];
+      }
+      if (typeof label !== "string") {
+        label = String(label);
+      }
+      var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
+      chunks[0] = $.trim(chunks[0]);
+      chunks[1] = $.trim(chunks[1]);
+      if (chunks[0].length > 12) {
+        chunks[0] = $.trim(label.substring(0,10)) + "-";
+        chunks[1] = $.trim(label.substring(10));
+        if (chunks[1].length > 12) {
+          chunks[1] = chunks[1].split(/\W/)[0];
+          if (chunks[1].length > 12) {
+            chunks[1] = chunks[1].substring(0,10) + "...";
+          }
+        }
+        chunks.length = 2;
+      }
+      if (chunks.length > 2) {
+        chunks.length = 2;
+        chunks[1] += "...";
+      }
+      return chunks;
+    },
     toplevelSVG,
     visibleLabels = true,
     followEdge = {},
@@ -253,7 +288,8 @@ function EdgeShaper(parent, config, idfunc) {
             .attr("text-anchor", "middle") // Define text-anchor
             .text(function(d) { 
               // Which value should be used as label
-              return d._data[label] !== undefined ? d._data[label] : "";
+              var chunks = splitLabel(findFirstValue(label, d._data));
+              return chunks[0] || "";
             });
         };
       }
@@ -331,6 +367,7 @@ function EdgeShaper(parent, config, idfunc) {
       }
       if (config.label !== undefined) {
         parseLabelFlag(config.label);
+        self.label = config.label;
       }
       if (config.actions !== undefined) {
         parseActionFlag(config.actions);
@@ -428,6 +465,10 @@ function EdgeShaper(parent, config, idfunc) {
 
   self.addMenuEntry = function(name, func) {
     contextMenu.addEntry(name, func);
+  };
+
+  self.getLabel = function() {
+    return self.label || "";
   };
 
   self.resetColourMap = resetColourMap;

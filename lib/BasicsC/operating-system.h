@@ -96,6 +96,7 @@
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRUSAGE                  1
+#define TRI_GETRUSAGE_MAXRSS_UNIT           1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_SETGID                     1
@@ -250,6 +251,7 @@
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRUSAGE                  1
+#define TRI_GETRUSAGE_MAXRSS_UNIT           1024
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_SETGID                     1
@@ -402,6 +404,7 @@
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRUSAGE                  1
+#define TRI_GETRUSAGE_MAXRSS_UNIT           1024
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_PRCTL                      1

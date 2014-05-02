@@ -52,10 +52,6 @@ static int StringifyJson (TRI_memory_zone_t* zone,
                           TRI_string_buffer_t* buffer,
                           TRI_json_t const* object,
                           bool braces) {
-  size_t n;
-  size_t i;
-  size_t outLength;
-  char* ptr;
   int res;
 
   switch (object->_type) {
@@ -108,22 +104,10 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
       if (object->_value._string.length > 0) {
         // optimisation for the empty string
-        ptr = TRI_EscapeUtf8StringZ(zone,
-                                    object->_value._string.data,
-                                    object->_value._string.length - 1,
-                                    false,
-                                    &outLength,
-                                    false);
+        res =  TRI_AppendJsonEncodedStringStringBuffer(buffer, object->_value._string.data, false);
 
-        if (ptr == NULL) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        res = TRI_AppendString2StringBuffer(buffer, ptr, outLength);
-        TRI_Free(zone, ptr);
-  
         if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+          return TRI_ERROR_OUT_OF_MEMORY;
         }
       }
 
@@ -137,6 +121,8 @@ static int StringifyJson (TRI_memory_zone_t* zone,
     }
 
     case TRI_JSON_ARRAY: {
+      size_t i, n;
+
       if (braces) {
         res = TRI_AppendCharStringBuffer(buffer, '{');
 
@@ -187,6 +173,8 @@ static int StringifyJson (TRI_memory_zone_t* zone,
     }
 
     case TRI_JSON_LIST: {
+      size_t i, n;
+
       if (braces) {
         res = TRI_AppendCharStringBuffer(buffer, '[');
 
@@ -1053,7 +1041,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
   n = TRI_LengthStringBuffer(&buffer);
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, n);
+    ssize_t m = TRI_WRITE(fd, p, (unsigned int) n);
 
     if (m <= 0) {
       TRI_AnnihilateStringBuffer(&buffer);

@@ -1,484 +1,296 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper,dashboardView,arangoDatabase*/
+/*global window, $, Backbone, document, arangoCollectionModel*/
+/*global arangoHelper,dashboardView,arangoDatabase, _*/
 
-(function() {
-  "use strict";
+(function () {
+    "use strict";
 
-  window.Router = Backbone.Router.extend({
-    routes: {
-      ""                                    : "dashboard",
-      "dashboard"                           : "dashboard",
-      "collection/:colid"                   : "collection",
-      "collections"                         : "collections",
-      "collectionInfo/:colid"               : "collectionInfo",
-      "new"                                 : "newCollection",
-      "login"                               : "login",
-      "collection/:colid/documents/:pageid" : "documents",
-      "collection/:colid/:docid"            : "document",
-      "shell"                               : "shell",
-      "query"                               : "query",
-      "logs"                                : "logs",
-      "api"                                 : "api",
-      "databases"                           : "databases",
-      "application/installed/:key"          : "applicationEdit",
-      "application/available/:key"          : "applicationInstall",
-      "applications"                        : "applications",
-      "application/documentation/:key"      : "appDocumentation",
-      "graph"                               : "graph",
-      "graphManagement"                     : "graphManagement",
-      "graphManagement/add"                 : "graphAddNew",
-      "graphManagement/delete/:name"        : "graphDelete",
-      "userManagement"                      : "userManagement",
-      "userProfile"                         : "userProfile",
-      "testing"                             : "testview"
-    },
+    window.Router = Backbone.Router.extend({
+        routes: {
+            "": "dashboard",
+            "dashboard": "dashboard",
+            "collections": "collections",
+            "new": "newCollection",
+            "login": "login",
+            "collection/:colid/documents/:pageid": "documents",
+            "collection/:colid/:docid": "document",
+            "shell": "shell",
+            "query": "query",
+            "api": "api",
+            "databases": "databases",
+            "applications": "applications",
+            "application/documentation/:key": "appDocumentation",
+            "graph": "graph",
+            "graphManagement": "graphManagement",
+            "userManagement": "userManagement",
+            "userProfile": "userProfile",
+            "logs": "logs"
+        },
 
-    testview: function() {
-      this.testView = new window.testView();
-      this.testView.render();
-    },
-
-    initialize: function () {
-      this.bind('all', function(trigger, args) {
-          var routeData = trigger.split(":");
-          if (trigger === "route") {
-              if (this.currentRoute === "dashboard" && this.dashboardView) {
-                this.dashboardView.stopUpdating();
-              } else if (args === "dashboard") {
-                delete this.dashboardView;
-              }
-              this.currentRoute = args;
-          }
-      });
-      this.graphs = new window.GraphCollection();
-      this.notificationList = new window.NotificationCollection();
-
-      window.currentDB = new window.CurrentDatabase();
-      window.currentDB.fetch({
-        async: false
-      });
-
-      window.userCollection = new window.ArangoUsers();
-
-      window.arangoDatabase = new window.ArangoDatabase();
-
-      window.arangoCollectionsStore = new window.arangoCollections();
-      window.arangoDocumentsStore = new window.arangoDocuments();
-      window.arangoDocumentStore = new window.arangoDocument();
-
-      window.collectionsView = new window.CollectionsView({
-        collection: window.arangoCollectionsStore
-      });
-      window.arangoCollectionsStore.fetch();
-      window.documentsView = new window.DocumentsView();
-      window.documentView = new window.DocumentView({
-        collection: window.arangoDocumentStore
-      });
-      window.arangoLogsStore = new window.ArangoLogs();
-      window.arangoLogsStore.fetch({
-        success: function () {
-          window.logsView = new window.LogsView({
-            collection: window.arangoLogsStore
-          });
-        }
-      });
-
-      this.foxxList = new window.FoxxCollection();
-
-      this.footerView = new window.FooterView();
-      this.naviView = new window.NavigationView({
-        notificationCollection: this.notificationList,
-        userCollection: window.userCollection
-      });
-      this.footerView.render();
-      this.naviView.render();
-      this.graphView = new window.GraphView({
-        graphs: this.graphs,
-        collection: window.arangoCollectionsStore
-      });
-
-      this.initVersionCheck();
-
-      var self = this;
-      $(window).resize(function() {
-        self.handleResize();
-      });
-      //this.handleResize();
-    },
-
-    initVersionCheck: function () {
-      // this checks for version updates
-
-      var self = this;
-      var versionCheck = function () {
-        $.ajax({ 
-          async: true,
-          crossDomain: true,
-          dataType: "jsonp",
-          url: "https://www.arangodb.org/repositories/versions.php?callback=parseVersions",
-          success: function (json) {
-            if (typeof json !== 'object') {
-              return;
+        logs: function () {
+            if (!this.logsView) {
+                var newLogsAllCollection = new window.ArangoLogs(
+                        {upto: true, loglevel: 4}
+                    ),
+                    newLogsDebugCollection = new window.ArangoLogs(
+                        {loglevel: 4}
+                    ),
+                    newLogsInfoCollection = new window.ArangoLogs(
+                        {loglevel: 3}
+                    ),
+                    newLogsWarningCollection = new window.ArangoLogs(
+                        {loglevel: 2}
+                    ),
+                    newLogsErrorCollection = new window.ArangoLogs(
+                        {loglevel: 1}
+                    );
+                this.logsView = new window.LogsView({
+                    logall: newLogsAllCollection,
+                    logdebug: newLogsDebugCollection,
+                    loginfo: newLogsInfoCollection,
+                    logwarning: newLogsWarningCollection,
+                    logerror: newLogsErrorCollection
+                });
             }
+            this.logsView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
 
-            // turn our own version string into a version object
-            var currentVersion = window.versionHelper.fromString(self.footerView.system.version);
- 
-            // get our mainline version
-            var mainLine = window.versionHelper.toStringMainLine(currentVersion);
-            
-            var mainLines = Object.keys(json).sort(window.versionHelper.compareVersionStrings);
-            var latestMainLine;
-            mainLines.forEach(function (l) {
-              if (json[l].stable) {
-                if (window.versionHelper.compareVersionStrings(l, mainLine) > 0) {
-                  latestMainLine = json[l];
-                } 
-              }
+        initialize: function () {
+            // This should be the only global object
+            window.modalView = new window.ModalView();
+            var self = this;
+
+            this.currentDB = new window.CurrentDatabase();
+            this.currentDB.fetch({
+                async: false
             });
-            
-            var update;
-            var mainLineVersions;
-            var latest;
-            if (latestMainLine !== undefined &&
-                Object.keys(latestMainLine.versions.length > 0)) {
-              mainLineVersions = Object.keys(latestMainLine.versions);
-              mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
-              latest = mainLineVersions[mainLineVersions.length - 1];
 
-              update = {
-                type: "major", 
-                version: latest,
-                changes: latestMainLine.versions[latest].changes
-              }; 
+            this.userCollection = new window.ArangoUsers();
+
+            this.arangoCollectionsStore = new window.arangoCollections();
+            this.arangoDocumentStore = new window.arangoDocument();
+            arangoHelper.setDocumentStore(this.arangoDocumentStore);
+
+            this.arangoCollectionsStore.fetch();
+            this.foxxList = new window.FoxxCollection();
+
+            this.footerView = new window.FooterView();
+            this.notificationList = new window.NotificationCollection();
+            this.naviView = new window.NavigationView({
+                database: new window.ArangoDatabase(
+                  [],
+                  {shouldFetchUser: true}
+                ),
+                currentDB: this.currentDB,
+                notificationCollection: new window.NotificationCollection(),
+                userCollection: this.userCollection
+            });
+            this.footerView.render();
+            this.naviView.render();
+
+            $(window).resize(function () {
+                self.handleResize();
+            });
+            window.checkVersion();
+        },
+
+        checkUser: function () {
+            if (this.userCollection.models.length === 0) {
+                this.navigate("login", {trigger: true});
+                return false;
             }
+            return true;
+        },
 
-            // check which stable mainline versions are available remotely
-            if (update === undefined && 
-                json.hasOwnProperty(mainLine) && 
-                json[mainLine].stable &&
-                json[mainLine].hasOwnProperty("versions") &&
-                Object.keys(json[mainLine].versions).length > 0) {
-              // sort by version numbers
-              mainLineVersions = Object.keys(json[mainLine].versions);
-              mainLineVersions = mainLineVersions.sort(window.versionHelper.compareVersionStrings);
-              latest = mainLineVersions[mainLineVersions.length - 1];
-
-              var result = window.versionHelper.compareVersions(
-                currentVersion, 
-                window.versionHelper.fromString(latest)
-              );
-              if (result < 0) {
-                update = {
-                  type: "minor", 
-                  version: latest,
-                  changes: json[mainLine].versions[latest].changes
-                }; 
-              }
+        login: function () {
+            if (!this.loginView) {
+                this.loginView = new window.loginView({
+                    collection: this.userCollection
+                });
             }
+            this.loginView.render();
+            this.naviView.selectMenuItem('');
+        },
 
-            if (update !== undefined) {
-              var msg = "A newer version of ArangoDB (" + update.version + 
-                        ") has become available. You may want to check the " +
-                        "changelog at <a href=\"" + update.changes + "\">" + 
-                        update.changes + "</a>";
-              arangoHelper.arangoNotification(msg, 15000);
-
+        collections: function () {
+            var naviView = this.naviView, self = this;
+            if (!this.collectionsView) {
+                this.collectionsView = new window.CollectionsView({
+                    collection: this.arangoCollectionsStore
+                });
             }
-          },
-          error: function () {  
-            // re-schedule the version check
-            window.setTimeout(versionCheck, 60000);
+            this.arangoCollectionsStore.fetch({
+                success: function () {
+                    self.collectionsView.render();
+                    naviView.selectMenuItem('collections-menu');
+                }
+            });
+        },
+
+        documents: function (colid, pageid) {
+            if (!this.documentsView) {
+                this.documentsView = new window.DocumentsView({
+                    collection: new window.arangoDocuments(),
+                    documentStore: this.arangoDocumentStore,
+                    collectionsStore: this.arangoCollectionsStore
+                });
+            }
+            this.documentsView.setCollectionId(colid, pageid);
+            this.documentsView.render();
+
+        },
+
+        document: function (colid, docid) {
+            if (!this.documentView) {
+                this.documentView = new window.DocumentView({
+                    collection: this.arangoDocumentStore
+                });
+            }
+            this.documentView.colid = colid;
+            this.documentView.docid = docid;
+            this.documentView.render();
+            var type = arangoHelper.collectionApiType(colid);
+            this.documentView.type = type;
+            this.documentView.typeCheck(type);
+        },
+
+        shell: function () {
+            if (!this.shellView) {
+                this.shellView = new window.shellView();
+            }
+            this.shellView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
+
+        query: function () {
+            if (!this.queryView) {
+                this.queryView = new window.queryView();
+            }
+            this.queryView.render();
+            this.naviView.selectMenuItem('query-menu');
+        },
+
+        api: function () {
+            if (!this.apiView) {
+                this.apiView = new window.ApiView();
+            }
+            this.apiView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
+
+        databases: function () {
+          if (arangoHelper.databaseAllowed() === true) {
+            if (!this.databaseView) {
+              this.databaseView = new window.databaseView({
+                collection: new window.ArangoDatabase(
+                [],
+                {
+                  shouldFetchUser: false
+                })
+              });
+            }
+            this.databaseView.render();
+            this.naviView.selectMenuItem('databases-menu');
           }
-        });
-      };
+          else {
+            this.navigate("#", {trigger: true});
+            this.naviView.selectMenuItem('dashboard-menu');
+            $('#databaseNavi').css('display', 'none');
+            $('#databaseNaviSelect').css('display', 'none');
+          }
+        },
 
-      window.setTimeout(versionCheck, 5000);
-    },
+        dashboard: function () {
+            this.naviView.selectMenuItem('dashboard-menu');
+            if (this.dashboardView === undefined) {
+                this.dashboardView = new window.DashboardView({
+                    dygraphConfig: window.dygraphConfig
+                });
+            }
+            this.dashboardView.render();
+        },
 
-    logsAllowed: function () {
-      return (window.currentDB.get('name') === '_system');
-    },
+        graph: function () {
+            var self = this;
+            if (!this.graphView) {
+                this.graphView = new window.GraphView({
+                    graphs: new window.GraphCollection(),
+                    collection: this.arangoCollectionsStore
+                });
+            }
+            this.arangoCollectionsStore.fetch({
+                success: function () {
+                    self.graphView.render();
+                    self.naviView.selectMenuItem('graphviewer-menu');
+                }
+            });
+        },
 
-    checkUser: function () {
-      if (window.userCollection.models.length === 0) {
-        this.navigate("login", {trigger: true});
-        return false;
-      }
-      return true;
-    },
+        graphManagement: function () {
+            if (!this.graphManagementView) {
+                this.graphManagementView =
+                    new window.GraphManagementView({collection: new window.GraphCollection()});
+            }
+            this.graphManagementView.render();
+            this.naviView.selectMenuItem('graphviewer-menu');
+        },
 
-    login: function () {
-      if (!this.loginView) {
-        this.loginView = new window.loginView({
-          collection: window.userCollection
-        });
-      }
-      this.loginView.render();
-      this.naviView.selectMenuItem('');
-    },
+        applications: function () {
+            if (this.applicationsView === undefined) {
+                this.applicationsView = new window.ApplicationsView({
+                    collection: this.foxxList
+                });
+            }
+            this.applicationsView.reload();
+            this.naviView.selectMenuItem('applications-menu');
+        },
 
-    collections: function() {
-      var naviView = this.naviView;
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          window.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
+        appDocumentation: function (key) {
+            var docuView = new window.AppDocumentationView({key: key});
+            docuView.render();
+            this.naviView.selectMenuItem('applications-menu');
+        },
+
+        handleSelectDatabase: function () {
+            this.naviView.handleSelectDatabase();
+        },
+
+        handleResize: function () {
+            if (this.dashboardView) {
+                this.dashboardView.resize();
+            }
+            var oldWidth = $('#content').width();
+            var containerWidth = $(window).width() - 70;
+            /*var spanWidth = 242;*/
+            var spanWidth = 243;
+            var divider = containerWidth / spanWidth;
+            var roundDiv = parseInt(divider, 10);
+            var newWidth = roundDiv * spanWidth - 2;
+            if (newWidth !== oldWidth && this.graphView) {
+                this.graphView.handleResize(newWidth);
+            }
+        },
+
+        userManagement: function () {
+            if (!this.userManagementView) {
+                this.userManagementView = new window.userManagementView({
+                    collection: this.userCollection
+                });
+            }
+            this.userManagementView.render();
+            this.naviView.selectMenuItem('tools-menu');
+        },
+
+        userProfile: function () {
+            if (!this.userManagementView) {
+                this.userManagementView = new window.userManagementView({
+                    collection: this.userCollection
+                });
+            }
+            this.userManagementView.render(true);
+            this.naviView.selectMenuItem('tools-menu');
         }
-      });
-    },
-
-    collection: function(colid) {
-      if (!this.collectionView) {
-        this.collectionView = new window.CollectionView();
-      }
-      this.collectionView.setColId(colid);
-      this.collectionView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
-    collectionInfo: function(colid) {
-      if (!this.collectionInfoView) {
-        this.collectionInfoView = new window.CollectionInfoView();
-      }
-      this.collectionInfoView.setColId(colid);
-      this.collectionInfoView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
-    newCollection: function() {
-      if (!this.newCollectionView) {
-        this.newCollectionView = new window.newCollectionView({});
-      }
-      this.newCollectionView.render();
-      this.naviView.selectMenuItem('collections-menu');
-    },
-
-    documents: function(colid, pageid) {
-      if (!window.documentsView) {
-        window.documentsView.initTable(colid, pageid);
-      }
-      window.documentsView.collectionID = colid;
-      var type = arangoHelper.collectionApiType(colid);
-      window.documentsView.colid = colid;
-      window.documentsView.pageid = pageid;
-      window.documentsView.type = type;
-      window.documentsView.render();
-      window.arangoDocumentsStore.getDocuments(colid, pageid);
-    },
-
-    document: function(colid, docid) {
-      window.documentView.colid = colid;
-      window.documentView.docid = docid;
-      window.documentView.render();
-      var type = arangoHelper.collectionApiType(colid);
-      window.documentView.type = type;
-      window.documentView.typeCheck(type);
-    },
-
-    shell: function() {
-      if (!this.shellView) {
-        this.shellView = new window.shellView();
-      }
-      this.shellView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    query: function() {
-      if (!this.queryView) {
-        this.queryView = new window.queryView();
-      }
-      this.queryView.render();
-      this.naviView.selectMenuItem('query-menu');
-    },
-
-    api: function() {
-      if (!this.apiView) {
-        this.apiView = new window.apiView();
-      }
-      this.apiView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    databases: function() {
-      if (arangoHelper.databaseAllowed() === true) {
-        if (!this.databaseView) {
-          this.databaseView = new window.databaseView({
-            collection: arangoDatabase
-          });
-        }
-        this.databaseView.render();
-        this.naviView.selectMenuItem('databases-menu');
-      }
-      else {
-        this.navigate("#", {trigger: true});
-        this.naviView.selectMenuItem('dashboard-menu');
-        $('#databaseNavi').css('display','none');
-        $('#databaseNaviSelect').css('display','none');
-      }
-    },
-
-    logs: function() {
-      if (! this.logsAllowed()) {
-        this.navigate('', { trigger: true });
-        return;
-      }
-
-      window.arangoLogsStore.fetch({
-        success: function () {
-          window.logsView.render();
-          $('#logNav a[href="#all"]').tab('show');
-          window.logsView.initLogTables();
-          window.logsView.drawTable();
-          $('#all-switch').click();
-        }
-      });
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    dashboard: function() {
-      this.naviView.selectMenuItem('dashboard-menu');
-      if (this.statisticsDescription === undefined) {
-        this.statisticsDescription = new window.StatisticsDescription();
-        this.statisticsDescription.fetch({
-          async:false
-        });
-      }
-      if (this.statistics === undefined) {
-        this.statisticsCollection = new window.StatisticsCollection();
-      }
-      if (this.dashboardView === undefined) {
-        this.dashboardView = new dashboardView({
-          collection: this.statisticsCollection,
-          description: this.statisticsDescription,
-          documentStore: window.arangoDocumentsStore,
-          dygraphConfig : window.dygraphConfig
-        });
-      }
-      this.dashboardView.render();
-    },
-
-    graph: function() {
-      var self = this;
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          self.graphView.render();
-          self.naviView.selectMenuItem('graphviewer-menu');
-        }
-      });
-    },
-
-    graphManagement: function() {
-      if (!this.graphManagementView) {
-        this.graphManagementView = new window.GraphManagementView({collection: this.graphs});
-      }
-      this.graphManagementView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    graphAddNew: function() {
-      if (!this.addNewGraphView) {
-        this.addNewGraphView = new window.AddNewGraphView({
-          collection: window.arangoCollectionsStore,
-          graphs: this.graphs
-        });
-      }
-      this.addNewGraphView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    graphDelete: function(name) {
-      if (!this.deleteGraphView) {
-        this.deleteGraphView = new window.DeleteGraphView({
-          collection: this.graphs
-        });
-      }
-      this.deleteGraphView.render(name);
-      this.naviView.selectMenuItem('graphviewer-menu');
-    },
-
-    applications: function() {
-      if (this.applicationsView === undefined) {
-        this.applicationsView = new window.ApplicationsView({
-          collection: this.foxxList
-        });
-      }
-      this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    applicationEdit: function(appkey) {
-      this.foxxList.fetch({
-        async: false
-      });
-      var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
-      editAppView.render();
-    },
-
-    applicationInstall: function(appkey) {
-      this.foxxList.fetch({
-        async: false
-      });
-      if (!this.installAppView) {
-        this.installAppView = new window.foxxMountView({
-          collection: this.foxxList
-        });
-      }
-      this.installAppView.render(appkey);
-    },
-
-    appDocumentation: function(key) {
-      var docuView = new window.AppDocumentationView({key: key});
-      docuView.render();
-      this.naviView.selectMenuItem('applications-menu');
-    },
-
-    handleSelectDatabase: function () {
-      this.naviView.handleSelectDatabase();
-    },
-
-    handleResize: function () {
-      if (this.dashboardView) {
-          this.dashboardView.resize();
-      }
-      var oldWidth = $('#content').width();
-      var containerWidth = $(window).width() - 70;
-      /*var spanWidth = 242;*/
-      var spanWidth = 243;
-      var divider = containerWidth / spanWidth;
-      var roundDiv = parseInt(divider, 10);
-      var newWidth = roundDiv*spanWidth -2;
-      var marginWidth = ((containerWidth+30) - newWidth)/2;
-      /*
-      $('#content').width(newWidth)
-      .css('margin-left', marginWidth)
-      .css('margin-right', marginWidth);
-      */
-      // $('.footer-right p').css('margin-right', marginWidth + 20);
-      // $('.footer-left p').css('margin-left', marginWidth + 20);
-      if (newWidth !== oldWidth) {
-        this.graphView.handleResize(newWidth);
-      }
-    },
-
-    userManagement: function() {
-      if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
-          collection: window.userCollection
-        });
-      }
-      this.userManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    userProfile: function() {
-      if (!this.userProfileView) {
-        this.userProfileView = new window.userProfileView({
-          collection: window.userCollection
-        });
-      }
-      this.userProfileView.render();
-      this.naviView.selectMenuItem('user-menu');
-    }
-
-  });
+    });
 
 }());

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandler.h"
@@ -39,11 +39,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler
@@ -69,18 +64,9 @@ HttpHandler::~HttpHandler () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response
@@ -110,18 +96,9 @@ HttpRequest* HttpHandler::stealRequest () {
   return tmp;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -130,6 +107,7 @@ HttpRequest* HttpHandler::stealRequest () {
 Job* HttpHandler::createJob (AsyncJobServer* server,
                              bool isDetached) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
+
   // check if we are an HTTP server at all
   if (httpServer != 0) {
     return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this, isDetached);
@@ -137,6 +115,7 @@ Job* HttpHandler::createJob (AsyncJobServer* server,
 
   // check if we are an HTTPs server at all
   HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
+
   if (httpsServer != 0) {
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
   }
@@ -145,18 +124,9 @@ Job* HttpHandler::createJob (AsyncJobServer* server,
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure the handler has only one response, otherwise we'd have a leak
@@ -174,16 +144,21 @@ void HttpHandler::removePreviousResponse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
+
   // avoid having multiple responses. this would be a memleak
   removePreviousResponse();
 
-  // otherwise, we return a "standard" (standalone) Http response
-  return new HttpResponse(code);
-}
+  int32_t apiCompatibility;
+  if (this->_request != 0) {
+    apiCompatibility = this->_request->compatibility();
+  }
+  else {
+    apiCompatibility = HttpRequest::MinCompatibility;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  // otherwise, we return a "standard" (standalone) Http response
+  return new HttpResponse(code, apiCompatibility);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

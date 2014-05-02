@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, templateEngine, $, window*/
+/*global Backbone, templateEngine, $, window, arangoHelper*/
 (function () {
   "use strict";
   window.NavigationView = Backbone.View.extend({
@@ -14,17 +14,21 @@
 
     initialize: function () {
       this.userCollection = this.options.userCollection;
+      this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: window.arangoDatabase,
-        current: window.currentDB
+        collection: this.options.database,
+        current: this.currentDB
       });
       this.userBarView = new window.UserBarView({
-        userCollection: window.userCollection
+        userCollection: this.userCollection
       });
       this.notificationView = new window.NotificationView({
         collection: this.options.notificationCollection
       });
-      this.statisticBarView = new window.StatisticBarView({});
+      this.statisticBarView = new window.StatisticBarView({
+          currentDB: this.currentDB
+      });
+      this.handleKeyboardHotkeys();
     },
 
     handleSelectDatabase: function () {
@@ -35,7 +39,7 @@
 
     render: function () {
       $(this.el).html(this.template.render({
-        isSystem: window.currentDB.get("isSystem")
+        isSystem: this.currentDB.get("isSystem")
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
@@ -49,6 +53,10 @@
     navigateBySelect: function () {
       var navigateTo = $("#arangoCollectionSelect").find("option:selected").val();
       window.App.navigate(navigateTo, {trigger: true});
+    },
+
+    handleKeyboardHotkeys: function () {
+      arangoHelper.enableKeyboardHotkeys(true);
     },
 
     navigateByTab: function (e) {

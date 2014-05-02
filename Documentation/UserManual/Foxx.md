@@ -71,8 +71,10 @@ same ArangoDB instance.
 
 Let's assume for now that you are working in the default database (`_system`), that
 is used when no database name is specified otherwise. To use Foxx applications with
-the `_system`, create a sub-directory `_system` inside the `databases` subdirectory.
-All Foxx applications for the `_system` database will go into this directory.
+the `_system` database, create a sub-directory `_system` inside the `databases` 
+subdirectory. All Foxx applications for the `_system` database will go into this 
+directory. Note: to add a Foxx application for a different databases than `_system`, 
+use the database's name as the directory name instead of `_system`.
 
 Finally, we can add a sub-directory `my_app` in the `_system` directory and should
 end up with the following directory layout (starting at `/home/user` in our example):
@@ -144,7 +146,7 @@ application files on every request, so changes to the underlying files are
 visible instantly. 
 Note: if you use the development mode for the first time or choose a different
 directory for `dev-app-path`, it may be necessary to start ArangoDB with the
-`--upgrade` option once. This will initialise the specified application directory.
+`--upgrade` option once. This will initialize the specified application directory.
 
 Note: the development mode is convenient when developing applications but the
 permanent reloading has an impact on performance. Therefore permanent reloading is
@@ -153,7 +155,14 @@ your application is ready for production, you can install it using the Foxx mana
 and avoid the overhead of reloading.
 
 Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
-see "Hello YourName".  
+see "Hello YourName". 
+
+Note: the above and all following examples assume that you are using the default 
+database (`_system`).If you use a different database than `_system`, URLs must be 
+changed to include the database name, too. For example, if your database name is 
+`mydb`, the above URL changes to `http://localhost:8529/_db/mydb/dev/my_app/hello/YourName`. 
+For more information on how to access specific databases, please refer to 
+@ref HttpDatabaseAddress. 
 
 After this short overview, let's get into the details. There are several example
 apps available on Github. You can install them via Foxx manager (covered in the
@@ -162,7 +171,7 @@ chapter on Foxx manager) or simply clone them from `https://github.com/arangodb/
 Start with "hello-foxx" (`https://github.com/arangodb/hello-foxx`) as it contains
 several basic usage examples. "aye-aye" and "fugu" are more advanced apps showing how
 to use Backbone, Underscore and Jquery together with Foxx. "foxx-authentication" shows 
-how to register users, login and check permissions.
+how to register users, log in and check permissions.
 
 Handling Requests{#UserManualFoxxHandlingRequests}
 ==================================================
@@ -177,13 +186,13 @@ In our example, `<directory name>` was `my_app` and as we didn't specify a
 database, `<database name>` defaulted to `_system`.
 
 When applications are installed in production mode, you can change the `/dev` 
-prefix to whatever you like, see @ref UserManualFoxxManager.
+prefix to whatever you like, see @ref UserManualFoxxManager.  
 
 If you do not redefine it, all requests that go to the root of your 
 application (i.e. `/`) will be redirected to `index.html`.
 
 This means that if your application does not provide a file `index.html`, 
-calling the application root URL my result in a 404 error.
+calling the application root URL may result in a 404 error.
 In our example, the application root URL is `http://localhost:8529/dev/my_app/hello/`.
 Call it, and you should something like this in return:
 
@@ -851,6 +860,10 @@ your controller:
 ### Adding a register route
 
 @copydetails JSF_foxx_controller_register
+
+### Adding a change password route
+
+@copydetails JSF_foxx_controller_changePassword
 
 ### Restricting routes
 

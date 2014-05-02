@@ -382,6 +382,11 @@ void ArangoClient::parse (ProgramOptions& options,
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
+  if (options.has("server.username")) {
+    // if a username is specified explicitly, assume authentication is desired
+    _disableAuthentication = false;
+  }
+
   // check if have a password
   _hasPassword = options.has("server.password") 
               || _disableAuthentication
@@ -484,8 +489,8 @@ void ArangoClient::printErrLine (const string& s) {
 
 void ArangoClient::_printLine(const string &s) {
 #ifdef _WIN32
-  LPWSTR wBuf = (LPWSTR)TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
-  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (sizeof WCHAR)* (s.size() + 1));
+  LPWSTR wBuf = (LPWSTR) TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
+  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (int) ((sizeof WCHAR) * (s.size() + 1)));
 
   if (wLen) {
     DWORD n;
@@ -494,12 +499,7 @@ void ArangoClient::_printLine(const string &s) {
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
     pos = bufferInfo.dwCursorPosition;
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
-    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, s.size(), pos, &n);
-    // Workaround recomended by 
-    // http://social.msdn.microsoft.com/Forums/de-DE/c16846a3-eb27-4698-80a5-6c4ecf92a799/aus-der-msdnhotline-deutsche-umlaute-in-der-console-anzeigen-standard-c?forum=visualcplusde
-    // but it does not work
-    // std::locale::global(std::locale("German_germany"));
-    // std::cout << "esteban: " << s;
+    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, (DWORD) s.size(), pos, &n);
   }
   else {
     fprintf(stdout, "window error: '%d' \r\n", GetLastError());
@@ -514,12 +514,12 @@ void ArangoClient::_printLine(const string &s) {
 
 void ArangoClient::printLine (const string& s, bool forceNewLine) {
 #ifdef _WIN32
-  // no, we can use std::cout as this doesn't support UTF-8 on Windows
+  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
   //fprintf(stdout, "%s\r\n", s.c_str());
   TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
   bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
   if (hasNewLines) {
-    for (int i = 0; i < subStrings._length; i++) {
+    for (size_t i = 0; i < subStrings._length; i++) {
       _printLine(subStrings._buffer[i]);
       _newLine();
     }
@@ -534,13 +534,15 @@ void ArangoClient::printLine (const string& s, bool forceNewLine) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a string to stdout, without a newline
+/// @brief prints a string to stdout, without a newline (Non-Windows only)
+/// on Windows, we'll print the line and a newline
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::printContinuous (const string& s) {
-  // no, we can use std::cout as this doesn't support UTF-8 on Windows
+  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
 #ifdef _WIN32
-  printLine(s);
+  // On Windows, we just print the line followed by a newline
+  printLine(s, true);
 #else
   fprintf(stdout, "%s", s.c_str());
   fflush(stdout);

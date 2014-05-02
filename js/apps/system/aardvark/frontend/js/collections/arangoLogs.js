@@ -1,88 +1,50 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, $, arangoLog */
+/*global window, $, _ */
 (function () {
 
   "use strict";
-  
-  window.ArangoLogs = Backbone.Collection.extend({
-    url: '/_admin/log?upto=4&size=10&offset=0',
+
+  window.ArangoLogs = window.PaginatedCollection.extend({
+    upto: false,
+    loglevel: 0,
+
     parse: function(response) {
       var myResponse = [];
-      var i = 0;
-      $.each(response.lid, function(key, val) {
+      _.each(response.lid, function(val, i) {
         myResponse.push({
-          "level": response.level[i],
-          "lid": response.lid[i],
-          "text": response.text[i],
-          "timestamp": response.timestamp[i],
-          "totalAmount": response.totalAmount
+          level: response.level[i],
+          lid: val,
+          text: response.text[i],
+          timestamp: response.timestamp[i],
+          totalAmount: response.totalAmount
         });
-        i++;
       });
+      this.totalAmount = response.totalAmount;
       return myResponse;
     },
-    tables: ["logTableID", "warnTableID", "infoTableID", "debugTableID", "critTableID"],
-    model: arangoLog,
-    clearLocalStorage: function () {
-      window.arangoLogsStore.reset();
-    },
-    returnElements: function () {
-    },
-    fillLocalStorage: function (table, offset, size) {
-      this.clearLocalStorage();
-      if (! table) {
-        table = 'logTableID';
-      }
-      if (! size) {
-        size = 10;
-      }
-      if (! offset) {
-        offset = 0;
-      }
 
-      var loglevel = this.showLogLevel(table);
-      var url = "";
-      if (loglevel === 5) {
-        url = "/_admin/log?upto=4";
+    initialize: function(options) {
+      if (options.upto === true) {
+        this.upto = true;
       }
-      else {
-        url = "/_admin/log?level=" + loglevel;
-      }
-      url = url + "&size=" + size + "&offset=" + offset;
-      $.getJSON(url, function(response) {
-        var i = 0;
-        $.each(response.lid, function () {
-          window.arangoLogsStore.add({
-            "level": response.level[i],
-            "lid": response.lid[i],
-            "text": response.text[i],
-            "timestamp": response.timestamp[i],
-            "totalAmount": response.totalAmount
-          });
-          i++;
-        });
-        window.logsView.drawTable();
-      });
+      this.loglevel = options.loglevel;
     },
-    showLogLevel: function (tableid) {
-      tableid = '#'+tableid;
-      var returnVal = 0;
-      if (tableid === "#critTableID") {
-        returnVal = 1;
+
+    model: window.newArangoLog,
+
+    url: function() {
+      var type, rtnStr, offset;
+      offset = this.page * this.pagesize;
+
+      if (this.upto) {
+        type = 'upto';
       }
-      else if (tableid === "#warnTableID") {
-        returnVal = 2;
+      else  {
+        type = 'level';
       }
-      else if (tableid === "#infoTableID") {
-        returnVal = 3;
-      }
-      else if (tableid === "#debugTableID") {
-        returnVal = 4;
-      }
-      else if (tableid === "#logTableID") {
-        returnVal = 5;
-      }
-      return returnVal;
+      rtnStr = '/_admin/log?'+type+'='+this.loglevel+'&size='+this.pagesize+'&offset='+offset;
+      return rtnStr;
     }
+
   });
 }());

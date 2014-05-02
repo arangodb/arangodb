@@ -75,6 +75,7 @@ add_library(
     BasicsC/csv.c
     BasicsC/debugging.c
     BasicsC/error.c
+    BasicsC/fasthash.c
     BasicsC/files.c
     BasicsC/hashes.c
     BasicsC/init.c
@@ -85,6 +86,7 @@ add_library(
     BasicsC/memory.c
     BasicsC/mersenne.c
     BasicsC/mimetypes.c
+    BasicsC/prime-numbers.c
     BasicsC/process-utils.c
     BasicsC/random.c
     BasicsC/skip-list.c
@@ -99,6 +101,7 @@ add_library(
     BasicsC/voc-errors.c
     BasicsC/voc-mimetypes.c
     BasicsC/tri-zip.c
+    BasicsC/xxhash.c
     JsonParser/json-parser.c
     ProgramOptions/program-options.c
     Rest/AnyServer.cpp
@@ -113,10 +116,9 @@ add_library(
     Rest/InitialiseRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
-    Rest/Url.cpp
-    ShapedJson/json-shaper.c
-    ShapedJson/shape-accessor.c
-    ShapedJson/shaped-json.c
+    ShapedJson/json-shaper.cpp
+    ShapedJson/shape-accessor.cpp
+    ShapedJson/shaped-json.cpp
     Statistics/statistics.cpp
     Utilities/ScriptLoader.cpp
     Zip/ioapi.c

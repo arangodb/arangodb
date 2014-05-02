@@ -14,8 +14,12 @@
     beforeEach(function() {
       curName = "_system";
       isSystem = true;
-      oldRouter = window.App;
-      window.App = {navigate : function(){}};
+      window.App = {
+        navigate: function() {
+          throw "This should be a spy";
+        }
+      };
+      spyOn(window.App, "navigate");
 
       window.currentDB = window.currentDB || {
         get: function() {}
@@ -68,20 +72,21 @@
 
     afterEach(function() {
       document.body.removeChild(div);
-      window.App = oldRouter;
+      delete window.App;
     });
 
     describe("in any database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
 
       it("should offer a collections tab", function() {
         var tab = $("#collections", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("collections", {trigger: true});
       });
@@ -89,7 +94,6 @@
       it("should offer a applications tab", function() {
         var tab = $("#applications", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("applications", {trigger: true});
       });
@@ -97,7 +101,6 @@
       it("should offer a graph tab", function() {
         var tab = $("#graph", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("graph", {trigger: true});
       });
@@ -105,7 +108,6 @@
       it("should offer an aql editor tab", function() {
         var tab = $("#query", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("query", {trigger: true});
       });
@@ -113,7 +115,6 @@
       it("should offer an api tab", function() {
         var tab = $("#api", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("api", {trigger: true});
       });
@@ -122,7 +123,6 @@
       it("should offer a graph tab", function() {
         var tab = $("#graph", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("graph", {trigger: true});
       });
@@ -132,14 +132,15 @@
     describe("in _system database", function() {
 
       beforeEach(function() {
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
 
       it("should offer a logs tab", function() {
         var tab = $("#logs", $(div));
         expect(tab.length).toEqual(1);
-        spyOn(window.App, "navigate");
         tab.click();
         expect(window.App.navigate).toHaveBeenCalledWith("logs", {trigger: true});
       });
@@ -150,7 +151,9 @@
       beforeEach(function() {
         curName = "firstDB";
         isSystem = false;
-        view = new window.NavigationView({userCollection : UserCollectionDummy});
+        view = new window.NavigationView(
+            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+        );
         view.render();
       });
       

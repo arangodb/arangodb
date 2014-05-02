@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global Backbone, $, _, window, templateEngine*/
+/*global Backbone, $, _, window, templateEngine, arangoHelper*/
 
 (function() {
   "use strict";
@@ -19,13 +19,24 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      window.App.navigate("graphManagement/add", {trigger: true});
+      this.createNewGraphModal();
     },
 
     deleteGraph: function(e) {
-      $('#editGraphModal').modal('hide');
-      var key = this.graphToEdit;
-      window.App.navigate("graphManagement/delete/" + key, {trigger: true});
+      var self = this;
+      var name = $('#editGraphName').html();
+      this.collection.get(name).destroy({
+        success: function() {
+          self.updateGraphManagementView();
+          window.modalView.hide();
+        },
+        error: function(xhr, err) {
+          var response = JSON.parse(err.responseText),
+            msg = response.errorMessage;
+          arangoHelper.arangoError(msg);
+          window.modalView.hide();
+        }
+      });
     },
 
     render: function() {
@@ -42,22 +53,20 @@
     editGraph : function(e) {
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
-      $('#editGraphModal').modal('show');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
-      $('#editGraphName').html(this.graphToEdit);
-      $('#editVertices').html(graph.get("vertices"));
-      $('#editEdges').html(graph.get("edges"));
+      this.createEditGraphModal(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
     },
 
     info : function(e) {
       this.collection.fetch();
-      $('#infoGraphModal').modal('show');
       var graph = this.collection.findWhere(
         {_key: this.evaluateGraphName($(e.currentTarget).attr("id"), '_info')}
       );
-      $('#infoGraphName').html(graph.get('_key'));
-      $('#infoVertices').html(graph.get('vertices'));
-      $('#infoEdges').html(graph.get('edges'));
+      this.createInfoGraphModal(
+        graph.get('_key'),
+        graph.get('vertices'),
+        graph.get('edges')
+      );
     },
 
     evaluateGraphName : function(str, substr) {
@@ -89,9 +98,172 @@
       strLength= searchInput.val().length;
       searchInput.focus();
       searchInput[0].setSelectionRange(strLength, strLength);
+    },
+
+    updateGraphManagementView: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.render();
+        }
+      });
+    },
+
+    createNewGraph: function() {
+      var _key = $("#createNewGraphName").val(),
+        vertices = $("#newGraphVertices").val(),
+        edges = $("#newGraphEdges").val(),
+        self = this;
+      if (!_key) {
+        arangoHelper.arangoNotification(
+          "A name for the graph has to be provided."
+        );
+        return;
+      }
+      if (!vertices) {
+        arangoHelper.arangoNotification(
+          "A vertex collection has to be provided."
+        );
+        return;
+      }
+      if (!edges) {
+        arangoHelper.arangoNotification(
+          "An edge collection has to be provided."
+        );
+        return;
+      }
+      this.collection.create({
+        _key: _key,
+        vertices: vertices,
+        edges: edges
+      }, {
+        success: function() {
+          self.updateGraphManagementView();
+          window.modalView.hide();
+        },
+        error: function(obj, err) {
+          var response = JSON.parse(err.responseText),
+            msg = response.errorMessage;
+          // Gritter does not display <>
+          msg = msg.replace("<", "");
+          msg = msg.replace(">", "");
+          arangoHelper.arangoError(msg);
+        }
+      });
+    },
+
+    createNewGraphModal: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "createNewGraphName",
+          "Name",
+          "",
+          "The name to identify the graph. Has to be unique.",
+          "graphName",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newGraphVertices",
+          "Vertices",
+          "",
+          "The path name of the document collection that should be used as vertices. "
+            + "If this does not exist it will be created.",
+          "Vertex Collection",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newGraphEdges",
+          "Edges",
+          "",
+          "The path name of the edge collection that should be used as edges. "
+            + "If this does not exist it will be created.",
+          "Edge Collection",
+          true
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Add new Graph", buttons, tableContent);
+    },
+
+    createEditGraphModal: function(name, vertices, edges) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editGraphName",
+          "Name",
+          name,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editVertices",
+          "Vertices",
+          vertices,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editEdges",
+          "Edges",
+          edges,
+          false
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Edit Graph", buttons, tableContent);
+
+    },
+
+    createInfoGraphModal: function(name, vertices, edges) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "infoGraphName",
+          "Name",
+          name,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "infoVertices",
+          "Vertices",
+          vertices,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "infoEdges",
+          "Edges",
+          edges,
+          false
+        )
+      );
+
+      window.modalView.show("modalTable.ejs", "Graph Properties", buttons, tableContent);
+
     }
 
-
   });
-
 }());

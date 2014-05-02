@@ -144,8 +144,7 @@ TRI_tid_t TRI_CurrentThreadId () {
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(void*), void* data) {
-  DWORD threadId;
+bool TRI_StartThread (TRI_thread_t* thread, TRI_tid_t* threadId, const char* name, void (*starter)(void*), void* data) {
   thread_data_t* d;
 
   d = (thread_data_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
@@ -163,7 +162,7 @@ bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(v
                          ThreadStarter, // thread function name
                          d, // argument to thread function
                          0, // use default creation flags
-                         &threadId); // returns the thread identifier
+                         threadId); // returns the thread identifier
 
   if (*thread == 0) {
     TRI_Free(TRI_CORE_MEM_ZONE, d);

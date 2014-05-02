@@ -11,4 +11,5 @@ window.StatisticsDescription = Backbone.Model.extend({
 
     return "/_admin/statistics-description";
   }
+
 });

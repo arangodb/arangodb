@@ -64,7 +64,7 @@ files = {
   "js/actions/api-system.js" : "system",
   "js/actions/api-transaction.js" : "transaction",
   "js/actions/api-traversal.js" : "traversal",
-  "js/actions/api-user.js" : "user",
+  "Documentation/ImplementorManual/HttpUser.md" : "user",
   "lib/Admin/RestVersionHandler.cpp" : "version"
 }
 

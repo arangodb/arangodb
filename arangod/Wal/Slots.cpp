@@ -28,7 +28,10 @@
 #include "Slots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
+#include "VocBase/datafile.h"
+#include "VocBase/marker.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -47,7 +50,6 @@ Slots::Slots (LogfileManager* logfileManager,
   : _logfileManager(logfileManager),
     _condition(),
     _lock(),
-    _lastTick(tick),
     _slots(numberOfSlots),
     _numberOfSlots(numberOfSlots),
     _freeSlots(numberOfSlots),
@@ -55,6 +57,8 @@ Slots::Slots (LogfileManager* logfileManager,
     _handoutIndex(0),
     _recycleIndex(0), 
     _logfile(nullptr),
+    _lastAssignedTick(tick),
+    _lastCommittedTick(0),
     _readOnly(false) {
 
   for (size_t i = 0; i < _numberOfSlots; ++i) {
@@ -83,23 +87,32 @@ Slots::~Slots () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the last tick
+/// @brief sets the last assigned tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::setLastTick (Slot::TickType tick) {
+void Slots::setLastAssignedTick (Slot::TickType tick) {
   MUTEX_LOCKER(_lock);
-  assert(_lastTick == 0);
+  assert(_lastAssignedTick == 0);
   
-  _lastTick = tick;
+  _lastAssignedTick = tick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the last assigned tick
 ////////////////////////////////////////////////////////////////////////////////
 
-Slot::TickType Slots::lastTick () {
+Slot::TickType Slots::lastAssignedTick () {
   MUTEX_LOCKER(_lock);
-  return _lastTick;
+  return _lastAssignedTick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the last committed tick
+////////////////////////////////////////////////////////////////////////////////
+
+Slot::TickType Slots::lastCommittedTick () {
+  MUTEX_LOCKER(_lock);
+  return _lastCommittedTick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,36 +149,54 @@ SlotInfo Slots::nextUnused (uint32_t size) {
                _logfile->freeSize() < static_cast<uint64_t>(size)) {
 
           if (_logfile != nullptr) {
-            // seal existing logfile
-            _logfileManager->requestSealing(_logfile);
+            // seal existing logfile by creating a footer marker
+            int res = writeFooter(slot);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            _logfileManager->setLogfileSealRequested(_logfile);
+
+            // advance to next slot 
+            slot = _slots[_handoutIndex];
           }
 
-          _logfile = _logfileManager->getWriteableLogfile(size);
+          // fetch the next free logfile (this may create a new one)
+          Logfile::StatusType status = Logfile::StatusType::UNKNOWN;
+          _logfile = _logfileManager->getWriteableLogfile(size, status);
 
           if (_logfile == nullptr) {
             LOG_WARNING("unable to acquire writeable wal logfile!");
             usleep(1000);
           }
+          else if (status == Logfile::StatusType::EMPTY) {
+            // inititialise the empty logfile by writing a header marker
+            int res = writeHeader(slot);
+            
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            _logfileManager->setLogfileOpen(_logfile);
+
+            // advance to next slot 
+            slot = _slots[_handoutIndex];
+          }
+          else {
+            assert(status == Logfile::StatusType::OPEN);
+          }
         }
 
-        TRI_df_marker_t* mem;
-        int res = TRI_ReserveElementDatafile(_logfile->df(), static_cast<TRI_voc_size_t>(size), &mem, 32 * 1024 * 1024);
+        // if we get here, we got a free slot for the actual data...
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          return SlotInfo(res);
+        char* mem = _logfile->reserve(size);
+
+        if (mem == nullptr) {
+          return SlotInfo(TRI_ERROR_INTERNAL);
         }
- 
-        assert(mem != nullptr);
 
-        assert(_freeSlots > 0);
-        _freeSlots--;
-
-        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), ++_lastTick);
-
-        if (++_handoutIndex ==_numberOfSlots) {
-          // wrap around
-          _handoutIndex = 0;
-        }
+        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
 
         return SlotInfo(slot);
       }
@@ -194,15 +225,30 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 /// @brief return a used slot, allowing its synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::returnUsed (SlotInfo& slotInfo) {
+void Slots::returnUsed (SlotInfo& slotInfo,
+                        bool waitForSync) {
   assert(slotInfo.slot != nullptr);
+  Slot::TickType tick = slotInfo.slot->tick();
 
   {
     MUTEX_LOCKER(_lock);
-    slotInfo.slot->setReturned();
+    slotInfo.slot->setReturned(waitForSync);
   }
   
   _logfileManager->signalSync();
+
+  if (waitForSync) {
+    // wait until data has been committed to disk
+    while (true) {
+      CONDITION_LOCKER(guard, _condition);
+      
+      if (lastCommittedTick() >= tick) {
+        return;
+      }
+      
+      guard.wait(10000000);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,6 +277,7 @@ SyncRegion Slots::getSyncRegion () {
       region.size           = slot->size();
       region.firstSlotIndex = slotIndex;
       region.lastSlotIndex  = slotIndex;
+      region.waitForSync    = slot->waitForSync();
     }
     else {
       if (slot->logfileId() != region.logfileId) {
@@ -243,6 +290,7 @@ SyncRegion Slots::getSyncRegion () {
       // update the region
       region.size += static_cast<char*>(slot->mem()) - (region.mem + region.size) + slot->size();
       region.lastSlotIndex = slotIndex;
+      region.waitForSync |= slot->waitForSync();
     }
 
     if (++slotIndex >= _numberOfSlots) {
@@ -254,17 +302,15 @@ SyncRegion Slots::getSyncRegion () {
       break;
     }
   }
-    
-  // LOG_INFO("returning region: %d - %d, %d", (int) region.firstSlotIndex, (int) region.lastSlotIndex, (int) region.logfileId);
   
   return region;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a slot for synchronisation
+/// @brief return a region to the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::unuse (SyncRegion const& region) {
+void Slots::returnSyncRegion (SyncRegion const& region) {
   assert(region.logfileId != 0);
     
   size_t slotIndex = region.firstSlotIndex;
@@ -275,7 +321,12 @@ void Slots::unuse (SyncRegion const& region) {
     while (true) {
       Slot* slot = _slots[slotIndex];
       assert(slot != nullptr);
-   
+      
+      // note last tick        
+      Slot::TickType tick = slot->tick();
+      assert(tick >= _lastCommittedTick);
+      _lastCommittedTick = tick;
+
       slot->setUnused();
       ++_freeSlots; 
  
@@ -297,9 +348,65 @@ void Slots::unuse (SyncRegion const& region) {
   // signal that we have done something
   CONDITION_LOCKER(guard, _condition);
   
-  if (_waiting > 0) {
+  if (_waiting > 0 || region.waitForSync) {
     _condition.broadcast();
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a header marker
+////////////////////////////////////////////////////////////////////////////////
+
+int Slots::writeHeader (Slot* slot) {            
+  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+  size_t const size = header.base._size;
+  
+  TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
+  assert(mem != nullptr);
+
+  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
+  slot->fill(&header.base, size);
+  slot->setReturned(false); // sync
+
+  return TRI_ERROR_NO_ERROR;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a footer marker
+////////////////////////////////////////////////////////////////////////////////
+
+int Slots::writeFooter (Slot* slot) {            
+  TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
+  size_t const size = footer.base._size;
+  
+  TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
+  assert(mem != nullptr);
+
+  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
+  slot->fill(&footer.base, size);
+  slot->setReturned(true); // sync
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handout a region and advance the handout index
+////////////////////////////////////////////////////////////////////////////////
+
+Slot::TickType Slots::handout () { 
+  assert(_freeSlots > 0);
+  _freeSlots--;
+
+  if (++_handoutIndex ==_numberOfSlots) {
+    // wrap around
+    _handoutIndex = 0;
+  }
+
+  return ++_lastAssignedTick;
 }
 
 // Local Variables:

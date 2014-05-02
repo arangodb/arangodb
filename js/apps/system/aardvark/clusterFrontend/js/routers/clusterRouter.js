@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, document, arangoCollection,arangoHelper, arangoDatabase, btoa, _*/
+/*global window, $, Backbone, document, arangoCollectionModel,arangoHelper,
+arangoDatabase, btoa, _*/
 
 (function() {
   "use strict";
@@ -35,7 +36,6 @@
     requestAuth: function() {
       this.isCheckingUser = true;
       this.clusterPlan.set({"user": null});
-      var self = this;
       var modalLogin = new window.LoginModalView();
       modalLogin.render();
     },
@@ -69,6 +69,7 @@
     initialize: function () {
       var self = this;
       this.dygraphConfig = window.dygraphConfig;
+      window.modalView = new window.ModalView();
       this.initial = this.planScenario;
       this.isCheckingUser = false;
       this.bind('all', function(trigger, args) {
@@ -123,6 +124,9 @@
         if (this.dashboardView) {
             this.dashboardView.resize();
         }
+        if (this.showClusterView) {
+            this.showClusterView.resize();
+        }
     },
 
     planTest: function() {
@@ -132,15 +136,6 @@
         );
       }
       this.planTestView.render();
-    },
-
-    planSymmetric: function() {
-      if (!this.planSymmetricView) {
-        this.planSymmetricView = new window.PlanSymmetricView(
-          {model : this.clusterPlan}
-        );
-      }
-      this.planSymmetricView.render(true);
     },
 
     planAsymmetric: function() {
@@ -170,24 +165,13 @@
       var server = this.serverToShow;
       if (!server) {
         this.navigate("", {trigger: true});
+        return;
       }
-      var statisticsDescription = new window.StatisticsDescription();
-      statisticsDescription.fetch({
-        async: false,
-        beforeSend: this.addAuth.bind(this)
-      });
-      var statisticsCollection = new window.StatisticsCollection();
-      if (this.dashboardView) {
-        this.dashboardView.stopUpdating();
-      }
-      this.dashboardView = null;
+
       server.addAuth = this.addAuth.bind(this);
       this.dashboardView = new window.ServerDashboardView({
-        collection: statisticsCollection,
-        description: statisticsDescription,
-        documentStore: new window.arangoDocuments(),
-        server : server,
-        dygraphConfig : this.dygraphConfig
+          dygraphConfig: this.dygraphConfig,
+          serverToShow : this.serverToShow
       });
       this.dashboardView.render();
     }

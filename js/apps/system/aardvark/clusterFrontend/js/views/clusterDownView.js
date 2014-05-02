@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
-/*global window, $, Backbone, plannerTemplateEngine, alert */
+/*global window, $, Backbone, templateEngine, plannerTemplateEngine, alert */
 
 (function() {
   "use strict";
@@ -53,10 +53,12 @@
         window.App.navigate("planTest", {trigger : true});
         return;
       }
+/*
       if (plan.isSymmetricSetup()) {
         window.App.navigate("planSymmetrical", {trigger : true});
         return;
       }
+*/
       window.App.navigate("planAsymmetrical", {trigger : true});
     },
 

@@ -57,7 +57,7 @@ namespace triagens {
   }
 
   namespace wal {
-    class Configuration;
+    class LogfileManager;
   }
 
   namespace admin {
@@ -191,10 +191,10 @@ namespace triagens {
         std::string _tempPath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief write-ahead log configuration
+/// @brief write-ahead log manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        wal::Configuration* _walConfiguration;
+        wal::LogfileManager* _logfileManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application scheduler

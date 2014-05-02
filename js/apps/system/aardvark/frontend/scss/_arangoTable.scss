@@ -1,0 +1,30 @@
+.arango-table {
+  border-top: 1px solid #000;
+  width: 100%;
+
+  thead {
+    background-color: #fff;
+
+    th {
+      border-bottom: 1px solid #c2c2c2;
+      height: 43px;
+    }
+  }
+
+  tbody {
+
+    tr:nth-child(even) {
+      background-color: #fff;
+    }
+
+    tr:nth-child(odd) {
+      background: #f1f0ee;
+    }
+
+    td {
+      padding: 10px 18px;
+    }
+  }
+}
+
+

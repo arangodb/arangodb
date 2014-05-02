@@ -7,7 +7,8 @@
   REPLICATION_SYNCHRONISE, REPLICATION_SERVER_ID, CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
-  SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
+  SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE, 
+  SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
   SYS_SHA256, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
@@ -20,7 +21,7 @@
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-  SYS_DEFINE_PERIODIC, SYS_TEST_PORT */
+  SYS_DEFINE_PERIODIC, SYS_DELETE_PERIODIC, SYS_GET_PERIODIC, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -482,6 +483,24 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getCurrentRequest
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GET_CURRENT_REQUEST !== "undefined") {
+    exports.getCurrentRequest = SYS_GET_CURRENT_REQUEST;
+    delete SYS_GET_CURRENT_REQUEST;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getCurrentResponse
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GET_CURRENT_RESPONSE !== "undefined") {
+    exports.getCurrentResponse = SYS_GET_CURRENT_RESPONSE;
+    delete SYS_GET_CURRENT_RESPONSE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extend
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -739,6 +758,24 @@
   if (typeof SYS_DEFINE_PERIODIC !== "undefined") {
     exports.definePeriodic = SYS_DEFINE_PERIODIC;
     delete SYS_DEFINE_PERIODIC;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletePeriodic
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DELETE_PERIODIC !== "undefined") {
+    exports.deletePeriodic = SYS_DELETE_PERIODIC;
+    delete SYS_DELETE_PERIODIC;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getPeriodic
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GET_PERIODIC !== "undefined") {
+    exports.getPeriodic = SYS_GET_PERIODIC;
+    delete SYS_GET_PERIODIC;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

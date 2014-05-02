@@ -53,7 +53,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
-  : Task("SocketTask"),
+  : Task(0, "SocketTask"),
     keepAliveWatcher(0),
     readWatcher(0),
     writeWatcher(0),
@@ -125,7 +125,7 @@ SocketTask::~SocketTask () {
 
 void SocketTask::setKeepAliveTimeout (double timeout) {
   if (keepAliveWatcher != 0 && timeout > 0.0) {
-    scheduler->rearmTimer(keepAliveWatcher, timeout);
+    _scheduler->rearmTimer(keepAliveWatcher, timeout);
   }
 }
 
@@ -194,7 +194,6 @@ bool SocketTask::fillReadBuffer (bool& closed) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::handleWrite (bool& closed, bool noWrite) {
-
   closed = false;
 
   if (noWrite) {
@@ -262,10 +261,10 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
     MUTEX_LOCKER(writeBufferLock);
 
     if (_writeBuffer == 0) {
-      scheduler->stopSocketEvents(writeWatcher);
+      _scheduler->stopSocketEvents(writeWatcher);
     }
     else {
-      scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(writeWatcher);
     }
   }
 
@@ -339,14 +338,14 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t*
     MUTEX_LOCKER(writeBufferLock);
 
     if (_writeBuffer == 0) {
-      scheduler->stopSocketEvents(writeWatcher);
+      _scheduler->stopSocketEvents(writeWatcher);
     }
     else {
-      scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(writeWatcher);
     }
   }
   else {
-    scheduler->sendAsync(watcher);
+    _scheduler->sendAsync(watcher);
   }
 }
 
@@ -380,10 +379,10 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
     if (tid == Thread::currentThreadId()) {
       MUTEX_LOCKER(writeBufferLock);
 
-      scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(writeWatcher);
     }
     else {
-      scheduler->sendAsync(watcher);
+      _scheduler->sendAsync(watcher);
     }
   }
 }
@@ -424,7 +423,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // ..........................................................................
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
-  if (!TRI_isvalidsocket(_commSocket)) {
+  if (! TRI_isvalidsocket(_commSocket)) {
     LOG_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
     return false;
   }
@@ -455,19 +454,19 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 #endif
 
 
-  this->scheduler = scheduler;
-  this->loop = loop;
+  this->_scheduler = scheduler;
+  this->_loop = loop;
 
-  watcher = scheduler->installAsyncEvent(loop, this);
-  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
-  writeWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
+  watcher = _scheduler->installAsyncEvent(loop, this);
+  readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
+  writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
   if (readWatcher == -1 || writeWatcher == -1) {
     return false;
   }
   // install timer for keep-alive timeout with some high default value
-  keepAliveWatcher = scheduler->installTimerEvent(loop, this, 60.0);
+  keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
   // and stop it immediately so it's not actively at the start
-  scheduler->clearTimer(keepAliveWatcher);
+  _scheduler->clearTimer(keepAliveWatcher);
 
   tid = Thread::currentThreadId();
   return true;
@@ -478,8 +477,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
-
-  if (scheduler == 0) {
+  if (_scheduler == 0) {
     LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     keepAliveWatcher = 0;
@@ -488,16 +486,16 @@ void SocketTask::cleanup () {
     return;
   }
 
-  scheduler->uninstallEvent(watcher);
+  _scheduler->uninstallEvent(watcher);
   watcher = 0;
 
-  scheduler->uninstallEvent(keepAliveWatcher);
+  _scheduler->uninstallEvent(keepAliveWatcher);
   keepAliveWatcher = 0;
 
-  scheduler->uninstallEvent(readWatcher);
+  _scheduler->uninstallEvent(readWatcher);
   readWatcher = 0;
 
-  scheduler->uninstallEvent(writeWatcher);
+  _scheduler->uninstallEvent(writeWatcher);
   writeWatcher = 0;
 }
 
@@ -514,7 +512,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     LOG_TRACE("got keep-alive timeout signal, closing connection");
 
     // TODO: do we need some lock before we modify the scheduler?
-    scheduler->clearTimer(token);
+    _scheduler->clearTimer(token);
 
     // this will close the connection and destroy the task
     handleTimeout();
@@ -524,7 +522,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   if (token == readWatcher && (revents & EVENT_SOCKET_READ)) {
     if (keepAliveWatcher != 0) {
       // disable timer for keep-alive timeout
-      scheduler->clearTimer(keepAliveWatcher);
+      _scheduler->clearTimer(keepAliveWatcher);
     }
 
     result = handleRead(closed);
@@ -547,10 +545,10 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
     MUTEX_LOCKER(writeBufferLock);
 
     if (_writeBuffer == 0) {
-      scheduler->stopSocketEvents(writeWatcher);
+      _scheduler->stopSocketEvents(writeWatcher);
     }
     else {
-      scheduler->startSocketEvents(writeWatcher);
+      _scheduler->startSocketEvents(writeWatcher);
     }
   }
 

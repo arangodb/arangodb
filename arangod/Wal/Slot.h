@@ -31,6 +31,10 @@
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
+extern "C" {
+  struct TRI_df_marker_s;
+}
+
 namespace triagens {
   namespace wal {
 
@@ -41,6 +45,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class Slot {
+
       friend class Slots;
 
 // -----------------------------------------------------------------------------
@@ -60,9 +65,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum class StatusType : uint32_t {
-          UNUSED   = 0,
-          USED     = 1,
-          RETURNED = 2
+          UNUSED        = 0,
+          USED          = 1,
+          RETURNED      = 2,
+          RETURNED_WFS  = 3
         };
 
 // -----------------------------------------------------------------------------
@@ -127,6 +133,14 @@ namespace triagens {
         
         std::string statusText () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the CRC value for the source region (this will modify
+/// the source region) and copy the calculated marker data into the slot
+////////////////////////////////////////////////////////////////////////////////
+
+        void fill (void*,
+                   size_t);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -154,7 +168,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
         inline bool isReturned () const {
-          return _status == StatusType::RETURNED;
+          return (_status == StatusType::RETURNED ||
+                  _status == StatusType::RETURNED_WFS);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a sync was requested for the slot
+////////////////////////////////////////////////////////////////////////////////
+      
+        inline bool waitForSync () const {
+          return (_status == StatusType::RETURNED_WFS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +199,7 @@ namespace triagens {
 /// @brief mark as slot as returned
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setReturned ();
+        void setReturned (bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

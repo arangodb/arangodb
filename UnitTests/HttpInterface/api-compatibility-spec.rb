@@ -10,14 +10,13 @@ describe ArangoDB do
 ################################################################################
   
   context "checking compatibility features:" do
-
     it "tests the compatibility value when no header is set" do
       doc = ArangoDB.get("/_admin/echo", :headers => { })
 
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(20000)
+      compatibility.should eq(20100)
     end
     
     it "tests the compatibility value when a broken header is set" do
@@ -29,7 +28,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         compatibility = doc.parsed_response['compatibility']
         compatibility.should be_kind_of(Integer)
-        compatibility.should eq(20000)
+        compatibility.should eq(20100)
       end
     end
     
@@ -73,7 +72,7 @@ describe ArangoDB do
     end
     
     it "tests the compatibility value when a valid header is set" do
-      versions = [ "2.0.0", "2.0.0-devel", "2.0.0-alpha", "2.0", "   2.0", "2.0  ", " 2.0.0", "  2.0.0  ", "20000", "20000", "20099" ]
+      versions = [ "2.0.0", "2.0.0-devel", "2.0.0-alpha", "2.0", "   2.0", "2.0  ", " 2.0.0", "  2.0.0  ", "20000", "20000 ", "20099" ]
 
       versions.each do|value|
         doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => value })
@@ -82,6 +81,19 @@ describe ArangoDB do
         compatibility = doc.parsed_response['compatibility']
         compatibility.should be_kind_of(Integer)
         compatibility.should eq(20000)
+      end
+    end
+    
+    it "tests the compatibility value when a valid header is set" do
+      versions = [ "2.1.0", "2.1.0-devel", "2.1.0-alpha", "2.1", "   2.1", "2.1  ", " 2.1.0", "  2.1.0  ", "20100", "20100 ", "20199" ]
+
+      versions.each do|value|
+        doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => value })
+
+        doc.code.should eq(200)
+        compatibility = doc.parsed_response['compatibility']
+        compatibility.should be_kind_of(Integer)
+        compatibility.should eq(20100)
       end
     end
 

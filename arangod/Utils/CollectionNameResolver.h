@@ -111,7 +111,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const TRI_vocbase_col_t* getCollectionStruct (string const& name) const {
-          if (_resolvedNames.size() > 0) {
+          if (! _resolvedNames.empty()) {
             map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
 
             if (it != _resolvedNames.end()) {
@@ -122,7 +122,7 @@ namespace triagens {
           const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
           if (collection != 0) {
-            _resolvedNames[name] = collection;
+            _resolvedNames.insert(make_pair(name, collection));
           }
 
           return collection;
@@ -161,7 +161,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string getCollectionName (const TRI_voc_cid_t cid) const {
-          if (_resolvedIds.size() > 0) {
+          if (! _resolvedIds.empty()) {
             map<TRI_voc_cid_t, string>::const_iterator it = _resolvedIds.find(cid);
 
             if (it != _resolvedIds.end()) {
@@ -209,7 +209,8 @@ namespace triagens {
           if (name.empty()) {
             name = "_unknown";
           }
-          _resolvedIds[cid] = name;
+
+          _resolvedIds.insert(make_pair(cid, name));
 
           return name;
         }
@@ -221,7 +222,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_CLUSTER
         string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
-          if (!ServerState::instance()->isRunningInCluster()) {
+          if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionName(cid);
           }
 

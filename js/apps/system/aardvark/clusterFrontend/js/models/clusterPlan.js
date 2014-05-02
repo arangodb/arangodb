@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, Backbone */
+/*global window, Backbone, $, _*/
 (function() {
   "use strict";
 
@@ -19,7 +19,6 @@
       var i,j,r;
       r = this.get("runInfo");
       if (!r) {
-        console.log(this);
         return;
       }
       j = r.length-1;

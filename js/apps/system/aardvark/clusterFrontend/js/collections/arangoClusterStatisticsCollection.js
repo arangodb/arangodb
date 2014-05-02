@@ -19,6 +19,6 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
       });
-    })
+    });
   }
 });

@@ -17,10 +17,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     return obj.get("user").toLowerCase();
   },
 
-  initialize: function() {
-    //check cookies / local storage
-  },
-
   login: function (username, password) {
     this.activeUser = username;
     return true;

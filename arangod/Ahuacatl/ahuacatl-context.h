@@ -181,7 +181,9 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorContextAql (TRI_aql_context_t* const,
+void TRI_SetErrorContextAql (const char* file,
+                             int line,
+                             TRI_aql_context_t* const,
                              const int,
                              const char* const);
 

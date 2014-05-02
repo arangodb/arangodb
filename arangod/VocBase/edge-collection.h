@@ -95,7 +95,7 @@ extern "C" {
 /// whether the edge is directed
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef uint8_t TRI_edge_flags_t;
+typedef uint32_t TRI_edge_flags_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge from and to
@@ -126,10 +126,8 @@ TRI_edge_direction_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_edge_header_s {
-  TRI_doc_mptr_t const* _mptr;
   TRI_voc_cid_t _cid; // from or to, depending on the direction
-  union { TRI_voc_key_t _key; TRI_voc_size_t _offsetKey; } _searchKey;
-  TRI_edge_flags_t _flags;
+  TRI_voc_key_t _key;
 }
 TRI_edge_header_t;
 
@@ -146,35 +144,14 @@ TRI_edge_header_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compose edge flags aggregate out of only the direction
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compose edge flags aggregate out of multiple individual parameters
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e,
-                                const bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t*,
-                                                        TRI_edge_direction_e,
-                                                        TRI_voc_cid_t,
-                                                        TRI_voc_key_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
+                                                  TRI_document_collection_t*,
+                                                  TRI_edge_direction_e,
+                                                  TRI_voc_cid_t,
+                                                  TRI_voc_key_t);
 
 #ifdef __cplusplus
 }

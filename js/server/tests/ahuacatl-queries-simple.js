@@ -53,6 +53,40 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test filters with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialChars1 : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+
+      data.forEach(function(value) {
+        var actual = getQueryResults("FOR doc IN [ { text: " + JSON.stringify(value) + " } ] FILTER doc.text == " + JSON.stringify(value) + " RETURN doc.text");
+        assertEqual([ value ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test filters with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialChars2 : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+
+      data.forEach(function(value) {
+        var actual = getQueryResults("FOR doc IN [ { text: @value } ] FILTER doc.text == @value RETURN doc.text", { value: value });
+        assertEqual([ value ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief range
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1088,6 +1122,94 @@ function ahuacatlQuerySimpleTestSuite () {
 
       actual = getQueryResults("FOR i IN [ 1 ] RETURN { a: -1 -3, b: 2 - 0 }");
       assertEqual([ { a: -4, b: 2 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty lists
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyLists1: function () {
+      var actual;
+
+      actual = getQueryResults("LET l1 = [ ] LET l2 = [ ] RETURN { l1: l1, l2: l2 }");
+      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty lists
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyLists2: function () {
+      var actual;
+
+      actual = getQueryResults("LET l1 = (FOR i IN [] RETURN i) LET l2 = (FOR i IN [ ] RETURN i) RETURN { l1: l1, l2: l2 }");
+      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty lists
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyLists3: function () {
+      var actual;
+
+      actual = getQueryResults("LET l1 = @l1 LET l2 = @l2 RETURN { l1: l1, l2: l2 }", { l1: [ ], l2: [ ] });
+      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty lists
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyLists4: function () {
+      var actual;
+
+      actual = getQueryResults("LET l1 = (FOR i IN @l1 RETURN i) LET l2 = (FOR i IN @l2 RETURN i) RETURN { l1: l1, l2: l2 }", { l1: [ ], l2: [ ] });
+      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constant filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstantFilter1: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [1, 2, 3, 4] FILTER 1 >= 0 RETURN i");
+      assertEqual([ 1, 2, 3, 4 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constant filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstantFilter2: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [1, 2, 3, 4] FOR j IN [1, 2, 3, 4] FILTER 2 < 0 RETURN i");
+      assertEqual([ ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constant filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstantFilter3: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [1, 2, 3, 4] FILTER 2 < 0 FOR j IN [1, 2, 3, 4] FILTER 2 < 0 RETURN i");
+      assertEqual([ ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constant filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstantFilter4: function () {
+      var actual;
+
+      actual = getQueryResults("LET l1 = (FOR i IN [1, 2, 3, 4] FILTER 3 < 0 RETURN i) LET l2 = (FOR i IN [1, 2, 3, 4] FILTER 3 < 0 RETURN i) RETURN { l1: l1, l2: l2 }");
+      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

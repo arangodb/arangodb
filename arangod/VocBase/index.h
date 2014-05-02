@@ -185,7 +185,8 @@ TRI_geo_index_t;
 typedef struct TRI_edge_index_s {
   TRI_index_t base;
 
-  TRI_multi_pointer_t _edges;
+  TRI_multi_pointer_t _edges_from;
+  TRI_multi_pointer_t _edges_to;
 }
 TRI_edge_index_t;
 

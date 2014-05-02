@@ -46,6 +46,11 @@
 #include <sys/wait.h>
 #endif
 
+#ifdef WIN32
+#include <Psapi.h>
+#include <TlHelp32.h>
+#endif
+
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/locks.h"
@@ -379,7 +384,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
       }
       appendChar(buf, *q);
     }
-	p = ++q;
+    p = ++q;
   }
   appendChar(buf, '"');
   return TRI_ERROR_NO_ERROR;
@@ -562,7 +567,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     result._userTime = TRI_MicrosecondsTv(&used.ru_utime);
 
     // ru_maxrss is the resident set size in kilobytes. need to multiply with 1024 to get the number of bytes
-    result._residentSize = used.ru_maxrss * 1024; 
+    result._residentSize = used.ru_maxrss * TRI_GETRUSAGE_MAXRSS_UNIT; 
   }
 
 #ifdef TRI_HAVE_MACH
@@ -641,11 +646,87 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 }
 
 #else
+/// --------------------------------------------
+/// transform a file time to timestamp
+/// Particularities:
+/// 1. FileTime can save a date at Jan, 1 1601
+///    timestamp saves dates at 1970
+/// --------------------------------------------
+
+static uint64_t _TimeAmount(FILETIME *ft) {
+  uint64_t ts, help;
+  ts = ft->dwLowDateTime;
+  help = ft->dwHighDateTime;
+  help = help << 32;
+  ts |= help;
+  /// at moment without transformation
+  return ts;
+}
+
+static time_t _FileTime_to_POSIX(FILETIME * ft) {
+  LONGLONG ts, help;
+  ts = ft->dwLowDateTime;
+  help = ft->dwHighDateTime;
+  help = help << 32;
+  ts |= help;
+  
+  return (ts - 116444736000000000) / 10000000;
+}
+
 
 TRI_process_info_t TRI_ProcessInfoSelf () {
   TRI_process_info_t result;
-
+  PROCESS_MEMORY_COUNTERS_EX  pmc;
   memset(&result, 0, sizeof(result));
+  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
+  // compiler warning wird in kauf genommen!c
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
+  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS) &pmc, pmc.cb)) {
+    result._majorPageFaults = pmc.PageFaultCount;
+    // there is not any corresponce to minflt in linux
+    result._minorPageFaults = 0;
+
+    // from MSDN:
+    // "The working set is the amount of memory physically mapped to the process context at a given time.
+    // Memory in the paged pool is system memory that can be transferred to the paging file on disk(paged) when 
+    // it is not being used. Memory in the nonpaged pool is system memory that cannot be paged to disk as long as 
+    // the corresponding objects are allocated. The pagefile usage represents how much memory is set aside for the 
+    // process in the system paging file. When memory usage is too high, the virtual memory manager pages selected 
+    // memory to disk. When a thread needs a page that is not in memory, the memory manager reloads it from the 
+    // paging file."
+
+    result._residentSize = pmc.WorkingSetSize;
+    result._virtualSize = pmc.PrivateUsage;
+  }
+  /// computing times
+  FILETIME creationTime, exitTime, kernelTime, userTime;
+  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
+    // see remarks in http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
+    // value in seconds
+    result._scClkTck = 10000000;//1e7
+    result._systemTime = _TimeAmount(&kernelTime);
+    result._userTime = _TimeAmount(&userTime);
+    // for computing  the timestamps of creation and exit time
+    // the function '_FileTime_to_POSIX' should be called
+  }
+  /// computing number of threads
+  DWORD myPID = GetCurrentProcessId();
+  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
+
+  if (snapShot != INVALID_HANDLE_VALUE) {
+    THREADENTRY32 te32;
+    te32.dwSize = sizeof(THREADENTRY32);
+    if (Thread32First(snapShot, &te32)) {
+      result._numberThreads++;
+      while (Thread32Next(snapShot, &te32)) {
+        if (te32.th32OwnerProcessID == myPID) {
+          result._numberThreads++;
+        }
+      }
+    }
+    CloseHandle(snapShot);
+  }
+
   return result;
 }
 #endif
@@ -880,8 +961,10 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                                                 bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
-  int loc;
-  int opts;
+#ifndef _WIN32
+   int loc;
+   int opts;
+#endif
   size_t i;
 
   TRI_LockMutex(&ExternalProcessesLock);
@@ -1024,8 +1107,10 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
   bool ok = true;
-  bool success;
-  int loc;
+#ifndef _WIN32
+   int loc;
+   bool success;
+#endif
 
   TRI_LockMutex(&ExternalProcessesLock);
 

@@ -17,6 +17,8 @@
 @import 'tooltips';
 // dbSelection
 @import 'dbSelection';
+// new dashboard, will be the highlander
+@import 'newDashboard';
 // dashboard http group
 @import 'dashboard';
 // dashboard http group
@@ -57,6 +59,13 @@
 @import 'collection';
 // Snippet coloring (docs view)
 @import 'snippet';
+// screen sizes
+@import 'screenSizes';
+
+//arangoTable Template
+@import 'arangoTable';
+//arangoTabbar Template
+@import 'arangoTabbar';
 
 // Data Tables, TODO: might all be superflous
 @import 'dataTables';

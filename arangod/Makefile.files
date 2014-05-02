@@ -45,21 +45,21 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
-	arangod/BitIndexes/bitarray.c \
-	arangod/BitIndexes/bitarrayIndex.c \
-	arangod/CapConstraint/cap-constraint.c \
-	arangod/FulltextIndex/fulltext-handles.c \
-	arangod/FulltextIndex/fulltext-index.c \
-	arangod/FulltextIndex/fulltext-list.c \
-	arangod/FulltextIndex/fulltext-query.c \
-	arangod/FulltextIndex/fulltext-result.c \
-	arangod/FulltextIndex/fulltext-wordlist.c \
-	arangod/GeoIndex/GeoIndex.c \
-	arangod/GeoIndex/geo-index.c \
-	arangod/HashIndex/hash-array.c \
-	arangod/HashIndex/hash-index.c \
-	arangod/IndexIterators/index-iterator.c \
-	arangod/IndexOperators/index-operator.c \
+	arangod/BitIndexes/bitarray.cpp \
+	arangod/BitIndexes/bitarrayIndex.cpp \
+	arangod/CapConstraint/cap-constraint.cpp \
+	arangod/FulltextIndex/fulltext-handles.cpp \
+	arangod/FulltextIndex/fulltext-index.cpp \
+	arangod/FulltextIndex/fulltext-list.cpp \
+	arangod/FulltextIndex/fulltext-query.cpp \
+	arangod/FulltextIndex/fulltext-result.cpp \
+	arangod/FulltextIndex/fulltext-wordlist.cpp \
+	arangod/GeoIndex/GeoIndex.cpp \
+	arangod/GeoIndex/geo-index.cpp \
+	arangod/HashIndex/hash-array.cpp \
+	arangod/HashIndex/hash-index.cpp \
+	arangod/IndexIterators/index-iterator.cpp \
+	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/replication-static.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -76,9 +76,10 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
-	arangod/SkipLists/skiplistIndex.c \
+	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Transaction/IdGenerator.cpp \
 	arangod/Transaction/Manager.cpp \
+	arangod/Transaction/Operations.cpp \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
@@ -87,39 +88,39 @@ bin_arangod_SOURCES = \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
-	arangod/VocBase/auth.c \
-	arangod/VocBase/barrier.c \
-	arangod/VocBase/cleanup.c \
-	arangod/VocBase/collection.c \
-	arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/edge-collection.c \
-	arangod/VocBase/general-cursor.c \
-	arangod/VocBase/headers.c \
-	arangod/VocBase/index.c \
-	arangod/VocBase/key-generator.c \
-	arangod/VocBase/marker.c \
-	arangod/VocBase/primary-collection.c \
-	arangod/VocBase/replication-applier.c \
-	arangod/VocBase/replication-common.c \
-	arangod/VocBase/replication-dump.c \
-	arangod/VocBase/replication-logger.c \
-	arangod/VocBase/replication-master.c \
-	arangod/VocBase/server.c \
-	arangod/VocBase/synchroniser.c \
-	arangod/VocBase/transaction.c \
-	arangod/VocBase/update-policy.c \
-	arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c \
-	arangod/VocBase/vocbase-defaults.c \
+	arangod/VocBase/auth.cpp \
+	arangod/VocBase/barrier.cpp \
+	arangod/VocBase/cleanup.cpp \
+	arangod/VocBase/collection.cpp \
+	arangod/VocBase/compactor.cpp \
+	arangod/VocBase/datafile.cpp \
+	arangod/VocBase/document-collection.cpp \
+	arangod/VocBase/edge-collection.cpp \
+	arangod/VocBase/general-cursor.cpp \
+	arangod/VocBase/headers.cpp \
+	arangod/VocBase/index.cpp \
+	arangod/VocBase/key-generator.cpp \
+	arangod/VocBase/marker.cpp \
+	arangod/VocBase/primary-collection.cpp \
+	arangod/VocBase/replication-applier.cpp \
+	arangod/VocBase/replication-common.cpp \
+	arangod/VocBase/replication-dump.cpp \
+	arangod/VocBase/replication-logger.cpp \
+	arangod/VocBase/replication-master.cpp \
+	arangod/VocBase/server.cpp \
+	arangod/VocBase/synchroniser.cpp \
+	arangod/VocBase/transaction.cpp \
+	arangod/VocBase/update-policy.cpp \
+	arangod/VocBase/voc-shaper.cpp \
+	arangod/VocBase/vocbase.cpp \
+	arangod/VocBase/vocbase-defaults.cpp \
 	arangod/Wal/AllocatorThread.cpp \
 	arangod/Wal/CollectorThread.cpp \
-	arangod/Wal/Configuration.cpp \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
+	arangod/Wal/TestThread.cpp \
 	arangod/Wal/SynchroniserThread.cpp 
 
 if ENABLE_CLUSTER

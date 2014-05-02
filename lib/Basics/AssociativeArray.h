@@ -310,7 +310,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
 #endif
@@ -337,7 +337,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
 #endif
@@ -363,7 +363,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
 #endif
@@ -431,7 +431,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
 #endif
@@ -499,7 +499,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
 #endif
@@ -518,7 +518,7 @@ namespace triagens {
           _nrUsed--;
 
           // and now check the following places for items to move here
-          uint64_t k = (i + 1) % _nrAlloc;
+          uint64_t k = TRI_IncModU64(i, _nrAlloc);
 
           while (!_desc.isEmptyElement(_table[k])) {
             uint32_t j = _desc.hashElement(_table[k]) % _nrAlloc;
@@ -529,7 +529,7 @@ namespace triagens {
               i = k;
             }
 
-            k = (k + 1) % _nrAlloc;
+            k = TRI_IncModU64(k, _nrAlloc);
           }
 
           // return success
@@ -552,7 +552,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
 #endif
@@ -568,7 +568,7 @@ namespace triagens {
           _nrUsed--;
 
           // and now check the following places for items to move here
-          uint64_t k = (i + 1) % _nrAlloc;
+          uint64_t k = TRI_IncModU64(i, _nrAlloc);
 
           while (!_desc.isEmptyElement(_table[k])) {
             uint32_t j = _desc.hashElement(_table[k]) % _nrAlloc;
@@ -579,7 +579,7 @@ namespace triagens {
               i = k;
             }
 
-            k = (k + 1) % _nrAlloc;
+            k = TRI_IncModU64(k, _nrAlloc);
           }
 
           // return success
@@ -639,7 +639,7 @@ namespace triagens {
           uint64_t i = hash % _nrAlloc;
 
           while (!_desc.isEmptyElement(_table[i])) {
-            i = (i + 1) % _nrAlloc;
+            i = TRI_IncModU64(i, _nrAlloc);
 #ifdef TRI_INTERNAL_STATS
             _nrProbesR++;
 #endif

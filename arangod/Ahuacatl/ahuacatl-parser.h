@@ -55,6 +55,8 @@ typedef struct TRI_aql_parser_s {
   size_t _queryLength; // overall length of the query string, not modified
   TRI_vector_pointer_t _scopes;
   TRI_vector_pointer_t _stack;
+  char* _marker; // used temporarily during parsing
+  size_t _offset; // current parse position
 }
 TRI_aql_parser_t;
 

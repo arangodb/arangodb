@@ -96,6 +96,7 @@ Thread::Thread (std::string const& name)
   : _name(name),
     _asynchronousCancelation(false),
     _thread(),
+    _threadId(),
     _finishedCondition(0),
     _started(0),
     _running(0),
@@ -156,7 +157,7 @@ bool Thread::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_tid_t Thread::threadId () {
-  return (TRI_tid_t) _thread;
+  return _threadId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +174,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
   _started = 1;
 
   string text = "[" + _name + "]";
-  bool ok = TRI_StartThread(&_thread, text.c_str(), &startThread, this);
+  bool ok = TRI_StartThread(&_thread, &_threadId, text.c_str(), &startThread, this);
 
   if (! ok) {
     LOG_ERROR("could not start thread '%s': %s", _name.c_str(), strerror(errno));

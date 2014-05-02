@@ -113,6 +113,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_type             = NextType(context, type);
   scope->_ranges           = NULL;
   scope->_selfContained    = true;
+  scope->_empty            = false;
   scope->_level            = 0; // init with a dummy value
 
   scope->_limit._offset    = 0;
@@ -205,7 +206,7 @@ TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context)
 
   hint = (TRI_aql_for_hint_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_for_hint_t), false);
   if (hint == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -408,7 +409,7 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
   size_t n;
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 

@@ -133,11 +133,14 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _RevKey(),
     _ToKey(),
 
+    _currentRequest(0),
+    _currentResponse(0),
     _currentTransaction(0),
     _server(0),
     _vocbase(0),
     _loader(0),
-    _allowUseDatabase(true) {
+    _allowUseDatabase(true),
+    _hasDeadObjects(false) {
   v8::HandleScope scope;
 
   BufferConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("Buffer"));
