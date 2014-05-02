@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
-/*global spyOn, runs, expect, waitsFor, jasmine*/
+/*global spyOn, runs, expect, waitsFor, jasmine, jQuery*/
 /*global _, $, uiMatchers */
 
 (function() {
@@ -410,7 +410,6 @@
     });
 
     it("should call function bind function for view.el", function() {
-      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
 
       testee.enabledHotkey = false;
       var btnObj = {},
@@ -420,7 +419,11 @@
         callback: function() {
         }
       },
-      btn;
+      btn,
+      testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal"),
+      e = jQuery.Event("keydown");
+      e.which = 13;
+      e.keyCode = 13;
 
       spyOn(cbs, "callback").andCallThrough();
       btnObj = testee.createSuccessButton(title, cbs.callback);
@@ -429,28 +432,28 @@
       btn = $(".button-" + btnObj.type, $(div));
 
 
-      var e = jQuery.Event("keydown");
-      e.which = 13 //enter key
-      e.keyCode = 13 //enter key
 
       spyOn($.fn, "click");
       $(testee.el).trigger(e);
 
-      expect($.fn.click).toHaveBeenCalled()
+      expect($.fn.click).toHaveBeenCalled();
     });
 
     it("should call function bind function for view.el input", function() {
-      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
-
-      testee.enabledHotkey = false;
-      var btnObj = {},
+      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal"),
+      btnObj = {},
       title = "Save",
       buttons = [],
       cbs = {
         callback: function() {
         }
       },
-      btn;
+      btn,
+      e = jQuery.Event("keydown");
+      e.which = 13; //enter key
+      e.keyCode = 13; //enter key
+
+      testee.enabledHotkey = false;
 
       spyOn(cbs, "callback").andCallThrough();
       btnObj = testee.createSuccessButton(title, cbs.callback);
@@ -461,29 +464,28 @@
 
       btn = $(".button-" + btnObj.type, $(div));
 
-      var e = jQuery.Event("keydown");
-      e.which = 13 //enter key
-      e.keyCode = 13 //enter key
-
       spyOn($.fn, "click");
       $("input").trigger(e);
 
-      expect($.fn.click).toHaveBeenCalled()
+      expect($.fn.click).toHaveBeenCalled();
     });
 
     it("should call function bind function for view.el select", function() {
-      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
-
-      testee.enabledHotkey = false;
-      var btnObj = {},
+      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal"),
+      btnObj = {},
       title = "Save",
       buttons = [],
       cbs = {
         callback: function() {
         }
       },
-      btn;
+      btn,
+      e = jQuery.Event("keydown");
+      e.which = 13;//enter key
+      e.keyCode = 13; //enter key
 
+
+      testee.enabledHotkey = false;
       spyOn(cbs, "callback").andCallThrough();
       btnObj = testee.createSuccessButton(title, cbs.callback);
       buttons.push(btnObj);
@@ -493,14 +495,10 @@
 
       btn = $(".button-" + btnObj.type, $(div));
 
-      var e = jQuery.Event("keydown");
-      e.which = 13 //enter key
-      e.keyCode = 13 //enter key
-
       spyOn($.fn, "click");
       $("select").trigger(e);
 
-      expect($.fn.click).toHaveBeenCalled()
+      expect($.fn.click).toHaveBeenCalled();
     });
 
   });
