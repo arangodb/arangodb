@@ -7,8 +7,8 @@
   "use strict";
 
   describe("The Modal view Singleton", function() {
-    
-    var testee, div;
+
+    var testee, div, jQueryDummy;
 
     beforeEach(function() {
       div = document.createElement("div");
@@ -392,17 +392,115 @@
 
     it("should call keyboard bind function", function() {
       spyOn(testee, "createModalHotkeys");
+      spyOn(testee, "createInitModalHotkeys");
       testee.enabledHotkey = false;
       testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
       expect(testee.createModalHotkeys).toHaveBeenCalled();
+      expect(testee.createInitModalHotkeys).toHaveBeenCalled();
 
     });
 
     it("should not call keyboard bind function", function() {
       spyOn(testee, "createModalHotkeys");
+      spyOn(testee, "createInitModalHotkeys");
       testee.enabledHotkey = true;
       testee.show("modalTable.ejs", "Delegate Events", undefined, undefined, undefined, undefined);
-      expect(testee.createModalHotkeys).not.toHaveBeenCalled();
+      expect(testee.createModalHotkeys).toHaveBeenCalled();
+      expect(testee.createInitModalHotkeys).not.toHaveBeenCalled();
+    });
+
+    it("should call function bind function for view.el", function() {
+      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
+
+      testee.enabledHotkey = false;
+      var btnObj = {},
+      title = "Save",
+      buttons = [],
+      cbs = {
+        callback: function() {
+        }
+      },
+      btn;
+
+      spyOn(cbs, "callback").andCallThrough();
+      btnObj = testee.createSuccessButton(title, cbs.callback);
+      buttons.push(btnObj);
+      testShow(buttons);
+      btn = $(".button-" + btnObj.type, $(div));
+
+
+      var e = jQuery.Event("keydown");
+      e.which = 13 //enter key
+      e.keyCode = 13 //enter key
+
+      spyOn($.fn, "click");
+      $(testee.el).trigger(e);
+
+      expect($.fn.click).toHaveBeenCalled()
+    });
+
+    it("should call function bind function for view.el input", function() {
+      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
+
+      testee.enabledHotkey = false;
+      var btnObj = {},
+      title = "Save",
+      buttons = [],
+      cbs = {
+        callback: function() {
+        }
+      },
+      btn;
+
+      spyOn(cbs, "callback").andCallThrough();
+      btnObj = testee.createSuccessButton(title, cbs.callback);
+      buttons.push(btnObj);
+
+      testShow(buttons);
+      $('.modal-body').html('<input type="text" id="dontcare" value="asd">ABC</input>');
+
+      btn = $(".button-" + btnObj.type, $(div));
+
+      var e = jQuery.Event("keydown");
+      e.which = 13 //enter key
+      e.keyCode = 13 //enter key
+
+      spyOn($.fn, "click");
+      $("input").trigger(e);
+
+      expect($.fn.click).toHaveBeenCalled()
+    });
+
+    it("should call function bind function for view.el select", function() {
+      var testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
+
+      testee.enabledHotkey = false;
+      var btnObj = {},
+      title = "Save",
+      buttons = [],
+      cbs = {
+        callback: function() {
+        }
+      },
+      btn;
+
+      spyOn(cbs, "callback").andCallThrough();
+      btnObj = testee.createSuccessButton(title, cbs.callback);
+      buttons.push(btnObj);
+
+      testShow(buttons);
+      $('.modal-body').html('<select name="top5" size="3"><option>Heino</option></select>');
+
+      btn = $(".button-" + btnObj.type, $(div));
+
+      var e = jQuery.Event("keydown");
+      e.which = 13 //enter key
+      e.keyCode = 13 //enter key
+
+      spyOn($.fn, "click");
+      $("select").trigger(e);
+
+      expect($.fn.click).toHaveBeenCalled()
     });
 
   });

@@ -78,17 +78,20 @@
     },
 
     createModalHotkeys: function() {
-      var self = this;
       //submit modal
       $(this.el).bind('keydown', 'ctrl+return', function(){
         $('.button-success').click();
       });
-      $("#modalPlaceholder input").bind('keydown', 'return', function(){
+      $("input", $(this.el)).bind('keydown', 'return', function(){
         $('.button-success').click();
       });
-      $("#modalPlaceholder select").bind('keydown', 'return', function(){
+      $("select", $(this.el)).bind('keydown', 'return', function(){
         $('.button-success').click();
       });
+    },
+
+    createInitModalHotkeys: function() {
+      var self = this;
       //navigate through modal buttons
       //left cursor
       $(this.el).bind('keydown', 'left', function(){
@@ -98,6 +101,7 @@
       $(this.el).bind('keydown', 'right', function(){
         self.navigateThroughButtons('right');
       });
+
     },
 
     navigateThroughButtons: function(direction) {
@@ -275,9 +279,10 @@
 
       //enable modal hotkeys after rendering is complete
       if (this.enabledHotkey === false) {
-        this.createModalHotkeys();
+        this.createInitModalHotkeys();
         this.enabledHotkey = true;
       }
+      this.createModalHotkeys();
     },
 
     hide: function() {
