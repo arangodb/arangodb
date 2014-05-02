@@ -866,7 +866,7 @@ static int RemoveEdge (TRI_index_t* idx,
   edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
   TRI_RemoveElementMultiPointer(edgesIndex, mptr);
   // IN
-  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_from);
+  edgesIndex = &(((TRI_edge_index_t*) idx)->_edges_to);
   TRI_RemoveElementMultiPointer(edgesIndex, mptr);
 
   return TRI_ERROR_NO_ERROR;
