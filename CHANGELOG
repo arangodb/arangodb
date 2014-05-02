@@ -7,6 +7,10 @@ v2.1.0 (XXXX-XX-XX)
   the number of indexes in the `count` sub-attribute, and the total memory
   usage of the indexes in bytes in the `size` sub-attribute.
 
+* added AQL CURRENT_DATABASE() function
+
+  This function returns the current database's name.
+
 * added AQL CURRENT_USER() function
 
   This function returns the current user from an AQL query. The current user is the

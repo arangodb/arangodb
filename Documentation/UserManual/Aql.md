@@ -1751,6 +1751,8 @@ function categories:
 - @FN{COLLECTIONS()}: Returns a list of collections. Each collection is returned as a document
   with attributes `name` and `_id`
 
+- @FN{CURRENT_DATABASE()}: Returns the name of the current database.
+
 - @FN{CURRENT_USER()}: Returns the name of the current user. The current user is the user 
   account name that was specified in the `Authorization` HTTP header of the request. It will
   only be populated if authentication on the server is turned on, and if the query was executed
