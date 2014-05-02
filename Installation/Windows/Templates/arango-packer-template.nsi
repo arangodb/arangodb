@@ -12,10 +12,10 @@
 ; !include "Library.nsh"
 
 ; The name of the installer
-Name "arango-unpacker"
+Name ""@INSTALLERNAME@"
 
 ; The file to write
-OutFile "arango-unpacker-@BITS@.exe"
+OutFile "@INSTALLERNAME@.exe"
 
 ; The default installation directory
 !define APPNAME "Unpacker"
@@ -43,9 +43,9 @@ Section "" ;No components page, name is not important
   ; Put file there
 ; !insertmacro InstallLib DLL SHARED NOREBOOT_PROTECTED "exdll.dll" $INSTDIR $TEMP
 	file "..\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll"
-	file "@INSTALLERNAME@.exe"
+	file "@INSTALLERNAME@-internal.exe"
         Rename "$INSTDIR\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll" "$INSTDIR\msvcr120.dll"
-;        Rename "$INSTDIR\Build@BITS@\@INSTALLERNAME@.exe" "$INSTDIR\@INSTALLERNAME@.exe"
+;        Rename "$INSTDIR\Build@BITS@\@INSTALLERNAME@-internal.exe" "$INSTDIR\@INSTALLERNAME@.exe"
         Exec "$INSTDIR\@INSTALLERNAME@.exe"
         Quit
   
