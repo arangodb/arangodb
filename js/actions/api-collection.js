@@ -630,6 +630,14 @@ function get_api_collections (req, res) {
 /// - `figures.attributes.count`: The total number of attributes in the 
 ///   collection (this includes attributes that are not in use anymore) 
 ///
+/// - `figures.attributes.size`: The total size used by all attribute
+///   names in the collection (this includes attributes that are not in use anymore) 
+///
+/// - `figures.indexes.count`: The total number of indexes defined for the
+///   collection (this includes internal indexes such as the primary index)
+///
+/// - `figures.indexes.size`: The total memory allocated by the indexes in bytes
+///
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///
 /// Note: the filesizes of collection and index parameter JSON files are

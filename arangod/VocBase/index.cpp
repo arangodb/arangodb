@@ -93,6 +93,7 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->_unique            = unique;
   
   // init common functions
+  idx->memory            = NULL;
   idx->removeIndex       = NULL;
   idx->cleanup           = NULL;
   idx->sizeHint          = NULL;
@@ -517,8 +518,8 @@ void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
-                                      TRI_vector_t* paths) {
+char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
+                                      TRI_vector_t const* paths) {
   // .............................................................................
   // Allocate sufficent memory for the field list
   // .............................................................................
@@ -531,7 +532,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 
   for (size_t j = 0;  j < paths->_length;  ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, j)));
-    TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(shaper, shape);
+    TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(const_cast<TRI_shaper_t*>(shaper), shape);
 
     if (path == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -583,20 +584,25 @@ static int RemovePrimary (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t MemoryPrimary (TRI_index_t const* idx) { 
+  return idx->_collection->_primaryIndex._nrAlloc * sizeof(void*); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPrimary (TRI_index_t* idx) { 
-  TRI_json_t* json;
-  TRI_json_t* fields;
-
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+static TRI_json_t* JsonPrimary (TRI_index_t const* idx) { 
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
   
   if (json == NULL) {
     return NULL;
   }
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_id"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
@@ -636,6 +642,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
 
   TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true);
 
+  idx->memory   = MemoryPrimary;
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
@@ -866,20 +873,26 @@ static int RemoveEdge (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t MemoryEdge (TRI_index_t const* idx) {
+  return TRI_MemoryUsageMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_from)) + 
+         TRI_MemoryUsageMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_to));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonEdge (TRI_index_t* idx) {
-  TRI_json_t* json;
-  TRI_json_t* fields;
-
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   if (json == NULL) {
     return NULL;
   }
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
@@ -985,6 +998,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
  
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, primary, false); 
 
+  idx->memory   = MemoryEdge;
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
@@ -1301,33 +1315,46 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t MemorySkiplistIndex (TRI_index_t const* idx) {
+  TRI_skiplist_index_t const* skiplistIndex = (TRI_skiplist_index_t const*) idx;
+
+  if (skiplistIndex == NULL) {
+    return 0;
+  }
+
+  return SkiplistIndex_memoryUsage(skiplistIndex->_skiplistIndex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx) {
+static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
-  TRI_primary_collection_t* primary;
   const TRI_shape_path_t* path;
-  TRI_skiplist_index_t* skiplistIndex;
   char const** fieldList;
   size_t j;
 
   // ..........................................................................
   // Recast as a skiplist index
   // ..........................................................................
-
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
+  
+  TRI_skiplist_index_t const* skiplistIndex = (TRI_skiplist_index_t const*) idx;
 
   if (skiplistIndex == NULL) {
     return NULL;
   }
 
-  primary = idx->_collection;
+  TRI_primary_collection_t* primary = idx->_collection;
 
   // ..........................................................................
   // Allocate sufficent memory for the field list
   // ..........................................................................
+
   fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
 
   // ..........................................................................
@@ -1371,14 +1398,13 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 const bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
-  TRI_skiplist_index_t* skiplistIndex;
   int res;
 
   // ...........................................................................
   // Obtain the skiplist index structure
   // ...........................................................................
 
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
+  TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ...........................................................................
   // Allocate some memory for the SkiplistIndexElement structure
@@ -1461,6 +1487,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique);
 
+  idx->memory   = MemorySkiplistIndex;
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
   idx->remove   = RemoveSkiplistIndex;
@@ -1648,6 +1675,7 @@ static int InsertFulltextIndex (TRI_index_t* idx,
   res = TRI_ERROR_NO_ERROR;
 
   wordlist = GetWordlist(idx, doc);
+
   if (wordlist == NULL) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_WARNING("could not build wordlist");
@@ -1668,27 +1696,36 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t MemoryFulltextIndex (TRI_index_t const* idx) {
+  TRI_fulltext_index_t const* fulltextIndex = (TRI_fulltext_index_t const*) idx;
+
+  return TRI_MemoryFulltextIndex(fulltextIndex->_fulltextIndex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a fulltext index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx) {
+static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
-  TRI_primary_collection_t* primary;
-  TRI_fulltext_index_t* fulltextIndex;
   TRI_shape_path_t const* path;
   char const* attributeName;
 
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  TRI_fulltext_index_t const* fulltextIndex = (TRI_fulltext_index_t const*) idx;
 
   if (fulltextIndex == NULL) {
     return NULL;
   }
 
-  primary = idx->_collection;
+  TRI_primary_collection_t* primary = idx->_collection;
 
   // convert attribute to string
   path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, fulltextIndex->_attribute);
+
   if (path == 0) {
     return NULL;
   }
@@ -1786,6 +1823,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
   TRI_fulltext_index_t* fulltextIndex = static_cast<TRI_fulltext_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_fulltext_index_t), false));
 
   fts = TRI_CreateFtsIndex(2048, 1, 1);
+
   if (fts == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, fulltextIndex);
     return NULL;
@@ -1795,6 +1833,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false); 
 
+  idx->memory   = MemoryFulltextIndex;
   idx->json     = JsonFulltextIndex;
   idx->insert   = InsertFulltextIndex;
   idx->remove   = RemoveFulltextIndex;
@@ -2194,25 +2233,23 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
 /// @brief describes a bitarray index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx) {
+static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
   TRI_json_t* json;      // the json object we return describing the index
   TRI_json_t* keyValues; // a list of attributes and their associated values
-  TRI_primary_collection_t* primary;
   const TRI_shape_path_t* path;
-  TRI_bitarray_index_t* baIndex;
   size_t j;
 
   // ..........................................................................
   // Recast index as bitarray index
   // ..........................................................................
 
-  baIndex = (TRI_bitarray_index_t*) idx;
+  TRI_bitarray_index_t const* baIndex = (TRI_bitarray_index_t const*) idx;
 
   if (baIndex == NULL) {
     return NULL;
   }
 
-  primary = idx->_collection;
+  TRI_primary_collection_t* primary = idx->_collection;
 
 
   // ..........................................................................
