@@ -8657,6 +8657,7 @@ examples:
 		@srcdir@/js/actions/*.js \
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
+		@srcdir@/Documentation/ImplementorManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \
 		@srcdir@/lib/Admin/*.cpp \
 		> /tmp/arangosh.examples
