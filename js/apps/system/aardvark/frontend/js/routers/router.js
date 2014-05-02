@@ -78,7 +78,10 @@
             this.footerView = new window.FooterView();
             this.notificationList = new window.NotificationCollection();
             this.naviView = new window.NavigationView({
-                database: new window.ArangoDatabase(),
+                database: new window.ArangoDatabase(
+                  [],
+                  {shouldFetchUser: true}
+                ),
                 currentDB: this.currentDB,
                 notificationCollection: new window.NotificationCollection(),
                 userCollection: this.userCollection
@@ -177,21 +180,25 @@
         },
 
         databases: function () {
-            if (arangoHelper.databaseAllowed() === true) {
-                if (!this.databaseView) {
-                    this.databaseView = new window.databaseView({
-                        collection: new window.ArangoDatabase()
-                    });
-                }
-                this.databaseView.render();
-                this.naviView.selectMenuItem('databases-menu');
+          if (arangoHelper.databaseAllowed() === true) {
+            if (!this.databaseView) {
+              this.databaseView = new window.databaseView({
+                collection: new window.ArangoDatabase(
+                [],
+                {
+                  shouldFetchUser: false
+                })
+              });
             }
-            else {
-                this.navigate("#", {trigger: true});
-                this.naviView.selectMenuItem('dashboard-menu');
-                $('#databaseNavi').css('display', 'none');
-                $('#databaseNaviSelect').css('display', 'none');
-            }
+            this.databaseView.render();
+            this.naviView.selectMenuItem('databases-menu');
+          }
+          else {
+            this.navigate("#", {trigger: true});
+            this.naviView.selectMenuItem('dashboard-menu');
+            $('#databaseNavi').css('display', 'none');
+            $('#databaseNaviSelect').css('display', 'none');
+          }
         },
 
         dashboard: function () {
