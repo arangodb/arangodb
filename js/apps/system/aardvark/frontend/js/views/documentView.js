@@ -32,7 +32,8 @@
     },
 
     fillEditor: function() {
-      this.editor.set(this.collection.first().attributes);
+      var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      this.editor.set(toFill);
     },
 
     render: function() {
@@ -54,6 +55,8 @@
       delete object._key;
       delete object._rev;
       delete object._id;
+      delete object._from;
+      delete object._to;
       return object;
     },
 
