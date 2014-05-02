@@ -668,12 +668,12 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
                                                  v8::Handle<v8::Function> callback,
                                                  HttpRequest* request) {
   TRI_action_result_t result;
-  TRI_v8_global_t const* v8g;
+  TRI_v8_global_t* v8g;
 
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  v8g = (TRI_v8_global_t const*) isolate->GetData();
+  v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
   v8::Handle<v8::Object> req = RequestCppToV8(v8g, request);
 
@@ -698,11 +698,21 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   // copy full path
   req->Set(v8g->PathKey, v8::String::New(path.c_str(), (int) path.size()));
 
-  // execute the callback
+  // create the response object
   v8::Handle<v8::Object> res = v8::Object::New();
+
+  // register request & response in the context
+  v8g->_currentRequest  = req;
+  v8g->_currentResponse = res;
+
+  // execute the callback
   v8::Handle<v8::Value> args[2] = { req, res };
 
   callback->Call(callback, 2, args);
+
+  // invalidate request / response objects
+  v8g->_currentRequest  = v8::Undefined();
+  v8g->_currentResponse = v8::Undefined();
 
   // convert the result
   result.isValid = true;
@@ -860,6 +870,40 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current request
+///
+/// @FUN{internal.getCurrentRequest()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetCurrentRequest (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getCurrentRequest()");
+  }
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  return scope.Close(v8g->_currentRequest);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current response
+///
+/// @FUN{internal.getCurrentRequest()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetCurrentResponse (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getCurrentResponse()");
+  }
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  return scope.Close(v8g->_currentResponse);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function to test sharding
 ///
 /// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
@@ -884,8 +928,7 @@ class CallbackTest : public ClusterCommCallback {
 static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*)
-                         v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   if (argv.Length() != 9) {
     TRI_V8_EXCEPTION_USAGE(scope,
@@ -1275,6 +1318,8 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
 
 #ifdef TRI_ENABLE_CLUSTER
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);

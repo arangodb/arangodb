@@ -3754,6 +3754,32 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test current user function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCurrentUser : function () {
+      var actual = getQueryResults("RETURN CURRENT_USER()");
+      // there is no current user in the non-request context
+      assertEqual([ null ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sleep function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSleep : function () {
+      var start = require("internal").time();
+      var actual = getQueryResults("LET a = SLEEP(2) RETURN 1");
+
+      var diff = Math.round(require("internal").time() - start, 1);
+
+      assertEqual([ 1 ], actual);
+
+      // allow some tolerance for the time diff
+      assertTrue(diff >= 1.5 && diff <= 2.5);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-existing functions
 ////////////////////////////////////////////////////////////////////////////////
 
