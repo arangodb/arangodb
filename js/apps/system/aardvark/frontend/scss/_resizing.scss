@@ -52,7 +52,7 @@ div.resizecontainer {
     }
 
     .dashboard-large-chart {
-      $int-width: ($content-size * 2 / 3);
+      $int-width: (($content-size - 12) * 2 / 3);
       width: $int-width;
 
       .dashboard-interior-chart {
@@ -61,7 +61,7 @@ div.resizecontainer {
     }
 
     .dashboard-medium-chart {
-      $int-width: ($content-size / 2);
+      $int-width: (($content-size - 12) / 2);
       width: $int-width;
 
       .dashboard-interior-chart {
@@ -70,7 +70,7 @@ div.resizecontainer {
     }
 
     .dashboard-small-chart {
-      $int-width: ($content-size / 3);
+      $int-width: (($content-size - 12) / 3);
       width: $int-width;
 
       .dashboard-interior-chart {
@@ -79,7 +79,7 @@ div.resizecontainer {
     }
 
     .dashboard-tendency-chart {
-      $int-width: ($content-size / 3);
+      $int-width: (($content-size - 12) / 3);
       width: $int-width;
 
       .dashboard-interior-chart {
