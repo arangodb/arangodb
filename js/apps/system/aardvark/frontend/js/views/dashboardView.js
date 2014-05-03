@@ -19,9 +19,8 @@
     },
 
     tendencies: {
-
-      asyncRequestsCurrent: ["asyncRequestsCurrent", "asyncRequestsCurrentPercentChange"],
-      asyncRequestsAverage: ["asyncPerSecond15M", "asyncPerSecondPercentChange15M"],
+      asyncsPerSecondCurrent: ["asyncsPerSecondCurrent", "asyncsPerSecondCurrentPercentChange"],
+      syncsPerSecondCurrent: ["syncsPerSecondCurrent", "syncsPerSecondCurrentPercentChange"],
       clientConnectionsCurrent: ["clientConnectionsCurrent",
         "clientConnectionsCurrentPercentChange"
       ],
@@ -45,8 +44,8 @@
 
 
     barChartsElementNames: {
-      queueTimeDistributionPercent: "Queue Time",
-      requestTimeDistributionPercent: "Request Time",
+      queueTimeDistributionPercent: "Queue",
+      requestTimeDistributionPercent: "Computation",
       bytesSentDistributionPercent: "Bytes sent",
       bytesReceivedDistributionPercent: "Bytes received"
 
@@ -239,6 +238,7 @@
       Object.keys(this.barCharts).forEach(function (a) {
         self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
       });
+      self.history.physicalMemory = newData.physicalMemory;
       self.history.residentSizeChart =
       [
         {
@@ -263,7 +263,6 @@
             }
           ]
         }
-
       ]
       ;
 
@@ -341,9 +340,10 @@
     },
 
     prepareResidentSize: function (update) {
-      var dimensions = this.getCurrentSize('#residentSizeChartContainer'),
-          self = this, currentP =
-      Math.round(self.history.residentSizeChart[0].values[0].value * 100) /100;
+      var dimensions = this.getCurrentSize('#residentSizeChartContainer');
+      var self = this;
+      var currentP = Math.round(self.history.residentSizeChart[0].values[0].value * 100) / 100;
+
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
         /*.width(dimensions.width * 0.3)
@@ -382,7 +382,7 @@
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
-        var data = [Math.round(self.history.virtualSizeCurrent[0] * 100) / 100 + "GB"];
+        var data = [Math.round(self.history.physicalMemory * 100 / 1024 / 1024 / 1024) / 100 + "GB"];
 
         d3.select('#residentSizeChart svg').selectAll('#total')
         .data(data)
@@ -418,19 +418,29 @@
 
 
     prepareD3Charts: function (update) {
-      var v, self = this, barCharts = {
+      var v, self = this, f;
+
+      var barCharts = {
         totalTimeDistribution: [
           "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
         dataTransferDistribution: [
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
-      }, f;
+      };
+
+      var dists = {
+        totalTimeDistribution: "Time Distribution",
+        dataTransferDistribution: "Size Distribution"
+      };
+
       if (this.d3NotInitialised) {
           update = false;
           this.d3NotInitialised = false;
       }
+
       _.each(Object.keys(barCharts), function (k) {
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
+
         if (dimensions.width > 400 ) {
           f = 18;
         } else if (dimensions.width > 300) {
@@ -442,7 +452,10 @@
         } else {
           f = 10;
         }
+
         var selector = "#" + k + "Container svg";
+        var dist = dists[k];
+
         nv.addGraph(function () {
           var chart = nv.models.multiBarHorizontalChart()
           .x(function (d) {
@@ -476,6 +489,7 @@
           .call(chart);
 
           nv.utils.windowResize(chart.update);
+
           if (!update) {
             d3.select(selector)
             .append("text")
@@ -486,7 +500,7 @@
             .style("font-weight", 400)
             .classed("distributionHeader", true)
             .style("font-family", "Open Sans")
-            .text("Distribution");
+            .text(dist);
             var v1 = self.history[k][0].key;
             var v2 = self.history[k][1].key;
             $('#' + k + "Legend").append(
@@ -516,7 +530,7 @@
             .style("font-weight", 400)
             .classed("distributionHeader", true)
             .style("font-family", "Open Sans")
-            .text("Distribution");
+            .text(dist);
           }
         }, function() {
           d3.selectAll(selector + " .nv-bar").on('click',
