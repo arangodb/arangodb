@@ -69,8 +69,9 @@
                     }
                 };
             });
-            var values = [];
-            var options = {shouldFetchUser: false};
+            var values = [],
+            options = {shouldFetchUser: false};
+
             col.initialize(values, options);
             expect(col.models[0].get("name")).toEqual("anton");
             expect(col.models[1].get("name")).toEqual("fritz");

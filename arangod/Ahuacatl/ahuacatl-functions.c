@@ -720,6 +720,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("PARSE_IDENTIFIER", "PARSE_IDENTIFIER", true, false, ".", NULL);
   REGISTER_FUNCTION("SKIPLIST", "SKIPLIST_QUERY", false, false, "h,a|n,n", NULL);
   REGISTER_FUNCTION("CURRENT_USER", "CURRENT_USER", false, false, "", NULL);
+  REGISTER_FUNCTION("CURRENT_DATABASE", "CURRENT_DATABASE", false, false, "", NULL);
 
   if (! result) {
     TRI_FreeFunctionsAql(functions);

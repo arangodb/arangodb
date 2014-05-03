@@ -6662,19 +6662,30 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ///   dead documents.
 /// - @LIT{dead.deletion}: The total number of deletion markers.
 /// - @LIT{datafiles.count}: The number of active datafiles.
-/// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
+/// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles
+///   (in bytes).
 /// - @LIT{journals.count}: The number of journal files.
-/// - @LIT{journals.fileSize}: The total filesize of the journal files.
+/// - @LIT{journals.fileSize}: The total filesize of the journal files
+///   (in bytes).
 /// - @LIT{compactors.count}: The number of compactor files.
-/// - @LIT{compactors.fileSize}: The total filesize of the compactor files.
-/// - @LIT{shapefiles.count}: The number of shape files. This will always be 0.
-/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files. This will always be 0.
+/// - @LIT{compactors.fileSize}: The total filesize of the compactor files
+///   (in bytes).
+/// - @LIT{shapefiles.count}: The number of shape files. This value is
+///   deprecated and will always be 0.
+/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files. This 
+///   value is deprecated and will always be 0.
 /// - @LIT{shapes.count}: The total number of shapes used in the collection.
 ///   Tthis includes shapes that are not in use anymore.
 /// - @LIT{shapes.size}: The total size of all shapes (in bytes). This includes
 ///   shapes that are not in use anymore.
 /// - @LIT{attributes.count}: The total number of attributes used in the 
-///   collection (this includes attributes that are not in use anymore)
+///   collection. Note: the value includes data of attributes that are not in use 
+///   anymore.
+/// - @LIT{attributes.size}: The total size of the attribute data (in bytes).
+///   Note: the value includes data of attributes that are not in use anymore.
+/// - @LIT{indexes.count}: The total number of indexes defined for the
+///   collection, including the pre-defined indexes (e.g. primary index).
+/// - @LIT{indexes.size}: The total memory allocated for indexes in bytes.
 ///
 /// @EXAMPLES
 ///
@@ -6768,6 +6779,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
   attributes->Set(v8::String::New("size"), v8::Number::New(info->_sizeAttributes));
 
+  v8::Handle<v8::Object> indexes = v8::Object::New();
+  result->Set(v8::String::New("indexes"), indexes);
+  indexes->Set(v8::String::New("count"), v8::Number::New(info->_numberIndexes));
+  indexes->Set(v8::String::New("size"), v8::Number::New(info->_sizeIndexes));
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
   return scope.Close(result);
@@ -6830,7 +6846,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
- 
+
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(GetIndexesCoordinator(collection));
