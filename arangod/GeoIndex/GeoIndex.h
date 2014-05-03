@@ -1,28 +1,28 @@
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief geo index
-/////
-///// @file
-/////
-///// DISCLAIMER
-/////
-///// Copyright 2004-2012 triagens GmbH, Cologne, Germany
-/////
-///// Licensed under the Apache License, Version 2.0 (the "License");
-///// you may not use this file except in compliance with the License.
-///// You may obtain a copy of the License at
-/////
-/////     http://www.apache.org/licenses/LICENSE-2.0
-/////
-///// Unless required by applicable law or agreed to in writing, software
-///// distributed under the License is distributed on an "AS IS" BASIS,
-///// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-///// See the License for the specific language governing permissions and
-///// limitations under the License.
-/////
-///// Copyright holder is triAGENS GmbH, Cologne, Germany
-/////
-///// @author R. A. Parker
-///// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @brief geo index
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author R. A. Parker
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
@@ -84,13 +84,15 @@ typedef struct {
   double latitude;
   double longitude;
   void * data;
-}  GeoCoordinate;
+} 
+GeoCoordinate;
 
 typedef struct {
   size_t length;
   GeoCoordinate * coordinates;
   double * distances;
-} GeoCoordinates;
+}
+GeoCoordinates;
 
 typedef char GeoIndex;   /* to keep the structure private  */
 
@@ -100,6 +102,8 @@ typedef char GeoIndex;   /* to keep the structure private  */
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeoIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
+
+size_t GeoIndex_MemoryUsage (void*);
 
 GeoIndex * GeoIndex_new(void);
 void GeoIndex_free(GeoIndex * gi);

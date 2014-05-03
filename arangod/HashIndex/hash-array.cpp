@@ -218,11 +218,19 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the size of a single entry
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t TableEntrySize (TRI_hash_array_t const* array) {
+  return sizeof(TRI_hash_index_element_t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddNewElement (TRI_hash_array_t* array,
-                           TRI_hash_index_element_t* element) {
+static void AddElement (TRI_hash_array_t* array,
+                        TRI_hash_index_element_t* element) {
   uint64_t hash;
   uint64_t i;
 
@@ -247,7 +255,7 @@ static void AddNewElement (TRI_hash_array_t* array,
   // memcpy ok here since are simply moving array items internally
   // ...........................................................................
 
-  memcpy(&array->_table[i], element, sizeof(TRI_hash_index_element_t));
+  memcpy(&array->_table[i], element, TableEntrySize(array));
   array->_nrUsed++;
 }
 
@@ -259,7 +267,9 @@ static void AddNewElement (TRI_hash_array_t* array,
 
 static int AllocateTable (TRI_hash_array_t* array, 
                           size_t numElements) {
-  TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,  sizeof(TRI_hash_index_element_t) * numElements, true));
+  size_t const size = TableEntrySize(array) * numElements;
+
+  TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
 
   if (table == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -295,11 +305,12 @@ static int ResizeHashArray (TRI_hash_array_t* array,
 
   for (j = 0; j < oldAlloc; j++) {
     if (! IsEmptyElement(array, &oldTable[j])) {
-      AddNewElement(array, &oldTable[j]);
+      AddElement(array, &oldTable[j]);
     }
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -405,6 +416,18 @@ void TRI_FreeHashArray (TRI_hash_array_t* array) {
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the hash array's memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
+  if (array == NULL) {
+    return 0;
+  }
+
+  return array->_nrAlloc * TableEntrySize(array); 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the hash table

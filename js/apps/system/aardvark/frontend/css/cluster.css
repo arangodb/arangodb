@@ -11,31 +11,37 @@ textarea,
   font-style: normal;
   font-weight: 300;
   src: local("Open Sans Light"), local("OpenSans-Light"), url("../fonts/opensans/OpenSansLight.woff") format("woff"); }
+
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
   src: local("Open Sans"), local("OpenSans"), url("../fonts/opensans/OpenSans.woff") format("woff"); }
+
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 700;
   src: local("Open Sans Bold"), local("OpenSans-Bold"), url("../fonts/opensans/OpenSansBold.woff") format("woff"); }
+
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 300;
   src: local("Open Sans Light Italic"), local("OpenSansLight-Italic"), url("../fonts/opensans/OpenSansLightItalic.woff") format("woff"); }
+
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 400;
   src: local("Open Sans Italic"), local("OpenSans-Italic"), url("../fonts/opensans/OpenSansItalic.woff") format("woff"); }
+
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
+
 /*!
  *  Font Awesome 4.0.3 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
@@ -48,6 +54,7 @@ textarea,
   src: url("../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.0.3") format("embedded-opentype"), url("../fonts/fontawesome/fontawesome-webfont.woff?v=4.0.3") format("woff"), url("../fonts/fontawesome/fontawesome-webfont.ttf?v=4.0.3") format("truetype"), url("../fonts/fontawesome/fontawesome-webfont.svg?v=4.0.3#fontawesomeregular") format("svg");
   font-weight: normal;
   font-style: normal; }
+
 .fa {
   display: inline-block;
   font-family: FontAwesome;
@@ -123,30 +130,35 @@ textarea,
 
   100% {
     -moz-transform: rotate(359deg); } }
+
 @-webkit-keyframes spin {
   0% {
     -webkit-transform: rotate(0deg); }
 
   100% {
     -webkit-transform: rotate(359deg); } }
+
 @-o-keyframes spin {
   0% {
     -o-transform: rotate(0deg); }
 
   100% {
     -o-transform: rotate(359deg); } }
+
 @-ms-keyframes spin {
   0% {
     -ms-transform: rotate(0deg); }
 
   100% {
     -ms-transform: rotate(359deg); } }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg); }
 
   100% {
     transform: rotate(359deg); } }
+
 .fa-rotate-90 {
   filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=$rotation);
   -webkit-transform: rotate(90deg);
@@ -1456,17 +1468,17 @@ a.warning.coordinator, a.warning.dbserver {
 .button-inactive {
   background-color: lightgrey; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   color: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    color: grey; }
+    color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
   fill: lightgrey; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    fill: grey; }
+    fill: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1493,7 +1505,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
-    padding: 0 15px; }
+    padding: 0 20px; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
@@ -1667,16 +1679,6 @@ div.footer-right {
   width: 45%; }
   div.footer-right p {
     color: white; }
-  div.footer-right i {
-    color: #da4f49;
-    font-size: 18px; }
-  div.footer-right a {
-    color: #fff;
-    margin-left: 5px;
-    position: relative;
-    top: -1px; }
-  div.footer-right .isOnline {
-    color: #8aa051 !important; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
   -moz-border-radius: 4px;
@@ -2109,21 +2111,6 @@ div.resizecontainer {
   div.resizecontainer {
     width: 228px; }
 
-  .dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .dashboard-half-height-legend {
-    display: none;
-    font-size: 8px;
-    width: 5px; }
-
   div.modal-chart-detail {
     left: 50%;
     margin-left: -114px;
@@ -2132,64 +2119,49 @@ div.resizecontainer {
   .dashboard-large-chart {
     width: 152px; }
     .dashboard-large-chart .dashboard-interior-chart {
-      width: 142px; }
+      width: -48px; }
 
   .dashboard-medium-chart {
     width: 114px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 104px; }
+      width: -86px; }
 
   .dashboard-small-chart {
     width: 76px; }
     .dashboard-small-chart .dashboard-interior-chart {
-      width: 66px; }
+      width: -124px; }
 
   .dashboard-tendency-chart {
     width: 76px; }
     .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 66px; }
+      width: -124px; }
 
   div.modal-chart-detail {
     margin-left: -109px;
     width: 218px; }
     div.modal-chart-detail .modal-inner-detail {
-      width: 88px; }
+      width: -102px; }
     div.modal-chart-detail .modal-body {
       width: 143px; }
     div.modal-chart-detail .dashboard-large-chart {
       width: 85.33333px; }
       div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 75.33333px; }
+        width: -114.66667px; }
     div.modal-chart-detail .dashboard-medium-chart {
       width: 64px; }
       div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 54px; }
+        width: -136px; }
     div.modal-chart-detail .dashboard-small-chart {
       width: 42.66667px; }
       div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 32.66667px; }
+        width: -157.33333px; }
     div.modal-chart-detail .dashboard-tendency-chart {
       width: 42.66667px; }
       div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 32.66667px; } }
+        width: -157.33333px; } }
 @media (min-width: 480px) and (max-width: 719px) {
   div.resizecontainer {
     width: 468px; }
-
-  .dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .dashboard-half-height-legend {
-    display: none;
-    font-size: 8px;
-    width: 5px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2199,64 +2171,49 @@ div.resizecontainer {
   .dashboard-large-chart {
     width: 312px; }
     .dashboard-large-chart .dashboard-interior-chart {
-      width: 302px; }
+      width: 112px; }
 
   .dashboard-medium-chart {
     width: 234px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 224px; }
+      width: 34px; }
 
   .dashboard-small-chart {
     width: 156px; }
     .dashboard-small-chart .dashboard-interior-chart {
-      width: 146px; }
+      width: -44px; }
 
   .dashboard-tendency-chart {
     width: 156px; }
     .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 146px; }
+      width: -44px; }
 
   div.modal-chart-detail {
     margin-left: -229px;
     width: 458px; }
     div.modal-chart-detail .modal-inner-detail {
-      width: 328px; }
+      width: 138px; }
     div.modal-chart-detail .modal-body {
       width: 383px; }
     div.modal-chart-detail .dashboard-large-chart {
       width: 245.33333px; }
       div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 235.33333px; }
+        width: 45.33333px; }
     div.modal-chart-detail .dashboard-medium-chart {
       width: 184px; }
       div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 174px; }
+        width: -16px; }
     div.modal-chart-detail .dashboard-small-chart {
       width: 122.66667px; }
       div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 112.66667px; }
+        width: -77.33333px; }
     div.modal-chart-detail .dashboard-tendency-chart {
       width: 122.66667px; }
       div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 112.66667px; } }
+        width: -77.33333px; } }
 @media (min-width: 720px) and (max-width: 959px) {
   div.resizecontainer {
     width: 708px; }
-
-  .dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .dashboard-half-height-legend {
-    display: none;
-    font-size: 8px;
-    width: 5px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2266,61 +2223,49 @@ div.resizecontainer {
   .dashboard-large-chart {
     width: 472px; }
     .dashboard-large-chart .dashboard-interior-chart {
-      width: 462px; }
+      width: 272px; }
 
   .dashboard-medium-chart {
     width: 354px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 344px; }
+      width: 154px; }
 
   .dashboard-small-chart {
     width: 236px; }
     .dashboard-small-chart .dashboard-interior-chart {
-      width: 226px; }
+      width: 36px; }
 
   .dashboard-tendency-chart {
     width: 236px; }
     .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 226px; }
+      width: 36px; }
 
   div.modal-chart-detail {
     margin-left: -349px;
     width: 698px; }
     div.modal-chart-detail .modal-inner-detail {
-      width: 568px; }
+      width: 378px; }
     div.modal-chart-detail .modal-body {
       width: 623px; }
     div.modal-chart-detail .dashboard-large-chart {
       width: 405.33333px; }
       div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 395.33333px; }
+        width: 205.33333px; }
     div.modal-chart-detail .dashboard-medium-chart {
       width: 304px; }
       div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 294px; }
+        width: 104px; }
     div.modal-chart-detail .dashboard-small-chart {
       width: 202.66667px; }
       div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 192.66667px; }
+        width: 2.66667px; }
     div.modal-chart-detail .dashboard-tendency-chart {
       width: 202.66667px; }
       div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 192.66667px; } }
+        width: 2.66667px; } }
 @media (min-width: 960px) and (max-width: 1199px) {
   div.resizecontainer {
     width: 948px; }
-
-  .dashboard-legend {
-    font-size: 8px;
-    width: 120px; }
-
-  .modal-dashboard-legend {
-    font-size: 8px;
-    width: 120px; }
-
-  .dashboard-half-height-legend {
-    font-size: 8px;
-    width: 60px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2330,61 +2275,49 @@ div.resizecontainer {
   .dashboard-large-chart {
     width: 632px; }
     .dashboard-large-chart .dashboard-interior-chart {
-      width: 512px; }
+      width: 432px; }
 
   .dashboard-medium-chart {
     width: 474px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 354px; }
+      width: 274px; }
 
   .dashboard-small-chart {
     width: 316px; }
     .dashboard-small-chart .dashboard-interior-chart {
-      width: 196px; }
+      width: 116px; }
 
   .dashboard-tendency-chart {
     width: 316px; }
     .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 196px; }
+      width: 116px; }
 
   div.modal-chart-detail {
     margin-left: -469px;
     width: 938px; }
     div.modal-chart-detail .modal-inner-detail {
-      width: 698px; }
+      width: 618px; }
     div.modal-chart-detail .modal-body {
       width: 863px; }
     div.modal-chart-detail .dashboard-large-chart {
       width: 565.33333px; }
       div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 445.33333px; }
+        width: 365.33333px; }
     div.modal-chart-detail .dashboard-medium-chart {
       width: 424px; }
       div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 304px; }
+        width: 224px; }
     div.modal-chart-detail .dashboard-small-chart {
       width: 282.66667px; }
       div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 162.66667px; }
+        width: 82.66667px; }
     div.modal-chart-detail .dashboard-tendency-chart {
       width: 282.66667px; }
       div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 162.66667px; } }
+        width: 82.66667px; } }
 @media (min-width: 1200px) and (max-width: 1439px) {
   div.resizecontainer {
     width: 1188px; }
-
-  .dashboard-legend {
-    font-size: 11px;
-    width: 170px; }
-
-  .modal-dashboard-legend {
-    font-size: 11px;
-    width: 170px; }
-
-  .dashboard-half-height-legend {
-    font-size: 11px;
-    width: 85px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2394,61 +2327,49 @@ div.resizecontainer {
   .dashboard-large-chart {
     width: 792px; }
     .dashboard-large-chart .dashboard-interior-chart {
-      width: 622px; }
+      width: 592px; }
 
   .dashboard-medium-chart {
     width: 594px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 424px; }
+      width: 394px; }
 
   .dashboard-small-chart {
     width: 396px; }
     .dashboard-small-chart .dashboard-interior-chart {
-      width: 226px; }
+      width: 196px; }
 
   .dashboard-tendency-chart {
     width: 396px; }
     .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 226px; }
+      width: 196px; }
 
   div.modal-chart-detail {
     margin-left: -589px;
     width: 1178px; }
     div.modal-chart-detail .modal-inner-detail {
-      width: 888px; }
+      width: 858px; }
     div.modal-chart-detail .modal-body {
       width: 1103px; }
     div.modal-chart-detail .dashboard-large-chart {
       width: 725.33333px; }
       div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 555.33333px; }
+        width: 525.33333px; }
     div.modal-chart-detail .dashboard-medium-chart {
       width: 544px; }
       div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 374px; }
+        width: 344px; }
     div.modal-chart-detail .dashboard-small-chart {
       width: 362.66667px; }
       div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 192.66667px; }
+        width: 162.66667px; }
     div.modal-chart-detail .dashboard-tendency-chart {
       width: 362.66667px; }
       div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 192.66667px; } }
+        width: 162.66667px; } }
 @media (min-width: 1440px) and (max-width: 1679px) {
   div.resizecontainer {
     width: 1428px; }
-
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2502,18 +2423,6 @@ div.resizecontainer {
   div.resizecontainer {
     width: 1668px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
   div.modal-chart-detail {
     left: 50%;
     margin-left: -834px;
@@ -2565,18 +2474,6 @@ div.resizecontainer {
 @media (min-width: 1920px) and (max-width: 2159px) {
   div.resizecontainer {
     width: 1908px; }
-
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -2630,18 +2527,6 @@ div.resizecontainer {
   div.resizecontainer {
     width: 2148px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
   div.modal-chart-detail {
     left: 50%;
     margin-left: -1074px;
@@ -2694,18 +2579,6 @@ div.resizecontainer {
   div.resizecontainer {
     width: 2388px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
   div.modal-chart-detail {
     left: 50%;
     margin-left: -1194px;
@@ -2757,18 +2630,6 @@ div.resizecontainer {
 @media (min-width: 2640px) and (max-width: 2879px) {
   div.resizecontainer {
     width: 2628px; }
-
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
 
   div.modal-chart-detail {
     left: 50%;
@@ -3287,7 +3148,7 @@ svg.clusterChart {
 .lineGraph {
   position: absolute; }
   .lineGraph .few .dygraph-legend > span.highlight {
-    border: 1px solid grey; }
+    border: 1px solid gray; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
   .lineGraph .many .dygraph-legend > span.highlight {

@@ -238,19 +238,27 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+  
+static size_t MemoryGeoIndex (TRI_index_t const* idx) {
+  TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
+
+  return GeoIndex_MemoryUsage(geo->_geoIndex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
-  TRI_primary_collection_t* primary;
   TRI_shape_path_t const* path;
   char const* location;
-  TRI_geo_index_t* geo;
 
-  geo = (TRI_geo_index_t*) idx;
-  primary = idx->_collection;
+  TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
+  TRI_primary_collection_t* primary = idx->_collection;
 
   // convert location to string
   path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_location);
@@ -287,17 +295,15 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx) {
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
-  TRI_primary_collection_t* primary;
   TRI_shape_path_t const* path;
   char const* latitude;
   char const* longitude;
-  TRI_geo_index_t* geo;
-
-  geo = (TRI_geo_index_t*) idx;
-  primary = idx->_collection;
+  
+  TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
+  TRI_primary_collection_t* primary = idx->_collection;
 
   // convert latitude to string
   path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_latitude);
@@ -497,6 +503,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 
   idx->_ignoreNull = ignoreNull;
 
+  idx->memory   = MemoryGeoIndex;
   idx->json     = JsonGeo1Index;
   idx->insert   = InsertGeoIndex;
   idx->remove   = RemoveGeoIndex;
@@ -550,6 +557,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
 
   idx->_ignoreNull = ignoreNull;
   
+  idx->memory   = MemoryGeoIndex;
   idx->json     = JsonGeo2Index;
   idx->insert   = InsertGeoIndex;
   idx->remove   = RemoveGeoIndex;
@@ -642,10 +650,9 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
                                      double lat,
                                      double lon,
                                      size_t count) {
-  TRI_geo_index_t* geo;
   GeoCoordinate gc;
 
-  geo = (TRI_geo_index_t*) idx;
+  TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
   gc.latitude = lat;
   gc.longitude = lon;
 

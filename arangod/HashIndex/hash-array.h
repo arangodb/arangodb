@@ -60,7 +60,7 @@ typedef struct TRI_hash_array_s {
   size_t _numFields; // the number of fields indexes
 
   uint64_t _nrAlloc; // the size of the table
-  uint64_t _nrUsed; // the number of used entries
+  uint64_t _nrUsed;  // the number of used entries
 
   struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
 }
@@ -115,6 +115,12 @@ void TRI_FreeHashArray (TRI_hash_array_t*);
 /// @addtogroup Collections
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the hash array's memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the hash table

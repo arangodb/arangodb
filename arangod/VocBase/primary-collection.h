@@ -169,12 +169,14 @@ typedef struct TRI_doc_collection_info_s {
   TRI_voc_ssize_t _numberTransaction; // populated only during compaction
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;
+  TRI_voc_ssize_t _numberIndexes;
 
   int64_t         _sizeAlive;
   int64_t         _sizeDead;
   int64_t         _sizeTransaction;   // populated only during compaction
   int64_t         _sizeShapes;  
   int64_t         _sizeAttributes; 
+  int64_t         _sizeIndexes; 
 
   int64_t         _datafileSize;
   int64_t         _journalfileSize;
