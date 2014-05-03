@@ -24,14 +24,14 @@
       <div class="dashboard-subtitle-bar">current</div>
       <div class="dashboard-subtitle-bar">15-min-avg</div>
       <div class="dashboard-tendency">
-				<div class="dashboard-figure">
-        <span id="<%= name %>Current"></span>
-				</div>
+	<div class="dashboard-figure">
+          <span id="<%= name %>Current"></span>
+	</div>
       </div>
       <div class="dashboard-tendency">
-				<div class="dashboard-figure">
-        <span id="<%= name %>Average"></span>
-				</div>
+	<div class="dashboard-figure">
+          <span id="<%= name %>Average"></span>
+	</div>
       </div>
     </div>
   <% } %>
@@ -40,21 +40,35 @@
   </div>
   <div class="contentDiv">
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Total Time in seconds</div>
+      <div class="dashboard-title-bar">Average Request Time (seconds)</div>
       <% largeChart("totalTimeChart") %>
       <% smallChart("totalTimeDistribution") %>
     </div>
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Data Transfer in Bytes</div>
+      <div class="dashboard-title-bar">Average Transfer Size (bytes)</div>
       <% largeChart("dataTransferChart") %>
       <% smallChart("dataTransferDistribution") %>
     </div>
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Requests</div>
+      <div class="dashboard-title-bar">Requests per Second</div>
       <% largeChart("requestsChart") %>
       <div class="dashboard-tendency-chart">
-        <% tendency("Async Requests", "asyncRequests"); %>
-        <% tendency("Client Connections", "clientConnections"); %>
+	<div class="dashboard-half-height-chart dashboard-chart"  id="asyncRequestsContainer">
+	  <div class="dashboard-title-bar">Request Types</div>
+	  <div class="dashboard-subtitle-bar">sync</div>
+	  <div class="dashboard-subtitle-bar">async</div>
+	  <div class="dashboard-tendency">
+	    <div class="dashboard-figure">
+	      <span id="syncsPerSecondCurrent"></span>
+	    </div>
+	  </div>
+	  <div class="dashboard-tendency">
+	    <div class="dashboard-figure">
+	      <span id="asyncsPerSecondCurrent"></span>
+	    </div>
+	  </div>
+	</div>
+        <% tendency("Number of Client Connections", "clientConnections"); %>
       </div>
     </div>
   </div>
@@ -68,9 +82,9 @@
     <div class="dashboard-tendency-chart dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
       <div class="dashboard-title-bar">Resident Size</div>
       <div id="residentSizeChart">
-					<svg>
-					</svg>
-			</div>
+	<svg>
+	</svg>
+      </div>
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
       <% tendency("Virtual Size in GB", "virtualSize"); %>
@@ -79,7 +93,7 @@
   <div class="dashboard-row">
     <div class="dashboard-title-bar">
       <div class="dashboard-half-title-bar">Major Page Faults</div>
-      <div class="dashboard-half-title-bar">System User Time in seconds</div>
+      <div class="dashboard-half-title-bar">Used Time per Second</div>
     </div>
     <div class="dashboard-medium-chart dashboard-chart" id="pageFaultsChartContainer">
       <div id="pageFaultsChart" class="dashboard-interior-chart"></div>
