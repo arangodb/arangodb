@@ -1,9 +1,6 @@
-$dashboard-height: 250px;
-$dashboard-padding: 28px;
-
 %dashboard-chart-box {
   @extend %pull-left;
-  border-left: 1px solid $c-black;
+  border-left: 0px solid $c-black;
   cursor: pointer;
   margin-left: -1px;
 
@@ -19,15 +16,18 @@ $dashboard-padding: 28px;
 
 .dashboard-interior-chart {
   @extend %pull-left;
-  height: $dashboard-height - $dashboard-padding;
+  height: $dashboard-height - $dashboard-margin;
+  /* background-color: $c-white; */
 }
 
 .dashboard-large-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
   height: $dashboard-height;
+  margin-top: $dashboard-margin;
   padding-top: $dashboard-padding;
-
+  margin-right: 12px;
+  background-color: $c-white;
 }
 
 .dashboard-medium-chart {
@@ -37,31 +37,29 @@ $dashboard-padding: 28px;
   padding-top: $dashboard-padding;
 }
 
-
 .dashboard-small-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
   height: $dashboard-height;
+  margin-top: $dashboard-margin;
   padding-top: $dashboard-padding;
+  background-color: $c-white;
 }
-
 
 .dashboard-tendency-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height + $dashboard-padding;
+  margin-top: $dashboard-margin;
+  height: $dashboard-height;
 }
-
-
 
 .dashboard-legend {
   @extend %pull-left;
-  height: $dashboard-height;
+  height: $dashboard-height - $dashboard-margin;
   width: $legend-width;
-
+  
   .dashboard-legend-inner {
-    padding-left: 20px;
-    padding-top: 20px;
+    padding: 5px;
   }
 }
 
@@ -73,7 +71,6 @@ $dashboard-padding: 28px;
     max-height: 75%;
   }
 }
-
 
 .modal-inner-detail {
   @extend %pull-left;
@@ -108,24 +105,13 @@ $dashboard-padding: 28px;
 
 .dashboard-title-bar {
   background-color: $c-bar-bg;
-  border: {
-    bottom: 1px;
-    bottom-color: $c-black;
-    left: 1px;
-    left-color: $c-black;
-    right: 1px;
-    right-color: $c-black;
-    style: solid;
-    top: 1px;
-    top-color: $c-black;
-  }
   color: $c-white;
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 400;
   height: 36px;
   line-height: 36px;
-  margin-left: -1px;
-  margin-right: -1px;
-  text-align: center;
+  margin: 0px -1px 0px -1px;
+  padding: 0px 5px 0px 10px;
 
   .dashboard-half-title-bar {
     @extend %pull-left;
@@ -145,7 +131,7 @@ $dashboard-padding: 28px;
   @extend %dashboard-chart-box;
   border-bottom: 1px solid $c-black;
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 300;
   height: 36px;
   line-height: 36px;
   text-align: center;
@@ -155,19 +141,19 @@ $dashboard-padding: 28px;
 .dashboard-tendency {
   @extend %pull-left;
   @extend %dashboard-chart-box;
-  font-size: 25px;
+  font-size: 16px;
   height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
   text-align: center;
   top: 15%;
   width: 50%;
+  background-color: $c-white;
 }
 
 .dashboard-row {
   @extend %clear-float;
-  border: 1px solid $c-black;
-  margin-bottom: 5px;
-  margin-left: -1px;
-  margin-right: -1px;
+  margin-bottom: 12px;
+  margin-left: 1px;
+  margin-right: 1px;
 }
 
 .dashboard-figure {
@@ -176,5 +162,26 @@ $dashboard-padding: 28px;
   margin-left: 19%;
   margin-top: 7%;
   text-align: center;
+}
+
+.dygraph-axis-label {
+  &.dygraph-axis-label-y, 
+  &.dygraph-axis-label-x {
+    color: $c-darker-grey;
+    font: {
+      family: 'Open Sans', sans-serif;
+      size: 13px;
+      weight: 300;
+    }
+  }
+}
+// labelsDivStyles
+.dashboard-legend {
+  color: $c-darker-grey;
+  font: {
+    family: 'Open Sans', sans-serif;
+    size: 13px;
+    weight: 400;
+  }
 }
 

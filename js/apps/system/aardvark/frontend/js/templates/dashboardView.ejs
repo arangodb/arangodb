@@ -21,14 +21,14 @@
   <% var tendency = function(title, name) { %>
     <div class="dashboard-half-height-chart dashboard-chart"  id="<%= name %>Container">
       <div class="dashboard-title-bar"><%= title %></div>
-      <div class="dashboard-subtitle-bar">current</div>
-      <div class="dashboard-subtitle-bar">15-min-avg</div>
       <div class="dashboard-tendency">
+        <div class="dashboard-subtitle-bar">current</div>
 				<div class="dashboard-figure">
         <span id="<%= name %>Current"></span>
 				</div>
       </div>
       <div class="dashboard-tendency">
+        <div class="dashboard-subtitle-bar">15-min-avg</div>
 				<div class="dashboard-figure">
         <span id="<%= name %>Average"></span>
 				</div>
