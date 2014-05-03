@@ -38,16 +38,53 @@ div.resizecontainer {
 @for $i from 1 through 11 {
   $min: $tile-width * $i;
   $content-size: $min - 12px;
+  $legend-width: 200px;
+  $legend-font: 14px;
+
+  @if $i < 4 {
+    $legend-width: 10px;
+    $legend-font: 8px;
+  } @else if $i < 5 {
+    $legend-width: 120px;
+    $legend-font: 8px;
+  } @else if $i < 6 {
+    $legend-width: 170px;
+    $legend-font: 11px;
+  }
+
   
   @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
-
     div.resizecontainer {
       width: $content-size;
     }
 
+    .dashboard-legend {
+      @if $i < 4 {
+        display: none;
+      }
+      font-size: $legend-font;
+      width: $legend-width;
+    }
+
+    .modal-dashboard-legend {
+      @if $i < 4 {
+        display: none;
+      }
+      font-size: $legend-font;
+      width: $legend-width;
+    }
+
+    .dashboard-half-height-legend {
+      @if $i < 4 {
+        display: none;
+      }
+      font-size: $legend-font;
+      width: $legend-width / 2;
+    }
+
     div.modal-chart-detail {
       left: 50%;
-      margin-left: -($content-size)/2;
+      margin-left: -($content-size) / 2;
       width: $content-size;
     }
 
