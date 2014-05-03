@@ -16,8 +16,8 @@
 
 .dashboard-interior-chart {
   @extend %pull-left;
-  height: $dashboard-height - $dashboard-margin;
-  /* background-color: $c-white; */
+  height: $dashboard-height - $dashboard-padding;
+  background-color: $c-white;
 }
 
 .dashboard-large-chart {
@@ -57,7 +57,7 @@
   @extend %pull-left;
   height: $dashboard-height - $dashboard-margin;
   width: $legend-width;
-  
+
   .dashboard-legend-inner {
     padding: 5px;
   }
@@ -79,7 +79,6 @@
 .modal-dashboard-legend {
   @extend %pull-left;
   height: $dashboard-height;
-  width: $legend-width;
 
   .dashboard-legend-inner {
     padding-left: 20px;
@@ -91,7 +90,6 @@
 .dashboard-half-height-legend {
   @extend %pull-left;
   height: $dashboard-height / 2;
-  width: $legend-width / 2;
 
   .dashboard-legend-inner {
     padding-top: 20px;

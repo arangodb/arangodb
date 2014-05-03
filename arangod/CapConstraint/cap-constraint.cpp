@@ -175,15 +175,22 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t MemoryCapConstraint (TRI_index_t const* idx) {
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonCapConstraint (TRI_index_t* idx) {
+static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
   TRI_json_t* json;
-  TRI_cap_constraint_t* cap;
 
   // recast as a cap constraint
-  cap = (TRI_cap_constraint_t*) idx;
+  TRI_cap_constraint_t const* cap = (TRI_cap_constraint_t const*) idx;
 
   // create json object and fill it
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
@@ -291,6 +298,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
+  idx->memory      = MemoryCapConstraint;
   idx->json        = JsonCapConstraint;
   idx->removeIndex = RemoveIndexCapConstraint;
   idx->insert      = InsertCapConstraint;

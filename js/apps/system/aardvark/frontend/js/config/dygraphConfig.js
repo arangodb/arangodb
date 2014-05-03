@@ -52,7 +52,7 @@
             residentSize : ["times", "residentSizePercent"],
             virtualSize : ["times", "virtualSize"],
             pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
-            systemUserTime : ["times", "cpuSystemTime", "cpuUserTime"],
+            systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
             httpConnections : ["times", "clientConnections"],
             totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
             dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
@@ -140,7 +140,7 @@
             totalTime: {
                 div: "totalTimeChart",
                 header: "Total Time",
-                labels: ["datetime", "Queue Time", "Request Time", "IO Time"],
+                labels: ["datetime", "Queue", "Computation", "I/O"],
                 labelsKMG2: false,
                 axes: {
                     y: {

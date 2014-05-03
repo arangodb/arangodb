@@ -410,11 +410,13 @@ int figuresOnCoordinator (string const& dbname,
             result->_numberDeletion       += ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
             result->_numberShapes         += ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");
             result->_numberAttributes     += ExtractFigure<TRI_voc_ssize_t>(figures, "attributes", "count");
+            result->_numberIndexes        += ExtractFigure<TRI_voc_ssize_t>(figures, "indexes", "count");
 
             result->_sizeAlive            += ExtractFigure<int64_t>(figures, "alive", "size");
             result->_sizeDead             += ExtractFigure<int64_t>(figures, "dead", "size");
             result->_sizeShapes           += ExtractFigure<int64_t>(figures, "shapes", "size");
             result->_sizeAttributes       += ExtractFigure<int64_t>(figures, "attributes", "size");
+            result->_sizeIndexes          += ExtractFigure<int64_t>(figures, "indexes", "size");
 
             result->_numberDatafiles      += ExtractFigure<TRI_voc_ssize_t>(figures, "datafiles", "count");
             result->_numberJournalfiles   += ExtractFigure<TRI_voc_ssize_t>(figures, "journals", "count");

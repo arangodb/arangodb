@@ -106,7 +106,7 @@
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number of active datafiles.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
                   <span class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
@@ -119,7 +119,7 @@
             <%=roundNumber(figuresData.figures.journals.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number of journal files.">
+              <a class="modalTooltips" title="Number and total size of journal files.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -130,7 +130,7 @@
             <%=roundNumber(figuresData.figures.compactors.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number of compactor files.">
+              <a class="modalTooltips" title="Number and total size of compactor files.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -141,7 +141,18 @@
             <%=roundNumber(figuresData.figures.shapefiles.fileSize / 1024 / 1024, 2)%>
             </th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number of shape files.">
+              <a class="modalTooltips" title="Number and total size of shape files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Indexes</th>
+            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.indexes.size / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total memory usage of indexes.">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -157,7 +168,7 @@
             <th class="modal-text">Shapes</th>
             <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of shapes used in the collection">
+              <a class="modalTooltips" title="Total number of shapes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -165,7 +176,7 @@
             <th class="modal-text">Attributes</th>
             <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of attributes used in the collection">
+              <a class="modalTooltips" title="Total number of attributes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -187,7 +198,7 @@
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number and size used by all living documents.">
+              <a class="modalTooltips" title="Total number and size of all living documents.">
                 <span class="arangoicon icon_arangodb_info"></span>
               </a>
             </th>
@@ -202,7 +213,7 @@
 
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" title="Total number and size used by all dead documents.">
+                <a class="modalTooltips" title="Total number and size of all dead documents.">
                 <span class="arangoicon icon_arangodb_info"></span>
                 </a>
             </div>
