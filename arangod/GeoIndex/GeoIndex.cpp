@@ -107,7 +107,8 @@ typedef struct {
   GeoString end;
   int level;
   int points[GeoIndexPOTSIZE];
-} GeoPot;
+} 
+GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
 /* This is the REAL GeoIndex structure - the one in    */
@@ -132,7 +133,9 @@ typedef struct {
   int slotct;           /* slots allocated           */
   GeoPot * pots;        /* the pots themselves       */
   GeoCoordinate * gc;   /* the slots themselves      */
-} GeoIx;
+  size_t _memoryUsed;   /* the amount of memory currently used */
+} 
+GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
 /* The routine GeoMkDetail is given a point - really   */
@@ -183,7 +186,8 @@ typedef struct
     GeoFix fixdist[GeoIndexFIXEDPOINTS];
     double snmd;
     GeoFix distrej[GeoIndexFIXEDPOINTS];
-}    GeoDetailedPoint;
+} 
+GeoDetailedPoint;
 /* =================================================== */
 /*                   GeoResults   structure            */
 /* During the searches, this structure is used to      */
@@ -211,7 +215,8 @@ typedef struct
     int allocpoints;
     int * slot;
     double * snmd;
-}    GeoResults;
+} 
+GeoResults;
 /* =================================================== */
 /*                 GeoStack    structure               */
 /* During searches of both kinds, at any time there is */
@@ -234,7 +239,8 @@ typedef struct
     GeoDetailedPoint * gd;
     int stacksize;
     int potid[50];
-}   GeoStack;
+}
+GeoStack;
 /* =================================================== */
 /*                  GeoPath structure                  */
 /* Similar in many ways to the GeoStack, above, this   */
@@ -255,7 +261,8 @@ typedef struct
     GeoIx * gix;
     int pathlength;
     int path[50];
-}    GeoPath;
+}
+GeoPath;
 
 
 // .............................................................................
@@ -339,11 +346,20 @@ int GeoIndexNewPot(GeoIx * gix)
         x=x/y;
         if(x>1000000000L) return -2;
         newpotct= (int) x;
-        gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,newpotct*sizeof(GeoPot)));
+        gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots, newpotct * sizeof(GeoPot)));
 
-        if(gp !=NULL) gix->pots=gp;
-            else     return -2;
-        for(j=gix->potct;j<newpotct;j++) GeoIndexFreePot(gix,j);
+        if (gp == NULL) { 
+          return -2;
+        }
+        gix->pots = gp;
+
+        // update memory usage        
+        gix->_memoryUsed -= gix->potct * sizeof(GeoPot);
+        gix->_memoryUsed += newpotct * sizeof(GeoPot);
+
+        for(j=gix->potct;j<newpotct;j++) {
+          GeoIndexFreePot(gix,j);
+        }
         gix->potct=newpotct;
     }
     j= gix->pots[0].LorLeaf;
@@ -370,7 +386,7 @@ int GeoIndexNewPot(GeoIx * gix)
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIndex * GeoIndex_new(void) {
+GeoIndex * GeoIndex_new (void) {
     GeoIx * gix;
     int i,j;
     double lat, lon, x, y, z;
@@ -382,8 +398,8 @@ GeoIndex * GeoIndex_new(void) {
     }
 
 /* try to allocate all the things we need  */
-    gix->pots       = static_cast<GeoPot*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART*sizeof(GeoPot), false));
-    gix->gc         = static_cast<GeoCoordinate*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART*sizeof(GeoCoordinate), false));
+    gix->pots       = static_cast<GeoPot*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART * sizeof(GeoPot), false));
+    gix->gc         = static_cast<GeoCoordinate*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate), false));
 
 /* if any of them fail, free the ones that succeeded  */
 /* and then return the NULL pointer for our user      */
@@ -402,6 +418,10 @@ GeoIndex * GeoIndex_new(void) {
 
         return NULL;
     }
+
+    // set initial memory usage
+    gix->_memoryUsed = GEOPOTSTART * sizeof(GeoPot) + GEOSLOTSTART * sizeof(GeoCoordinate);
+
 
 /* initialize chain of empty slots  */
     for(i=0;i<GEOSLOTSTART;i++)
@@ -953,6 +973,7 @@ int GeoResultsGrow(GeoResults * gr)
         if(dd!=NULL) gr->snmd = dd;
         return -1;
     }
+
     gr->slot = sa;
     gr->snmd = dd;
     gr->allocpoints = newsiz;
@@ -1263,9 +1284,17 @@ int GeoIndexNewSlot(GeoIx * gix)
         x=x/y;
         if(x>2000000000L) return -2;
         newslotct= (int) x;
-        gc = static_cast<GeoCoordinate*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->gc,newslotct*sizeof(GeoCoordinate)));
-        if(gc!=NULL) gix->gc=gc;
-            else     return -2;
+        gc = static_cast<GeoCoordinate*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->gc, newslotct * sizeof(GeoCoordinate)));
+
+        if (gc == NULL) {
+          return -2;
+        }
+        gix->gc = gc;
+
+        // update memory usage
+        gix->_memoryUsed -= gix->slotct * sizeof(GeoCoordinate);
+        gix->_memoryUsed += newslotct * sizeof(GeoCoordinate);
+
         for(j=gix->slotct;j<newslotct;j++) GeoIndexFreeSlot(gix,j);
         gix->slotct=newslotct;
     }
@@ -2328,8 +2357,8 @@ static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index
   return NULL;
 }
 
-static int GeoIndex_freeMethodCall(void* theIndex, void* data) {
-  GeoIx* geoIndex = (GeoIx*)(theIndex);
+static int GeoIndex_freeMethodCall (void* theIndex, void* data) {
+  GeoIx* geoIndex = (GeoIx*) theIndex;
   if (geoIndex == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -2337,6 +2366,12 @@ static int GeoIndex_freeMethodCall(void* theIndex, void* data) {
   return TRI_ERROR_NO_ERROR;
 }
 
+size_t GeoIndex_MemoryUsage (void* theIndex) {
+  GeoIx* geoIndex = (GeoIx*) theIndex;
+  if (geoIndex != NULL) {
+    return geoIndex->_memoryUsed;
+  }
+  return 0;
+}
 /* end of GeoIndex.c  */
-
 

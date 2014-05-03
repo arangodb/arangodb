@@ -65,7 +65,7 @@ struct TRI_shaped_sub_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_hash_index_element_s {
-  struct TRI_doc_mptr_s* _document;
+  struct TRI_doc_mptr_s*   _document;
   struct TRI_shaped_sub_s* _subObjects;
 }
 TRI_hash_index_element_t;
@@ -78,7 +78,9 @@ typedef struct TRI_hash_index_s {
   TRI_index_t base;
 
   TRI_hash_array_t _hashArray;   // the hash array itself
-  TRI_vector_t _paths;          // a list of shape pid which identifies the fields of the index
+  TRI_vector_t     _paths;       // a list of shape pid which identifies the fields of the index
+
+  size_t           _memoryUsed;  // memory used by keys & values
 }
 TRI_hash_index_t;
 

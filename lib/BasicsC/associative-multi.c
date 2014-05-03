@@ -78,7 +78,7 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrAlloc = 0;
 
   if (NULL == (array->_table_alloc = TRI_Allocate(zone, 
-                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE+64, true))) {
+                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE + 64, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
@@ -297,7 +297,7 @@ static uint64_t LookupByElement (TRI_multi_pointer_t* array,
 /// @brief helper to decide whether something is between to places
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsBetween(uint64_t from, uint64_t x, uint64_t to) {
+static inline bool IsBetween (uint64_t from, uint64_t x, uint64_t to) {
   // returns whether or not x is behind from and before or equal to
   // to in the cyclic order. If x is equal to from, then the result is
   // always false. If from is equal to to, then the result is always
@@ -367,6 +367,14 @@ static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const* array) {
+  return array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the array

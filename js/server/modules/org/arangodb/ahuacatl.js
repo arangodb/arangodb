@@ -3697,6 +3697,17 @@ function CURRENT_USER () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current database name
+/// has a user
+////////////////////////////////////////////////////////////////////////////////
+
+function CURRENT_DATABASE () {
+  "use strict";
+
+  return INTERNAL.db._name();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief always fail
 ///
 /// this function is non-deterministic so it is not executed at query 
@@ -4386,6 +4397,7 @@ exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;
+exports.CURRENT_DATABASE = CURRENT_DATABASE;
 exports.CURRENT_USER = CURRENT_USER;
 exports.FAIL = FAIL;
 
