@@ -392,6 +392,14 @@ function computeStatisticsRaw (start, dbServer) {
         m1 = (http2.requestsAsync - http3.requestsAsync) / dt2;
       }
 
+      if (n1 < 0) {
+        n1 = 0;
+      }
+
+      if (m1 < 0) {
+        m1 = 0;
+      }
+
       var d1 = 0;
 
       if (m1 !== 0) {
@@ -408,6 +416,14 @@ function computeStatisticsRaw (start, dbServer) {
         m5 = ((http2.requestsTotal - http2.requestsAsync) 
             - (http3.requestsTotal - http3.requestsAsync))
             / dt2;
+      }
+
+      if (n5 < 0) {
+        n5 = 0;
+      }
+
+      if (m5 < 0) {
+        m5 = 0;
       }
 
       var d5 = 0;
