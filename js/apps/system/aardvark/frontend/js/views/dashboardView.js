@@ -19,11 +19,11 @@
     },
 
     tendencies: {
-      asyncRequestsCurrent: [
-        "asyncRequestsCurrent", "asyncRequestsCurrentPercentChange"
+      asyncPerSecondCurrent: [
+        "asyncPerSecondCurrent", "asyncPerSecondCurrentPercentChange"
       ],
-      asyncRequestsAverage: [
-        "asyncPerSecond15M", "asyncPerSecondPercentChange15M"
+      syncPerSecondCurrent: [
+        "syncPerSecondCurrent", "syncPerSecondCurrentPercentChange"
       ],
       clientConnectionsCurrent: [
         "clientConnectionsCurrent", "clientConnectionsCurrentPercentChange"

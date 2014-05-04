@@ -332,10 +332,10 @@ function computeStatisticsRaw (start, dbServer) {
       var http = lastRaw.http;
 
       current = {
-        asyncsPerSecond: http.requestsAsync / dt,
-        asyncsPerSecondPercentChange: 0,
-        syncsPerSecond: (http.requestsTotal - http.requestsAsync) / dt,
-        syncsPerSecondPercentChange: 0,
+        asyncPerSecond: http.requestsAsync / dt,
+        asyncPerSecondPercentChange: 0,
+        syncPerSecond: (http.requestsTotal - http.requestsAsync) / dt,
+        syncPerSecondPercentChange: 0,
         clientConnections: lastRaw.client.httpConnections,
         clientConnectionsPercentChange: 0,
         numberOfThreads: lastRaw.system.numberOfThreads,
@@ -445,10 +445,10 @@ function computeStatisticsRaw (start, dbServer) {
 
       // current summary
       current = {
-        asyncsPerSecond: n1,
-        asyncsPerSecondPercentChange: d1,
-        syncsPerSecond: n5,
-        syncsPerSecondPercentChange: d5,
+        asyncPerSecond: n1,
+        asyncPerSecondPercentChange: d1,
+        syncPerSecond: n5,
+        syncPerSecondPercentChange: d5,
         clientConnections: n2,
         clientConnectionsPercentChange: d2,
         numberOfThreads: n3,
@@ -720,20 +720,20 @@ function computeStatisticsSeries (start, attrs, dbServer) {
     result.asyncPerSecond = convertSeries(raw.series, "asyncPerSecond");
   }
 
-  if (attrs === null || attrs.asyncsPerSecondCurrent) {
-    result.asyncsPerSecondCurrent = raw.current.asyncsPerSecond;
+  if (attrs === null || attrs.asyncPerSecondCurrent) {
+    result.asyncPerSecondCurrent = raw.current.asyncPerSecond;
   }
 
-  if (attrs === null || attrs.asyncsPerSecondCurrentPercentChange) {
-    result.asyncsPerSecondCurrentPercentChange = raw.current.asyncsPerSecondPercentChange;
+  if (attrs === null || attrs.asyncPerSecondCurrentPercentChange) {
+    result.asyncPerSecondCurrentPercentChange = raw.current.asyncPerSecondPercentChange;
   }
 
-  if (attrs === null || attrs.syncsPerSecondCurrent) {
-    result.syncsPerSecondCurrent = raw.current.syncsPerSecond;
+  if (attrs === null || attrs.syncPerSecondCurrent) {
+    result.syncPerSecondCurrent = raw.current.syncPerSecond;
   }
 
-  if (attrs === null || attrs.syncsPerSecondCurrentPercentChange) {
-    result.syncsPerSecondCurrentPercentChange = raw.current.syncsPerSecondPercentChange;
+  if (attrs === null || attrs.syncPerSecondCurrentPercentChange) {
+    result.syncPerSecondCurrentPercentChange = raw.current.syncPerSecondPercentChange;
   }
 
   if (attrs === null || attrs.clientConnections) {
@@ -868,12 +868,6 @@ controller.get("full", function (req, res) {
     dbServer = undefined;
   }
 
-  console.log("FULL: start = %s, filter = %s", JSON.stringify(start), JSON.stringify(filter));
-  console.log("IS CLUSTER: %s", JSON.stringify(cluster.isCluster()));
-  console.log("IS COORDINATOR: %s", JSON.stringify(cluster.isCoordinator()));
-  if (cluster.isCoordinator()) console.log("ID COORDINATOR: %s", JSON.stringify(cluster.coordinatorId()));
-  console.log("--------------------------------------------------------");
-
   var series = computeStatisticsSeries(start, attrs, dbServer);
 
   res.json(series);
@@ -913,12 +907,6 @@ controller.get("cluster", function (req, res) {
   }
 
   url += sep + "DBserver=" + encodeURIComponent(DBserver);
-
-  console.log("CLUSTER: DBserver = %s, url = %s", JSON.stringify(DBserver), JSON.stringify(url));
-  console.log("IS CLUSTER: %s", JSON.stringify(cluster.isCluster()));
-  console.log("IS COORDINATOR: %s", JSON.stringify(cluster.isCoordinator()));
-  if (cluster.isCoordinator()) console.log("ID COORDINATOR: %s", JSON.stringify(cluster.coordinatorId()));
-  console.log("--------------------------------------------------------");
 
   var op = ArangoClusterComm.asyncRequest(
     "GET",
