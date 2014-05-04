@@ -30,11 +30,15 @@
 
 "use strict";
 
+var internal = require("internal");
+var cluster = require("org/arangodb/cluster");
+var actions = require("org/arangodb/actions");
+var console = require("console");
+
 var FoxxController = require("org/arangodb/foxx").Controller;
 var controller = new FoxxController(applicationContext);
 var db = require("org/arangodb").db;
-var internal = require("internal");
-var console = require("console");
+
 var STATISTICS_INTERVALL = 10;
 
 // -----------------------------------------------------------------------------
@@ -121,23 +125,39 @@ function avgPercentDistributon (now, last, cuts) {
 /// @brief computeStatisticsRaw
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeStatisticsRaw (start) {
+function computeStatisticsRaw (start, dbServer) {
   var values;
   var hasStart = false;
+  var serverFilter = "";
+
+  if (dbServer === undefined) {
+    if (cluster.isCluster()) {
+      if (cluster.isCoordinator()) {
+        serverFilter = "FILTER s.clusterId == @server";
+        dbServer = cluster.coordinatorId();
+      }
+    }
+  }
+  else {
+    serverFilter = "FILTER s.clusterId == @server";
+  }
 
   if (start === null || start === undefined) {
     values = db._query(
         "FOR s IN _statistics "
+      +    serverFilter
       + "  SORT s.time "
-      + "  return s");
+      + "  return s",
+      { server: dbServer });
   }
   else {
     values = db._query(
         "FOR s IN _statistics "
       + "  FILTER s.time >= @start "
+      +    serverFilter
       + "  SORT s.time "
       + "  return s",
-      { start: start - 2 * STATISTICS_INTERVALL });
+      { start: start - 2 * STATISTICS_INTERVALL, server: dbServer });
 
     hasStart = true;
   }
@@ -481,16 +501,31 @@ function computeStatisticsRaw (start) {
 /// @brief computeStatisticsRaw15M
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeStatisticsRaw15M (start) {
+function computeStatisticsRaw15M (start, dbServer) {
+  var serverFilter = "";
+
+  if (dbServer === undefined) {
+    if (cluster.isCluster()) {
+      if (cluster.isCoordinator()) {
+        serverFilter = "FILTER s.clusterId == @server";
+        dbServer = cluster.coordinatorId();
+      }
+    }
+  }
+  else {
+    serverFilter = "FILTER s.clusterId == @server";
+  }
+
   var values = db._query(
         "FOR s IN _statistics "
       + "  FILTER s.time >= @m15 "
+      +    serverFilter
       + "  SORT s.time "
       + "  return { time: s.time, "
       + "           clientConnections: s.client.httpConnections, "
       + "           numberOfThreads: s.system.numberOfThreads, "
       + "           virtualSize: s.system.virtualSize }",
-      { m15: start - 15 * 60 });
+    { m15: start - 15 * 60, server: dbServer });
 
   var lastRaw = null;
   var count = 0;
@@ -593,9 +628,9 @@ function convertSeries (series, name) {
 /// @brief computeStatisticsSeries
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeStatisticsSeries (start, attrs) {
+function computeStatisticsSeries (start, attrs, dbServer) {
   var result = {};
-  var raw = computeStatisticsRaw(start);
+  var raw = computeStatisticsRaw(start, dbServer);
 
   result.nextStart = raw.next;
   result.waitFor = (raw.next + STATISTICS_INTERVALL) - internal.time();
@@ -770,7 +805,7 @@ function computeStatisticsSeries (start, attrs) {
   }
 
   if (result.next !== null) {
-    var raw15 = computeStatisticsRaw15M(raw.next);
+    var raw15 = computeStatisticsRaw15M(raw.next, dbServer);
 
     if (attrs === null || attrs.clientConnections15M) {
       result.clientConnections15M = raw15.clientConnections;
@@ -796,6 +831,7 @@ function computeStatisticsSeries (start, attrs) {
       result.virtualSizePercentChange15M = raw15.virtualSizePercentChange;
     }
   }
+
   return result;
 }
 
@@ -810,8 +846,7 @@ function computeStatisticsSeries (start, attrs) {
 controller.get("full", function (req, res) {
   var start = req.params("start");
   var filter = req.params("filter");
-  var serverEndpoint = decodeURIComponent(req.params("serverEndpoint"));
-  var DbServer = req.params("DbServer");
+  var dbServer = req.params("DBserver");
   var attrs = null;
 
   if (start !== null && start !== undefined) {
@@ -829,11 +864,102 @@ controller.get("full", function (req, res) {
     }
   }
 
-  var series = computeStatisticsSeries(start, attrs);
+  if (dbServer === null) {
+    dbServer = undefined;
+  }
+
+  console.log("FULL: start = %s, filter = %s", JSON.stringify(start), JSON.stringify(filter));
+  console.log("IS CLUSTER: %s", JSON.stringify(cluster.isCluster()));
+  console.log("IS COORDINATOR: %s", JSON.stringify(cluster.isCoordinator()));
+  if (cluster.isCoordinator()) console.log("ID COORDINATOR: %s", JSON.stringify(cluster.coordinatorId()));
+  console.log("--------------------------------------------------------");
+
+  var series = computeStatisticsSeries(start, attrs, dbServer);
 
   res.json(series);
 }).summary("Returns the complete or partial history")
-  .notes("This function is just to get the complete or partial statistics history");
+  .notes("This function is used to get the complete or partial statistics history.");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster statistics history
+////////////////////////////////////////////////////////////////////////////////
+
+controller.get("cluster", function (req, res) {
+  if (! cluster.isCoordinator()) {
+    actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0, "only allowed on coordinator");
+    return;
+  }
+
+  if (! req.parameters.hasOwnProperty("DBserver")) {
+    actions.resultError(req, res, actions.HTTP_BAD, "required parameter DBserver was not given");
+    return;
+  }
+
+  var DBserver = req.parameters.DBserver;
+  var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+  var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
+
+  var url = "/_admin/aardvark/statistics/full";
+  var sep = "?";
+
+  if (req.parameters.hasOwnProperty("start")) {
+    url += sep + "start=" + encodeURIComponent(req.params("start"));
+    sep = "&";
+  }
+  
+  if (req.parameters.hasOwnProperty("filter")) {
+    url += sep + "filter=" + encodeURIComponent(req.params("filter"));
+    sep = "&";
+  }
+
+  url += sep + "DBserver=" + encodeURIComponent(DBserver);
+
+  console.log("CLUSTER: DBserver = %s, url = %s", JSON.stringify(DBserver), JSON.stringify(url));
+  console.log("IS CLUSTER: %s", JSON.stringify(cluster.isCluster()));
+  console.log("IS COORDINATOR: %s", JSON.stringify(cluster.isCoordinator()));
+  if (cluster.isCoordinator()) console.log("ID COORDINATOR: %s", JSON.stringify(cluster.coordinatorId()));
+  console.log("--------------------------------------------------------");
+
+  var op = ArangoClusterComm.asyncRequest(
+    "GET",
+    "server:"+DBserver,
+    "_system",
+    url,
+    "",
+    {},
+    options);
+
+  var r = ArangoClusterComm.wait(op);
+
+  res.contentType = "application/json; charset=utf-8";
+
+  if (r.status === "RECEIVED") {
+    res.responseCode = actions.HTTP_OK;
+    res.body = r.body;
+  }
+  else if (r.status === "TIMEOUT") {
+    res.responseCode = actions.HTTP_BAD;
+    res.body = JSON.stringify( {"error":true, "errorMessage": "operation timed out"});
+  }
+  else {
+    res.responseCode = actions.HTTP_BAD;
+
+    var bodyobj;
+
+    try {
+      bodyobj = JSON.parse(r.body);
+    }
+    catch (err) {
+    }
+
+    res.body = JSON.stringify({
+      "error":true,
+      "errorMessage": "error from DBserver, possibly DBserver unknown",
+      "body": bodyobj
+    } );
+  }
+}).summary("Returns the complete or partial history of a cluster member")
+  .notes("This function is used to get the complete or partial statistics history of a cluster member.");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

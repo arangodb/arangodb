@@ -134,6 +134,8 @@ string const& RestVersionHandler::queue () const {
 HttpHandler::status_t RestVersionHandler::execute () {
   TRI_json_t result;
 
+  RequestStatisticsAgentSetIgnore(this);
+
   TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
   TRI_json_t server;
