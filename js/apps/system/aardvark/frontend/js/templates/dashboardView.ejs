@@ -7,34 +7,39 @@
       </div>
     </div>
   <% } %>
+
   <% var smallChart = function(name) { %>
-    <div class="dashboard-small-chart dashboard-chart"  id="<%= name %>Container">
-			<div id="<%= name %>" class="dashboard-interior-chart">
-					<svg></svg>
-      </div>
-      <div class="dashboard-legend">
-        <div class="dashboard-legend-inner" id="<%= name %>Legend">
+    <div class="dashboard-small-chart">
+      <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart">
+          <svg></svg>
+        </div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
       </div>
-	  </div>
+      <div class="dashboard-sub-bar">Distribution</div>
+    </div>
   <% } %>
+
   <% var tendency = function(title, name) { %>
     <div class="dashboard-half-height-chart dashboard-chart"  id="<%= name %>Container">
       <div class="dashboard-title-bar"><%= title %></div>
       <div class="dashboard-tendency">
         <div class="dashboard-subtitle-bar">current</div>
-				<div class="dashboard-figure">
+        <div class="dashboard-figure">
         <span id="<%= name %>Current"></span>
-				</div>
+        </div>
       </div>
       <div class="dashboard-tendency">
         <div class="dashboard-subtitle-bar">15-min-avg</div>
-				<div class="dashboard-figure">
+        <div class="dashboard-figure">
         <span id="<%= name %>Average"></span>
-				</div>
+        </div>
       </div>
     </div>
   <% } %>
+
   <div class="headerBar">
     <a class="arangoHeader">Request Statistics</a>
   </div>
@@ -53,21 +58,21 @@
       <div class="dashboard-title-bar">Requests per Second</div>
       <% largeChart("requestsChart") %>
       <div class="dashboard-tendency-chart">
-	<div class="dashboard-half-height-chart dashboard-chart"  id="asyncRequestsContainer">
-	  <div class="dashboard-title-bar">Request Types</div>
-	  <div class="dashboard-subtitle-bar">sync</div>
-	  <div class="dashboard-subtitle-bar">async</div>
-	  <div class="dashboard-tendency">
-	    <div class="dashboard-figure">
-	      <span id="syncsPerSecondCurrent"></span>
-	    </div>
-	  </div>
-	  <div class="dashboard-tendency">
-	    <div class="dashboard-figure">
-	      <span id="asyncsPerSecondCurrent"></span>
-	    </div>
-	  </div>
-	</div>
+  <div class="dashboard-half-height-chart dashboard-chart"  id="asyncRequestsContainer">
+    <div class="dashboard-title-bar">Request Types</div>
+    <div class="dashboard-subtitle-bar">sync</div>
+    <div class="dashboard-subtitle-bar">async</div>
+    <div class="dashboard-tendency">
+      <div class="dashboard-figure">
+        <span id="syncsPerSecondCurrent"></span>
+      </div>
+    </div>
+    <div class="dashboard-tendency">
+      <div class="dashboard-figure">
+        <span id="asyncsPerSecondCurrent"></span>
+      </div>
+    </div>
+  </div>
         <% tendency("Number of Client Connections", "clientConnections"); %>
       </div>
     </div>
@@ -82,8 +87,8 @@
     <div class="dashboard-tendency-chart dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
       <div class="dashboard-title-bar">Resident Size</div>
       <div id="residentSizeChart">
-	<svg>
-	</svg>
+  <svg>
+  </svg>
       </div>
     </div>
     <div class="dashboard-tendency-chart dashboard-half-height-chart">
