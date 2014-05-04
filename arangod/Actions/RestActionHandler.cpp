@@ -107,6 +107,13 @@ std::string const& RestActionHandler::queue () const {
 HttpHandler::status_t RestActionHandler::execute () {
   TRI_action_result_t result;
 
+  // check the request path
+  if (_request->databaseName() == "_system") {
+    if (TRI_IsPrefixString(_request->requestPath(), "/_admin/aardvark")) {
+      RequestStatisticsAgentSetIgnore(this);
+    }
+  }
+
   // need an action
   if (_action == 0) {
     generateNotImplemented(_request->requestPath());
