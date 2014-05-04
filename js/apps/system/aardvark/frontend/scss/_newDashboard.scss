@@ -2,7 +2,7 @@
   @extend %pull-left;
   border-left: 0px solid $c-black;
   cursor: pointer;
-  margin-left: -1px;
+  /* margin-left: -1px; */
 
   &:first-child {
     margin-left: 0;
@@ -21,7 +21,7 @@
   padding-top: $dashboard-padding;
   margin-right: 12px;
   background-color: $c-white;
-  border: 5px solid $c-e1grey;
+  border: $dashboard-borderwidth solid $c-e1grey;
 
   .dashboard-interior-chart {
     @extend %pull-left;
@@ -51,9 +51,9 @@
     @extend %dashboard-chart-box;
     @extend %pull-left;
     background-color: $c-white;
-    border-left: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
-    border-right: 5px solid $c-e1grey;
+    border-left: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
+    border-right: $dashboard-borderwidth solid $c-e1grey;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -61,27 +61,50 @@
       background-color: $c-white;
     }
   }
-
-  .dashboard-sub-bar {
-    @extend %pull-left;
-    background-color: $c-bar-bg;
-    color: $c-white;
-    font-size: 11px;
-    font-weight: 400;
-    height: 24px;
-    width: 100%;
-    line-height: 24px;
-    margin: 0px 10px 0px 0px;
-    padding: 0px 5px 0px 5px;
-  }
-
 }
 
-.dashboard-tendency-chart {
-  @extend %dashboard-chart-box;
+.dashboard-tendency-container {
+  margin-bottom: 12px;
+
+  .dashboard-tendency-chart {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    margin-top: $dashboard-margin;
+    height: $dashboard-height;
+
+    .dashboard-tendency {
+      @extend %pull-left;
+
+      font-size: 16px;
+      background-color: $c-white;
+
+      height: ($dashboard-height - 48px) / 2;
+      text-align: center;
+    }
+
+    .dashboard-half-height-chart {
+      @extend %clear-float;
+      border-left: 5px solid $c-e1grey;
+      border-top: 5px solid $c-e1grey;
+      border-right: 5px solid $c-e1grey;
+
+      &:first-child {
+        margin-bottom: 32px;
+      }
+    }
+  }
+}
+
+.dashboard-subtitle-bar {
   @extend %pull-left;
-  margin-top: $dashboard-margin;
-  height: $dashboard-height;
+  @extend %dashboard-chart-box;
+  border-bottom: 1px solid $c-black;
+  font-size: 20px;
+  font-weight: 300;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  width: 50%;
 }
 
 .dashboard-legend {
@@ -90,8 +113,21 @@
   width: $dashboard-legendwidth;
 
   .dashboard-legend-inner {
-    padding: 5px;
+    padding: 0px 5px 5px 0px;
   }
+}
+
+.dashboard-sub-bar {
+  @extend %pull-left;
+  
+  background-color: $c-bar-bg;
+  color: $c-white;
+  font-size: 11px;
+  font-weight: 400;
+  height: 24px;
+  line-height: 24px;
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px 0px 6px;
 }
 
 .modal-chart-detail {
@@ -127,11 +163,6 @@
   }
 }
 
-.dashboard-half-height-chart {
-  @extend %clear-float;
-  height: ($dashboard-height + $dashboard-padding) / 2;
-}
-
 .dashboard-title-bar {
   background-color: $c-bar-bg;
   color: $c-white;
@@ -139,7 +170,7 @@
   font-weight: 400;
   height: 30px;
   line-height: 30px;
-  margin: 0px -1px 0px -1px;
+  /* margin: 0px -1px 0px -1px; */
   padding: 0px 5px 0px 10px;
 
   .dashboard-half-title-bar {
@@ -155,34 +186,11 @@
   }
 }
 
-.dashboard-subtitle-bar {
-  @extend %pull-left;
-  @extend %dashboard-chart-box;
-  border-bottom: 1px solid $c-black;
-  font-size: 20px;
-  font-weight: 300;
-  height: 36px;
-  line-height: 36px;
-  text-align: center;
-  width: 50%;
-}
-
-.dashboard-tendency {
-  @extend %pull-left;
-  @extend %dashboard-chart-box;
-  font-size: 16px;
-  height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
-  text-align: center;
-  top: 15%;
-  width: 50%;
-  background-color: $c-white;
-}
-
 .dashboard-row {
   @extend %clear-float;
   margin-bottom: 12px;
-  margin-left: 1px;
-  margin-right: 1px;
+  margin-left: 0px;
+  margin-right: 0px;
 }
 
 .dashboard-figure {

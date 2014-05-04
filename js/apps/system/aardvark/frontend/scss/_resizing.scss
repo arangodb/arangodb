@@ -4,7 +4,6 @@ div.resizecontainer {
 }
 
 @media (max-width: 798px) {
-
   #arangoCollectionUl {
     display: none;
   }
@@ -16,7 +15,6 @@ div.resizecontainer {
   #arangoCollectionSelect {
     display: inline-block;
   }
-
 }
 
 @media (min-width: 799px) and (max-width: 1041px) {
@@ -35,7 +33,7 @@ div.resizecontainer {
 @for $i from 1 through 11 {
   $min: $tile-width * $i;
   $content-size: $min - 12px;
-  $legend-width: 200px;
+  $legend-width: $dashboard-legendwidth;
   $legend-font: 14px;
 
   @if $i < 4 {
@@ -49,11 +47,61 @@ div.resizecontainer {
     $legend-font: 11px;
   }
 
-  
+  $dashboard-borderwidth: 5px;
+  $dashboard-spacer: 12px;
+  $netto-width: ($content-size - ($dashboard-borderwidth * 4) - $dashboard-spacer);
+
   @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
     div.resizecontainer {
       width: $content-size;
     }
+
+    .dashboard-large-chart {
+      $int-width: ($netto-width * 2 / 3);
+      width: $int-width;
+
+      .dashboard-interior-chart {
+        width: $int-width - $legend-width - 11px;
+      }
+    }
+
+    .dashboard-small-chart {
+      $int-width: ($netto-width / 3);
+      width: $int-width + 10px;
+
+      .dashboard-sub-bar {
+        width: $int-width + 4px;
+      }
+  
+      .dashboard-small-chart-inner {
+        width: $int-width;
+        
+        /*
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width - 20;
+        }
+        */
+      }
+    }
+
+    .dashboard-tendency-chart {
+      $int-width: $netto-width / 3;
+      width: $int-width + 10px;
+
+      .dashboard-tendency,
+      .dashboard-subtitle-bar,
+      .dashboard-figure {
+        width: ($int-width) / 2;
+      }
+
+      .dashboard-sub-bar {
+        width: $int-width + 4px;
+      }
+    }
+
+
+
+
 
     .dashboard-legend {
       @if $i < 4 {
@@ -61,6 +109,7 @@ div.resizecontainer {
       }
       font-size: $legend-font;
       width: $legend-width;
+      margin-left: 10px;
     }
 
     .modal-dashboard-legend {
@@ -81,53 +130,20 @@ div.resizecontainer {
 
     div.modal-chart-detail {
       left: 50%;
-      margin-left: -($content-size) / 2;
+      left: -($content-size) / 2;
       width: $content-size;
     }
 
-    .dashboard-large-chart {
-      $int-width: (($content-size - 32) * 2 / 3);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
     .dashboard-medium-chart {
-      $int-width: (($content-size - 32) / 2);
+      $int-width: ($content-size / 2);
       width: $int-width;
 
       .dashboard-interior-chart {
         width: $int-width - $legend-width;
       }
     }
-
-    .dashboard-small-chart {
-      $int-width: (($content-size - 32) / 3);
-      width: $int-width;
-
-      .dashboard-small-chart-inner {
-        width: $int-width;
-        
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width - 20;
-        }
-      }
-    }
-
-    .dashboard-tendency-chart {
-      $int-width: (($content-size - 32) / 3);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
 
     div.modal-chart-detail {
-
       $inner-content-size: $content-size - 100px;// - 200px;
       margin-left: -($inner-content-size + 90px)/2;
       width: $inner-content-size + 90px;
