@@ -97,29 +97,31 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   STATISTICS_LOCK(&RequestListLock);
 
-  TRI_TotalRequestsStatistics.incCounter();
+  if (! statistics->_ignore) {
+    TRI_TotalRequestsStatistics.incCounter();
 
-  if (statistics->_async) {
-    TRI_AsyncRequestsStatistics.incCounter();
-  }
-
-  TRI_MethodRequestsStatistics[(int) statistics->_requestType].incCounter();
-
-  // check the request was completely received and transmitted
-  if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
-    double totalTime = statistics->_writeEnd - statistics->_readStart;
-    TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
-
-    double requestTime = statistics->_requestEnd - statistics->_requestStart;
-    TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
-
-    if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-      double queueTime = statistics->_queueEnd - statistics->_queueStart;
-      TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
+    if (statistics->_async) {
+      TRI_AsyncRequestsStatistics.incCounter();
     }
 
-    TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
-    TRI_BytesReceivedDistributionStatistics->addFigure(statistics->_receivedBytes);
+    TRI_MethodRequestsStatistics[(int) statistics->_requestType].incCounter();
+
+    // check the request was completely received and transmitted
+    if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
+      double totalTime = statistics->_writeEnd - statistics->_readStart;
+      TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
+
+      double requestTime = statistics->_requestEnd - statistics->_requestStart;
+      TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
+
+      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+        double queueTime = statistics->_queueEnd - statistics->_queueStart;
+        TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
+      }
+
+      TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
+      TRI_BytesReceivedDistributionStatistics->addFigure(statistics->_receivedBytes);
+    }
   }
 
   // clear statistics and put back an the free list
