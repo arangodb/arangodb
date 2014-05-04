@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, console, Dygraph, _,templateEngine */
 
@@ -313,26 +313,34 @@
     },
 
     getStatistics: function (figure) {
-      var url = "statistics/full?start=", self = this;
-      if (!figure && this.nextStart) {
-        url += this.nextStart;
-      } else if (!figure && !this.nextStart) {
-        url += (new Date().getTime() - this.defaultFrame) / 1000;
+      var self = this;
+      var url = "statistics/full";
+      var urlParams = "?start=";
+
+      if (! figure && this.nextStart) {
+        urlParams += this.nextStart;
+      } else if (! figure && ! this.nextStart) {
+        urlParams += (new Date().getTime() - this.defaultFrame) / 1000;
       } else {
         if (this.alreadyCalledDetailChart.indexOf(figure) !== -1) {
           return;
         }
+
         this.history[figure] = [];
-        url += (new Date().getTime() - this.defaultDetailFrame) / 1000;
-        url += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
+
+        urlParams += (new Date().getTime() - this.defaultDetailFrame) / 1000;
+        urlParams += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
+
         this.alreadyCalledDetailChart.push(figure);
       }
+
       if (this.server) {
-        url += "&serverEndpoint=" + encodeURIComponent(this.server.endpoint) +
-               "&DbServer=" + this.server.target;
+        url = this.server.endpoint + "/_admin/aardvark/statistics/cluster";
+        urlParams +=  "&DBserver=" + this.server.target;
       }
+
       $.ajax(
-        url,
+        url + urlParams,
         {async: false}
       ).done(
         function (d) {

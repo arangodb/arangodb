@@ -468,6 +468,28 @@ namespace triagens {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets ignore flag
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FIGURES
+
+#define RequestStatisticsAgentSetIgnore(a)                               \
+  do {                                                                   \
+    if (TRI_ENABLE_STATISTICS) {                                         \
+      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+        (a)->RequestStatisticsAgent::_statistics->_ignore = true;        \
+      }                                                                  \
+    }                                                                    \
+  }                                                                      \
+  while (0)
+
+#else
+
+#define RequestStatisticsAgentSetIgnore(a) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds bytes received
 ////////////////////////////////////////////////////////////////////////////////
 
