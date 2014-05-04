@@ -64,47 +64,53 @@
 }
 
 .dashboard-tendency-container {
-  margin-bottom: 12px;
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  margin-top: $dashboard-margin;
+  margin-bottom: 0px;
 
   .dashboard-tendency-chart {
-    @extend %dashboard-chart-box;
-    @extend %pull-left;
-    margin-top: $dashboard-margin;
-    height: $dashboard-height;
-
-    .dashboard-tendency {
-      @extend %pull-left;
-
-      font-size: 16px;
-      background-color: $c-white;
-
-      height: ($dashboard-height - 48px) / 2;
-      text-align: center;
-    }
-
     .dashboard-half-height-chart {
+      $int-height: ($dashboard-height - 24px - 19px)  / 2;
       @extend %clear-float;
+      height: $int-height;
+      background-color: $c-white;
       border-left: 5px solid $c-e1grey;
       border-top: 5px solid $c-e1grey;
       border-right: 5px solid $c-e1grey;
 
-      &:first-child {
-        margin-bottom: 32px;
+      .dashboard-tendency {
+        @extend %pull-left;
+        font-size: 16px;
+        background-color: $c-white;
+        padding: 0px 8px 0px 8px;
+        
+        &:first-child {
+          border-right: 1px solid $c-e1grey;
+        }
+
+        .dashboard-subtitle-bar {
+          @extend %pull-left;
+          border-bottom: 1px solid $c-e1grey;
+          font-size: 18px;
+          font-weight: 300;
+          height: (($int-height - 2px) / 3);
+          line-height: (($int-height - 2px) / 3);
+          text-align: right;
+        }
+
+        .dashboard-figure {
+          @extend %pull-left;
+          text-align: left;
+          font-size: 32px;
+          font-weight: 300;
+          padding-left: 8px;
+          height: (($int-height - 2px) * 2 / 3);
+          line-height: (($int-height - 2px) * 2 / 3);
+        }
       }
     }
   }
-}
-
-.dashboard-subtitle-bar {
-  @extend %pull-left;
-  @extend %dashboard-chart-box;
-  border-bottom: 1px solid $c-black;
-  font-size: 20px;
-  font-weight: 300;
-  height: 36px;
-  line-height: 36px;
-  text-align: center;
-  width: 50%;
 }
 
 .dashboard-legend {
@@ -119,10 +125,9 @@
 
 .dashboard-sub-bar {
   @extend %pull-left;
-  
   background-color: $c-bar-bg;
   color: $c-white;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   height: 24px;
   line-height: 24px;
@@ -166,7 +171,7 @@
 .dashboard-title-bar {
   background-color: $c-bar-bg;
   color: $c-white;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 400;
   height: 30px;
   line-height: 30px;
@@ -191,14 +196,6 @@
   margin-bottom: 12px;
   margin-left: 0px;
   margin-right: 0px;
-}
-
-.dashboard-figure {
-  @extend %pull-left;
-  margin-bottom: 10%;
-  margin-left: 19%;
-  margin-top: 7%;
-  text-align: center;
 }
 
 .dygraph-axis-label {

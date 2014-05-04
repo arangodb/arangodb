@@ -23,37 +23,31 @@
   <% } %>
 
   <% var tendency = function(title, name) { %>
-    <div class="dashboard-half-height-chart dashboard-chart" id="<%= name %>Container">
-      <div class="dashboard-tendency">
-        <div class="dashboard-subtitle-bar">current</div>
-        <div class="dashboard-figure">
-          <span id="<%= name %>Current"></span>
+    <div class="dashboard-tendency-container">
+      <div class="dashboard-tendency-chart">
+        <div class="dashboard-half-height-chart dashboard-chart" id="<%= name %>Container">
+          <div class="dashboard-tendency">
+            <div class="dashboard-subtitle-bar">current</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Current"></span>
+            </div>
+          </div>
+          <div class="dashboard-tendency">
+            <div class="dashboard-subtitle-bar">15-min-avg</div>
+            <div class="dashboard-figure">
+            <span id="<%= name %>Average"></span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="dashboard-tendency">
-        <div class="dashboard-subtitle-bar">15-min-avg</div>
-        <div class="dashboard-figure">
-        <span id="<%= name %>Average"></span>
-        </div>
-      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
     </div>
-    <div class="dashboard-sub-bar"><%= title %></div>
   <% } %>
 
   <div class="headerBar">
     <a class="arangoHeader">Request Statistics</a>
   </div>
   <div class="contentDiv">
-    <div class="dashboard-row">
-      <div class="dashboard-title-bar">Average Request Time (seconds)</div>
-      <% largeChart("totalTimeChart") %>
-      <% smallChart("totalTimeDistribution") %>
-    </div>
-    <div class="dashboard-row">
-      <div class="dashboard-title-bar">Average Transfer Size (bytes)</div>
-      <% largeChart("dataTransferChart") %>
-      <% smallChart("dataTransferDistribution") %>
-    </div>
     <div class="dashboard-row">
       <div class="dashboard-title-bar">Requests per Second</div>
 
@@ -81,27 +75,39 @@
 
       <% tendency("Number of Client Connections", "clientConnections"); %>
     </div>
+    
+    <div class="dashboard-row">
+      <div class="dashboard-title-bar">Average Transfer Size (bytes)</div>
+      <% largeChart("dataTransferChart") %>
+      <% smallChart("dataTransferDistribution") %>
+    </div>
+    
+    <div class="dashboard-row">
+      <div class="dashboard-title-bar">Average Request Time (seconds)</div>
+      <% largeChart("totalTimeChart") %>
+      <% smallChart("totalTimeDistribution") %>
+    </div>
   </div>
 
-
-  <div class="headerBar">
+  <div class="headerBar" style="margin: 8px 0px 0px 0px;">
     <a class="arangoHeader">System Resources</a>
   </div>
+
   <div class="dashboard-row">
-    <div class="dashboard-tendency-chart dashboard-half-height-chart">
-      <% tendency("Number of threads", "numberOfThreads"); %>
-    </div>
-    <div class="dashboard-tendency-chart dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
-      <div class="dashboard-title-bar">Resident Size</div>
-      <div id="residentSizeChart">
-  <svg>
-  </svg>
+    <% tendency("Number of threads", "numberOfThreads"); %>
+    <div class="dashboard-tendency-container" style="margin: 5px 12px 0px 12px;">
+      <div class="dashboard-tendency-chart">
+        <div class="dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
+          <div id="residentSizeChart">
+            <svg></svg>
+          </div>
+        </div>
       </div>
+      <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
-    <div class="dashboard-tendency-chart dashboard-half-height-chart">
-      <% tendency("Virtual Size in GB", "virtualSize"); %>
-    </div>
+    <% tendency("Virtual Size in GB", "virtualSize"); %>
   </div>
+
   <div class="dashboard-row">
     <div class="dashboard-title-bar">
       <div class="dashboard-half-title-bar">Major Page Faults</div>
@@ -113,6 +119,7 @@
         <div class="dashboard-legend-inner" id="pageFaultsChartLegend"></div>
       </div>
     </div>
+      <div class="dashboard-sub-bar"">Resident Size</div>
     <div class="dashboard-medium-chart dashboard-chart" id="systemUserTimeChartContainer">
       <div id="systemUserTimeChart" class="dashboard-interior-chart"></div>
       <div class="dashboard-legend">

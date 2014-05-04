@@ -7,7 +7,7 @@
 
   window.DashboardView = Backbone.View.extend({
     el: '#content',
-    interval: 1000000, // in milliseconds
+    interval: 10000, // in milliseconds
     defaultFrame: 20 * 60 * 1000,
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     history: {},
