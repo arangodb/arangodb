@@ -5,6 +5,10 @@
 (function () {
   "use strict";
 
+  function fmtNumber (n, nk) {
+    return n.toFixed(nk);
+  }
+
   window.DashboardView = Backbone.View.extend({
     el: '#content',
     interval: 10000, // in milliseconds
@@ -235,14 +239,23 @@
         return;
       }
       Object.keys(this.tendencies).forEach(function (a) {
-        if (a === "virtualSizeCurrent" ||
-          a === "virtualSizeAverage") {
-          newData[self.tendencies[a][0]] =
-          newData[self.tendencies[a][0]] / (1024 * 1024 * 1024);
+        var n1 = 1;
+        var n2 = 1;
+
+        if (a === "virtualSizeCurrent" || a === "virtualSizeAverage") {
+          newData[self.tendencies[a][0]] /= (1024 * 1024 * 1024);
+          n1 = 2;
         }
+        else if (a === "clientConnectionsCurrent") {
+          n1 = 0;
+        }
+        else if (a === "numberOfThreadsCurrent") {
+          n1 = 0;
+        }
+
         self.history[a] = [
-          Math.round(newData[self.tendencies[a][0]] * 100) / 100,
-          Math.round(newData[self.tendencies[a][1]] * 100 * 100) / 100
+          fmtNumber(newData[self.tendencies[a][0]], n1),
+          fmtNumber(newData[self.tendencies[a][1]] * 100, n2)
         ];
       });
 
