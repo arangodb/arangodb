@@ -5,19 +5,12 @@
   margin-left: -1px;
 
   &:first-child {
-    border-left: 0;
     margin-left: 0;
   }
 }
 
 .detail-chart {
   @extend %clear-float;
-}
-
-.dashboard-interior-chart {
-  @extend %pull-left;
-  height: $dashboard-height - $dashboard-padding;
-  background-color: $c-white;
 }
 
 .dashboard-large-chart {
@@ -28,6 +21,13 @@
   padding-top: $dashboard-padding;
   margin-right: 12px;
   background-color: $c-white;
+  border: 5px solid $c-e1grey;
+
+  .dashboard-interior-chart {
+    @extend %pull-left;
+    height: $dashboard-height - $dashboard-padding;
+    background-color: $c-white;
+  }
 }
 
 .dashboard-medium-chart {
@@ -35,15 +35,46 @@
   @extend %pull-left;
   height: $dashboard-height;
   padding-top: $dashboard-padding;
+
+  .dashboard-interior-chart {
+    @extend %pull-left;
+    height: $dashboard-height - $dashboard-padding;
+    background-color: $c-white;
+  }
 }
 
 .dashboard-small-chart {
-  @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height;
   margin-top: $dashboard-margin;
-  padding-top: $dashboard-padding;
-  background-color: $c-white;
+
+  .dashboard-small-chart-inner {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    background-color: $c-white;
+    border-left: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
+    border-right: 5px solid $c-e1grey;
+
+    .dashboard-interior-chart {
+      @extend %pull-left;
+      height: $dashboard-height - 24;
+      background-color: $c-white;
+    }
+  }
+
+  .dashboard-sub-bar {
+    @extend %pull-left;
+    background-color: $c-bar-bg;
+    color: $c-white;
+    font-size: 11px;
+    font-weight: 400;
+    height: 24px;
+    width: 100%;
+    line-height: 24px;
+    margin: 0px 10px 0px 0px;
+    padding: 0px 5px 0px 5px;
+  }
+
 }
 
 .dashboard-tendency-chart {
@@ -55,8 +86,8 @@
 
 .dashboard-legend {
   @extend %pull-left;
-  height: $dashboard-height - $dashboard-margin;
-  width: $legend-width;
+  height: $dashboard-height - $dashboard-padding;
+  width: $dashboard-legendwidth;
 
   .dashboard-legend-inner {
     padding: 5px;
@@ -106,8 +137,8 @@
   color: $c-white;
   font-size: 13px;
   font-weight: 400;
-  height: 36px;
-  line-height: 36px;
+  height: 30px;
+  line-height: 30px;
   margin: 0px -1px 0px -1px;
   padding: 0px 5px 0px 10px;
 
