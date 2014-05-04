@@ -40,10 +40,10 @@ div.resizecontainer {
     $legend-width: 10px;
     $legend-font: 8px;
   } @else if $i < 5 {
-    $legend-width: 120px;
+    $legend-width: 80px;
     $legend-font: 8px;
   } @else if $i < 6 {
-    $legend-width: 170px;
+    $legend-width: 120px;
     $legend-font: 11px;
   }
 
@@ -57,7 +57,7 @@ div.resizecontainer {
     }
 
     .dashboard-large-chart {
-      $int-width: ($netto-width * 2 / 3);
+      $int-width: ($netto-width * 2 / 3) + 7px;
       width: $int-width;
 
       .dashboard-interior-chart {
@@ -67,14 +67,14 @@ div.resizecontainer {
 
     .dashboard-small-chart {
       $int-width: ($netto-width / 3);
-      width: $int-width + 10px;
+      width: $int-width;
 
       .dashboard-sub-bar {
-        width: $int-width + 4px;
+        width: $int-width - 3px;
       }
   
       .dashboard-small-chart-inner {
-        width: $int-width;
+        width: $int-width - 7px;
         
         /*
         .dashboard-interior-chart {
@@ -84,21 +84,21 @@ div.resizecontainer {
       }
     }
 
-    .dashboard-tendency-chart {
-      $int-width: $netto-width / 3;
-      width: $int-width + 10px;
+    .dashboard-tendency-container {
+      $int-width: ($netto-width + 8px) / 3;
+      .dashboard-tendency-chart {
+        width: $int-width;
 
-      .dashboard-tendency,
-      .dashboard-subtitle-bar,
-      .dashboard-figure {
-        width: ($int-width) / 2;
+        .dashboard-tendency,
+        .dashboard-subtitle-bar,
+        .dashboard-figure {
+          width: (($int-width - 50px) / 2) - 1px;
+        }
       }
-
       .dashboard-sub-bar {
-        width: $int-width + 4px;
+        width: $int-width - 6px;
       }
     }
-
 
 
 
