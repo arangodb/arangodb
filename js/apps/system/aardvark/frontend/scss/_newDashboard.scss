@@ -19,8 +19,8 @@ $dashboard-padding: 28px;
 
 .dashboard-interior-chart {
   @extend %pull-left;
-  height: $dashboard-height - $dashboard-padding;
   background-color: $c-white;
+  height: $dashboard-height - $dashboard-padding;
 }
 
 .dashboard-large-chart {
