@@ -2,7 +2,6 @@
   @extend %pull-left;
   border-left: 0px solid $c-black;
   cursor: pointer;
-  /* margin-left: -1px; */
 
   &:first-child {
     margin-left: 0;
@@ -26,7 +25,6 @@
   .dashboard-interior-chart {
     @extend %pull-left;
     height: $dashboard-height - $dashboard-padding;
-    background-color: $c-white;
   }
 }
 
@@ -34,12 +32,19 @@
   @extend %dashboard-chart-box;
   @extend %pull-left;
   height: $dashboard-height;
+  background-color: $c-white;
   padding-top: $dashboard-padding;
+  border-left: $dashboard-borderwidth solid $c-e1grey;
+  border-top: $dashboard-borderwidth solid $c-e1grey;
+  border-right: $dashboard-borderwidth solid $c-e1grey;
+
+  &:first-child {
+    margin-right: 12px;
+  }
 
   .dashboard-interior-chart {
     @extend %pull-left;
     height: $dashboard-height - $dashboard-padding;
-    background-color: $c-white;
   }
 }
 
@@ -57,8 +62,7 @@
 
     .dashboard-interior-chart {
       @extend %pull-left;
-      height: $dashboard-height - 24;
-      background-color: $c-white;
+      height: $dashboard-height - $dashboard-padding;
     }
   }
 }

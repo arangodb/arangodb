@@ -76,11 +76,23 @@ div.resizecontainer {
       .dashboard-small-chart-inner {
         width: $int-width - 7px;
         
-        /*
         .dashboard-interior-chart {
-          width: $int-width - $legend-width - 20;
+          width: $int-width - $legend-width - 20px;
         }
-        */
+      }
+    }
+
+    .dashboard-medium-chart {
+      $int-width: ($netto-width / 2);
+      width: $int-width;
+
+      .dashboard-sub-bar {
+        width: $int-width + 4px;
+        margin-left: -5px;
+      }
+
+      .dashboard-interior-chart {
+        width: $int-width - $legend-width - 11px;
       }
     }
 
@@ -132,15 +144,6 @@ div.resizecontainer {
       left: 50%;
       left: -($content-size) / 2;
       width: $content-size;
-    }
-
-    .dashboard-medium-chart {
-      $int-width: ($content-size / 2);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
     }
 
     div.modal-chart-detail {
