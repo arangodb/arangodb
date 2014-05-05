@@ -2070,6 +2070,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
             view.collectionsStore = new window.arangoCollections();
@@ -2078,7 +2079,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'cap',
                 size: 1024,
                 byteSize: 2048
@@ -2127,6 +2128,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(view, "checkboxToValue").andCallFake(
                 function (a) {
                     if (a === "#newGeoJson") {
@@ -2148,7 +2150,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'geo',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 geoJson: "newGeoJson",
@@ -2208,6 +2210,8 @@
 
             };
 
+            view.collectionModel = arangoCollectionsDummy;
+
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
             view.collectionsStore = new window.arangoCollections();
@@ -2216,7 +2220,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'hash',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newHashUnique"
@@ -2268,6 +2272,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
@@ -2277,7 +2282,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'fulltext',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 minLength: 100
@@ -2335,6 +2340,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
@@ -2344,7 +2350,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2401,6 +2407,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(false);
@@ -2411,7 +2418,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2471,6 +2478,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(
@@ -2482,7 +2490,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2561,7 +2569,7 @@
                 }
 
             };
-
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(true);
             spyOn(arangoHelper, "arangoError");
@@ -2574,7 +2582,7 @@
 
             expect(window.$).toHaveBeenCalledWith("blub");
             expect(window.$).toHaveBeenCalledWith("#indexDeleteModal");
-            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("coll", "lastId");
+            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("lastId");
             expect(jQueryDummy.parent).toHaveBeenCalled();
             expect(jQueryDummy.modal).toHaveBeenCalledWith('hide');
             expect(jQueryDummy.remove).toHaveBeenCalled();
@@ -2603,6 +2611,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(false);
@@ -2616,7 +2625,7 @@
 
             expect(window.$).not.toHaveBeenCalledWith("blub");
             expect(window.$).toHaveBeenCalledWith("#indexDeleteModal");
-            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("coll", "lastId");
+            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("lastId");
             expect(jQueryDummy.parent).not.toHaveBeenCalled();
             expect(jQueryDummy.modal).toHaveBeenCalledWith('hide');
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
@@ -2681,6 +2690,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(
@@ -2706,7 +2716,7 @@
             };
             view.getIndex();
 
-            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
+            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith();
             expect(view.index).toEqual({
                 indexes: [
                     {id: "abc/def1", type: 'primary', name: "index1"},
@@ -2757,6 +2767,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(undefined);
@@ -2773,7 +2784,7 @@
             };
             view.getIndex();
 
-            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
+            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith();
             expect(view.index).toEqual(undefined);
             expect(window.$).not.toHaveBeenCalled();
             expect(jQueryDummy.append).not.toHaveBeenCalled();
@@ -2817,12 +2828,21 @@
                 setCollection : function () {},
                 getDocuments : function () {}
             };
+
+            var arangoCollectionsDummy = {
+                get: function () {
+                }
+
+            };
+            view.collectionsStore = arangoCollectionsDummy;
+            spyOn(arangoCollectionsDummy, "get");
             spyOn(view.collection, "setCollection");
             spyOn(view.collection, "getDocuments");
             spyOn(arangoHelper, "collectionApiType").andReturn("blub");
             view.setCollectionId(1, 2);
             expect(view.collection.setCollection).toHaveBeenCalledWith(1);
             expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(1);
+            expect(arangoCollectionsDummy.get).toHaveBeenCalled();
             expect(view.type).toEqual("blub");
             expect(view.pageid).toEqual(2);
             expect(view.collection.getDocuments).toHaveBeenCalledWith(1, 2);
