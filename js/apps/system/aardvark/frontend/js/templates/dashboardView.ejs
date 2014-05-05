@@ -8,15 +8,29 @@
     </div>
   <% } %>
 
+  <% var mediumChart = function(name, title) { %>
+    <div class="dashboard-medium-chart">
+      <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar""><%= title %></div>
+    </div>
+  <% } %>
+
   <% var smallChart = function(name) { %>
     <div class="dashboard-small-chart">
       <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
         <div id="<%= name %>" class="dashboard-interior-chart">
           <svg></svg>
         </div>
+        <!--
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
+        -->
       </div>
       <div class="dashboard-sub-bar">Distribution</div>
     </div>
@@ -108,24 +122,8 @@
     <% tendency("Virtual Size in GB", "virtualSize"); %>
   </div>
 
-  <div class="dashboard-row">
-    <div class="dashboard-title-bar">
-      <div class="dashboard-half-title-bar">Major Page Faults</div>
-      <div class="dashboard-half-title-bar">Used Time per Second</div>
-    </div>
-    <div class="dashboard-medium-chart dashboard-chart" id="pageFaultsChartContainer">
-      <div id="pageFaultsChart" class="dashboard-interior-chart"></div>
-      <div class="dashboard-legend">
-        <div class="dashboard-legend-inner" id="pageFaultsChartLegend"></div>
-      </div>
-    </div>
-      <div class="dashboard-sub-bar"">Resident Size</div>
-    <div class="dashboard-medium-chart dashboard-chart" id="systemUserTimeChartContainer">
-      <div id="systemUserTimeChart" class="dashboard-interior-chart"></div>
-      <div class="dashboard-legend">
-        <div class="dashboard-legend-inner" id="systemUserTimeChartLegend"></div>
-      </div>
-    </div>
+  <div style="margin-top: -5px;">
+    <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+    <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
   </div>
-
 </script>
