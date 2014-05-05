@@ -349,7 +349,7 @@ road map):
     on all shards.
   - At this stage the sharding of an edge collection is independent of
     the sharding of the corresponding vertex collection in a graph.
-    For version 2.2 we plan to synchronise the two, to allow for more
+    For version 2.2 we plan to synchronize the two, to allow for more
     efficient graph traversal functions in large, sharded graphs. We
     will also do research on distributed algorithms for graphs and
     implement new algorithms in ArangoDB. However, at this stage, all
@@ -370,7 +370,7 @@ road map):
     version 2.1.
   - In version 2.0 the replication API (`/_api/replication`)
     does not work on coordinators. This is intentional, since the 
-    plan is to organise replication with automatic fail-over directly
+    plan is to organize replication with automatic fail-over directly
     on the DBservers, which is planned for version 2.3.
   - The `db.<collection>.rotate()` method for sharded collections is not
     yet implemented, but will be supported from version 2.1 onwards.
@@ -408,7 +408,7 @@ to implement efficiently:
     difficult to maintain efficiently.
   - The methods `db.<collection>.first()` and `db.<collection>.last()` are 
     unsupported for collections with more than one shard. The reason for
-    this, is that temporal order in a highly parallelised environment
+    this, is that temporal order in a highly parallelized environment
     like a cluster is difficult or even impossible to achieve
     efficiently. In a cluster it is entirely possible that two
     different coordinators add two different documents to two
@@ -434,9 +434,9 @@ Authentication in a cluster {#ShardingAuthentication}
 
 In this section we describe, how authentication in a cluster is done
 properly. For experiments it is possible to run the cluster completely
-unauthorised by using the option `--server.disable-authentication true`
+unauthorized by using the option `--server.disable-authentication true`
 on the command line or the corresponding entry in the configuration
-file. However, for production use, this is not desirable.
+file. However, for production use this is not desirable.
 
 You can turn on authentication in the cluster by switching it on in the
 configuration of your dispatchers. When you now use the planner and
@@ -444,7 +444,7 @@ kickstarter to create and launch a cluster, the `arangod` processes in
 your cluster will automatically run with authentication, exactly as the
 dispatchers themselves. However, the cluster will have a sharded
 collection `_users` with one shard containing only the user `root` with
-an empty password. We emphasise that this sharded cluster-wide
+an empty password. We emphasize that this sharded cluster-wide
 collection is different from the `_users` collections in each
 dispatcher!
 
@@ -469,15 +469,17 @@ in all configuration files on all machines in the cluster. This just
 means that you have to set these two options to the same values in all
 configuration files `arangod.conf` in all dispatchers, since the
 coordinators and DBservers will simply inherit this configuration file
-from the dispatcher that has launched them.
+from the dispatcher that has launched them. Also you must change the username
+and password in the cluster plan.
 
-Let us summarise what you have to do, to enable authentication in a cluster:
+Let us summarize what you have to do, to enable authentication in a cluster:
 
   1. Set `server.disable-authentication` to `false` in all configuration
      files of all dispatchers (this is already the default).
   2. Put the same values for `cluster.username` and `cluster.password`
      in the very same configuration files of all dispatchers.
-  3. Create users via the usual interface on the coordinators
+  3. The same procedure from step 2 must be done in the cluster plan as well. 	 
+  4. Create users via the usual interface on the coordinators
      (initially after the cluster launch there will be a single user `root`
      with empty password).
 
@@ -509,11 +511,11 @@ that the coordinators must also be reachable from within the cluster.
 
 Furthermore, it is of the utmost importance to hide the agent processes of
 the agency behind the firewall, since, at least at this stage, requests
-to them are completely unauthorised. Leaving their ports exposed to
+to them are completely unauthorized. Leaving their ports exposed to
 the outside world, endangers all data in the cluster, because everybody
 on the internet could make the cluster believe that, for example, you wanted 
 your databases dropped! This weakness will be alleviated in future versions,
-because we will replace `etcd` by our own specialised agency
+because we will replace `etcd` by our own specialized agency
 implementation, which will allow for authentication.
 
 A further comment applies to the dispatchers. Usually you will open the
@@ -525,7 +527,7 @@ using cluster-internal communication. You can even get away with closing
 access to all dispatchers to the outside world, provided the machine
 running your browser is within the cluster network and does not have to
 go through the firewall to contact the dispatchers. It is important to
-be aware that anybody who can reach a dispatcher and can authorise
+be aware that anybody who can reach a dispatcher and can authorize
 himself to it can launch arbitrary processes on the machine on which
 the dispatcher runs!
 
