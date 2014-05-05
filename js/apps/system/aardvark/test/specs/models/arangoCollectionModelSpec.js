@@ -250,7 +250,8 @@
             beforeEach(function () {
                 id = "4711";
                 myCollection = new window.arangoCollectionModel({
-                    id : "4711"
+                    id : "4711",
+                    name : "name"
                 });
             });
             it("should get and index and succeed", function () {
@@ -314,7 +315,7 @@
 
             it("should delete and index and succeed", function () {
                 spyOn($, "ajax").andCallFake(function (opt) {
-                    expect(opt.url).toEqual("/_api/index/" + id + "/1");
+                    expect(opt.url).toEqual("/_api/index/" + "name" + "/1");
                     expect(opt.type).toEqual("DELETE");
                     expect(opt.cache).toEqual(false);
                     expect(opt.async).toEqual(false);
@@ -327,7 +328,7 @@
             it("should delete and index and fail", function () {
                 var collection = "12345";
                 spyOn($, "ajax").andCallFake(function (opt) {
-                    expect(opt.url).toEqual("/_api/index/" + id + "/1");
+                    expect(opt.url).toEqual("/_api/index/" + "name" + "/1");
                     expect(opt.type).toEqual("DELETE");
                     expect(opt.cache).toEqual(false);
                     expect(opt.async).toEqual(false);
