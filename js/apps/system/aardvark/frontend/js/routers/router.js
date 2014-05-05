@@ -72,7 +72,7 @@
             this.arangoDocumentStore = new window.arangoDocument();
             arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-            this.arangoCollectionsStore.fetch();
+            this.arangoCollectionsStore.fetch({async: false});
             this.foxxList = new window.FoxxCollection();
 
             this.footerView = new window.FooterView();
