@@ -413,16 +413,12 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = endpointToURL(run.endpoints[i])+"/_admin/shutdown";
-    var hdrs = {};
-    // This needs fixing: we need another form of authorization here
-    // because this one is the one for the dispatcher and not for the
-    // DBservers/Coordinators.
-    if (dispatchers[cmd.dispatcher].username !== undefined &&
-        dispatchers[cmd.dispatcher].passwd !== undefined) {
-      hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
-    }
+    // We use the cluster-internal authentication:
+    var hdrs = { Authorization : ArangoServerState.getClusterAuthentication() };
     r = download(url,"",{method:"GET", headers: hdrs});
-    // console.info("Shutdown result:"+JSON.stringify(r));
+    if (r.code !== 200) {
+      console.info("Shutdown API result:"+JSON.stringify(r));
+    }
   }
   for (i = 0;i < run.endpoints.length;i++) {
     waitForServerDown(run.endpoints[i], 30);
