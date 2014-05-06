@@ -150,7 +150,7 @@ Handler::status_t RestReplicationHandler::execute() {
 
 #ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
-        handleCommandBatchCoordinator();
+        handleTrampolineCoordinator();
       }
       else {
         handleCommandBatch();
@@ -163,23 +163,32 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandInventory();
+      }
+#else
       handleCommandInventory();
+#endif
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandDump();
+      }
+#else
       handleCommandDump();
+#endif
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -208,11 +217,16 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandRestoreData();
+      }
+#else
       handleCommandRestoreData();
+#endif
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -1070,11 +1084,11 @@ void RestReplicationHandler::handleCommandBatch () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle batch command, coordinator case
+/// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-void RestReplicationHandler::handleCommandBatchCoordinator () {
+void RestReplicationHandler::handleTrampolineCoordinator () {
 
   // First check the DBserver component of the body json:
   ServerID DBserver = _request->value("DBserver");
@@ -1087,6 +1101,22 @@ void RestReplicationHandler::handleCommandBatchCoordinator () {
   string const& dbname = _request->databaseName();
 
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> values = _request->values();
+  string params;
+  map<string, string>::iterator i;
+  for (i = values.begin(); i != values.end(); i++) {
+    if (i->first != "DBserver") {
+      if (params.empty()) {
+        params.push_back('?');
+      }
+      else {
+        params.push_back('&');
+      }
+      params.append(StringUtils::urlEncode(i->first));
+      params.push_back('=');
+      params.append(StringUtils::urlEncode(i->second));
+    }
+  }
 
   // Set a few variables needed for our work:
   ClusterComm* cc = ClusterComm::instance();
@@ -1500,7 +1530,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1512,9 +1545,6 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
