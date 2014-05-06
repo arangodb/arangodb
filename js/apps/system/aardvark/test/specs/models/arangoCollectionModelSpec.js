@@ -244,5 +244,183 @@
                 });
             });
         });
+        describe("checking ajax", function () {
+            var id;
+
+            beforeEach(function () {
+                id = "4711";
+                myCollection = new window.arangoCollectionModel({
+                    id : "4711",
+                    name : "name"
+                });
+            });
+            it("should get and index and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index/?collection=" + id);
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.getIndex()).toEqual("success");
+
+            });
+
+            it("should get and index and fail", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index/?collection=" + id);
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.getIndex()).toEqual("error");
+
+            });
+
+            it("should create and index and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index?collection=" + id);
+                    expect(opt.type).toEqual("POST");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.data).toEqual('{"ab":"CD"}');
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.createIndex({ab: 'CD'})).toEqual(true);
+
+            });
+
+            it("should create and index and fail", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index?collection=" + id);
+                    expect(opt.type).toEqual("POST");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.data).toEqual('{"ab":"CD"}');
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.createIndex({ab: 'CD'})).toEqual("error");
+
+            });
+
+
+            it("should delete and index and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index/" + "name" + "/1");
+                    expect(opt.type).toEqual("DELETE");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.deleteIndex(1)).toEqual(true);
+
+            });
+
+            it("should delete and index and fail", function () {
+                var collection = "12345";
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/index/" + "name" + "/1");
+                    expect(opt.type).toEqual("DELETE");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.deleteIndex(1)).toEqual(false);
+
+            });
+
+            it("should get Properties and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.getProperties()).toEqual("success");
+
+            });
+
+            it("should get Properties and fail", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/properties");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.getProperties()).toEqual("error");
+
+            });
+
+            it("should get Figures and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/figures");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.getFigures()).toEqual("success");
+
+            });
+
+            it("should get Figures and fail", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/figures");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.getFigures()).toEqual("error");
+
+            });
+
+            it("should get Revision and succeed", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/revision");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.success("success");
+                });
+                expect(myCollection.getRevision()).toEqual("success");
+
+            });
+
+            it("should get Revision and fail", function () {
+                spyOn($, "ajax").andCallFake(function (opt) {
+                    expect(opt.url).toEqual("/_api/collection/" + id + "/revision");
+                    expect(opt.type).toEqual("GET");
+                    expect(opt.cache).toEqual(false);
+                    expect(opt.contentType).toEqual("application/json");
+                    expect(opt.processData).toEqual(false);
+                    expect(opt.async).toEqual(false);
+                    opt.error("error");
+                });
+                expect(myCollection.getRevision()).toEqual("error");
+
+            });
+        });
     });
 }());
