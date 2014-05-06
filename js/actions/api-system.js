@@ -64,8 +64,8 @@ actions.defineHttp({
 /// - `COORDINATOR`: the server is a coordinator in a cluster
 /// - `PRIMARY`: the server is a primary database server in a cluster
 /// - `SECONDARY`: the server is a secondary database server in a cluster
-/// - `UNKNOWN`: in a cluster, `UNKNOWN` is returned if the server role cannot be 
-///    determined. On a single server, `UNKNOWN` is the only possible return
+/// - `UNDEFINED`: in a cluster, `UNDEFINED` is returned if the server role cannot be 
+///    determined. On a single server, `UNDEFINED` is the only possible return
 ///    value.
 ///
 /// @RESTRETURNCODES
