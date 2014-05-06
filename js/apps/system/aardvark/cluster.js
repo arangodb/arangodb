@@ -97,7 +97,6 @@
         auth = parseUser(req.headers);
         uname = auth.username;
         pwd = auth.passwd;
-
         if (input.type === "testSetup") {
           config.dispatchers = {
             "d1": {
@@ -131,6 +130,8 @@
             }
             config.dispatchers["d" + i] = inf;
           });
+          config.useSSLonDBservers = input.useSSLonDBservers;
+          config.useSSLonCoordinators = input.useSSLonCoordinators;
         }
         result.config = config;
         planner = new cluster.Planner(config);

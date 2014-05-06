@@ -37,6 +37,8 @@
       var foundCoordinator = false;
       var foundDBServer = false;
       /*jslint unparam: true*/
+      data.useSSLonDBservers = !!$(".useSSLonDBservers").prop('checked');
+      data.useSSLonCoordinators = !!$(".useSSLonCoordinators").prop('checked');
       $(".dispatcher").each(function(i, dispatcher) {
         var host = $(".host", dispatcher).val();
         var port = $(".port", dispatcher).val();
@@ -86,7 +88,6 @@
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       delete window.App.clusterPlan._coord;
       /*jslint unparam: true*/
-
       window.App.clusterPlan.save(
         data,
         {
@@ -137,7 +138,11 @@
       this.isSymmetric = isSymmetric;
       $(this.el).html(this.template.render({
         isSymmetric : isSymmetric,
-        params      : params
+        params      : params,
+        useSSLonDBservers: config && config.useSSLonDBservers ?
+            config.useSSLonDBservers : false,
+        useSSLonCoordinators: config && config.useSSLonCoordinators ?
+            config.useSSLonCoordinators : false
       }));
       if (config) {
         var self = this,
