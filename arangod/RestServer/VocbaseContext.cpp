@@ -86,8 +86,10 @@ bool VocbaseContext::useClusterAuthentication () const {
     return true;
   }
 
+  string s(_request->requestPath());
+
   if (ServerState::instance()->isCoordinator() &&
-      string(_request->requestPath()) == "/_api/shard-comm") {
+      (s == "/_api/shard-comm" || s == "/_admin/shutdown")) {
     return true;
   }
 
