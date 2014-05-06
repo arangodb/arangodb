@@ -172,7 +172,7 @@
 
       if (collectionIsLoaded) {
         // needs to be refactored. move getProperties into model
-        var journalSize = this.model.collection.getProperties(this.model.get('id')).journalSize;
+        var journalSize = this.model.getProperties().journalSize;
         journalSize = journalSize/(1024*1024);
 
         tableContent.push(
@@ -191,7 +191,7 @@
       if(collectionIsLoaded) {
         // prevent "unexpected sync method error"
         /*jslint stupid: true */
-        var wfs = this.model.collection.getProperties(this.model.get('id')).waitForSync;
+        var wfs = this.model.getProperties().waitForSync;
         /*jslint stupid: false */
 
         tableContent.push(

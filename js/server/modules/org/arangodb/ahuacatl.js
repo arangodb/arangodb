@@ -3981,13 +3981,23 @@ function TRAVERSAL_FUNC (func,
                          direction, 
                          params) {
   "use strict";
+  
+  if (startVertex === 'object' && startVertex.hasOwnProperty('_id')) {
+    startVertex = startVertex._id;
+  }
 
   if (startVertex.indexOf('/') === -1) {
     startVertex = vertexCollection + '/' + startVertex;
   }
   
-  if (endVertex !== undefined && endVertex.indexOf('/') === -1) {
-    endVertex = vertexCollection + '/' + endVertex;
+  if (endVertex !== undefined) {
+    if (endVertex === 'object' && endVertex.hasOwnProperty('_id')) {
+      endVertex = endVertex._id;
+    }
+  
+    if (endVertex.indexOf('/') === -1) {
+      endVertex = vertexCollection + '/' + endVertex;
+    }
   }
 
   vertexCollection = COLLECTION(vertexCollection);
@@ -4236,6 +4246,10 @@ function GRAPH_NEIGHBORS (vertexCollection,
   "use strict";
 
   var c = COLLECTION(vertexCollection);
+
+  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
+    vertex = vertex._id;
+  }
 
   if (vertex.indexOf('/') === -1) {
     vertex = vertexCollection + '/' + vertex;
