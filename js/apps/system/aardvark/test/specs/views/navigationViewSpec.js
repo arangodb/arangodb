@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
 /*global $*/
 
 (function() {
@@ -134,7 +134,7 @@
       });
 
       it("should navigate to the selected value from options div", function() {
-        var toNavigate = "#collections"
+        var toNavigate = "#collections";
         $("#arangoCollectionSelect").val(toNavigate);
         view.navigateBySelect();
         expect(window.App.navigate).toHaveBeenCalledWith(toNavigate, {trigger: true});
@@ -151,14 +151,14 @@
       });
 
       it("should render selectMenuItems correctly", function() {
-        var entry = "tools-menu";
+        var entry = "tools-menu",
+        toBeActiveClass = $('.' + entry),
+        toBeFalseClass1 = $('.' + "graphviewer-menu"),
+        toBeFalseClass2 = $('.' + "databases-menu"),
+        toBeFalseClass3 = $('.' + "query-menu"),
+        toBeFalseClass4 = $('.' + "collections-menu"),
+        toBeFalseClass5 = $('.' + "applications-menu");
         view.selectMenuItem(entry);
-        var toBeActiveClass = $('.' + entry);
-        var toBeFalseClass1 = $('.' + "graphviewer-menu");
-        var toBeFalseClass2 = $('.' + "databases-menu");
-        var toBeFalseClass3 = $('.' + "query-menu");
-        var toBeFalseClass4 = $('.' + "collections-menu");
-        var toBeFalseClass5 = $('.' + "applications-menu");
         expect(toBeActiveClass.hasClass("active")).toBeTruthy();
         expect(toBeFalseClass1.hasClass("active")).toBeFalsy();
         expect(toBeFalseClass2.hasClass("active")).toBeFalsy();
