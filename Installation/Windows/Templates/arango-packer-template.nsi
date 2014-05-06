@@ -46,7 +46,7 @@ Section "" ;No components page, name is not important
 	file "@INSTALLERNAME@-internal.exe"
         Rename "$INSTDIR\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll" "$INSTDIR\msvcr120.dll"
         Rename "$INSTDIR\Build@BITS@\@INSTALLERNAME@-internal.exe" "$INSTDIR\@INSTALLERNAME@-internal.exe"
-        Exec "$INSTDIR\@INSTALLERNAME@-internal.exe"
+        ExecShell "open" "$INSTDIR\@INSTALLERNAME@-internal.exe"
         Quit
   
 SectionEnd ; end the section
