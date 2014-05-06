@@ -28,7 +28,6 @@
       $('#waitModalLayer').modal('show');
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster will be relaunched');
-      var result = false;
       $.ajax({
         cache: false,
         type: "GET",
