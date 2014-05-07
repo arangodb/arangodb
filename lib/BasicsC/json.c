@@ -773,7 +773,7 @@ TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos
 void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
                           TRI_json_t* object,
                           char const* name,
-                          TRI_json_t* subobject) {
+                          TRI_json_t const* subobject) {
   TRI_json_t copy;
   char* att;
   size_t length;
