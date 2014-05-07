@@ -140,7 +140,7 @@ function ArangoAdapterControls(list, adapter) {
             var list = $("input[id^=" + idprefix + "attribute_]"),
               prios = [];
             list.each(function(i, t) {
-              var val = $(t).attr("value");
+              var val = $(t).val();
               if (val !== "") {
                 prios.push(val);
               }
