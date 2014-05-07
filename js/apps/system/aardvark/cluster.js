@@ -174,7 +174,7 @@
     controller.get("/healthcheck", function(req, res) {
       var out = getStarter().isHealthy();
       var stf = JSON.stringify(out);
-      if (out.error || stf.indexOf("NOT-FOUND") !== -1) {
+      if (out.error) {
         require("console").log("Cluster HealthCheck Error:", out.error);
         require("console").log("Cluster HealthCheck Result:", stf);
         res.json(false);
