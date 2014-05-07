@@ -102,9 +102,9 @@ function ArangoAdapterControls(list, adapter) {
                   .children("option")
                   .filter(":selected")
                   .text(),
-                undirected = !!$("#" + idprefix + "undirected").attr("checked"),
-                random = !!$("#" + idprefix + "random").attr("checked"),
-                selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
+                undirected = !!$("#" + idprefix + "undirected").prop("checked"),
+                random = !!$("#" + idprefix + "random").prop("checked"),
+                selected = $("input[type='radio'][name='loadtype']:checked").prop("id");
               if (selected === idprefix + "collections") {
                 adapter.changeToCollections(nodes, edges, undirected);
               } else {
