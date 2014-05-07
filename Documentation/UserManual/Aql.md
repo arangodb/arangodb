@@ -1078,13 +1078,21 @@ These two above date functions accept the following input values:
 
 - datetime strings in formats @LIT{YYYY-MM-DDTHH:MM:SS.MMM}, 
   @LIT{YYYY-MM-DD HH:MM:SS.MMM}, or @LIT{YYYY-MM-DD}. Milliseconds are always optional.
-  A timezone difference may optionally be added at the end of the string, e.g.:
-  `2014-05-07T14:19:09+01:00` for a one hour offset. Alternatively, a `Z` can be
-  specified at the end of the string to indicate UTC / Zulu time. 
+  A timezone difference may optionally be added at the end of the string, with the
+  hours and minutes that need to be added or subtracted to the datetime value.
+  For example, `2014-05-07T14:19:09+01:00` can be used to specify a one hour offset,
+  and `2014-05-07T14:19:09+07:30` can be specified for seven and half hours offset. 
+  Negative offsets are also possible. Alternatively to an offset, a `Z` can be used
+  to indicate UTC / Zulu time. 
  
   An example value is `2014-05-07T14:19:09.522Z` meaning May 7th 2014, 14:19:09 and 
-  522 milliseconds, Zulu time. Another example value without time component is 
+  522 milliseconds, UTC / Zulu time. Another example value without time component is 
   `2014-05-07Z`.
+
+  Please note that if no timezone offset is specified in a datestring, ArangoDB will
+  assume UTC time automatically. This is done to ensure portability of queries across
+  servers with different timezone settings, and because timestamps will always be
+  UTC-based. 
 
 - individual date components as separate function arguments, in the following order:
   - year 
@@ -1095,13 +1103,10 @@ These two above date functions accept the following input values:
   - second
   - millisecond
 
-  All components following `day` are optional and can be omitted.
+  All components following `day` are optional and can be omitted. Note that no
+  timezone offsets can be specified when using separate date components, and UTC /
+  Zulu time will be used.
  
-Please note that if no timezone offset is specified in a datestring, ArangoDB will
-assume UTC time automatically. This is done to ensure portability of queries across
-servers with different timezone settings, and because timestamps will always be
-UTC-based. 
-
 The following calls to `DATE_TIMESTAMP` are equivalent and will all return 
 `1399472349522`:
 
