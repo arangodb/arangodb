@@ -6,6 +6,7 @@
   "use strict";
   window.queryView = Backbone.View.extend({
     el: '#content',
+    tabArray: [],
 
     initialize: function () {
       this.getAQL();
@@ -15,8 +16,9 @@
     },
 
     events: {
-      "click #result-switch": "result",
-      "click #query-switch": "query",
+      "click #result-switch": "switchTab",
+      "click #query-switch": "switchTab",
+      'click #customs-switch': 'switchTab',
       'click #submitQueryIcon': 'submitQuery',
       'click #submitQueryButton': 'submitQuery',
       'click #commentText': 'commentText',
@@ -27,6 +29,7 @@
       'click #bigOutput': 'bigOutput',
       'click #clearOutput': 'clearOutput',
       'click #clearInput': 'clearInput',
+      'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
       'click #editAQL': 'editAQL',
       'click #save-new-query': 'saveAQL',
@@ -39,6 +42,13 @@
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
       'keypress #aqlEditor': 'aqlShortcuts'
+    },
+
+    initTabArray: function() {
+      var self = this;
+      $(".arango-tab").children().each( function(index) {
+        self.tabArray.push($(this).children().first().attr("id"));
+      });
     },
 
     listenKey: function (e) {
@@ -92,7 +102,7 @@
     template: templateEngine.createTemplate("queryView.ejs"),
 
     render: function () {
-      $(this.el).html(this.template.render({}));
+      this.$el.html(this.template.render({}));
 
       // fill select box with # of results
       var querySize = 1000;
@@ -116,6 +126,39 @@
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setFontSize("16px");
       outputEditor.setValue('');
+
+
+      var customsEditor = ace.edit("customsEditor");
+      customsEditor.getSession().setMode("ace/mode/aql");
+      customsEditor.setFontSize("16px");
+      customsEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
+      customsEditor.getSession().selection.on('changeCursor', function (e) {
+        var customsEditor = ace.edit("customsEditor");
+        var session = customsEditor.getSession();
+        var cursor = customsEditor.getCursorPosition();
+        var token = session.getTokenAt(cursor.row, cursor.column);
+        if (token) {
+          if (token.type === "comment") {
+            $("#commentText i")
+            .removeClass("fa-comment")
+            .addClass("fa-comment-o")
+            .attr("data-original-title", "Uncomment");
+          } else {
+            $("#commentText i")
+            .removeClass("fa-comment-o")
+            .addClass("fa-comment")
+            .attr("data-original-title", "Comment");
+          }
+        }
+      });
 
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
@@ -171,20 +214,25 @@
       }
 
       var windowHeight = $(window).height() - 295;
+      $('#customsEditor').height(windowHeight);
       $('#aqlEditor').height(windowHeight - 19);
       $('#queryOutput').height(windowHeight);
 
+      customsEditor.resize();
       inputEditor.resize();
       outputEditor.resize();
 
+      this.initTabArray();
       this.renderSelectboxes();
+      this.deselect(customsEditor);
       this.deselect(outputEditor);
       this.deselect(inputEditor);
 
-      $('#queryDiv').show();
-      //outputEditor.setTheme("ace/theme/merbivore_soft");
-      $("#tabContentResult").hide();
-      $("#query-switch").parent().addClass("active");
+      // Max: why do we need to tell those elements to show themselves?
+      $("#queryDiv").show();
+      $("#customsDiv").show();
+
+      this.switchTab('query-switch');
 
       return this;
     },
@@ -412,7 +460,7 @@
       this.customQueries = _.sortBy(this.customQueries, 'name');
     },
     submitQuery: function () {
-      this.result();
+      this.switchTab("result-switch");
       var self = this;
       var sizeBox = $('#querySize');
       var inputEditor = ace.edit("aqlEditor");
@@ -456,33 +504,34 @@
 
     },
 
-    result: function (e) {
-      $("#result-switch").parent().addClass("active");
-      $("#query-switch").parent().removeClass("active");
-      $("#result").addClass("active");
-      $("#query").removeClass("active");
-      $("#tabContentResult").show();
-      $("#tabContentQuery").hide();
-      /*      console.log($(e.currentTarget).closest(".pull-right").addClass("active"));
-       this.resetState();
-       this.table = "logTableID";
-       this.clearTable();
-       this.collection.fillLocalStorage(this.table, this.offset, this.size);*/
-    },
-
-    query: function (e) {
-      $("#query-switch").parent().addClass("active");
-      $("#result-switch").parent().removeClass("active");
-      $("#query").addClass("active");
-      $("#result").removeClass("active");
-      $("#tabContentQuery").show();
-      $("#tabContentResult").hide();
-      /*
-       this.resetState();
-       this.table = "logTableID";
-       this.clearTable();
-       this.collection.fillLocalStorage(this.table, this.offset, this.size);*/
+    // This function changes the focus onto the tab that has been clicked
+    // it can be given an event-object or the id of the tab to switch to
+    //    e.g. switchTab("result-switch");
+    // note that you need to ommit the #
+    switchTab: function (e) {
+      // defining a callback function for Array.forEach() the tabArray holds the ids of
+      // the tabs a-tags, from which we can create the appropriate content-divs ids.
+      // The convention is #result-switch (a-tag), #result (content-div), and #tabContentResult (pane-div).
+      // We set the clicked element's tags to active/show and the others to hide.
+      //console.log("Type of e: " + typeof e + "e: " + e);
+      var switchId = typeof e === 'string' ? e : e.target.id;
+      //console.log("switchId: " + switchId);
+      var changeTab = function (element, index, array){
+        var divId = "#" + element.replace("-switch", "");
+        var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
+        //console.log ("element: " + element + "\nswitchId: " + switchId + "\ndivId: " + divId + "\ncontentDivId:" + contentDivId);
+        //console.log(element === switchId);
+        if ( element === switchId){
+          $("#" + element).parent().addClass("active");
+          $(divId).addClass("active");
+          $(contentDivId).show();
+        } else {
+          $("#" + element).parent().removeClass("active");
+          $(divId).removeClass("active");
+          $(contentDivId).hide();
+        }
+      }
+      this.tabArray.forEach(changeTab);
     }
-
   });
 }());

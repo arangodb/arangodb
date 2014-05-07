@@ -501,5 +501,34 @@
       expect($.fn.click).toHaveBeenCalled();
     });
 
+    /*it("test focused button navigation (direction right)", function() {
+
+      testee.enabledHotkey = false;
+      var btnObj = {},
+      title = "Save",
+      buttons = [],
+      cbs = {
+        callback: function() {
+        }
+      },
+      btn,
+      testShow = testee.show.bind(testee, "modalTable.ejs", "My Modal");
+
+      spyOn(cbs, "callback").andCallThrough();
+      btnObj = testee.createSuccessButton(title, cbs.callback);
+      buttons.push(btnObj);
+      testShow(buttons);
+      btn = $(".button-" + btnObj.type, $(div));
+
+      spyOn($.fn, "next");
+      spyOn($.fn, "is").andReturn(true);
+
+      btn.focus();
+      testee.navigateThroughButtons('right');
+      expect($.fn.next).toHaveBeenCalled();
+
+      console.log(testee);
+    });*/
+
   });
 }());
