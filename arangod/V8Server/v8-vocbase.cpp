@@ -9241,9 +9241,9 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
                               "/_api/database/user", string(""), headers, 0.0);
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
-          string body = res->result->getBody().str();
+          StringBuffer& body = res->result->getBody();
           delete res;
-          TRI_json_t* json = JsonHelper::fromString(body);
+          TRI_json_t* json = JsonHelper::fromString(body.c_str());
           if (json != 0 && JsonHelper::isArray(json)) {
             TRI_json_t const* dotresult = JsonHelper::getArrayElement(json,"result");
             if (dotresult != 0) {

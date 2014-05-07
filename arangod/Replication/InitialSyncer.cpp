@@ -171,7 +171,8 @@ int InitialSyncer::run (string& errorMsg) {
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                      response->getBody().c_str());
 
     if (JsonHelper::isArray(json)) {
       res = handleInventoryResponse(json, errorMsg);
@@ -250,7 +251,8 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, 
+                                      response->getBody().c_str());
 
     if (json == 0) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -377,6 +379,17 @@ int InitialSyncer::sendFinishBatch () {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline void mylocalgetline(char const*& p, string& line, char delim) {
+  char const* q = p;
+  while (*p != 0 && *p != delim) {
+    p++;
+  }
+  line.assign(q, p-q);
+  if (*p == delim) {
+    p++;
+  }
+}
+
 int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
                                         SimpleHttpResult* response,
                                         string& errorMsg) {
@@ -384,12 +397,13 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
   const string invalidMsg = "received invalid JSON data for collection " + 
                             StringUtils::itoa(trxCollection->_cid);
 
-  std::stringstream& data = response->getBody();
+  StringBuffer& data = response->getBody();
+  char const* p = data.c_str();
 
   while (true) {
     string line;
     
-    std::getline(data, line, '\n');
+    mylocalgetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done

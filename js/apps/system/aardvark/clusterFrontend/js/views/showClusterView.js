@@ -23,6 +23,7 @@
     },
 
     replaceSVGs: function() {
+      //console.log($(".svgToReplace"));
       $(".svgToReplace").each(function() {
         var img = $(this);
         var id = img.attr("id");
