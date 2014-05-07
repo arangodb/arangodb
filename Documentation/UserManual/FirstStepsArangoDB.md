@@ -140,7 +140,7 @@ ArangoDB is a database that serves documents to clients.
   or more documents
 - *Queries* are used to filter documents based on certain criteria.
   Queries can be as simple as a @ref SimpleQueryByExample "query by example" or as complex as
-  joins using many collections or graph structures
+  @ref AqlExamplesJoins "joins" using many collections or graph structures
 - *Cursors* are used to iterate over the result of a query
 - *Indexes* are used to speed up of searches. There are various different
   types of indexes like @ref IndexHash, @ref IndexGeo and @ref IndexBitArray
