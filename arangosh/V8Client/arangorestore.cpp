@@ -285,10 +285,10 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
     
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  const string body = result->getBody().str();
+  const StringBuffer& body = result->getBody();
   string details;
 
-  TRI_json_t* json = JsonHelper::fromString(body);
+  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
   if (json != 0) {
     const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
@@ -335,7 +335,8 @@ static string GetArangoVersion () {
     version = "arango";
   
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
+                                      response->getBody().c_str());
 
     if (json) {
       // look up "server" value

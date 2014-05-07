@@ -951,6 +951,9 @@ Kickstarter.prototype.isHealthy = function() {
         try {
           res = JSON.parse(response.body);
           results.push(res.results[0]);
+          if (res.results[0].error === true) {
+	    error = true;
+          }
         }
         catch (err) {
           results.push({"error":true, 

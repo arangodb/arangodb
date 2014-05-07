@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
 /*global $*/
 
 (function() {
@@ -79,7 +79,7 @@
 
       beforeEach(function() {
         view = new window.NavigationView(
-            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+          {userCollection : UserCollectionDummy, currentDB : window.currentDB}
         );
         view.render();
       });
@@ -127,13 +127,132 @@
         expect(window.App.navigate).toHaveBeenCalledWith("graph", {trigger: true});
       });
 
+      it("should handle selected database render", function() {
+        spyOn(view.dbSelectionView, "render");
+        view.handleSelectDatabase();
+        expect(view.dbSelectionView.render).toHaveBeenCalled();
+      });
+
+      it("should navigate to the selected value from options div", function() {
+        var toNavigate = "#collections";
+        $("#arangoCollectionSelect").val(toNavigate);
+        view.navigateBySelect();
+        expect(window.App.navigate).toHaveBeenCalledWith(toNavigate, {trigger: true});
+      });
+
+      it("should navigate automatic to the selected value from options div", function() {
+        spyOn($.fn, "change").andCallFake(function(a){
+          a();
+        });
+        spyOn(view, "navigateBySelect");
+        view.handleSelectNavigation();
+        expect($.fn.change).toHaveBeenCalledWith(jasmine.any(Function));
+        expect(view.navigateBySelect).toHaveBeenCalled();
+      });
+
+      it("should render selectMenuItems correctly", function() {
+        var entry = "tools-menu",
+        toBeActiveClass = $('.' + entry),
+        toBeFalseClass1 = $('.' + "graphviewer-menu"),
+        toBeFalseClass2 = $('.' + "databases-menu"),
+        toBeFalseClass3 = $('.' + "query-menu"),
+        toBeFalseClass4 = $('.' + "collections-menu"),
+        toBeFalseClass5 = $('.' + "applications-menu");
+        view.selectMenuItem(entry);
+        expect(toBeActiveClass.hasClass("active")).toBeTruthy();
+        expect(toBeFalseClass1.hasClass("active")).toBeFalsy();
+        expect(toBeFalseClass2.hasClass("active")).toBeFalsy();
+        expect(toBeFalseClass3.hasClass("active")).toBeFalsy();
+        expect(toBeFalseClass4.hasClass("active")).toBeFalsy();
+        expect(toBeFalseClass5.hasClass("active")).toBeFalsy();
+      });
+
+      it("should show dropdown for menu item: links", function() {
+        var e = {
+          target: {
+            id: "links"
+          }
+        };
+        spyOn($.fn, "show");
+        view.showDropdown(e);
+        expect($.fn.show).toHaveBeenCalledWith(200);
+      });
+
+      it("should show dropdown for menu item: tools", function() {
+        var e = {
+          target: {
+            id: "tools"
+          }
+        };
+        spyOn($.fn, "show");
+        view.showDropdown(e);
+        expect($.fn.show).toHaveBeenCalledWith(200);
+      });
+
+      it("should show dropdown for menu item: dbselection", function() {
+        var e = {
+          target: {
+            id: "dbselection"
+          }
+        };
+        spyOn($.fn, "show");
+        view.showDropdown(e);
+        expect($.fn.show).toHaveBeenCalledWith(200);
+      });
+
+      it("should hide dropdown for menu item: linkDropdown", function() {
+        spyOn($.fn, "hide");
+        $('#linkDropdown').mouseenter().mouseleave();
+        expect($.fn.hide).toHaveBeenCalled();
+      });
+
+      it("should hide dropdown for menu item: toolsDropdown", function() {
+        spyOn($.fn, "hide");
+        $('#toolsDropdown').mouseenter().mouseleave();
+        expect($.fn.hide).toHaveBeenCalled();
+      });
+
+      it("should hide dropdown for menu item: dbSelect", function() {
+        spyOn($.fn, "hide");
+        $('#dbSelect').mouseenter().mouseleave();
+        expect($.fn.hide).toHaveBeenCalled();
+      });
+
+      it("should navigateByTab: tools", function() {
+        spyOn($.fn, "slideToggle");
+        $('#tools').click();
+        expect($.fn.slideToggle).toHaveBeenCalled();
+      });
+
+      it("should navigateByTab: links", function() {
+        spyOn($.fn, "slideToggle");
+        $('#links').click();
+        expect($.fn.slideToggle).toHaveBeenCalled();
+      });
+
+      it("should navigateByTab: dbSelection", function() {
+        $('#tools').attr("id", "dbselection");
+        spyOn($.fn, "slideToggle");
+        $('#dbselection').click();
+        expect($.fn.slideToggle).toHaveBeenCalled();
+        $('#dbselection').attr("id", "tools");
+      });
+
+      it("should navigateByTab: blank", function() {
+        $('#tools').attr("id", "");
+        $('#links').attr("id", "");
+        spyOn($.fn, "attr");
+        $('.tab').click();
+        expect($.fn.attr).toHaveBeenCalled();
+      });
+
     });
 
     describe("in _system database", function() {
 
       beforeEach(function() {
         view = new window.NavigationView(
-            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+          {userCollection : UserCollectionDummy, currentDB : window.currentDB}
         );
         view.render();
       });
@@ -152,11 +271,11 @@
         curName = "firstDB";
         isSystem = false;
         view = new window.NavigationView(
-            {userCollection : UserCollectionDummy, currentDB : window.currentDB}
+          {userCollection : UserCollectionDummy, currentDB : window.currentDB}
         );
         view.render();
       });
-      
+
       it("should not offer a logs tab", function() {
         var tab = $("#logs", $(div));
         expect(tab.length).toEqual(0);
@@ -164,5 +283,6 @@
     });
 
   });
+
 
 }());
