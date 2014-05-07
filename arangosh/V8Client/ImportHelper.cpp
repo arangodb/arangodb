@@ -504,9 +504,8 @@ namespace triagens {
         return;
       }
 
-      stringstream& r = result->getBody();
-
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, r.str().c_str());
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
+                                        result->getBody().c_str());
 
       if (json != 0) {
         // error details
