@@ -2922,6 +2922,41 @@ function INTERSECTION () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flatten a list of lists
+////////////////////////////////////////////////////////////////////////////////
+
+function FLATTEN (values, maxDepth, depth) {
+  "use strict";
+
+  LIST(values);
+
+  if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL) {
+    maxDepth = 1;
+  }
+  if (TYPEWEIGHT(depth) === TYPEWEIGHT_NULL) {
+    depth = 0;
+  }
+
+  var value, result = [ ];
+  var i, n;
+  var p = function(v) {
+    result.push(v);
+  };
+  
+  for (i = 0, n = values.length; i < n; ++i) {
+    value = values[i];
+    if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+      FLATTEN(value, maxDepth, depth + 1).forEach(p);
+    }
+    else {
+      result.push(value);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4611,6 +4646,7 @@ exports.UNION_DISTINCT = UNION_DISTINCT;
 exports.SLICE = SLICE;
 exports.MINUS = MINUS;
 exports.INTERSECTION = INTERSECTION;
+exports.FLATTEN = FLATTEN;
 exports.MAX = MAX;
 exports.MIN = MIN;
 exports.SUM = SUM;

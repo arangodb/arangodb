@@ -664,6 +664,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("UNION_DISTINCT", "UNION_DISTINCT", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("MINUS", "MINUS", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("INTERSECTION", "INTERSECTION", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("FLATTEN", "FLATTEN", true, false, "l|n", NULL);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "las", NULL);
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);

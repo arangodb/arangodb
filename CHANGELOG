@@ -3,6 +3,8 @@ v2.1.0 (XXXX-XX-XX)
 
 * added AQL date functions
 
+* added AQL FLATTEN() and FLATTEN_RECURSIVE() list functions
+
 * added index memory statistics to `db.<collection>.figures()` function
 
   The `figures` function will now return a sub-document `indexes`, which lists

@@ -982,6 +982,8 @@ For string processing, AQL offers the following functions:
   Concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
   @FA{separator} string. `null` values are ignored
 
+- @FN{LENGTH(@FA{value})}: Return the number of characters in @FA{value}. 
+
 - @FN{CHAR_LENGTH(@FA{value})}: Return the number of characters in @FA{value}. This is
   a synonym for @FN{LENGTH(@FA{value})}
 
@@ -1169,6 +1171,27 @@ AQL supports the following functions to operate on list values:
 - @FN{LENGTH(@FA{list})}: Returns the length (number of list elements) of @FA{list}. If 
   @FA{list} is a document, returns the number of attribute keys of the document, 
   regardless of their values.
+
+- @FN{FLATTEN(@FA{list}, @FA{depth})}: Turns a list of lists into a flat list. All 
+  list elements in @FA{list} will be expanded in the result list. Non-list elements 
+  are added as they are. The function will recurse into sub-lists up to a depth of
+  @FA{depth}. @FA{depth} has a default value of 1.
+
+  Example:
+  
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
+
+  will produce:
+
+      [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
+
+  To fully flatten the list, use a @FA{depth} of 2:
+      
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
+
+  This will produce:
+      
+      [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
 - @FN{MIN(@FA{list})}: Returns the smallest element of @FA{list}. `null` values
   are ignored. If the list is empty or only `null` values are contained in the list, the
@@ -1394,6 +1417,7 @@ AQL supports the following functions to operate on document values:
         { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
       ]
 
+- @FN{LENGTH(@FA{document})}: Return the number of attributes in document @FA{document}.
 
 - @FN{HAS(@FA{document}, @FA{attributename})}: Returns `true` if @FA{document} has an
   attribute named @FA{attributename}, and `false` otherwise.
