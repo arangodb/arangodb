@@ -511,7 +511,8 @@
     switchTab: function (e) {
       // defining a callback function for Array.forEach() the tabArray holds the ids of
       // the tabs a-tags, from which we can create the appropriate content-divs ids.
-      // The convention is #result-switch (a-tag), #result (content-div), and #tabContentResult (pane-div).
+      // The convention is #result-switch (a-tag), #result (content-div), and
+      // #tabContentResult (pane-div).
       // We set the clicked element's tags to active/show and the others to hide.
       //console.log("Type of e: " + typeof e + "e: " + e);
       var switchId = typeof e === 'string' ? e : e.target.id;
@@ -519,8 +520,6 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        //console.log ("element: " + element + "\nswitchId: " + switchId + "\ndivId: " + divId + "\ncontentDivId:" + contentDivId);
-        //console.log(element === switchId);
         if ( element === switchId){
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
@@ -530,7 +529,7 @@
           $(divId).removeClass("active");
           $(contentDivId).hide();
         }
-      }
+      };
       this.tabArray.forEach(changeTab);
     }
   });
