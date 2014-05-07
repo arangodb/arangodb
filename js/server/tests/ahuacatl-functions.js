@@ -802,6 +802,16 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test length function for documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testLength5 : function () {
+      var expected = [ 0, 1, 3, 3, 4, 5 ];
+      var actual = getQueryResults("FOR test IN [ { }, { foo: true }, { foo: 1, bar: 2, baz: 3 }, { one: { }, two: [ 1, 2, 3 ], three: { one: 1, two: 2 } }, { '1': 0, '2': 0, '3': 0, '4': 0 }, { abc: false, ABC: false, aBc: false, AbC: false, ABc: true } ] RETURN LENGTH(test)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1975,6 +1985,99 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ [ 2, 4, 5 ] ];
       var actual = getQueryResults("RETURN INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ])");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test flatten function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFlattenInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN([ ], 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(null)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(false)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN('foo')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN([ ], 'foo')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN([ ], [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN({ })");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test flatten function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFlatten1 : function () {
+      var input = [ [ 2, 4, 5 ], [ 1, 2, 3 ], [ ], [ "foo", "bar" ] ];
+      var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test flatten function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFlatten2 : function () {
+      var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ null, null ], [ [ 1, 2 ], [ 3, 4 ] ] ];
+      var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test flatten_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFlatten3 : function () {
+      var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ];
+      var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
+
+      actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, [ 5, 6 ], [ 7, 8 ], 9, 10, [ 11, 12 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test flatten_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFlatten4 : function () {
+      var input = [ 1, [ 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ];
+      var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 1, 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
+      assertEqual([ [ 1, 2, 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 4)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 5)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, [ 7, [ 8, [ 9 ] ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 6)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, [ 8, [ 9 ] ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 7)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN FLATTEN(@value, 8)", { value: input });
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
