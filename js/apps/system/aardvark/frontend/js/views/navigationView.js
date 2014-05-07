@@ -85,12 +85,11 @@
     },
 
     handleSelectNavigation: function () {
-      $("#arangoCollectionSelect").change(function () {
-        var navigateTo = $(this).find("option:selected").val();
-        window.App.navigate(navigateTo, {trigger: true});
+      var self = this;
+      $("#arangoCollectionSelect").change(function() {
+        self.navigateBySelect();
       });
     },
-
 
     selectMenuItem: function (menuItem) {
       $('.navlist li').removeClass('active');

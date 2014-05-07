@@ -15,7 +15,7 @@
 
     template: templateEngine.createTemplate("shutdownButtonView.ejs"),
 
-    clusterShutdown : function() {
+    clusterShutdown: function() {
       this.overview.stopUpdating();
       $('#waitModalLayer').modal('show');
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
