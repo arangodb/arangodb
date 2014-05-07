@@ -621,7 +621,8 @@ int createDocumentOnCoordinator (
   responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                             (res->result->getHttpReturnCode());
   resultHeaders = res->result->getHeaderFields();
-  resultBody = res->result->getBody().str();
+  resultBody.assign(res->result->getBody().c_str(),
+                    res->result->getBody().length());
   delete res;
   return TRI_ERROR_NO_ERROR;
 }
@@ -715,7 +716,8 @@ int deleteDocumentOnCoordinator (
     responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                               (res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
-    resultBody = res->result->getBody().str();
+    resultBody.assign(res->result->getBody().c_str(),
+                      res->result->getBody().length());
     delete res;
     return TRI_ERROR_NO_ERROR;
   }
@@ -849,7 +851,8 @@ int getDocumentOnCoordinator (
     responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                               (res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
-    resultBody = res->result->getBody().str();
+    resultBody.assign(res->result->getBody().c_str(),
+                      res->result->getBody().length());
     delete res;
     return TRI_ERROR_NO_ERROR;
   }
@@ -1093,7 +1096,8 @@ int modifyDocumentOnCoordinator (
     if (responseCode < triagens::rest::HttpResponse::BAD) {
       // OK, we are done, let's report:
       resultHeaders = res->result->getHeaderFields();
-      resultBody = res->result->getBody().str();
+      resultBody.assign(res->result->getBody().c_str(),
+                        res->result->getBody().length());
       delete res;
       return TRI_ERROR_NO_ERROR;
     }
@@ -1236,7 +1240,8 @@ int createEdgeOnCoordinator (
   responseCode = static_cast<triagens::rest::HttpResponse::HttpResponseCode>
                             (res->result->getHttpReturnCode());
   resultHeaders = res->result->getHeaderFields();
-  resultBody = res->result->getBody().str();
+  resultBody.assign(res->result->getBody().c_str(),
+                    res->result->getBody().length());
   delete res;
   return TRI_ERROR_NO_ERROR;
 }

@@ -150,7 +150,7 @@ Handler::status_t RestReplicationHandler::execute() {
 
 #ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
-        handleCommandBatchCoordinator();
+        handleTrampolineCoordinator();
       }
       else {
         handleCommandBatch();
@@ -163,23 +163,32 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandInventory();
+      }
+#else
       handleCommandInventory();
+#endif
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandDump();
+      }
+#else
       handleCommandDump();
+#endif
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -208,11 +217,16 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandRestoreData();
+      }
+#else
       handleCommandRestoreData();
+#endif
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -275,10 +289,20 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandApplierGetState();
       }
     }
+#ifdef TRI_ENABLE_CLUSTER
     else if (command == "clusterInventory") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      if (! ServerState::instance()->isCoordinator()) {
+        generateError(HttpResponse::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+      }
+      else {
+        handleCommandClusterInventory();
+      }
     }
-    else if (command == "clusterRestoreInventory") {
-    }
+#endif
     else {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1070,11 +1094,11 @@ void RestReplicationHandler::handleCommandBatch () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle batch command, coordinator case
+/// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_CLUSTER
-void RestReplicationHandler::handleCommandBatchCoordinator () {
+void RestReplicationHandler::handleTrampolineCoordinator () {
 
   // First check the DBserver component of the body json:
   ServerID DBserver = _request->value("DBserver");
@@ -1087,6 +1111,22 @@ void RestReplicationHandler::handleCommandBatchCoordinator () {
   string const& dbname = _request->databaseName();
 
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> values = _request->values();
+  string params;
+  map<string, string>::iterator i;
+  for (i = values.begin(); i != values.end(); i++) {
+    if (i->first != "DBserver") {
+      if (params.empty()) {
+        params.push_back('?');
+      }
+      else {
+        params.push_back('&');
+      }
+      params.append(StringUtils::urlEncode(i->first));
+      params.push_back('=');
+      params.append(StringUtils::urlEncode(i->second));
+    }
+  }
 
   // Set a few variables needed for our work:
   ClusterComm* cc = ClusterComm::instance();
@@ -1096,7 +1136,7 @@ void RestReplicationHandler::handleCommandBatchCoordinator () {
   res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
                         _request->requestType(),
                         "/_db/" + StringUtils::urlEncode(dbname) + 
-                        _request->requestPath(),
+                        _request->requestPath() + params,
                         string(_request->body(),_request->bodySize()), 
                         headers, 300.0);
 
@@ -1125,9 +1165,7 @@ void RestReplicationHandler::handleCommandBatchCoordinator () {
   _response = createResponse(static_cast<HttpResponse::HttpResponseCode>
                              (res->result->getHttpReturnCode()));
   _response->setContentType(res->result->getHeaderField("content-type",dummy));
-  // How efficient is the following? How can it be done better?
-  string st = res->result->getBody().str();
-  _response->body().appendText(st);
+  _response->body().swap(& (res->result->getBody()));
   map<string, string> resultHeaders = res->result->getHeaderFields();
   map<string, string>::iterator it;
   for (it = resultHeaders.begin(); it != resultHeaders.end(); it++) {
@@ -1500,7 +1538,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1512,9 +1553,6 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -1612,6 +1650,108 @@ void RestReplicationHandler::handleCommandInventory () {
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the cluster inventory, only on coordinator
+///
+/// @RESTHEADER{GET /_api/replication/clusterInventory,returns an inventory of collections and indexes}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{includeSystem,boolean,optional}
+/// Include system collections in the result. The default value is `false`.
+///
+/// @RESTDESCRIPTION
+/// Returns the list of collections and indexes available on the cluster.
+///
+/// The response will be a list of JSON hash array, one for each collection,
+/// which contains exactly two keys "parameters" and "indexes". This 
+/// information comes from Plan/Collections/<DB-Name>/* in the agency,
+/// just that the `indexes` attribute there is relocated to adjust it to
+/// the data format of arangodump.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+void RestReplicationHandler::handleCommandClusterInventory () {
+
+  string const& dbName = _request->databaseName();
+  string value;
+  bool found;
+  bool includeSystem = false;
+
+  value = _request->value("includeSystem", found);
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  AgencyComm _agency;
+  AgencyCommResult result;
+
+  {
+    string prefix("Plan/Collections/");
+    prefix.append(dbName);
+
+    AgencyCommLocker locker("Plan", "READ");
+    if (! locker.successful()) {
+      generateError(HttpResponse::SERVER_ERROR, 
+                    TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
+    }
+    else {
+      result = _agency.getValues(prefix, false);
+      if (! result.successful()) {
+        generateError(HttpResponse::SERVER_ERROR,
+                      TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+      }
+      else {
+        if (! result.parse(prefix + "/", false)) {
+          generateError(HttpResponse::SERVER_ERROR,
+                        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+        }
+        else {
+          map<string, AgencyCommResultEntry>::iterator it;
+          TRI_json_t json;
+          TRI_InitList2Json(TRI_UNKNOWN_MEM_ZONE, &json, result._values.size());
+          for (it = result._values.begin(); 
+               it != result._values.end(); it++) {
+            if (TRI_IsArrayJson(it->second._json)) {
+              TRI_json_t const* sub 
+                  = TRI_LookupArrayJson(it->second._json, "isSystem");
+              if (includeSystem || 
+                  (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
+                TRI_json_t coll;
+                TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, &coll, 2);
+                sub = TRI_LookupArrayJson( it->second._json, "indexes");
+                TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, &coll, "indexes", sub);
+                TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
+                                    "indexes");
+                TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &coll,
+                                     "parameters", it->second._json);
+                it->second._json = 0;
+                TRI_PushBack2ListJson(&json, &coll);
+              }
+            }
+          } 
+          generateResult(HttpResponse::OK, &json);
+          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+        }
+      }
+    }
+  }
+
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON TODO: move
@@ -1803,6 +1943,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     generateResult(&result);
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO

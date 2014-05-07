@@ -697,12 +697,13 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
         try {
           if (outfile.size() > 0) {
             // save outfile
-            FileUtils::spit(outfile, response->getBody().str());
+            FileUtils::spit(outfile, response->getBody());
           }
           else {
             // set "body" attribute in result
-            const string s = response->getBody().str();
-            result->Set(v8::String::New("body"), v8::String::New(s.c_str(), (int) s.size()));
+            const StringBuffer& sb = response->getBody();
+            result->Set(v8::String::New("body"), 
+                        v8::String::New(sb.c_str(), (int) sb.length()));
           }
         }
         catch (...) {
@@ -1779,7 +1780,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   double rssp = 0;
 
   if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+    rssp = 100.0 * rss / TRI_PhysicalMemory;
   }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));

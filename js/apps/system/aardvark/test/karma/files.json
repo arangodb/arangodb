@@ -264,8 +264,11 @@
   "test/clusterSpecs/views/shutdownButtonViewSpec.js",
   "test/clusterSpecs/views/loginModalViewSpec.js",
   "test/clusterSpecs/views/clusterDownViewSpec.js",
-  "test/clusterSpecs/views/dbServerDashboardViewSpec.js",
+  "test/clusterSpecs/views/showShardsViewSpec.js",
+  "test/clusterSpecs/views/showClusterViewSpec.js",
   "test/clusterSpecs/views/planScenarioSelectorViewSpec.js",
+  "test/clusterSpecs/views/dbServerDashboardViewSpec.js",
+  "test/clusterSpecs/views/planSymmetricViewSpec.js",
   "test/clusterSpecs/views/planTestViewSpec.js",
 
   "test/specs/router/routerSpec.js",
