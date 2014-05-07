@@ -1058,8 +1058,8 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
         details->Set(v8::String::New("message"),
                   v8::String::New(res->result->getHttpReturnMessage().c_str()));
         details->Set(v8::String::New("body"),
-                v8::String::New(res->result->getBody().str().c_str(),
-                (int) res->result->getBody().str().length()));
+                v8::String::New(res->result->getBody().c_str(),
+                (int) res->result->getBody().length()));
 
         r->Set(v8::String::New("details"), details);
         r->Set(v8g->ErrorMessageKey,
@@ -1136,9 +1136,9 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
       r->Set(v8::String::New("headers"), h);
 
       // The body:
-      string theBody = res->result->getBody().str();
+      StringBuffer& theBody = res->result->getBody();
       r->Set(v8::String::New("body"), v8::String::New(theBody.c_str(),
-                                                      (int) theBody.size()));
+                                                      (int) theBody.length()));
       LOG_DEBUG("JS_ClusterTest: success");
 
     }
