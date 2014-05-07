@@ -291,10 +291,10 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  const string body = result->getBody().str();
+  const StringBuffer& body = result->getBody();
   string details;
 
-  TRI_json_t* json = JsonHelper::fromString(body);
+  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
   if (json != 0) {
     const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
@@ -341,7 +341,8 @@ static string GetArangoVersion () {
     version = "arango";
   
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                      response->getBody().c_str());
 
     if (json != 0) {
       // look up "server" value
@@ -408,7 +409,7 @@ static int StartBatch (string& errorMsg) {
   }
     
   // convert response body to json
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str());
   delete response;
 
   if (json == 0) {
@@ -561,15 +562,13 @@ static int DumpCollection (int fd,
     }
       
     if (res == TRI_ERROR_NO_ERROR) {
-      stringstream& responseBody = response->getBody();
-      const string body = responseBody.str();
-      const size_t len = body.size();
+      StringBuffer& body = response->getBody();
      
-      if (! TRI_WritePointer(fd, body.c_str(), len)) {
+      if (! TRI_WritePointer(fd, body.c_str(), body.length())) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       }
       else {
-        Stats._totalWritten += (uint64_t) len;
+        Stats._totalWritten += (uint64_t) body.length();
       }
     }
 
@@ -626,7 +625,7 @@ static int RunDump (string& errorMsg) {
   }
 
 
-  const string& data = response->getBody().str();
+  const StringBuffer& data = response->getBody();
 
     
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
