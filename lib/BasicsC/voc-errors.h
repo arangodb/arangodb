@@ -376,6 +376,8 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1572: @LIT{invalid date value}
+///   Will be raised when a value cannot be converted to a date.
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2039,6 +2041,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1572: ERROR_QUERY_INVALID_DATE_VALUE
+///
+/// invalid date value
+///
+/// Will be raised when a value cannot be converted to a date.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

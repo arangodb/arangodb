@@ -20,6 +20,7 @@ TOC {#AqlTOC}
       - @ref AqlFunctionsChecking
       - @ref AqlFunctionsString
       - @ref AqlFunctionsNumeric
+      - @ref AqlFunctionsDate
       - @ref AqlFunctionsList
       - @ref AqlFunctionsDocument
       - @ref AqlFunctionsGeo
