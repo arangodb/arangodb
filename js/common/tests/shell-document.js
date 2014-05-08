@@ -1047,7 +1047,7 @@ function CollectionDocumentSuite () {
       [ "the quick\nbrown fox jumped over\r\nthe lazy dog",
         "'the \"\\quick\\\n \"brown\\\rfox' jumped",
         '"the fox"" jumped \\over the \newline \roof"' ].forEach(function(value) {
-        var doc = collection.save({ text: value });
+        collection.save({ text: value });
 
         var result = collection.byExample({ text: value }).toArray();
         assertEqual(1, result.length);
