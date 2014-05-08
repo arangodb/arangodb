@@ -80,7 +80,6 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
-#include "Wal/LogfileManager.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
