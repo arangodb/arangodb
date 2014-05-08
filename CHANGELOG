@@ -3,6 +3,9 @@ v2.0.8 (XXXX-XX-XX)
 
 * fixed timeout overflows on 32 bit systems
 
+* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
+  value when called the 2nd time after a .save to the edge collection
+
   this bug has led to problems when select was called with a high timeout
   value (2000+ seconds) on 32bit systems that don't have a forgiving select
   implementation. when the call was made on these systems, select failed

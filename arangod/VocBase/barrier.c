@@ -44,22 +44,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free data associated with a barrier
-/// currently only barriers pointing to shaped json might contain data that
-/// needs to be freed.
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeDataBarrier (TRI_barrier_t* element) {
-  if (element->_type == TRI_BARRIER_ELEMENT) {
-    TRI_barrier_blocker_t* b = (TRI_barrier_blocker_t*) element;
-
-    if (b->_data != NULL && b->_mustFree) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, b->_data);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the barrier element into the linked list of barrier elemnents
 /// of the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,9 +125,6 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
         ptr->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         ptr->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
 
-      // free data still allocated in barrier elements
-      FreeDataBarrier(ptr);
-
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
     }
     else if (ptr->_type == TRI_BARRIER_ELEMENT) {
@@ -205,7 +186,6 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 
   element->base._type = TRI_BARRIER_ELEMENT;
   element->_data = NULL;
-  element->_mustFree = false;
 
   element->_line = line;
   element->_filename = filename;
@@ -399,10 +379,6 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
 
   TRI_UnlockSpin(&container->_lock);
   
-  // free data contained in the element
-  // currently, only barriers of type ELEMENT contain data that needs freeing
-  FreeDataBarrier(element);
-
   // free the element
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
