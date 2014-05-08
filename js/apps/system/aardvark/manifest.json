@@ -37,7 +37,6 @@
         "frontend/js/templates/editListEntryView.ejs",
         "frontend/js/templates/footerView.ejs",
         "frontend/js/templates/foxxActiveView.ejs",
-        "frontend/js/templates/foxxEditView.ejs",
         "frontend/js/templates/foxxInstalledView.ejs",
         "frontend/js/templates/graphManagementView.ejs",
         "frontend/js/templates/graphView.ejs",
