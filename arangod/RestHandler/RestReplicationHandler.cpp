@@ -195,10 +195,6 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-
       handleCommandRestoreCollection();
     }
     else if (command == "restore-indexes") {
@@ -206,10 +202,6 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-
       handleCommandRestoreIndexes();
     }
     else if (command == "restore-data") {
@@ -219,7 +211,7 @@ Handler::status_t RestReplicationHandler::execute() {
       
 #ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
-        handleTrampolineCoordinator();
+        handleCommandRestoreDataCoordinator();
       }
       else {
         handleCommandRestoreData();
@@ -1941,7 +1933,20 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-  int res = processRestoreCollection(json, overwrite, recycleIds, force, remoteServerId, errorMsg);
+#ifdef TRI_ENABLE_CLUSTER
+  int res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreCollectionCoordinator(json, overwrite, recycleIds,
+                                              force, remoteServerId, errorMsg);
+  }
+  else {
+    res = processRestoreCollection(json, overwrite, recycleIds, force, 
+                                   remoteServerId, errorMsg);
+  }
+#else
+  int res = processRestoreCollection(json, overwrite, recycleIds, force,
+                                     remoteServerId, errorMsg);
+#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1982,7 +1987,17 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
+#ifdef TRI_ENABLE_CLUSTER
+  int res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreIndexesCoordinator(json, force, remoteServerId, errorMsg);
+  }
+  else {
+    res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
+  }
+#else
   int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
+#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -2125,6 +2140,135 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int RestReplicationHandler::processRestoreCollectionCoordinator (
+                 TRI_json_t const* collection,
+                 bool dropExisting,
+                 bool reuseId,
+                 bool force,
+                 TRI_server_id_t remoteServerId,
+                 string& errorMsg) {
+
+  if (! JsonHelper::isArray(collection)) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+
+  if (! JsonHelper::isArray(parameters)) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+
+  if (! JsonHelper::isList(indexes)) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  const string name = JsonHelper::getStringValue(parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_vocbase_col_t* col = 0;
+
+  if (reuseId) {
+    TRI_json_t const* idString = JsonHelper::getArrayElement(parameters, "cid");
+
+    if (! JsonHelper::isString(idString)) {
+      errorMsg = "collection id is missing";
+
+      return TRI_ERROR_HTTP_BAD_PARAMETER;
+    }
+
+    TRI_voc_cid_t cid = StringUtils::uint64(idString->_value._string.data, idString->_value._string.length - 1);
+
+    // first look up the collection by the cid
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
+
+
+  if (col == 0) {
+    // not found, try name next
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+  }
+
+  // drop an existing collection if it exists
+  if (col != 0) {
+    if (dropExisting) {
+      int res = TRI_DropCollectionVocBase(_vocbase, col, remoteServerId);
+
+      if (res == TRI_ERROR_FORBIDDEN) {
+        // some collections must not be dropped
+
+        // instead, truncate them
+        CollectionNameResolver resolver(_vocbase);
+        SingleCollectionWriteTransaction<EmbeddableTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, col->_cid);
+
+        res = trx.begin();
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+
+        if (barrier == 0) {
+          return TRI_ERROR_INTERNAL;
+        }
+
+        res = trx.truncate(false);
+        res = trx.finish(res);
+
+        TRI_FreeBarrier(barrier);
+
+        return res;
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
+
+        return res;
+      }
+    }
+    else {
+      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+
+      errorMsg = "unable to create collection '" + name + "': " + string(TRI_errno_string(res));
+
+      return res;
+    }
+  }
+
+  // now re-create the collection
+  int res = createCollection(parameters, &col, reuseId, remoteServerId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2225,6 +2369,112 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int RestReplicationHandler::processRestoreIndexesCoordinator (
+                 TRI_json_t const* collection,
+                 bool force,
+                 TRI_server_id_t remoteServerId,
+                 string& errorMsg) {
+
+  if (! JsonHelper::isArray(collection)) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+
+  if (! JsonHelper::isArray(parameters)) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+
+  if (! JsonHelper::isList(indexes)) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  const size_t n = indexes->_value._objects._length;
+  if (n == 0) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  const string name = JsonHelper::getStringValue(parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // look up the collection
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+
+  if (col == 0) {
+    errorMsg = "could not find collection '" + name + "'";
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int res = TRI_UseCollectionVocBase(_vocbase, col);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_primary_collection_t* primary = col->_collection;
+
+  TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+    TRI_index_t* idx = 0;
+
+    // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+
+    res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "could not create index: " + string(TRI_errno_string(res));
+      break;
+    }
+    else {
+      assert(idx != 0);
+
+      res = TRI_SaveIndex(primary, idx, remoteServerId);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "could not save index: " + string(TRI_errno_string(res));
+        break;
+      }
+    }
+  }
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
+
+  TRI_ReleaseCollectionVocBase(_vocbase, col);
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
@@ -2568,6 +2818,63 @@ void RestReplicationHandler::handleCommandRestoreData () {
     generateResult(&result);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
+  char const* value = _request->value("collection");
+
+  if (value == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  CollectionNameResolver resolver(_vocbase);
+
+  TRI_voc_cid_t cid = resolver.getCollectionId(value);
+
+  if (cid == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  bool recycleIds = false;
+  value = _request->value("recycleIds");
+  if (value != 0) {
+    recycleIds = StringUtils::boolean(value);
+  }
+
+  bool force = false;
+  value = _request->value("force");
+  if (value != 0) {
+    force = StringUtils::boolean(value);
+  }
+
+  TRI_server_id_t remoteServerId = 0; // TODO
+  string errorMsg;
+
+  int res = processRestoreData(resolver, cid, remoteServerId, recycleIds, force, errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    TRI_json_t result;
+
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+    generateResult(&result);
+  }
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps the data of a collection

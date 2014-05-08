@@ -3424,8 +3424,8 @@ pre.gv-object-view {
     margin-left: 0; }
 
 .dashboard-interior-chart {
-  height: 222px;
-  background-color: white; }
+  background-color: white;
+  height: 222px; }
 
 .dashboard-large-chart {
   height: 250px;
@@ -4276,7 +4276,6 @@ input.gv-radio-button {
   font-weight: 400 !important;
   text-align: left;
   width: 20% !important; }
-  .collectionTh input,
   .collectionTh select,
   .collectionTh textarea {
     margin-top: 10px; }
