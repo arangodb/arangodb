@@ -319,6 +319,7 @@ function transactionCollectionsSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -725,6 +726,7 @@ function transactionOperationsSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1617,6 +1619,7 @@ function transactionBarriersSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1755,6 +1758,7 @@ function transactionGraphSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2009,6 +2013,7 @@ function transactionRollbackSuite () {
       }
 
       c1 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2868,6 +2873,7 @@ function transactionCountSuite () {
       }
 
       c1 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3044,6 +3050,7 @@ function transactionCrossCollectionSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3322,6 +3329,7 @@ function transactionServerFailuresSuite () {
       }
 
       c = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
