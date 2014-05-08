@@ -3345,7 +3345,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
     },
 
@@ -3363,7 +3363,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
     },
 
@@ -3392,7 +3392,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(1, c.count());
@@ -3430,7 +3430,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(100, c.count());
@@ -3453,7 +3453,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(1, c.count());
@@ -3478,7 +3478,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(2, c.count());
@@ -3515,7 +3515,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3551,7 +3551,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3576,7 +3576,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(1, c.count());
@@ -3599,7 +3599,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(2, c.count());
@@ -3634,7 +3634,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3668,7 +3668,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3714,7 +3714,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(100, c.count());
@@ -3760,7 +3760,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
