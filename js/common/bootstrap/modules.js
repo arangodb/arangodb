@@ -321,7 +321,6 @@ function require (path) {
     if (fs.isFile(filename)) {
       var type = "unknown";
       var id;
-      var p;
 
       if (/\.js$/.test(filename)) {
         id = path.substr(0, path.length - 3);

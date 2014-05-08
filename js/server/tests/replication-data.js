@@ -696,7 +696,6 @@ function ReplicationSuite () {
             // collection was renamed
           }
 
-          var properties = db._collection(cn).properties();
           assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
         }
