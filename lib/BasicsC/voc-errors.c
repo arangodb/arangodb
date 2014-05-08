@@ -33,6 +33,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CANNOT_CREATE_DIRECTORY, "cannot create directory");
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
+  REG_ERROR(ERROR_DEBUG, "intentional debug error");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -181,6 +182,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
   REG_ERROR(ERROR_KEYVALUE_NO_VALUE, "missing value");
+  REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
+  REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
+  REG_ERROR(ERROR_TASK_NOT_FOUND, "task not found");
   REG_ERROR(ERROR_GRAPH_INVALID_GRAPH, "invalid graph");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, "could not create graph");
   REG_ERROR(ERROR_GRAPH_INVALID_VERTEX, "invalid vertex");

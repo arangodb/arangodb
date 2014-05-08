@@ -3308,7 +3308,7 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
   int res;
 
   TRI_DEBUG_INTENTIONAL_FAIL_IF("TRI_WriteOperationDocumentCollection") {
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_DEBUG;
   }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {

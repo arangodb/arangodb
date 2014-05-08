@@ -172,7 +172,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
   int res;
   
   TRI_DEBUG_INTENTIONAL_FAIL_IF("AddCollectionOperation-OOM") {
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return TRI_ERROR_DEBUG;
   }
 
   if (trxCollection->_operations == NULL) {
@@ -1544,7 +1544,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
       trx->_hasOperations = true;
     }
     else {
-      TRI_ASSERT_MAINTAINER(res == TRI_ERROR_OUT_OF_MEMORY);
+      TRI_ASSERT_MAINTAINER(res == TRI_ERROR_OUT_OF_MEMORY || res == TRI_ERROR_DEBUG);
       // if something went wrong, this will ensure that we'll not manipulate headers twice
       *directOperation = true; 
     }
