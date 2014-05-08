@@ -111,10 +111,6 @@ add_executable(
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
     SkipLists/skiplistIndex.cpp
-    Transaction/IdGenerator.cpp
-    Transaction/Manager.cpp
-    Transaction/Operations.cpp
-    Transaction/Transaction.cpp
     Utils/DocumentHelper.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8PeriodicTask.cpp
@@ -148,14 +144,6 @@ add_executable(
     VocBase/voc-shaper.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
-    Wal/AllocatorThread.cpp
-    Wal/CollectorThread.cpp
-    Wal/LogfileManager.cpp
-    Wal/Logfile.cpp
-    Wal/Slot.cpp
-    Wal/Slots.cpp
-    Wal/SynchroniserThread.cpp
-    Wal/TestThread.cpp
     ${ARANGOD_MRUBY_SOURCE}
 )
 
