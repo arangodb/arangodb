@@ -234,7 +234,7 @@ static SignalTask* localSignalTask;
 
   bool CtrlHandler (DWORD eventType) {
     ControlCTask* ccTask = (ControlCTask*) localSignalTask;
-    string msg = ccTask->_server->getName() + " [shutting down]";
+    // string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
 

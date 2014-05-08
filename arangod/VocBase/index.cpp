@@ -1057,13 +1057,6 @@ void TRI_FreeEdgeIndex (TRI_index_t* idx) {
 
 static int FillLookupSLOperator (TRI_index_operator_t* slOperator, 
                                  TRI_primary_collection_t* primary) {
-  TRI_json_t*                    jsonObject;
-  TRI_shaped_json_t*             shapedObject;
-  TRI_relation_index_operator_t* relationOperator;
-  TRI_logical_index_operator_t*  logicalOperator;
-  size_t j;
-  int result;
-
   if (slOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1072,8 +1065,9 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-      logicalOperator = (TRI_logical_index_operator_t*) slOperator;
-      result = FillLookupSLOperator(logicalOperator->_left, primary);
+      TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) slOperator;
+      int result = FillLookupSLOperator(logicalOperator->_left, primary);
+
       if (result == TRI_ERROR_NO_ERROR) {
         result = FillLookupSLOperator(logicalOperator->_right, primary);
       }
@@ -1089,13 +1083,13 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-      relationOperator = (TRI_relation_index_operator_t*) slOperator;
+      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) slOperator;
       relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
       relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
       if (relationOperator->_fields != NULL) {
-        for (j = 0; j < relationOperator->_numFields; ++j) {
-          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
+        for (size_t j = 0; j < relationOperator->_numFields; ++j) {
+          TRI_json_t* jsonObject = (TRI_json_t*) TRI_AtVector(&(relationOperator->_parameters->_value._objects), j);
 
           if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) && 
               slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
@@ -1103,7 +1097,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject, false, false);
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject, false, false);
 
           if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
@@ -1179,7 +1173,6 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
                                 const TRI_doc_mptr_t* document) {
   TRI_shaped_json_t shapedObject;
   TRI_shaped_json_t shapedJson;
-  TRI_shape_access_t const* acc;
   char const* ptr;
   size_t j;
   
@@ -1209,7 +1202,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     // Determine if document has that particular shape 
     // ..........................................................................
 
-    acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
+    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
     if (acc == NULL || acc->_shape == NULL) {
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
@@ -1335,7 +1328,6 @@ static size_t MemorySkiplistIndex (TRI_index_t const* idx) {
 static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   TRI_json_t* json;
   TRI_json_t* fields;
-  const TRI_shape_path_t* path;
   char const** fieldList;
   size_t j;
 
@@ -1362,8 +1354,8 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // ..........................................................................
 
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
-    path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
+    const TRI_shape_path_t* path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -1904,10 +1896,7 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
 // Helper function for TRI_LookupBitarrayIndex
 // .............................................................................
 
-static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_primary_collection_t* collection) {
-  TRI_relation_index_operator_t* relationOperator;
-  TRI_logical_index_operator_t*  logicalOperator;
-
+static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_primary_collection_t* collection) {
   if (indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1916,9 +1905,8 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
     case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-
-      logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);
-      FillLookupBitarrayOperator(logicalOperator->_left,collection);
+      TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) indexOperator;
+      FillLookupBitarrayOperator(logicalOperator->_left, collection);
       FillLookupBitarrayOperator(logicalOperator->_right,collection);
       break;
     }
@@ -1929,8 +1917,7 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-
-      relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) indexOperator;
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
       relationOperator->_fields     = NULL; // bitarray indexes need only the json representation of values
 
@@ -1985,9 +1972,9 @@ static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_p
 // .............................................................................
 
 
-TRI_index_iterator_t* TRI_LookupBitarrayIndex(TRI_index_t* idx,
-                                              TRI_index_operator_t* indexOperator,
-                                              bool (*filter) (TRI_index_iterator_t*)) {
+TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t* idx,
+                                               TRI_index_operator_t* indexOperator,
+                                               bool (*filter) (TRI_index_iterator_t*)) {
   TRI_bitarray_index_t* baIndex;
   TRI_index_iterator_t* iteratorResult;
   int                   errorResult;
@@ -2236,7 +2223,6 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
 static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
   TRI_json_t* json;      // the json object we return describing the index
   TRI_json_t* keyValues; // a list of attributes and their associated values
-  const TRI_shape_path_t* path;
   size_t j;
 
   // ..........................................................................
@@ -2264,7 +2250,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
   for (j = 0; j < baIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
-    path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
+    const TRI_shape_path_t* path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);

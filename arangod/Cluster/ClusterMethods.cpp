@@ -936,10 +936,9 @@ int getAllDocumentsOnCoordinator (
   responseCode = triagens::rest::HttpResponse::OK;
   contentType = "application/json; charset=utf-8";
   resultBody.clear();
-  resultBody.reserve(1024*1024);
+  resultBody.reserve(1024 * 1024);
   resultBody += "{ \"documents\" : [\n";
   char const* p;
-  char const* q;
   for (count = (int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_TIMEOUT) {
@@ -954,18 +953,25 @@ int getAllDocumentsOnCoordinator (
       return TRI_ERROR_INTERNAL;
     }
     p = res->answer->body();
-    q = p+res->answer->bodySize();
-    while (*p != '\n' && *p != 0) p++;
+    
+    char const* q = p + res->answer->bodySize();
+    while (*p != '\n' && *p != 0) {
+      p++;
+    }
     p++;
-    while (*q != '\n' && q > p) q--;
+
+    while (*q != '\n' && q > p) {
+      q--;
+    }
+
     if (p != q) {
-      resultBody.append(p,q-p);
+      resultBody.append(p, q - p);
       resultBody += ",\n";
     }
     delete res;
   }
-  if (resultBody[resultBody.size()-2] == ',') {
-    resultBody.erase(resultBody.size()-2);
+  if (resultBody[resultBody.size() - 2] == ',') {
+    resultBody.erase(resultBody.size() - 2);
   }
   resultBody += "\n] }\n";
   return TRI_ERROR_NO_ERROR;
