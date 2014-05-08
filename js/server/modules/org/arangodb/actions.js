@@ -1837,7 +1837,7 @@ function resultException (req, res, err, headers, verbose) {
         code = exports.HTTP_NOT_FOUND;
         break; 
       
-      case arangodb.ERROR_REQUEST_TIMEOUT: 
+      case arangodb.ERROR_REQUEST_CANCELED: 
         code = exports.HTTP_REQUEST_TIMEOUT;
         break; 
 
