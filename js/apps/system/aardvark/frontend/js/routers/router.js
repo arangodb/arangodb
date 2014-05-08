@@ -260,7 +260,9 @@
             if (this.dashboardView) {
                 this.dashboardView.resize();
             }
-            this.graphView.handleResize($("#content").width());
+            if (this.graphView) {
+                this.graphView.handleResize($("#content").width());
+            }
             /*
             var oldWidth = $('#content').width();
             var containerWidth = $(window).width() - 70;
