@@ -2119,6 +2119,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
+  bool usedBarrier = false;
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
 
   if (barrier == 0) {
@@ -2128,28 +2129,22 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
 
   assert(barrier != 0);
 
-  bool freeBarrier = true;
-
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<ReadTransactionType >(trx, col->_cid, &document, barrier);
-
-    if (! result.IsEmpty()) {
-      freeBarrier = false;
-    }
+    result = TRI_WrapShapedJson<ReadTransactionType >(trx, col->_cid, &document, barrier, usedBarrier);
   }
 
   res = trx.finish(res);
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
-  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
-    if (freeBarrier) {
-      TRI_FreeBarrier(barrier);
-    }
+  if (! usedBarrier) {
+    TRI_FreeBarrier(barrier);
+  }
 
+  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -2158,10 +2153,6 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   }
 
   if (rid != 0 && document._rid != rid) {
-    if (freeBarrier) {
-      TRI_FreeBarrier(barrier);
-    }
-
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_ARANGO_CONFLICT, "revision not found");
   }
 
@@ -10309,15 +10300,17 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
+/// note: the function updates the usedBarrier variable if the barrier was used
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
 v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           TRI_voc_cid_t cid,
                                           TRI_doc_mptr_t const* document,
-                                          TRI_barrier_t* barrier) {
+                                          TRI_barrier_t* barrier, 
+                                          bool& usedBarrier) {
   v8::HandleScope scope;
-  
+    
   TRI_ASSERT_MAINTAINER(document != 0);
   TRI_ASSERT_MAINTAINER(document->_key != 0);
   TRI_ASSERT_MAINTAINER(document->_data != 0);
@@ -10332,6 +10325,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   
   if (doCopy) {
     // we'll create a full copy of the document
+
     TRI_primary_collection_t* collection = barrier->_container->_collection;
     TRI_shaper_t* shaper = collection->_shaper;
   
@@ -10396,6 +10390,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
   }
+
+  usedBarrier |= true;
 
   return scope.Close(AddBasicDocumentAttributes<T>(trx, cid, document, result));
 }
