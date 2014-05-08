@@ -1721,7 +1721,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         else {
           map<string, AgencyCommResultEntry>::iterator it;
           TRI_json_t json;
-          TRI_InitList2Json(TRI_UNKNOWN_MEM_ZONE, &json, result._values.size());
+          TRI_InitList2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
           for (it = result._values.begin(); 
                it != result._values.end(); it++) {
             if (TRI_IsArrayJson(it->second._json)) {
@@ -1730,20 +1730,34 @@ void RestReplicationHandler::handleCommandClusterInventory () {
               if (includeSystem || 
                   (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
                 TRI_json_t coll;
-                TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, &coll, 2);
+                TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &coll, 2);
                 sub = TRI_LookupArrayJson( it->second._json, "indexes");
-                TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, &coll, "indexes", sub);
+                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
                 TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
                                     "indexes");
-                TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &coll,
+                // This makes a copy to the CORE memory zone:
+                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE, &coll,
                                      "parameters", it->second._json);
-                it->second._json = 0;
                 TRI_PushBack2ListJson(&json, &coll);
               }
             }
           } 
-          generateResult(HttpResponse::OK, &json);
-          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+
+          // Wrap the result:
+          TRI_json_t wrap;
+          TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &wrap, 3);
+          TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
+          TRI_voc_tick_t tick = TRI_CurrentTickServer();
+          char* tickString = TRI_StringUInt64(tick);
+          char const* stateStatic = "unused";
+          char* state = TRI_DuplicateString2(stateStatic, strlen(stateStatic));
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "state",
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state));
+
+          generateResult(HttpResponse::OK, &wrap);
+          TRI_DestroyJson(TRI_CORE_MEM_ZONE, &wrap);
         }
       }
     }
