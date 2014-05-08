@@ -259,12 +259,6 @@
 
     "cluster.js": {
       "files": [
-        "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
-        "clusterFrontend/js/collections/clusterCollections.js",
-        "clusterFrontend/js/collections/clusterCoordinators.js",
-        "clusterFrontend/js/collections/clusterDatabases.js",
-        "clusterFrontend/js/collections/clusterServers.js",
-        "clusterFrontend/js/collections/clusterShards.js",
         "clusterFrontend/js/models/clusterCollection.js",
         "clusterFrontend/js/models/clusterCoordinator.js",
         "clusterFrontend/js/models/clusterDatabase.js",
@@ -272,6 +266,12 @@
         "clusterFrontend/js/models/clusterServer.js",
         "clusterFrontend/js/models/clusterShard.js",
         "clusterFrontend/js/models/clusterType.js",
+        "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
+        "clusterFrontend/js/collections/clusterCollections.js",
+        "clusterFrontend/js/collections/clusterCoordinators.js",
+        "clusterFrontend/js/collections/clusterDatabases.js",
+        "clusterFrontend/js/collections/clusterServers.js",
+        "clusterFrontend/js/collections/clusterShards.js",
         "frontend/js/models/arangoDocument.js",
         "frontend/js/models/arangoStatistics.js",
         "frontend/js/models/arangoStatisticsDescription.js",
