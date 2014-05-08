@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
+var internal = require("internal");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
@@ -57,6 +58,7 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
