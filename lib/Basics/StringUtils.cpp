@@ -1340,7 +1340,6 @@ namespace triagens {
         size_t toLength     = toStr.length();
         size_t maxLength    = max (fromLength,toLength);
         size_t sourceLength = sourceStr.length();
-        bool match;
 
         // cannot perform a replace if the sourceStr = "" or fromStr = ""
         if (fromLength == 0 || sourceLength == 0) {
@@ -1363,8 +1362,7 @@ namespace triagens {
         size_t k = 0;
 
         for (size_t j = 0; j < sourceLength; ++j) {
-
-          match = true;
+          bool match = true;
 
           for (size_t i = 0; i < fromLength; ++i) {
             if (sourceStr[j + i] != fromStr[i]) {
@@ -3255,7 +3253,6 @@ namespace triagens {
       size_t numEntries (string const& sourceStr, string const& delimiter) {
         size_t delLength    = delimiter.length();
         size_t sourceLength = sourceStr.length();
-        bool match;
 
         if (sourceLength == 0) {
           return (0);
@@ -3268,7 +3265,7 @@ namespace triagens {
         size_t k = 1;
 
         for (size_t j = 0; j < sourceLength; ++j) {
-          match = true;
+          bool match = true;
           for (size_t i = 0; i < delLength; ++i) {
             if (sourceStr[j + i] != delimiter[i]) {
               match = false;
@@ -3281,7 +3278,7 @@ namespace triagens {
             continue;
           }
         }
-        return(k);
+        return k;
       }
 
 

@@ -1114,7 +1114,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   map<string, string> values = _request->values();
   string params;
   map<string, string>::iterator i;
-  for (i = values.begin(); i != values.end(); i++) {
+  for (i = values.begin(); i != values.end(); ++i) {
     if (i->first != "DBserver") {
       if (params.empty()) {
         params.push_back('?');
@@ -1168,7 +1168,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   _response->body().swap(& (res->result->getBody()));
   map<string, string> resultHeaders = res->result->getHeaderFields();
   map<string, string>::iterator it;
-  for (it = resultHeaders.begin(); it != resultHeaders.end(); it++) {
+  for (it = resultHeaders.begin(); it != resultHeaders.end(); ++it) {
     _response->setHeader(it->first, it->second);
   }
   delete res;
@@ -1723,7 +1723,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
           TRI_json_t json;
           TRI_InitList2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
           for (it = result._values.begin(); 
-               it != result._values.end(); it++) {
+               it != result._values.end(); ++it) {
             if (TRI_IsArrayJson(it->second._json)) {
               TRI_json_t const* sub 
                   = TRI_LookupArrayJson(it->second._json, "isSystem");

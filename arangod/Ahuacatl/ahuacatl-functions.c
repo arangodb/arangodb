@@ -279,7 +279,6 @@ static bool CheckArgumentType (TRI_aql_node_t const* parameter,
 
 static void SetArgumentCount (TRI_aql_function_t* const function) {
   const char* pattern;
-  char c;
   size_t minArgs = 0;
   size_t maxArgs = 0;
   bool inOptional = false;
@@ -290,7 +289,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
 
   pattern = function->_argPattern;
   while (parse) {
-    c = *pattern++;
+    char c = *pattern++;
 
     switch (c) {
       case '\0':

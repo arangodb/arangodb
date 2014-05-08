@@ -571,7 +571,6 @@ int TRI_RemoveDirectory (char const* filename) {
     TRI_vector_string_t files;
     size_t i;
     int res;
-    int subres;
 
     LOG_TRACE("removing directory '%s'", filename);
 
@@ -580,6 +579,7 @@ int TRI_RemoveDirectory (char const* filename) {
 
     for (i = 0;  i < files._length;  ++i) {
       char* full;
+      int subres;
 
       full = TRI_Concatenate2File(filename, files._buffer[i]);
 
@@ -1577,7 +1577,6 @@ char* TRI_BinaryName (const char* argv0) {
 char* TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
   char* binaryPath = NULL;
-  size_t i;
 
   // check if name contains a '/' ( or '\' for windows)
   p = argv0;
@@ -1603,6 +1602,7 @@ char* TRI_LocateBinaryPath (char const* argv0) {
     }
     else {
       TRI_vector_string_t files;
+      size_t i;
 
       files = TRI_SplitString(p, ':');
 

@@ -715,7 +715,6 @@ static void VisitProgramOptions (TRI_PO_desc_t * ptr,
                                  const void * input,
                                  void * output) {
   TRI_PO_section_t* section;
-  TRI_PO_desc_t* child;
   size_t n;
   size_t i;
 
@@ -750,7 +749,7 @@ static void VisitProgramOptions (TRI_PO_desc_t * ptr,
       n = section->_children._length;
 
       for (i = 0;  i < n;  ++i) {
-        child = section->_children._buffer[i];
+        TRI_PO_desc_t* child = section->_children._buffer[i];
 
         VisitProgramOptions(child, functions, input, output);
       }
@@ -1403,9 +1402,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   TRI_string_buffer_t buffer;
   TRI_PO_item_t * item;
   const char* shortOptions;
-  char* t;
   size_t i;
-  int c;
   int idx;
   int maxIdx;
 
@@ -1445,7 +1442,8 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   maxIdx = (int) options->_items._length;
 
   while (true) {
-    c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
+    int c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
+    char* t;
 
     if (c == -1) {
       for (i = optind;  i < (size_t) argc;  ++i) {
@@ -1513,7 +1511,6 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
   char* value;
   char* raw;
   char* tmpSection;
-  int res;
   regex_t re1;
   regex_t re2;
   regex_t re3;
@@ -1561,7 +1558,9 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
   // corresponds to the argc variable of the main routine
   ok = true;
 
-  while ((len = getline(&buffer, &tmp, f)) > 0) {
+  while ((len = getline(&buffer, &tmp, f)) > 0) { 
+    int res;
+
     while (0 < len && buffer[len - 1] == '\n') {
       buffer[len - 1] = '\0';
       --len;

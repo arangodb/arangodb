@@ -214,7 +214,6 @@ static int CmpKeyElm (void* sli,
                       void* right) {
   TRI_skiplist_index_key_t* leftKey = static_cast<TRI_skiplist_index_key_t*>(left);
   TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
-  int compareResult;
   TRI_shaper_t* shaper;
   size_t j;
 
@@ -228,9 +227,8 @@ static int CmpKeyElm (void* sli,
   // attributes, therefore we only run the following loop to
   // leftKey->_numFields.
   for (j = 0;  j < leftKey->_numFields;  j++) {
-    compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement,
-                                      j, shaper);
-
+    int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
+    
     if (compareResult != 0) {
       return compareResult;
     }
@@ -681,10 +679,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
   TRI_relation_index_operator_t*    relationOperator;
   TRI_logical_index_operator_t*     logicalOperator;
   TRI_skiplist_iterator_interval_t  interval;
-  TRI_skiplist_iterator_interval_t* tempLeftInterval;
-  TRI_skiplist_iterator_interval_t* tempRightInterval;
   TRI_skiplist_node_t*              temp;
-  size_t i, j;
 
   TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, 
                  sizeof(TRI_skiplist_iterator_interval_t));
@@ -737,8 +732,11 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       SkiplistIndex_findHelper(skiplistIndex,shapeList,
                                logicalOperator->_right,&rightResult);
 
-      for (i = 0; i < leftResult._length; ++i) {
-        for (j = 0; j < rightResult._length; ++j) {
+      for (size_t i = 0; i < leftResult._length; ++i) {
+        for (size_t j = 0; j < rightResult._length; ++j) {
+          TRI_skiplist_iterator_interval_t* tempLeftInterval;
+          TRI_skiplist_iterator_interval_t* tempRightInterval;
+
           tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) 
                                (TRI_AtVector(&leftResult, i));    
           tempRightInterval =  (TRI_skiplist_iterator_interval_t*) 

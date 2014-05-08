@@ -664,15 +664,14 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
   TRI_voc_size_t targetSize;
   int res;
   size_t i;
-  size_t n;
-
+  
   collection = &document->base.base;
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   targetSize = document->base.base._info._maximalSize;
 
   while (collection->_state == TRI_COL_STATE_WRITE) {
-    n = collection->_journals._length;
+    size_t const n = collection->_journals._length;
 
     for (i = 0;  i < n;  ++i) {
       // select datafile
@@ -6056,23 +6055,21 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
                             TRI_shape_pid_t* pids,
                             TRI_shaped_json_t** values) {
   TRI_shaped_json_t document;
-  TRI_shaped_json_t* example;
   TRI_shaped_json_t result;
   TRI_shape_t const* shape;
-  bool ok;
   size_t i;
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->_data);
 
   for (i = 0;  i < len;  ++i) {
-    example = values[i];
+    TRI_shaped_json_t* example = values[i];
 
-    ok = TRI_ExtractShapedJsonVocShaper(shaper,
-                                        &document,
-                                        example->_sid,
-                                        pids[i],
-                                        &result,
-                                        &shape);
+    bool ok = TRI_ExtractShapedJsonVocShaper(shaper,
+                                             &document,
+                                             example->_sid,
+                                             pids[i],
+                                             &result,
+                                             &shape);
 
     if (! ok || shape == NULL) {
       return false;

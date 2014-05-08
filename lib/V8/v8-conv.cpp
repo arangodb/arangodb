@@ -277,7 +277,6 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
   TRI_shape_sid_t s;
   TRI_shape_sid_t l;
 
-  TRI_shape_sid_t* sids;
   TRI_shape_size_t* offsets;
   TRI_shape_size_t offset;
 
@@ -542,7 +541,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
     * (TRI_shape_length_list_t*) ptr = n;
     ptr += sizeof(TRI_shape_length_list_t);
 
-    sids = (TRI_shape_sid_t*) ptr;
+    TRI_shape_sid_t* sids = (TRI_shape_sid_t*) ptr;
     ptr += n * sizeof(TRI_shape_sid_t);
 
     offsets = (TRI_shape_size_t*) ptr;
