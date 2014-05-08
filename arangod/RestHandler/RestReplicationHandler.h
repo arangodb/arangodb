@@ -235,6 +235,19 @@ namespace triagens {
                                       std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        int processRestoreCollectionCoordinator (struct TRI_json_s const*,
+                                                 bool,
+                                                 bool,
+                                                 bool,
+                                                 TRI_server_id_t,
+                                                 std::string&);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -242,6 +255,17 @@ namespace triagens {
                                    bool,
                                    TRI_server_id_t,
                                    std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        int processRestoreIndexesCoordinator (struct TRI_json_s const*,
+                                              bool,
+                                              TRI_server_id_t,
+                                              std::string&);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the collection dump
@@ -282,6 +306,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleCommandRestoreData ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a restore command for a specific collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+        void handleCommandRestoreDataCoordinator ();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a dump command for a specific collection
