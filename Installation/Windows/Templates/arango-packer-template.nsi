@@ -37,7 +37,6 @@ Page instfiles
 ; The stuff to install
 Section "" ;No components page, name is not important
 
-<<<<<<< HEAD
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
 
@@ -51,13 +50,11 @@ Section "" ;No components page, name is not important
  install_files:
   FileClose $0
   ; Put file there
-=======
 
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
   ; Put file there
 ; !insertmacro InstallLib DLL SHARED NOREBOOT_PROTECTED "exdll.dll" $INSTDIR $TEMP
->>>>>>> 80b8d51a7309d0e40ab44d3032c81e0e81cb4412
 	file "..\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll"
 	file "@INSTALLERNAME@-internal.exe"
         Rename "$INSTDIR\Installation\Windows\Plugins\SharedMemory\Plugins\@BITS@\msvcr120.dll" "$INSTDIR\msvcr120.dll"

@@ -23,7 +23,6 @@
     },
 
     replaceSVGs: function() {
-      //console.log($(".svgToReplace"));
       $(".svgToReplace").each(function() {
         var img = $(this);
         var id = img.attr("id");
@@ -229,7 +228,7 @@
                 date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
                 var uptime = e.server.uptime * 1000;
                 var time = date.getTime();
-                if (self.hist[dbserver.id].lastTime 
+                if (self.hist[dbserver.id].lastTime
                   && (time - self.hist[dbserver.id].lastTime) > uptime) {
                     self.hist[dbserver.id][
                         self.hist[dbserver.id].lastTime +
@@ -362,12 +361,10 @@
         var arc2 = d3.svg.arc()
             .outerRadius(radius-2)
             .innerRadius(radius-2);
-
         var slices = pieChartSvg.selectAll(".arc")
             .data(pie(dataset))
             .enter().append("g")
             .attr("class", "slice");
-
         /*jslint unparam: true*/
         slices.append("path")
             .attr("d", arc)

@@ -6,13 +6,51 @@
 
     describe("The ClusterDownView", function () {
 
-        var view, serverDummy, arangoDocumentsDummy, statisticsDescriptionDummy,jqueryDummy;
+        var view, serverDummy, arangoDocumentsDummy, statisticsDescriptionDummy,
+            jqueryDummy,serverDummy2;
 
         beforeEach(function () {
             window.App = {
                 navigate: function () {
                     throw "This should be a spy";
+                },
+                addAuth : {
+                    bind : function () {
+                        return "authBinding";
+                    }
                 }
+            };
+            arangoDocumentsDummy = {
+                getStatisticsHistory : function () {
+
+                },
+                history : [
+                    {
+                        time : 20000,
+                        server : {
+                            uptime : 10000
+                        },
+                        client : {
+                            totalTime : {
+                                count : 0,
+                                sum : 0
+                            }
+                        }
+                    },
+                    {
+                        time : 30000,
+                        server : {
+                            uptime : 100
+                        },
+                        client : {
+                            totalTime : {
+                                count : 1,
+                                sum : 4
+                            }
+                        }
+                    }
+
+                ]
             };
             serverDummy = {
                 getList : function () {
@@ -21,9 +59,37 @@
 
                 },
                 getStatuses : function (a) {
+                },
+
+                findWhere : function () {
+
+                },
+                forEach : function () {
+
                 }
 
             };
+            serverDummy2 = {
+                getList : function () {
+                },
+                byAddress : function () {
+
+                },
+                getStatuses : function (a) {
+                },
+
+                findWhere : function () {
+
+                },
+                forEach : function () {
+
+                },
+                first : function () {
+
+                }
+
+            };
+
 
             statisticsDescriptionDummy = {
                 fetch : function () {
@@ -34,7 +100,7 @@
 
             spyOn(window, "ClusterServers").andReturn(serverDummy);
             spyOn(window, "ClusterDatabases").andReturn(serverDummy);
-            spyOn(window, "ClusterCoordinators").andReturn(serverDummy);
+            spyOn(window, "ClusterCoordinators").andReturn(serverDummy2);
             spyOn(window, "ClusterCollections").andReturn(serverDummy);
             spyOn(window, "ClusterShards").andReturn(serverDummy);
             spyOn(window, "arangoDocuments").andReturn(arangoDocumentsDummy);
@@ -118,11 +184,12 @@
         });
 
         it("assert listByAddress", function () {
+            spyOn(serverDummy2, "byAddress").andReturn("byAddress");
             spyOn(serverDummy, "byAddress").andReturn("byAddress");
             view.listByAddress();
             expect(view.graphShowAll).toEqual(false);
             expect(serverDummy.byAddress).toHaveBeenCalledWith();
-            expect(serverDummy.byAddress).toHaveBeenCalledWith("byAddress");
+            expect(serverDummy2.byAddress).toHaveBeenCalledWith("byAddress");
 
         });
 
@@ -221,6 +288,15 @@
 
             );
 
+            spyOn(serverDummy2, "getList").andReturn(
+                [
+                    {server : "a", shards : {length : 1}},
+                    {server : "b", shards : {length : 2}},
+                    {server : "c", shards : {length : 3}}
+                ]
+
+            );
+
 
             view.updateShards();
 
@@ -245,7 +321,7 @@
         });
 
 
-        it("assert updateShards", function () {
+        it("assert updateServerStatus", function () {
             jqueryDummy = {
                 attr : function () {
                 }
@@ -254,6 +330,10 @@
 
             spyOn(jqueryDummy, "attr").andReturn("a s");
             spyOn(serverDummy, "getStatuses").andCallFake(function (a) {
+                    a("ok", "123.456.789:10");
+                }
+            );
+            spyOn(serverDummy2, "getStatuses").andCallFake(function (a) {
                     a("ok", "123.456.789:10");
                 }
             );
@@ -390,222 +470,517 @@
         });
 
 
+        it("assert rerender", function () {
+
+            spyOn(view, "updateServerStatus");
+            spyOn(view, "getServerStatistics");
+            spyOn(view, "updateServerTime");
+            spyOn(view, "generatePieData").andReturn({data: "1"});
+            spyOn(view, "renderPieChart");
+            spyOn(view, "renderLineChart");
+            spyOn(view, "updateDBDetailList");
+            view.rerender();
+            expect(view.updateServerStatus).toHaveBeenCalled();
+            expect(view.getServerStatistics).toHaveBeenCalled();
+            expect(view.updateServerTime).toHaveBeenCalled();
+            expect(view.generatePieData).toHaveBeenCalled();
+            expect(view.renderPieChart).toHaveBeenCalledWith({data: "1"});
+            expect(view.renderLineChart).toHaveBeenCalled();
+            expect(view.updateDBDetailList).toHaveBeenCalled();
+        });
+
+
+        it("assert render", function () {
+
+            spyOn(view, "startUpdating");
+            spyOn(view, "replaceSVGs");
+            spyOn(view, "loadHistory");
+            spyOn(view, "listByAddress").andReturn({data: "1"});
+            spyOn(view, "generatePieData").andReturn({data: "1"});
+            spyOn(view, "getServerStatistics");
+            spyOn(view, "renderPieChart");
+            spyOn(view, "renderLineChart");
+            spyOn(view, "updateCollections");
+            view.template = {
+                render : function () {
+
+                }
+            };
+            spyOn(serverDummy, "getList").andReturn([
+                {name : "a", shards : {length : 1}},
+                {name : "b", shards : {length : 2}},
+                {name : "c", shards : {length : 3}}
+                ]
+            );
+            spyOn(view.template, "render");
+            view.render();
+            expect(view.startUpdating).toHaveBeenCalled();
+            expect(view.listByAddress).toHaveBeenCalled();
+            expect(view.replaceSVGs).toHaveBeenCalled();
+            expect(view.loadHistory).toHaveBeenCalled();
+            expect(view.getServerStatistics).toHaveBeenCalled();
+            expect(view.renderPieChart).toHaveBeenCalledWith({data: "1"});
+            expect(view.template.render).toHaveBeenCalledWith({
+                dbs: ["a", "b", "c"],
+                byAddress: {data: "1"},
+                type: "testPlan"
+            });
+            expect(view.generatePieData).toHaveBeenCalled();
+            expect(view.renderLineChart).toHaveBeenCalled();
+            expect(view.updateCollections).toHaveBeenCalled();
+        });
+
+
+        it("assert render with more than one address", function () {
+
+            spyOn(view, "startUpdating");
+            spyOn(view, "replaceSVGs");
+            spyOn(view, "loadHistory");
+            spyOn(view, "listByAddress").andReturn({data: "1", "ss" : 1});
+            spyOn(view, "generatePieData").andReturn({data: "1"});
+            spyOn(view, "getServerStatistics");
+            spyOn(view, "renderPieChart");
+            spyOn(view, "renderLineChart");
+            spyOn(view, "updateCollections");
+            view.template = {
+                render : function () {
+
+                }
+            };
+            spyOn(serverDummy, "getList").andReturn([
+                {name : "a", shards : {length : 1}},
+                {name : "b", shards : {length : 2}},
+                {name : "c", shards : {length : 3}}
+            ]
+            );
+            spyOn(view.template, "render");
+            view.render();
+            expect(view.startUpdating).toHaveBeenCalled();
+            expect(view.listByAddress).toHaveBeenCalled();
+            expect(view.replaceSVGs).toHaveBeenCalled();
+            expect(view.loadHistory).toHaveBeenCalled();
+            expect(view.getServerStatistics).toHaveBeenCalled();
+            expect(view.renderPieChart).toHaveBeenCalledWith({data: "1"});
+            expect(view.template.render).toHaveBeenCalledWith({
+                dbs: ["a", "b", "c"],
+                byAddress: {data: "1", "ss" : 1},
+                type: "other"
+            });
+            expect(view.generatePieData).toHaveBeenCalled();
+            expect(view.renderLineChart).toHaveBeenCalled();
+            expect(view.updateCollections).toHaveBeenCalled();
+        });
+
+
+        it("assert generatePieData", function () {
+
+            view.data = [
+                {
+                    get : function (a) {
+                        if (a === "name") {
+                            return "name1";
+                        }
+                        return {residentSize : "residentsize1"};
+                    }
+                },
+
+                {
+                    get : function (a) {
+                        if (a === "name") {
+                            return "name2";
+                        }
+                        return {residentSize : "residentsize2"};
+                    }
+                }
+            ];
+
+            expect(view.generatePieData()).toEqual([
+                {
+                    key : "name1",
+                    value : "residentsize1",
+                    time : view.serverTime
+                },
+                {
+                    key : "name2",
+                    value : "residentsize2",
+                    time : view.serverTime
+                }
+                ]
+            );
+
+        });
+
+        it("assert loadHistory", function () {
+            var serverResult = [
+                {
+                    id : 1,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.789";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "heinz";}
+                    }
+                },
+                {
+                    id : 2,
+                    get : function (a) {
+                        if (a === "protocol") {return  "https";}
+                        if (a === "address") {return  "123.456.799";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "herbert";}
+                    }
+                },
+                {
+                    id : 3,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.119";}
+                        if (a === "status") {return  "notOk";}
+                        if (a === "name") {return  "heinzle";}
+                    }
+                }
+            ], serverResult2 = [
+                {
+                    id : 4,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.789";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "heinz";}
+                    }
+                },
+                {
+                    id : 5,
+                    get : function (a) {
+                        if (a === "protocol") {return  "https";}
+                        if (a === "address") {return  "123.456.799";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "herbert";}
+                    }
+                },
+                {
+                    id : 6,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.119";}
+                        if (a === "status") {return  "notOk";}
+                        if (a === "name") {return  "heinzle";}
+                    }
+                }
+            ];
+
+            spyOn(serverDummy2, "findWhere").andReturn(serverResult[0]);
+
+
+            view.dbservers = serverResult;
+            spyOn(serverDummy, "forEach").andCallFake(function (a) {
+                serverResult.forEach(a);
+            });
+            spyOn(serverDummy2, "forEach").andCallFake(function (a) {
+                serverResult2.forEach(a);
+            });
+            spyOn(arangoDocumentsDummy, "getStatisticsHistory");
+            view.loadHistory();
+
+            expect(serverDummy2.findWhere).toHaveBeenCalledWith({
+                status: "ok"
+            });
+            expect(arangoDocumentsDummy.getStatisticsHistory).toHaveBeenCalledWith({
+                server: {
+                    raw: "123.456.789",
+                    isDBServer: true,
+                    target: "heinz",
+                    endpoint: "http://123.456.789",
+                    addAuth: "authBinding"
+                },
+                figures: ["client.totalTime"]
+            });
+            expect(arangoDocumentsDummy.getStatisticsHistory).toHaveBeenCalledWith({
+                server: {
+                    raw: "123.456.799",
+                    isDBServer: true,
+                    target:  "herbert",
+                    endpoint: "http://123.456.789",
+                    addAuth: "authBinding"
+                },
+                figures: ["client.totalTime"]
+            });
+            expect(arangoDocumentsDummy.getStatisticsHistory).not.toHaveBeenCalledWith({
+                server: {
+                    raw: "123.456.119",
+                    isDBServer: true,
+                    target:  "heinzle",
+                    endpoint: "http://123.456.789",
+                    addAuth: "authBinding"
+                },
+                figures: ["client.totalTime"]
+            });
+            expect(view.hist).toEqual({
+                1: {lastTime: 30000000, 20000000: 0, 25000000: null, 30000000: 4},
+                2: {lastTime: 30000000, 20000000: 0, 25000000: null, 30000000: 4},
+                4: {lastTime: 30000000, 20000000: 0, 25000000: null, 30000000: 4},
+                5: {lastTime: 30000000, 20000000: 0, 25000000: null, 30000000: 4}}
+            );
+
+
+        });
+
+
+
+        it("assert getServerStatistics", function () {
+            var clusterStatisticsCollectionDummy = {
+                add : function (a) {
+                },
+                fetch : function () {
+
+                },
+                forEach : function () {
+
+                }
+            }, serverResult = [
+                {
+                    id : 1,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.789";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "heinz";}
+                    }
+                },
+                {
+                    id : 2,
+                    get : function (a) {
+                        if (a === "protocol") {return  "https";}
+                        if (a === "address") {return  "123.456.799";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "herbert";}
+                    }
+                },
+                {
+                    id : 3,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.119";}
+                        if (a === "status") {return  "notOk";}
+                        if (a === "name") {return  "heinzle";}
+                    }
+                }
+            ], serverResult2 = [
+                {
+                    id : 4,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.789";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "heinz";}
+                    }
+                },
+                {
+                    id : 5,
+                    get : function (a) {
+                        if (a === "protocol") {return  "https";}
+                        if (a === "address") {return  "123.456.799";}
+                        if (a === "status") {return  "ok";}
+                        if (a === "name") {return  "herbert";}
+                    }
+                },
+                {
+                    id : 6,
+                    get : function (a) {
+                        if (a === "protocol") {return  "http";}
+                        if (a === "address") {return  "123.456.119";}
+                        if (a === "status") {return  "notOk";}
+                        if (a === "name") {return  "heinzle";}
+                    }
+                }
+                ], clusterStatistics = [
+
+                {
+                    get : function (a) {
+                        if (a === "server") {return  {
+                            uptime : 100
+                        };}
+                        if (a === "client") {return  {
+                            totalTime : {
+                                count : 0,
+                                sum : 10
+                            }
+                        };}
+                        if (a === "name") {return  "herbert";}
+                    }
+                },
+
+                {
+                    get : function (a) {
+                        if (a === "server") {return  {
+                            uptime : 10
+                        };}
+                        if (a === "client") {return  {
+                            totalTime : {
+                                count : 1,
+                                sum : 10
+                            }
+                        };}
+                        if (a === "name") {return  "heinz";}
+                    }
+                }
+            ], foundUrls = [];
+
+
+
+            spyOn(window, "ClusterStatisticsCollection").andReturn(
+                clusterStatisticsCollectionDummy
+            );
+            spyOn(window, "Statistics").andReturn({});
+            spyOn(serverDummy2, "forEach").andCallFake(function (a) {
+                serverResult2.forEach(a);
+            });
+            spyOn(clusterStatisticsCollectionDummy, "add").andCallFake(function (y) {
+                foundUrls.push(y.url);
+            });
+            spyOn(clusterStatisticsCollectionDummy, "fetch");
+            spyOn(clusterStatisticsCollectionDummy, "forEach").andCallFake(function (a) {
+                clusterStatistics.forEach(a);
+            });
+
+            spyOn(serverDummy2, "first").andReturn({
+                id : 1,
+                get : function (a) {
+                    if (a === "protocol") {return  "http";}
+                    if (a === "address") {return  "123.456.789";}
+                    if (a === "status") {return  "ok";}
+                    if (a === "name") {return  "heinz";}
+                }
+            });
+            view.hist = {
+
+            };
+            view.hist.heinz = {
+                lastTime : 10
+            };
+            view.hist.herbert = {
+                lastTime : view.serverTime
+            };
+
+
+            view.dbservers = serverResult;
+
+
+            view.getServerStatistics();
+
+            expect(serverDummy2.first).toHaveBeenCalled();
+            expect(foundUrls.indexOf(
+                "http://123.456.789/_admin/clusterStatistics?DBserver=heinz")
+            ).not.toEqual(-1);
+            expect(foundUrls.indexOf(
+                "http://123.456.789/_admin/clusterStatistics?DBserver=herbert"
+            )).not.toEqual(-1);
+            expect(foundUrls.indexOf(
+                "http://123.456.789/_admin/clusterStatistics?DBserver=heinzle"
+            )).toEqual(-1);
+
+
+            expect(foundUrls.indexOf("http://123.456.789/_admin/statistics")).not.toEqual(-1);
+            expect(foundUrls.indexOf("https://123.456.799/_admin/statistics")).not.toEqual(-1);
+            expect(foundUrls.indexOf("http://123.456.119/_admin/statistics")).toEqual(-1);
+
+
+        });
+
+
+
+        it("assert renderPieChart", function () {
+
+            var d3Dummy = {
+
+                scale : {
+                    category20 : function () {
+
+                    }
+                },
+                svg : {
+                    arc : function () {
+                        return d3Dummy.svg;
+                    },
+                    outerRadius : function () {
+                        return d3Dummy.svg;
+                    },
+                    innerRadius : function () {
+                        return {
+                            centroid : function (a) {
+                                return a;
+                            }
+                        };
+                    }
+                },
+                layout : {
+                    pie : function () {
+                        return d3Dummy.layout;
+                    },
+                    sort : function (a) {
+                        expect(a({value : 1})).toEqual(1);
+                        return d3Dummy.layout;
+                    },
+                    value : function (a) {
+                        expect(a({value : 1})).toEqual(1);
+                        return d3Dummy.layout.pie;
+                    }
+                },
+                select : function () {
+                    return d3Dummy;
+                },
+                remove : function () {
+
+                },
+                append : function () {
+                    return d3Dummy;
+                },
+                attr : function (a, b) {
+                    if (a === "transform" && typeof b === 'function') {
+                        expect(b(1)).toEqual("translate(1)");
+                    }
+                    return d3Dummy;
+                },
+                selectAll: function () {
+                    return d3Dummy;
+                },
+                data: function () {
+                    return d3Dummy;
+                },
+                enter: function () {
+                    return d3Dummy;
+                },
+                style : function (a, b) {
+                    if (typeof b === 'function') {
+                        expect(b("item", 1)).toEqual("white");
+                    }
+                    return d3Dummy;
+                },
+                text : function (a) {
+                    a({data : {
+                        key : "1",
+                        value : 2
+                    }});
+                }
+
+
+
+            };
+
+            spyOn(d3.scale, "category20").andReturn(function (i) {
+                var l = ["red", "white"];
+                return l[i];
+            });
+            spyOn(d3.svg, "arc").andReturn(d3Dummy.svg.arc());
+            spyOn(d3.layout, "pie").andReturn(d3Dummy.layout.pie());
+            spyOn(d3, "select").andReturn(d3Dummy.select());
+
+            view.renderPieChart();
+
+
+        });
         /*
-
-                        updateDBDetailList: function() {
-                            var dbName = $("#selectDB").find(":selected").attr("id");
-                            var colName = $("#selectCol").find(":selected").attr("id");
-
-                            var selDB = $("#selectDB");
-                            selDB.html("");
-                            _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
-                                selDB.append("<option id=\"" + c + "\">" + c + "</option>");
-                            });
-                            var dbToSel = $("#" + dbName, selDB);
-                            if (!dbToSel.length) {
-                                dbName = $("#selectDB").find(":selected").attr("id");
-                            } else {
-                                dbToSel.prop("selected", true);
-                            }
-
-                            var selCol = $("#selectCol");
-                            selCol.html("");
-                            _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
-                                selCol.append("<option id=\"" + c + "\">" + c + "</option>");
-                            });
-                            var colToSel = $("#" + colName, selCol);
-                            colToSel.prop("selected", true);
-                            if (!colToSel.length || !dbToSel.length) {
-                                this.updateShards();
-                            }
-                        },
-
-                        rerender : function() {
-                            this.updateServerStatus();
-                            this.getServerStatistics();
-                            this.updateServerTime();
-                            this.data = this.generatePieData();
-                            this.renderPieChart(this.data);
-                            this.renderLineChart();
-                            this.updateDBDetailList();
-                        },
-
-                        render: function() {
-                            this.startUpdating();
-                            var byAddress = this.listByAddress();
-                            if (Object.keys(byAddress).length === 1) {
-                                this.type = "testPlan";
-                            } else {
-                                this.type = "other";
-                            }
-                            $(this.el).html(this.template.render({
-                                dbs: _.pluck(this.dbs.getList(), "name"),
-                                byAddress: byAddress,
-                                type: this.type
-                            }));
-                            $(this.el).append(this.modal.render({}));
-                            this.replaceSVGs();
-                            this.loadHistory();
-                            this.getServerStatistics();
-                            this.data = this.generatePieData();
-                            this.renderPieChart(this.data);
-                            this.renderLineChart();
-                            this.updateCollections();
-                        },
-
-                        generatePieData: function() {
-                            var pieData = [];
-                            var self = this;
-                            this.data.forEach(function(m) {
-                                pieData.push({key: m.get("name"), value
-                                 :m.get("system").residentSize,
-                                    time: self.serverTime});
-                            });
-                            return pieData;
-                        },
-
-                        loadHistory : function() {
-                            this.hist = {};
-                            var self = this;
-                            var coord = this.coordinators.findWhere({
-                                status: "ok"
-                            });
-                            var endpoint = coord.get("protocol")
-                                + "://"
-                                + coord.get("address");
-                            this.dbservers.forEach(function (dbserver) {
-                                if (dbserver.get("status") !== "ok") {return;}
-                                if (self.knownServers.indexOf(dbserver.id) === -1) {
-                                    self.knownServers.push(dbserver.id);
-                                }
-                                var server = {
-                                    raw: dbserver.get("address"),
-                                    isDBServer: true,
-                                    target: encodeURIComponent(dbserver.get("name")),
-                                    endpoint: endpoint,
-                                    addAuth: window.App.addAuth.bind(window.App)
-                                };
-                                self.documentStore.getStatisticsHistory({
-                                    server: server,
-                                    figures: ["client.totalTime"]
-                                });
-                                self.history = self.documentStore.history;
-                                self.hist[dbserver.id] = {};
-                                self.history.forEach(function(e) {
-                                    var date = new Date(e.time * 1000);
-                                    date.setMilliseconds(0);
-                                    date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                                    var uptime = e.server.uptime * 1000;
-                                    var time = date.getTime();
-                                    if (self.hist[dbserver.id].lastTime
-                                        && (time - self.hist[dbserver.id].lastTime) > uptime) {
-                                        self.hist[dbserver.id][
-                                            self.hist[dbserver.id].lastTime +
-                                                (time-self.hist[dbserver.id].lastTime) / 2] = null;
-                                    }
-                                    self.hist[dbserver.id].lastTime = time;
-                                    if (e.client.totalTime.count === 0) {
-                                        self.hist[dbserver.id][time] = 0;
-                                    } else {
-                                        self.hist[dbserver.id][time] = e.client.totalTime.sum
-                                            / e.client.totalTime.count;
-                                    }
-                                });
-                            });
-                            this.coordinators.forEach(function (coordinator) {
-                                if (coordinator.get("status") !== "ok") {return;}
-                                if (self.knownServers.indexOf(coordinator.id) === -1) {
-                                    self.knownServers.push(coordinator.id);
-                                }
-                                var server = {
-                                    raw: coordinator.get("address"),
-                                    isDBServer: false,
-                                    target: encodeURIComponent(coordinator.get("name")),
-                                    endpoint: coordinator.get("protocol") +
-                                     "://" + coordinator.get("address"),
-                                    addAuth: window.App.addAuth.bind(window.App)
-                                };
-                                self.documentStore.getStatisticsHistory({
-                                    server: server,
-                                    figures: ["client.totalTime"]
-                                });
-                                self.history = self.documentStore.history;
-                                self.hist[coordinator.id] = {};
-                                self.history.forEach(function(e) {
-                                    var date = new Date(e.time * 1000);
-                                    date.setMilliseconds(0);
-                                    date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                                    var uptime = e.server.uptime * 1000;
-                                    var time = date.getTime();
-                                    if (self.hist[coordinator.id].lastTime
-                                        && (time - self.hist[coordinator.id].lastTime) > uptime) {
-                                        self.hist[coordinator.id][
-                                            self.hist[coordinator.id].lastTime +
-                                                (time-self.hist[coordinator.id].lastTime)
-                                                 / 2] = null;
-                                    }
-                                    self.hist[coordinator.id].lastTime = time;
-                                    if (e.client.totalTime.count === 0) {
-                                        self.hist[coordinator.id][time] = 0;
-                                    } else {
-                                        self.hist[coordinator.id][time] = e.client.totalTime.sum
-                                            / e.client.totalTime.count;
-                                    }
-                                });
-                            });
-                        },
-
-                        getServerStatistics: function() {
-                            var self = this;
-                            this.data = undefined;
-                            var statCollect = new window.ClusterStatisticsCollection();
-                            var coord = this.coordinators.first();
-                            this.dbservers.forEach(function (dbserver) {
-                                if (dbserver.get("status") !== "ok") {return;}
-                                if (self.knownServers.indexOf(dbserver.id) === -1) {
-                                    self.knownServers.push(dbserver.id);
-                                }
-                                var stat = new window.Statistics({name: dbserver.id});
-                                stat.url = coord.get("protocol") + "://"
-                                    + coord.get("address")
-                                    + "/_admin/clusterStatistics?DBserver="
-                                    + dbserver.get("name");
-                                statCollect.add(stat);
-                            });
-                            this.coordinators.forEach(function (coordinator) {
-                                if (coordinator.get("status") !== "ok") {return;}
-                                if (self.knownServers.indexOf(coordinator.id) === -1) {
-                                    self.knownServers.push(coordinator.id);
-                                }
-                                var stat = new window.Statistics({name: coordinator.id});
-                                stat.url = coordinator.get("protocol") + "://"
-                                    + coordinator.get("address")
-                                    + "/_admin/statistics";
-                                statCollect.add(stat);
-                            });
-                            statCollect.fetch();
-                            statCollect.forEach(function(m) {
-                                var uptime = m.get("server").uptime * 1000;
-                                var time = self.serverTime;
-                                var name = m.get("name");
-                                var totalTime = m.get("client").totalTime;
-                                if (self.hist[name].lastTime
-                                    && (time - self.hist[name].lastTime) > uptime) {
-                                    self.hist[name][
-                                        self.hist[name].lastTime +
-                                            (time-self.hist[name].lastTime) / 2] = null;
-                                }
-                                self.hist[name].lastTime = time;
-                                if (totalTime.count === 0) {
-                                    self.hist[name][time] = 0;
-                                } else {
-                                    self.hist[name][time] = totalTime.sum / totalTime.count;
-                                }
-                            });
-                            this.data = statCollect;
-                        },
-
-                        renderPieChart: function(dataset) {
+             renderPieChart: function(dataset) {
                             var w = 280;
                             var h = 160;
                             var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
