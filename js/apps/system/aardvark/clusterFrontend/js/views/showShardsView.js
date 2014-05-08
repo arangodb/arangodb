@@ -24,7 +24,7 @@
         beforeSend: window.App.addAuth.bind(window.App)
       });
       this.dbs = new window.ClusterDatabases([], {
-        interval: this.interval
+        interval: 10000
       });
       this.cols = new window.ClusterCollections();
       this.shards = new window.ClusterShards();
@@ -32,7 +32,6 @@
 
     updateCollections: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
-      var list = this.cols.getList(dbName);
       $("#selectCol").html("");
       _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
         $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");

@@ -569,7 +569,7 @@
         spyOn($.fn, 'width').andReturn(500);
 
         r.handleResize();
-        expect(graphDummy.handleResize).toHaveBeenCalledWith(241);
+        expect(graphDummy.handleResize).toHaveBeenCalledWith(500);
         expect(dashboardDummy.resize).toHaveBeenCalled();
         r.dashboardView = undefined;
       });

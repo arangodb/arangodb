@@ -377,12 +377,10 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
-  v8::HandleScope scope;
-
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
 
-  return scope.Close(v8::String::New((const char*) buffer, len));
+  return v8::String::New((const char*) buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,12 +388,10 @@ static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
-  v8::HandleScope scope;
-
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
-  return scope.Close(v8::String::New((const char*) buffer, len));
+  return v8::String::New((const char*) buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,12 +399,10 @@ static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
-  v8::HandleScope scope;
-
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
-  return scope.Close(v8::String::New((const char*) buffer, len));
+  return v8::String::New((const char*) buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,11 +411,9 @@ static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
 
 static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
                                                   const string& key) {
-  v8::HandleScope scope;
-
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
 
-  return scope.Close(v8::String::New(id.c_str(), id.size()));
+  return v8::String::New(id.c_str(), id.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9241,9 +9233,9 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
                               "/_api/database/user", string(""), headers, 0.0);
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
-          string body = res->result->getBody().str();
+          StringBuffer& body = res->result->getBody();
           delete res;
-          TRI_json_t* json = JsonHelper::fromString(body);
+          TRI_json_t* json = JsonHelper::fromString(body.c_str());
           if (json != 0 && JsonHelper::isArray(json)) {
             TRI_json_t const* dotresult = JsonHelper::getArrayElement(json,"result");
             if (dotresult != 0) {
@@ -9884,14 +9876,9 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   persistent.Dispose(isolate);
   persistent.Clear();
 
-  TRI_vocbase_t* vocbase;
-  if (! barrier->_mustFree) {
-    vocbase = barrier->base._container->_collection->base._vocbase;
-  }
-  else {
-    vocbase = 0;
-  }
-
+  // get the vocbase pointer from the barrier
+  TRI_vocbase_t* vocbase = barrier->base._container->_collection->base._vocbase;
+  
   // free the barrier
   TRI_FreeBarrier(&barrier->base);
     
@@ -10284,86 +10271,17 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_shaped_json_t
+/// @brief add basic attributes (_key, _rev, _from, _to) to a document object
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
-                                          TRI_voc_cid_t cid,
-                                          TRI_doc_mptr_t const* document,
-                                          TRI_barrier_t* barrier) {
+static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
+                                                          TRI_voc_cid_t cid,
+                                                          TRI_doc_mptr_t const* document,
+                                                          v8::Handle<v8::Object> result) {
   v8::HandleScope scope;
-  
-  TRI_ASSERT_MAINTAINER(document != 0);
-  TRI_ASSERT_MAINTAINER(document->_key != 0);
-  TRI_ASSERT_MAINTAINER(document->_data != 0);
-  TRI_ASSERT_MAINTAINER(barrier != 0);
 
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-
-  assert(barrier != 0);
-
-  // create the new handle to return, and set its template type
-  v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
-
-  if (result.IsEmpty()) {
-    // error
-    // TODO check for empty results
-    return scope.Close(result);
-  }
-
-  TRI_barrier_blocker_t* blocker = (TRI_barrier_blocker_t*) barrier;
-  bool doCopy = trx.mustCopyShapedJson();
-
-  if (doCopy) {
-    // we'll create our own copy of the data
-    TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(document->_data);
-
-    if (blocker->_data != 0 && blocker->_mustFree) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, blocker->_data);
-      blocker->_data = 0;
-      blocker->_mustFree = false;
-    }
-
-    blocker->_data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, m->_size, false);
-
-    if (blocker->_data == 0) {
-      // out of memory
-      return scope.Close(result);
-    }
-
-    memcpy(blocker->_data, m, m->_size);
-
-    blocker->_mustFree = true;
-  }
-  else {
-    // we'll use the pointer into the datafile
-    blocker->_data = const_cast<void*>(document->_data);
-  }
-
-
-  // point the 0 index Field to the c++ pointer for unwrapping later
-  result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(blocker->_data));
-
-  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
-
-  if (i == v8g->JSBarriers.end()) {
-    if (! blocker->_mustFree) {
-      // increase the reference-counter for the database
-      TRI_UseVocBase(barrier->_container->_collection->base._vocbase);
-    }
-
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
-    result->SetInternalField(SLOT_BARRIER, persistent);
-
-    v8g->JSBarriers[barrier] = persistent;
-    persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
-  }
-  else {
-    result->SetInternalField(SLOT_BARRIER, i->second);
-  }
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
@@ -10386,8 +10304,100 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 #endif
   }
 
-  // and return
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+template<class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+                                          TRI_voc_cid_t cid,
+                                          TRI_doc_mptr_t const* document,
+                                          TRI_barrier_t* barrier) {
+  v8::HandleScope scope;
+  
+  TRI_ASSERT_MAINTAINER(document != 0);
+  TRI_ASSERT_MAINTAINER(document->_key != 0);
+  TRI_ASSERT_MAINTAINER(document->_data != 0);
+  TRI_ASSERT_MAINTAINER(barrier != 0);
+
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  assert(barrier != 0);
+  
+  bool doCopy = trx.mustCopyShapedJson();
+  
+  if (doCopy) {
+    // we'll create a full copy of the document
+    TRI_primary_collection_t* collection = barrier->_container->_collection;
+    TRI_shaper_t* shaper = collection->_shaper;
+  
+    TRI_shaped_json_t json;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(json, document->_data);
+  
+    TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
+
+    if (shape == 0) {
+      return scope.Close(v8::Object::New());
+    }
+
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result = AddBasicDocumentAttributes<T>(trx, cid, document, result);
+    
+    v8::Handle<v8::Value> shaped = TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length);
+
+    if (! shaped.IsEmpty()) {
+      // now copy the shaped json attributes into the result
+      // this is done to ensure proper order (_key, _id, _rev etc. come first)
+      v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(shaped);
+      v8::Handle<v8::Array> names = array->GetOwnPropertyNames();
+      const uint32_t n = names->Length();
+      for (uint32_t j = 0; j < n; ++j) {
+        v8::Handle<v8::Value> key = names->Get(j);
+        result->Set(key, array->Get(key));
+      }
+    }
+
+    return scope.Close(result);
+  }
+
+  // we'll create a document stub, with a pointer into the datafile
+  
+  // create the new handle to return, and set its template type
+  v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
+
+  if (result.IsEmpty()) {
+    // error
+    // TODO check for empty results
+    return scope.Close(result);
+  }
+
+  void* data = const_cast<void*>(document->_data);
+
+  // point the 0 index Field to the c++ pointer for unwrapping later
+  result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(data));
+  
+  map<void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
+
+  if (i == v8g->JSBarriers.end()) {
+    // increase the reference-counter for the database
+    TRI_UseVocBase(barrier->_container->_collection->base._vocbase);
+
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
+    result->SetInternalField(SLOT_BARRIER, persistent);
+
+    v8g->JSBarriers[barrier] = persistent;
+    persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
+  }
+  else {
+    result->SetInternalField(SLOT_BARRIER, i->second);
+  }
+
+  return scope.Close(AddBasicDocumentAttributes<T>(trx, cid, document, result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1289,6 +1289,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
+            spyOn(view, "drawTable");
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
@@ -1375,7 +1376,7 @@
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
-
+            spyOn(view, "drawTable");
             view.reallyDelete();
 
             expect(window.$).toHaveBeenCalledWith("#confirmDeleteBtn");

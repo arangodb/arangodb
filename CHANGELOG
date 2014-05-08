@@ -1,6 +1,13 @@
 v2.1.0-a1 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
+  value when called the 2nd time after a .save to the edge collection
+
+* added AQL date functions
+
+* added AQL FLATTEN() and FLATTEN_RECURSIVE() list functions
+
 * added index memory statistics to `db.<collection>.figures()` function
 
   The `figures` function will now return a sub-document `indexes`, which lists

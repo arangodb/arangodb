@@ -310,6 +310,12 @@ extern "C" {
 /// - 1470: @LIT{unsupported operation or parameter}
 ///   Will be raised when there is an attempt to carry out an operation that is
 ///   not supported in the context of a sharded collection.
+/// - 1471: @LIT{this operation is only valid on a coordinator in a cluster}
+///   Will be raised if there is an attempt to run a coordinator-only operation
+///   on a different type of node.
+/// - 1472: @LIT{error reading Plan in agency}
+///   Will be raised if a coordinator or DBserver cannot read the Plan in the
+///   agency.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -376,6 +382,8 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1572: @LIT{invalid date value}
+///   Will be raised when a value cannot be converted to a date.
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -1771,6 +1779,28 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1471: ERROR_CLUSTER_ONLY_ON_COORDINATOR
+///
+/// this operation is only valid on a coordinator in a cluster
+///
+/// Will be raised if there is an attempt to run a coordinator-only operation
+/// on a different type of node.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR                             (1471)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1472: ERROR_CLUSTER_READING_PLAN_AGENCY
+///
+/// error reading Plan in agency
+///
+/// Will be raised if a coordinator or DBserver cannot read the Plan in the
+/// agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_READING_PLAN_AGENCY                             (1472)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -2039,6 +2069,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1572: ERROR_QUERY_INVALID_DATE_VALUE
+///
+/// invalid date value
+///
+/// Will be raised when a value cannot be converted to a date.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

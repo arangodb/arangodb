@@ -465,7 +465,8 @@ namespace triagens {
         }
         else {
           // body is not compressed
-          _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+          _result->getBody().appendText(_readBuffer.c_str(), 
+                                        _result->getContentLength());
         }
 
         _readBuffer.erase_front(_result->getContentLength());
@@ -545,7 +546,8 @@ namespace triagens {
 
       if (_readBuffer.length() >= _nextChunkedSize) {
 
-        _result->getBody().write(_readBuffer.c_str(), (size_t) _nextChunkedSize);
+        _result->getBody().appendText(_readBuffer.c_str(), 
+                                      (size_t) _nextChunkedSize);
         _readBuffer.erase_front((size_t) _nextChunkedSize);
         _state = IN_READ_CHUNKED_HEADER;
         return readChunkedHeader();
