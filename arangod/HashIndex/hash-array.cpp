@@ -426,7 +426,7 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
     return 0;
   }
 
-  return array->_nrAlloc * TableEntrySize(array); 
+  return (size_t) (array->_nrAlloc * TableEntrySize(array)); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
