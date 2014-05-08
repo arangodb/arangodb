@@ -7,7 +7,7 @@
     describe("The ClusterDownView", function () {
 
         var view, serverDummy, arangoDocumentsDummy, statisticsDescriptionDummy,
-            jqueryDummy,serverDummy2;
+            jqueryDummy,serverDummy2, dyGraphConfigDummy;
 
         beforeEach(function () {
             window.App = {
@@ -90,6 +90,34 @@
 
             };
 
+            dyGraphConfigDummy = {
+                getDetailChartConfig: function () {
+                    return {
+                        header: "dummyheader"
+                    };
+                },
+                getDashBoardFigures: function () {
+                    return ["a", "b", "c"];
+                },
+                getDefaultConfig: function (d) {
+                    return {
+                        header: "dummyheader",
+                        div: "#" + d
+                    };
+                },
+                mapStatToFigure: {
+                    a: ["times", "x", "blub"],
+                    d: ["times", "y"],
+                    c: ["times", "z"],
+                    abc: [1]
+                },
+                getColors : function () {
+
+                },
+                colors: [1, 2]
+
+            };
+
 
             statisticsDescriptionDummy = {
                 fetch : function () {
@@ -107,7 +135,7 @@
             spyOn(window, "StatisticsDescription").andReturn(statisticsDescriptionDummy);
 
             spyOn(statisticsDescriptionDummy, "fetch");
-            view = new window.ShowClusterView({dygraphConfig : window.dygraphConfig});
+            view = new window.ShowClusterView({dygraphConfig: dyGraphConfigDummy});
             expect(view.interval).toEqual(10000);
             expect(view.isUpdating).toEqual(true);
             expect(view.knownServers).toEqual([]);
@@ -979,69 +1007,360 @@
 
 
         });
-        /*
-             renderPieChart: function(dataset) {
-                            var w = 280;
-                            var h = 160;
-                            var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
-                            var color = d3.scale.category20();
 
-                            var arc = d3.svg.arc() //each datapoint will create one later.
-                                .outerRadius(radius - 20)
-                                .innerRadius(0);
-                            var pie = d3.layout.pie()
-                                .sort(function (d) {
-                                    return d.value;
-                                })
-                                .value(function (d) {
-                                    return d.value;
-                                });
-                            d3.select("#clusterGraphs").select("svg").remove();
-                            var pieChartSvg = d3.select("#clusterGraphs").append("svg")
-                                .attr("width", w)
-                                .attr("height", h)
-                                .attr("class", "clusterChart")
-                                .append("g") //someone to transform. Groups data.
-                                .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
 
-                            var arc2 = d3.svg.arc()
-                                .outerRadius(radius-2)
-                                .innerRadius(radius-2);
 
-                            var slices = pieChartSvg.selectAll(".arc")
-                                .data(pie(dataset))
-                                .enter().append("g")
-                                .attr("class", "slice");
+        it("assert renderLineChart no remake", function () {
 
-                            */
-/*jslint unparam: true*//*
+            spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
+            spyOn(dyGraphConfigDummy, "getColors");
 
-                    slices.append("path")
-                        .attr("d", arc)
-                        .style("fill", function (item, i) {
-                            return color(i);
-                        });
-                    */
-/*jslint unparam: false*//*
+            view.hist = {
+                server1 : {
+                    lastTime : 12345,
+                    2334500 : 1,
+                    2334600 : 2,
+                    2334700 : 3
 
-                    slices.append("text")
-                        .attr("transform", function(d) { return "translate(" +
-                        arc.centroid(d) + ")"; })
-                        .attr("dy", ".35em")
-                        .style("text-anchor", "middle")
-                        .text(function(d) {
-                            var v = d.data.value / 1000000000;
-                            return v.toFixed(2) + "GB"; });
 
-                    slices.append("text")
-                        .attr("transform", function(d) { return "translate(" +
-                         arc2.centroid(d) + ")"; })
-                        .attr("dy", ".35em")
-                        .style("text-anchor", "middle")
-                        .text(function(d) { return d.data.key; });
+
                 },
 
-                renderLineChart: function(remake) {
+
+                server2 : {
+                    lastTime : 12345,
+                    2334500 : 2,
+                    2334800 : 2,
+                    2334900 : 5
+
+
+
+                }
+
+            };
+
+            var dygraphDummy = {
+                setSelection : function () {
+
+                }
+            };
+
+            spyOn(window, "Dygraph").andReturn(dygraphDummy);
+            spyOn(dygraphDummy, "setSelection");
+
+            view.renderLineChart(false);
+
+            expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
+                false, 'ClusterAverage', true
+            );
+
+            expect(window.Dygraph).toHaveBeenCalledWith(
+                document.getElementById('lineGraph'),
+                view.graph.data,
+                {
+                    header : 'dummyheader',
+                    div : '#clusterAverageRequestTime',
+                    visibility : [ true, false, true ],
+                    labels : [ 'Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)' ],
+                    colors : undefined
+                }
+            );
+
+            expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
+                "clusterAverageRequestTime"
+            );
+            expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsNormal).toEqual(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsShowAll).toEqual(
+                ['Date', 'ClusterAverage', 'server1', 'server2']
+            );
+            expect(view.chartData.visibilityNormal).toEqual(
+                [true, false, true]
+            );
+            expect(view.chartData.visibilityShowAll).toEqual(
+                [true, true, true]
+            );
+
+
+
+
+        });
+
+
+
+        it("assert renderLineChart with remake", function () {
+
+            spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
+            spyOn(dyGraphConfigDummy, "getColors");
+
+            view.hist = {
+                server1 : {
+                    lastTime : 12345,
+                    2334500 : 1,
+                    2334600 : 2,
+                    2334700 : 3
+
+
+
+                },
+
+
+                server2 : {
+                    lastTime : 12345,
+                    2334500 : 2,
+                    2334800 : 2,
+                    2334900 : 5
+
+
+
+                }
+
+            };
+
+            var dygraphDummy = {
+                setSelection : function () {
+
+                }
+            };
+
+            spyOn(window, "Dygraph").andReturn(dygraphDummy);
+            spyOn(dygraphDummy, "setSelection");
+
+            view.renderLineChart(true);
+
+            expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
+                false, 'ClusterAverage', true
+            );
+
+            expect(window.Dygraph).toHaveBeenCalledWith(
+                document.getElementById('lineGraph'),
+                view.graph.data,
+                {
+                    header : 'dummyheader',
+                    labels : [ 'Date', 'ClusterAverage', 'server1', 'server2' ],
+                    colors : undefined,
+                    visibility : [ true, true, true ],
+                    height : 0, width : 0, title : ''
+                }
+            );
+
+            expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
+                "clusterAverageRequestTime"
+            );
+            expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsNormal).toEqual(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsShowAll).toEqual(
+                ['Date', 'ClusterAverage', 'server1', 'server2']
+            );
+            expect(view.chartData.visibilityNormal).toEqual(
+                [true, false, true]
+            );
+            expect(view.chartData.visibilityShowAll).toEqual(
+                [true, true, true]
+            );
+
+
+
+
+        });
+
+
+        it("assert renderLineChart with detailView", function () {
+
+            spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
+            spyOn(dyGraphConfigDummy, "getColors");
+
+            view.hist = {
+                server1 : {
+                    lastTime : 12345,
+                    2334500 : 1,
+                    2334600 : 2,
+                    2334700 : 3
+
+
+
+                },
+
+
+                server2 : {
+                    lastTime : 12345,
+                    2334500 : 2,
+                    2334800 : 2,
+                    2334900 : 5
+
+
+
+                }
+
+            };
+
+            var dygraphDummy = {
+                setSelection : function () {
+
+                },
+                updateOptions : function () {
+
+                }
+            };
+
+            spyOn(window, "Dygraph").andReturn(dygraphDummy);
+            spyOn(dygraphDummy, "setSelection");
+            spyOn(dygraphDummy, "updateOptions").andCallFake(function (opt) {
+                expect(opt.labels).toEqual(['Date', 'ClusterAverage (avg)',
+                    'server1', 'server2 (max)']);
+                expect(opt.visibility).toEqual([true, false, true]);
+                expect(opt.dateWindow).not.toEqual(undefined);
+            });
+
+            view.renderLineChart(false);
+            view.renderLineChart(false);
+
+            expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
+                false, 'ClusterAverage', true
+            );
+            expect(dygraphDummy.updateOptions).toHaveBeenCalled();
+
+            expect(window.Dygraph).toHaveBeenCalledWith(
+                document.getElementById('lineGraph'),
+                view.graph.data,
+                {
+                    header : 'dummyheader',
+                    div : '#clusterAverageRequestTime',
+                    visibility : [ true, false, true ],
+                    labels : [ 'Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)' ],
+                    colors : undefined
+                }
+            );
+
+            expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
+                "clusterAverageRequestTime"
+            );
+            expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsNormal).toEqual(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsShowAll).toEqual(
+                ['Date', 'ClusterAverage', 'server1', 'server2']
+            );
+            expect(view.chartData.visibilityNormal).toEqual(
+                [true, false, true]
+            );
+            expect(view.chartData.visibilityShowAll).toEqual(
+                [true, true, true]
+            );
+
+
+
+
+        });
+
+
+        it("assert renderLineChart with detailView and showAll", function () {
+
+            spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
+            spyOn(dyGraphConfigDummy, "getColors");
+
+            view.hist = {
+                server1 : {
+                    lastTime : 12345,
+                    2334500 : 1,
+                    2334600 : 2,
+                    2334700 : 3
+
+
+
+                },
+
+
+                server2 : {
+                    lastTime : 12345,
+                    2334500 : 2,
+                    2334800 : 2,
+                    2334900 : 5
+
+
+
+                }
+
+            };
+
+            var dygraphDummy = {
+                setSelection : function () {
+
+                },
+                updateOptions : function () {
+
+                },
+                dateWindow_ : [0, 1]
+            };
+
+            spyOn(window, "Dygraph").andReturn(dygraphDummy);
+            spyOn(dygraphDummy, "setSelection");
+            spyOn(dygraphDummy, "updateOptions").andCallFake(function (opt) {
+                expect(opt.labels).toEqual(['Date', 'ClusterAverage',
+                    'server1', 'server2']);
+                expect(opt.visibility).toEqual([true, true, true]);
+                expect(opt.dateWindow).not.toEqual(undefined);
+            });
+
+            view.renderLineChart(false);
+            view.graphShowAll = true;
+            view.renderLineChart(false);
+
+            expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
+                false, 'ClusterAverage', true
+            );
+            expect(dygraphDummy.updateOptions).toHaveBeenCalled();
+
+            expect(window.Dygraph).toHaveBeenCalledWith(
+                document.getElementById('lineGraph'),
+                view.graph.data,
+                {
+                    header : 'dummyheader',
+                    div : '#clusterAverageRequestTime',
+                    visibility : [ true, false, true ],
+                    labels : [ 'Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)' ],
+                    colors : undefined
+                }
+            );
+
+            expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
+                "clusterAverageRequestTime"
+            );
+            expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsNormal).toEqual(
+                ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
+            );
+            expect(view.chartData.labelsShowAll).toEqual(
+                ['Date', 'ClusterAverage', 'server1', 'server2']
+            );
+            expect(view.chartData.visibilityNormal).toEqual(
+                [true, false, true]
+            );
+            expect(view.chartData.visibilityShowAll).toEqual(
+                [true, true, true]
+            );
+
+
+
+
+        });
+
+        /*
+
+         renderLineChart: function(remake) {
                     var self = this;
                     self.chartData = {
                         labelsNormal : ['datetime'],
