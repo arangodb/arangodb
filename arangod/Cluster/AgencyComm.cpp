@@ -29,6 +29,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
@@ -1791,7 +1792,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   }
 
   result._message    = response->getHttpReturnMessage();
-  result._body       = response->getBody().str();
+  basics::StringBuffer& sb = response->getBody();
+  result._body       = string(sb.c_str(), sb.length());
   result._index      = 0;
   result._statusCode = response->getHttpReturnCode();
   

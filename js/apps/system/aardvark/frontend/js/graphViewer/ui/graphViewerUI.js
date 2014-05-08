@@ -44,7 +44,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   } 
   
   var graphViewer,
-    width = (optWidth || container.offsetWidth) - 81,
+    width = (optWidth || container.offsetWidth - 81),
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
@@ -453,7 +453,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
   this.changeWidth = function(w) {
     graphViewer.changeWidth(w);
-    var reducedW = w - 60;
+    var reducedW = w - 75;
     svg.attr("width", reducedW)
       .style("width", reducedW + "px");
   };

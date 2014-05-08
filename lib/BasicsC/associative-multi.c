@@ -373,7 +373,7 @@ static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const* array) {
-  return array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64;
+  return (size_t) array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +400,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
 
   // if we were adding and the table is more than half full, extend it
   if (array->_nrAlloc < 2 * array->_nrUsed) {
-    ResizeMultiPointer(array, 2 * array->_nrAlloc + 1);
+    ResizeMultiPointer(array, (size_t) (2 * array->_nrAlloc + 1));
   }
 
 #ifdef TRI_INTERNAL_STATS

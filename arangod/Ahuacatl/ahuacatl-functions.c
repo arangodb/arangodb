@@ -664,6 +664,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("UNION_DISTINCT", "UNION_DISTINCT", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("MINUS", "MINUS", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("INTERSECTION", "INTERSECTION", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("FLATTEN", "FLATTEN", true, false, "l|n", NULL);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "las", NULL);
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);
@@ -708,6 +709,19 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s|l", NULL);
   REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
+  
+  // date functions
+  REGISTER_FUNCTION("DATE_NOW", "DATE_NOW", false, false, "", NULL); // NOW is non-deterministic
+  REGISTER_FUNCTION("DATE_TIMESTAMP", "DATE_TIMESTAMP", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL); 
+  REGISTER_FUNCTION("DATE_ISO8601", "DATE_ISO8601", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL); 
+  REGISTER_FUNCTION("DATE_DAYOFWEEK", "DATE_DAYOFWEEK", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_YEAR", "DATE_YEAR", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_MONTH", "DATE_MONTH", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_DAY", "DATE_DAY", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_HOUR", "DATE_HOUR", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_MINUTE", "DATE_MINUTE", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_SECOND", "DATE_SECOND", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_MILLISECOND", "DATE_MILLISECOND", true, false, "ns", NULL); 
 
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!

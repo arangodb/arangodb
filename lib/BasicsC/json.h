@@ -329,7 +329,7 @@ TRI_json_t* TRI_LookupListJson (const TRI_json_t* const , const size_t);
 /// @brief adds a new attribute to an object, using copy
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertArrayJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t* subobject);
+void TRI_InsertArrayJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t const* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute  to an object, not copying it

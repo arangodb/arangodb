@@ -181,7 +181,7 @@
           key: color
         };
       }
-      width = this.width || $("#content").width();
+      width = (this.width || $("#content").width()) - 75;
 
       $("#background").remove();
       if (randomStart) {
@@ -208,9 +208,11 @@
     },
 
     handleResize: function(w) {
-      this.width = w;
-      if (this.ui) {
-        this.ui.changeWidth(w);
+      if (this.width !== w) {
+        this.width = w;
+        if (this.ui) {
+          this.ui.changeWidth(w);
+        }
       }
     },
 

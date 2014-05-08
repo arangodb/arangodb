@@ -30,6 +30,7 @@
 #define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
 
 #include <map>
 #include <string>
@@ -152,7 +153,7 @@ namespace triagens {
 /// @brief returns the http body
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::stringstream& getBody ();
+      triagens::basics::StringBuffer& getBody ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the request result type
@@ -244,7 +245,7 @@ namespace triagens {
       bool _deflated;
 
       // body content
-      std::stringstream _resultBody;
+      triagens::basics::StringBuffer _resultBody;
 
       // request result type
       enum resultTypes _requestResultType;

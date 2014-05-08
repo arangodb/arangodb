@@ -164,7 +164,7 @@
           expect(window.GraphViewerUI).toHaveBeenCalledWith(
             $("#content")[0],
             defaultAdapterConfig,
-            $("#content").width(),
+            $("#content").width() - 75,
             680,
             defaultGVConfig,
             fakeStartNode
@@ -192,7 +192,7 @@
           expect(window.GraphViewerUI).toHaveBeenCalledWith(
             $("#content")[0],
             defaultAdapterConfig,
-            $("#content").width(),
+            $("#content").width() - 75,
             680,
             defaultGVConfig,
             fakeStartNode
