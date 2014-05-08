@@ -431,6 +431,7 @@
         $('#documentsTableID').dataTable().fnClearTable();
           this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
+        this.drawTable();
       }
 
     },
