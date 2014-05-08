@@ -39,7 +39,7 @@ using namespace triagens::rest;
 
 PeriodicTask::PeriodicTask (double offset, 
                             double interval)
-  : Task(0, "PeriodicTask"),
+  : Task("", "PeriodicTask"),
     watcher(0),
     offset(offset),
     interval(interval) {

@@ -38,14 +38,12 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-TimerTask::TimerTask (uint64_t id,
+TimerTask::TimerTask (string const& id,
                       double seconds)
   : Task(id, "TimerTask"),
     watcher(0),
     seconds(seconds) {
 }
-
-
 
 TimerTask::~TimerTask () {
 }

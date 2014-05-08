@@ -37,16 +37,23 @@ using namespace std;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-Task::Task (uint64_t id, string const& name)
+Task::Task (string const& id, 
+            string const& name)
   : _scheduler(0), 
     _loop(0), 
-    _name(name), 
     _id(id), 
+    _name(name), 
     _active(1) {
 }
 
-
-
+Task::Task (string const& name) 
+  : _scheduler(0), 
+    _loop(0), 
+    _id(), 
+    _name(name), 
+    _active(1) {
+}
+  
 Task::~Task () {
 }
 

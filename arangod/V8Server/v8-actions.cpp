@@ -1154,55 +1154,79 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a periodic task
 ///
-/// @FUN{internal.definePeriodic(@FA{offset}, @FA{period}, @FA{module}, @FA{funcname})}
+/// @FUN{internal.definePeriodic(@FA{job})
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 6) {
-    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<name>, <offset>, <period>, <module>, <funcname>, <string-parameter>)");
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<job>)");
+  }
+
+  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+
+  // job id
+  string id;
+
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("id"))) {
+    // user-specified id
+    id = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
+  }
+  else {
+    // auto-generated id
+    uint64_t tick = TRI_NewTickServer();
+    id = StringUtils::itoa(tick);
+  } 
+
+  // job name
+  string name;
+
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("name"))) {
+    name = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("name")));
+  }
+  else {
+    name = "user-defined job";
   }
   
-  // job name
-  string name = TRI_ObjectToString(argv[0]);
-
   // offset in seconds into period
-  double offset = TRI_ObjectToDouble(argv[1]);
+  double offset = 0.0;
+
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("offset"))) {
+    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("offset")));
+  }
 
   // period in seconds
-  double period = TRI_ObjectToDouble(argv[2]);
+  double period = 0.0;
+
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
+    period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
+  }
 
   if (period <= 0.0) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "<period> must be positive");
+    TRI_V8_EXCEPTION_PARAMETER(scope, "job period must be specified and positive");
   }
 
   // extract the module name
-  TRI_Utf8ValueNFC moduleName(TRI_UNKNOWN_MEM_ZONE, argv[3]);
-
-  if (*moduleName == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<module> must be a UTF-8 string");
+  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("module"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "module must be specified");
   }
 
-  string module = *moduleName;
+  string const module = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("module")));
 
   // extract the function name
-  TRI_Utf8ValueNFC funcName(TRI_UNKNOWN_MEM_ZONE, argv[4]);
-
-  if (*funcName == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<funcname> must be a UTF-8 string");
+  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("funcname"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "funcname must be specified");
   }
 
-  string func = *funcName;
+  string const func = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("funcname")));
 
   // extract the parameter
-  TRI_Utf8ValueNFC parameterString(TRI_UNKNOWN_MEM_ZONE, argv[5]);
-
-  if (*parameterString == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<parameter> must be a UTF-8 string");
+  string parameter;
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("parameter"))) {
+    parameter = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("parameter")));
   }
 
-  string parameter = *parameterString;
 
   // create a new periodic task
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
@@ -1210,6 +1234,7 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
   }
     
   V8PeriodicTask* task = new V8PeriodicTask(
+      id,
       name,
       GlobalVocbase,
       GlobalV8Dealer,
@@ -1221,12 +1246,21 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
       func,
       parameter);
 
-  if (! GlobalScheduler->registerTask(task)) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "setting up task failed");
+  int res = GlobalScheduler->registerTask(task);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    delete task;
+
+    TRI_V8_EXCEPTION(scope, res);
   }
 
-  string const id = StringUtils::itoa(task->id()); 
-  return scope.Close(v8::String::New(id.c_str(), (int) id.size()));
+  // return the result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  result->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), (int) id.size()));
+  result->Set(TRI_V8_SYMBOL("name"), v8::String::New(name.c_str(), (int) name.size()));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1242,14 +1276,16 @@ static v8::Handle<v8::Value> JS_DeletePeriodic (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "deletePeriodic(<id>)");
   }
 
-  uint64_t id = TRI_ObjectToUInt64(argv[0], true);
+  string const id = TRI_ObjectToString(argv[0]);
 
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
    
-  if (! GlobalScheduler->unregisterUserTask(id)) { 
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "setting up task failed");
+  int res = GlobalScheduler->unregisterUserTask(id);
+
+  if (res != TRI_ERROR_NO_ERROR) { 
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::True());
@@ -1272,17 +1308,18 @@ static v8::Handle<v8::Value> JS_GetPeriodic (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
   
-  vector<pair<uint64_t, string> > const tasks = GlobalScheduler->getUserTasks();
+  vector<pair<string, string> > const tasks = GlobalScheduler->getUserTasks();
 
   v8::Handle<v8::Array> result = v8::Array::New();
 
   uint32_t j = 0;
   for (size_t i = 0; i < tasks.size(); ++i) {
-    string const id = StringUtils::itoa(tasks[i].first);
+    string const id = tasks[i].first;
+    string const name = tasks[i].second;
  
     v8::Handle<v8::Object> task = v8::Object::New();
     task->Set(v8::String::New("id"), v8::String::New(id.c_str(), (int) id.size()));
-    task->Set(v8::String::New("name"), v8::String::New(tasks[i].second.c_str())); 
+    task->Set(v8::String::New("name"), v8::String::New(name.c_str(), (int) name.size()));
     
     result->Set(j++, task);
   }

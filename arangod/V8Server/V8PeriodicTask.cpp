@@ -44,7 +44,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (const string& name,
+V8PeriodicTask::V8PeriodicTask (const string& id, 
+                                const string& name,
                                 TRI_vocbase_t* vocbase,
                                 ApplicationV8* v8Dealer,
                                 Scheduler* scheduler,
@@ -54,7 +55,7 @@ V8PeriodicTask::V8PeriodicTask (const string& name,
                                 const string& module,
                                 const string& func,
                                 const string& parameter)
-  : Task(TRI_NewTickServer(), name),
+  : Task(id, name),
     PeriodicTask(offset, period),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),

@@ -261,6 +261,14 @@ ERROR_KEYVALUE_KEY_NOT_REMOVED,1805,"key value not removed","Will be raised when
 ERROR_KEYVALUE_NO_VALUE,1806,"missing value","Will be raised when the value is missing"
 
 ################################################################################
+## Task errors
+################################################################################
+
+ERROR_TASK_INVALID_ID,1850,"invalid task id","Will be raised when a task is created with an invalid id"
+ERROR_TASK_DUPLICATE_ID,1851,"duplicate task id","Will be raised when a task id is created with a duplicate id"
+ERROR_TASK_NOT_FOUND,1852,"task not found","Will be raised when a task with the specified id could not be found"
+
+################################################################################
 ## Graph / traversal errors
 ################################################################################
 
