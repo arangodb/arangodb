@@ -46,7 +46,7 @@ RequeueTask::RequeueTask (Scheduler* scheduler,
                           Dispatcher* dispatcher,
                           double sleep,
                           Job* job)
-  : Task(0, "Requeue Task"),
+  : Task("Requeue Task"),
     TimerTask(0, sleep),
     _scheduler(scheduler),
     _dispatcher(dispatcher),

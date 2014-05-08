@@ -88,7 +88,7 @@ namespace triagens {
                       TRI_socket_t socket,
                       ConnectionInfo const& info,
                       double keepAliveTimeout)
-        : Task(0, "HttpCommTask"),
+        : Task("HttpCommTask"),
           GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
           _httpVersion(HttpRequest::HTTP_UNKNOWN),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),

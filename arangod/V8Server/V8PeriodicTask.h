@@ -57,7 +57,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicTask (const string& name,
+        V8PeriodicTask (const string&,
+                        const string&,
                         TRI_vocbase_t*,
                         ApplicationV8*,
                         rest::Scheduler*,

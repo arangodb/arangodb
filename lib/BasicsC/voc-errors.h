@@ -438,6 +438,12 @@ extern "C" {
 ///   Will be raised when deleting a key/value pair does not work
 /// - 1806: @LIT{missing value}
 ///   Will be raised when the value is missing
+/// - 1850: @LIT{invalid task id}
+///   Will be raised when a task is created with an invalid id
+/// - 1851: @LIT{duplicate task id}
+///   Will be raised when a task id is created with a duplicate id
+/// - 1852: @LIT{task not found}
+///   Will be raised when a task with the specified id could not be found
 /// - 1901: @LIT{invalid graph}
 ///   Will be raised when an invalid name is passed to the server
 /// - 1902: @LIT{could not create graph}
@@ -2324,6 +2330,36 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1850: ERROR_TASK_INVALID_ID
+///
+/// invalid task id
+///
+/// Will be raised when a task is created with an invalid id
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_INVALID_ID                                         (1850)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1851: ERROR_TASK_DUPLICATE_ID
+///
+/// duplicate task id
+///
+/// Will be raised when a task id is created with a duplicate id
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_DUPLICATE_ID                                       (1851)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1852: ERROR_TASK_NOT_FOUND
+///
+/// task not found
+///
+/// Will be raised when a task with the specified id could not be found
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_NOT_FOUND                                          (1852)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1901: ERROR_GRAPH_INVALID_GRAPH

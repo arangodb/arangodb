@@ -53,7 +53,15 @@ var Buffer = require("buffer").Buffer;
   var internal = require("internal");
 
   if (internal.threadNumber === 0 && typeof internal.definePeriodic === "function") {
-    internal.definePeriodic("statistics-collector", 1, 10, "org/arangodb/statistics", "historian", "_statistics");
+    internal.definePeriodic({ 
+      id: "statistics-collector", 
+      name: "statistics-collector",
+      offset: 1, 
+      period: 10, 
+      module: "org/arangodb/statistics", 
+      funcname: "historian", 
+      parameter: "_statistics"
+    });
   }
 }());
 

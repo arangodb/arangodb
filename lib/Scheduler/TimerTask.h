@@ -47,7 +47,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
-        TimerTask (uint64_t, double);
+        TimerTask (std::string const&, double);
 
       protected:
 
