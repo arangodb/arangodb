@@ -26,12 +26,12 @@ import (
 
 // Logger is user-immutable immutable struct which can log to several outputs
 type Logger struct {
+	seq		uint64		// sequential number of log message, starting at 1
 	sinks	[]Sink	// the sinks this logger will log to
 	verbose	bool	// gather expensive logging data?
 	prefix	string	// static field available to all log sinks under this logger
 
 	created		time.Time	// time when this logger was created
-	seq		uint64		// sequential number of log message, starting at 1
 	executable	string		// executable name
 }
 
