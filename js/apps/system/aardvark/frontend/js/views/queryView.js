@@ -6,6 +6,7 @@
   "use strict";
   window.queryView = Backbone.View.extend({
     el: '#content',
+    id: '#customsDiv',
     tabArray: [],
 
     initialize: function () {
@@ -13,12 +14,37 @@
       this.getSystemQueries();
       localStorage.setItem("queryContent", "");
       localStorage.setItem("queryOutput", "");
+      this.tableDescription.rows = this.customQueries;
+      this.tableDescription.rows.forEach(function(e) {
+        e += [];
+      })
+    },
+
+    updateTable:  function () {
+      console.log("CustomQueries: " , this.customQueries);
+      this.tableDescription.rows = this.customQueries;
+      console.log( this.tableDescription === this.customQueries);
+      this.$(this.id).html(this.table.render({content: this.tableDescription}));
+    },
+
+    editCustomQuery: function(e) {
+      console.log("e.target: ", $(e.target).parent().children().first().text());
+      var queryName = $(e.target).parent().children().first().text();
+      //console.log(queryContent);
+      var inputEditor = ace.edit("aqlEditor");
+      inputEditor.setValue(this.getCustomQueryValueByName(queryName));
+      this.deselect(inputEditor);
+      $('#querySelect').val(queryName);
+      this.switchTab("query-switch");
     },
 
     events: {
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
-      'click #customs-switch': 'switchTab',
+      'click #customs-switch': function(e) {
+        this.switchTab(e);
+        this.updateTable();
+      },
       'click #submitQueryIcon': 'submitQuery',
       'click #submitQueryButton': 'submitQuery',
       'click #commentText': 'commentText',
@@ -32,8 +58,7 @@
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
       'click #editAQL': 'editAQL',
-      'click #save-new-query': 'saveAQL',
-      'click #save-edit-query': 'saveAQL',
+      'click #save-query': 'saveAQL',
       'click #delete-edit-query': 'showDeleteField',
       'click #confirmDeleteQuery': 'deleteAQL',
       'click #abortDeleteQuery': 'hideDeleteField',
@@ -41,7 +66,8 @@
       'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
-      'keypress #aqlEditor': 'aqlShortcuts'
+      'keypress #aqlEditor': 'aqlShortcuts',
+      'click #arangoQueryTable': 'editCustomQuery'
     },
 
     initTabArray: function() {
@@ -55,6 +81,14 @@
       if (e.keyCode === 13) {
         this.saveAQL(e);
       }
+
+      this.customQueries.forEach(function(query){
+        console.log(query.name, $('#new-query-name').val(), query.name === $('#new-query-name').val());
+        if( query.name === $('#new-query-name').val())
+          $('#save-new-query').removeClass('button-success');
+          $('#save-new-query').addClass('button-info');
+          $('#save-new-query').id = 'save-edit-query';
+      });
     },
 
     clearOutput: function () {
@@ -99,11 +133,19 @@
 
     customQueries: [],
 
+
+    tableDescription: {
+      id: "arangoQueryTable",
+      titles: ["Name", "Content", ""],
+      rows: []
+    },
+
     template: templateEngine.createTemplate("queryView.ejs"),
+    table: templateEngine.createTemplate("arangoTable.ejs"),
 
     render: function () {
       this.$el.html(this.template.render({}));
-
+      this.$(this.id).html(this.table.render({content: this.tableDescription}));
       // fill select box with # of results
       var querySize = 1000;
       if (typeof Storage) {
@@ -126,39 +168,6 @@
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setFontSize("16px");
       outputEditor.setValue('');
-
-
-      var customsEditor = ace.edit("customsEditor");
-      customsEditor.getSession().setMode("ace/mode/aql");
-      customsEditor.setFontSize("16px");
-      customsEditor.commands.addCommand({
-        name: "togglecomment",
-        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: "forEach"
-      });
-
-      customsEditor.getSession().selection.on('changeCursor', function (e) {
-        var customsEditor = ace.edit("customsEditor");
-        var session = customsEditor.getSession();
-        var cursor = customsEditor.getCursorPosition();
-        var token = session.getTokenAt(cursor.row, cursor.column);
-        if (token) {
-          if (token.type === "comment") {
-            $("#commentText i")
-            .removeClass("fa-comment")
-            .addClass("fa-comment-o")
-            .attr("data-original-title", "Uncomment");
-          } else {
-            $("#commentText i")
-            .removeClass("fa-comment-o")
-            .addClass("fa-comment")
-            .attr("data-original-title", "Comment");
-          }
-        }
-      });
 
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
@@ -214,17 +223,14 @@
       }
 
       var windowHeight = $(window).height() - 295;
-      $('#customsEditor').height(windowHeight);
       $('#aqlEditor').height(windowHeight - 19);
       $('#queryOutput').height(windowHeight);
 
-      customsEditor.resize();
       inputEditor.resize();
       outputEditor.resize();
 
       this.initTabArray();
       this.renderSelectboxes();
-      this.deselect(customsEditor);
       this.deselect(outputEditor);
       this.deselect(inputEditor);
 
@@ -233,7 +239,7 @@
       $("#customsDiv").show();
 
       this.switchTab('query-switch');
-
+      console.log(this.customQueries);
       return this;
     },
 
@@ -258,7 +264,9 @@
 
     addAQL: function () {
       //render options
-      $('#new-query-name').val('');
+      console.log($('#querySelect').val());
+
+      $('#new-query-name').val($('#querySelect').val());
       $('#new-aql-query').modal('show');
       setTimeout(function () {
         $('#new-query-name').focus();
@@ -281,6 +289,7 @@
         this.customQueries = JSON.parse(localStorage.getItem("customQueries"));
       }
     },
+
     showDeleteField: function () {
       $('#reallyDeleteQueryDiv').show();
     },
@@ -328,6 +337,7 @@
       $.each(this.customQueries, function (k, v) {
         if (e.target.id !== 'save-edit-query') {
           if (v.name === queryName) {
+            v.value = content;
             quit = true;
             return;
           }
@@ -363,6 +373,7 @@
       $('#edit-aql-textarea').val(value);
       $('#edit-aql-textarea').focus();
     },
+
     getSystemQueries: function () {
       var self = this;
       $.ajax({
@@ -520,6 +531,7 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
+        var wrapperDiv = divId + "Div";
         if ( element === switchId){
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
