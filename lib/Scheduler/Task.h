@@ -35,6 +35,10 @@
 
 #include "Scheduler/events.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 namespace triagens {
   namespace rest {
     class Scheduler;
@@ -93,6 +97,12 @@ namespace triagens {
         bool isActive () const {
           return _active != 0;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getDescription (struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is a user task

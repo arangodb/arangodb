@@ -1271,7 +1271,7 @@ function reloadRouting () {
         throw new Error("unknown application '" + appId + "'");
       }
 
-      appModule = app.createAppModule();
+      appModule = app.createAppModule(appContext);
     }
 
     // install the routes

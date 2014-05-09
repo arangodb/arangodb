@@ -1444,9 +1444,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -3385,7 +3385,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -3805,6 +3805,34 @@ pre.gv-object-view {
   .query-div .icon_arangodb {
     cursor: pointer;
     margin-bottom: 5px; }
+  .query-div .arango-table {
+    table-layout: fixed;
+    max-width: 100%;
+    width: 100%; }
+    .query-div .arango-table tbody {
+      max-width: 100%;
+      width: 100%; }
+    .query-div .arango-table tr {
+      max-width: 100%;
+      width: 100%; }
+    .query-div .arango-table .table-cell0 {
+      width: 20%;
+      min-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important; }
+    .query-div .arango-table .table-cell1 {
+      width: 73%;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important; }
+    .query-div .arango-table .table-cell2 {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important; }
 
 .display-none {
   display: none; }
@@ -4004,7 +4032,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }

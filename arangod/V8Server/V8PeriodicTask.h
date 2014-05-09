@@ -57,17 +57,23 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicTask (const string&,
-                        const string&,
+        V8PeriodicTask (string const&,
+                        string const&,
                         TRI_vocbase_t*,
                         ApplicationV8*,
                         rest::Scheduler*,
                         rest::Dispatcher*,
-                        double offset,
-                        double period,
-                        const string& module,
-                        const string& func,
-                        const string& parameter);
+                        double,
+                        double,
+                        string const&,
+                        string const&,
+                        string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~V8PeriodicTask ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -123,19 +129,20 @@ namespace triagens {
 /// @brief module name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _module;
+        std::string const _module;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _func;
+        std::string const _func;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief paramater string
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _parameter;
+        std::string const _parameter;
+
     };
   }
 }
