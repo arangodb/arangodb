@@ -174,7 +174,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   assert(TRI_isvalidsocket(_socket));
 
   tv.tv_sec = (long) timeout;
-  tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
+  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
   FD_ZERO(&fdset);
   FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
@@ -205,6 +205,10 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
     }
   }
 
+  if (res < 0) {
+    TRI_set_errno(errno);
+  }
+
   return false;
 }
 
@@ -229,6 +233,11 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 
   if (status < 0) {
     TRI_set_errno(errno);
+    _isConnected = false;
+    return false;
+  }
+  else if (status == 0) {
+    _isConnected = false;
     return false;
   }
 
