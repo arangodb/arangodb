@@ -3743,7 +3743,8 @@ pre.gv-object-view {
 .output-toolbar {
   border-color: silver;
   position: relative;
-  width: auto; }
+  width: auto;
+  border-top: 0; }
   .output-toolbar span {
     float: right;
     margin-left: 5px;
@@ -3761,7 +3762,9 @@ pre.gv-object-view {
     z-index: 9999 !important; }
 
 .editor-label {
-  width: 100%; }
+  width: 100%;
+  background-color: #dddddd;
+  height: 1px; }
   .editor-label h6 {
     font-family: 'Open Sans', sans-serif;
     font-size: 16px;
@@ -3798,6 +3801,10 @@ pre.gv-object-view {
   width: 130px !important;
   z-index: 9999 !important; }
 
+#queryContent .arango-tab a {
+  border-bottom: 0;
+  border-color: transparent; }
+
 .query-div {
   display: none; }
   .query-div > * {
@@ -3816,12 +3823,14 @@ pre.gv-object-view {
       max-width: 100%;
       width: 100%; }
     .query-div .arango-table .table-cell0 {
+      cursor: pointer;
       width: 20%;
       min-width: 250px;
       overflow: hidden;
       text-overflow: ellipsis !important;
       white-space: nowrap !important; }
     .query-div .arango-table .table-cell1 {
+      cursor: pointer;
       width: 73%;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
