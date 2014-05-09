@@ -529,7 +529,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
-                                      v8::Handle<v8::Object> const& res, 
+                                      v8::Handle<v8::Object> const res, 
                                       uint32_t compatibility) {
   HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
