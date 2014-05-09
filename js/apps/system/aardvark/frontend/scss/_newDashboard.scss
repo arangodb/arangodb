@@ -13,48 +13,14 @@
 }
 
 .dashboard-large-chart {
-  @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height;
-  margin-top: $dashboard-margin;
-  padding-top: $dashboard-padding;
+  margin-bottom: $dashboard-margin;
   margin-right: 12px;
-  background-color: $c-white;
-  border: $dashboard-borderwidth solid $c-e1grey;
 
-  .dashboard-interior-chart {
-    @extend %pull-left;
-    height: $dashboard-height - $dashboard-padding;
-  }
-}
-
-.dashboard-medium-chart {
-  @extend %dashboard-chart-box;
-  @extend %pull-left;
-  height: $dashboard-height;
-  background-color: $c-white;
-  padding-top: $dashboard-padding;
-  border-left: $dashboard-borderwidth solid $c-e1grey;
-  border-top: $dashboard-borderwidth solid $c-e1grey;
-  border-right: $dashboard-borderwidth solid $c-e1grey;
-
-  &:first-child {
-    margin-right: 12px;
-  }
-
-  .dashboard-interior-chart {
-    @extend %pull-left;
-    height: $dashboard-height - $dashboard-padding;
-  }
-}
-
-.dashboard-small-chart {
-  @extend %pull-left;
-  margin-top: $dashboard-margin;
-
-  .dashboard-small-chart-inner {
+  .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
+    padding-top: $dashboard-padding;
     background-color: $c-white;
     border-left: $dashboard-borderwidth solid $c-e1grey;
     border-top: $dashboard-borderwidth solid $c-e1grey;
@@ -62,65 +28,108 @@
 
     .dashboard-interior-chart {
       @extend %pull-left;
-      height: $dashboard-height - $dashboard-padding;
+      margin-bottom: 0px;
     }
   }
 }
 
+
+.dashboard-small-chart {
+  @extend %pull-left;
+  margin-bottom: $dashboard-margin;
+
+  .dashboard-small-chart-inner {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    padding-top: $dashboard-padding;
+    background-color: $c-white;
+    border-left: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
+    border-right: $dashboard-borderwidth solid $c-e1grey;
+
+    .dashboard-interior-chart {
+      @extend %pull-left;
+      margin-bottom: 5px;
+    }
+  }
+}
+
+.dashboard-medium-chart {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  background-color: $c-white;
+  padding-top: $dashboard-padding;
+  border-left: $dashboard-borderwidth solid $c-e1grey;
+  border-top: $dashboard-borderwidth solid $c-e1grey;
+  border-right: $dashboard-borderwidth solid $c-e1grey;
+  margin-bottom: $dashboard-margin;
+  
+  &:first-child {
+    margin-right: 12px;
+  }
+
+  .dashboard-interior-chart {
+    @extend %pull-left;
+    margin-bottom: 0px;
+  }
+  
+  .dashboard-medium-chart-inner {
+      @extend %clear-float;
+  }
+}
+
+
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-  margin-top: $dashboard-margin;
-  margin-bottom: 0px;
+  margin-bottom: $dashboard-margin;
 
   .dashboard-tendency-chart {
-    .dashboard-half-height-chart {
-      $int-height: ($dashboard-height - 24px - 19px)  / 2;
-      @extend %clear-float;
-      height: $int-height;
+    @extend %clear-float;
+    background-color: $c-white;
+    border-left: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
+    border-right: 5px solid $c-e1grey;
+
+    .dashboard-tendency {
+      @extend %pull-left;
       background-color: $c-white;
-      border-left: 5px solid $c-e1grey;
-      border-top: 5px solid $c-e1grey;
-      border-right: 5px solid $c-e1grey;
+      padding: 0px 8px 0px 8px;
+      
+      &:first-child {
+        border-right: 1px solid $c-e1grey;
+      }
 
-      .dashboard-tendency {
+      .dashboard-subtitle-bar {
         @extend %pull-left;
-        font-size: 16px;
-        background-color: $c-white;
-        padding: 0px 8px 0px 8px;
-        
-        &:first-child {
-          border-right: 1px solid $c-e1grey;
-        }
+        border-bottom: 1px solid $c-e1grey;
+        text-align: right;
+      }
 
-        .dashboard-subtitle-bar {
-          @extend %pull-left;
-          border-bottom: 1px solid $c-e1grey;
-          font-size: 18px;
-          font-weight: 300;
-          height: (($int-height - 2px) / 3);
-          line-height: (($int-height - 2px) / 3);
-          text-align: right;
-        }
-
-        .dashboard-figure {
-          @extend %pull-left;
-          text-align: left;
-          font-size: 32px;
-          font-weight: 300;
-          padding-left: 8px;
-          height: (($int-height - 2px) * 2 / 3);
-          line-height: (($int-height - 2px) * 2 / 3);
-        }
+      .dashboard-figure {
+        @extend %pull-left;
+        text-align: center;
       }
     }
   }
 }
 
+.dashboard-bar-chart-container {
+  @extend %dashboard-chart-box;
+  @extend %pull-left;
+  margin-bottom: $dashboard-margin;
+
+  .dashboard-bar-chart-chart {
+    @extend %clear-float;
+    background-color: $c-white;
+    border-left: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
+    border-right: 5px solid $c-e1grey;
+  }
+}
+
 .dashboard-legend {
   @extend %pull-left;
-  height: $dashboard-height - $dashboard-padding;
-  width: $dashboard-legendwidth;
 
   .dashboard-legend-inner {
     padding: 0px 5px 5px 0px;
@@ -131,12 +140,18 @@
   @extend %pull-left;
   background-color: $c-bar-bg;
   color: $c-white;
-  font-size: 13px;
-  font-weight: 400;
   height: 24px;
   line-height: 24px;
   margin: 0px 0px 0px 0px;
   padding: 0px 0px 0px 6px;
+}
+
+.dashboard-spacer {
+ margin: 0px 12px 0px 12px;
+}
+
+.headerBar.dashboard-headerbar {
+  margin: 15px 0px 10px 0px;
 }
 
 .modal-chart-detail {
@@ -154,7 +169,6 @@
 
 .modal-dashboard-legend {
   @extend %pull-left;
-  height: $dashboard-height;
 
   .dashboard-legend-inner {
     padding-left: 20px;
@@ -165,7 +179,6 @@
 
 .dashboard-half-height-legend {
   @extend %pull-left;
-  height: $dashboard-height / 2;
 
   .dashboard-legend-inner {
     padding-top: 20px;
@@ -197,7 +210,7 @@
 
 .dashboard-row {
   @extend %clear-float;
-  margin-bottom: 12px;
+  margin-bottom: 0px;
   margin-left: 0px;
   margin-right: 0px;
 }
@@ -206,14 +219,10 @@
   &.dygraph-axis-label-y, 
   &.dygraph-axis-label-x {
     color: $c-darker-grey;
-    font: {
-      family: 'Open Sans', sans-serif;
-      size: 13px;
-      weight: 300;
-    }
   }
 }
-// labelsDivStyles
+
+/*
 .dashboard-legend {
   color: $c-darker-grey;
   font: {
@@ -222,4 +231,4 @@
     weight: 400;
   }
 }
-
+*/
