@@ -111,26 +111,6 @@ Setting `--recycle-ids` to `false` or omitting it will only use the collection n
 input directory and allow the target database to create the collection with a different id
 (though with the same name) than in the input directory.
 
-Using `arangorestore` with sharding {#RestoreWithSharding}
-==========================================================
-
-As of Version 2.1 the `arangorestore` tool supports sharding. Simply
-point it to one of the coordinators in your cluster and it will
-work as usual but on sharded collections in the cluster.
-
-If `arangorestore` is asked to drop and re-create a collection, it
-will use the same number of shards and the same shard keys as when
-the collection was dumped. If the collection was dumped from a single
-instance, exactly one shard will be created and the attribute
-`_key` will be the only shard key. If you restore a collection that
-was dumped from a cluster into a single ArangoDB instance, the number
-of shards and the shard keys will silently be ignored.
-
-Note that in a cluster, every newly created collection will have a new
-ID, it is not possible to reuse the ID from the originally dumped
-collection. This is for safety reasons to ensure consistency of IDs.
-
-
 Reloading Data into a different Collection {#RestoreManualDifferent}
 ====================================================================
 
@@ -147,5 +127,33 @@ directory. To load data from the datafile into an existing collection `mycopyval
 After that, run the following command:
     
     unix> arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
+
+Using `arangorestore` with sharding {#RestoreWithSharding}
+==========================================================
+
+As of Version 2.1 the `arangorestore` tool supports sharding. Simply
+point it to one of the coordinators in your cluster and it will
+work as usual but on sharded collections in the cluster.
+
+If `arangorestore` is asked to drop and re-create a collection, it
+will use the same number of shards and the same shard keys as when
+the collection was dumped. The distribution of the shards to the
+servers will also be the same as at the time of the dump. This means 
+in particular that DBservers with the same IDs as before must be present in the
+cluster at time of the restore. 
+
+If a collection was dumped from a single instance, one can manually
+add the structural description for the shard keys and the number and
+distribution of the shards and then the restore into a cluster will
+work.
+
+If you restore a collection that was dumped from a cluster into a single
+ArangoDB instance, the number of shards and the shard keys will silently
+be ignored.
+
+Note that in a cluster, every newly created collection will have a new
+ID, it is not possible to reuse the ID from the originally dumped
+collection. This is for safety reasons to ensure consistency of IDs.
+
 
 @BNAVIGATE_RestoreManual
