@@ -3024,8 +3024,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     }
 
     // Now listen to the results:
-    int count;
-    int nrok = 0;
+    unsigned int count;
+    unsigned int nrok = 0;
     for (count = (int) shardIdsMap.size(); count > 0; count--) {
       result = cc->wait( "", coordTransactionID, 0, "", 0.0);
       if (result->status == CL_COMM_RECEIVED) {
