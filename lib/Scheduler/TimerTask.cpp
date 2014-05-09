@@ -68,8 +68,6 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-
-
 void TimerTask::cleanup () {
   if (_scheduler == 0) {
     LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
@@ -80,8 +78,6 @@ void TimerTask::cleanup () {
   _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }
-
-
 
 bool TimerTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;

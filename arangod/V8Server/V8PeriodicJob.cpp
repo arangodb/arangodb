@@ -48,9 +48,9 @@ using namespace triagens::arango;
 
 V8PeriodicJob::V8PeriodicJob (TRI_vocbase_t* vocbase,
                               ApplicationV8* v8Dealer,
-                              const string& module,
-                              const string& func,
-                              const string& parameter)
+                              string const& module,
+                              string const& func,
+                              string const& parameter)
   : Job("V8 Periodic Job"),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
@@ -109,7 +109,7 @@ Job::status_t V8PeriodicJob::work () {
     string command = "(require(\"" + module + "\")[\"" + func + "\"])(\"" + parameter + "\")";
 
     TRI_ExecuteJavaScriptString(context->_context,
-                                v8::String::New(command.c_str()),
+                                v8::String::New(command.c_str(), (int) command.size()),
                                 v8::String::New("periodic function"),
                                 true);
   }

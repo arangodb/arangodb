@@ -44,17 +44,17 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (const string& id, 
-                                const string& name,
+V8PeriodicTask::V8PeriodicTask (string const& id, 
+                                string const& name,
                                 TRI_vocbase_t* vocbase,
                                 ApplicationV8* v8Dealer,
                                 Scheduler* scheduler,
                                 Dispatcher* dispatcher,
                                 double offset,
                                 double period,
-                                const string& module,
-                                const string& func,
-                                const string& parameter)
+                                string const& module,
+                                string const& func,
+                                string const& parameter)
   : Task(id, name),
     PeriodicTask(offset, period),
     _vocbase(vocbase),
@@ -63,6 +63,20 @@ V8PeriodicTask::V8PeriodicTask (const string& id,
     _module(module),
     _func(func),
     _parameter(parameter) {
+
+  assert(vocbase != 0);
+
+  // increase reference counter for the database used
+  TRI_UseVocBase(_vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+V8PeriodicTask::~V8PeriodicTask () {
+  // decrease reference counter for the database used
+  TRI_ReleaseVocBase(_vocbase);
 }
 
 // -----------------------------------------------------------------------------
