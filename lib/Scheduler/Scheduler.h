@@ -38,6 +38,10 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 namespace triagens {
   namespace basics {
     class ConditionVariable;
@@ -143,10 +147,10 @@ namespace triagens {
 /// @brief get all user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<std::string, std::string> > getUserTasks ();
+        struct TRI_json_s* getUserTasks ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cancel a user task by id
+/// @brief unregister and delete a user task by id
 ////////////////////////////////////////////////////////////////////////////////
 
         int unregisterUserTask (std::string const&);
@@ -173,7 +177,7 @@ namespace triagens {
 /// methods will delete the task.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void destroyTask (Task*);
+        int destroyTask (Task*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to display current status
