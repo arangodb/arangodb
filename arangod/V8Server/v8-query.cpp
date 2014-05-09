@@ -229,7 +229,7 @@ static void CleanupExampleObject (TRI_memory_zone_t* zone,
 /// @brief sets up the example object
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupExampleObject (v8::Handle<v8::Object> const& example,
+static int SetupExampleObject (v8::Handle<v8::Object> const example,
                                TRI_shaper_t* shaper,
                                size_t& n,
                                TRI_shape_pid_t*& pids,
