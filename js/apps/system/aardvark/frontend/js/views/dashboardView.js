@@ -378,19 +378,17 @@
 
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
-        /*.width(dimensions.width * 0.3)
-         .height(dimensions.height)*/
         .x(function (d) {
           return d.label;
         })
         .y(function (d) {
           return d.value;
         })
-        .width(dimensions.width * 0.95)
-        .height(dimensions.height)
+        .width(dimensions.width)
+        .height(dimensions.height + 20)
         .margin({
           //top: dimensions.height / 8,
-          right: dimensions.width / 10
+          //right: dimensions.width / 10
           //bottom: dimensions.height / 22,
           //left: dimensions.width / 6*/
         })
@@ -402,9 +400,12 @@
         .showLegend(false)
         .stacked(true)
         .showControls(false);
+        
         chart.yAxis
         .tickFormat(function (d) {return d + "%";});
+        
         chart.xAxis.showMaxMin(false);
+        
         chart.yAxis.showMaxMin(false);
         
         d3.select('#residentSizeChart svg')
@@ -417,31 +418,33 @@
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
+        
         var data = [Math.round(self.history.physicalMemory * 100 / 1024 / 1024 / 1024) / 100 + "GB"];
 
         d3.select('#residentSizeChart svg').selectAll('#total')
         .data(data)
         .enter()
         .append("text")
-        .style("font-size", dimensions.height / 8 + "px")
+        .style("font-size", dimensions.width / 19 + "px")
         .style("font-weight", 300)
         .style("font-family", "Open Sans")
         .attr("id", "total")
-        .attr("x", dimensions.width / 1.15)
-        .attr("y", dimensions.height / 2.1)
+        .attr("x", (dimensions.width - 50))
+        .attr("y", dimensions.height / 1.8)
         .text(function(d) { return d; });
         
         d3.select('#residentSizeChart svg').selectAll('#percentage')
         .data(data)
         .enter()
         .append("text")
-        .style("font-size", dimensions.height / 8 + "px")
+        .style("font-size", dimensions.width / 19 + "px")
         .style("font-weight", 300)
         .style("font-family", "Open Sans")
         .attr("id", "percentage")
-        .attr("x", dimensions.width * 0.1)
-        .attr("y", dimensions.height / 2.1)
+        .attr("x", (dimensions.width + 5 - dimensions.width) )
+        .attr("y", dimensions.height / 2.16)
         .text(currentP + " %");
+        
         nv.utils.windowResize(chart.update);
       }, function() {
         d3.selectAll("#residentSizeChart .nv-bar").on('click',

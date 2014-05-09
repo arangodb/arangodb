@@ -1,10 +1,13 @@
 <script id="dashboardView.ejs" type="text/template">
-  <% var largeChart = function(name) { %>
-    <div class="dashboard-large-chart dashboard-chart" id="<%= name %>Container">
-      <div id="<%= name %>" class="dashboard-interior-chart"></div>
-      <div class="dashboard-legend">
-        <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+  <% var largeChart = function(name, title) { %>
+    <div class="dashboard-large-chart">
+      <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
       </div>
+      <div class="dashboard-sub-bar""><%= title %></div>
     </div>
   <% } %>
 
@@ -26,11 +29,6 @@
         <div id="<%= name %>" class="dashboard-interior-chart">
           <svg></svg>
         </div>
-        <!--
-        <div class="dashboard-legend">
-          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
-        </div>
-        -->
       </div>
       <div class="dashboard-sub-bar">Distribution</div>
     </div>
@@ -39,18 +37,28 @@
   <% var tendency = function(title, name) { %>
     <div class="dashboard-tendency-container">
       <div class="dashboard-tendency-chart">
-        <div class="dashboard-half-height-chart dashboard-chart" id="<%= name %>Container">
-          <div class="dashboard-tendency">
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">sync</div>
+            <div class="dashboard-figure">
+              <span id="syncPerSecondCurrent"></span>
+          <%} else {%>
             <div class="dashboard-subtitle-bar">current</div>
             <div class="dashboard-figure">
               <span id="<%= name %>Current"></span>
-            </div>
+          <% } %>
           </div>
-          <div class="dashboard-tendency">
+        </div>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">async</div>
+            <div class="dashboard-figure">
+              <span id="asyncPerSecondCurrent"></span>
+          <%} else {%>
             <div class="dashboard-subtitle-bar">15-min-avg</div>
             <div class="dashboard-figure">
-            <span id="<%= name %>Average"></span>
-            </div>
+              <span id="<%= name %>Average"></span>
+          <% } %>
           </div>
         </div>
       </div>
@@ -63,66 +71,42 @@
   </div>
   <div class="contentDiv">
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Requests per Second</div>
+      <% largeChart("requestsChart", "Requests per Second") %>
 
-      <% largeChart("requestsChart") %>
-
-      <div class="dashboard-tendency-container">
-        <div class="dashboard-tendency-chart">
-          <div class="dashboard-half-height-chart dashboard-chart" id="asyncRequestsContainer">
-            <div class="dashboard-tendency">
-              <div class="dashboard-subtitle-bar">sync</div>
-              <div class="dashboard-figure">
-                <span id="syncPerSecondCurrent"></span>
-              </div>
-            </div>
-            <div class="dashboard-tendency">
-              <div class="dashboard-subtitle-bar">async</div>
-              <div class="dashboard-figure">
-                <span id="asyncPerSecondCurrent"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="dashboard-sub-bar"">Request Types</div>
-      </div>
-
+      <% tendency("Request Types", "asyncRequests"); %>
       <% tendency("Number of Client Connections", "clientConnections"); %>
     </div>
     
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Transfer Size per Second (bytes)</div>
-      <% largeChart("dataTransferChart") %>
+      <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
       <% smallChart("dataTransferDistribution") %>
     </div>
     
     <div class="dashboard-row">
-      <div class="dashboard-title-bar">Average Request Time (seconds)</div>
-      <% largeChart("totalTimeChart") %>
+      <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
       <% smallChart("totalTimeDistribution") %>
     </div>
   </div>
 
-  <div class="headerBar" style="margin: 8px 0px 0px 0px;">
+  <div class="dashboard-headerbar headerBar">
     <a class="arangoHeader">System Resources</a>
   </div>
 
   <div class="dashboard-row">
     <% tendency("Number of threads", "numberOfThreads"); %>
-    <div class="dashboard-tendency-container" style="margin: 5px 12px 0px 12px;">
-      <div class="dashboard-tendency-chart">
-        <div class="dashboard-half-height-chart dashboard-chart" id="residentSizeChartContainer">
-          <div id="residentSizeChart">
-            <svg></svg>
-          </div>
+
+    <div class="dashboard-bar-chart-container dashboard-spacer">
+      <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+        <div id="residentSizeChart">
+          <svg></svg>
         </div>
       </div>
       <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
+
     <% tendency("Virtual Size in GB", "virtualSize"); %>
   </div>
-
-  <div style="margin-top: -5px;">
+  <div class="dashboard-row">
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>
     <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
   </div>
