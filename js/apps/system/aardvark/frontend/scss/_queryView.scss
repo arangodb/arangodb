@@ -274,14 +274,14 @@
   }
 
   .arango-table {
-      max-width: 100%;
-      table-layout: fixed;
-      width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    width: 100%;
 
-      tbody {
-        max-width: 100%;
-        width: 100%;
-      }
+    tbody {
+      max-width: 100%;
+      width: 100%;
+    }
 
     tr {
       max-width: 100%;
@@ -293,23 +293,25 @@
       min-width: 250px;
       overflow: hidden;
       text-overflow: ellipsis !important;
-      width: 20%;
       white-space: nowrap !important;
+      width: 20%;
     }
+
     .table-cell1 {
       cursor: pointer;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
-      width: 73%;
       white-space: nowrap !important;
+      width: 73%;
     }
+
     .table-cell2 {
       max-width: 40px;
       min-width: 40px;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
-      width: 40px;
       white-space: nowrap !important;
+      width: 40px;
     }
   }
 }
