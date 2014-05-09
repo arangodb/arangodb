@@ -207,7 +207,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   fd_set fdset;
 
   tv.tv_sec = (long) timeout;
-  tv.tv_usec = ((long) (timeout * 1000000.0)) % 1000000;
+  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
   FD_ZERO(&fdset);
   FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
