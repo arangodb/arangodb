@@ -114,6 +114,8 @@ v2.1.0 (XXXX-XX-XX)
 
 * export the sort attribute for graph traversals to the HTTP interface
 
+* add support for arangodump/arangorestore for clusters
+
 
 v2.0.8 (XXXX-XX-XX)
 -------------------

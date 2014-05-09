@@ -318,6 +318,9 @@ extern "C" {
 /// - 1472: @LIT{error reading Plan in agency}
 ///   Will be raised if a coordinator or DBserver cannot read the Plan in the
 ///   agency.
+/// - 1473: @LIT{could not truncate collection}
+///   Will be raised if a coordinator cannot truncate all shards of a cluster
+///   collection.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1817,6 +1820,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_READING_PLAN_AGENCY                             (1472)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1473: ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION
+///
+/// could not truncate collection
+///
+/// Will be raised if a coordinator cannot truncate all shards of a cluster
+/// collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   (1473)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
