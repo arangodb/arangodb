@@ -153,8 +153,8 @@ bool TRI_ParseJavaScriptFile (char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> const& source,
-                                                   v8::Handle<v8::Value> const& name,
+                                                   v8::Handle<v8::String> const source,
+                                                   v8::Handle<v8::Value> const name,
                                                    bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////

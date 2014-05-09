@@ -48,7 +48,7 @@ using namespace triagens::basics;
 
 static int FillShapeValueJson (TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
-                               v8::Handle<v8::Value> const& json,
+                               v8::Handle<v8::Value> const json,
                                set<int>& seenHashes,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create,
@@ -102,7 +102,7 @@ static int FillShapeValueNull (TRI_shaper_t* shaper,
 
 static int FillShapeValueBoolean (TRI_shaper_t* shaper,  
                                   TRI_shape_value_t* dst, 
-                                  v8::Handle<v8::Boolean> const& json) {
+                                  v8::Handle<v8::Boolean> const json) {
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
@@ -126,7 +126,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
 
 static int FillShapeValueBoolean (TRI_shaper_t* shaper, 
                                   TRI_shape_value_t* dst, 
-                                  v8::Handle<v8::BooleanObject> const& json) {
+                                  v8::Handle<v8::BooleanObject> const json) {
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
@@ -150,7 +150,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
 
 static int FillShapeValueNumber (TRI_shaper_t* shaper, 
                                  TRI_shape_value_t* dst, 
-                                 v8::Handle<v8::Number> const& json) {
+                                 v8::Handle<v8::Number> const json) {
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
@@ -174,7 +174,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
 
 static int FillShapeValueNumber (TRI_shaper_t* shaper, 
                                  TRI_shape_value_t* dst, 
-                                 v8::Handle<v8::NumberObject> const& json) {
+                                 v8::Handle<v8::NumberObject> const json) {
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
@@ -198,7 +198,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
 
 static int FillShapeValueString (TRI_shaper_t* shaper, 
                                  TRI_shape_value_t* dst, 
-                                 v8::Handle<v8::String> const& json) {
+                                 v8::Handle<v8::String> const json) {
   char* ptr;
 
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, json);
@@ -259,7 +259,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
 
 static int FillShapeValueList (TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
-                               v8::Handle<v8::Array> const& json,
+                               v8::Handle<v8::Array> const json,
                                set<int>& seenHashes,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create,
@@ -577,7 +577,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
 
 static int FillShapeValueArray (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
-                                v8::Handle<v8::Object> const& json,
+                                v8::Handle<v8::Object> const json,
                                 set<int>& seenHashes,
                                 vector< v8::Handle<v8::Object> >& seenObjects,
                                 bool create,
@@ -827,7 +827,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
 
 static int FillShapeValueJson (TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
-                               v8::Handle<v8::Value> const& json,
+                               v8::Handle<v8::Value> const json,
                                set<int>& seenHashes,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create,
@@ -1452,7 +1452,7 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
 /// @brief converts a V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const& object, 
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object, 
                                            TRI_shaper_t* shaper,
                                            bool create,
                                            bool isLocked) {
@@ -1489,7 +1489,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const& object,
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const& object,
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                 TRI_shaped_json_t* result,
                                 TRI_shaper_t* shaper,
                                 bool create,
@@ -1518,7 +1518,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const& object,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const& parameter,
+static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
                                  set<int>& seenHashes,
                                  vector<v8::Handle<v8::Object> >& seenObjects) {
   if (parameter->IsBoolean()) {
@@ -1629,7 +1629,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const& parameter,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const& parameter) {
+TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
   set<int> seenHashes;
   vector< v8::Handle<v8::Object> > seenObjects;
 
@@ -1640,7 +1640,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const& parameter) {
 /// @brief converts an V8 object to a string
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_ObjectToString (v8::Handle<v8::Value> const& value) {
+string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
   TRI_Utf8ValueNFC utf8Value(TRI_UNKNOWN_MEM_ZONE, value);
 
   if (*utf8Value == 0) {
@@ -1655,7 +1655,7 @@ string TRI_ObjectToString (v8::Handle<v8::Value> const& value) {
 /// @brief converts an V8 object to a character
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_ObjectToCharacter (v8::Handle<v8::Value> const& value, bool& error) {
+char TRI_ObjectToCharacter (v8::Handle<v8::Value> const value, bool& error) {
   error = false;
 
   if (! value->IsString() && ! value->IsStringObject()) {
@@ -1677,7 +1677,7 @@ char TRI_ObjectToCharacter (v8::Handle<v8::Value> const& value, bool& error) {
 /// @brief converts an V8 object to an int64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const& value) {
+int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
     return (int64_t) value->ToNumber()->Value();
   }
@@ -1694,7 +1694,7 @@ int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const& value) {
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const& value,
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const value,
                              const bool allowStringConversion) {
   if (value->IsNumber()) {
     return (uint64_t) value->ToNumber()->Value();
@@ -1717,7 +1717,7 @@ uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const& value,
 /// @brief converts an V8 object to a double
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ObjectToDouble (v8::Handle<v8::Value> const& value) {
+double TRI_ObjectToDouble (v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
     return value->ToNumber()->Value();
   }
@@ -1734,7 +1734,7 @@ double TRI_ObjectToDouble (v8::Handle<v8::Value> const& value) {
 /// @brief converts an V8 object to a double with error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ObjectToDouble (v8::Handle<v8::Value> const& value, bool& error) {
+double TRI_ObjectToDouble (v8::Handle<v8::Value> const value, bool& error) {
   error = false;
 
   if (value->IsNumber()) {
@@ -1755,7 +1755,7 @@ double TRI_ObjectToDouble (v8::Handle<v8::Value> const& value, bool& error) {
 /// @brief converts an V8 object to a boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const& value) {
+bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const value) {
   if (value->IsBoolean()) {
     return value->ToBoolean()->Value();
   }
