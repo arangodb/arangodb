@@ -135,7 +135,7 @@ PortFinder.prototype.next = function () {
         available = testPort("tcp://0.0.0.0:"+this.port);
       }
       else {
-        var url = "http" + this.dispatcher.endpoint.substr(3) + 
+        var url = endpointToURL(this.dispatcher.endpoint) +
                   "/_admin/clusterCheckPort?port="+this.port;
         var hdrs = {};
         if (this.dispatcher.username !== undefined &&

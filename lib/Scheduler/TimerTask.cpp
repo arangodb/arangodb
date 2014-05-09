@@ -31,6 +31,7 @@
 #include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
