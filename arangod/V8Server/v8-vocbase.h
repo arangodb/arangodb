@@ -60,7 +60,7 @@ namespace triagens {
 int TRI_ParseVertex (triagens::arango::CollectionNameResolver const&,
                      TRI_voc_cid_t&,
                      TRI_voc_key_t&,
-                     v8::Handle<v8::Value> const&,
+                     v8::Handle<v8::Value> const,
                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
