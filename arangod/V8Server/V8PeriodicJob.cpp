@@ -28,7 +28,9 @@
 #include "V8PeriodicJob.h"
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
@@ -48,15 +50,13 @@ using namespace triagens::arango;
 
 V8PeriodicJob::V8PeriodicJob (TRI_vocbase_t* vocbase,
                               ApplicationV8* v8Dealer,
-                              string const& module,
-                              string const& func,
-                              string const& parameter)
+                              string const& command,
+                              TRI_json_t const* parameters)
   : Job("V8 Periodic Job"),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
-    _module(module),
-    _func(func),
-    _parameter(parameter),
+    _command(command),
+    _parameters(parameters),
     _canceled(0) {
 }
 
@@ -101,17 +101,43 @@ Job::status_t V8PeriodicJob::work () {
   // now execute the function within this context
   {
     v8::HandleScope scope;
+    
+    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+    
+    // Invoke Function constructor to create function with the given body and no arguments
+    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), _command.size()) };
+    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
-    string module = StringUtils::escape(_module, "\"");
-    string func = StringUtils::escape(_func, "\"");
-    string parameter = StringUtils::escape(_parameter, "\"");
-
-    string command = "(require(\"" + module + "\")[\"" + func + "\"])(\"" + parameter + "\")";
-
-    TRI_ExecuteJavaScriptString(context->_context,
-                                v8::String::New(command.c_str(), (int) command.size()),
-                                v8::String::New("periodic function"),
-                                true);
+    v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
+  
+    if (action.IsEmpty()) {
+      _v8Dealer->exitContext(context);
+      // TODO: adjust exit code??
+      return status_t(JOB_DONE);
+    }
+ 
+    v8::Handle<v8::Value> fArgs;
+    if (_parameters != 0) {
+      fArgs = TRI_ObjectJson(_parameters);
+    }
+    else {
+      fArgs = v8::Undefined();
+    }
+    
+    // call the function  
+    v8::TryCatch tryCatch;
+    action->Call(current, 1, &fArgs);
+      
+    if (tryCatch.HasCaught()) {
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+      else {
+        LOG_WARNING("caught non-printable exception in periodic task");
+      }
+    }
   }
 
   _v8Dealer->exitContext(context);

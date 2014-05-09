@@ -32,6 +32,10 @@
 
 #include "VocBase/vocbase.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class V8PeriodicTask
 // -----------------------------------------------------------------------------
@@ -65,9 +69,8 @@ namespace triagens {
                         rest::Dispatcher*,
                         double,
                         double,
-                        string const&,
-                        string const&,
-                        string const&);
+                        std::string const&,
+                        struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -80,6 +83,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getDescription (struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined
@@ -126,22 +135,16 @@ namespace triagens {
         rest::Dispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module name
+/// @brief command to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const _module;
+        std::string const _command;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function name
+/// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const _func;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief paramater string
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string const _parameter;
+        struct TRI_json_s* _parameters;
 
     };
   }

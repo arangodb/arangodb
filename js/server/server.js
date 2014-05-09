@@ -58,9 +58,7 @@ var Buffer = require("buffer").Buffer;
       name: "statistics-collector",
       offset: 1, 
       period: 10, 
-      module: "org/arangodb/statistics", 
-      funcname: "historian", 
-      parameter: "_statistics"
+      command: "require('org/arangodb/statistics').historian();"
     });
   }
 }());
