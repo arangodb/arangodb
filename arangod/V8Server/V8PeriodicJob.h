@@ -56,9 +56,9 @@ namespace triagens {
 
         V8PeriodicJob (TRI_vocbase_t*,
                        ApplicationV8*,
-                       const string& module,
-                       const string& func,
-                       const string& parameter);
+                       string const& module,
+                       string const& func,
+                       string const& parameter);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods

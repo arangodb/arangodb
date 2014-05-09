@@ -52,8 +52,8 @@ var Buffer = require("buffer").Buffer;
 (function () {
   var internal = require("internal");
 
-  if (internal.threadNumber === 0 && typeof internal.definePeriodic === "function") {
-    internal.definePeriodic({ 
+  if (internal.threadNumber === 0 && typeof internal.executeTask === "function") {
+    internal.executeTask({ 
       id: "statistics-collector", 
       name: "statistics-collector",
       offset: 1, 

@@ -35,6 +35,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
@@ -222,9 +223,13 @@ void Scheduler::shutdown () {
 /// @brief list user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::pair<std::string, std::string> > Scheduler::getUserTasks () {
-  vector<pair<string, string> > result;
-  
+TRI_json_t* Scheduler::getUserTasks () {
+  TRI_json_t* json = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    return 0;
+  }
+
   {
     MUTEX_LOCKER(schedulerLock);
 
@@ -233,18 +238,27 @@ std::vector<std::pair<std::string, std::string> > Scheduler::getUserTasks () {
       Task* task = (*i).first;
 
       if (task->isUserDefined()) {
-        result.push_back(make_pair(task->id(), task->name()));
+        TRI_json_t* obj = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+        if (obj != 0) {
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, obj, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, task->id().c_str()));
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, obj, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, task->name().c_str()));
+
+          task->getDescription(obj);
+        }
+
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
       }
 
       ++i;
     }
   }
 
-  return result;
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cancel a user task by id
+/// @brief unregister and delete a user task by id
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::unregisterUserTask (string const& id) {
@@ -280,7 +294,7 @@ int Scheduler::unregisterUserTask (string const& id) {
     return TRI_ERROR_TASK_NOT_FOUND;
   }
 
-  return unregisterTask(task);
+  return destroyTask(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +378,7 @@ int Scheduler::unregisterTask (Task* task) {
 /// @brief destroys task
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::destroyTask (Task* task) {
+int Scheduler::destroyTask (Task* task) {
   SchedulerThread* thread = 0;
 
   {
@@ -375,7 +389,7 @@ void Scheduler::destroyTask (Task* task) {
     if (i == task2thread.end()) {
       LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*) task, task->name().c_str());
 
-      return;
+      return TRI_ERROR_TASK_NOT_FOUND;
     }
     else {
       LOG_TRACE("destroyTask for task %p (%s)", (void*) task, task->name().c_str());
@@ -391,6 +405,8 @@ void Scheduler::destroyTask (Task* task) {
   }
 
   thread->destroyTask(task);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
