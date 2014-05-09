@@ -434,7 +434,9 @@
     addTask("createKickstarterConfiguration",
       "setup _cluster_kickstarter_plans collection", function () {
         //TODO add check if this is the main dispatcher
-      return createSystemCollection("_cluster_kickstarter_plans");
+      return createSystemCollection("_cluster_kickstarter_plans", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,7 +559,9 @@
 
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions");
+      return createSystemCollection("_aqlfunctions", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,7 +667,10 @@
     // create the _statistics collection
     addTask("createConfiguration", "setup _configuration collection", function () {
       var name = "_configuration";
-      var result = createSystemCollection(name, { waitForSync: true });
+      var result = createSystemCollection(name, { 
+        waitForSync: true, 
+        journalSize: 1024 * 1024 
+      });
 
       return result;
     });
