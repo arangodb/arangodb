@@ -1835,6 +1835,10 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_CURSOR_NOT_FOUND: 
       case arangodb.ERROR_USER_NOT_FOUND: 
         code = exports.HTTP_NOT_FOUND;
+        break;
+         
+      case arangodb.ERROR_REQUEST_CANCELED: 
+        code = exports.HTTP_REQUEST_TIMEOUT;
         break; 
 
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
@@ -2123,6 +2127,7 @@ exports.HTTP_PAYMENT             = 402;
 exports.HTTP_FORBIDDEN           = 403;
 exports.HTTP_NOT_FOUND           = 404;
 exports.HTTP_METHOD_NOT_ALLOWED  = 405;
+exports.HTTP_REQUEST_TIMEOUT     = 408;
 exports.HTTP_CONFLICT            = 409;
 exports.HTTP_PRECONDITION_FAILED = 412;
 exports.HTTP_ENTITY_TOO_LARGE    = 413;

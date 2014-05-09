@@ -202,10 +202,64 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response.should_not include(id)
     end
+    
+    it "checks whether we can cancel an AQL query" do
+      cmd = "/_api/cursor"
+      body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}'
+      doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-204", cmd)
+      doc.code.should eq(204)
+
+      cmd = "/_api/job/" + id + "/cancel"
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-cancel", cmd)
+      doc.code.should eq(200)
+
+      sleep 5
+
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
+      doc.code.should eq(408)
+    end
+    
+    it "checks whether we can cancel an AQL query" do
+      cmd = "/_api/cursor"
+      body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}'
+      doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
+
+      doc.code.should eq(202)
+      doc.headers.should have_key("x-arango-async-id")
+      id = doc.headers["x-arango-async-id"]
+      id.should match(/^\d+$/)
+      doc.response.body.should eq ""
+
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-204", cmd)
+      doc.code.should eq(204)
+
+      sleep 2
+
+      cmd = "/_api/job/" + id + "/cancel"
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-cancel", cmd)
+      doc.code.should eq(200)
+
+      sleep 5
+
+      cmd = "/_api/job/" + id
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
+      doc.code.should eq(408)
+    end
 
     it "checks whether we can cancel an AQL query" do
       cmd = "/_api/cursor"
-      body = '{"query": "for x in 1..10000 for y in 1..10000 filter x == 1 && y == 1 return x"}'
+      body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}'
       doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
 
       doc.code.should eq(202)
@@ -256,7 +310,7 @@ describe ArangoDB do
 
       cmd = "/_api/job/" + id
       doc = ArangoDB.log_put("#{prefix}-create-transaction-check-status-408", cmd)
-      #doc.code.should eq(408)
+      doc.code.should eq(408)
     end
   end
 end

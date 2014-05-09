@@ -5347,6 +5347,12 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> result;
   result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
+  int res = context.ptr()->_error._code;
+  
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
+    result = CreateErrorObjectAhuacatl(&(context.ptr()->_error)); 
+  }
+
   context.free();
   
   if (userOptions != 0) {
