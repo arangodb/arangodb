@@ -18,8 +18,16 @@
                     bind : function () {
                         return "authBinding";
                     }
+                },
+                serverToShow : undefined,
+
+                dashboard : function () {
+
                 }
+
             };
+
+
             arangoDocumentsDummy = {
                 getStatisticsHistory : function () {
 
@@ -1358,257 +1366,272 @@
 
         });
 
-        /*
 
-         renderLineChart: function(remake) {
-                    var self = this;
-                    self.chartData = {
-                        labelsNormal : ['datetime'],
-                        labelsShowAll : ['datetime'],
-                        data : [],
-                        visibilityNormal : [],
-                        visibilityShowAll : []
-                    };
-                    var getData = function() {
-                        var data = {};
-                        Object.keys(self.hist).forEach(function(server) {
-                            Object.keys(self.hist[server]).forEach(function(date) {
-                                if (date === "lastTime") {
-                                    return;
-                                }
-                                if (!data[date]) {
-                                    data[date] = {};
-                                    Object.keys(self.hist).forEach(function(s) {
-                                        data[date][s] = null;
-                                    });
-                                }
-                                data[date][server] = self.hist[server][date];
-                            });
-                        });
-                        Object.keys(data).forEach(function(d) {
-                            var i = 0;
-                            var sum = 0;
-                            Object.keys(data[d]).forEach(function(server) {
-                                if (data[d][server] !== null) {
-                                    i++;
-                                    sum = sum + data[d][server];
-                                }
-                                data[d].ClusterAverage = sum / i;
-                            });
-                        });
-                        Object.keys(data).sort().forEach(function (time) {
-                            var dataList = [new Date(parseFloat(time))];
-                            self.max = Number.NEGATIVE_INFINITY;
-                            self.chartData.visibilityShowAll = [];
-                            self.chartData.labelsShowAll = [ "Date"];
-                            Object.keys(data[time]).sort().forEach(function (server) {
-                                self.chartData.visibilityShowAll.push(true);
-                                self.chartData.labelsShowAll.push(server);
-                                dataList.push(data[time][server]);
-                            });
-                            self.chartData.data.push(dataList);
-                        });
-                        var latestEntry = self.chartData.data[self.chartData.data.length -1];
-                        latestEntry.forEach(function (e) {
-                            if (latestEntry.indexOf(e) > 0) {
-                                if (e !== null) {
-                                    if (self.max < e) {
-                                        self.max = e;
-                                    }
-                                }
-                            }
-                        });
-                        self.chartData.visibilityNormal = [];
-                        self.chartData.labelsNormal = [ "Date"];
-                        var i = 0;
-                        latestEntry.forEach(function (e) {
-                            if (i > 0) {
-                                if ("ClusterAverage" === self.chartData.labelsShowAll[i]) {
-                                    self.chartData.visibilityNormal.push(true);
-                                    self.chartData.labelsNormal.push(
-                                        self.chartData.labelsShowAll[i] + " (avg)"
-                                    );
-                                } else if (e === self.max ) {
-                                    self.chartData.visibilityNormal.push(true);
-                                    self.chartData.labelsNormal.push(
-                                        self.chartData.labelsShowAll[i] + " (max)"
-                                    );
-                                } else {
-                                    self.chartData.visibilityNormal.push(false);
-                                    self.chartData.labelsNormal.push(self.chartData.
-                                    labelsShowAll[i]);
-                                }
-                            }
-                            i++;
-                        });
-                    };
-                    if (this.graph !== undefined && !remake) {
-                        getData();
-                        var opts = {file : this.chartData.data};
-                        if (this.graphShowAll ) {
-                            opts.labels = this.chartData.labelsShowAll;
-                            opts.visibility = this.chartData.visibilityShowAll;
-                        } else {
-                            opts.labels = this.chartData.labelsNormal;
-                            opts.visibility = this.chartData.visibilityNormal;
-                        }
-                        opts.dateWindow = this.updateDateWindow( this.graph.graph,
-                        this.graphShowAll);
-                        this.graph.graph.updateOptions(opts);
-                        return;
-                    }
+        it("assert stopUpdating", function () {
 
-                    var makeGraph = function(remake) {
-                        self.graph = {data : null, options :
-                            self.dygraphConfig.getDefaultConfig("clusterAverageRequestTime")
-                        };
-                        getData();
-                        self.graph.data = self.chartData.data;
-                        self.graph.options.visibility = self.chartData.visibilityNormal;
-                        self.graph.options.labels = self.chartData.labelsNormal;
-                        self.graph.options.colors =
-                            self.dygraphConfig.getColors(self.chartData.labelsNormal);
-                        if (remake) {
-                            self.graph.options =
-                                self.dygraphConfig.getDetailChartConfig(
-                                "clusterAverageRequestTime");
-                            self.graph.options.labels = self.chartData.labelsShowAll;
-                            self.graph.options.colors =
-                                self.dygraphConfig.getColors(self.chartData.labelsShowAll);
-                            self.graph.options.visibility = self.chartData.visibilityShowAll;
-                            self.graph.options.height = $('.modal-chart-detail').height() * 0.7;
-                            self.graph.options.width = $('.modal-chart-detail').width() * 0.84;
-                            self.graph.options.title = "";
-                        }
-                        self.graph.graph = new Dygraph(
-                            document.getElementById(remake ? 'lineChartDetail' : 'lineGraph'),
-                            self.graph.data,
-                            self.graph.options
-                        );
-                        self.graph.graph.setSelection(false, 'ClusterAverage', true);
-                    };
-                    makeGraph(remake);
+            spyOn(window, "clearTimeout");
+
+            view.stopUpdating();
+
+            expect(window.clearTimeout).toHaveBeenCalledWith(view.timer);
+            expect(view.isUpdating).toEqual(false);
+
+        });
+
+
+        it("assert startUpdating but is already updating", function () {
+
+            spyOn(window, "setInterval");
+            view.isUpdating = true;
+            view.startUpdating();
+
+            expect(window.setInterval).not.toHaveBeenCalled();
+
+        });
+
+        it("assert startUpdating", function () {
+
+            spyOn(window, "setInterval").andCallFake(function (a, b) {
+                a();
+            });
+            spyOn(view, "rerender");
+            view.isUpdating = false;
+            view.startUpdating();
+            expect(view.rerender).toHaveBeenCalled();
+            expect(window.setInterval).toHaveBeenCalledWith(jasmine.any(Function), view.interval);
+
+        });
+
+        it("assert dashboard for dbserver", function () {
+
+
+            spyOn(view, "stopUpdating");
+            spyOn(window, "$").andReturn({
+                remove : function () {
 
                 },
-
-                updateDateWindow: function (graph, isDetailChart) {
-                    var t = new Date().getTime();
-                    var borderLeft, borderRight;
-                    if (isDetailChart && graph.dateWindow_) {
-                        borderLeft = graph.dateWindow_[0];
-                        borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0 ?
-                            graph.dateWindow_[1] : t;
-                        return [borderLeft, borderRight];
-                    }
-                    return [t - this.defaultFrame, t];
-
-
+                hasClass : function () {
+                    return true;
                 },
-
-                stopUpdating: function () {
-                    window.clearTimeout(this.timer);
-                    delete this.graph;
-                    this.isUpdating = false;
-                },
-
-                startUpdating: function () {
-                    if (this.isUpdating) {
-                        return;
-                    }
-                    this.isUpdating = true;
-                    var self = this;
-                    this.timer = window.setInterval(function() {
-                        self.rerender();
-                    }, this.interval);
-                },
-
-
-                dashboard: function(e) {
-                    this.stopUpdating();
-                    var tar = $(e.currentTarget);
-                    var serv = {};
-                    var cur;
-                    var coord;
-                    $("#waitModalLayer").remove();
-                    var ip_port = tar.attr("id");
-                    ip_port = ip_port.replace(/\-/g,'.');
-                    ip_port = ip_port.replace(/\_/g,':');
-                    ip_port = ip_port.substr(2);
-                    serv.raw = ip_port;
-                    serv.isDBServer = tar.hasClass("dbserver");
-                    if (serv.isDBServer) {
-                        cur = this.dbservers.findWhere({
-                            address: serv.raw
-                        });
-                        coord = this.coordinators.findWhere({
-                            status: "ok"
-                        });
-                        serv.endpoint = coord.get("protocol")
-                            + "://"
-                            + coord.get("address");
-                    } else {
-                        cur = this.coordinators.findWhere({
-                            address: serv.raw
-                        });
-                        serv.endpoint = cur.get("protocol")
-                            + "://"
-                            + cur.get("address");
-                    }
-                    serv.target = encodeURIComponent(cur.get("name"));
-                    window.App.serverToShow = serv;
-                    window.App.dashboard();
-                },
-
-                showDetail : function() {
-                    var self = this;
-                    delete self.graph;
-                    window.modalView.hideFooter = true;
-                    window.modalView.hide();
-                    window.modalView.show(
-                        "modalGraph.ejs",
-                        "Average request time in milliseconds",
-                        undefined,
-                        undefined,
-                        undefined
-                    );
-
-                    window.modalView.hideFooter = false;
-
-                    $('#modal-dialog').on('hidden', function () {
-                        delete self.graph;
-                        self.resetShowAll();
-                    });
-                    //$('.modal-body').css({"max-height": "100%" });
-                    $('#modal-dialog').toggleClass("modal-chart-detail", true);
-                    self.setShowAll();
-                    self.renderLineChart(true);
-                    return self;
-                },
-
-                getCurrentSize: function (div) {
-                    if (div.substr(0,1) !== "#") {
-                        div = "#" + div;
-                    }
-                    var height, width;
-                    $(div).attr("style", "");
-                    height = $(div).height();
-                    width = $(div).width();
-                    return {
-                        height: height,
-                        width: width
-                    };
-                },
-
-                resize: function () {
-                    var dimensions;
-                    if (this.graph) {
-                        dimensions = this.getCurrentSize(this.graph.graph.maindiv_.id);
-                        this.graph.graph.resize(dimensions.width, dimensions.height);
-                    }
+                attr : function () {
+                    return "AA123-456-789_8529";
                 }
             });
-*/
+            spyOn(serverDummy, "findWhere").andReturn({
+                get : function () {
+                    return "name";
+                }
 
+            });
+            spyOn(serverDummy2, "findWhere").andReturn({
+                get : function (a) {
+                    if (a === "protocol") {
+                        return "http";
+                    }
+                    if (a === "address") {
+                        return "localhost";
+                    }
+                    return "name";
+                }
+            });
+            view.dashboard({currentTarget : "target"});
+
+            expect(view.stopUpdating).toHaveBeenCalled();
+            expect(serverDummy.findWhere).toHaveBeenCalledWith({
+                address: "123.456.789:8529"
+            });
+            expect(serverDummy2.findWhere).toHaveBeenCalledWith({
+                status: "ok"
+            });
+            expect(window.App.serverToShow).toEqual({
+                raw : "123.456.789:8529",
+                isDBServer : true,
+                endpoint : "http://localhost",
+                target : "name"
+
+            });
+
+
+        });
+
+        it("assert dashboard for no dbserver", function () {
+
+
+            spyOn(view, "stopUpdating");
+            spyOn(window, "$").andReturn({
+                remove : function () {
+
+                },
+                hasClass : function () {
+                    return false;
+                },
+                attr : function () {
+                    return "AA123-456-789_8529";
+                }
+            });
+            spyOn(serverDummy, "findWhere").andReturn({
+                get : function () {
+                    return "name";
+                }
+
+            });
+            spyOn(serverDummy2, "findWhere").andReturn({
+                get : function (a) {
+                    if (a === "protocol") {
+                        return "http";
+                    }
+                    if (a === "address") {
+                        return "localhost";
+                    }
+                    return "name";
+                }
+            });
+            view.dashboard({currentTarget : "target"});
+
+            expect(view.stopUpdating).toHaveBeenCalled();
+            expect(serverDummy2.findWhere).toHaveBeenCalledWith({
+                address : '123.456.789:8529'
+            });
+            expect(window.App.serverToShow).toEqual({
+                raw : "123.456.789:8529",
+                isDBServer : false,
+                endpoint : "http://localhost",
+                target : "name"
+
+            });
+
+
+        });
+
+
+        it("assert showDetail", function () {
+
+
+            window.modalView = {
+
+                hide : function () {
+
+                },
+                show : function () {
+
+                }
+
+            };
+
+            spyOn(window.modalView, "hide");
+            spyOn(window.modalView, "show");
+
+            jqueryDummy = {
+                on : function () {
+
+                },
+                toggleClass : function () {
+
+                }
+            };
+
+            spyOn(window, "$").andReturn(jqueryDummy);
+
+
+            spyOn(jqueryDummy, "on").andCallFake(function (a, b) {
+                expect(a).toEqual("hidden");
+                b();
+            });
+            spyOn(jqueryDummy, "toggleClass");
+
+            spyOn(view, "resetShowAll");
+
+            spyOn(view, "setShowAll");
+            spyOn(view, "renderLineChart");
+
+            view.showDetail();
+
+
+            expect(view.resetShowAll).toHaveBeenCalled();
+            expect(view.setShowAll).toHaveBeenCalled();
+            expect(view.renderLineChart).toHaveBeenCalledWith(true);
+
+            expect(window.modalView.hide).toHaveBeenCalled();
+            expect(window.modalView.show).toHaveBeenCalledWith(
+                "modalGraph.ejs",
+                "Average request time in milliseconds",
+                undefined,
+                undefined,
+                undefined
+            );
+
+            expect(window.$).toHaveBeenCalledWith('#modal-dialog');
+
+            expect(jqueryDummy.toggleClass).toHaveBeenCalledWith(
+                "modal-chart-detail", true);
+
+
+
+        });
+
+
+
+        it("assert getCurrentSize", function () {
+            jqueryDummy = {
+                attr : function () {
+
+                },
+                height : function () {
+
+                },
+                width : function () {
+
+                }
+            };
+
+            spyOn(window, "$").andReturn(jqueryDummy);
+
+            spyOn(jqueryDummy, "attr");
+            spyOn(jqueryDummy, "height").andReturn(1);
+            spyOn(jqueryDummy, "width").andReturn(2);
+
+
+            expect(view.getCurrentSize("aDiv")).toEqual({
+                height: 1,
+                width: 2
+            });
+
+            expect(jqueryDummy.attr).toHaveBeenCalledWith(
+                "style", ""
+            );
+            expect(jqueryDummy.height).toHaveBeenCalled();
+            expect(jqueryDummy.width).toHaveBeenCalled();
+
+        });
+
+
+        it("assert resize", function () {
+
+
+           view.graph = {
+               graph : {
+                   maindiv_ : {
+                       id : 1
+                   },
+                   resize : function () {
+
+                   }
+               }
+           };
+
+           spyOn(view.graph.graph, "resize");
+           spyOn(view, "getCurrentSize").andReturn({
+               height: 1,
+               width: 2
+           });
+
+
+            view.resize();
+            expect(view.getCurrentSize).toHaveBeenCalledWith(1);
+            expect(view.graph.graph.resize).toHaveBeenCalledWith(2, 1);
+
+
+        });
 
     });
 
