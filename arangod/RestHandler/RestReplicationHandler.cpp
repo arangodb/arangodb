@@ -2193,12 +2193,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
-
-        // instead, truncate them
-        // ...
-        // do a fanout to all shards and truncate them, use col and asyncreq.
-        // return res;
-        return res;
+        res = truncateCollectionOnCoordinator(dbName, name);
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate collection (dropping is forbidden): "+
+                     name;
+          return res;
+        }
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
