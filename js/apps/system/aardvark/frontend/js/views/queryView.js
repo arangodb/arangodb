@@ -62,7 +62,7 @@
       'click #delete-edit-query': 'showDeleteField',
       'click #confirmDeleteQuery': 'deleteAQL',
       'click #abortDeleteQuery': 'hideDeleteField',
-      'keydown #new-query-name': 'listenKey',
+      'keyup #new-query-name': 'listenKey',
       'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
@@ -81,13 +81,27 @@
       if (e.keyCode === 13) {
         this.saveAQL(e);
       }
+      this.checkSaveName();
+    },
 
-      this.customQueries.forEach(function(query){
-        console.log(query.name, $('#new-query-name').val(), query.name === $('#new-query-name').val());
-        if( query.name === $('#new-query-name').val())
-          $('#save-new-query').removeClass('button-success');
-          $('#save-new-query').addClass('button-info');
-          $('#save-new-query').id = 'save-edit-query';
+    checkSaveName: function() {
+      var saveName = $('#new-query-name').val()
+      if ( saveName === "Insert Query"){
+        $('#new-query-name').val('');
+        return;
+      }
+
+      this.customQueries.some(function(query){
+        if( query.name === saveName ){
+          $('#save-query').removeClass('button-success');
+          $('#save-query').addClass('button-warning');
+          $('#save-query').text('Update');
+            return true;
+        } else {
+          $('#save-query').removeClass('button-warning');
+          $('#save-query').addClass('button-success');
+          $('#save-query').text('Save');
+        }
       });
     },
 
@@ -271,7 +285,9 @@
       setTimeout(function () {
         $('#new-query-name').focus();
       }, 500);
+      this.checkSaveName();
     },
+
     editAQL: function () {
       if (this.customQueries.length === 0) {
         //Heiko: display information that no custom queries are available
@@ -316,58 +332,43 @@
     },
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
-      var queryName = $('#new-query-name').val();
+      var saveName = $('#new-query-name').val();
       var content = inputEditor.getValue();
 
-      if (e) {
-        if (e.target.id === 'save-edit-query') {
-          content = $('#edit-aql-textarea').val();
-          queryName = $('#queryModalSelect').val();
-        }
-      }
-
-      if (queryName.trim() === '') {
+      if (saveName.trim() === '') {
         //Heiko: Form-Validator - illegal query name
         return;
       }
 
       //check for already existing entry
-      var tempArray = [];
       var quit = false;
       $.each(this.customQueries, function (k, v) {
-        if (e.target.id !== 'save-edit-query') {
-          if (v.name === queryName) {
+          if (v.name === saveName) {
             v.value = content;
             quit = true;
             return;
           }
-        }
-        if (v.name !== queryName) {
-          tempArray.push({
-            name: v.name,
-            value: v.value
-          });
-        }
-      });
+        });
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
+      $('#new-aql-query').modal('hide');
+      $('#edit-aql-query').modal('hide');
         return;
       }
 
-      this.customQueries = tempArray;
-
       this.customQueries.push({
-        name: queryName,
+        name: saveName,
         value: content
       });
 
       $('#new-aql-query').modal('hide');
-      $('#edit-aql-queries').modal('hide');
+      $('#edit-aql-query').modal('hide');
 
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
     },
+
     updateEditSelect: function () {
       var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
       $('#edit-aql-textarea').val(value);
