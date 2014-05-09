@@ -341,7 +341,10 @@
 
     // set up the collection _graphs
     addTask("setupGraphs", "setup _graphs collection", function () {
-      return createSystemCollection("_graphs", { waitForSync : true });
+      return createSystemCollection("_graphs", { 
+        waitForSync : true,
+        journalSize: 1024 * 1024 
+      });
     });
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +416,9 @@
 
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
-      return createSystemCollection("_modules");
+      return createSystemCollection("_modules", {
+        journalSize: 1024 * 1024 
+      });
     });
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -423,7 +428,9 @@
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
       // needs to be big enough for assets
-      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
+      return createSystemCollection("_routing", { 
+        journalSize: 32 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
