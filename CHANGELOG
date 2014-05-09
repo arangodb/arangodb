@@ -1,4 +1,4 @@
-v2.1.0-alpha2 (XXXX-XX-XX)
+v2.1.0-alpha3 (XXXX-XX-XX)
 -------------------
 
 * fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
