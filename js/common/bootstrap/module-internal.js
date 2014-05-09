@@ -21,7 +21,7 @@
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-  SYS_DEFINE_PERIODIC, SYS_DELETE_PERIODIC, SYS_GET_PERIODIC, SYS_TEST_PORT */
+  SYS_EXECUTE_TASK, SYS_DELETE_TASK, SYS_GET_TASKS, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -752,30 +752,30 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief definePeriodic
+/// @brief executeTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEFINE_PERIODIC !== "undefined") {
-    exports.definePeriodic = SYS_DEFINE_PERIODIC;
-    delete SYS_DEFINE_PERIODIC;
+  if (typeof SYS_EXECUTE_TASK !== "undefined") {
+    exports.executeTask = SYS_EXECUTE_TASK;
+    delete SYS_EXECUTE_TASK;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletePeriodic
+/// @brief deleteTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DELETE_PERIODIC !== "undefined") {
-    exports.deletePeriodic = SYS_DELETE_PERIODIC;
-    delete SYS_DELETE_PERIODIC;
+  if (typeof SYS_DELETE_TASK !== "undefined") {
+    exports.deleteTask = SYS_DELETE_TASK;
+    delete SYS_DELETE_TASK;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getPeriodic
+/// @brief getTasks
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GET_PERIODIC !== "undefined") {
-    exports.getPeriodic = SYS_GET_PERIODIC;
-    delete SYS_GET_PERIODIC;
+  if (typeof SYS_GET_TASKS !== "undefined") {
+    exports.getTasks = SYS_GET_TASKS;
+    delete SYS_GET_TASKS;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

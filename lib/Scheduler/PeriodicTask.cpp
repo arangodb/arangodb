@@ -28,6 +28,7 @@
 
 #include "PeriodicTask.h"
 
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
@@ -44,8 +45,6 @@ PeriodicTask::PeriodicTask (double offset,
     offset(offset),
     interval(interval) {
 }
-
-
 
 PeriodicTask::~PeriodicTask () {
   if (watcher != 0) {
@@ -65,18 +64,26 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 // Task methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+void PeriodicTask::getDescription (TRI_json_t* json) {
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, interval));
+}
+
 bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_scheduler = scheduler;
   this->_loop = loop;
 
   watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
+
   if (watcher == -1) {
     return false;
   }
   return true;
 }
-
-
 
 void PeriodicTask::cleanup () {
   if (_scheduler == 0) {
@@ -87,8 +94,6 @@ void PeriodicTask::cleanup () {
   _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }
-
-
 
 bool PeriodicTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
