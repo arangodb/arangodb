@@ -114,6 +114,17 @@ function getAuthorization (dispatcher) {
   return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
 }
 
+function endpointToURL (endpoint) {
+  if (endpoint.substr(0,6) === "ssl://") {
+    return "https://" + endpoint.substr(6);
+  }
+  var pos = endpoint.indexOf("://");
+  if (pos === -1) {
+    return "http://" + endpoint;
+  }
+  return "http" + endpoint.substr(pos);
+}
+
 PortFinder.prototype.next = function () {
   while (true) {   // will be left by return when port is found
     if (this.pos < this.list.length) {
@@ -181,17 +192,6 @@ function getAddrPort (endpoint) {
     return endpoint.substr(pos+3);
   }
   return endpoint;
-}
-
-function endpointToURL (endpoint) {
-  if (endpoint.substr(0,6) === "ssl://") {
-    return "https://" + endpoint.substr(6);
-  }
-  var pos = endpoint.indexOf("://");
-  if (pos === -1) {
-    return "http://" + endpoint;
-  }
-  return "http" + endpoint.substr(pos);
 }
 
 function getAddr (endpoint) {
