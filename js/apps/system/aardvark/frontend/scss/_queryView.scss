@@ -259,4 +259,42 @@
     cursor: pointer;
     margin-bottom: 5px;
   }
+
+  .arango-table {
+      table-layout: fixed;
+      max-width: 100%;
+      width: 100%;
+
+      tbody {
+      max-width: 100%;
+      width: 100%;
+      }
+
+    tr {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .table-cell0 {
+      width: 20%;
+      min-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+    .table-cell1 {
+      width: 73%;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+    .table-cell2 {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+  }
 }
