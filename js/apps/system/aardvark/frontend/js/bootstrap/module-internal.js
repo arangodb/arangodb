@@ -758,6 +758,13 @@
   if (typeof SYS_EXECUTE_TASK !== "undefined") {
     exports.executeTask = SYS_EXECUTE_TASK;
     delete SYS_EXECUTE_TASK;
+
+    // TODO: remove this in next release 
+    exports.definePeriodic = function (offset, period, module, funcname) {
+      require("console").warn("definePeriodic() is deprecated. please use executeTask() instead");
+      var command = "require('" + module + "')." + funcname + "();"
+      exports.executeTask({ offset: offset, period: period, command: command });
+    };
   }
 
 ////////////////////////////////////////////////////////////////////////////////

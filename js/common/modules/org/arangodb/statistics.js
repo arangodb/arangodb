@@ -54,10 +54,10 @@ if (cluster.isCluster()) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the user authentication data
+/// @brief creates a statistics entry
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.historian = function (param) {
+exports.historian = function () {
   "use strict";
 
   try {

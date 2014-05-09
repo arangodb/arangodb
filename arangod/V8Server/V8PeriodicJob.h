@@ -31,6 +31,10 @@
 #include "Dispatcher/Job.h"
 #include "VocBase/vocbase.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class V8PeriodicJob
 // -----------------------------------------------------------------------------
@@ -56,9 +60,8 @@ namespace triagens {
 
         V8PeriodicJob (TRI_vocbase_t*,
                        ApplicationV8*,
-                       string const& module,
-                       string const& func,
-                       string const& parameter);
+                       std::string const&,
+                       struct TRI_json_s const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods
@@ -76,7 +79,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& queue ();
+        const std::string& queue ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -127,22 +130,16 @@ namespace triagens {
         ApplicationV8* _v8Dealer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module name
+/// @brief the command to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _module;
+        std::string const _command;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function name
+/// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _func;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief paramater string
-////////////////////////////////////////////////////////////////////////////////
-
-        const std::string _parameter;
+        struct TRI_json_s const* _parameters;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cancel flag

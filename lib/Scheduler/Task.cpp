@@ -59,8 +59,25 @@ Task::~Task () {
 }
 
 // -----------------------------------------------------------------------------
-// protected methods
+// public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the task
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Task::toJson () {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->id().c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->name().c_str()));
+
+    this->getDescription(json);
+  }
+
+  return json;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined
@@ -72,18 +89,22 @@ bool Task::isUserDefined () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a task specific description in JSON format
-/// this does nothing for basic tasks, but derived classes may override it
-////////////////////////////////////////////////////////////////////////////////
-
-void Task::getDescription (TRI_json_t* json) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allow thread to run on slave event loop
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Task::needsMainEventLoop () const {
   return false;
+}
+
+// -----------------------------------------------------------------------------
+// protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+/// this does nothing for basic tasks, but derived classes may override it
+////////////////////////////////////////////////////////////////////////////////
+
+void Task::getDescription (TRI_json_t* json) {
 }
 

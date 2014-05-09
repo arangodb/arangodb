@@ -48,6 +48,7 @@
 #include "V8Server/V8PeriodicTask.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 
@@ -74,12 +75,6 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global VocBase
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* GlobalVocbase = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -1153,7 +1148,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines and executes a periodic task
+/// @brief defines and executes a task
 ///
 /// @FUN{internal.executeTask(@FA{task})}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1203,70 +1198,52 @@ static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
 
   // period in seconds & count
   double period = 0.0;
-  int64_t count;
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
     period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
+  }
+
   
-    if (period <= 0.0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
-    }
+  if (period <= 0.0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
+  }
 
-    if (obj->HasOwnProperty(TRI_V8_SYMBOL("count"))) {
-      // check for count attribute
-      count = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("count")));
+    
+  // extract the command
+  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("command"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "command must be specified");
+  }
 
-      if (count <= 0) {
-        TRI_V8_EXCEPTION_PARAMETER(scope, "task execution count must be specified and positive");
-      }
-    }
-    else {
-      // no count specified. this means the job will go on forever
-      count = -1; 
-    }
+  string command;
+  if (obj->Get(TRI_V8_SYMBOL("command"))->IsFunction()) {
+    // need to add ( and ) around function because call would otherwise break
+    command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command"))) + ")(params)";
   }
   else {
-    count = 1; // single execution
+    command = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command")));
   }
 
-  assert(count == -1 || count > 0);
+  // extract the parameters
+  TRI_json_t* parameters = 0;
 
-  // TODO: count is currently not used
-    
-  // extract the module name
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("module"))) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "module must be specified");
+  if (obj->HasOwnProperty(TRI_V8_SYMBOL("params"))) {
+    parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));
   }
 
-  string const module = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("module")));
-
-  // extract the function name
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("funcname"))) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "funcname must be specified");
-  }
-
-  string const func = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("funcname")));
-
-  // extract the parameter
-  string parameter;
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("parameter"))) {
-    parameter = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("parameter")));
-  }
-
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // create a new periodic task
   V8PeriodicTask* task = new V8PeriodicTask(
       id,
       name,
-      GlobalVocbase,
+      static_cast<TRI_vocbase_t*>(v8g->_vocbase),
       GlobalV8Dealer,
       GlobalScheduler,
       GlobalDispatcher,
       offset,
       period,
-      module,
-      func,
-      parameter);
+      command,
+      parameters);
 
   int res = GlobalScheduler->registerTask(task);
 
@@ -1276,17 +1253,21 @@ static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  // return the result
-  v8::Handle<v8::Object> result = v8::Object::New();
+  // get the JSON representation of the task
+  TRI_json_t* json = task->toJson();
 
-  result->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), (int) id.size()));
-  result->Set(TRI_V8_SYMBOL("name"), v8::String::New(name.c_str(), (int) name.size()));
+  if (json != 0) {
+    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  return scope.Close(result);
+    return scope.Close(result);
+  }
+
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a periodic task
+/// @brief deletes a task
 ///
 /// @FUN{internal.deleteTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1298,7 +1279,17 @@ static v8::Handle<v8::Value> JS_DeleteTask (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "deleteTask(<id>)");
   }
 
-  string const id = TRI_ObjectToString(argv[0]);
+  string id;
+  if (argv[0]->IsObject()) {
+    // extract "id" from object
+    v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+    if (obj->Has(TRI_V8_SYMBOL("id"))) {
+      id = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
+    }
+  }
+  else {
+    id = TRI_ObjectToString(argv[0]);
+  }
 
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
@@ -1314,7 +1305,7 @@ static v8::Handle<v8::Value> JS_DeleteTask (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all registered periodic tasks
+/// @brief gets all registered tasks
 ///
 /// @FUN{internal.getTasks()}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1357,7 +1348,6 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
                         ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
-  GlobalVocbase = vocbase;
   GlobalV8Dealer = applicationV8;
 
   // check the isolate
