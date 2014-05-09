@@ -206,6 +206,13 @@ namespace triagens {
     struct TRI_vector_pointer_s* getIndexesCoordinator (std::string const&,
                                                         std::string const&);
  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate a cluster collection on a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int truncateCollectionOnCoordinator ( string const& dbname,
+                                          string const& collname );
+
   }  // namespace arango
 }   // namespace triagens
 
