@@ -2218,16 +2218,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // now re-create the collection
   // dig out number of shards:
+  uint64_t numberOfShards = 1;
   TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, "shards");
-  if (0 == shards) {
-    errorMsg = "did not find \"shards\" attribute in parameters";
-    return TRI_ERROR_INTERNAL;
+  if (0 != shards && TRI_IsArrayJson(shards)) {
+    numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
   }
-  if (! TRI_IsArrayJson(shards)) {
-    errorMsg = "\"shards\" attribute in parameters is not an array";
-    return TRI_ERROR_INTERNAL;
-  }
-  uint64_t numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+  // We take one shard if "shards" was not given
   
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
