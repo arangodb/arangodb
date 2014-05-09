@@ -120,8 +120,7 @@ AM_CPPFLAGS = \
 	@READLINE_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
-	@V8_CPPFLAGS@ \
-	@LIBBSON_CPPFLAGS@
+	@V8_CPPFLAGS@ 
 
 ################################################################################
 ### @brief linker flags
@@ -134,8 +133,7 @@ AM_LDFLAGS = \
 	@READLINE_LDFLAGS@ \
 	@ICU_LDFLAGS@ \
 	@ZLIB_LDFLAGS@ \
-	@V8_LDFLAGS@ \
-	@LIBBSON_LDFLAGS@
+	@V8_LDFLAGS@ 
 
 ################################################################################
 ### @brief libraries
@@ -147,8 +145,7 @@ LIBS = \
 	@OPENSSL_LIBS@ \
 	@ICU_LIBS@ \
 	@ZLIB_LIBS@ \
-	@READLINE_LIBS@ \
-	@LIBBSON_LIBS@
+	@READLINE_LIBS@ 
 
 ################################################################################
 ### @brief ruby additions
@@ -524,12 +521,6 @@ if ENABLE_ALL_IN_ONE_ETCD
 include 3rdParty/Makefile.etcd
 endif
 
-################################################################################
-### @brief libbson
-################################################################################
-
-include 3rdParty/Makefile.libbson
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       CMAKE SETUP
 ## -----------------------------------------------------------------------------
@@ -585,11 +576,6 @@ cmake-setup:
 		-D ZLIB_LIB_PATH= \
 		-D ZLIB_LIBS= \
 		-D ZLIB_VERSION= \
-		\
-		-D LIBBSON_INCLUDE = \
-		-D LIBBSON_LIB_PATH= \
-		-D LIBBSON_LIBS= \
-		-D LIBBSON_VERSION= \
 		\
 		..
 
