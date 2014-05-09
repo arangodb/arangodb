@@ -21,22 +21,17 @@
     },
 
     updateTable:  function () {
-      console.log("CustomQueries: " , this.customQueries);
       this.tableDescription.rows = this.customQueries;
 
       _.each(this.tableDescription.rows, function(k,v) {
         k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus" title="Delete query"></span></a>';
-        console.log(k);
       });
 
-      console.log( this.tableDescription === this.customQueries);
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
     },
 
     editCustomQuery: function(e) {
-      console.log("e.target: ", $(e.target).parent().children().first().text());
       var queryName = $(e.target).parent().children().first().text();
-      //console.log(queryContent);
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.setValue(this.getCustomQueryValueByName(queryName));
       this.deselect(inputEditor);
@@ -66,14 +61,16 @@
       'click #editAQL': 'editAQL',
       'click #save-query': 'saveAQL',
       'click #delete-edit-query': 'showDeleteField',
-      'click #confirmDeleteQuery': 'deleteAQL',
       'click #abortDeleteQuery': 'hideDeleteField',
       'keyup #new-query-name': 'listenKey',
       'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
       'keypress #aqlEditor': 'aqlShortcuts',
-      'click #arangoQueryTable': 'editCustomQuery'
+      'click #arangoQueryTable .table-cell0': 'editCustomQuery',
+      'click #arangoQueryTable .table-cell1': 'editCustomQuery',
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+
     },
 
     initTabArray: function() {
@@ -259,7 +256,6 @@
       $("#customsDiv").show();
 
       this.switchTab('query-switch');
-      console.log(this.customQueries);
       return this;
     },
 
@@ -284,7 +280,6 @@
 
     addAQL: function () {
       //render options
-      console.log($('#querySelect').val());
 
       $('#new-query-name').val($('#querySelect').val());
       $('#new-aql-query').modal('show');
@@ -318,12 +313,14 @@
     hideDeleteField: function () {
       $('#reallyDeleteQueryDiv').hide();
     },
-    deleteAQL: function () {
-      var queryName = $('#queryModalSelect').val();
+
+    deleteAQL: function (e) {
+
+      var deleteName = $(e.target).parent().parent().parent().children().first().text();
       var tempArray = [];
 
       $.each(this.customQueries, function (k, v) {
-        if (queryName !== v.name) {
+        if (deleteName !== v.name) {
           tempArray.push({
             name: v.name,
             value: v.value
@@ -333,9 +330,10 @@
 
       this.customQueries = tempArray;
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
-      $('#edit-aql-queries').modal('hide');
       this.renderSelectboxes();
+      this.updateTable();
     },
+
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
@@ -532,9 +530,7 @@
       // The convention is #result-switch (a-tag), #result (content-div), and
       // #tabContentResult (pane-div).
       // We set the clicked element's tags to active/show and the others to hide.
-      //console.log("Type of e: " + typeof e + "e: " + e);
       var switchId = typeof e === 'string' ? e : e.target.id;
-      //console.log("switchId: " + switchId);
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
