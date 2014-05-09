@@ -45,6 +45,7 @@
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
+#include "VocBase/index.h"
 
 #ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ClusterMethods.h"
@@ -2158,18 +2159,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+  TRI_json_t* parameters = JsonHelper::getArrayElement(collection, "parameters");
 
   if (! JsonHelper::isArray(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
-  }
-
-  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
-
-  if (! JsonHelper::isList(indexes)) {
-    errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
@@ -2187,56 +2180,24 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_vocbase_col_t* col = 0;
+  string dbName = _vocbase->_name;
 
-  if (reuseId) {
-    TRI_json_t const* idString = JsonHelper::getArrayElement(parameters, "cid");
-
-    if (! JsonHelper::isString(idString)) {
-      errorMsg = "collection id is missing";
-
-      return TRI_ERROR_HTTP_BAD_PARAMETER;
-    }
-
-    TRI_voc_cid_t cid = StringUtils::uint64(idString->_value._string.data, idString->_value._string.length - 1);
-
-    // first look up the collection by the cid
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-  }
-
-
-  if (col == 0) {
-    // not found, try name next
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
-  }
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
-  if (col != 0) {
+  if (! col->empty()) {
     if (dropExisting) {
-      int res = TRI_DropCollectionVocBase(_vocbase, col, remoteServerId);
-
+      int res = ci->dropCollectionCoordinator(dbName, col->id_as_string(),
+                                              errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
 
         // instead, truncate them
-        CollectionNameResolver resolver(_vocbase);
-        SingleCollectionWriteTransaction<EmbeddableTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, col->_cid);
-
-        res = trx.begin();
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        }
-        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
-
-        if (barrier == 0) {
-          return TRI_ERROR_INTERNAL;
-        }
-
-        res = trx.truncate(false);
-        res = trx.finish(res);
-
-        TRI_FreeBarrier(barrier);
-
+        // ...
+        // do a fanout to all shards and truncate them, use col and asyncreq.
+        // return res;
         return res;
       }
 
@@ -2256,7 +2217,78 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   }
 
   // now re-create the collection
-  int res = createCollection(parameters, &col, reuseId, remoteServerId);
+  // dig out number of shards:
+  TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, "shards");
+  if (0 == shards) {
+    errorMsg = "did not find \"shards\" attribute in parameters";
+    return TRI_ERROR_INTERNAL;
+  }
+  if (! TRI_IsArrayJson(shards)) {
+    errorMsg = "\"shards\" attribute in parameters is not an array";
+    return TRI_ERROR_INTERNAL;
+  }
+  uint64_t numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+  
+  TRI_voc_tick_t new_id_tick = ci->uniqid(1);
+  string new_id = StringUtils::itoa(new_id_tick);
+  TRI_ReplaceArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
+                       TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                              new_id.c_str(), new_id.size()));
+
+  // Now put in the primary and an edge index if needed:
+  TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (indexes == 0) {
+    errorMsg = "out of memory";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // create a dummy primary index
+  TRI_index_t* idx = TRI_CreatePrimaryIndex(0);
+
+  if (idx == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+    errorMsg = "out of memory";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_json_t* idxJson = idx->json(idx);
+  TRI_FreeIndex(idx);
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+
+  TRI_json_t* type = TRI_LookupArrayJson(parameters, "type");
+  TRI_col_type_e collectionType;
+  if (TRI_IsNumberJson(type)) {
+    collectionType = (TRI_col_type_e) type->_value._number;
+  }
+  else {
+    errorMsg = "collection type not given or wrong";
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (collectionType == TRI_COL_TYPE_EDGE) {
+    // create a dummy edge index
+    idx = TRI_CreateEdgeIndex(0, new_id_tick);
+
+    if (idx == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+      errorMsg = "cannot create edge index";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    idxJson = idx->json(idx);
+    TRI_FreeIndex(idx);
+
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
+
+  int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards, 
+                                            parameters, errorMsg, 0.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
@@ -2422,57 +2454,30 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
     return TRI_ERROR_NO_ERROR;
   }
 
-  // look up the collection
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+  string dbName = _vocbase->_name;
 
-  if (col == 0) {
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+
+  if (col->empty()) {
     errorMsg = "could not find collection '" + name + "'";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  int res = TRI_UseCollectionVocBase(_vocbase, col);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  TRI_primary_collection_t* primary = col->_collection;
-
-  TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
-
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
+  int res = TRI_ERROR_NO_ERROR;
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-    TRI_index_t* idx = 0;
-
-    // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-
-    res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
-
+    TRI_json_t* res_json = 0;
+    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, 
+                     true, IndexComparator, res_json, errorMsg, 3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
       break;
     }
-    else {
-      assert(idx != 0);
-
-      res = TRI_SaveIndex(primary, idx, remoteServerId);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "could not save index: " + string(TRI_errno_string(res));
-        break;
-      }
-    }
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
-
-  TRI_ReleaseCollectionVocBase(_vocbase, col);
-
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 #endif
 
@@ -2825,54 +2830,252 @@ void RestReplicationHandler::handleCommandRestoreData () {
 
 #ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
-  char const* value = _request->value("collection");
+  char const* name = _request->value("collection");
 
-  if (value == 0) {
+  if (name == 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
 
-  CollectionNameResolver resolver(_vocbase);
-
-  TRI_voc_cid_t cid = resolver.getCollectionId(value);
-
-  if (cid == 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
-    return;
-  }
-
-  bool recycleIds = false;
-  value = _request->value("recycleIds");
-  if (value != 0) {
-    recycleIds = StringUtils::boolean(value);
-  }
-
-  bool force = false;
-  value = _request->value("force");
-  if (value != 0) {
-    force = StringUtils::boolean(value);
-  }
-
-  TRI_server_id_t remoteServerId = 0; // TODO
+  string dbName = _vocbase->_name;
   string errorMsg;
 
-  int res = processRestoreData(resolver, cid, remoteServerId, recycleIds, force, errorMsg);
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+
+  if (col->empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  // We need to distribute the documents we get over the shards:
+  map<ShardID, ServerID> shardIdsMap = col->shardIds();
+  map<string, size_t> shardTab;
+  vector<string> shardIds;
+  map<ShardID, ServerID>::iterator it;
+  map<string, size_t>::iterator it2;
+  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); it++) {
+    shardTab.insert(make_pair(it->first,shardIds.size()));
+    shardIds.push_back(it->first);
+  }
+  vector<StringBuffer*> bufs;
+  size_t j;
+  for (j = 0; j < shardIds.size(); j++) {
+    bufs.push_back(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
+  }
+
+  const string invalidMsg = string("received invalid JSON data for collection ")
+                            + name;
+
+  char const* ptr = _request->body();
+  char const* end = ptr + _request->bodySize();
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  while (ptr < end) {
+    char const* pos = strchr(ptr, '\n');
+
+    if (pos == 0) {
+      pos = end;
+    }
+    else {
+      *((char*) pos) = '\0';
+    }
+
+    if (pos - ptr > 1) {
+      // found something
+      TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
+
+      if (! JsonHelper::isArray(json)) {
+        if (json != 0) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        }
+
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_CORRUPTED_JSON;
+        break;
+      }
+
+      const char* key       = 0;
+      TRI_json_t const* doc = 0;
+      TRI_replication_operation_e type;
+
+      const size_t n = json->_value._objects._length;
+
+      for (size_t i = 0; i < n; i += 2) {
+        TRI_json_t const* element 
+            = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+        if (! JsonHelper::isString(element)) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+          errorMsg = invalidMsg;
+
+          res = TRI_ERROR_HTTP_CORRUPTED_JSON;
+          break;
+        }
+
+        const char* attributeName = element->_value._string.data;
+        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+        if (TRI_EqualString(attributeName, "type")) {
+          if (JsonHelper::isNumber(value)) {
+            type = (TRI_replication_operation_e) (int) value->_value._number;
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "key")) {
+          if (JsonHelper::isString(value)) {
+            key = value->_value._string.data;
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "data")) {
+          if (JsonHelper::isArray(value)) {
+            doc = value;
+          }
+        }
+      }
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+
+      // key must not be 0, but doc can be 0!
+      if (key == 0) {
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_BAD_PARAMETER;
+        break;
+      }
+
+      if (0 != doc && type != MARKER_REMOVE) {
+        ShardID responsibleShard;
+        bool usesDefaultSharding;
+        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
+                                      responsibleShard, usesDefaultSharding);
+        if (res != TRI_ERROR_NO_ERROR) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+          errorMsg = "error during determining responsible shard";
+          res = TRI_ERROR_INTERNAL;
+          break;
+        }
+        else {
+          it2 = shardTab.find(responsibleShard);
+          if (it2 == shardTab.end()) {
+            TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+            errorMsg = "cannot find responsible shard";
+            res = TRI_ERROR_INTERNAL;
+            break;
+          }
+          else {
+            bufs[it2->second]->appendText(ptr, pos-ptr);
+            bufs[it2->second]->appendText("\n");
+          }
+        }
+      }
+      else if (type == MARKER_REMOVE) {
+        // A remove marker, this has to be appended to all!
+        for (j = 0; j < bufs.size(); j++) {
+          bufs[j]->appendText(ptr, pos-ptr);
+          bufs[j]->appendText("\n");
+        }
+      }
+      else {
+        // How very strange!
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_BAD_PARAMETER;
+        break;
+      }
+
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    }
+
+    ptr = pos + 1;
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // Set a few variables needed for our work:
+    ClusterComm* cc = ClusterComm::instance();
+
+    // Send a synchronous request to that shard using ClusterComm:
+    ClusterCommResult* result;
+    CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+    for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
+      map<string, string>* headers = new map<string, string>;
+      it2 = shardTab.find(it->first);
+      if (it2 == shardTab.end()) {
+        errorMsg = "cannot find shard";
+        res = TRI_ERROR_INTERNAL;
+      }
+      else {
+        j = it2->second;
+        result = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                               triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                               "/_db/" + StringUtils::urlEncode(dbName) +
+                               "/_api/replication/restore-data?collection=" +
+                               it->first, 
+                               new string(bufs[j]->c_str(), bufs[j]->length()),
+                               true, headers, NULL, 300.0);
+        delete result;
+      }
+    }
+
+    // Now listen to the results:
+    int count;
+    int nrok = 0;
+    for (count = (int) shardIdsMap.size(); count > 0; count--) {
+      result = cc->wait( "", coordTransactionID, 0, "", 0.0);
+      if (result->status == CL_COMM_RECEIVED) {
+        if (result->answer_code == triagens::rest::HttpResponse::OK ||
+            result->answer_code == triagens::rest::HttpResponse::CREATED) {
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                            result->answer->body());
+      
+          if (JsonHelper::isArray(json)) {
+            TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
+            if (TRI_IsBooleanJson(r)) {
+              if (r->_value._boolean) {
+                nrok++;
+              }
+            }
+          }
+
+          if (json != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          }
+        }
+      }
+      delete result;
+    }
+ 
+    if (nrok != shardIdsMap.size()) {
+      errorMsg = "some shard produced an error";
+      res = TRI_ERROR_INTERNAL;
+    }
+  }
+  
+  // Free all the string buffers:
+  for (j = 0; j < shardIds.size(); j++) {
+    delete bufs[j];
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::BAD, res, errorMsg);
   }
-  else {
-    TRI_json_t result;
 
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  TRI_json_t result;
 
-    generateResult(&result);
-  }
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+  generateResult(&result);
 }
 #endif
 
