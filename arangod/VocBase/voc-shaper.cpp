@@ -2004,7 +2004,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           
           result = 0;
 
-          for (size_t i = 0; i < numWeightedList; ++i) {
+          for (int i = 0; i < numWeightedList; ++i) {
             if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
               result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);
               break;
