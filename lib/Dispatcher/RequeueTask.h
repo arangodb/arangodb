@@ -31,7 +31,7 @@
 #include "Scheduler/TimerTask.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class V8PeriodicTask
+// --SECTION--                                                 class RequeueTask
 // -----------------------------------------------------------------------------
 
 namespace triagens {

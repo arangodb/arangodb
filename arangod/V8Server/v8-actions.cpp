@@ -34,6 +34,7 @@
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -1152,16 +1153,20 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a periodic task
+/// @brief defines and executes a periodic task
 ///
-/// @FUN{internal.definePeriodic(@FA{job})
+/// @FUN{internal.executeTask(@FA{task})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+  }
 
   if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "definePeriodic(<job>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "executeTask(<task>)");
   }
 
   v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
@@ -1186,27 +1191,48 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
     name = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("name")));
   }
   else {
-    name = "user-defined job";
+    name = "user-defined task";
   }
   
-  // offset in seconds into period
+  // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("offset"))) {
     offset = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("offset")));
   }
 
-  // period in seconds
+  // period in seconds & count
   double period = 0.0;
+  int64_t count;
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
     period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
+  
+    if (period <= 0.0) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
+    }
+
+    if (obj->HasOwnProperty(TRI_V8_SYMBOL("count"))) {
+      // check for count attribute
+      count = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("count")));
+
+      if (count <= 0) {
+        TRI_V8_EXCEPTION_PARAMETER(scope, "task execution count must be specified and positive");
+      }
+    }
+    else {
+      // no count specified. this means the job will go on forever
+      count = -1; 
+    }
+  }
+  else {
+    count = 1; // single execution
   }
 
-  if (period <= 0.0) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "job period must be specified and positive");
-  }
+  assert(count == -1 || count > 0);
 
+  // TODO: count is currently not used
+    
   // extract the module name
   if (! obj->HasOwnProperty(TRI_V8_SYMBOL("module"))) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "module must be specified");
@@ -1229,10 +1255,6 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
 
 
   // create a new periodic task
-  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
-  }
-    
   V8PeriodicTask* task = new V8PeriodicTask(
       id,
       name,
@@ -1266,14 +1288,14 @@ static v8::Handle<v8::Value> JS_DefinePeriodic (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a periodic task
 ///
-/// @FUN{internal.deletePeriodic(@FA{id}}
+/// @FUN{internal.deleteTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DeletePeriodic (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DeleteTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "deletePeriodic(<id>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "deleteTask(<id>)");
   }
 
   string const id = TRI_ObjectToString(argv[0]);
@@ -1294,36 +1316,29 @@ static v8::Handle<v8::Value> JS_DeletePeriodic (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets all registered periodic tasks
 ///
-/// @FUN{internal.listPeriodic(}
+/// @FUN{internal.getTasks()}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetPeriodic (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_GetTasks (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "getPeriodic()");
+    TRI_V8_EXCEPTION_USAGE(scope, "getTasks()");
   }
 
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
   
-  vector<pair<string, string> > const tasks = GlobalScheduler->getUserTasks();
+  TRI_json_t* json = GlobalScheduler->getUserTasks();
 
-  v8::Handle<v8::Array> result = v8::Array::New();
-
-  uint32_t j = 0;
-  for (size_t i = 0; i < tasks.size(); ++i) {
-    string const id = tasks[i].first;
-    string const name = tasks[i].second;
- 
-    v8::Handle<v8::Object> task = v8::Object::New();
-    task->Set(v8::String::New("id"), v8::String::New(id.c_str(), (int) id.size()));
-    task->Set(v8::String::New("name"), v8::String::New(name.c_str(), (int) name.size()));
-    
-    result->Set(j++, task);
+  if (json == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
-   
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+
   return scope.Close(result);
 }
 
@@ -1367,12 +1382,12 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   GlobalDispatcher = dispatcher->dispatcher();
 
   if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
-    TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_PERIODIC", JS_DefinePeriodic);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_DELETE_PERIODIC", JS_DeletePeriodic);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_PERIODIC", JS_GetPeriodic);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_TASK", JS_ExecuteTask);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_DELETE_TASK", JS_DeleteTask);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASKS", JS_GetTasks);
   }
   else {
-    LOG_ERROR("cannot initialise definePeriodic, scheduler or dispatcher unknown");
+    LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");
   }
 }
 

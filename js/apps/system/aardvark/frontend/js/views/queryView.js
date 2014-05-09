@@ -23,6 +23,12 @@
     updateTable:  function () {
       console.log("CustomQueries: " , this.customQueries);
       this.tableDescription.rows = this.customQueries;
+
+      _.each(this.tableDescription.rows, function(k,v) {
+        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus" title="Delete query"></span></a>';
+        console.log(k);
+      });
+
       console.log( this.tableDescription === this.customQueries);
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
     },
