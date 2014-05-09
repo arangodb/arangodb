@@ -9225,16 +9225,20 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
         ClusterCommResult* res;
         map<string, string> headers;
         headers["Authentication"] = TRI_ObjectToString(argv[2]);
-        res = cc->syncRequest("", 0, "server:"+sid, 
+        res = cc->syncRequest("", 0, "server:" + sid, 
                               triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                               "/_api/database/user", string(""), headers, 0.0);
+
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
           StringBuffer& body = res->result->getBody();
-          delete res;
+
           TRI_json_t* json = JsonHelper::fromString(body.c_str());
+          delete res;
+
           if (json != 0 && JsonHelper::isArray(json)) {
-            TRI_json_t const* dotresult = JsonHelper::getArrayElement(json,"result");
+            TRI_json_t const* dotresult = JsonHelper::getArrayElement(json, "result");
+
             if (dotresult != 0) {
               vector<string> list = JsonHelper::stringList(dotresult);
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
