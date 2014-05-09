@@ -172,6 +172,7 @@
   border-color: $c-query-output-border;
   position: relative;
   width: auto;
+  border-top: 0;
 
   span {
     float: right;
@@ -195,6 +196,8 @@
 
 .editor-label {
   width: 100%;
+  background-color: #dddddd;
+  height:1px;
 
   h6 {
     font-family: 'Open Sans', sans-serif;
@@ -248,6 +251,16 @@
   z-index: 9999 !important;
 }
 
+#queryContent {
+  .arango-tab a {
+    border-bottom-color: #dddddd;
+  }
+
+  .arango-tab .active {
+    border-bottom-color: #fff !important;
+  }
+}
+
 .query-div {
   display: none;
 
@@ -276,6 +289,7 @@
     }
 
     .table-cell0 {
+      cursor: pointer;
       width: 20%;
       min-width: 250px;
       overflow: hidden;
@@ -283,6 +297,7 @@
       white-space: nowrap !important;
     }
     .table-cell1 {
+      cursor: pointer;
       width: 73%;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
