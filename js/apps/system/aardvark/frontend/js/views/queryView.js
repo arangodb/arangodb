@@ -15,16 +15,14 @@
       localStorage.setItem("queryContent", "");
       localStorage.setItem("queryOutput", "");
       this.tableDescription.rows = this.customQueries;
-      this.tableDescription.rows.forEach(function(e) {
-        e += [];
-      })
     },
 
     updateTable:  function () {
       this.tableDescription.rows = this.customQueries;
 
       _.each(this.tableDescription.rows, function(k,v) {
-        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus" title="Delete query"></span></a>';
+        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
+              ' title="Delete query"></span></a>';
       });
 
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
@@ -88,22 +86,27 @@
     },
 
     checkSaveName: function() {
-      var saveName = $('#new-query-name').val()
+      var saveName = $('#new-query-name').val();
       if ( saveName === "Insert Query"){
         $('#new-query-name').val('');
         return;
       }
 
+      var boolTemp = false;
       this.customQueries.some(function(query){
         if( query.name === saveName ){
           $('#save-query').removeClass('button-success');
           $('#save-query').addClass('button-warning');
           $('#save-query').text('Update');
-            return true;
+            boolTemp = true;
         } else {
           $('#save-query').removeClass('button-warning');
           $('#save-query').addClass('button-success');
           $('#save-query').text('Save');
+        }
+
+        if (boolTemp) {
+          return true;
         }
       });
     },
