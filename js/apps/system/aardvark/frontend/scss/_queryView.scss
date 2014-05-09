@@ -170,9 +170,9 @@
 
 .output-toolbar {
   border-color: $c-query-output-border;
+  border-top: 0;
   position: relative;
   width: auto;
-  border-top: 0;
 
   span {
     float: right;
@@ -195,9 +195,9 @@
 }
 
 .editor-label {
+  background-color: #ddd;
+  height: 1px;
   width: 100%;
-  background-color: #dddddd;
-  height:1px;
 
   h6 {
     font-family: 'Open Sans', sans-serif;
@@ -253,7 +253,7 @@
 
 #queryContent {
   .arango-tab a {
-    border-bottom-color: #dddddd;
+    border-bottom-color: #ddd;
   }
 
   .arango-tab .active {
@@ -274,13 +274,13 @@
   }
 
   .arango-table {
-      table-layout: fixed;
       max-width: 100%;
+      table-layout: fixed;
       width: 100%;
 
       tbody {
-      max-width: 100%;
-      width: 100%;
+        max-width: 100%;
+        width: 100%;
       }
 
     tr {
@@ -290,25 +290,25 @@
 
     .table-cell0 {
       cursor: pointer;
-      width: 20%;
       min-width: 250px;
       overflow: hidden;
       text-overflow: ellipsis !important;
+      width: 20%;
       white-space: nowrap !important;
     }
     .table-cell1 {
       cursor: pointer;
-      width: 73%;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
+      width: 73%;
       white-space: nowrap !important;
     }
     .table-cell2 {
-      width: 40px;
-      min-width: 40px;
       max-width: 40px;
+      min-width: 40px;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
+      width: 40px;
       white-space: nowrap !important;
     }
   }
