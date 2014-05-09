@@ -283,7 +283,6 @@
 
     addAQL: function () {
       //render options
-
       $('#new-query-name').val($('#querySelect').val());
       $('#new-aql-query').modal('show');
       setTimeout(function () {
@@ -359,8 +358,8 @@
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
-      $('#new-aql-query').modal('hide');
-      $('#edit-aql-query').modal('hide');
+        $('#new-aql-query').modal('hide');
+        $('#edit-aql-query').modal('hide');
         return;
       }
 
@@ -374,6 +373,7 @@
 
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
+      $('#querySelect').val(saveName);
     },
 
     updateEditSelect: function () {
