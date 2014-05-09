@@ -762,7 +762,7 @@
     // TODO: remove this in next release 
     exports.definePeriodic = function (offset, period, module, funcname) {
       require("console").warn("definePeriodic() is deprecated. please use executeTask() instead");
-      var command = "require('" + module + "')." + funcname + "();"
+      var command = "require('" + module + "')." + funcname + "();";
       exports.executeTask({ offset: offset, period: period, command: command });
     };
   }
