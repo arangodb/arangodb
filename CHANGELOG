@@ -10,7 +10,6 @@ v2.0.8 (XXXX-XX-XX)
 
   this might have affected some cluster-internal operations.
 
-
 * fixed ETCD issues on 32 bit systems
 
   ETCD was non-functional on 32 bit systems at all. The first call to the
