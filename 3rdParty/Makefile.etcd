@@ -16,7 +16,8 @@
 	@echo
 
 if ENABLE_INTERNAL_GO
-	cd @top_srcdir@/3rdParty/etcd && GOROOT="`pwd`/../go-$(TRI_BITS)/" PATH="`pwd`/../go-$(TRI_BITS)/bin:$$PATH" ./build
+	cd @top_srcdir@/3rdParty/etcd \
+		&& GOROOT="`pwd`/../go-$(TRI_BITS)/" PATH="`pwd`/../go-$(TRI_BITS)/bin:$$PATH" ./build
 else
 	cd @top_srcdir@/3rdParty/etcd && ./build
 endif
