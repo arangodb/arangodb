@@ -12,7 +12,7 @@
   window.DashboardView = Backbone.View.extend({
     el: '#content',
     interval: 10000, // in milliseconds
-    defaultFrame: 20 * 60 * 1000,
+    defaultTimeFrame: 20 * 60 * 1000, // 20 minutes in milliseconds
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     history: {},
     graphs: {},
@@ -203,7 +203,7 @@
         graph.dateWindow_[1] : t;
         return [borderLeft, borderRight];
       }
-      return [t - this.defaultFrame, t];
+      return [t - this.defaultTimeFrame, t];
 
 
     },
@@ -219,38 +219,89 @@
 
     mergeDygraphHistory: function (newData, i) {
       var self = this, valueList;
+
       this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
-        if (!self.dygraphConfig.mapStatToFigure[f]) {
+
+        // check if figure is known
+        if (! self.dygraphConfig.mapStatToFigure[f]) {
           return;
         }
-        if (!self.history[f]) {
+
+        // need at least an empty history
+        if (! self.history[f]) {
           self.history[f] = [];
         }
+
+        // generate values for this key
         valueList = [];
+
         self.dygraphConfig.mapStatToFigure[f].forEach(function (a) {
-          if (!newData[a]) {
+          if (! newData[a]) {
             return;
           }
+
           if (a === "times") {
             valueList.push(new Date(newData[a][i] * 1000));
           } else {
             valueList.push(newData[a][i]);
           }
         });
+
+        // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
           self.history[f].push(valueList);
         }
       });
     },
 
+    cutOffHistory: function (f, cutoff) {
+      var self = this;
+
+      while (self.history[f].length !== 0) {
+        var v = self.history[f][0][0];
+
+        if (v >= cutoff) {
+          break;
+        }
+
+        self.history[f].shift();
+      }
+    },
+
+    cutOffDygraphHistory: function (cutoff) {
+      var self = this;
+      var cutoffDate = new Date(cutoff);
+
+      this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
+
+        // check if figure is known
+        if (! self.dygraphConfig.mapStatToFigure[f]) {
+          return;
+        }
+
+        // history must be non-empty
+        if (! self.history[f]) {
+          return;
+        }
+
+        self.cutOffHistory(f, cutoffDate);
+      });
+    },
+
     mergeHistory: function (newData, detailMode) {
       var self = this, i;
+
       for (i = 0; i < newData.times.length; ++i) {
         this.mergeDygraphHistory(newData, i);
       }
+
+      this.cutOffDygraphHistory(new Date().getTime() - this.defaultTimeFrame);
+
       if (detailMode) {
         return;
       }
+
+      // convert tendency values
       Object.keys(this.tendencies).forEach(function (a) {
         var n1 = 1;
         var n2 = 1;
@@ -272,10 +323,15 @@
         ];
       });
 
+      // update distribution
       Object.keys(this.barCharts).forEach(function (a) {
         self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
       });
+
+      // update physical memory
       self.history.physicalMemory = newData.physicalMemory;
+
+      // generate chart description
       self.history.residentSizeChart =
       [
         {
@@ -303,7 +359,7 @@
       ]
       ;
 
-
+      // remember next start
       this.nextStart = newData.nextStart;
     },
 
@@ -349,7 +405,7 @@
       if (! figure && this.nextStart) {
         urlParams += this.nextStart;
       } else if (! figure && ! this.nextStart) {
-        urlParams += (new Date().getTime() - this.defaultFrame) / 1000;
+        urlParams += (new Date().getTime() - this.defaultTimeFrame) / 1000;
       } else {
         if (this.alreadyCalledDetailChart.indexOf(figure) !== -1) {
           return;
