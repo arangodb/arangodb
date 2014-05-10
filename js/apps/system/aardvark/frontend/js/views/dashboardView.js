@@ -189,7 +189,7 @@
 				else {
 					tempColor = "green";
 				}
-        $("#" + a).html(self.history[a][0] + lineBreak + '<div class="dashboard-figurePer" style="color: '+ tempColor +';">(' + self.history[a][1] + ' %)</div>');
+        $("#" + a).html(self.history[a][0] + lineBreak + '<span class="dashboard-figurePer"><span style="color: '+ tempColor +';">' + self.history[a][1] + '%</span></span>');
       });
     },
 
@@ -307,9 +307,6 @@
       this.nextStart = newData.nextStart;
     },
 
-    /*
-		"color": this.dygraphConfig.colors[0],
-    */
 		mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
@@ -463,7 +460,6 @@
       });
     },
 
-
     // XXX
 		prepareD3Charts: function (update) {
       var v, self = this, f;
@@ -489,77 +485,43 @@
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
 
-        if (dimensions.width > 400 ) {
-          f = 18;
-        } else if (dimensions.width > 300) {
-          f = 16;
-        } else if (dimensions.width > 200) {
-          f = 14;
-        } else if (dimensions.width > 100) {
-          f = 12;
-        } else {
-          f = 10;
-        }
-
         var selector = "#" + k + "Container svg";
         var dist = dists[k];
 
         nv.addGraph(function () {
           var chart = nv.models.multiBarHorizontalChart()
-          .x(function (d) {
-            return d.label;
-          })
-          .y(function (d) {
-            return d.value;
-          })
-          .width(dimensions.width)
-          .height(dimensions.height)
-          .margin({
-            top: dimensions.height / 8,
-            right: dimensions.width / 35,
-            bottom: dimensions.height / 22,
-            left: dimensions.width / 6
-          })
-          .showValues(false)
-          .showYAxis(true)
-          .showXAxis(true)
-          .transitionDuration(350)
-          .tooltips(false)
-          .showLegend(false)
-          .showControls(false);
+	          .x(function (d) {
+	            return d.label;
+	          })
+	          .y(function (d) {
+	            return d.value;
+	          })
+		        .width(dimensions.width)
+		        .height(dimensions.height)
+		        .margin({
+		          top: 5,
+		          right: 25,
+		          bottom: 20,
+							left: 85
+		        })
+	          .showValues(false)
+	          .showYAxis(true)
+	          .showXAxis(true)
+	          .transitionDuration(100)
+	          .tooltips(false)
+	          .showLegend(false)
+	          .showControls(false);
 
           chart.yAxis
-          .tickFormat(function (d) {return Math.round(d* 100 * 100) / 100 + "%";});
-
+						.tickFormat(function (d) {return Math.round(d* 100 * 100) / 100 + "%";});
 
           d3.select(selector)
-          .datum(self.history[k])
-          .call(chart);
+	          .datum(self.history[k])
+	          .call(chart);
 
           nv.utils.windowResize(chart.update);
-
-          if (!update) {
-            var v1 = self.history[k][0].key;
-            var v2 = self.history[k][1].key;
-            $('#' + k + "Legend").append(
-              '<span style="color: ' +
-              self.history[k][0].color + ';">' +
-              '<div style="display: inline-block; position: relative;' +
-              ' bottom: .5ex; padding-left: 1em;' +
-              ' height: 1px; border-bottom: 2px solid ' +
-              self.history[k][0].color + ';"></div>'
-              + " " + v1 + '</span><br>' +
-              '<span style="color: ' +
-              self.history[k][1].color + ';">' +
-              '<div style="display: inline-block; position: ' +
-              'relative; bottom: .5ex; padding-left: 1em;' +
-              ' height: 1px; border-bottom: 2px solid ' +
-              self.history[k][1].color + ';"></div>'
-              + " " + v2 + '</span><br>'
-            );
-          } else {
-            d3.select(selector).select('.distributionHeader').remove();
-          }
+					
+					return chart;
         }, function() {
           d3.selectAll(selector + " .nv-bar").on('click',
             function() {

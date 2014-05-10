@@ -2104,8 +2104,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 58px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 190px;
-        width: 48px; }
+        height: 195px;
+        width: 58px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 12px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 98px; }
@@ -2175,7 +2179,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 13px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 12px;
@@ -2247,8 +2251,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 138px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 190px;
-        width: 128px; }
+        height: 195px;
+        width: 138px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 12px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 218px; }
@@ -2318,7 +2326,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 13px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 12px;
@@ -2390,8 +2398,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 218px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 190px;
-        width: 208px; }
+        height: 195px;
+        width: 218px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 12px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 338px; }
@@ -2461,7 +2473,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 13px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 12px;
@@ -2533,8 +2545,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 298px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 220px;
-        width: 288px; }
+        height: 230px;
+        width: 298px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 11px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 458px; }
@@ -2604,7 +2620,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 15px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 11px;
@@ -2673,8 +2689,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 378px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 250px;
-        width: 368px; }
+        height: 260px;
+        width: 378px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 13px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 578px; }
@@ -2744,7 +2764,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 19px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
@@ -2752,18 +2772,18 @@ div.resizecontainer {
 
   .dashboard-legend {
     height: 255px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
     width: 130px; }
 
   .modal-dashboard-legend {
-    font-size: 13px;
+    font-size: 12px;
     height: 260px;
     width: 130px; }
 
   .dashboard-half-height-legend {
     height: 130px;
-    font-size: 13px;
+    font-size: 12px;
     width: 65px; }
 
   div.modal-chart-detail {
@@ -2813,8 +2833,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 458px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 448px; }
+        height: 300px;
+        width: 458px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 13px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 698px; }
@@ -2884,7 +2908,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 22px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
@@ -2953,8 +2977,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 538px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 528px; }
+        height: 300px;
+        width: 538px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 14px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 818px; }
@@ -3024,7 +3052,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 26px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
@@ -3093,8 +3121,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 618px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 608px; }
+        height: 300px;
+        width: 618px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 938px; }
@@ -3164,7 +3196,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 30px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
@@ -3233,8 +3265,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 698px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 688px; }
+        height: 300px;
+        width: 698px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 1058px; }
@@ -3304,7 +3340,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 34px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
@@ -3373,8 +3409,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 778px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 768px; }
+        height: 300px;
+        width: 778px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 1178px; }
@@ -3444,7 +3484,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 34px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
@@ -3513,8 +3553,12 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 858px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 290px;
-        width: 848px; }
+        height: 300px;
+        width: 858px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          color: #666666; }
 
   .dashboard-medium-chart {
     width: 1298px; }
@@ -3584,7 +3628,7 @@ div.resizecontainer {
 
   .dashboard-figurePer {
     font-size: 34px;
-    font-weight: 400; }
+    font-weight: 300; }
 
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
@@ -4272,13 +4316,15 @@ pre.gv-object-view {
 .dashboard-small-chart {
   margin-bottom: 10px; }
   .dashboard-small-chart .dashboard-small-chart-inner {
-    padding-top: 5px;
+    /* padding-top: $dashboard-padding; */
     background-color: white;
     border-left: 5px solid #e1e1e1;
     border-top: 5px solid #e1e1e1;
     border-right: 5px solid #e1e1e1; }
-    .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-      margin-bottom: 5px; }
+    .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
+      stroke-opacity: 1;
+      stroke-width: 1px;
+      fill-opacity: 0.15; }
 
 .dashboard-medium-chart {
   background-color: white;
@@ -4326,7 +4372,7 @@ pre.gv-object-view {
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
       stroke-opacity: 1;
       stroke-width: 1px;
-      fill-opacity: 0.25; }
+      fill-opacity: 0.15; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0px 5px 5px 0px; }
