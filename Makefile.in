@@ -8933,7 +8933,7 @@ js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.j
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
-@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && CC="" CFLAGS="" $(MAKE) -j1
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
 
 @ENABLE_MRUBY_TRUE@	touch @srcdir@/.mruby-build-@TRI_BITS@
 
