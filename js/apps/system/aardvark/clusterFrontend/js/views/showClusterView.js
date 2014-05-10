@@ -553,7 +553,6 @@
         var serv = {};
         var cur;
         var coord;
-        $("#waitModalLayer").remove();
         var ip_port = tar.attr("id");
         ip_port = ip_port.replace(/\-/g,'.');
         ip_port = ip_port.replace(/\_/g,':');

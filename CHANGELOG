@@ -1,8 +1,20 @@
 v2.1.0-alpha3 (XXXX-XX-XX)
 -------------------
 
-* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
-  value when called the 2nd time after a .save to the edge collection
+* added server-side periodic task management functions:
+
+  - require("org/arangodb/tasks").register(): registers a periodic task
+  - require("org/arangodb/tasks").unregister(): unregisters and removes a 
+    periodic task
+  - require("org/arangodb/tasks").get(): retrieves a specific tasks or all
+    existing tasks
+
+  the previous undocumented function `internal.definePeriodic` is now
+  deprecated and will be removed in a future release.
+
+* decrease the size of some seldomly used system collections on creation. 
+
+  This will make these collections use less disk space and mapped memory.
 
 * added AQL date functions
 
@@ -104,8 +116,32 @@ v2.1.0-alpha3 (XXXX-XX-XX)
 
 * export the sort attribute for graph traversals to the HTTP interface
 
+* add support for arangodump/arangorestore for clusters
 
-v2.0.7 (XXXX-XX-XX)
+
+v2.0.8 (XXXX-XX-XX)
+-------------------
+
+* fixed timeout overflows on 32 bit systems
+
+  this bug has led to problems when select was called with a high timeout
+  value (2000+ seconds) on 32bit systems that don't have a forgiving select
+  implementation. when the call was made on these systems, select failed
+  so no data would be read or sent over the connection
+
+  this might have affected some cluster-internal operations.
+
+* fixed ETCD issues on 32 bit systems
+
+  ETCD was non-functional on 32 bit systems at all. The first call to the
+  watch API crashed it. This was because atomic operations worked on data
+  structures that were not properly aligned on 32 bit systems. 
+
+* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
+  value when called the 2nd time after a .save to the edge collection
+
+
+v2.0.7 (2014-05-05)
 -------------------
 
 * issue #839: Foxx Manager missing "unfetch"

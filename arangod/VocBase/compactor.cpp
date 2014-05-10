@@ -927,9 +927,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
       context._dfi._numberTransaction == 0 &&
       context._dfi._numberShapes == 0 &&
       context._dfi._numberAttributes == 0) {
-
-    TRI_barrier_t* b;
-
     if (n > 1) {
       // create .dead files for all collected files 
       for (i = 0; i < n; ++i) {
@@ -951,6 +948,8 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     RemoveCompactor(document, compactor);
 
     for (i = 0; i < n; ++i) {
+      TRI_barrier_t* b;
+
       compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     
       // datafile is also empty after compaction and thus useless
@@ -1489,8 +1488,6 @@ void TRI_CompactorVocBase (void* data) {
 
         // for document collection, compactify datafiles
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-          TRI_barrier_t* ce;
-          
           // check whether someone else holds a read-lock on the compaction lock
           if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
             // someone else is holding the compactor lock, we'll not compact
@@ -1499,7 +1496,7 @@ void TRI_CompactorVocBase (void* data) {
           }
 
           if (primary->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
-            ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
+            TRI_barrier_t* ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
 
             if (ce == NULL) {
               // out of memory

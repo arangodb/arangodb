@@ -1453,19 +1453,15 @@ static int InitDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DatabaseManager (void* data) {
-  bool shutdown;
-
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
 
   while (true) {
-    TRI_vocbase_t* database;
-
     TRI_LockMutex(&server->_createLock);
-    shutdown = server->_shutdown;
+    bool shutdown = server->_shutdown;
     TRI_UnlockMutex(&server->_createLock);
 
     // check if we have to drop some database
-    database = NULL;
+    TRI_vocbase_t* database = NULL;
 
     READ_LOCK_DATABASES(server->_databasesLock);
 

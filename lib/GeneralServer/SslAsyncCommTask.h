@@ -64,7 +64,7 @@ namespace triagens {
                           ConnectionInfo const& info,
                           double keepAliveTimeout,
                           BIO* bio)
-        : Task(0, "SslAsyncCommTask"),
+        : Task("SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           accepted(false),
           readBlocked(false),

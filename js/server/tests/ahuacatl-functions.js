@@ -602,7 +602,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSlice : function () {
-      var expected, actual;
+      var actual;
       
       actual = getQueryResults("RETURN SLICE([ ], 0, 1)");
       assertEqual([ [ ] ], actual);
