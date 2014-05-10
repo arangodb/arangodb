@@ -96,11 +96,17 @@
     <% tendency("Number of threads", "numberOfThreads"); %>
 
     <div class="dashboard-bar-chart-container dashboard-spacer">
-      <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
-        <div id="residentSizeChart">
-          <svg></svg>
-        </div>
-      </div>
+      <div class="dashboard-bar-chart">
+	      <div class="dashboard-bar-chart-title">
+					<div class="percentage"></div>
+					<div class="absolut"></div>
+				</div>
+	      <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+	        <div id="residentSizeChart">
+	          <svg></svg>
+	        </div>
+	      </div>
+			</div>
       <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
 
