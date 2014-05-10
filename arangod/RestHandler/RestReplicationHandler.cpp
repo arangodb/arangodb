@@ -2257,7 +2257,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_json_t* type = TRI_LookupArrayJson(parameters, "type");
   TRI_col_type_e collectionType;
   if (TRI_IsNumberJson(type)) {
-    collectionType = (TRI_col_type_e) type->_value._number;
+    collectionType = (TRI_col_type_e) ((int) type->_value._number);
   }
   else {
     errorMsg = "collection type not given or wrong";
