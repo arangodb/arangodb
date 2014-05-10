@@ -1148,12 +1148,26 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines and executes a task
-///
-/// @FUN{internal.executeTask(@FA{task})}
+/// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
+static string GetTaskId (v8::Handle<v8::Value> arg) {
+  if (arg->IsObject()) {
+    // extract "id" from object
+    v8::Handle<v8::Object> obj = arg.As<v8::Object>();
+    if (obj->Has(TRI_V8_SYMBOL("id"))) {
+      return TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
+    }
+  }
+
+  return TRI_ObjectToString(arg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a task
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
@@ -1161,7 +1175,7 @@ static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
   }
 
   if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "executeTask(<task>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "register(<task>)");
   }
 
   v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
@@ -1267,29 +1281,19 @@ static v8::Handle<v8::Value> JS_ExecuteTask (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a task
+/// @brief unregisters a task
 ///
-/// @FUN{internal.deleteTask(@FA{id})}
+/// @FUN{internal.unregisterTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DeleteTask (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "deleteTask(<id>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "unregister(<id>)");
   }
 
-  string id;
-  if (argv[0]->IsObject()) {
-    // extract "id" from object
-    v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
-    if (obj->Has(TRI_V8_SYMBOL("id"))) {
-      id = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
-    }
-  }
-  else {
-    id = TRI_ObjectToString(argv[0]);
-  }
+  string const id = GetTaskId(argv[0]);
 
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
@@ -1305,26 +1309,35 @@ static v8::Handle<v8::Value> JS_DeleteTask (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all registered tasks
+/// @brief gets one or all registered tasks
 ///
-/// @FUN{internal.getTasks()}
+/// @FUN{internal.getTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetTasks (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "getTasks()");
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "get(<id>)");
   }
 
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
-  
-  TRI_json_t* json = GlobalScheduler->getUserTasks();
+
+  TRI_json_t* json;
+  if (argv.Length() == 1) {
+    // get a single task
+    string const id = GetTaskId(argv[0]);
+    json = GlobalScheduler->getUserTask(id);
+  }
+  else {
+    // get all tasks
+    json = GlobalScheduler->getUserTasks();
+  }
 
   if (json == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_TASK_NOT_FOUND);
   }
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(json);
@@ -1372,9 +1385,9 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   GlobalDispatcher = dispatcher->dispatcher();
 
   if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
-    TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_TASK", JS_ExecuteTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_DELETE_TASK", JS_DeleteTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASKS", JS_GetTasks);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_REGISTER_TASK", JS_RegisterTask);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_UNREGISTER_TASK", JS_UnregisterTask);
+    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASK", JS_GetTask);
   }
   else {
     LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");

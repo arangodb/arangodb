@@ -27,7 +27,6 @@
 
 #include "V8PeriodicJob.h"
 
-#include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "V8/v8-conv.h"
@@ -50,7 +49,7 @@ using namespace triagens::arango;
 
 V8PeriodicJob::V8PeriodicJob (TRI_vocbase_t* vocbase,
                               ApplicationV8* v8Dealer,
-                              string const& command,
+                              std::string const& command,
                               TRI_json_t const* parameters)
   : Job("V8 Periodic Job"),
     _vocbase(vocbase),
