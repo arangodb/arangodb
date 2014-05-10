@@ -30,6 +30,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var internal = require("internal");
 var db = arangodb.db;
+var tasks = require("org/arangodb/tasks");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -39,9 +40,9 @@ function TaskSuite () {
   var cn = "UnitTestsTasks";
 
   var cleanTasks = function () {
-    internal.getTasks().forEach(function(task) {
+    tasks.get().forEach(function(task) {
       if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-        internal.deleteTask(task);
+        tasks.unregister(task);
       }
     });
   };
@@ -54,7 +55,7 @@ function TaskSuite () {
       return 0;
     };
 
-    return internal.getTasks().filter(function (task) {
+    return tasks.get().filter(function (task) {
       return task.name.match(/^UnitTest/);
     }).sort(sorter);
   };  
@@ -85,7 +86,7 @@ function TaskSuite () {
 
     testCreateTaskNoId : function () {
       try {
-        internal.executeTask({ });
+        tasks.register({ });
         fail();
       }
       catch (err) {
@@ -99,7 +100,7 @@ function TaskSuite () {
 
     testCreateTaskNoPeriod : function () {
       try {
-        internal.executeTask({ id: "UnitTestsNoPeriod", command: "1+1;" });
+        tasks.register({ id: "UnitTestsNoPeriod", command: "1+1;" });
         fail();
       }
       catch (err) {
@@ -113,7 +114,7 @@ function TaskSuite () {
 
     testCreateTaskInvalidPeriod1 : function () {
       try {
-        internal.executeTask({ id: "UnitTestsNoPeriod", period: -1, command: "1+1;" });
+        tasks.register({ id: "UnitTestsNoPeriod", period: -1, command: "1+1;" });
         fail();
       }
       catch (err) {
@@ -127,7 +128,7 @@ function TaskSuite () {
 
     testCreateTaskInvalidPeriod2 : function () {
       try {
-        internal.executeTask({ id: "UnitTestsNoPeriod", period: 0, command: "1+1;" });
+        tasks.register({ id: "UnitTestsNoPeriod", period: 0, command: "1+1;" });
         fail();
       }
       catch (err) {
@@ -141,7 +142,7 @@ function TaskSuite () {
 
     testCreateTaskNoCommand : function () {
       try {
-        internal.executeTask({ id: "UnitTestsNoPeriod", period: 1 });
+        tasks.register({ id: "UnitTestsNoPeriod", period: 1 });
         fail();
       }
       catch (err) {
@@ -154,7 +155,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskAutomaticId : function () {
-      var task = internal.executeTask({ name: "UnitTests1", command: "1+1;", period: 1 });
+      var task = tasks.register({ name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertMatch(/^\d+$/, task.id);
       assertEqual("UnitTests1", task.name);
@@ -167,7 +168,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskDuplicateId : function () {
-      var task = internal.executeTask({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
+      var task = tasks.register({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTests1", task.id);
       assertEqual("UnitTests1", task.name);
@@ -176,7 +177,7 @@ function TaskSuite () {
       assertEqual(1, task.period);
 
       try {
-        internal.executeTask({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
+        tasks.register({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
         fail();
       }
       catch (err) {
@@ -190,7 +191,7 @@ function TaskSuite () {
 
     testCreateTaskRemoveWithoutId : function () {
       try {
-        internal.deleteTask();
+        tasks.unregister();
         fail();
       }
       catch (err) {
@@ -203,18 +204,18 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskRemoveByTask : function () {
-      var task = internal.executeTask({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
+      var task = tasks.register({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTests1", task.id);
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
       assertEqual(1, task.period);
 
-      internal.deleteTask(task);
+      tasks.unregister(task);
 
       try {
         // deleting again should fail
-        internal.deleteTask(task);
+        tasks.unregister(task);
         fail();
       }
       catch (err) {
@@ -227,18 +228,18 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskRemoveById : function () {
-      var task = internal.executeTask({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
+      var task = tasks.register({ id: "UnitTests1", name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTests1", task.id);
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
       assertEqual(1, task.period);
 
-      internal.deleteTask(task.id);
+      tasks.unregister(task.id);
 
       try {
         // deleting again should fail
-        internal.deleteTask(task.id);
+        tasks.unregister(task.id);
         fail();
       }
       catch (err) {
@@ -247,98 +248,140 @@ function TaskSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get list of tasks
+/// @brief get a single task
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetTasks : function () {
-      var task1 = internal.executeTask({ 
+    testGetTask : function () {
+      var task = tasks.register({ 
         id: "UnitTests1", 
         name: "UnitTests1", 
         command: "1+1;",
         period: 1
       });
 
-      var task2 = internal.executeTask({ 
+      var t = tasks.get(task);
+
+      assertEqual(task.id, t.id);
+      assertEqual(task.name, t.name);
+      assertEqual(task.type, t.type);
+      assertEqual(task.period, t.period);
+      assertEqual(task.database, t.database);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a single task
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetTaskById : function () {
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: "1+1;",
+        period: 1
+      });
+
+      var t = tasks.get(task.id);
+
+      assertEqual(task.id, t.id);
+      assertEqual(task.name, t.name);
+      assertEqual(task.type, t.type);
+      assertEqual(task.period, t.period);
+      assertEqual(task.database, t.database);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get list of tasks
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetTasks : function () {
+      var task1 = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: "1+1;",
+        period: 1
+      });
+
+      var task2 = tasks.register({ 
         id: "UnitTests2", 
         name: "UnitTests2", 
         command: "2+2;",
         period: 2
       });
 
-      var tasks = getTasks();
+      var t = getTasks();
 
-      assertEqual(2, tasks.length);
-      assertEqual(task1.id, tasks[0].id);
-      assertEqual(task1.name, tasks[0].name);
-      assertEqual(task1.type, tasks[0].type);
-      assertEqual(task1.period, tasks[0].period);
-      assertEqual(task1.database, tasks[0].database);
+      assertEqual(2, t.length);
+      assertEqual(task1.id, t[0].id);
+      assertEqual(task1.name, t[0].name);
+      assertEqual(task1.type, t[0].type);
+      assertEqual(task1.period, t[0].period);
+      assertEqual(task1.database, t[0].database);
 
-      assertEqual(task2.id, tasks[1].id);
-      assertEqual(task2.name, tasks[1].name);
-      assertEqual(task2.type, tasks[1].type);
-      assertEqual(task2.period, tasks[1].period);
-      assertEqual(task2.database, tasks[1].database);
+      assertEqual(task2.id, t[1].id);
+      assertEqual(task2.name, t[1].name);
+      assertEqual(task2.type, t[1].type);
+      assertEqual(task2.period, t[1].period);
+      assertEqual(task2.database, t[1].database);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of tasks pre and post task deletion
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetTasks : function () {
-      var task1 = internal.executeTask({ 
+    testGetTasksPrePost : function () {
+      var task1 = tasks.register({ 
         id: "UnitTests1", 
         name: "UnitTests1", 
         command: "1+1;",
         period: 1
       });
 
-      var tasks = getTasks();
+      var t = getTasks();
 
-      assertEqual(1, tasks.length);
-      assertEqual(task1.id, tasks[0].id);
-      assertEqual(task1.name, tasks[0].name);
-      assertEqual(task1.type, tasks[0].type);
-      assertEqual(task1.period, tasks[0].period);
-      assertEqual(task1.database, tasks[0].database);
+      assertEqual(1, t.length);
+      assertEqual(task1.id, t[0].id);
+      assertEqual(task1.name, t[0].name);
+      assertEqual(task1.type, t[0].type);
+      assertEqual(task1.period, t[0].period);
+      assertEqual(task1.database, t[0].database);
 
-      var task2 = internal.executeTask({ 
+      var task2 = tasks.register({ 
         id: "UnitTests2", 
         name: "UnitTests2", 
         command: "2+2;",
         period: 2
       });
 
-      tasks = getTasks();
+      t = getTasks();
 
-      assertEqual(2, tasks.length);
-      assertEqual(task1.id, tasks[0].id);
-      assertEqual(task1.name, tasks[0].name);
-      assertEqual(task1.type, tasks[0].type);
-      assertEqual(task1.period, tasks[0].period);
-      assertEqual(task1.database, tasks[0].database);
-      assertEqual(task2.id, tasks[1].id);
-      assertEqual(task2.name, tasks[1].name);
-      assertEqual(task2.type, tasks[1].type);
-      assertEqual(task2.period, tasks[1].period);
-      assertEqual(task2.database, tasks[1].database);
+      assertEqual(2, t.length);
+      assertEqual(task1.id, t[0].id);
+      assertEqual(task1.name, t[0].name);
+      assertEqual(task1.type, t[0].type);
+      assertEqual(task1.period, t[0].period);
+      assertEqual(task1.database, t[0].database);
+      assertEqual(task2.id, t[1].id);
+      assertEqual(task2.name, t[1].name);
+      assertEqual(task2.type, t[1].type);
+      assertEqual(task2.period, t[1].period);
+      assertEqual(task2.database, t[1].database);
 
-      internal.deleteTask(task1);
+      tasks.unregister(task1);
       
-      tasks = getTasks();
+      t = getTasks();
 
-      assertEqual(1, tasks.length);
-      assertEqual(task2.id, tasks[0].id);
-      assertEqual(task2.name, tasks[0].name);
-      assertEqual(task2.type, tasks[0].type);
-      assertEqual(task2.period, tasks[0].period);
-      assertEqual(task2.database, tasks[0].database);
+      assertEqual(1, t.length);
+      assertEqual(task2.id, t[0].id);
+      assertEqual(task2.name, t[0].name);
+      assertEqual(task2.type, t[0].type);
+      assertEqual(task2.period, t[0].period);
+      assertEqual(task2.database, t[0].database);
 
-      internal.deleteTask(task2);
+      tasks.unregister(task2);
       
-      tasks = getTasks();
+      t = getTasks();
 
-      assertEqual(0, tasks.length);
+      assertEqual(0, t.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +396,7 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = internal.executeTask({ 
+      var task = tasks.register({ 
         id: "UnitTests1", 
         name: "UnitTests1", 
         command: command, 
@@ -369,7 +412,7 @@ function TaskSuite () {
 
       internal.wait(5);
 
-      internal.deleteTask(task);
+      tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 23 }).count() > 0);
@@ -389,7 +432,7 @@ function TaskSuite () {
         require('internal').db[params.cn].save({ value: params.val });
       };
 
-      var task = internal.executeTask({ 
+      var task = tasks.register({ 
         id: "UnitTests1", 
         name: "UnitTests1", 
         command: command, 
@@ -405,7 +448,7 @@ function TaskSuite () {
 
       internal.wait(5);
 
-      internal.deleteTask(task);
+      tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 23 }).count() === 0);

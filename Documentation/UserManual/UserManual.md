@@ -33,6 +33,8 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 
 @CHAPTER_REF{Transactions}: Wrapping multiple operations in an ACID transaction
 
+@CHAPTER_REF{Tasks}: Running periodic tasks inside ArangoDB
+
 @CHAPTER_REF{UserManualReplication}: Configuring, starting, stopping the replication
 
 @CHAPTER_REF{UserManualFoxx}: A JavaScript framework to build simple applications and APIs with ArangoDB

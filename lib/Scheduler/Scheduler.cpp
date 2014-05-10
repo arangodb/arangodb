@@ -253,6 +253,27 @@ TRI_json_t* Scheduler::getUserTasks () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a single user task
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Scheduler::getUserTask (string const& id) {
+  MUTEX_LOCKER(schedulerLock);
+
+  map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+  while (i != task2thread.end()) {
+    Task* task = (*i).first;
+
+    if (task->isUserDefined() && task->id() == id) {
+      return task->toJson(); 
+    }
+
+    ++i;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unregister and delete a user task by id
 ////////////////////////////////////////////////////////////////////////////////
 
