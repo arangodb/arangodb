@@ -119,12 +119,31 @@
   @extend %pull-left;
   margin-bottom: $dashboard-margin;
 
-  .dashboard-bar-chart-chart {
+  .dashboard-bar-chart {
     @extend %clear-float;
     background-color: $c-white;
     border-left: 5px solid $c-e1grey;
     border-top: 5px solid $c-e1grey;
     border-right: 5px solid $c-e1grey;
+
+    .dashboard-bar-chart-title {
+      @extend %pull-left;
+      padding: 0px 8px 0px 8px;
+
+	    .percentage {
+	      @extend %pull-left;
+				font-weight: 400;
+			}
+
+		  .absolut {
+		  	@extend %pull-left;
+        text-align: right;
+			}
+    }
+
+    .dashboard-bar-chart-chart {
+      @extend %pull-left;
+    }
   }
 }
 

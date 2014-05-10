@@ -174,9 +174,22 @@
 
     updateTendencies: function () {
       var self = this, map = this.tendencies;
-
-      Object.keys(map).forEach(function (a) {
-        $("#" + a).text(self.history[a][0] + " (" + self.history[a][1] + " %)");
+			
+			var lineBreak = "<br>";
+			if ($(".dashboard-tendency-chart").width() < 298) {
+      	lineBreak = "<br>"
+      }
+			
+			var tempColor = "";
+			
+			Object.keys(map).forEach(function (a) {
+				if (self.history[a][1] < 0) {
+					tempColor = "red";
+				}
+				else {
+					tempColor = "green";
+				}
+        $("#" + a).html(self.history[a][0] + lineBreak + '<div class="dashboard-figurePer" style="color: '+ tempColor +';">(' + self.history[a][1] + ' %)</div>');
       });
     },
 
@@ -372,80 +385,72 @@
     },
 
     prepareResidentSize: function (update) {
-      var dimensions = this.getCurrentSize('#residentSizeChartContainer');
       var self = this;
+
+      var dimensions = this.getCurrentSize('#residentSizeChartContainer');
+
+      var current = fmtNumber((self.history.physicalMemory * 100  / 1024 / 1024 / 100) * (self.history.residentSizeChart[0].values[0].value / 100), 1);
+			if (current < 1025) {
+				var currentA = current + " MB"
+			}
+			else {
+				var currentA = fmtNumber((current / 1024), 1) + " GB"
+				
+			}
       var currentP = Math.round(self.history.residentSizeChart[0].values[0].value * 100) / 100;
 
-      nv.addGraph(function () {
+      var data = [fmtNumber(self.history.physicalMemory * 100  / 1024 / 1024 / 1024, 1) / 100 + " GB"];
+
+			nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
-        .x(function (d) {
-          return d.label;
-        })
-        .y(function (d) {
-          return d.value;
-        })
-        .width(dimensions.width)
-        .height(dimensions.height + 20)
-        .margin({
-          //top: dimensions.height / 8,
-          //right: dimensions.width / 10
-          //bottom: dimensions.height / 22,
-          //left: dimensions.width / 6*/
-        })
-        .showValues(false)
-        .showYAxis(false)
-        .showXAxis(false)
-        .transitionDuration(350)
-        .tooltips(false)
-        .showLegend(false)
-        .stacked(true)
-        .showControls(false);
+	        .x(function (d) {
+	          return d.label;
+	        })
+	        .y(function (d) {
+	          return d.value;
+	        })
+	        .width(dimensions.width)
+	        .height(dimensions.height)
+	        .margin({
+	          top: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+	          right: 0,
+	          bottom: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+	          left: 0
+	        })
+	        .showValues(false)
+	        .showYAxis(false)
+	        .showXAxis(false)
+	        .transitionDuration(100)
+	        .tooltips(false)
+	        .showLegend(false)
+	        .showControls(false)
+	        .stacked(true);
         
         chart.yAxis
-        .tickFormat(function (d) {return d + "%";});
-        
-        chart.xAxis.showMaxMin(false);
-        
-        chart.yAxis.showMaxMin(false);
+          .tickFormat(function (d) {return d + "%";})
+          .showMaxMin(false);
+				chart.xAxis.showMaxMin(false);
         
         d3.select('#residentSizeChart svg')
-        .datum(self.history.residentSizeChart)
-        .call(chart);
+	        .datum(self.history.residentSizeChart)
+	        .call(chart);
         
-        d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
-        
+				d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
+				
         if (update) {
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
         
-        var data = [Math.round(self.history.physicalMemory * 100 / 1024 / 1024 / 1024) / 100 + "GB"];
+        d3.select('.dashboard-bar-chart-title .percentage')
+	        .html(currentA + " ("+ currentP + " %)");
 
-        d3.select('#residentSizeChart svg').selectAll('#total')
-        .data(data)
-        .enter()
-        .append("text")
-        .style("font-size", dimensions.width / 19 + "px")
-        .style("font-weight", 300)
-        .style("font-family", "Open Sans")
-        .attr("id", "total")
-        .attr("x", (dimensions.width - 50))
-        .attr("y", dimensions.height / 1.8)
-        .text(function(d) { return d; });
-        
-        d3.select('#residentSizeChart svg').selectAll('#percentage')
-        .data(data)
-        .enter()
-        .append("text")
-        .style("font-size", dimensions.width / 19 + "px")
-        .style("font-weight", 300)
-        .style("font-family", "Open Sans")
-        .attr("id", "percentage")
-        .attr("x", (dimensions.width + 5 - dimensions.width) )
-        .attr("y", dimensions.height / 2.16)
-        .text(currentP + " %");
-        
+        d3.select('.dashboard-bar-chart-title .absolut')
+					.html(data[0]);
+				
         nv.utils.windowResize(chart.update);
+				
+				return chart;
       }, function() {
         d3.selectAll("#residentSizeChart .nv-bar").on('click',
           function() {
