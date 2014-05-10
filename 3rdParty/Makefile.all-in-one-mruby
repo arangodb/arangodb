@@ -19,7 +19,7 @@ BUILT_SOURCES += @MRUBY_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/mruby && $(MAKE) -j1
+	cd @top_srcdir@/3rdParty/mruby && CC="" CFLAGS="" $(MAKE) -j1
 
 	touch @srcdir@/.mruby-build-@TRI_BITS@
 
