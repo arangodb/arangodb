@@ -143,6 +143,12 @@
 
     .dashboard-bar-chart-chart {
       @extend %pull-left;
+
+			.nv-bar rect {
+				stroke-opacity: 1;
+				stroke-width: 1px;
+				fill-opacity: 0.25;
+			}
     }
   }
 }

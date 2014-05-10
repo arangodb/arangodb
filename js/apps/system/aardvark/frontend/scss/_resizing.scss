@@ -61,14 +61,14 @@ div.resizecontainer {
     $axis-font: 12px;
 
     $tendency_name-font: 13px;
-    $tendency_figure-font: 13px;
+    $tendency_figure-font: 15px;
 	  $tendency_height-corrector: 10px;
 
     $subbar-font: 12px;
 
     $dashboard-height: 200px;
   } @else if $i < 5 {
-    $legend-width: 110px;
+    $legend-width: 120px;
     $legend-font: 11px;
 	  $legend-margin: 10px;
 
@@ -81,7 +81,7 @@ div.resizecontainer {
 
     $dashboard-height: 230px;
   } @else if $i < 6 {
-    $legend-width: 120px;
+    $legend-width: 130px;
     $legend-font: 13px;
 	  $legend-margin: 10px;
 
@@ -230,17 +230,20 @@ div.resizecontainer {
           height: (($int-height - 2px) / 3);
           line-height: (($int-height - 2px) / 3);
 
-	        .percentage,
+	        .percentage {
+	          width: ((($int-width / 2) - 8px) * 1.3);
+	        }
+					
 	        .absolut {
-	          width: ($int-width / 2) - 8px;
+	          width: ($int-width - (($int-width / 2) * 1.3)) - 6px;
 	        }
 	      }
 
 	      .dashboard-bar-chart-chart {
 	        width: $int-width - 16px;
-          height: (($int-height - 9px) * 2 / 3);
-          line-height: (($int-height - 9px) * 2 / 3);
-		      padding: 0px 8px 5px 8px;
+          height: (($int-height - 20px) * 2 / 3);
+          line-height: (($int-height - 20px) * 2 / 3);
+		      padding: 5px 8px 10px 8px;
 	      }
 				#residentSizeChart {
           height: (($int-height - 14px) * 2 / 3);

@@ -307,7 +307,10 @@
       this.nextStart = newData.nextStart;
     },
 
-    mergeBarChartData: function (attribList, newData) {
+    /*
+		"color": this.dygraphConfig.colors[0],
+    */
+		mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
         "color": this.dygraphConfig.colors[0],
@@ -413,9 +416,9 @@
 	        .height(dimensions.height)
 	        .margin({
 	          top: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
-	          right: 0,
+	          right: 1,
 	          bottom: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
-	          left: 0
+	          left: 1
 	        })
 	        .showValues(false)
 	        .showYAxis(false)
@@ -425,7 +428,7 @@
 	        .showLegend(false)
 	        .showControls(false)
 	        .stacked(true);
-        
+	      
         chart.yAxis
           .tickFormat(function (d) {return d + "%";})
           .showMaxMin(false);
@@ -461,7 +464,8 @@
     },
 
 
-    prepareD3Charts: function (update) {
+    // XXX
+		prepareD3Charts: function (update) {
       var v, self = this, f;
 
       var barCharts = {
