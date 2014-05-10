@@ -401,6 +401,7 @@ function TaskSuite () {
         name: "UnitTests1", 
         command: command, 
         period: 1,
+        offset: 0,
         params: 23 
       });
 
@@ -410,7 +411,7 @@ function TaskSuite () {
       assertEqual(1, task.period);
       assertEqual("_system", task.database);
 
-      internal.wait(5);
+      internal.wait(7);
 
       tasks.unregister(task);
 
@@ -437,6 +438,7 @@ function TaskSuite () {
         name: "UnitTests1", 
         command: command, 
         period: 1,
+        offset: 0,
         params: { cn: cn, val: 42 } 
       });
       
@@ -446,7 +448,7 @@ function TaskSuite () {
       assertEqual(1, task.period);
       assertEqual("_system", task.database);
 
-      internal.wait(5);
+      internal.wait(7);
 
       tasks.unregister(task);
 
