@@ -5,3 +5,4 @@ TOC {#RestoreManualTOC}
   - @ref RestoreManualInvoking
   - @ref RestoreManualIds
   - @ref RestoreManualDifferent
+  - @ref RestoreWithSharding

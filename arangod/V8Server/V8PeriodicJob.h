@@ -29,7 +29,11 @@
 #define TRIAGENS_V8SERVER_V8PERIODIC_JOB_H 1
 
 #include "Dispatcher/Job.h"
-#include "VocBase/vocbase.h"
+#include "BasicsC/json.h"
+
+extern "C" {
+  struct TRI_vocbase_s;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class V8PeriodicJob
@@ -54,11 +58,10 @@ namespace triagens {
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicJob (TRI_vocbase_t*,
+        V8PeriodicJob (struct TRI_vocbase_s*,
                        ApplicationV8*,
-                       const string& module,
-                       const string& func,
-                       const string& parameter);
+                       std::string const&,
+                       TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods
@@ -76,7 +79,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& queue ();
+        const std::string& queue ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -115,10 +118,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system vocbase
+/// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vocbase_t* _vocbase;
+        struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 dealer
@@ -127,22 +130,16 @@ namespace triagens {
         ApplicationV8* _v8Dealer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module name
+/// @brief the command to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _module;
+        std::string const _command;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function name
+/// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _func;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief paramater string
-////////////////////////////////////////////////////////////////////////////////
-
-        const std::string _parameter;
+        TRI_json_t const* _parameters;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cancel flag

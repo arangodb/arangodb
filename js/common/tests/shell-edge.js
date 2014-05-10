@@ -486,10 +486,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.edges("t/h/e/f/o/x");
+        edge.edges("t/h/e/f/o/x");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -501,10 +501,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.edges("123456  ");
+        edge.edges("123456  ");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -516,10 +516,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.inEdges("the//fox");
+        edge.inEdges("the//fox");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -531,10 +531,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.inEdges(" 123456 ");
+        edge.inEdges(" 123456 ");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -546,10 +546,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.outEdges("the//fox");
+        edge.outEdges("the//fox");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -561,10 +561,10 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+      edge.save(v1, v2, { "Hello" : "World" });
 
       try {
-        var e = edge.outEdges("123456  ");
+        edge.outEdges("123456  ");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -582,7 +582,7 @@ function CollectionEdgeSuite () {
       var c = db._create(dn);
       
       try {
-        var e = c.edges("the fox");
+        c.edges("the fox");
         fail();
       } 
       catch (err) {

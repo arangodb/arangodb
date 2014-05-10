@@ -350,7 +350,7 @@ bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   // shut up Valgrind
   memset(&tv, 0, sizeof(tv));
   tv.tv_sec = (long) timeout;
-  tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
+  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
   // conversion to (const char*) ensures windows does not complain
   if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)) != 0) {

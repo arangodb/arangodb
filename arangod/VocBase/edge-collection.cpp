@@ -99,7 +99,6 @@ static bool FindEdges (const TRI_edge_direction_e direction,
                        TRI_edge_header_t* entry,
                        const int matchType) {
   TRI_vector_pointer_t found;
-  TRI_doc_mptr_t* edge;
 
   if (direction == TRI_EDGE_OUT) {
     found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
@@ -134,7 +133,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
 
     // add all results found
     for (i = 0;  i < found._length;  ++i) {
-      edge = (TRI_doc_mptr_t*) found._buffer[i];
+      TRI_doc_mptr_t* edge = (TRI_doc_mptr_t*) found._buffer[i];
 
       // the following queries will use the following sequences of matchTypes:
       // inEdges(): 1,  outEdges(): 1,  edges(): 1, 3

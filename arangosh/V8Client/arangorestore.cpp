@@ -143,6 +143,12 @@ static bool RecycleIds = false;
 static bool Force = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster mode flag
+////////////////////////////////////////////////////////////////////////////////
+
+static bool clusterMode = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -365,6 +371,47 @@ static string GetArangoVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if server is a coordinator of a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+static bool GetArangoIsCluster () {
+  map<string, string> headers;
+  string command = "return ArangoServerState.role();";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
+                                        "/_admin/execute?returnAsJSON=true",
+                                               command.c_str(), 
+                                               command.size(),  
+                                               headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    if (response != 0) {
+      delete response;
+    }
+
+    return false;
+  }
+
+  string role = "UNDEFINED";
+    
+  if (response->getHttpReturnCode() == HttpResponse::OK) {
+    // default value
+    role.assign(response->getBody().c_str(), response->getBody().length());
+  }
+  else {
+    if (response->wasHttpError()) {
+      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    }
+
+    Connection->disconnect();
+  }
+
+  delete response;
+
+  return role == "\"COORDINATOR\"";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -450,8 +497,7 @@ static int SendRestoreIndexes (TRI_json_t const* json,
 /// @brief send the request to load data into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreData (string const& cid,
-                            string const& cname,
+static int SendRestoreData (string const& cname,
                             char const* buffer,
                             size_t bufferSize,
                             string& errorMsg) {
@@ -743,7 +789,7 @@ static int ProcessInputDirectory (string& errorMsg) {
 
               Stats._totalBatches++;
 
-              int res = SendRestoreData(cid, cname, buffer.begin(), length, errorMsg);
+              int res = SendRestoreData(cname, buffer.begin(), length, errorMsg);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 TRI_CLOSE(fd);
@@ -933,6 +979,10 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  if (major >= 2) {
+    // Version 1.4 did not yet have a cluster mode
+    clusterMode = GetArangoIsCluster();
+  }
 
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;

@@ -263,7 +263,6 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
 
 static bool DropCollectionCallback (TRI_collection_t* col,
                                     void* data) {
-  TRI_document_collection_t* document;
   TRI_vocbase_t* vocbase;
   regmatch_t matches[3];
   regex_t re;
@@ -303,7 +302,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    document = (TRI_document_collection_t*) collection->_collection;
+    TRI_document_collection_t* document = (TRI_document_collection_t*) collection->_collection;
 
     res = TRI_CloseDocumentCollection(document);
 

@@ -60,7 +60,7 @@ namespace triagens {
 int TRI_ParseVertex (triagens::arango::CollectionNameResolver const&,
                      TRI_voc_cid_t&,
                      TRI_voc_key_t&,
-                     v8::Handle<v8::Value> const&,
+                     v8::Handle<v8::Value> const,
                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,8 @@ template<class T>
 v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
                                           TRI_voc_cid_t,
                                           TRI_doc_mptr_t const*,
-                                          TRI_barrier_t*);
+                                          TRI_barrier_t*,
+                                          bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value

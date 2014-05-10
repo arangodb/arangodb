@@ -92,7 +92,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
                      size_t numArrays,
                      void* masterTable) {
   MasterTable_t* mt;
-  int result;
   size_t j;
   bool ok;
     
@@ -129,8 +128,11 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   // ...........................................................................
 
   else {
+    int result;
+
     mt = NULL;
     result = createMasterTable(&mt, memoryZone, false);
+
     if (result != TRI_ERROR_NO_ERROR) {
       TRI_Free(memoryZone, *bitArray);
       *bitArray = NULL;

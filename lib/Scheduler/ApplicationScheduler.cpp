@@ -72,7 +72,7 @@ static SignalTask* localSignalTask;
     public:
 
       ControlCTask (ApplicationServer* server)
-        : Task(0, "Control-C"), SignalTask(), _server(server), _seen(0) {
+        : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
         int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, true);
 
@@ -96,7 +96,7 @@ static SignalTask* localSignalTask;
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
-        : Task(0, "Control-C"), SignalTask(), _server(server), _seen(0) {
+        : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         addSignal(SIGINT);
         addSignal(SIGTERM);
         addSignal(SIGQUIT);
@@ -139,7 +139,7 @@ static SignalTask* localSignalTask;
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
-        : Task(0, "Hangup"), SignalTask() {
+        : Task("Hangup"), SignalTask() {
       }
 
     public:
@@ -156,7 +156,7 @@ static SignalTask* localSignalTask;
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
-        : Task(0, "Hangup"), SignalTask() {
+        : Task("Hangup"), SignalTask() {
         addSignal(SIGHUP);
       }
 
@@ -178,7 +178,7 @@ static SignalTask* localSignalTask;
   class Sigusr1Task : public SignalTask {
     public:
       Sigusr1Task (ApplicationScheduler* scheduler)
-        : Task(0, "Sigusr1"), SignalTask(), _scheduler(scheduler) {
+        : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
         addSignal(SIGUSR1);
 #endif
@@ -210,7 +210,7 @@ static SignalTask* localSignalTask;
   class SchedulerReporterTask : public PeriodicTask {
     public:
       SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
-        : Task(0, "Scheduler-Reporter"), 
+        : Task("Scheduler-Reporter"), 
           PeriodicTask(1.0, _reportInterval), 
           _scheduler(scheduler) {
       }
@@ -234,7 +234,7 @@ static SignalTask* localSignalTask;
 
   bool CtrlHandler (DWORD eventType) {
     ControlCTask* ccTask = (ControlCTask*) localSignalTask;
-    string msg = ccTask->_server->getName() + " [shutting down]";
+    // string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;
     string shutdownMessage;
 
