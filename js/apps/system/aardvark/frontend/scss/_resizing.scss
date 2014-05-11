@@ -51,6 +51,8 @@ div.resizecontainer {
   $subbar-font: 15px;
   $subar-weight: 400;
 
+  $smallchart_height-corrector: 0px;
+
   $dashboard-height: 300px;
 
   @if $i < 4 {
@@ -65,6 +67,8 @@ div.resizecontainer {
 	  $tendency_height-corrector: 10px;
 
     $subbar-font: 12px;
+
+	  $smallchart_height-corrector: 5px;
 
     $dashboard-height: 200px;
   } @else if $i < 5 {
@@ -82,7 +86,7 @@ div.resizecontainer {
     $dashboard-height: 230px;
   } @else if $i < 6 {
     $legend-width: 130px;
-    $legend-font: 13px;
+    $legend-font: 12px;
 	  $legend-margin: 10px;
 
     $axis-font: 13px;
@@ -167,8 +171,16 @@ div.resizecontainer {
         width: $int-width - 10px;
         
         .dashboard-interior-chart {
-          height: $dashboard-height - $dashboard-padding - 5px;
-          width: $int-width - 20px;
+          height: $dashboard-height - $smallchart_height-corrector;
+          width: $int-width - 10px;
+					
+					.nv-axis text {
+		        font: {
+		          size: $axis-font;
+		          weight: $axis-weight;
+		        }
+						color: $c-darker-grey;
+					}
         }
       }
     }
@@ -284,7 +296,7 @@ div.resizecontainer {
     
     .dashboard-figurePer {
       font-size: $tendency_figure-font - 2px;
-      font-weight: $tendency_figure-weight;
+      font-weight: $tendency_name-weight;
     }
     
     .dygraph-axis-label {
