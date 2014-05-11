@@ -861,7 +861,6 @@ function computeStatisticsSeries (start, attrs, dbServer) {
 
 controller.get("full", function (req, res) {
   var start = req.params("start");
-  var filter = req.params("filter");
   var dbServer = req.params("DBserver");
   var attrs = null;
 
@@ -869,15 +868,30 @@ controller.get("full", function (req, res) {
     start = parseInt(start, 10);
   }
 
-  if (filter !== null && filter !== undefined && filter !== "") {
-    var s = filter.split(",");
-    var i;
+  var series = computeStatisticsSeries(start, attrs, dbServer);
 
-    attrs = {};
+  res.json(series);
+}).summary("Returns the statistics")
+  .notes("This function is used to get the statistics history.");
 
-    for (i = 0;  i < s.length;  ++i) {
-      attrs[s[i]] = true;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief full statistics history
+////////////////////////////////////////////////////////////////////////////////
+
+controller.get("history", function (req, res) {
+  var start = req.params("start");
+  var filter = req.params("filter");
+  var dbServer = req.params("DBserver");
+  var attrs = {};
+  var s = filter.split(",");
+  var i;
+
+  if (start !== null && start !== undefined) {
+    start = parseInt(start, 10);
+  }
+
+  for (i = 0;  i < s.length;  ++i) {
+    attrs[s[i]] = true;
   }
 
   if (dbServer === null) {
@@ -887,8 +901,8 @@ controller.get("full", function (req, res) {
   var series = computeStatisticsSeries(start, attrs, dbServer);
 
   res.json(series);
-}).summary("Returns the complete or partial history")
-  .notes("This function is used to get the complete or partial statistics history.");
+}).summary("Returns the aggregated history")
+  .notes("This function is used to get the aggregated statistics history.");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster statistics history
