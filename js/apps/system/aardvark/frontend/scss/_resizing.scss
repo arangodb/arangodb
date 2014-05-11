@@ -284,7 +284,7 @@ div.resizecontainer {
       }
 		}
 
-    div.modal-chart-detail {
+    .modal-chart-detail {
       $int-width: $content-size;
       width: $int-width;
 
@@ -293,55 +293,24 @@ div.resizecontainer {
 				
       .modal-body {
         max-height: none;
+        min-height: $dashboard-height;
 				padding: 5px;
       }
 
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
+	    .modal-dashboard-legend {
+	      @if $i < 4 {
+	        display: none;
+	      }
+	      font-size: $legend-font + 2px;
+	      width: $legend-width + 10px;
+				height: $dashboard-height - 10px;
+	    }
+
+			.modal-inner-detail {
+        width: $int-width - $legend-width - 20px;
       }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/
     }
+
 
 		.dashboard-spacer {
 		}
@@ -394,15 +363,6 @@ div.resizecontainer {
       font-weight: $legend-weight;
       width: $legend-width;
 			margin-top: -3px;
-    }
-
-    .modal-dashboard-legend {
-      @if $i < 4 {
-        display: none;
-      }
-      font-size: $legend-font;
-      height: $dashboard-height;
-      width: $legend-width;
     }
 
     .dashboard-half-height-legend {
