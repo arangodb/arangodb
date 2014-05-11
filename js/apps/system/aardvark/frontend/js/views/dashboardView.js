@@ -96,9 +96,7 @@
         undefined,
         undefined,
         this.events
-
       );
-
 			window.modalView.hideFooter = false;
 
       $('#modal-dialog').on('hidden', function () {
@@ -179,13 +177,7 @@
     updateTendencies: function () {
       var self = this, map = this.tendencies;
       
-      var lineBreak = "<br>";
-      if ($(".dashboard-tendency-chart").width() < 298) {
-        lineBreak = "<br>"
-      }
-      
       var tempColor = "";
-      
       Object.keys(map).forEach(function (a) {
         if (self.history[a][1] < 0) {
           tempColor = "red";
@@ -193,7 +185,8 @@
         else {
           tempColor = "green";
         }
-        $("#" + a).html(self.history[a][0] + lineBreak + '<span class="dashboard-figurePer"><span style="color: '+ tempColor +';">' + self.history[a][1] + '%</span></span>');
+        $("#" + a).html(self.history[a][0] + '<br/><span class="dashboard-figurePer" style="color: ' 
+				  + tempColor +';">' + self.history[a][1] + '%</span>');
       });
     },
 
@@ -463,13 +456,14 @@
 
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
-      var current = fmtNumber((self.history.physicalMemory * 100  / 1024 / 1024 / 100) * (self.history.residentSizeChart[0].values[0].value / 100), 1);
-      if (current < 1025) {
-        var currentA = current + " MB"
+      var current = fmtNumber((self.history.physicalMemory * 100  / 1024 / 1024 / 100) * 
+			  (self.history.residentSizeChart[0].values[0].value / 100), 1);
+      var currentA = "";
+			if (current < 1025) {
+        currentA = current + " MB";
       }
       else {
-        var currentA = fmtNumber((current / 1024), 2) + " GB"
-        
+        currentA = fmtNumber((current / 1024), 2) + " GB";
       }
       var currentP = Math.round(self.history.residentSizeChart[0].values[0].value * 100) / 100;
 
@@ -486,9 +480,9 @@
           .width(dimensions.width)
           .height(dimensions.height)
           .margin({
-            top: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+            top: ($("residentSizeChartContainer").outerHeight() - $("residentSizeChartContainer").height()) / 2,
             right: 1,
-            bottom: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+            bottom: ($("residentSizeChartContainer").outerHeight() - $("residentSizeChartContainer").height()) / 2,
             left: 1
           })
           .showValues(false)
