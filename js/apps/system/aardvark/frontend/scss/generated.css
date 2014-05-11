@@ -1369,7 +1369,7 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-inner-detail, .modal-dashboard-legend, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
 div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
@@ -2167,58 +2167,21 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 62px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 228px;
     left: 50%;
-    margin-left: -114px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -114px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 200px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      width: 10px;
+      height: 190px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 208px; }
 
   .percentage {
     font-size: 14px; }
@@ -2254,12 +2217,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 0px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 10px;
-    height: 200px;
-    width: 0px; }
 
   .dashboard-half-height-legend {
     display: none;
@@ -2348,58 +2305,21 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 142px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 468px;
     left: 50%;
-    margin-left: -234px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -234px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 200px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      width: 10px;
+      height: 190px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 448px; }
 
   .percentage {
     font-size: 14px; }
@@ -2435,12 +2355,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 0px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 10px;
-    height: 200px;
-    width: 0px; }
 
   .dashboard-half-height-legend {
     display: none;
@@ -2529,58 +2443,21 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 222px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 708px;
     left: 50%;
-    margin-left: -354px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -354px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 200px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      width: 10px;
+      height: 190px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 688px; }
 
   .percentage {
     font-size: 14px; }
@@ -2616,12 +2493,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 0px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 10px;
-    height: 200px;
-    width: 0px; }
 
   .dashboard-half-height-legend {
     display: none;
@@ -2710,58 +2581,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 302px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 948px;
     left: 50%;
-    margin-left: -474px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -474px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 230px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 13px;
+      width: 130px;
+      height: 220px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 808px; }
 
   .percentage {
     font-size: 15px; }
@@ -2796,11 +2629,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 120px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 11px;
-    height: 230px;
-    width: 120px; }
 
   .dashboard-half-height-legend {
     height: 115px;
@@ -2888,58 +2716,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 382px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 1188px;
     left: 50%;
-    margin-left: -594px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -594px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 260px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 14px;
+      width: 140px;
+      height: 250px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1038px; }
 
   .percentage {
     font-size: 18px; }
@@ -2974,11 +2764,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 130px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 12px;
-    height: 260px;
-    width: 130px; }
 
   .dashboard-half-height-legend {
     height: 130px;
@@ -3066,58 +2851,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 462px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 1428px;
     left: 50%;
-    margin-left: -714px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -714px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 300px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 15px;
+      width: 150px;
+      height: 290px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1268px; }
 
   .percentage {
     font-size: 20px; }
@@ -3152,11 +2899,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 140px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 13px;
-    height: 300px;
-    width: 140px; }
 
   .dashboard-half-height-legend {
     height: 150px;
@@ -3244,58 +2986,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 542px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 1668px;
     left: 50%;
-    margin-left: -834px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -834px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 340px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 16px;
+      width: 170px;
+      height: 330px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1488px; }
 
   .percentage {
     font-size: 24px; }
@@ -3330,11 +3034,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 160px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    height: 340px;
-    width: 160px; }
 
   .dashboard-half-height-legend {
     height: 170px;
@@ -3422,58 +3121,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 622px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 1908px;
     left: 50%;
-    margin-left: -954px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -954px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 400px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      width: 180px;
+      height: 390px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1718px; }
 
   .percentage {
     font-size: 28px; }
@@ -3508,11 +3169,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 170px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 15px;
-    height: 400px;
-    width: 170px; }
 
   .dashboard-half-height-legend {
     height: 200px;
@@ -3600,58 +3256,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 702px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 2148px;
     left: 50%;
-    margin-left: -1074px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -1074px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 300px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      width: 150px;
+      height: 290px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1988px; }
 
   .percentage {
     font-size: 22px; }
@@ -3686,11 +3304,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 140px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 15px;
-    height: 300px;
-    width: 140px; }
 
   .dashboard-half-height-legend {
     height: 150px;
@@ -3778,58 +3391,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 782px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 2388px;
     left: 50%;
-    margin-left: -1194px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -1194px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 300px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      width: 150px;
+      height: 290px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 2228px; }
 
   .percentage {
     font-size: 22px; }
@@ -3864,11 +3439,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 140px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 15px;
-    height: 300px;
-    width: 140px; }
 
   .dashboard-half-height-legend {
     height: 150px;
@@ -3956,58 +3526,20 @@ div.resizecontainer {
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 862px; }
 
-  div.modal-chart-detail {
+  .modal-chart-detail {
     width: 2628px;
     left: 50%;
-    margin-left: -1314px;
-      /*
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-			.dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: (($inner-content-size - 32) / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-			*/ }
-    div.modal-chart-detail .modal-body {
+    margin-left: -1314px; }
+    .modal-chart-detail .modal-body {
       max-height: none;
+      min-height: 300px;
       padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      width: 150px;
+      height: 290px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 2468px; }
 
   .percentage {
     font-size: 22px; }
@@ -4042,11 +3574,6 @@ div.resizecontainer {
     font-weight: 400;
     width: 140px;
     margin-top: -3px; }
-
-  .modal-dashboard-legend {
-    font-size: 15px;
-    height: 300px;
-    width: 140px; }
 
   .dashboard-half-height-legend {
     height: 150px;
@@ -4791,15 +4318,7 @@ pre.gv-object-view {
 .headerBar.dashboard-headerbar {
   margin: 15px 0px 10px 0px; }
 
-.modal-chart-detail {
-  /*
-	height: 100%;
-  .modal-body {
-    max-height: 75%;
-  }
-	*/ }
-
-.modal-dashboard-legend .dashboard-legend-inner {
+.modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px;
   padding-top: 20px; }
 

@@ -219,24 +219,21 @@
 .modal-chart-detail {
   @extend %pull-left;
 
-  /*
-	height: 100%;
   .modal-body {
-    max-height: 75%;
+	  @extend %pull-left;
   }
-	*/
-}
 
-.modal-inner-detail {
-  @extend %pull-left;
-}
+	.modal-dashboard-legend {
+	  @extend %pull-left;
 
-.modal-dashboard-legend {
-  @extend %pull-left;
+	  .dashboard-legend-inner {
+	    padding-left: 20px;
+	    padding-top: 20px;
+	  }
+	}
 
-  .dashboard-legend-inner {
-    padding-left: 20px;
-    padding-top: 20px;
+  .modal-inner-detail {
+	  @extend %pull-left;
   }
 }
 

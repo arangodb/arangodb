@@ -189,12 +189,12 @@
         getDefaultConfig: function (figure) {
             var self = this;
             var result = {
-                digitsAfterDecimal: 2,
+                digitsAfterDecimal: 1,
                 drawGapPoints: true,
                 fillGraph: true,
                 showLabelsOnHighlight: false,
                 strokeWidth: 2,
-                strokeBorderWidth: 1,
+                strokeBorderWidth: 0.5,
                 includeZero: true,
                 highlightCircleSize: 0,
                 labelsSeparateLines : true,
@@ -202,13 +202,13 @@
                 interactionModel: {},
                 maxNumberWidth : 10,
                 colors: [this.colors[0]],
-                xAxisLabelWidth: "60",
-                rightGap: 10,
+                xAxisLabelWidth: "50",
+                rightGap: 15,
                 showRangeSelector: false,
-                rangeSelectorHeight: 40,
+                rangeSelectorHeight: 50,
                 rangeSelectorPlotStrokeColor: '#365300',
                 rangeSelectorPlotFillColor: '#414a4c',
-                pixelsPerLabel: 60,
+                pixelsPerLabel: 50,
                 labelsKMG2: true,
                 dateWindow: [
                     new Date().getTime() -
@@ -249,8 +249,9 @@
                     interactionModel: null,
                     showLabelsOnHighlight: true,
                     highlightCircleSize: 3,
-                    legend : "always",
-                    labelsDiv : document.getElementById("detailLegend")
+                    legend: "always", 
+										labelsDiv: "div#detailLegend.dashboard-legend-inner"
+                    // labelsDiv: document.getElementById("detailLegend")
                 }
             );
             if (figure === "pageFaults") {

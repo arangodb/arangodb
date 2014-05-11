@@ -78,13 +78,15 @@
       }
       return figure;
     },
-
     showDetail: function (e) {
       var self = this,
           figure = this.getDetailFigure(e), options;
-      this.getStatistics(figure);
+
+			this.getStatistics(figure);
       this.detailGraphFigure = figure;
+
       options = this.dygraphConfig.getDetailChartConfig(figure);
+
       window.modalView.hideFooter = true;
       window.modalView.hide();
       window.modalView.show(
@@ -97,17 +99,16 @@
 
       );
 
-      options = this.dygraphConfig.getDetailChartConfig(figure);
-      window.modalView.hideFooter = false;
+			window.modalView.hideFooter = false;
 
       $('#modal-dialog').on('hidden', function () {
         self.hidden();
       });
+
       $('#modal-dialog').toggleClass("modal-chart-detail", true);
 
       options.height = $(window).height() * 0.7;
-      //options.height = $('.modal-chart-detail').height() * 0.7;
-      options.width = $('.modal-chart-detail').width();
+      options.width = $('.modal-inner-detail').width();
       
 			this.detailGraph = new Dygraph(
         document.getElementById("lineChartDetail"),
