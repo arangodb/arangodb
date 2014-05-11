@@ -2,7 +2,7 @@
   <% var largeChart = function(name, title) { %>
     <div class="dashboard-large-chart">
       <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
-			  <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div>
+        <!-- <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
@@ -15,7 +15,7 @@
   <% var mediumChart = function(name, title) { %>
     <div class="dashboard-medium-chart">
       <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
-			  <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div>
+        <!-- <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
@@ -99,16 +99,16 @@
 
     <div class="dashboard-bar-chart-container dashboard-spacer">
       <div class="dashboard-bar-chart">
-	      <div class="dashboard-bar-chart-title">
-					<div class="percentage"></div>
-					<div class="absolut"></div>
-				</div>
-	      <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
-	        <div id="residentSizeChart">
-	          <svg></svg>
-	        </div>
-	      </div>
-			</div>
+        <div class="dashboard-bar-chart-title">
+          <div class="percentage"></div>
+          <div class="absolut"></div>
+        </div>
+        <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+          <div id="residentSizeChart">
+            <svg></svg>
+          </div>
+        </div>
+      </div>
       <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
 
