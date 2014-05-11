@@ -83,7 +83,7 @@ div.resizecontainer {
 
     $subbar-font: 11px;
 
-    $dashboard-height: 230px;
+    $dashboard-height: 225px;
   } @else if $i < 6 {
     $legend-width: 130px;
     $legend-font: 12px;
@@ -96,7 +96,7 @@ div.resizecontainer {
 
     $subbar-font: 13px;
 
-    $dashboard-height: 260px;
+    $dashboard-height: 250px;
   } @else if $i < 7 {
     $legend-width: 140px;
     $legend-font: 13px;
