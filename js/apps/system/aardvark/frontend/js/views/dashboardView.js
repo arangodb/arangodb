@@ -19,7 +19,7 @@
     alreadyCalledDetailChart: [],
 
     events: {
-      "click .dashboard-chart": "showDetail"
+      "click .dashboard-large-chart-menu": "showDetail"
     },
 
     tendencies: {
@@ -153,7 +153,7 @@
       this.dygraphConfig = this.options.dygraphConfig;
       this.server = this.options.serverToShow;
       this.d3NotInitialised = true;
-      this.events["click .dashboard-chart"] = this.showDetail.bind(this);
+      this.events["click .dashboard-large-chart-menu"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
     },
@@ -174,21 +174,21 @@
 
     updateTendencies: function () {
       var self = this, map = this.tendencies;
-			
-			var lineBreak = "<br>";
-			if ($(".dashboard-tendency-chart").width() < 298) {
-      	lineBreak = "<br>"
+      
+      var lineBreak = "<br>";
+      if ($(".dashboard-tendency-chart").width() < 298) {
+        lineBreak = "<br>"
       }
-			
-			var tempColor = "";
-			
-			Object.keys(map).forEach(function (a) {
-				if (self.history[a][1] < 0) {
-					tempColor = "red";
-				}
-				else {
-					tempColor = "green";
-				}
+      
+      var tempColor = "";
+      
+      Object.keys(map).forEach(function (a) {
+        if (self.history[a][1] < 0) {
+          tempColor = "red";
+        }
+        else {
+          tempColor = "green";
+        }
         $("#" + a).html(self.history[a][0] + lineBreak + '<span class="dashboard-figurePer"><span style="color: '+ tempColor +';">' + self.history[a][1] + '%</span></span>');
       });
     },
@@ -363,7 +363,7 @@
       this.nextStart = newData.nextStart;
     },
 
-		mergeBarChartData: function (attribList, newData) {
+    mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
         "color": this.dygraphConfig.colors[0],
@@ -446,67 +446,67 @@
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
       var current = fmtNumber((self.history.physicalMemory * 100  / 1024 / 1024 / 100) * (self.history.residentSizeChart[0].values[0].value / 100), 1);
-			if (current < 1025) {
-				var currentA = current + " MB"
-			}
-			else {
-				var currentA = fmtNumber((current / 1024), 1) + " GB"
-				
-			}
+      if (current < 1025) {
+        var currentA = current + " MB"
+      }
+      else {
+        var currentA = fmtNumber((current / 1024), 2) + " GB"
+        
+      }
       var currentP = Math.round(self.history.residentSizeChart[0].values[0].value * 100) / 100;
 
       var data = [fmtNumber(self.history.physicalMemory * 100  / 1024 / 1024 / 1024, 1) / 100 + " GB"];
 
-			nv.addGraph(function () {
+      nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
-	        .x(function (d) {
-	          return d.label;
-	        })
-	        .y(function (d) {
-	          return d.value;
-	        })
-	        .width(dimensions.width)
-	        .height(dimensions.height)
-	        .margin({
-	          top: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
-	          right: 1,
-	          bottom: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
-	          left: 1
-	        })
-	        .showValues(false)
-	        .showYAxis(false)
-	        .showXAxis(false)
-	        .transitionDuration(100)
-	        .tooltips(false)
-	        .showLegend(false)
-	        .showControls(false)
-	        .stacked(true);
-	      
+          .x(function (d) {
+            return d.label;
+          })
+          .y(function (d) {
+            return d.value;
+          })
+          .width(dimensions.width)
+          .height(dimensions.height)
+          .margin({
+            top: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+            right: 1,
+            bottom: ($(residentSizeChartContainer).outerHeight() - $(residentSizeChartContainer).height()) / 2,
+            left: 1
+          })
+          .showValues(false)
+          .showYAxis(false)
+          .showXAxis(false)
+          .transitionDuration(100)
+          .tooltips(false)
+          .showLegend(false)
+          .showControls(false)
+          .stacked(true);
+        
         chart.yAxis
           .tickFormat(function (d) {return d + "%";})
           .showMaxMin(false);
-				chart.xAxis.showMaxMin(false);
+        chart.xAxis.showMaxMin(false);
         
         d3.select('#residentSizeChart svg')
-	        .datum(self.history.residentSizeChart)
-	        .call(chart);
+          .datum(self.history.residentSizeChart)
+          .call(chart);
         
-				d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
-				
+        d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
+        
         if (update) {
           d3.select('#residentSizeChart svg').select('#total').remove();
           d3.select('#residentSizeChart svg').select('#percentage').remove();
         }
         
         d3.select('.dashboard-bar-chart-title .percentage')
-	        .html(currentA + " ("+ currentP + " %)");
+          .html(currentA + " ("+ currentP + " %)");
 
         d3.select('.dashboard-bar-chart-title .absolut')
-					.html(data[0]);
-				
+          .html(data[0]);
+        
         nv.utils.windowResize(chart.update);
-				
-				return chart;
+        
+        return chart;
       }, function() {
         d3.selectAll("#residentSizeChart .nv-bar").on('click',
           function() {
@@ -516,8 +516,7 @@
       });
     },
 
-    // XXX
-		prepareD3Charts: function (update) {
+    prepareD3Charts: function (update) {
       var v, self = this, f;
 
       var barCharts = {
@@ -546,38 +545,42 @@
 
         nv.addGraph(function () {
           var chart = nv.models.multiBarHorizontalChart()
-	          .x(function (d) {
-	            return d.label;
-	          })
-	          .y(function (d) {
-	            return d.value;
-	          })
-		        .width(dimensions.width)
-		        .height(dimensions.height)
-		        .margin({
-		          top: 5,
-		          right: 25,
-		          bottom: 20,
-							left: 85
-		        })
-	          .showValues(false)
-	          .showYAxis(true)
-	          .showXAxis(true)
-	          .transitionDuration(100)
-	          .tooltips(false)
-	          .showLegend(false)
-	          .showControls(false);
+            .x(function (d) {
+              return d.label;
+            })
+            .y(function (d) {
+              return d.value;
+            })
+            .width(dimensions.width)
+            .height(dimensions.height)
+            .margin({
+              top: 5,
+              right: 25,
+              bottom: 20,
+              left: 92
+            })
+            .showValues(false)
+            .showYAxis(true)
+            .showXAxis(true)
+            .transitionDuration(100)
+            .tooltips(false)
+            .showLegend(false)
+            .showControls(false)
+						.forceY([0,1]);
+          
+          var tickMarks = [0, 0.25, 0.5, 0.75, 1];  
 
           chart.yAxis
-						.tickFormat(function (d) {return Math.round(d* 100 * 100) / 100 + "%";});
+						.tickValues(tickMarks)
+						.tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 1) + "%";});
 
           d3.select(selector)
-	          .datum(self.history[k])
-	          .call(chart);
+            .datum(self.history[k])
+            .call(chart);
 
           nv.utils.windowResize(chart.update);
-					
-					return chart;
+          
+          return chart;
         }, function() {
           d3.selectAll(selector + " .nv-bar").on('click',
             function() {

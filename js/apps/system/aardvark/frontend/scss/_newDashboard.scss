@@ -1,8 +1,7 @@
 %dashboard-chart-box {
   @extend %pull-left;
   border-left: 0px solid $c-black;
-  cursor: pointer;
-
+	
   &:first-child {
     margin-left: 0;
   }
@@ -14,6 +13,7 @@
 
 .dashboard-large-chart {
   @extend %pull-left;
+	position: relative;
   margin-bottom: $dashboard-margin;
   margin-right: 12px;
 
@@ -30,7 +30,23 @@
       @extend %pull-left;
       margin-bottom: 0px;
     }
-  }
+
+		.dashboard-large-chart-menu {
+		  @extend %clear-float;
+		  @include border-radius(2px);
+			position: absolute;
+			color: $c-halfsemi-transp;
+			cursor: pointer;
+			z-index: 1000;
+			font-size: 1.15em;
+			border: 0px solid $c-halfsemi-transp;
+			padding: 0px 4px 0px 4px;
+		}
+
+		.dashboard-large-chart-menu:hover {
+			color: $c-low-transp;
+		}
+	}
 }
 
 
@@ -41,7 +57,6 @@
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
-    /* padding-top: $dashboard-padding; */
     background-color: $c-white;
     border-left: $dashboard-borderwidth solid $c-e1grey;
     border-top: $dashboard-borderwidth solid $c-e1grey;
@@ -52,7 +67,7 @@
 
 			.nv-bar rect {
 				stroke-opacity: 1;
-				stroke-width: 1px;
+				stroke-width: 0.5px;
 				fill-opacity: 0.15;
 			}
     }
@@ -62,6 +77,7 @@
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
+	position: relative;
   background-color: $c-white;
   padding-top: $dashboard-padding;
   border-left: $dashboard-borderwidth solid $c-e1grey;
@@ -78,6 +94,22 @@
     margin-bottom: 0px;
   }
   
+	.dashboard-medium-chart-menu {
+	  @extend %clear-float;
+	  @include border-radius(2px);
+		position: absolute;
+		color: $c-halfsemi-transp;
+		cursor: pointer;
+		z-index: 1000;
+		font-size: 1.15em;
+		border: 0px solid $c-halfsemi-transp;
+		padding: 0px 4px 0px 4px;
+	}
+
+	.dashboard-medium-chart-menu:hover {
+		color: $c-low-transp;
+	}
+
   .dashboard-medium-chart-inner {
       @extend %clear-float;
   }
@@ -100,6 +132,7 @@
       @extend %pull-left;
       background-color: $c-white;
       padding: 0px 8px 0px 8px;
+			margin-top: 5px;
       
       &:first-child {
         border-right: 1px solid $c-e1grey;

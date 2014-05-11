@@ -51,7 +51,7 @@ div.resizecontainer {
   $subbar-font: 15px;
   $subar-weight: 400;
 
-  $smallchart_height-corrector: 0px;
+  $smallchart_height-corrector: 5px;
 
   $dashboard-height: 300px;
 
@@ -64,7 +64,7 @@ div.resizecontainer {
 
     $tendency_name-font: 13px;
     $tendency_figure-font: 15px;
-	  $tendency_height-corrector: 10px;
+	  $tendency_height-corrector: 7.25px;
 
     $subbar-font: 12px;
 
@@ -91,8 +91,8 @@ div.resizecontainer {
 
     $axis-font: 13px;
 
-    $tendency_name-font: 17px;
-    $tendency_figure-font: 21px;
+    $tendency_name-font: 18px;
+    $tendency_figure-font: 22px;
 
     $subbar-font: 13px;
 
@@ -122,20 +122,20 @@ div.resizecontainer {
 
     $subbar-font: 14px;
 
-    $dashboard-height: 300px;
+    $dashboard-height: 340px;
   } @else if $i < 9 {
     $legend-width: 170px;
     $legend-font: 15px;
 	  $legend-margin: 10px;
 
-    $axis-font: 15px;
+    $axis-font: 14px;
 
     $tendency_name-font: 23px;
     $tendency_figure-font: 32px;
 
     $subbar-font: 15px;
 
-    $dashboard-height: 300px;
+    $dashboard-height: 400px;
   }
 
   @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
@@ -156,6 +156,11 @@ div.resizecontainer {
           height: $dashboard-height - $dashboard-padding - 5px;
           width: $int-width - $legend-width - $legend-margin - 0px;
         }
+
+				.dashboard-large-chart-menu {
+					top: 6px;
+					left: $int-width - 28px;
+				}
       }
     }
 
@@ -179,7 +184,7 @@ div.resizecontainer {
 		          size: $axis-font;
 		          weight: $axis-weight;
 		        }
-						color: $c-darker-grey;
+						fill: $c-darker-grey;
 					}
         }
       }
@@ -198,13 +203,18 @@ div.resizecontainer {
         height: $dashboard-height - $dashboard-padding - 5px;
         width: $int-width - $legend-width - $legend-margin - 1px;
       }
+
+			.dashboard-medium-chart-menu {
+				top: 1px;
+				left: $int-width - 22px;
+			}
     }
 
     .dashboard-tendency-container {
       $int-width: ($content-size / 3) - 14px;
   
       .dashboard-tendency-chart {
-        $int-height: (($dashboard-height - 24px)  / 2) - $tendency_height-corrector;
+        $int-height: (($dashboard-height - 29px)  / 2) - $tendency_height-corrector;
         height: $int-height;
 
         .dashboard-tendency,
@@ -213,15 +223,16 @@ div.resizecontainer {
           width: ($int-width / 2) - 19px;
         }
 
+				$int-height2: ($int-height - 5px);
         .dashboard-subtitle-bar {
-          height: (($int-height - 2px) / 3);
-          line-height: (($int-height - 2px) / 3);
+          height: ($int-height2 / 3);
+          line-height: ($int-height2 / 3);
         }
 
         .dashboard-figure {
-          height: (($int-height - 2px) * 2 / 3) - (((((($int-height - 2px) * 2 / 3) - ((($int-height - 2px) * 2 / 3 / 2) - 6px) * 2) / 2) - 1px) * 2);
-          line-height: ((($int-height - 2px) * 2 / 3 / 2) - 6px);
-					padding-top: ((((($int-height - 2px) * 2 / 3) - ((($int-height - 2px) * 2 / 3 / 2) - 6px) * 2) / 2) - 1px);
+          height: ($int-height2 * 2 / 3) - ((((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px) * 2);
+          line-height: ((($int-height - 3px) * 2 / 3 / 2) - 6px);
+					padding-top: (((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px);
 				}
       }
       .dashboard-sub-bar {
@@ -231,7 +242,7 @@ div.resizecontainer {
 
     .dashboard-bar-chart-container {
       $int-width: ($content-size / 3) - 18px;
-      $int-height: (($dashboard-height - 24px)  / 2) - $tendency_height-corrector;
+      $int-height: (($dashboard-height - 30px)  / 2) - $tendency_height-corrector;
       height: $int-height;
   
       .dashboard-bar-chart {
@@ -243,11 +254,11 @@ div.resizecontainer {
           line-height: (($int-height - 2px) / 3);
 
 	        .percentage {
-	          width: ((($int-width / 2) - 8px) * 1.3);
+	          width: ((($int-width / 2) - 8px) * 1.4);
 	        }
 					
 	        .absolut {
-	          width: ($int-width - (($int-width / 2) * 1.3)) - 6px;
+	          width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
 	        }
 	      }
 
@@ -317,6 +328,7 @@ div.resizecontainer {
       font-size: $legend-font;
       font-weight: $legend-weight;
       width: $legend-width;
+			margin-top: -3px;
     }
 
     .modal-dashboard-legend {
