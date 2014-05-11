@@ -211,7 +211,7 @@ svg .title {
 }
 
 .nvd3 .nv-bars rect:hover {
-  fill-opacity: 1;
+  fill-opacity: .75;
 }
 
 .nvd3 .nv-bars .hover rect {
@@ -219,11 +219,11 @@ svg .title {
 }
 
 .nvd3 .nv-bars text {
-  fill: rgba(0,0,0,0);
+  /* fill: rgba(0,0,0,0); */
 }
 
 .nvd3 .nv-bars .hover text {
-  fill: rgba(0,0,0,1);
+  /* fill: rgba(0,0,0,1); */
 }
 
 

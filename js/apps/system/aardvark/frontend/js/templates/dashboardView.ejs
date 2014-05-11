@@ -2,6 +2,7 @@
   <% var largeChart = function(name, title) { %>
     <div class="dashboard-large-chart">
       <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+			  <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div>
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
@@ -14,6 +15,7 @@
   <% var mediumChart = function(name, title) { %>
     <div class="dashboard-medium-chart">
       <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+			  <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div>
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
@@ -23,14 +25,14 @@
     </div>
   <% } %>
 
-  <% var smallChart = function(name) { %>
+  <% var smallChart = function(name, title) { %>
     <div class="dashboard-small-chart">
       <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
         <div id="<%= name %>" class="dashboard-interior-chart">
           <svg></svg>
         </div>
       </div>
-      <div class="dashboard-sub-bar">Distribution</div>
+      <div class="dashboard-sub-bar"><%= title %></div>
     </div>
   <% } %>
 
@@ -79,12 +81,12 @@
     
     <div class="dashboard-row">
       <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
-      <% smallChart("dataTransferDistribution") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)") %>
     </div>
     
     <div class="dashboard-row">
       <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
-      <% smallChart("totalTimeDistribution") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)") %>
     </div>
   </div>
 
