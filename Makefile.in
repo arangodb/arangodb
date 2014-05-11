@@ -8960,11 +8960,11 @@ js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.j
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g" \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g" \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   GYP_DEFINES="armv7=0" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		&& CFLAGS="-O2 -g" \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		   $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
 
