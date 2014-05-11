@@ -4,7 +4,6 @@ div.resizecontainer {
 }
 
 @media (max-width: 798px) {
-
   #arangoCollectionUl {
     display: none;
   }
@@ -16,11 +15,9 @@ div.resizecontainer {
   #arangoCollectionSelect {
     display: inline-block;
   }
-
 }
 
 @media (min-width: 799px) and (max-width: 1041px) {
-
   #arangoCollectionUl a {
     font-size: 12px;
     padding: 10px 5px;
@@ -28,155 +25,353 @@ div.resizecontainer {
 }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
-
   #arangoCollectionUl a {
     font-size: 14px;
   }
-
 }
 
 @for $i from 1 through 11 {
   $min: $tile-width * $i;
   $content-size: $min - 12px;
-  $legend-width: 200px;
-  $legend-font: 14px;
+
+  $legend-width: 140px;
+  $legend-weight: 400;
+  $legend-font: 15px;
+  $legend-margin: 10px;
+
+  $axis-font: 15px;
+  $axis-weight: 400;
+
+  $tendency_name-font: 22px;
+  $tendency_name-weight: 300;
+  $tendency_figure-font: 36px;
+  $tendency_figure-weight: 400;
+  $tendency_height-corrector: 6.5px;
+
+  $subbar-font: 15px;
+  $subar-weight: 400;
+
+  $smallchart_height-corrector: 3px;
+
+  $dashboard-height: 300px;
 
   @if $i < 4 {
-    $legend-width: 10px;
-    $legend-font: 8px;
+    $legend-width: 0px;
+    $legend-font: 10px;
+	  $legend-margin: 10px;
+
+    $axis-font: 10px;
+
+    $tendency_name-font: 14px;
+    $tendency_figure-font: 16px;
+	  $tendency_height-corrector: 7.25px;
+
+    $subbar-font: 10px;
+
+	  $smallchart_height-corrector: 5px;
+
+    $dashboard-height: 200px;
   } @else if $i < 5 {
     $legend-width: 120px;
-    $legend-font: 8px;
-  } @else if $i < 6 {
-    $legend-width: 170px;
     $legend-font: 11px;
+	  $legend-margin: 10px;
+
+    $axis-font: 11px;
+
+    $tendency_name-font: 15px;
+    $tendency_figure-font: 18px;
+
+    $subbar-font: 11px;
+
+    $dashboard-height: 225px;
+  } @else if $i < 6 {
+    $legend-width: 130px;
+    $legend-font: 12px;
+	  $legend-margin: 10px;
+
+    $axis-font: 13px;
+
+    $tendency_name-font: 18px;
+    $tendency_figure-font: 22px;
+
+    $subbar-font: 13px;
+
+    $dashboard-height: 250px;
+  } @else if $i < 7 {
+    $legend-width: 140px;
+    $legend-font: 13px;
+	  $legend-margin: 10px;
+
+    $axis-font: 13px;
+
+    $tendency_name-font: 20px;
+    $tendency_figure-font: 26px;
+
+    $subbar-font: 13px;
+
+    $dashboard-height: 300px;
+  } @else if $i < 8 {
+    $legend-width: 160px;
+    $legend-font: 14px;
+	  $legend-margin: 10px;
+
+    $axis-font: 14px;
+
+    $tendency_name-font: 24px;
+    $tendency_figure-font: 30px;
+
+    $subbar-font: 14px;
+
+    $dashboard-height: 340px;
+  } @else if $i < 9 {
+    $legend-width: 170px;
+    $legend-font: 15px;
+	  $legend-margin: 10px;
+
+    $axis-font: 14px;
+
+    $tendency_name-font: 28px;
+    $tendency_figure-font: 34px;
+
+    $subbar-font: 15px;
+
+    $dashboard-height: 400px;
   }
 
-  
   @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
     div.resizecontainer {
       width: $content-size;
     }
 
-    .dashboard-legend {
-      @if $i < 4 {
-        display: none;
+    .dashboard-large-chart {
+      $int-width: ($content-size * 2 / 3) - 4px;
+      width: $int-width;
+
+      .dashboard-sub-bar {
+        width: $int-width - 6px;
       }
-      font-size: $legend-font;
-      width: $legend-width;
+
+      .dashboard-large-chart-inner {
+        .dashboard-interior-chart {
+          height: $dashboard-height - $dashboard-padding - 5px;
+          width: $int-width - $legend-width - $legend-margin - 0px;
+        }
+
+				.dashboard-large-chart-menu {
+					top: 7px;
+					right: 6px;
+					/* left: $int-width - $tendency_name-font - 9px; */
+					font-size: $tendency_name-font - 2px;
+				}
+      }
     }
 
-    .modal-dashboard-legend {
-      @if $i < 4 {
+    .dashboard-medium-chart {
+      $int-width: ($content-size / 2) - 16px;
+      width: $int-width;
+
+      .dashboard-sub-bar {
+        width: $int-width + 4px;
+        margin-left: -5px;
+      }
+
+      .dashboard-interior-chart {
+        height: $dashboard-height - $dashboard-padding - 5px;
+        width: $int-width - $legend-width - $legend-margin + 10px;
+      }
+
+			.dashboard-medium-chart-menu {
+				top: 0px;
+				left: $int-width - $tendency_name-font - 3px;
+				font-size: $tendency_name-font - 2px;
+			}
+    }
+
+    .dashboard-small-chart {
+      $int-width: ($content-size / 3) - 8px;
+      width: $int-width;
+
+      .dashboard-sub-bar {
+        width: $int-width - 6px;
+      }
+
+      .dashboard-small-chart-inner {
+        width: $int-width - 10px;
+        
+        .dashboard-interior-chart {
+          height: $dashboard-height - $smallchart_height-corrector;
+          width: $int-width - 10px;
+					
+					.nv-axis text {
+		        font: {
+		          size: $axis-font;
+		          weight: $axis-weight;
+		        }
+						fill: $c-darker-grey;
+					}
+        }
+      }
+    }
+
+    .dashboard-tendency-container {
+      $int-width: ($content-size / 3) - 14px;
+  
+      .dashboard-tendency-chart {
+        $int-height: (($dashboard-height - 29px)  / 2) - $tendency_height-corrector;
+        height: $int-height;
+
+        .dashboard-tendency,
+        .dashboard-subtitle-bar,
+        .dashboard-figure {
+          width: ($int-width / 2) - 19px;
+        }
+
+				$int-height2: ($int-height - 5px);
+        .dashboard-subtitle-bar {
+          height: ($int-height2 / 3);
+          line-height: ($int-height2 / 3);
+        }
+
+        .dashboard-figure {
+          height: ($int-height2 * 2 / 3) - ((((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px) * 2);
+          line-height: ((($int-height - 3px) * 2 / 3 / 2) - 6px);
+					padding-top: (((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px);
+				}
+      }
+      .dashboard-sub-bar {
+        width: $int-width;
+      }
+    }
+
+    .dashboard-bar-chart-container {
+      $int-width: ($content-size / 3) - 18px;
+      $int-height: (($dashboard-height - 31px)  / 2) - $tendency_height-corrector;
+      height: $int-height;
+  
+      .dashboard-bar-chart {
+        width: $int-width;
+        height: $int-height;
+
+	      .dashboard-bar-chart-title {
+          height: (($int-height - 2px) / 3);
+          line-height: (($int-height - 2px) / 3);
+
+	        .percentage {
+	          width: ((($int-width / 2) - 8px) * 1.4);
+	        }
+					
+	        .absolut {
+	          width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+	        }
+	      }
+
+	      .dashboard-bar-chart-chart {
+	        width: $int-width - 16px;
+					
+					$int-height2: ($int-height - 20px);
+          height: ($int-height2 * 2 / 3) - 5px;
+          line-height: ($int-height2 * 2 / 3) - 5px;
+
+		      padding: 5px 8px 10px 8px;
+
+					#residentSizeChart {
+	          height: ($int-height2 * 2 / 3);
+					}
+	      }
+      }
+      .dashboard-sub-bar {
+        width: $int-width + 4px;
+      }
+		}
+
+    .modal-chart-detail {
+      $int-width: $content-size;
+      width: $int-width;
+
+      left: 50%;
+			margin-left: -($int-width) / 2;
+				
+      .modal-body {
+        max-height: none;
+        min-height: $dashboard-height;
+				padding: 5px;
+      }
+
+	    .modal-dashboard-legend {
+	      @if $i < 4 {
+	        display: none;
+	      }
+	      font-size: $legend-font + 2px;
+	      width: $legend-width + 10px;
+				min-height: $dashboard-height - 10px;
+	    }
+			.modal-inner-detail {
+        width: $int-width - $legend-width - 20px;
+      }
+    }
+
+
+		.dashboard-spacer {
+		}
+  	
+		.percentage {
+      font-size: $tendency_name-font;
+  	}
+
+  	.absolut {
+      font-size: $tendency_name-font;
+      font-weight: $tendency_name-weight;
+  	}
+
+    .dashboard-sub-bar {
+      font-size: $subbar-font;
+      font-weight: $subar-weight;
+    }
+
+    .dashboard-subtitle-bar {
+      font-size: $tendency_name-font;
+      font-weight: $tendency_name-weight;
+    }
+  
+    .dashboard-figure {
+      font-size: $tendency_figure-font;
+      font-weight: $tendency_figure-weight;
+    }
+    
+    .dashboard-figurePer {
+      font-size: $tendency_figure-font - 2px;
+      font-weight: $tendency_name-weight;
+    }
+    
+    .dygraph-axis-label {
+      &.dygraph-axis-label-y, 
+      &.dygraph-axis-label-x {
+        font: {
+          size: $axis-font;
+          weight: $axis-weight;
+        }
+      }
+    }
+
+    .dashboard-legend {
+			@if $i < 4 {
         display: none;
       }
+      height: $dashboard-height - $dashboard-padding;
       font-size: $legend-font;
+      font-weight: $legend-weight;
       width: $legend-width;
+			margin-top: -3px;
     }
 
     .dashboard-half-height-legend {
       @if $i < 4 {
         display: none;
       }
+      height: $dashboard-height / 2;
       font-size: $legend-font;
       width: $legend-width / 2;
     }
-
-    div.modal-chart-detail {
-      left: 50%;
-      margin-left: -($content-size) / 2;
-      width: $content-size;
-    }
-
-    .dashboard-large-chart {
-      $int-width: ($content-size * 2 / 3);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
-    .dashboard-medium-chart {
-      $int-width: ($content-size / 2);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
-    .dashboard-small-chart {
-      $int-width: ($content-size / 3);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
-    .dashboard-tendency-chart {
-      $int-width: ($content-size / 3);
-      width: $int-width;
-
-      .dashboard-interior-chart {
-        width: $int-width - $legend-width;
-      }
-    }
-
-
-    div.modal-chart-detail {
-
-      $inner-content-size: $content-size - 100px;// - 200px;
-      margin-left: -($inner-content-size + 90px)/2;
-      width: $inner-content-size + 90px;
-
-      .modal-inner-detail {
-        width: $inner-content-size - 30px - $legend-width;
-      }
-
-      .modal-body {
-        width: $inner-content-size + 15px;
-      }
-      
-      .dashboard-large-chart {
-        $int-width: ($inner-content-size * 2 / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-medium-chart {
-        $int-width: ($inner-content-size / 2);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-small-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-      .dashboard-tendency-chart {
-        $int-width: ($inner-content-size / 3);
-        width: $int-width;
-
-        .dashboard-interior-chart {
-          width: $int-width - $legend-width;
-        }
-      }
-
-    }
-
   }
 }
 
