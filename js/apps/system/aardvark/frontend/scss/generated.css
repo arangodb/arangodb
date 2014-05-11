@@ -2179,7 +2179,7 @@ div.resizecontainer {
       display: none;
       font-size: 12px;
       width: 10px;
-      height: 190px; }
+      min-height: 190px; }
     .modal-chart-detail .modal-inner-detail {
       width: 208px; }
 
@@ -2317,7 +2317,7 @@ div.resizecontainer {
       display: none;
       font-size: 12px;
       width: 10px;
-      height: 190px; }
+      min-height: 190px; }
     .modal-chart-detail .modal-inner-detail {
       width: 448px; }
 
@@ -2455,7 +2455,7 @@ div.resizecontainer {
       display: none;
       font-size: 12px;
       width: 10px;
-      height: 190px; }
+      min-height: 190px; }
     .modal-chart-detail .modal-inner-detail {
       width: 688px; }
 
@@ -2592,7 +2592,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 13px;
       width: 130px;
-      height: 220px; }
+      min-height: 220px; }
     .modal-chart-detail .modal-inner-detail {
       width: 808px; }
 
@@ -2727,7 +2727,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 14px;
       width: 140px;
-      height: 250px; }
+      min-height: 250px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1038px; }
 
@@ -2862,7 +2862,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 15px;
       width: 150px;
-      height: 290px; }
+      min-height: 290px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1268px; }
 
@@ -2997,7 +2997,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 16px;
       width: 170px;
-      height: 330px; }
+      min-height: 330px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1488px; }
 
@@ -3132,7 +3132,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
       width: 180px;
-      height: 390px; }
+      min-height: 390px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1718px; }
 
@@ -3267,7 +3267,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
       width: 150px;
-      height: 290px; }
+      min-height: 290px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1988px; }
 
@@ -3402,7 +3402,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
       width: 150px;
-      height: 290px; }
+      min-height: 290px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2228px; }
 
@@ -3537,7 +3537,7 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
       width: 150px;
-      height: 290px; }
+      min-height: 290px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2468px; }
 

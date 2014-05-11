@@ -303,9 +303,8 @@ div.resizecontainer {
 	      }
 	      font-size: $legend-font + 2px;
 	      width: $legend-width + 10px;
-				height: $dashboard-height - 10px;
+				min-height: $dashboard-height - 10px;
 	    }
-
 			.modal-inner-detail {
         width: $int-width - $legend-width - 20px;
       }
