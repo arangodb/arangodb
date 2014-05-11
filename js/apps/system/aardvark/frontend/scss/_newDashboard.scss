@@ -38,7 +38,6 @@
 			color: $c-halfsemi-transp;
 			cursor: pointer;
 			z-index: 1000;
-			font-size: 1.15em;
 			border: 0px solid $c-halfsemi-transp;
 			padding: 0px 4px 0px 4px;
 		}
@@ -67,7 +66,7 @@
 
 			.nv-bar rect {
 				stroke-opacity: 1;
-				stroke-width: 0.5px;
+				stroke-width: 1px;
 				fill-opacity: 0.15;
 			}
     }
@@ -101,7 +100,6 @@
 		color: $c-halfsemi-transp;
 		cursor: pointer;
 		z-index: 1000;
-		font-size: 1.15em;
 		border: 0px solid $c-halfsemi-transp;
 		padding: 0px 4px 0px 4px;
 	}
@@ -167,6 +165,7 @@
     .dashboard-bar-chart-title {
       @extend %pull-left;
       padding: 0px 8px 0px 8px;
+			margin-top: 5px;
 
 	    .percentage {
 	      @extend %pull-left;
@@ -219,11 +218,13 @@
 
 .modal-chart-detail {
   @extend %pull-left;
-  height: 85%;
 
+  /*
+	height: 100%;
   .modal-body {
     max-height: 75%;
   }
+	*/
 }
 
 .modal-inner-detail {
@@ -237,7 +238,6 @@
     padding-left: 20px;
     padding-top: 20px;
   }
-
 }
 
 .dashboard-half-height-legend {
@@ -286,7 +286,7 @@
 }
 
 /*
-.dashboard-legend {
+.dashboard-	 {
   color: $c-darker-grey;
   font: {
     family: 'Open Sans', sans-serif;
