@@ -41,7 +41,7 @@
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
-    padding-top: $dashboard-padding;
+    /* padding-top: $dashboard-padding; */
     background-color: $c-white;
     border-left: $dashboard-borderwidth solid $c-e1grey;
     border-top: $dashboard-borderwidth solid $c-e1grey;
@@ -49,7 +49,12 @@
 
     .dashboard-interior-chart {
       @extend %pull-left;
-      margin-bottom: 5px;
+
+			.nv-bar rect {
+				stroke-opacity: 1;
+				stroke-width: 1px;
+				fill-opacity: 0.15;
+			}
     }
   }
 }
@@ -147,7 +152,7 @@
 			.nv-bar rect {
 				stroke-opacity: 1;
 				stroke-width: 1px;
-				fill-opacity: 0.25;
+				fill-opacity: 0.15;
 			}
     }
   }
