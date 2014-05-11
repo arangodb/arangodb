@@ -388,6 +388,7 @@ function TaskSuite () {
 /// @brief create a task and run it
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
     testCreateStringCommand : function () {
       db._drop(cn);
       db._create(cn);
@@ -418,11 +419,13 @@ function TaskSuite () {
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 23 }).count() > 0);
     },
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a task and run it
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
     testCreateFunctionCommand : function () {
       db._drop(cn);
       db._create(cn);
@@ -456,6 +459,7 @@ function TaskSuite () {
       assertTrue(db[cn].byExample({ value: 23 }).count() === 0);
       assertTrue(db[cn].byExample({ value: 42 }).count() > 0);
     }
+*/
 
   };
 }
