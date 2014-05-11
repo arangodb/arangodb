@@ -280,6 +280,23 @@ could use it like this:
 Of course you can create your own methods in the repository to add extra 
 functionality. 
 
+Application Context
+===================
+
+JavaScript modules with a Foxx application can access the application using 
+the variable `applicationContext`. The applicationContext provides the following
+methods
+
+`applicationContext.collectionName(name)` returns the collection name
+with the application.
+
+`applicationContext.foxxFilename(filename)` returns the path to a
+file within the Foxx directory.
+
+`require(name)` will first look into the Foxx directory for a module
+named `name`. If no such module can be found, the global module paths
+are consulted.
+
 Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
 

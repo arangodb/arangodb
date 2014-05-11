@@ -73,7 +73,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SpecificCommTask (S* server, TRI_socket_t s, ConnectionInfo const& info, double keepAliveTimeout)
-          : Task(0, "SpecificCommTask"),  T(server, s, info, keepAliveTimeout) {
+          : Task("SpecificCommTask"),  T(server, s, info, keepAliveTimeout) {
         }
     };
   }

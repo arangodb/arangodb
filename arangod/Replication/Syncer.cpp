@@ -619,7 +619,8 @@ int Syncer::getMasterState (string& errorMsg) {
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                      response->getBody().c_str());
 
     if (JsonHelper::isArray(json)) {
       res = handleStateResponse(json, errorMsg);

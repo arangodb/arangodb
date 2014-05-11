@@ -89,6 +89,7 @@
           fullCount: true
         }
       };
+
       $.ajax({
         cache: false,
         type: 'POST',

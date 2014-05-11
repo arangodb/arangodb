@@ -21,6 +21,7 @@ LIBBSONDIR = @abs_top_srcdir@/3rdParty/libbson/BUILD
 	@echo
 
 	-mkdir $(LIBBSONDIR)
+
 	cd @top_srcdir@/3rdParty/libbson/upstream \
 	        && ./autogen.sh \
 		&& ./configure \

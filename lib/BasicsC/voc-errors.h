@@ -55,6 +55,8 @@ extern "C" {
 ///   Will be raised when an attempt to create a temporary file fails.
 /// - 21: @LIT{canceled request}
 ///   Will be raised when a request is canceled by the user.
+/// - 22: @LIT{intentional debug error}
+///   Will be raised intentionally during debugging.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -310,6 +312,15 @@ extern "C" {
 /// - 1470: @LIT{unsupported operation or parameter}
 ///   Will be raised when there is an attempt to carry out an operation that is
 ///   not supported in the context of a sharded collection.
+/// - 1471: @LIT{this operation is only valid on a coordinator in a cluster}
+///   Will be raised if there is an attempt to run a coordinator-only operation
+///   on a different type of node.
+/// - 1472: @LIT{error reading Plan in agency}
+///   Will be raised if a coordinator or DBserver cannot read the Plan in the
+///   agency.
+/// - 1473: @LIT{could not truncate collection}
+///   Will be raised if a coordinator cannot truncate all shards of a cluster
+///   collection.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -376,6 +387,8 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1572: @LIT{invalid date value}
+///   Will be raised when a value cannot be converted to a date.
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -430,32 +443,38 @@ extern "C" {
 ///   Will be raised when deleting a key/value pair does not work
 /// - 1806: @LIT{missing value}
 ///   Will be raised when the value is missing
+/// - 1850: @LIT{invalid task id}
+///   Will be raised when a task is created with an invalid id.
+/// - 1851: @LIT{duplicate task id}
+///   Will be raised when a task id is created with a duplicate id.
+/// - 1852: @LIT{task not found}
+///   Will be raised when a task with the specified id could not be found.
 /// - 1901: @LIT{invalid graph}
-///   Will be raised when an invalid name is passed to the server
+///   Will be raised when an invalid name is passed to the server.
 /// - 1902: @LIT{could not create graph}
 ///   Will be raised when an invalid name, vertices or edges is passed to the
-///   server
+///   server.
 /// - 1903: @LIT{invalid vertex}
-///   Will be raised when an invalid vertex id is passed to the server
+///   Will be raised when an invalid vertex id is passed to the server.
 /// - 1904: @LIT{could not create vertex}
-///   Will be raised when the vertex could not be created
+///   Will be raised when the vertex could not be created.
 /// - 1905: @LIT{could not change vertex}
-///   Will be raised when the vertex could not be changed
+///   Will be raised when the vertex could not be changed.
 /// - 1906: @LIT{invalid edge}
-///   Will be raised when an invalid edge id is passed to the server
+///   Will be raised when an invalid edge id is passed to the server.
 /// - 1907: @LIT{could not create edge}
-///   Will be raised when the edge could not be created
+///   Will be raised when the edge could not be created.
 /// - 1908: @LIT{could not change edge}
-///   Will be raised when the edge could not be changed
+///   Will be raised when the edge could not be changed.
 /// - 1909: @LIT{too many iterations}
-///   Will be raised when too many iterations are done in a graph traversal
+///   Will be raised when too many iterations are done in a graph traversal.
 /// - 1910: @LIT{invalid filter result}
 ///   Will be raised when an invalid filter result is returned in a graph
-///   traversal
+///   traversal.
 /// - 1950: @LIT{unknown session}
-///   Will be raised when an invalid/unknown session id is passed to the server
+///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
-///   Will be raised when a session is expired
+///   Will be raised when a session is expired.
 /// - 2000: @LIT{unknown client error}
 ///   This error should not happen.
 /// - 2001: @LIT{could not connect to server}
@@ -728,6 +747,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REQUEST_CANCELED                                        (21)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 22: ERROR_DEBUG
+///
+/// intentional debug error
+///
+/// Will be raised intentionally during debugging.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_DEBUG                                                   (22)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1771,6 +1800,39 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CLUSTER_UNSUPPORTED                                     (1470)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1471: ERROR_CLUSTER_ONLY_ON_COORDINATOR
+///
+/// this operation is only valid on a coordinator in a cluster
+///
+/// Will be raised if there is an attempt to run a coordinator-only operation
+/// on a different type of node.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR                             (1471)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1472: ERROR_CLUSTER_READING_PLAN_AGENCY
+///
+/// error reading Plan in agency
+///
+/// Will be raised if a coordinator or DBserver cannot read the Plan in the
+/// agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_READING_PLAN_AGENCY                             (1472)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1473: ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION
+///
+/// could not truncate collection
+///
+/// Will be raised if a coordinator cannot truncate all shards of a cluster
+/// collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   (1473)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -2041,6 +2103,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1572: ERROR_QUERY_INVALID_DATE_VALUE
+///
+/// invalid date value
+///
+/// Will be raised when a value cannot be converted to a date.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
 ///
 /// invalid user function name
@@ -2286,11 +2358,41 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1850: ERROR_TASK_INVALID_ID
+///
+/// invalid task id
+///
+/// Will be raised when a task is created with an invalid id.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_INVALID_ID                                         (1850)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1851: ERROR_TASK_DUPLICATE_ID
+///
+/// duplicate task id
+///
+/// Will be raised when a task id is created with a duplicate id.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_DUPLICATE_ID                                       (1851)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1852: ERROR_TASK_NOT_FOUND
+///
+/// task not found
+///
+/// Will be raised when a task with the specified id could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TASK_NOT_FOUND                                          (1852)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1901: ERROR_GRAPH_INVALID_GRAPH
 ///
 /// invalid graph
 ///
-/// Will be raised when an invalid name is passed to the server
+/// Will be raised when an invalid name is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_GRAPH                                     (1901)
@@ -2301,7 +2403,7 @@ void TRI_InitialiseErrorMessages (void);
 /// could not create graph
 ///
 /// Will be raised when an invalid name, vertices or edges is passed to the
-/// server
+/// server.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH                            (1902)
@@ -2311,7 +2413,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid vertex
 ///
-/// Will be raised when an invalid vertex id is passed to the server
+/// Will be raised when an invalid vertex id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_VERTEX                                    (1903)
@@ -2321,7 +2423,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// could not create vertex
 ///
-/// Will be raised when the vertex could not be created
+/// Will be raised when the vertex could not be created.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           (1904)
@@ -2331,7 +2433,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// could not change vertex
 ///
-/// Will be raised when the vertex could not be changed
+/// Will be raised when the vertex could not be changed.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX                           (1905)
@@ -2341,7 +2443,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid edge
 ///
-/// Will be raised when an invalid edge id is passed to the server
+/// Will be raised when an invalid edge id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_EDGE                                      (1906)
@@ -2351,7 +2453,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// could not create edge
 ///
-/// Will be raised when the edge could not be created
+/// Will be raised when the edge could not be created.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             (1907)
@@ -2361,7 +2463,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// could not change edge
 ///
-/// Will be raised when the edge could not be changed
+/// Will be raised when the edge could not be changed.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
@@ -2371,7 +2473,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// too many iterations
 ///
-/// Will be raised when too many iterations are done in a graph traversal
+/// Will be raised when too many iterations are done in a graph traversal.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS                               (1909)
@@ -2382,7 +2484,7 @@ void TRI_InitialiseErrorMessages (void);
 /// invalid filter result
 ///
 /// Will be raised when an invalid filter result is returned in a graph
-/// traversal
+/// traversal.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT                             (1910)
@@ -2392,7 +2494,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// unknown session
 ///
-/// Will be raised when an invalid/unknown session id is passed to the server
+/// Will be raised when an invalid/unknown session id is passed to the server.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SESSION_UNKNOWN                                         (1950)
@@ -2402,7 +2504,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// session expired
 ///
-/// Will be raised when a session is expired
+/// Will be raised when a session is expired.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SESSION_EXPIRED                                         (1951)

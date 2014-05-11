@@ -472,7 +472,7 @@ namespace triagens {
               *errorNumber = errno;
             }
 
-            return "";
+            return ".";
           }
         }
 

@@ -6,6 +6,8 @@
     initialize: function () {
     },
 
+    idAttribute: "name",
+
     urlRoot: "/_api/collection",
     defaults: {
       id: "",
@@ -89,6 +91,44 @@
       });
       return data2;
     },
+
+  createIndex: function (postParameter) {
+      var returnVal = false;
+
+      $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_api/index?collection="+ this.get("id"),
+          data: JSON.stringify(postParameter),
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+              returnVal = true;
+          },
+          error: function(data) {
+              returnVal = data;
+          }
+      });
+      return returnVal;
+  },
+
+      deleteIndex: function (id) {
+          var returnval = false;
+          $.ajax({
+              cache: false,
+              type: 'DELETE',
+              url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
+              async: false,
+              success: function () {
+                  returnval = true;
+              },
+              error: function () {
+                  returnval = false;
+              }
+          });
+          return returnval;
+      },
 
     loadCollection: function () {
       var self = this;

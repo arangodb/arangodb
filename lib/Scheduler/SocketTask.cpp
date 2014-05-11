@@ -53,7 +53,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
-  : Task(0, "SocketTask"),
+  : Task("SocketTask"),
     keepAliveWatcher(0),
     readWatcher(0),
     writeWatcher(0),

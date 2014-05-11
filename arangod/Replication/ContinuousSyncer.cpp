@@ -29,6 +29,7 @@
 
 #include "BasicsC/json.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -831,17 +832,29 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 /// @brief apply the data from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline void mylocalgetline(char const*& p, string& line, char delim) {
+  char const* q = p;
+  while (*p != 0 && *p != delim) {
+    p++;
+  }
+  line.assign(q, p-q);
+  if (*p == delim) {
+    p++;
+  }
+}
+
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
                                 string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
   
-  std::stringstream& data = response->getBody();
+  StringBuffer& data = response->getBody();
+  char const* p = data.c_str();
 
   while (true) {
     string line;
     
-    std::getline(data, line, '\n');
+    mylocalgetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done

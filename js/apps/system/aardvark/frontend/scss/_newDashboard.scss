@@ -13,7 +13,7 @@
 
 .dashboard-large-chart {
   @extend %pull-left;
-	position: relative;
+  position: relative;
   margin-bottom: $dashboard-margin;
   margin-right: 12px;
 
@@ -31,21 +31,21 @@
       margin-bottom: 0px;
     }
 
-		.dashboard-large-chart-menu {
-		  @extend %clear-float;
-		  @include border-radius(2px);
-			position: absolute;
-			color: $c-halfsemi-transp;
-			cursor: pointer;
-			z-index: 1000;
-			border: 0px solid $c-halfsemi-transp;
-			padding: 0px 4px 0px 4px;
-		}
+    .dashboard-large-chart-menu {
+      @extend %clear-float;
+      @include border-radius(2px);
+      position: absolute;
+      color: $c-halfsemi-transp;
+      cursor: pointer;
+      z-index: 1000;
+      border: 0px solid $c-halfsemi-transp;
+      padding: 0px 4px 0px 4px;
+    }
 
-		.dashboard-large-chart-menu:hover {
-			color: $c-low-transp;
-		}
-	}
+    .dashboard-large-chart-menu:hover {
+      color: $c-low-transp;
+    }
+  }
 }
 
 
@@ -64,11 +64,11 @@
     .dashboard-interior-chart {
       @extend %pull-left;
 
-			.nv-bar rect {
-				stroke-opacity: 1;
-				stroke-width: 1px;
-				fill-opacity: 0.15;
-			}
+      .nv-bar rect {
+        stroke-opacity: 1;
+        stroke-width: 1px;
+        fill-opacity: 0.15;
+      }
     }
   }
 }
@@ -76,7 +76,7 @@
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-	position: relative;
+  position: relative;
   background-color: $c-white;
   padding-top: $dashboard-padding;
   border-left: $dashboard-borderwidth solid $c-e1grey;
@@ -93,23 +93,23 @@
     margin-bottom: 0px;
   }
   
-	.dashboard-medium-chart-menu {
-	  @extend %clear-float;
-	  @include border-radius(2px);
-		position: absolute;
-		color: $c-halfsemi-transp;
-		cursor: pointer;
-		z-index: 1000;
-		border: 0px solid $c-halfsemi-transp;
-		padding: 0px 4px 0px 4px;
-	}
+  .dashboard-medium-chart-menu {
+    @extend %clear-float;
+    @include border-radius(2px);
+    position: absolute;
+    color: $c-halfsemi-transp;
+    cursor: pointer;
+    z-index: 1000;
+    border: 0px solid $c-halfsemi-transp;
+    padding: 0px 4px 0px 4px;
+  }
 
-	.dashboard-medium-chart-menu:hover {
-		color: $c-low-transp;
-	}
+  .dashboard-medium-chart-menu:hover {
+    color: $c-low-transp;
+  }
 
   .dashboard-medium-chart-inner {
-      @extend %clear-float;
+    @extend %clear-float;
   }
 }
 
@@ -165,27 +165,27 @@
     .dashboard-bar-chart-title {
       @extend %pull-left;
       padding: 0px 8px 0px 8px;
-			margin-top: 5px;
+      margin-top: 5px;
 
-	    .percentage {
-	      @extend %pull-left;
-				font-weight: 400;
-			}
+      .percentage {
+        @extend %pull-left;
+        font-weight: 400;
+      }
 
-		  .absolut {
-		  	@extend %pull-left;
+      .absolut {
+        @extend %pull-left;
         text-align: right;
-			}
+      }
     }
 
     .dashboard-bar-chart-chart {
       @extend %pull-left;
 
-			.nv-bar rect {
-				stroke-opacity: 1;
-				stroke-width: 1px;
-				fill-opacity: 0.15;
-			}
+      .nv-bar rect {
+        stroke-opacity: 1;
+        stroke-width: 1px;
+        fill-opacity: 0.15;
+      }
     }
   }
 }
@@ -220,20 +220,20 @@
   @extend %pull-left;
 
   .modal-body {
-	  @extend %pull-left;
+    @extend %pull-left;
   }
 
-	.modal-dashboard-legend {
-	  @extend %pull-left;
+  .modal-dashboard-legend {
+    @extend %pull-left;
 
-	  .dashboard-legend-inner {
-	    padding-left: 20px;
-	    padding-top: 20px;
-	  }
-	}
+    .dashboard-legend-inner {
+      padding-left: 20px;
+      padding-top: 20px;
+    }
+  }
 
   .modal-inner-detail {
-	  @extend %pull-left;
+    @extend %pull-left;
   }
 }
 
