@@ -79,12 +79,13 @@
     },
     showDetail: function (e) {
       var self = this,
-          figure = this.getDetailFigure(e), options;
+          figure = this.getDetailFigure(e), 
+					options;
 
-      this.getHistoryStatistics(figure);
+		  options = this.dygraphConfig.getDetailChartConfig(figure);
+      
+			this.getHistoryStatistics(figure);
       this.detailGraphFigure = figure;
-
-      options = this.dygraphConfig.getDetailChartConfig(figure);
 
       window.modalView.hideFooter = true;
       window.modalView.hide();

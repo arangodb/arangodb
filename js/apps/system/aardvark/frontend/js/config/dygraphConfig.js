@@ -30,15 +30,15 @@
             }
             var vals = {}, res;
             mergeAttribList.forEach(function (a) {
-                var valO1 = o1[a],
-                    valO2 = o2[a];
-                if (valO1 === undefined) {
-                    valO1 = {};
-                }
-                if (valO2 === undefined) {
-                    valO2 = {};
-                }
-                vals[a] = _.extend(valO1, valO2);
+              var valO1 = o1[a],
+                  valO2 = o2[a];
+              if (valO1 === undefined) {
+                valO1 = {};
+              }
+              if (valO2 === undefined) {
+                valO2 = {};
+              }
+              vals[a] = _.extend(valO1, valO2);
             });
             res = _.extend(o1, o2);
             Object.keys(vals).forEach(function (k) {
@@ -207,7 +207,8 @@
                 showRangeSelector: false,
                 rangeSelectorHeight: 50,
                 rangeSelectorPlotStrokeColor: '#365300',
-                rangeSelectorPlotFillColor: '#414a4c',
+                rangeSelectorPlotFillColor: '',
+                // rangeSelectorPlotFillColor: '#414a4c',
                 pixelsPerLabel: 50,
                 labelsKMG2: true,
                 dateWindow: [
@@ -250,7 +251,7 @@
                     showLabelsOnHighlight: true,
                     highlightCircleSize: 3,
                     legend: "always", 
-										labelsDiv: "div#detailLegend.dashboard-legend-inner"
+                    labelsDiv: "div#detailLegend.dashboard-legend-inner"
                     // labelsDiv: document.getElementById("detailLegend")
                 }
             );
