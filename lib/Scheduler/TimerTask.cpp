@@ -31,6 +31,7 @@
 #include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
@@ -38,14 +39,12 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-TimerTask::TimerTask (uint64_t id,
+TimerTask::TimerTask (string const& id,
                       double seconds)
   : Task(id, "TimerTask"),
     watcher(0),
     seconds(seconds) {
 }
-
-
 
 TimerTask::~TimerTask () {
 }
@@ -69,8 +68,6 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-
-
 void TimerTask::cleanup () {
   if (_scheduler == 0) {
     LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
@@ -81,8 +78,6 @@ void TimerTask::cleanup () {
   _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }
-
-
 
 bool TimerTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;

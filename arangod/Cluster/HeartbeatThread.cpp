@@ -188,7 +188,7 @@ void HeartbeatThread::run () {
                 = ClusterInfo::instance()->listDatabases(true);
             vector<DatabaseID>::iterator i;
             bool allOK = true;
-            for (i = dbs.begin(); i != dbs.end(); i++) {
+            for (i = dbs.begin(); i != dbs.end(); ++i) {
               TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
                                                     i->c_str());
 

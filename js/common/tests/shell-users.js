@@ -181,7 +181,7 @@ function UsersSuite () {
         var username = "users-" + i;
         var passwd = "passwd-" + i;
 
-        var d1 = users.save(username, passwd);
+        users.save(username, passwd);
         assertEqual(username, c.firstExample({ user: username }).user);
         var d2 = users.replace(username, passwd + "xxx");
 

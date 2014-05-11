@@ -97,7 +97,6 @@
         auth = parseUser(req.headers);
         uname = auth.username;
         pwd = auth.passwd;
-
         if (input.type === "testSetup") {
           config.dispatchers = {
             "d1": {
@@ -131,6 +130,8 @@
             }
             config.dispatchers["d" + i] = inf;
           });
+          config.useSSLonDBservers = input.useSSLonDBservers;
+          config.useSSLonCoordinators = input.useSSLonCoordinators;
         }
         result.config = config;
         planner = new cluster.Planner(config);
@@ -173,7 +174,7 @@
     controller.get("/healthcheck", function(req, res) {
       var out = getStarter().isHealthy();
       var stf = JSON.stringify(out);
-      if (out.error || stf.indexOf("NOT-FOUND") !== -1) {
+      if (out.error) {
         require("console").log("Cluster HealthCheck Error:", out.error);
         require("console").log("Cluster HealthCheck Result:", stf);
         res.json(false);

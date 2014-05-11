@@ -221,7 +221,6 @@ void SchedulerThread::destroyTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
-
     // put the unregister request unto the queue
     SCHEDULER_LOCK(&_queueLock);
 

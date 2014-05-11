@@ -4567,6 +4567,7 @@ pre.gv-object-view {
 
 .output-toolbar {
   border-color: silver;
+  border-top: 0;
   position: relative;
   width: auto; }
   .output-toolbar span {
@@ -4586,6 +4587,8 @@ pre.gv-object-view {
     z-index: 9999 !important; }
 
 .editor-label {
+  background-color: #ddd;
+  height: 1px;
   width: 100%; }
   .editor-label h6 {
     font-family: 'Open Sans', sans-serif;
@@ -4623,6 +4626,11 @@ pre.gv-object-view {
   width: 130px !important;
   z-index: 9999 !important; }
 
+#queryContent .arango-tab a {
+  border-bottom-color: #ddd; }
+#queryContent .arango-tab .active {
+  border-bottom-color: #fff !important; }
+
 .query-div {
   display: none; }
   .query-div > * {
@@ -4630,6 +4638,36 @@ pre.gv-object-view {
   .query-div .icon_arangodb {
     cursor: pointer;
     margin-bottom: 5px; }
+  .query-div .arango-table {
+    max-width: 100%;
+    table-layout: fixed;
+    width: 100%; }
+    .query-div .arango-table tbody {
+      max-width: 100%;
+      width: 100%; }
+    .query-div .arango-table tr {
+      max-width: 100%;
+      width: 100%; }
+    .query-div .arango-table .table-cell0 {
+      cursor: pointer;
+      min-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 20%; }
+    .query-div .arango-table .table-cell1 {
+      cursor: pointer;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 73%; }
+    .query-div .arango-table .table-cell2 {
+      max-width: 40px;
+      min-width: 40px;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 40px; }
 
 .display-none {
   display: none; }
@@ -5101,7 +5139,6 @@ input.gv-radio-button {
   font-weight: 400 !important;
   text-align: left;
   width: 20% !important; }
-  .collectionTh input,
   .collectionTh select,
   .collectionTh textarea {
     margin-top: 10px; }

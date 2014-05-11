@@ -37,8 +37,8 @@ type Sample interface {
 //
 // <http://www.research.att.com/people/Cormode_Graham/library/publications/CormodeShkapenyukSrivastavaXu09.pdf>
 type ExpDecaySample struct {
-	alpha         float64
 	count         int64
+	alpha         float64
 	mutex         sync.Mutex
 	reservoirSize int
 	t0, t1        time.Time
@@ -390,9 +390,9 @@ func SampleVariance(values []int64) float64 {
 // <http://www.cs.umd.edu/~samir/498/vitter.pdf>
 type UniformSample struct {
 	count         int64
+	values        []int64
 	mutex         sync.Mutex
 	reservoirSize int
-	values        []int64
 }
 
 // NewUniformSample constructs a new uniform sample with the given reservoir
@@ -519,8 +519,8 @@ func (s *UniformSample) Variance() float64 {
 
 // expDecaySample represents an individual sample in a heap.
 type expDecaySample struct {
-	k float64
 	v int64
+	k float64
 }
 
 // expDecaySampleHeap is a min-heap of expDecaySamples.

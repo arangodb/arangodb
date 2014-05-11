@@ -361,7 +361,6 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
 
 bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_e type;
-  TRI_aql_node_t* node;
   size_t n;
 
   assert(context);
@@ -376,6 +375,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
 
   while (n > 0) {
     TRI_aql_scope_t* scope;
+    TRI_aql_node_t* node;
 
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);

@@ -341,7 +341,10 @@
 
     // set up the collection _graphs
     addTask("setupGraphs", "setup _graphs collection", function () {
-      return createSystemCollection("_graphs", { waitForSync : true });
+      return createSystemCollection("_graphs", { 
+        waitForSync : true,
+        journalSize: 1024 * 1024 
+      });
     });
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +416,9 @@
 
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
-      return createSystemCollection("_modules");
+      return createSystemCollection("_modules", {
+        journalSize: 1024 * 1024 
+      });
     });
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -423,7 +428,9 @@
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
       // needs to be big enough for assets
-      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
+      return createSystemCollection("_routing", { 
+        journalSize: 32 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +441,9 @@
     addTask("createKickstarterConfiguration",
       "setup _cluster_kickstarter_plans collection", function () {
         //TODO add check if this is the main dispatcher
-      return createSystemCollection("_cluster_kickstarter_plans");
+      return createSystemCollection("_cluster_kickstarter_plans", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,7 +566,9 @@
 
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions");
+      return createSystemCollection("_aqlfunctions", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,7 +674,10 @@
     // create the _statistics collection
     addTask("createConfiguration", "setup _configuration collection", function () {
       var name = "_configuration";
-      var result = createSystemCollection(name, { waitForSync: true });
+      var result = createSystemCollection(name, { 
+        waitForSync: true, 
+        journalSize: 1024 * 1024 
+      });
 
       return result;
     });

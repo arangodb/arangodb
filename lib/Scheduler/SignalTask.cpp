@@ -41,7 +41,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 SignalTask::SignalTask ()
-  : Task(0, "SignalTask") {
+  : Task("SignalTask") {
   for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
     watcher[i] = 0;
   }

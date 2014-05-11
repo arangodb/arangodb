@@ -7,40 +7,18 @@
     <ul class="arango-tab">
       <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
       <li><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
+      <li><a href="#customs" data-toggle="pill" id="customs-switch">My Queries</a></li>
     </ul>
+    <div class="tab-content" id="tabContentCustoms">
+      <div class="tab-pane" id="customs">
+        <div id="customsDiv" class="query-div">
+        </div>
+      </div>
+    </div>
     <div class="tab-content" id="tabContentQuery">
       <div class="tab-pane active" id="query">
-
-        <div id="queryDropdown" class="headerDropdown query-dropdown">
-          <div class="dropdownInner query-dropdown-in" id="queryDropdownIn">
-            <a class="arangoHeader">Edit custom queries</a>
-
-            <div id="queryDropdownLeft" class="query-dropdown-left">
-              Name
-              <select id="queryModalSelect" class="query-modal-select"/>
-            </div>
-            <div id="queryDropdownRight">
-              Query
-              <textarea id="edit-aql-textarea"/>
-            </div>
-            <div class="buttonContainer">
-              <button id="delete-edit-query" class="button-danger">Delete</button>
-              <button id="save-edit-query" class="button-success">Save</button>
-            </div>
-          </div>
-          <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
-            <strong>Really delete query?</strong>
-            <button id="confirmDeleteQuery" class="button-danger pull-right"
-                    style="margin-top: -4px; margin-right: -18px !important;">Yes
-            </button>
-            <button id="abortDeleteQuery" class="button-neutral pull-right"
-                    style="margin-top: -4px; margin-right:10px;">No
-            </button>
-          </div>
-        </div>
-
         <div id="queryDiv" class="query-div">
-          <div id="editorLabel" class="editor-label"><h6>Query</h6></div>
+          <div id="editorLabel" class="editor-label"></div>
           <div id="editorToolbar" class="query-toolbar editor-toolbar">
             <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
             <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
@@ -82,7 +60,7 @@
     <div class="tab-content" id="tabContentResult">
 
       <div class="tab-pane" id="result">
-        <div id="editorLabel" class="editor-label"><h6>Result</h6></div>
+        <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
           <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
           <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
@@ -111,9 +89,38 @@
     </div>
     <div id="colFooter" class="modal-footer">
       <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
-      <button id="save-new-query" class="button-success pull-right">Save</button>
+      <button id="save-query" class="button-success pull-right">Save</button>
     </div>
   </div>
 
 </script>
 
+<!--
+       <div id="queryDropdown" class="headerDropdown query-dropdown">
+          <div class="dropdownInner query-dropdown-in" id="queryDropdownIn">
+            <a class="arangoHeader">Edit custom queries</a>
+
+            <div id="queryDropdownLeft" class="query-dropdown-left">
+              Name
+              <select id="queryModalSelect" class="query-modal-select"/>
+            </div>
+            <div id="queryDropdownRight">
+              Query
+              <textarea id="edit-aql-textarea"/>
+            </div>
+            <div class="buttonContainer">
+              <button id="delete-edit-query" class="button-danger">Delete</button>
+              <button id="save-edit-query" class="button-success">Save</button>
+            </div>
+          </div>
+          <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
+            <strong>Really delete query?</strong>
+            <button id="confirmDeleteQuery" class="button-danger pull-right"
+                    style="margin-top: -4px; margin-right: -18px !important;">Yes
+            </button>
+            <button id="abortDeleteQuery" class="button-neutral pull-right"
+                    style="margin-top: -4px; margin-right:10px;">No
+            </button>
+          </div>
+        </div>
+-->

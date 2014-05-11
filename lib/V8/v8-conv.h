@@ -66,7 +66,7 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 /// @brief converts an V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const&, 
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const, 
                                            TRI_shaper_t*,
                                            bool,
                                            bool);
@@ -75,7 +75,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const&,
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const&,
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const,
                                 TRI_shaped_json_t*,
                                 TRI_shaper_t*,
                                 bool,
@@ -85,52 +85,52 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const&,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const&);
+TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_ObjectToString (v8::Handle<v8::Value> const&);
+std::string TRI_ObjectToString (v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a character
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_ObjectToCharacter (v8::Handle<v8::Value> const&, 
+char TRI_ObjectToCharacter (v8::Handle<v8::Value> const, 
                             bool& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to an int64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const&);
+int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const&, 
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const, 
                              const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a double
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ObjectToDouble (v8::Handle<v8::Value> const&);
+double TRI_ObjectToDouble (v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a double with error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ObjectToDouble (v8::Handle<v8::Value> const&, 
+double TRI_ObjectToDouble (v8::Handle<v8::Value> const, 
                            bool& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const&);
+bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL

@@ -424,7 +424,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     return NULL;
   }
 
-  size_t tempUtf16Length = 0;
   UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);
 
   if (tempUtf16 == NULL) {
@@ -462,7 +461,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   for(int32_t end = wordIterator->next(); end != BreakIterator::DONE;
     start = end, end = wordIterator->next()) {
 
-    tempUtf16Length = (size_t) (end - start);
+    size_t tempUtf16Length = (size_t) (end - start);
     // end - start = word length
     if (tempUtf16Length >= minimalLength) {
       size_t chunkLength = tempUtf16Length;

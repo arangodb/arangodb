@@ -49,107 +49,107 @@
 
             d3ChartDummy = {
 
-                x : function(a) {
-                    a({label : 1});
+                x: function (a) {
+                    a({label: 1});
                     return d3ChartDummy;
                 },
-                y : function(a) {
-                    a({label : 1});
+                y: function (a) {
+                    a({label: 1});
                     return d3ChartDummy;
                 },
-                width : function(a) {
+                width: function (a) {
                     return d3ChartDummy;
                 },
-                height : function(a) {
+                height: function (a) {
                     return d3ChartDummy;
                 },
-                margin : function(a) {
+                margin: function (a) {
                     return d3ChartDummy;
                 },
-                showValues : function(a) {
+                showValues: function (a) {
                     return d3ChartDummy;
                 },
-                showYAxis : function(a) {
+                showYAxis: function (a) {
                     return d3ChartDummy;
                 },
-                showXAxis : function(a) {
+                showXAxis: function (a) {
                     return d3ChartDummy;
                 },
-                transitionDuration : function(a) {
+                transitionDuration: function (a) {
                     return d3ChartDummy;
                 },
-                tooltips : function(a) {
+                tooltips: function (a) {
                     return d3ChartDummy;
                 },
-                showLegend : function(a) {
+                showLegend: function (a) {
                     return d3ChartDummy;
                 },
-                stacked : function(a) {
+                stacked: function (a) {
                     return d3ChartDummy;
                 },
-                showControls : function(a) {
-                    return d3ChartDummy;
-                },
-
-                classed : function(a) {
+                showControls: function (a) {
                     return d3ChartDummy;
                 },
 
-                yAxis : {
-                    tickFormat : function(a) {
+                classed: function (a) {
+                    return d3ChartDummy;
+                },
+
+                yAxis: {
+                    tickFormat: function (a) {
                         a();
                     },
 
-                    showMaxMin : function() {
+                    showMaxMin: function () {
                     }
                 },
 
-                xAxis : {
-                    tickFormat : function(a) {
+                xAxis: {
+                    tickFormat: function (a) {
                         a();
                     },
 
-                    showMaxMin : function() {
+                    showMaxMin: function () {
                     }
                 },
 
-                datum : function(a) {
+                datum: function (a) {
                     return d3ChartDummy;
                 },
-                call : function(a) {
+                call: function (a) {
                     return d3ChartDummy;
                 },
-                data : function(a) {
+                data: function (a) {
                     return d3ChartDummy;
                 },
-                enter : function(a) {
+                enter: function (a) {
                     return d3ChartDummy;
                 },
-                append : function(a) {
+                append: function (a) {
                     return d3ChartDummy;
                 },
-                style : function(a) {
+                style: function (a) {
                     return d3ChartDummy;
                 },
-                attr : function(a) {
+                attr: function (a) {
                     return d3ChartDummy;
                 },
-                text : function(a) {
+                text: function (a) {
                     if (a instanceof Function) {
                         a();
                     }
                     return d3ChartDummy;
                 },
-                select : function (a) {
+                select: function (a) {
                     return d3ChartDummy;
                 },
-                remove : function (a) {
+                remove: function (a) {
                     return d3ChartDummy;
                 },
-                selectAll : function (a) {
+                selectAll: function (a) {
                     return d3ChartDummy;
                 },
-                on : function (a) {
+                on: function (a) {
                     return d3ChartDummy;
                 }
 
@@ -769,9 +769,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
 
-            view.history = {residentSizeChart : [
+            view.history = {residentSizeChart: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -793,7 +793,7 @@
                     ]
                 }
 
-            ], virtualSizeCurrent : [10, 20]};
+            ], virtualSizeCurrent: [10, 20]};
             view.prepareResidentSize(true);
 
             expect(view.getCurrentSize).toHaveBeenCalledWith('#residentSizeChartContainer');
@@ -813,9 +813,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -837,7 +837,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -883,9 +883,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 200});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -907,7 +907,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -952,9 +952,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 404});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 404});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -976,7 +976,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1021,9 +1021,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 304});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 304});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1045,7 +1045,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1090,9 +1090,9 @@
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 204});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 204});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1114,7 +1114,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1159,9 +1159,9 @@
 
             spyOn(d3, "select").andReturn(d3ChartDummy);
 
-            spyOn(view, "getCurrentSize").andReturn({height : 190, width : 11});
+            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 11});
 
-            view.history = {totalTimeDistribution : [
+            view.history = {totalTimeDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],
@@ -1183,7 +1183,7 @@
                     ]
                 }
 
-            ], dataTransferDistribution : [
+            ], dataTransferDistribution: [
                 {
                     "key": "",
                     "color": dyGraphConfigDummy.colors[1],

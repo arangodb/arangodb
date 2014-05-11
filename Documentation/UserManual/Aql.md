@@ -982,6 +982,8 @@ For string processing, AQL offers the following functions:
   Concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
   @FA{separator} string. `null` values are ignored
 
+- @FN{LENGTH(@FA{value})}: Return the number of characters in @FA{value}. 
+
 - @FN{CHAR_LENGTH(@FA{value})}: Return the number of characters in @FA{value}. This is
   a synonym for @FN{LENGTH(@FA{value})}
 
@@ -1046,6 +1048,122 @@ supported:
 
 - @FN{RAND()}: Returns a pseudo-random number between 0 and 1
 
+@subsubsection AqlFunctionsDate Date functions
+
+AQL offers functionality to work with dates. Dates are no datatypes of their own in 
+AQL (neither they are in JSON, which is often used as a format to ship data into and
+out of ArangoDB). Instead, dates in AQL are internally represented by either numbers 
+(timestamps) or strings. The date functions in AQL provide mechanisms to convert from 
+a numeric timestamp to a string representation and vice versa. 
+
+There are two date functions in AQL to create dates for further use:
+
+- @FN{DATE_TIMESTAMP(@FA{date})}: Creates a UTC timestamp value from @FA{date}. 
+
+- @FN{DATE_TIMESTAMP(@FA{year}, @FA{month}, @FA{day}, @FA{hour}, @FA{minute}, @FA{second}, @FA{millisecond})}: 
+  Same as before, but allows specifying the individual date components separately.
+  All parameters after @FA{day} are optional.
+
+- @FN{DATE_ISO8601(@FA{date})}: Returns an ISO8601 datetime string from @FA{date}.
+  The datetime string will always use UTC time, indicated by the `Z` at its end.
+
+- @FN{DATE_ISO8601(@FA{year}, @FA{month}, @FA{day}, @FA{hour}, @FA{minute}, @FA{second}, @FA{millisecond})}: 
+  same as before, but allows specifying the individual date components separately.
+  All parameters after @FA{day} are optional.
+
+These two above date functions accept the following input values:
+
+- numeric timestamps, indicating the number of milliseconds elapsed since the UNIX
+  epoch (i.e. January 1st 1970 00:00:00 UTC).
+  An example timestamp value is `1399472349522`, which translates to 
+  `2014-05-07T14:19:09.522Z`.
+
+- datetime strings in formats @LIT{YYYY-MM-DDTHH:MM:SS.MMM}, 
+  @LIT{YYYY-MM-DD HH:MM:SS.MMM}, or @LIT{YYYY-MM-DD}. Milliseconds are always optional.
+  A timezone difference may optionally be added at the end of the string, with the
+  hours and minutes that need to be added or subtracted to the datetime value.
+  For example, `2014-05-07T14:19:09+01:00` can be used to specify a one hour offset,
+  and `2014-05-07T14:19:09+07:30` can be specified for seven and half hours offset. 
+  Negative offsets are also possible. Alternatively to an offset, a `Z` can be used
+  to indicate UTC / Zulu time. 
+ 
+  An example value is `2014-05-07T14:19:09.522Z` meaning May 7th 2014, 14:19:09 and 
+  522 milliseconds, UTC / Zulu time. Another example value without time component is 
+  `2014-05-07Z`.
+
+  Please note that if no timezone offset is specified in a datestring, ArangoDB will
+  assume UTC time automatically. This is done to ensure portability of queries across
+  servers with different timezone settings, and because timestamps will always be
+  UTC-based. 
+
+- individual date components as separate function arguments, in the following order:
+  - year 
+  - month
+  - day
+  - hour
+  - minute
+  - second
+  - millisecond
+
+  All components following `day` are optional and can be omitted. Note that no
+  timezone offsets can be specified when using separate date components, and UTC /
+  Zulu time will be used.
+ 
+The following calls to `DATE_TIMESTAMP` are equivalent and will all return 
+`1399472349522`:
+
+    DATE_TIMESTAMP("2014-05-07T14:19:09.522")
+    DATE_TIMESTAMP("2014-05-07T14:19:09.522Z")
+    DATE_TIMESTAMP("2014-05-07 14:19:09.522")
+    DATE_TIMESTAMP("2014-05-07 14:19:09.522Z")
+    DATE_TIMESTAMP(2014, 5, 7, 14, 19, 9, 522)
+    DATE_TIMESTAMP(1399472349522)
+
+The same is true for calls to `DATE_ISO8601` that also accepts variable input 
+formats:
+
+    DATE_ISO8601("2014-05-07T14:19:09.522Z")
+    DATE_ISO8601("2014-05-07 14:19:09.522Z")
+    DATE_ISO8601(2014, 5, 7, 14, 19, 9, 522)
+    DATE_ISO8601(1399472349522)
+
+The above functions are all equivalent and will return `"2014-05-07T14:19:09.522Z"`.
+
+The following date functions can be used with dates created by `DATE_TIMESTAMP` and
+`DATE_ISO8601`:
+
+- @FN{DATE_DAYOFWEEK(@FA{date})}: Returns the weekday number of @FA{date}. The
+  return values have the following meanings:
+  - 0: Sunday
+  - 1: Monday
+  - 2: Tuesday
+  - 3: Wednesday
+  - 4: Thursday
+  - 5: Friday
+  - 6: Saturday
+
+- @FN{DATE_YEAR(@FA{date})}: Returns the year part of @FA{date} as a number. 
+
+- @FN{DATE_MONTH(@FA{date})}: Returns the month part of @FA{date} as a number.
+
+- @FN{DATE_DAY(@FA{date})}: Returns the day part of @FA{date} as a number. 
+
+- @FN{DATE_HOUR(@FA{date})}: Returns the hour part of @FA{date} as a number. 
+
+- @FN{DATE_MINUTE(@FA{date})}: Returns the minute part of @FA{date} as a number. 
+
+- @FN{DATE_SECOND(@FA{date})}: Returns the seconds part of @FA{date} as a number. 
+
+- @FN{DATE_MILLISECOND(@FA{date})}: Returns the milliseconds part of @FA{date} as a number. 
+
+The following other date functions are also available:
+
+- @FN{DATE_NOW()}: Returns the current time as a timestamp.
+  
+  Note that this function is evaluated on every invocation and may return different 
+  values when invoked multiple times in the same query.
+
+
 @subsubsection AqlFunctionsList List functions
 
 AQL supports the following functions to operate on list values:
@@ -1053,6 +1171,27 @@ AQL supports the following functions to operate on list values:
 - @FN{LENGTH(@FA{list})}: Returns the length (number of list elements) of @FA{list}. If 
   @FA{list} is a document, returns the number of attribute keys of the document, 
   regardless of their values.
+
+- @FN{FLATTEN(@FA{list}, @FA{depth})}: Turns a list of lists into a flat list. All 
+  list elements in @FA{list} will be expanded in the result list. Non-list elements 
+  are added as they are. The function will recurse into sub-lists up to a depth of
+  @FA{depth}. @FA{depth} has a default value of 1.
+
+  Example:
+  
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
+
+  will produce:
+
+      [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
+
+  To fully flatten the list, use a @FA{depth} of 2:
+      
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
+
+  This will produce:
+      
+      [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
 - @FN{MIN(@FA{list})}: Returns the smallest element of @FA{list}. `null` values
   are ignored. If the list is empty or only `null` values are contained in the list, the
@@ -1278,6 +1417,7 @@ AQL supports the following functions to operate on document values:
         { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
       ]
 
+- @FN{LENGTH(@FA{document})}: Return the number of attributes in document @FA{document}.
 
 - @FN{HAS(@FA{document}, @FA{attributename})}: Returns `true` if @FA{document} has an
   attribute named @FA{attributename}, and `false` otherwise.

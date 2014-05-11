@@ -26,11 +26,11 @@
 
     setCollectionId : function (colid, pageid) {
         this.collection.setCollection(colid);
-        var type = arangoHelper.collectionApiType(colid);
+        var type = arangoHelper.collectionApiType(colid), self = this;
         this.pageid = pageid;
         this.type = type;
         this.collection.getDocuments(colid, pageid);
-
+        this.collectionModel = this.collectionsStore.get(colid);
     },
 
     alreadyClicked: false,
@@ -431,6 +431,7 @@
         $('#documentsTableID').dataTable().fnClearTable();
           this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
+        this.drawTable();
       }
 
     },
@@ -680,7 +681,7 @@
           };
           break;
       }
-      result = self.collectionsStore.createIndex(collection, postParameter);
+      result = self.collectionModel.createIndex(postParameter);
       if (result === true) {
         $('#collectionEditIndexTable tr').remove();
         self.getIndex();
@@ -710,7 +711,7 @@
       $("#indexDeleteModal").modal('show');
     },
     deleteIndex: function () {
-      var result = this.collectionsStore.deleteIndex(this.collectionName, this.lastId);
+      var result = this.collectionModel.deleteIndex(this.lastId);
       if (result === true) {
         $(this.lastTarget.currentTarget).parent().parent().remove();
       }
@@ -728,7 +729,7 @@
       return $(id).prop('checked');
     },
     getIndex: function () {
-      this.index = this.collectionsStore.getIndex(this.collection.collectionID, true);
+      this.index = this.collectionModel.getIndex();
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';

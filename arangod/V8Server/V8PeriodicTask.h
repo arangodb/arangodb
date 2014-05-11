@@ -32,6 +32,10 @@
 
 #include "VocBase/vocbase.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class V8PeriodicTask
 // -----------------------------------------------------------------------------
@@ -57,22 +61,34 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicTask (const string& name,
+        V8PeriodicTask (string const&,
+                        string const&,
                         TRI_vocbase_t*,
                         ApplicationV8*,
                         rest::Scheduler*,
                         rest::Dispatcher*,
-                        double offset,
-                        double period,
-                        const string& module,
-                        const string& func,
-                        const string& parameter);
+                        double,
+                        double,
+                        std::string const&,
+                        struct TRI_json_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~V8PeriodicTask ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getDescription (struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined
@@ -119,22 +135,17 @@ namespace triagens {
         rest::Dispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module name
+/// @brief command to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _module;
+        std::string const _command;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function name
+/// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _func;
+        struct TRI_json_s* _parameters;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief paramater string
-////////////////////////////////////////////////////////////////////////////////
-
-        const std::string _parameter;
     };
   }
 }

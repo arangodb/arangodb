@@ -72,7 +72,7 @@
             this.arangoDocumentStore = new window.arangoDocument();
             arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-            this.arangoCollectionsStore.fetch();
+            this.arangoCollectionsStore.fetch({async: false});
             this.foxxList = new window.FoxxCollection();
 
             this.footerView = new window.FooterView();
@@ -260,16 +260,20 @@
             if (this.dashboardView) {
                 this.dashboardView.resize();
             }
+            if (this.graphView) {
+                this.graphView.handleResize($("#content").width());
+            }
+            /*
             var oldWidth = $('#content').width();
             var containerWidth = $(window).width() - 70;
-            /*var spanWidth = 242;*/
-            var spanWidth = 243;
+            var spanWidth = 240;
             var divider = containerWidth / spanWidth;
             var roundDiv = parseInt(divider, 10);
             var newWidth = roundDiv * spanWidth - 2;
             if (newWidth !== oldWidth && this.graphView) {
-                this.graphView.handleResize(newWidth);
+              this.graphView.handleResize(newWidth);
             }
+            */
         },
 
         userManagement: function () {

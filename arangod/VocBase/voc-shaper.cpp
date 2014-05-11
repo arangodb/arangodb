@@ -198,14 +198,14 @@ static int64_t SortedIndexOf (voc_shaper_t* shaper,
   int64_t leftPos;
   int64_t rightPos;
   int64_t midPos;
-  int compareResult;
 
   leftPos  = 0;
   rightPos = ((int64_t) shaper->_sortedAttributes._length) - 1;
 
   while (leftPos <= rightPos)  {
     midPos = (leftPos + rightPos) / 2;
-    compareResult = CompareNameAttributeWeight(TRI_AtVectorPointer(&(shaper->_sortedAttributes), midPos), (void*)(item));
+  
+    int compareResult = CompareNameAttributeWeight(TRI_AtVectorPointer(&(shaper->_sortedAttributes), midPos), (void*) item);
     if (compareResult < 0) {
       leftPos = midPos + 1;
     }
@@ -327,13 +327,11 @@ static void SetAttributeWeight (voc_shaper_t* shaper,
 
 static void FullSetAttributeWeight (voc_shaper_t* shaper) {
   int64_t startWeight;
-  attribute_weight_t* item;
-  size_t j;
 
   startWeight = 0;
 
-  for (j = 0; j < shaper->_sortedAttributes._length; ++j) {
-    item = (attribute_weight_t*) TRI_AtVectorPointer(&(shaper->_sortedAttributes), j);
+  for (size_t j = 0; j < shaper->_sortedAttributes._length; ++j) {
+    attribute_weight_t* item = (attribute_weight_t*) TRI_AtVectorPointer(&(shaper->_sortedAttributes), j);
     item->_weight = startWeight;
     startWeight += 100;
   }
@@ -1567,17 +1565,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   TRI_shaped_json_t right;
   TRI_shaped_json_t rightElement;
   char const* ptr;
-  char* leftString;
-  char* rightString;
-  int i;
-  int leftNumWeightedList;
-  int numWeightedList;
   int result;
-  int rightNumWeightedList;
-  size_t j;
-  size_t leftListLength;
   size_t listLength;
-  size_t rightListLength;
   weighted_attribute_t* leftWeightedList;
   weighted_attribute_t* rightWeightedList;
   
@@ -1757,6 +1746,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
         }
         case TRI_SHAPE_SHORT_STRING:
         case TRI_SHAPE_LONG_STRING: {
+          char* leftString;
+          char* rightString;
+
           // compare strings
           // extract the strings
           if (leftType == TRI_SHAPE_SHORT_STRING) {
@@ -1773,7 +1765,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
             rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right._data.data);
           }         
           
-          return TRI_compare_utf8(leftString,rightString);
+          return TRI_compare_utf8(leftString, rightString);
         }
         case TRI_SHAPE_ARRAY:
         case TRI_SHAPE_LIST:
@@ -1804,10 +1796,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
         case TRI_SHAPE_HOMOGENEOUS_LIST:
         case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: 
         case TRI_SHAPE_LIST: {
-
           // unfortunately recursion: check the types of all the entries
-          leftListLength  = *((TRI_shape_length_list_t*)(left._data.data));
-          rightListLength = *((TRI_shape_length_list_t*)(right._data.data));
+          size_t leftListLength = *((TRI_shape_length_list_t*) left._data.data);
+          size_t rightListLength = *((TRI_shape_length_list_t*) right._data.data);
           
           // determine the smallest list
           if (leftListLength > rightListLength) {
@@ -1817,7 +1808,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
             listLength = leftListLength;
           }
           
-          for (j = 0; j < listLength; ++j) {
+          for (size_t j = 0; j < listLength; ++j) {
             if (leftType == TRI_SHAPE_HOMOGENEOUS_LIST) {
               TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(leftShape),
                                               &left,
@@ -1939,8 +1930,8 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // generate the left and right lists.
           // ............................................................................
 
-          leftNumWeightedList  = CompareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
-          rightNumWeightedList = CompareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
+          int leftNumWeightedList  = CompareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
+          int rightNumWeightedList = CompareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
 
           // ............................................................................
           // If the left and right both resulted in errors, we return equality for want
@@ -2009,11 +2000,11 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // below MUST be greater or equal to 1.
           // ..............................................................................
 
-          numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList: rightNumWeightedList);          
+          int numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList : rightNumWeightedList);          
           
           result = 0;
 
-          for (i = 0; i < numWeightedList; ++i) {
+          for (int i = 0; i < numWeightedList; ++i) {
             if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
               result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);
               break;
