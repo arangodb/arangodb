@@ -16,7 +16,6 @@
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     history: {},
     graphs: {},
-    alreadyCalledDetailChart: [],
 
     events: {
       "click .dashboard-large-chart-menu": "showDetail"
@@ -82,7 +81,7 @@
       var self = this,
           figure = this.getDetailFigure(e), options;
 
-			this.getStatistics(figure);
+      this.getHistoryStatistics(figure);
       this.detailGraphFigure = figure;
 
       options = this.dygraphConfig.getDetailChartConfig(figure);
@@ -292,7 +291,7 @@
       });
     },
 
-    mergeHistory: function (newData, detailMode) {
+    mergeHistory: function (newData) {
       var self = this, i;
 
       for (i = 0; i < newData.times.length; ++i) {
@@ -300,10 +299,6 @@
       }
 
       this.cutOffDygraphHistory(new Date().getTime() - this.defaultTimeFrame);
-
-      if (detailMode) {
-        return;
-      }
 
       // convert tendency values
       Object.keys(this.tendencies).forEach(function (a) {
@@ -398,26 +393,15 @@
                          cuts[counter] : cuts[counter - 1] + " - " + cuts[counter];
     },
 
-    getStatistics: function (figure) {
+    getStatistics: function () {
       var self = this;
       var url = "statistics/full";
       var urlParams = "?start=";
 
-      if (! figure && this.nextStart) {
+      if (this.nextStart) {
         urlParams += this.nextStart;
-      } else if (! figure && ! this.nextStart) {
-        urlParams += (new Date().getTime() - this.defaultTimeFrame) / 1000;
       } else {
-        if (this.alreadyCalledDetailChart.indexOf(figure) !== -1) {
-          return;
-        }
-
-        this.history[figure] = [];
-
-        urlParams += (new Date().getTime() - this.defaultDetailFrame) / 1000;
-        urlParams += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
-
-        this.alreadyCalledDetailChart.push(figure);
+        urlParams += (new Date().getTime() - this.defaultTimeFrame) / 1000;
       }
 
       if (this.server) {
@@ -432,13 +416,42 @@
         function (d) {
           if (d.times.length > 0) {
             self.isUpdating = true;
-            self.mergeHistory(d, !!figure);
+            self.mergeHistory(d);
           } else if (self.isUpdating !== true)  {
             window.modalView.show(
               "modalWarning.ejs",
               "WARNING !"
             );
             self.isUpdating = false;
+          }
+        }
+      );
+    },
+
+    getHistoryStatistics: function (figure) {
+      var self = this;
+      var url = "statistics/history";
+      var urlParams = "?start=";
+
+      this.history[figure] = [];
+
+      urlParams += (new Date().getTime() - this.defaultDetailFrame) / 1000;
+      urlParams += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
+
+      if (this.server) {
+        url = this.server.endpoint + "/_admin/aardvark/statistics/cluster";
+        urlParams +=  "&DBserver=" + this.server.target;
+      }
+
+      $.ajax(
+        url + urlParams,
+        {async: false}
+      ).done(
+        function (d) {
+          var i;
+
+          for (i = 0;  i < d.times.length;  ++i) {
+            self.mergeDygraphHistory(d, i);
           }
         }
       );
