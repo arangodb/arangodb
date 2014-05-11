@@ -11,7 +11,7 @@
 
   window.DashboardView = Backbone.View.extend({
     el: '#content',
-    interval: 10000, // in milliseconds
+    interval: 1000000, // in milliseconds
     defaultTimeFrame: 20 * 60 * 1000, // 20 minutes in milliseconds
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     history: {},
@@ -66,9 +66,9 @@
 
     },
 
-
     getDetailFigure : function (e) {
-      var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
+      // var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
+      var figure = $(e.currentTarget.parentNode).attr("id").replace(/ChartContainer/g, "");
       figure = figure.replace(/DistributionContainer/g, "");
       figure = figure.replace(/Container/g, "");
       if (figure === "asyncRequests") {
@@ -104,9 +104,12 @@
         self.hidden();
       });
       $('#modal-dialog').toggleClass("modal-chart-detail", true);
-      options.height = $('.modal-chart-detail').height() * 0.7;
-      options.width = $('.modal-chart-detail').width() * 0.84;
-      this.detailGraph = new Dygraph(
+
+      options.height = $(window).height() * 0.7;
+      //options.height = $('.modal-chart-detail').height() * 0.7;
+      options.width = $('.modal-chart-detail').width();
+      
+			this.detailGraph = new Dygraph(
         document.getElementById("lineChartDetail"),
         this.history[figure],
         options
@@ -544,6 +547,34 @@
         var dist = dists[k];
 
         nv.addGraph(function () {
+					var tickMarks = [0, 0.25, 0.5, 0.75, 1];  
+					var marginLeft = 75;
+					var marginBottom = 23;
+					var bottomSpacer = 6;
+
+					if (dimensions.width < 219) {
+						tickMarks = [0, 0.5, 1];  
+						marginLeft = 72;
+						marginBottom = 21;
+						bottomSpacer = 5;
+					}
+					else if (dimensions.width < 299) {
+						tickMarks = [0, 0.3334, 0.6667, 1];  
+						marginLeft = 75;
+					}
+					else if (dimensions.width < 379) {
+						marginLeft = 83;
+					}
+					else if (dimensions.width < 459) {
+						marginLeft = 85;
+					}
+					else if (dimensions.width < 539) {
+						marginLeft = 95;
+					}
+					else if (dimensions.width < 619) {
+						marginLeft = 98;
+					}
+
           var chart = nv.models.multiBarHorizontalChart()
             .x(function (d) {
               return d.label;
@@ -555,9 +586,9 @@
             .height(dimensions.height)
             .margin({
               top: 5,
-              right: 25,
-              bottom: 20,
-              left: 92
+              right: 20,
+              bottom: marginBottom,
+              left: marginLeft
             })
             .showValues(false)
             .showYAxis(true)
@@ -568,13 +599,18 @@
             .showControls(false)
 						.forceY([0,1]);
           
-          var tickMarks = [0, 0.25, 0.5, 0.75, 1];  
-
+					chart.yAxis
+						.showMaxMin(false);
+					
+					var yTicks2 = d3.select('.nv-y.nv-axis')
+						.selectAll('text')
+						.attr('transform', 'translate (0, ' + bottomSpacer + ')') ;
+          
           chart.yAxis
 						.tickValues(tickMarks)
-						.tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 1) + "%";});
+						.tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 0) + "%";});
 
-          d3.select(selector)
+					d3.select(selector)
             .datum(self.history[k])
             .call(chart);
 
