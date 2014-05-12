@@ -145,7 +145,7 @@ bool shardKeysChanged (std::string const& dbname,
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> const& c = ci->getCollection(dbname, collname);
   const std::vector<std::string>& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
@@ -192,7 +192,7 @@ int usersOnCoordinator (std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
   
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, TRI_COL_NAME_USERS);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, TRI_COL_NAME_USERS);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -283,7 +283,7 @@ int revisionOnCoordinator (std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
   
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -361,7 +361,7 @@ int figuresOnCoordinator (string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
   
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -465,7 +465,7 @@ int countOnCoordinator (
   result = 0;
   
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -535,7 +535,7 @@ int createDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -648,7 +648,7 @@ int deleteDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -775,7 +775,7 @@ int truncateCollectionOnCoordinator ( string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -839,7 +839,7 @@ int getDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -968,7 +968,7 @@ int getAllDocumentsOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -1058,7 +1058,7 @@ int modifyDocumentOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -1225,7 +1225,7 @@ int createEdgeOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  TRI_shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -1314,7 +1314,7 @@ int createEdgeOnCoordinator (
 
 TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
                                              string const& collectionName) {
-  TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
+  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
   
   if ((*c).empty()) {
     return 0;

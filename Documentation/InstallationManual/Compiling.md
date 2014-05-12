@@ -296,9 +296,6 @@ ICU instead of using the system version.
 version of ICU instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
-`--enable-all-in-one-boost` tells the build system to use the bundled version of
-Boost header files. This is the default and recommended.
-
 `--enable-all-in-one-etcd` tells the build system to use the bundled version 
 of ETCD. This is the default and recommended.
 

@@ -216,7 +216,7 @@ namespace triagens {
       vector<Statistics> statistics () {
         MUTEX_LOCKER(MutexNonce);
 
-        size_t const N = 4;
+        int const N = 4;
         vector<Statistics> result;
 
         for (uint32_t l2age = 0, age = 1;  l2age < 32;  ++l2age) {
@@ -225,7 +225,7 @@ namespace triagens {
           double S0 = 1.0;
           double x = 1.0;
 
-          for (size_t i = 1;  i < N + 1;  ++i) {
+          for (int i = 1;  i < N + 1;  ++i) {
             T = T + StatisticsNonces[l2age][i];
             coeff = coeff * (N - i + 1) / i;
             S0 = S0 * pow((double)(StatisticsNonces[l2age][i] / coeff), (double)((4 * N + 2 - 6 * i) / (N * N - N)));
