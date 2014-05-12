@@ -6507,11 +6507,13 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// - @LIT{compactors.fileSize}: The total filesize of the compactor files
 ///   (in bytes).
 /// - @LIT{shapefiles.count}: The number of shape files. This value is
-///   deprecated and will always be 0.
+///   deprecated and kept for compatibility reasons only. The value will always 
+///   be 0.
 /// - @LIT{shapefiles.fileSize}: The total filesize of the shape files. This 
-///   value is deprecated and will always be 0.
+///   value is deprecated and kept for compatibility reasons only. The value will 
+///   always be 0.
 /// - @LIT{shapes.count}: The total number of shapes used in the collection.
-///   Tthis includes shapes that are not in use anymore.
+///   This includes shapes that are not in use anymore.
 /// - @LIT{shapes.size}: The total size of all shapes (in bytes). This includes
 ///   shapes that are not in use anymore.
 /// - @LIT{attributes.count}: The total number of attributes used in the 
