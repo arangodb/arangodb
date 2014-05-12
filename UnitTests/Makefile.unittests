@@ -28,6 +28,7 @@ PROTO = http
 unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
+	jslint \
 	unittests-config \
 	unittests-boost \
 	unittests-shell-server \
