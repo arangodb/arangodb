@@ -55,6 +55,10 @@
 #include <string>
 #include <vector>
 
+// C++11!!
+#include <unordered_map>
+#include <unordered_set>
+
 // -----------------------------------------------------------------------------
 // --SECTIONS--                                               triagens namespace
 // -----------------------------------------------------------------------------
