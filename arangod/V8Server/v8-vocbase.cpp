@@ -332,7 +332,7 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t result;
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
   
-  std::vector<TRI_shared_ptr<CollectionInfo> > const& collections 
+  std::vector<shared_ptr<CollectionInfo> > const& collections 
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -356,7 +356,7 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
   TRI_vector_string_t result;
   TRI_InitVectorString(&result, TRI_UNKNOWN_MEM_ZONE);
   
-  std::vector<TRI_shared_ptr<CollectionInfo> > const& collections 
+  std::vector<shared_ptr<CollectionInfo> > const& collections 
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -710,7 +710,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 #ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
-      TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
+      shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
       col = CoordinatorCollection(vocbase, *c);
 
       if (col != 0 && col->_cid == 0) {
@@ -1728,7 +1728,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
     string const collname(collection->_name);
-    TRI_shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
+    shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -3087,7 +3087,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   }
   ci->loadPlannedCollections();
 
-  TRI_shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
+  shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
   TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
   return scope.Close(TRI_WrapCollection(newcoll));
 }
@@ -6639,7 +6639,7 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
   string const cid = StringUtils::itoa(collection->_cid);
   string const collectionName(collection->_name);
     
-  TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
+  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
   
   if ((*c).empty()) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -6987,7 +6987,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->JournalSizeKey, v8::Number::New(info._maximalSize));
     result->Set(v8g->WaitForSyncKey, info._waitForSync ? v8::True() : v8::False());
 
-    TRI_shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
+    shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New();
     const vector<string> sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
@@ -7840,7 +7840,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    TRI_shared_ptr<CollectionInfo> const& ci 
+    shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName, 
                                         StringUtils::itoa(collection->_cid));
 
@@ -7966,7 +7966,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
     
-    TRI_shared_ptr<CollectionInfo> const& ci 
+    shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(databaseName,
                                       StringUtils::itoa(collection->_cid));
    
@@ -8200,7 +8200,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    TRI_shared_ptr<CollectionInfo> const& ci 
+    shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(vocbase->_name, std::string(key));
 
     if ((*ci).empty()) {
@@ -8312,7 +8312,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     string const name = TRI_ObjectToString(val);
-    TRI_shared_ptr<CollectionInfo> const& ci 
+    shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {

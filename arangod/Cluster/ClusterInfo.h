@@ -698,11 +698,11 @@ namespace triagens {
     class ClusterInfo {
       private:
 
-        typedef std::map<CollectionID, TRI_shared_ptr<CollectionInfo> >
+        typedef std::map<CollectionID, shared_ptr<CollectionInfo> >
                 DatabaseCollections;
         typedef std::map<DatabaseID, DatabaseCollections>
                 AllCollections;
-        typedef std::map<CollectionID, TRI_shared_ptr<CollectionInfoCurrent> >
+        typedef std::map<CollectionID, shared_ptr<CollectionInfoCurrent> >
                 DatabaseCollectionsCurrent;
         typedef std::map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
@@ -816,7 +816,7 @@ namespace triagens {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_shared_ptr<CollectionInfo> getCollection (DatabaseID const&,
+        shared_ptr<CollectionInfo> getCollection (DatabaseID const&,
                                                       CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -836,7 +836,7 @@ namespace triagens {
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<TRI_shared_ptr<CollectionInfo> > getCollections 
+        const std::vector<shared_ptr<CollectionInfo> > getCollections 
                                                            (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -854,7 +854,7 @@ namespace triagens {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_shared_ptr<CollectionInfoCurrent> getCollectionCurrent (
+        shared_ptr<CollectionInfoCurrent> getCollectionCurrent (
                                                     DatabaseID const&,
                                                     CollectionID const&);
 
@@ -1064,11 +1064,11 @@ namespace triagens {
         bool                            _DBServersValid;
         std::map<ShardID, ServerID>     _shardIds;
                                         // from Current/Collections/
-        std::map<CollectionID, TRI_shared_ptr<std::vector<std::string> > >
+        std::map<CollectionID, shared_ptr<std::vector<std::string> > >
                                         _shards;
                                         // from Plan/Collections/
                                // (may later come from Current/Colletions/ )
-        std::map<CollectionID, TRI_shared_ptr<std::vector<std::string> > >
+        std::map<CollectionID, shared_ptr<std::vector<std::string> > >
                                         _shardKeys;
                                         // from Plan/Collections/
 
