@@ -25,10 +25,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include <stdio.h>
-#include <iomanip>
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
@@ -50,7 +49,6 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
-
 
 using namespace std;
 using namespace triagens::basics;
