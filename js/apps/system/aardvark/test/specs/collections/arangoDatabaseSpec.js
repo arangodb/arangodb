@@ -10,7 +10,11 @@
         var col;
 
         beforeEach(function () {
-            col = new window.ArangoDatabase();
+          //col = new window.ArangoDatabase();
+          col =  new window.ArangoDatabase(
+            [],
+            {shouldFetchUser: true}
+          );
         });
 
         it("comparator", function () {
@@ -65,7 +69,10 @@
                     }
                 };
             });
-            col.initialize();
+            var values = [],
+            options = {shouldFetchUser: false};
+
+            col.initialize(values, options);
             expect(col.models[0].get("name")).toEqual("anton");
             expect(col.models[1].get("name")).toEqual("fritz");
             expect(col.models[2].get("name")).toEqual("heinz");

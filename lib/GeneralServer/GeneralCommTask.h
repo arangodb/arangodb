@@ -85,7 +85,7 @@ namespace triagens {
                          TRI_socket_t socket, 
                          ConnectionInfo const& info, 
                          double keepAliveTimeout)
-          : Task(0, "GeneralCommTask"),
+          : Task("GeneralCommTask"),
             SocketTask(socket, keepAliveTimeout),
             _server(server),
             _connectionInfo(info),

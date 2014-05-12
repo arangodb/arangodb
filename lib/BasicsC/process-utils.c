@@ -342,17 +342,15 @@ static bool createPipes (HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     } \
   } while (false);
 
-static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
-  char const* q;
+static int appendQuotedArg (TRI_string_buffer_t* buf, char const* p) {
   int err;
   
   appendChar(buf, '"');
-  unsigned int NumberBackslashes;
-  unsigned int i;
 
   while (*p != 0) {
-    NumberBackslashes = 0;
-    q = p;
+    unsigned int i;
+    unsigned int NumberBackslashes = 0;
+    char const* q = p;
     while (*q == '\\') {
       ++q;
       ++NumberBackslashes;
@@ -390,7 +388,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static char* makeWindowsArgs(TRI_external_t* external) {
+static char* makeWindowsArgs (TRI_external_t* external) {
   TRI_string_buffer_t* buf;
   size_t i;
   int err = TRI_ERROR_NO_ERROR;
@@ -961,10 +959,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                                                 bool wait) {
   TRI_external_status_t status;
   TRI_external_t* external;
-#ifndef _WIN32
-   int loc;
-   int opts;
-#endif
   size_t i;
 
   TRI_LockMutex(&ExternalProcessesLock);
@@ -989,6 +983,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
     TRI_pid_t res;
+    int opts;
+    int loc;
+
     if (wait) {
       opts = WUNTRACED;
     }
@@ -1052,16 +1049,30 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 }
 
 #ifndef _WIN32
-static bool ourKillProcess(TRI_external_t* pid) {
-  bool success;
-  int loc;
-  success = (0 != kill(pid->_pid, SIGTERM));
-  // And wait for it to avoid a zombie:
-  waitpid(pid->_pid, &loc, WUNTRACED);
-  return success;
+static bool ourKillProcess (TRI_external_t* pid) {
+  if (0 == kill(pid->_pid, SIGTERM)) {
+    int count;
+
+    // Otherwise we just let it be.
+    for (count = 0; count < 10; count++) {
+      pid_t p;
+      int loc;
+
+      // And wait for it to avoid a zombie:
+      sleep(1);
+      p = waitpid(pid->_pid, &loc, WUNTRACED | WNOHANG);
+      if (p == pid->_pid) {
+        return true;
+      }
+      if (count == 8) {
+        kill(pid->_pid, SIGKILL);
+      }
+    }
+  }
+  return false;
 }
 #else
-static bool ourKillProcess(TRI_external_t* pid) {
+static bool ourKillProcess (TRI_external_t* pid) {
   bool ok = true;
   UINT uExitCode = 0;
   DWORD exitCode;
@@ -1085,7 +1096,7 @@ static bool ourKillProcess(TRI_external_t* pid) {
   return ok;
 }
 
-static bool ourKillProcessPID(DWORD pid) {
+static bool ourKillProcessPID (DWORD pid) {
   HANDLE hProcess;
   UINT uExitCode = 0;
 
@@ -1107,10 +1118,6 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_external_t* external;
   size_t i;
   bool ok = true;
-#ifndef _WIN32
-   int loc;
-   bool success;
-#endif
 
   TRI_LockMutex(&ExternalProcessesLock);
 
@@ -1126,10 +1133,26 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
     TRI_UnlockMutex(&ExternalProcessesLock);
 #ifndef _WIN32
     // Kill just in case:
-    success = (0 != kill(pid._pid, SIGTERM));
-    // And wait for it to avoid a zombie:
-    waitpid(pid._pid, &loc, WUNTRACED);
-    return success;
+    if (0 == kill(pid._pid, SIGTERM)) {
+      int count;
+
+      // Otherwise we just let it be.
+      for (count = 0;count < 10;count++) {
+        int loc;
+        pid_t p;
+
+        // And wait for it to avoid a zombie:
+        sleep(1);
+        p = waitpid(pid._pid, &loc, WUNTRACED | WNOHANG);
+        if (p == pid._pid) {
+          return true;
+        }
+        if (count == 8) {
+          kill(pid._pid, SIGKILL);
+        }
+      }
+    }
+    return false;
 #else
     return ourKillProcessPID(pid._pid);
 #endif

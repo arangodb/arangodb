@@ -77,11 +77,11 @@ func (NilEWMA) Update(n int64) {}
 // of uncounted events and processes them on each tick.  It uses the
 // sync/atomic package to manage uncounted events.
 type StandardEWMA struct {
+	uncounted int64
 	alpha     float64
 	init      bool
 	mutex     sync.Mutex
 	rate      float64
-	uncounted int64
 }
 
 // Rate returns the moving average rate of events per second.

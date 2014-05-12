@@ -1,5 +1,5 @@
 #dashboardHttpGroup {
-  border: 1px solid $c-black;
+  border: 6px solid $c-black;
   height: 100%;
   width: 100%;
 }
@@ -58,30 +58,6 @@
     weight: 400;
   }
   text-align: left;
-}
-
-.dygraph-axis-label {
-
-  &.dygraph-axis-label-x,
-  &.dygraph-axit-label-y {
-    color: $c-darker-grey;  
-    font: {
-      family: 'Open Sans', sans-serif;
-      size: 12px;
-      weight: 400;
-    }
-  }
-}
-
-.dygraph-legend {
-  background-color: #fafafa !important;
-  color: $c-darker-grey !important;
-  font: {
-    family: 'Open Sans', sans-serif !important;
-    size: 12px !important;
-    weight: 400 !important;
-  }
-  text-align: right !important;
 }
 
 #dashboardDetailedLineChart {

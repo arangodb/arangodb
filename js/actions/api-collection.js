@@ -66,13 +66,13 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 
   result.id = collection._id;
   result.name = collection.name();
+  result.isSystem = (result.name.charAt(0) === '_');
 
   if (showProperties) {
     var properties = collection.properties();
 
     result.doCompact     = properties.doCompact;
     result.isVolatile    = properties.isVolatile;
-    result.isSystem      = properties.isSystem;
     result.journalSize   = properties.journalSize;      
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
@@ -629,6 +629,14 @@ function get_api_collections (req, res) {
 ///
 /// - `figures.attributes.count`: The total number of attributes in the 
 ///   collection (this includes attributes that are not in use anymore) 
+///
+/// - `figures.attributes.size`: The total size used by all attribute
+///   names in the collection (this includes attributes that are not in use anymore) 
+///
+/// - `figures.indexes.count`: The total number of indexes defined for the
+///   collection (this includes internal indexes such as the primary index)
+///
+/// - `figures.indexes.size`: The total memory allocated by the indexes in bytes
 ///
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///

@@ -8,20 +8,25 @@
 
     describe("Cluster Databases Collection", function () {
 
-        var col, list, db1, db2, db3, oldRouter;
+        var col, list, db1, db2, db3;
 
         beforeEach(function () {
-            oldRouter = window.App;
-            window.App = {
-                registerForUpdate: function () {
-                },
-                addAuth: function () {
-
-                },
-                getNewRoute : function(a) {
-                    return a;
-                }
-            };
+          window.App = {
+            addAuth: function() {
+              throw "This should be a spy";
+            },
+            getNewRoute: function() {
+              throw "This should be a spy";
+            },
+            registerForUpdate: function() {
+              throw "This should be a spy";
+            }
+          };
+          spyOn(window.App, "addAuth"); 
+          spyOn(window.App, "getNewRoute").andCallFake(function(a) {
+            return a; 
+          }); 
+          spyOn(window.App, "registerForUpdate"); 
             list = [];
             db1 = {name: "_system"};
             db2 = {name: "otherDB"};
@@ -34,8 +39,8 @@
             });
         });
 
-        afterEach(function () {
-            window.App = oldRouter;
+        afterEach(function() {
+          delete window.App;
         });
 
         describe("list", function () {

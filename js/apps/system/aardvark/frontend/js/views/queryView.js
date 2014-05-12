@@ -6,17 +6,44 @@
   "use strict";
   window.queryView = Backbone.View.extend({
     el: '#content',
+    id: '#customsDiv',
+    tabArray: [],
 
     initialize: function () {
       this.getAQL();
       this.getSystemQueries();
       localStorage.setItem("queryContent", "");
       localStorage.setItem("queryOutput", "");
+      this.tableDescription.rows = this.customQueries;
+    },
+
+    updateTable:  function () {
+      this.tableDescription.rows = this.customQueries;
+
+      _.each(this.tableDescription.rows, function(k,v) {
+        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
+              ' title="Delete query"></span></a>';
+      });
+
+      this.$(this.id).html(this.table.render({content: this.tableDescription}));
+    },
+
+    editCustomQuery: function(e) {
+      var queryName = $(e.target).parent().children().first().text();
+      var inputEditor = ace.edit("aqlEditor");
+      inputEditor.setValue(this.getCustomQueryValueByName(queryName));
+      this.deselect(inputEditor);
+      $('#querySelect').val(queryName);
+      this.switchTab("query-switch");
     },
 
     events: {
-      "click #result-switch": "result",
-      "click #query-switch": "query",
+      "click #result-switch": "switchTab",
+      "click #query-switch": "switchTab",
+      'click #customs-switch': function(e) {
+        this.switchTab(e);
+        this.updateTable();
+      },
       'click #submitQueryIcon': 'submitQuery',
       'click #submitQueryButton': 'submitQuery',
       'click #commentText': 'commentText',
@@ -27,24 +54,61 @@
       'click #bigOutput': 'bigOutput',
       'click #clearOutput': 'clearOutput',
       'click #clearInput': 'clearInput',
+      'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
       'click #editAQL': 'editAQL',
-      'click #save-new-query': 'saveAQL',
-      'click #save-edit-query': 'saveAQL',
+      'click #save-query': 'saveAQL',
       'click #delete-edit-query': 'showDeleteField',
-      'click #confirmDeleteQuery': 'deleteAQL',
       'click #abortDeleteQuery': 'hideDeleteField',
-      'keydown #new-query-name': 'listenKey',
+      'keyup #new-query-name': 'listenKey',
       'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
-      'keypress #aqlEditor': 'aqlShortcuts'
+      'keypress #aqlEditor': 'aqlShortcuts',
+      'click #arangoQueryTable .table-cell0': 'editCustomQuery',
+      'click #arangoQueryTable .table-cell1': 'editCustomQuery',
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+
+    },
+
+    initTabArray: function() {
+      var self = this;
+      $(".arango-tab").children().each( function(index) {
+        self.tabArray.push($(this).children().first().attr("id"));
+      });
     },
 
     listenKey: function (e) {
       if (e.keyCode === 13) {
         this.saveAQL(e);
       }
+      this.checkSaveName();
+    },
+
+    checkSaveName: function() {
+      var saveName = $('#new-query-name').val();
+      if ( saveName === "Insert Query"){
+        $('#new-query-name').val('');
+        return;
+      }
+
+      var boolTemp = false;
+      this.customQueries.some(function(query){
+        if( query.name === saveName ){
+          $('#save-query').removeClass('button-success');
+          $('#save-query').addClass('button-warning');
+          $('#save-query').text('Update');
+            boolTemp = true;
+        } else {
+          $('#save-query').removeClass('button-warning');
+          $('#save-query').addClass('button-success');
+          $('#save-query').text('Save');
+        }
+
+        if (boolTemp) {
+          return true;
+        }
+      });
     },
 
     clearOutput: function () {
@@ -89,11 +153,19 @@
 
     customQueries: [],
 
+
+    tableDescription: {
+      id: "arangoQueryTable",
+      titles: ["Name", "Content", ""],
+      rows: []
+    },
+
     template: templateEngine.createTemplate("queryView.ejs"),
+    table: templateEngine.createTemplate("arangoTable.ejs"),
 
     render: function () {
-      $(this.el).html(this.template.render({}));
-
+      this.$el.html(this.template.render({}));
+      this.$(this.id).html(this.table.render({content: this.tableDescription}));
       // fill select box with # of results
       var querySize = 1000;
       if (typeof Storage) {
@@ -177,15 +249,16 @@
       inputEditor.resize();
       outputEditor.resize();
 
+      this.initTabArray();
       this.renderSelectboxes();
       this.deselect(outputEditor);
       this.deselect(inputEditor);
 
-      $('#queryDiv').show();
-      //outputEditor.setTheme("ace/theme/merbivore_soft");
-      $("#tabContentResult").hide();
-      $("#query-switch").parent().addClass("active");
+      // Max: why do we need to tell those elements to show themselves?
+      $("#queryDiv").show();
+      $("#customsDiv").show();
 
+      this.switchTab('query-switch');
       return this;
     },
 
@@ -210,12 +283,14 @@
 
     addAQL: function () {
       //render options
-      $('#new-query-name').val('');
+      $('#new-query-name').val($('#querySelect').val());
       $('#new-aql-query').modal('show');
       setTimeout(function () {
         $('#new-query-name').focus();
       }, 500);
+      this.checkSaveName();
     },
+
     editAQL: function () {
       if (this.customQueries.length === 0) {
         //Heiko: display information that no custom queries are available
@@ -233,18 +308,21 @@
         this.customQueries = JSON.parse(localStorage.getItem("customQueries"));
       }
     },
+
     showDeleteField: function () {
       $('#reallyDeleteQueryDiv').show();
     },
     hideDeleteField: function () {
       $('#reallyDeleteQueryDiv').hide();
     },
-    deleteAQL: function () {
-      var queryName = $('#queryModalSelect').val();
+
+    deleteAQL: function (e) {
+
+      var deleteName = $(e.target).parent().parent().parent().children().first().text();
       var tempArray = [];
 
       $.each(this.customQueries, function (k, v) {
-        if (queryName !== v.name) {
+        if (deleteName !== v.name) {
           tempArray.push({
             name: v.name,
             value: v.value
@@ -254,67 +332,56 @@
 
       this.customQueries = tempArray;
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
-      $('#edit-aql-queries').modal('hide');
       this.renderSelectboxes();
+      this.updateTable();
     },
+
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
-      var queryName = $('#new-query-name').val();
+      var saveName = $('#new-query-name').val();
       var content = inputEditor.getValue();
 
-      if (e) {
-        if (e.target.id === 'save-edit-query') {
-          content = $('#edit-aql-textarea').val();
-          queryName = $('#queryModalSelect').val();
-        }
-      }
-
-      if (queryName.trim() === '') {
+      if (saveName.trim() === '') {
         //Heiko: Form-Validator - illegal query name
         return;
       }
 
       //check for already existing entry
-      var tempArray = [];
       var quit = false;
       $.each(this.customQueries, function (k, v) {
-        if (e.target.id !== 'save-edit-query') {
-          if (v.name === queryName) {
+          if (v.name === saveName) {
+            v.value = content;
             quit = true;
             return;
           }
-        }
-        if (v.name !== queryName) {
-          tempArray.push({
-            name: v.name,
-            value: v.value
-          });
-        }
-      });
+        });
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
+        $('#new-aql-query').modal('hide');
+        $('#edit-aql-query').modal('hide');
         return;
       }
 
-      this.customQueries = tempArray;
-
       this.customQueries.push({
-        name: queryName,
+        name: saveName,
         value: content
       });
 
       $('#new-aql-query').modal('hide');
-      $('#edit-aql-queries').modal('hide');
+      $('#edit-aql-query').modal('hide');
 
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
+      $('#querySelect').val(saveName);
     },
+
     updateEditSelect: function () {
       var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
       $('#edit-aql-textarea').val(value);
       $('#edit-aql-textarea').focus();
     },
+
     getSystemQueries: function () {
       var self = this;
       $.ajax({
@@ -412,7 +479,7 @@
       this.customQueries = _.sortBy(this.customQueries, 'name');
     },
     submitQuery: function () {
-      this.result();
+      this.switchTab("result-switch");
       var self = this;
       var sizeBox = $('#querySize');
       var inputEditor = ace.edit("aqlEditor");
@@ -456,33 +523,32 @@
 
     },
 
-    result: function (e) {
-      $("#result-switch").parent().addClass("active");
-      $("#query-switch").parent().removeClass("active");
-      $("#result").addClass("active");
-      $("#query").removeClass("active");
-      $("#tabContentResult").show();
-      $("#tabContentQuery").hide();
-      /*      console.log($(e.currentTarget).closest(".pull-right").addClass("active"));
-       this.resetState();
-       this.table = "logTableID";
-       this.clearTable();
-       this.collection.fillLocalStorage(this.table, this.offset, this.size);*/
-    },
-
-    query: function (e) {
-      $("#query-switch").parent().addClass("active");
-      $("#result-switch").parent().removeClass("active");
-      $("#query").addClass("active");
-      $("#result").removeClass("active");
-      $("#tabContentQuery").show();
-      $("#tabContentResult").hide();
-      /*
-       this.resetState();
-       this.table = "logTableID";
-       this.clearTable();
-       this.collection.fillLocalStorage(this.table, this.offset, this.size);*/
+    // This function changes the focus onto the tab that has been clicked
+    // it can be given an event-object or the id of the tab to switch to
+    //    e.g. switchTab("result-switch");
+    // note that you need to ommit the #
+    switchTab: function (e) {
+      // defining a callback function for Array.forEach() the tabArray holds the ids of
+      // the tabs a-tags, from which we can create the appropriate content-divs ids.
+      // The convention is #result-switch (a-tag), #result (content-div), and
+      // #tabContentResult (pane-div).
+      // We set the clicked element's tags to active/show and the others to hide.
+      var switchId = typeof e === 'string' ? e : e.target.id;
+      var changeTab = function (element, index, array){
+        var divId = "#" + element.replace("-switch", "");
+        var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
+        var wrapperDiv = divId + "Div";
+        if ( element === switchId){
+          $("#" + element).parent().addClass("active");
+          $(divId).addClass("active");
+          $(contentDivId).show();
+        } else {
+          $("#" + element).parent().removeClass("active");
+          $(divId).removeClass("active");
+          $(contentDivId).hide();
+        }
+      };
+      this.tabArray.forEach(changeTab);
     }
-
   });
 }());

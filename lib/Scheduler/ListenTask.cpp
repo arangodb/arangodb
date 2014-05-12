@@ -62,7 +62,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ListenTask::ListenTask (Endpoint* endpoint)
-  : Task(0, "ListenTask"),
+  : Task("ListenTask"),
     readWatcher(0),
     _endpoint(endpoint),
     acceptFailures(0) {

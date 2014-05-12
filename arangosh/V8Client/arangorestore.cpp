@@ -143,6 +143,12 @@ static bool RecycleIds = false;
 static bool Force = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster mode flag
+////////////////////////////////////////////////////////////////////////////////
+
+static bool clusterMode = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -285,10 +291,10 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
     
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  const string body = result->getBody().str();
+  const StringBuffer& body = result->getBody();
   string details;
 
-  TRI_json_t* json = JsonHelper::fromString(body);
+  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
   if (json != 0) {
     const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
@@ -335,7 +341,8 @@ static string GetArangoVersion () {
     version = "arango";
   
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
+                                      response->getBody().c_str());
 
     if (json) {
       // look up "server" value
@@ -361,6 +368,47 @@ static string GetArangoVersion () {
   delete response;
 
   return version;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if server is a coordinator of a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+static bool GetArangoIsCluster () {
+  map<string, string> headers;
+  string command = "return ArangoServerState.role();";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
+                                        "/_admin/execute?returnAsJSON=true",
+                                               command.c_str(), 
+                                               command.size(),  
+                                               headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    if (response != 0) {
+      delete response;
+    }
+
+    return false;
+  }
+
+  string role = "UNDEFINED";
+    
+  if (response->getHttpReturnCode() == HttpResponse::OK) {
+    // default value
+    role.assign(response->getBody().c_str(), response->getBody().length());
+  }
+  else {
+    if (response->wasHttpError()) {
+      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+    }
+
+    Connection->disconnect();
+  }
+
+  delete response;
+
+  return role == "\"COORDINATOR\"";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,8 +497,7 @@ static int SendRestoreIndexes (TRI_json_t const* json,
 /// @brief send the request to load data into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreData (string const& cid,
-                            string const& cname,
+static int SendRestoreData (string const& cname,
                             char const* buffer,
                             size_t bufferSize,
                             string& errorMsg) {
@@ -742,7 +789,7 @@ static int ProcessInputDirectory (string& errorMsg) {
 
               Stats._totalBatches++;
 
-              int res = SendRestoreData(cid, cname, buffer.begin(), length, errorMsg);
+              int res = SendRestoreData(cname, buffer.begin(), length, errorMsg);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 TRI_CLOSE(fd);
@@ -918,7 +965,7 @@ int main (int argc, char* argv[]) {
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "Invalid server version '" << versionString << "'" << endl;
+    cerr << "invalid server version '" << versionString << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
@@ -926,12 +973,16 @@ int main (int argc, char* argv[]) {
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "Got an incompatible server version '" << versionString << "'" << endl;
+    cerr << "got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
   }
 
+  if (major >= 2) {
+    // Version 1.4 did not yet have a cluster mode
+    clusterMode = GetArangoIsCluster();
+  }
 
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;

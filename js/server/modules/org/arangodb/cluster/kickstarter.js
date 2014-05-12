@@ -84,6 +84,43 @@ function getAuthorization (dispatcher) {
   return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
 }
 
+function waitForServerUp (endpoint, timeout) {
+  var url = endpointToURL(endpoint) + "/_api/version";
+  var time = 0;
+  while (true) {
+    var r = download(url, "", {});
+    if (r.code === 200 || r.code === 401) {
+      console.info("Could talk to "+endpoint+" .");
+      return true;
+    }
+    if (time >= timeout) {
+      console.info("Could not talk to endpoint "+endpoint+", giving up.");
+      return false;
+    }
+    wait(0.5);
+    time += 0.5;
+  }
+}
+
+function waitForServerDown (endpoint, timeout) {
+  var url = endpointToURL(endpoint) + "/_api/version";
+  var time = 0;
+  while (true) {
+    var r = download(url, "", {});
+    if (r.code === 500 || r.code === 401) {
+      console.info("Server at "+endpoint+" does not answer any more.");
+      return true;
+    }
+    if (time >= timeout) {
+      console.info("After timeout, server at "+endpoint+
+                   "is still there, giving up.");
+      return false;
+    }
+    wait(0.5);
+    time += 0.5;
+  }
+}
+
 function sendToAgency (agencyURL, path, obj) {
   var res;
   var body;
@@ -99,6 +136,7 @@ function sendToAgency (agencyURL, path, obj) {
       if (res.code === 201 || res.code === 200) {
         return true;
       }
+      wait(3);  // wait 3 seconds before trying again
     }
     return res;
   }
@@ -126,6 +164,7 @@ function sendToAgency (agencyURL, path, obj) {
     if (res.code === 201 || res.code === 200) {
       return true;
     }
+    wait(3);  // wait 3 seconds before trying again
   }
   return res;
 }
@@ -187,7 +226,6 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
-      wait(0.5);
       return {"error":false, "isStartAgent": true, "pid": pid, 
               "endpoint": "tcp://"+extEndpoint};
     }
@@ -313,10 +351,14 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     endpoints.push(ep);
   }
 
-  console.info("Waiting 3 seconds for servers to come to life...");
-  wait(3);
+  var error = false;
+  for (i = 0;i < endpoints.length;i++) {
+    if (! waitForServerUp(endpoints[i], 30)) {
+      error = true;
+    }
+  }
 
-  return {"error": false, "isStartServers": true, 
+  return {"error": error, "isStartServers": true, 
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
@@ -325,24 +367,17 @@ launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
     return {"error":false, "isCreateSystemColls":true};
   }
 
-  console.info("Waiting for coordinator to come up...");
-  
+  // We wait another half second (we have already waited for all servers
+  // until they responded!), just to be on the safe side:
+  wait(0.5);
+
   var hdrs = {
-    Authorization: getAuthorizationHeader("root", "") // default username and passwd
+    Authorization: getAuthorizationHeader("root", "") 
+    // default username and passwd, this will work just after cluster creation
   };
 
-  var url = cmd.url + "/_api/version";
-  var r;
-  while (true) {
-    r = download(url, "", { method: "GET", headers: hdrs });
-    if (r.code === 200) {
-      break;
-    }
-    wait(0.5);
-  }
-  wait(3);
   console.info("Creating system collections...");
-  url = cmd.url + "/_admin/execute?returnAsJSON=true";
+  var url = cmd.url + "/_admin/execute?returnAsJSON=true";
   var body = 'load=require("internal").load;\n'+
              'UPGRADE_ARGS=undefined;\n'+
              'return load('+JSON.stringify(
@@ -350,7 +385,7 @@ launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
                                         makePath("server/version-check.js")))+
              ');\n';
   var o = { method: "POST", timeout: 90, headers: hdrs };
-  r = download(url, body, o);
+  var r = download(url, body, o);
   if (r.code === 200) {
     r = JSON.parse(r.body);
     r.isCreateSystemColls = true;
@@ -374,24 +409,32 @@ shutdownActions.sendConfiguration = function (dispatchers, cmd, run) {
 shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var url;
+  var r;
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = endpointToURL(run.endpoints[i])+"/_admin/shutdown";
-    var hdrs = {};
-    if (dispatchers[cmd.dispatcher].username !== undefined &&
-        dispatchers[cmd.dispatcher].passwd !== undefined) {
-      hdrs.Authorization = getAuthorization(dispatchers[cmd.dispatcher]);
+    // We use the cluster-internal authentication:
+    var hdrs = { Authorization : ArangoServerState.getClusterAuthentication() };
+    r = download(url,"",{method:"GET", headers: hdrs});
+    if (r.code !== 200) {
+      console.info("Shutdown API result:"+JSON.stringify(r));
     }
-    download(url,"",{method:"GET", headers: hdrs});
   }
-  console.info("Waiting 5 seconds for servers to shutdown gracefully...");
-  wait(5);
+  for (i = 0;i < run.endpoints.length;i++) {
+    waitForServerDown(run.endpoints[i], 30);
+    // we cannot do much with the result...
+  }
+
+  console.info("Waiting 8 seconds for servers to shutdown gracefully...");
+  wait(8);
+
   for (i = 0;i < run.pids.length;i++) {
     var s = statusExternal(run.pids[i]);
     if (s.status !== "TERMINATED") {
       console.info("Shutting down %s the hard way...", 
                    JSON.stringify(run.pids[i]));
       killExternal(run.pids[i]);
+      console.info("done.");
     }
   }
   return {"error": false, "isStartServers": true};
@@ -455,7 +498,18 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
     console.info("Checking health of server %s", JSON.stringify(run.pids[i]));
     r.push(statusExternal(run.pids[i]));
   }
-  return {"error": false, "isStartServers": true, "status": r};
+  var s = [];
+  var x;
+  var error = false;
+  for (i = 0;i < run.endpoints.length;i++) {
+    x = waitForServerUp(run.endpoints[i], 0);
+    s.push(x);
+    if (x === false) {
+      error = true;
+    }
+  }
+  return {"error": error, "isStartServers": true, "status": r,
+          "answering": s};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -897,6 +951,9 @@ Kickstarter.prototype.isHealthy = function() {
         try {
           res = JSON.parse(response.body);
           results.push(res.results[0]);
+          if (res.results[0].error === true) {
+	    error = true;
+          }
         }
         catch (err) {
           results.push({"error":true, 

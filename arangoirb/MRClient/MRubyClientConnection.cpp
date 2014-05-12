@@ -105,7 +105,7 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
       _version = "arango";
 
       // convert response body to json
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().c_str());
 
       if (json) {
 
@@ -333,11 +333,11 @@ mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType metho
     _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
     // got a body
-    if (_httpResult->getBody().str().length() > 0) {
+    if (_httpResult->getBody().length() > 0) {
       string contentType = _httpResult->getContentType(true);
 
       if (contentType == "application/json") {
-        TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _httpResult->getBody().str().c_str());
+        TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _httpResult->getBody().c_str());
 
         if (js != NULL) {
           // return v8 object
@@ -350,8 +350,8 @@ mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType metho
 
       // return body as string
       mrb_value result = mrb_str_new(_mrb,
-                                     _httpResult->getBody().str().c_str(),
-                                     _httpResult->getBody().str().length());
+                                     _httpResult->getBody().c_str(),
+                                     _httpResult->getBody().length());
 
       return result;
     }

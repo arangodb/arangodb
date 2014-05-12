@@ -664,15 +664,14 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
   TRI_voc_size_t targetSize;
   int res;
   size_t i;
-  size_t n;
-
+  
   collection = &document->base.base;
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   targetSize = document->base.base._info._maximalSize;
 
   while (collection->_state == TRI_COL_STATE_WRITE) {
-    n = collection->_journals._length;
+    size_t const n = collection->_journals._length;
 
     for (i = 0;  i < n;  ++i) {
       // select datafile
@@ -2739,6 +2738,87 @@ static bool OpenIndexIterator (char const* filename,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the collection
+/// note: the collection lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
+  TRI_doc_collection_info_t* info;
+  TRI_collection_t* base;
+  size_t i;
+
+  // prefill with 0's to init counters
+  info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
+
+  if (info == NULL) {
+    return NULL;
+  }
+    
+  for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
+    TRI_doc_datafile_info_t* d = static_cast<TRI_doc_datafile_info_t*>(primary->_datafileInfo._table[i]);
+
+    if (d != NULL) {
+      info->_numberAlive        += d->_numberAlive;
+      info->_numberDead         += d->_numberDead;
+      info->_numberTransaction  += d->_numberTransaction; // not used here (only in compaction)
+      info->_numberDeletion     += d->_numberDeletion;
+      info->_numberShapes       += d->_numberShapes;
+      info->_numberAttributes   += d->_numberAttributes;
+
+      info->_sizeAlive          += d->_sizeAlive;
+      info->_sizeDead           += d->_sizeDead;
+      info->_sizeTransaction    += d->_sizeTransaction; // not used here (only in compaction)
+      info->_sizeShapes         += d->_sizeShapes;
+      info->_sizeAttributes     += d->_sizeAttributes;
+    }
+  }
+
+  // add the file sizes for datafiles and journals
+  base = &primary->base;
+  for (i = 0; i < base->_datafiles._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
+
+    info->_datafileSize += (int64_t) df->_maximalSize;
+    ++info->_numberDatafiles;
+  }
+
+  for (i = 0; i < base->_journals._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
+
+    info->_journalfileSize += (int64_t) df->_maximalSize;
+    ++info->_numberJournalfiles;
+  }
+  
+  for (i = 0; i < base->_compactors._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_compactors._buffer[i];
+
+    info->_compactorfileSize += (int64_t) df->_maximalSize;
+    ++info->_numberCompactorfiles;
+  }
+
+  // add index information
+  info->_numberIndexes = 0;
+  info->_sizeIndexes = 0;
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+  for (i = 0; i < document->_allIndexes._length; ++i) { 
+    TRI_index_t const* idx = static_cast<TRI_index_t const*>(TRI_AtVectorPointer(&document->_allIndexes, i)); 
+
+    if (idx->memory != NULL) {
+      info->_sizeIndexes += idx->memory(idx);
+    }
+    info->_numberIndexes++; 
+  }
+
+  // get information about shape files (DEPRECATED, thus hard-coded to 0)
+  info->_shapefileSize    = 0;
+  info->_numberShapefiles = 0;
+
+  return info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2840,6 +2920,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   document->base.dump              = DumpCollection;
 #endif
+
+  document->base.figures           = Figures;
 
   // crud methods
   document->base.insert            = InsertShapedJson;
@@ -3283,7 +3365,7 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
   int res;
 
   TRI_DEBUG_INTENTIONAL_FAIL_IF("TRI_WriteOperationDocumentCollection") {
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_DEBUG;
   }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
@@ -5973,23 +6055,21 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
                             TRI_shape_pid_t* pids,
                             TRI_shaped_json_t** values) {
   TRI_shaped_json_t document;
-  TRI_shaped_json_t* example;
   TRI_shaped_json_t result;
   TRI_shape_t const* shape;
-  bool ok;
   size_t i;
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->_data);
 
   for (i = 0;  i < len;  ++i) {
-    example = values[i];
+    TRI_shaped_json_t* example = values[i];
 
-    ok = TRI_ExtractShapedJsonVocShaper(shaper,
-                                        &document,
-                                        example->_sid,
-                                        pids[i],
-                                        &result,
-                                        &shape);
+    bool ok = TRI_ExtractShapedJsonVocShaper(shaper,
+                                             &document,
+                                             example->_sid,
+                                             pids[i],
+                                             &result,
+                                             &shape);
 
     if (! ok || shape == NULL) {
       return false;

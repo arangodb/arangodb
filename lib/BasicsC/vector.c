@@ -493,10 +493,9 @@ void TRI_FreeVectorPointer (TRI_memory_zone_t* zone, TRI_vector_pointer_t* vecto
 void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
                                    TRI_vector_pointer_t* vector) {
   size_t i;
-  void* ptr;
 
   for (i = 0;  i < vector->_length;  ++i) {
-    ptr = vector->_buffer[i];
+    void* ptr = vector->_buffer[i];
 
     if (ptr != NULL) {
       TRI_Free(zone, ptr);
@@ -1089,7 +1088,7 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
   // Check and see if we need to extend the vector
   // ...........................................................................
 
-  if (n >= vector->_capacity || n >= vector->_capacity) {
+  if (vector->_length >= vector->_capacity || n >= vector->_capacity) {
     char** newBuffer;
     size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
 

@@ -117,7 +117,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
                                AsyncJobManager* jobManager) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_api", dispatcher->dispatcher(), jobManager);
 
   // add a upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
@@ -150,8 +150,8 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 #ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
-                            RestHandlerCreator<RestShardHandler>::createData<void*>,
-                            (void*) dispatcher->dispatcher());
+                            RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
+                            dispatcher->dispatcher());
 #endif
 }
 
@@ -166,7 +166,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationServer* applicationServer) {
 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin", (void*) jobManager);
+  admin->addBasicHandlers(factory, "/_admin", dispatcher->dispatcher(), jobManager);
 
   // add "/_admin/shutdown" handler
   factory->addPrefixHandler("/_admin/shutdown",
@@ -705,7 +705,7 @@ void ArangoServer::buildApplicationServer () {
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
-    _dispatcherThreads = 1;
+    // testing disables authentication
     _disableAuthentication = true;
   }
 
@@ -861,17 +861,19 @@ int ArangoServer::startupServer () {
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  int res;
+
   if (mode == OperationMode::MODE_CONSOLE) {
-    runConsole(vocbase);
+    res = runConsole(vocbase);
   }
   else if (mode == OperationMode::MODE_UNITTESTS) {
-    runUnitTests(vocbase);
+    res = runUnitTests(vocbase);
   }
   else if (mode == OperationMode::MODE_SCRIPT) {
-    runScript(vocbase);
+    res = runScript(vocbase);
   }
   else {
-    runServer(vocbase);
+    res = runServer(vocbase);
   }
 
   _applicationServer->stop();
@@ -882,7 +884,7 @@ int ArangoServer::startupServer () {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
 
-  return 0;
+  return res;
 }
 
 // -----------------------------------------------------------------------------
@@ -894,7 +896,6 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
-
   // just wait until we are signalled
   _applicationServer->wait();
 
@@ -959,7 +960,12 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
     TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
 
     if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        cout << TRI_StringifyV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToBoolean(context->_context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
@@ -1018,7 +1024,12 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     v8::Handle<v8::Value> result = main->Call(main, 1, args);
 
     if (tryCatch.HasCaught()) {
-      TRI_LogV8Exception(&tryCatch);
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+      else {
+        return EXIT_FAILURE;
+      }
     }
     else {
       ok = TRI_ObjectToDouble(result) == 0;

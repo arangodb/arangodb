@@ -9,6 +9,17 @@
   <div class="innerContent">
 
     <form action="javascript:void(0);" autocomplete="on" class="form-horizontal">
+			<div class="control-group">
+					<label class="control-label">SSL enabled:</label>
+					<div class="controls">
+						<label class="checkbox inline">
+								<input type="checkbox" value="useSSLonDBservers" class="useSSLonDBservers" <%=useSSLonDBservers?'checked="checked"':''%>> on DBServers
+						</label>
+						<label class="checkbox inline">
+								<input type="checkbox" disabled=true value="useSSLonCoordinators" class="useSSLonCoordinators" <%=useSSLonCoordinators?'checked="checked"':''%>> on Coordinators
+						</label>
+					</div>
+			</div>
       <fieldset id="server_list">
       </fieldset>
       <div class="control-group">
@@ -16,7 +27,7 @@
           <button class="button-close" id="cancel">Cancel</button>
           <button class="button-notification" id="test-all-connections">Test all connections</button>
           <button class="button-neutral" id="startSymmetricPlan">Launch Cluster</button>
-        </div>
+				</div>
       </div>
     </form>
   </div>

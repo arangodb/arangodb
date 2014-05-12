@@ -129,7 +129,7 @@ exports.remove = function (user) {
   var uri = "_api/user/" + encodeURIComponent(user);
 
   var requestResult = db._connection.DELETE(uri);
-  return arangosh.checkRequestResult(requestResult);
+  arangosh.checkRequestResult(requestResult);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,4 +200,3 @@ exports.reload = function () {
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
-

@@ -309,7 +309,7 @@ static bool InsertOrs (TRI_aql_context_t* const context,
       }
 
       if (TRI_PushBackVectorPointer(dest, (void*) orElement) != TRI_ERROR_NO_ERROR) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
     else {
@@ -408,14 +408,14 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
 
   if (fieldAccess == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
   fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fullName);
 
   if (fieldAccess->_fullName == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
 
     return NULL;
@@ -639,7 +639,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     TRI_json_t* merged = TRI_IntersectListsJson(lhs->_value._value, rhs->_value._value, true);
     if (! merged) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return lhs;
     }
 
@@ -680,7 +680,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
 
     if (! listInRange) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       FreeAccessMembers(rhs);
       return lhs;
     }
@@ -713,7 +713,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
 
     if (! listInRange) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       FreeAccessMembers(rhs);
       return lhs;
     }
@@ -1117,7 +1117,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
       lhs->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._lower._value);
       if (lhs->_value._between._lower._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
     else if (compareResult == 0 && rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED) {
@@ -1133,7 +1133,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
       lhs->_value._between._upper._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._upper._value);
       if (lhs->_value._between._upper._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
     else if (compareResult == 0 && rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED) {
@@ -1334,7 +1334,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     result = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 2);
     if (result == NULL) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       TRI_FreeAccessAql(rhs);
 
       return lhs;
@@ -1471,7 +1471,7 @@ static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
     TRI_json_t* merged = TRI_UnionizeListsJson(lhs->_value._value, rhs->_value._value, true);
     if (! merged) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return lhs;
     }
 
@@ -1623,7 +1623,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
       lhs->_value._between._lower._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._lower._value);
       if (lhs->_value._between._lower._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
     else if (compareResult == 0 && rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED) {
@@ -1639,7 +1639,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
       lhs->_value._between._upper._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, rhs->_value._between._upper._value);
       if (lhs->_value._between._upper._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
     else if (compareResult == 0 && rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED) {
@@ -1851,7 +1851,7 @@ static TRI_vector_pointer_t* CreateEmptyVector (TRI_aql_context_t* const context
 
   if (result == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1881,7 +1881,7 @@ static TRI_vector_pointer_t* Vectorize (TRI_aql_context_t* const context,
   }
 
   if (TRI_PushBackVectorPointer(vector, fieldAccess) != TRI_ERROR_NO_ERROR) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
   return vector;
@@ -1969,7 +1969,7 @@ static void MergeVector (TRI_aql_context_t* const context,
     if (! found) {
       // element not found, now add it to the list of restrictions
       if (TRI_PushBackVectorPointer(result, fieldAccess) != TRI_ERROR_NO_ERROR) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
     }
   }
@@ -1999,12 +1999,12 @@ static void InsertVector (TRI_aql_context_t* const context,
 
     if (copy == NULL) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
 
     if (TRI_PushBackVectorPointer(result, (void*) copy) != TRI_ERROR_NO_ERROR) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
   }
 }
@@ -2050,7 +2050,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     }
 
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }
@@ -2063,7 +2063,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     // remove them. if we don't do this, we would probably restrict the query too much
     orElements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
     if (orElements == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
       return NULL;
     }
@@ -2173,7 +2173,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
   if (fieldAccess == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }
@@ -2181,7 +2181,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, field->_name._buffer);
 
   if (fieldAccess->_fullName == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
 
     return NULL;
@@ -2218,7 +2218,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   value = TRI_NodeJsonAql(context, node);
 
   if (value == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return NULL;
   }
@@ -2261,7 +2261,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
       // rhs is not a list. no idea how to run an IN query on this...
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, value);
       fieldAccess->_type = TRI_AQL_ACCESS_ALL;
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_LIST_EXPECTED, NULL);
 
       return fieldAccess;
     }
@@ -2317,7 +2317,7 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
 
   if (fieldAccess == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -2353,7 +2353,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 
     if (field == NULL) {
       // OOM
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
 
@@ -2457,7 +2457,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                           inheritedRestrictions);
 
     if (result == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
     else {
       if (TRI_ContainsImpossibleAql(result)) {
@@ -2568,7 +2568,7 @@ again:
                             inheritedRestrictions);
 
       if (result == NULL) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       else {
         if (TRI_ContainsImpossibleAql(result)) {
@@ -2713,7 +2713,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
 
   fieldAccess = CreateFieldAccess(context, source->_type, source->_fullName);
   if (fieldAccess == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -2723,7 +2723,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
       fieldAccess->_value._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._value);
       if (fieldAccess->_value._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
     }
@@ -2733,7 +2733,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
       fieldAccess->_value._singleRange._value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, source->_value._singleRange._value);
       if (fieldAccess->_value._singleRange._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
     }
@@ -2746,7 +2746,7 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
       if (fieldAccess->_value._between._lower._value == NULL ||
           fieldAccess->_value._between._upper._value == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       }
       break;
     }
@@ -2894,7 +2894,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
       copy = TRI_CloneAccessAql(context, candidate);
       if (copy == NULL) {
         // OOM
-        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
         return accesses;
       }
 
@@ -2911,12 +2911,12 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     copy = TRI_CloneAccessAql(context, candidate);
 
     if (copy == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return accesses;
     }
 
     if (TRI_PushBackVectorPointer(accesses, copy) != TRI_ERROR_NO_ERROR) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
   }
 

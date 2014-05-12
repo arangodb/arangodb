@@ -1,41 +1,44 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
-/*global require, _, Dygraph, window */
+/*global require, _, Dygraph, window, document */
 
 (function () {
     "use strict";
+    window.dygraphConfig = {
 
-    var zeropad = function (x) {
+        defaultFrame : 20 * 60 * 1000,
+
+        zeropad: function (x) {
             if (x < 10) {
                 return "0" + x;
             }
             return x;
         },
 
-        xAxisFormat = function (d) {
+        xAxisFormat: function (d) {
             if (d === -1) {
                 return "";
             }
             var date = new Date(d);
-            return zeropad(date.getHours()) + ":"
-                + zeropad(date.getMinutes()) + ":"
-                + zeropad(date.getSeconds());
+            return this.zeropad(date.getHours()) + ":"
+                + this.zeropad(date.getMinutes()) + ":"
+                + this.zeropad(date.getSeconds());
         },
 
-        mergeObjects = function (o1, o2, mergeAttribList) {
+        mergeObjects: function (o1, o2, mergeAttribList) {
             if (!mergeAttribList) {
                 mergeAttribList = [];
             }
             var vals = {}, res;
             mergeAttribList.forEach(function (a) {
-                var valO1 = o1[a],
-                    valO2 = o2[a];
-                if (valO1 === undefined) {
-                    valO1 = {};
-                }
-                if (valO2 === undefined) {
-                    valO2 = {};
-                }
-                vals[a] = _.extend(valO1, valO2);
+              var valO1 = o1[a],
+                  valO2 = o2[a];
+              if (valO1 === undefined) {
+                valO1 = {};
+              }
+              if (valO2 === undefined) {
+                valO2 = {};
+              }
+              vals[a] = _.extend(valO1, valO2);
             });
             res = _.extend(o1, o2);
             Object.keys(vals).forEach(function (k) {
@@ -44,273 +47,179 @@
             return res;
         },
 
-        hideGraphs = [
-            "totalTime",
-            "uptime",
-            "residentSize",
-            "physicalMemory",
-            "minorPageFaults",
-            "requestsTotal"
-        ],
-
-        combinedCharts = {
-            http_requests: [
-                "requestsGet", "requestsHead",
-                "requestsPost", "requestsPut",
-                "requestsPatch", "requestsDelete",
-                "requestsOptions", "requestsOther"
-            ],
-            system_systemUserTime: ["systemTime", "userTime"],
-            client_totalRequestTime: ["requestTime", "queueTime"]
+        mapStatToFigure : {
+            numberOfThreads : ["times", "numberOfThreads"],
+            residentSize : ["times", "residentSizePercent"],
+            virtualSize : ["times", "virtualSize"],
+            pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
+            systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
+            httpConnections : ["times", "clientConnections"],
+            totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
+            dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
+            requests : ["times", "getsPerSecond", "putsPerSecond", "postsPerSecond",
+                "deletesPerSecond", "patchesPerSecond", "headsPerSecond",
+                "optionsPerSecond", "othersPerSecond"],
+            requestsAsync : ["times", "asyncPerSecond"]
         },
 
-        isCombinedChart = function (chart) {
-            var result = false, part;
-            Object.keys(combinedCharts).forEach(function (cc) {
-                part = cc.split("_");
-                if (part[1] === chart.figure) {
-                    chart.key = cc;
-                    result = true;
+        //colors for dygraphs
+        colors: ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
+            "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
+
+
+        //figure dependend options
+        figureDependedOptions: {
+            clusterAverageRequestTime : {
+                showLabelsOnHighlight : true,
+                title : 'Average request time in milliseconds',
+                axes: {
+                    y: {
+                        valueFormatter: function (y) {
+                            return parseFloat(y.toPrecision(3));
+                        },
+                        axisLabelFormatter: function (y) {
+                            if (y === 0) {
+                                return 0;
+                            }
+                            return parseFloat(y.toPrecision(3));
+                        }
+                    }
+                }
+            },
+
+            numberOfThreads: {
+                header: "Number of Threads"
+            },
+            residentSize: {
+                header: "Resident Size",
+                axes: {
+                    y: {
+                        labelsKMG2: false,
+                        axisLabelFormatter: function (y) {
+                            return parseFloat(y.toPrecision(3) * 100) + "%";
+                        },
+                        valueFormatter: function (y) {
+                            return parseFloat(y.toPrecision(3) * 100) + "%";
+                        }
+                    }
+                }
+            },
+            virtualSize: {
+                header: "Virtual Size"
+            },
+            pageFaults: {
+                header : "Page Faults",
+                visibility: [true, false],
+                labels: ["datetime", "Major Page Faults", "Minor Page Faults"],
+                div: "pageFaultsChart",
+                labelsKMG2: false
+            },
+            systemUserTime: {
+                div: "systemUserTimeChart",
+                header: "System and User Time",
+                labels: ["datetime", "System Time", "User Time"],
+                stackedGraph: true,
+                labelsKMG2: false,
+                axes: {
+                    y: {
+                        valueFormatter: function (y) {
+                            return parseFloat(y.toPrecision(3));
+                        },
+                        axisLabelFormatter: function (y) {
+                            if (y === 0) {
+                                return 0;
+                            }
+                            return parseFloat(y.toPrecision(3));
+                        }
+                    }
+                }
+            },
+            httpConnections: {
+                header: "Client Connections"
+            },
+            totalTime: {
+                div: "totalTimeChart",
+                header: "Total Time",
+                labels: ["datetime", "Queue", "Computation", "I/O"],
+                labelsKMG2: false,
+                axes: {
+                    y: {
+                        valueFormatter: function (y) {
+                            return parseFloat(y.toPrecision(3));
+                        },
+                        axisLabelFormatter: function (y) {
+                            if (y === 0) {
+                                return 0;
+                            }
+                            return parseFloat(y.toPrecision(3));
+                        }
+                    }
+                },
+                stackedGraph: true
+            },
+            dataTransfer: {
+                header: "Data Transfer",
+                labels: ["datetime", "Bytes sent", "Bytes received"],
+                stackedGraph: true,
+                div: "dataTransferChart"
+            },
+            requests: {
+                header: "Requests",
+                labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
+                stackedGraph: true,
+                div: "requestsChart"
+            },
+            requestsAsync: {
+                header: "Async Requests"
+            }
+        },
+
+         getDashBoardFigures : function (all) {
+            var result = [], self = this;
+            Object.keys(this.figureDependedOptions).forEach(function (k) {
+                if (self.figureDependedOptions[k].div || all) {
+                    result.push(k);
                 }
             });
             return result;
         },
 
 
-        differenceBasedLineChartType = "lineChartDiffBased",
-        regularLineChartType = "current",
-        distributionChartType = "distribution",
-        accumulatedChartType = "accumulated",
-        distributionBasedLineChartType = "currentDistribution",
-        distributionBasedSumLineChartType = "currentSumDistribution",
-
-    // different time series types for charts
-        chartTypeExceptions = {
-            accumulated: {
-                minorPageFaults: differenceBasedLineChartType,
-                majorPageFaults: differenceBasedLineChartType,
-                requestsTotal: differenceBasedLineChartType,
-                requestsAsync: differenceBasedLineChartType,
-                requestsGet: differenceBasedLineChartType,
-                requestsHead: differenceBasedLineChartType,
-                requestsPost: differenceBasedLineChartType,
-                requestsPut: differenceBasedLineChartType,
-                requestsPatch: differenceBasedLineChartType,
-                requestsDelete: differenceBasedLineChartType,
-                requestsOptions: differenceBasedLineChartType,
-                requestsOther: differenceBasedLineChartType,
-                systemTime: differenceBasedLineChartType,
-                userTime: differenceBasedLineChartType
-            },
-
-            distribution: {
-                totalTime: distributionBasedLineChartType,
-                requestTime: distributionBasedLineChartType,
-                queueTime: distributionBasedLineChartType,
-                bytesSent: distributionBasedSumLineChartType,
-                bytesReceived: distributionBasedSumLineChartType
-            }
-
-        },
-
-
-    //colors for dygraphs
-        colors = ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
-            "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
-
-    //figure dependend options
-        figureDependedOptions = {
-            numberOfThreads: {
-                div: "#systemResources"
-            },
-            residentSize: {
-                div: "#systemResources"
-            },
-            residentSizePercent: {
-                div: "#systemResources",
-                axes: {
-                    y: {
-                        labelsKMG2: false,
-                        axisLabelFormatter: function (y) {
-                            return y.toPrecision(2) + "%";
-                        },
-                        valueFormatter: function (y) {
-                            return y.toPrecision(2) + "%";
-                        }
-                    }
-                }
-            },
-            physicalMemory: {
-                div: "#systemResources"
-            },
-            virtualSize: {
-                div: "#systemResources"
-            },
-            minorPageFaults: {
-                div: "#systemResources",
-                labelsKMG2: false
-            },
-            majorPageFaults: {
-                div: "#systemResources",
-                labelsKMG2: false
-            },
-            systemUserTime: {
-                div: "#systemResources",
-                title: "System and User Time in seconds",
-                stacked: true
-            },
-            httpConnections: {
-                div: "#requestStatistics"
-            },
-            totalTime: {
-                div: "#requestStatistics",
-                title: "Total time in milliseconds",
-                labelsKMG2: false,
-                axes: {
-                    y: {
-                        valueFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        },
-                        axisLabelFormatter: function (y) {
-                            if (y === 0) {
-                                return 0;
-                            }
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        }
-                    }
-                }
-            },
-            requestTime: {
-                div: "#requestStatistics",
-                title: "Request time in milliseconds",
-                labelsKMG2: false,
-                axes: {
-                    y: {
-                        valueFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        },
-                        axisLabelFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        }
-                    }
-                }
-            },
-            queueTime: {
-                div: "#requestStatistics",
-                title: "Queue time in milliseconds",
-                labelsKMG2: false,
-                axes: {
-                    y: {
-                        valueFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        },
-                        axisLabelFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        }
-                    }
-                }
-            },
-            totalRequestTime: {
-                div: "#requestStatistics",
-                title: "Total time in milliseconds",
-                labelsKMG2: false,
-                axes: {
-                    y: {
-                        valueFormatter: function (y) {
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        },
-                        axisLabelFormatter: function (y) {
-                            if (y === 0) {
-                                return "0";
-                            }
-                            y = y * 1000;
-                            return y.toPrecision(3);
-                        }
-                    }
-                }
-            },
-            bytesSent: {
-                div: "#requestStatistics"
-            },
-            bytesReceived: {
-                div: "#requestStatistics"
-            },
-            requestsTotal: {
-                div: "#requestStatistics"
-            },
-            clusterAverageRequestTime: {
-                showLabelsOnHighlight: true
-            },
-            requestsAsync: {
-                div: "#requestStatistics"
-            },
-            requests: {
-                div: "#requestStatistics",
-                title: "HTTP Requests per second",
-                stacked: true
-            },
-            uptime: {
-                div: "#systemResources",
-                axes: {
-                    y: {
-                        labelsKMG2: false,
-                        axisLabelFormatter: function (y) {
-                            if (y < 60) {
-                                return y.toPrecision(3) + "s";
-                            }
-                            if (y < 3600) {
-                                y = y / 60;
-                                return y.toPrecision(3) + "m";
-                            }
-                            y = y / 3600;
-                            return y.toPrecision(3) + "h";
-                        }
-                    }
-                }
-            }
-        },
-
-    //configuration for chart overview
-        getDefaultConfig = function (chart) {
-            chart.options = {
-                digitsAfterDecimal: 2,
+        //configuration for chart overview
+        getDefaultConfig: function (figure) {
+            var self = this;
+            var result = {
+                digitsAfterDecimal: 1,
                 drawGapPoints: true,
                 fillGraph: true,
                 showLabelsOnHighlight: false,
                 strokeWidth: 2,
-                strokeBorderWidth: 1,
+                strokeBorderWidth: 0.5,
                 includeZero: true,
                 highlightCircleSize: 0,
+                labelsSeparateLines : true,
                 strokeBorderColor: '#ffffff',
                 interactionModel: {},
+                maxNumberWidth : 10,
+                colors: [this.colors[0]],
+                xAxisLabelWidth: "50",
+                rightGap: 15,
+                showRangeSelector: false,
+                rangeSelectorHeight: 50,
+                rangeSelectorPlotStrokeColor: '#365300',
+                rangeSelectorPlotFillColor: '',
+                // rangeSelectorPlotFillColor: '#414a4c',
+                pixelsPerLabel: 50,
+                labelsKMG2: true,
                 dateWindow: [
                     new Date().getTime() -
-                    Math.min(
-                        20 * 60 * 1000,
-                        chart.data.length * 10 * 1000
-                    ),
+                    this.defaultFrame,
                     new Date().getTime()
                 ],
-                colors: [colors[0]],
-                xAxisLabelWidth: "60",
-                rightGap: 10,
-                showRangeSelector: false,
-                rangeSelectorHeight: 40,
-                rangeSelectorPlotStrokeColor: '#365300',
-                rangeSelectorPlotFillColor: '#414a4c',
-                pixelsPerLabel: 60,
-                labelsKMG2: true,
                 axes: {
                     x: {
                         valueFormatter: function (d) {
-                            return xAxisFormat(d);
+                            return self.xAxisFormat(d);
                         }
                     },
                     y: {
@@ -318,134 +227,48 @@
                     }
                 }
             };
-            if (figureDependedOptions[chart.figure]) {
-                chart.options = mergeObjects(
-                    chart.options, figureDependedOptions[chart.figure], ["axes"]
+            if (this.figureDependedOptions[figure]) {
+                result = this.mergeObjects(
+                    result, this.figureDependedOptions[figure], ["axes"]
                 );
+                if (result.div && result.labels) {
+                    result.colors = this.getColors(result.labels);
+                    result.labelsDiv = document.getElementById(result.div + "Legend");
+                    result.legend = "always";
+                    result.showLabelsOnHighlight = true;
+                }
             }
+            return result;
 
         },
 
-        getDetailChartConfig = function (chart) {
-            chart.options = _.extend(
-                chart.options,
+        getDetailChartConfig: function (figure) {
+            var result = _.extend(
+                this.getDefaultConfig(figure),
                 {
                     showRangeSelector: true,
-                    title: "",
                     interactionModel: null,
                     showLabelsOnHighlight: true,
-                    highlightCircleSize: 3
+                    highlightCircleSize: 3,
+                    legend: "always", 
+                    labelsDiv: "div#detailLegend.dashboard-legend-inner"
+                    // labelsDiv: document.getElementById("detailLegend")
                 }
             );
-        },
-
-        updateDateWindow = function (chart) {
-            chart.options.dateWindow = [new Date().getTime() -
-                20 * 60 * 1000
-                , new Date().getTime()];
-        };
-    window.dygraphConfig = {
-
-
-        Chart: function (figure, type, showGraph, title) {
-            this.type = type;
-            this.showGraph = showGraph;
-            this.data = type === distributionChartType ? undefined : [];
-            this.figure = figure;
-            this.options = {};
-            this.defaultConfig = function () {
-                getDefaultConfig(this);
-            };
-            this.detailChartConfig = function () {
-                getDetailChartConfig(this);
-            };
-            this.updateDateWindow = function () {
-                updateDateWindow(this);
-            };
-            this.isCombinedChart = function () {
-                return isCombinedChart(this);
-            };
-            var self = this;
-            this.updateLabels = function (labels) {
-                var colorList;
-                if (labels) {
-                    self.options.labels = labels;
-                    colorList = colors.concat([]);
-                    self.options.colors = colorList.slice(0, self.options.labels.length - 1);
-                    return;
-                }
-                labels = ["datetime"];
-                if (self.isCombinedChart()) {
-                    combinedCharts[self.key].sort().forEach(function (attrib) {
-                        labels.push(attrib);
-                    });
-                    self.options.labels = labels;
-                    colorList = colors.concat([]);
-                    self.options.colors = colorList.slice(0, self.options.labels.length - 1);
-                } else {
-                    self.options.labels = ["datetime", self.figure];
-                    self.options.colors = [colors[0]];
-                }
-            };
-            if (type !== distributionChartType) {
-                this.defaultConfig();
-                this.updateLabels();
-                if (!this.options.title) {
-                    this.options.title = title;
-                }
+            if (figure === "pageFaults") {
+                result.visibility = [true, true];
             }
-        },
-
-        getChartsForFigure: function (figure, type, title) {
-            var result = {};
-            if (chartTypeExceptions[type] &&
-                chartTypeExceptions[type][figure]) {
-                result[chartTypeExceptions[type][figure]] =
-                    this.getChartStructure(
-                        figure,
-                        chartTypeExceptions[type][figure],
-                        title
-                    );
-                if (type === distributionChartType) {
-                    result[type] = this.getChartStructure(figure, type, title);
-                }
-            } else {
-                result[type] = this.getChartStructure(figure, type, title);
+            if (!result.labels) {
+                result.labels = ["datetime", result.header];
+                result.colors = this.getColors(result.labels);
             }
             return result;
         },
 
-        getChartStructure: function (figure, type, title) {
-            var showGraph = true;
-            if (type === differenceBasedLineChartType) {
-                title += " per seconds";
-                type = regularLineChartType;
-            } else if (type === accumulatedChartType) {
-                showGraph = false;
-            } else if (type === distributionBasedLineChartType) {
-                type = regularLineChartType;
-            } else if (type === distributionBasedSumLineChartType) {
-                type = regularLineChartType;
-            }
-
-            return new this.Chart(figure, type, showGraph, title);
-        },
-
-
-        chartTypeExceptions: chartTypeExceptions,
-
-        combinedCharts: combinedCharts,
-
-        hideGraphs: hideGraphs,
-
-        figureDependedOptions: figureDependedOptions,
-
-        differenceBasedLineChartType: differenceBasedLineChartType,
-        regularLineChartType: regularLineChartType,
-        distributionChartType: distributionChartType,
-        accumulatedChartType: accumulatedChartType,
-        distributionBasedLineChartType: distributionBasedLineChartType,
-        distributionBasedSumLineChartType: distributionBasedSumLineChartType
-
+        getColors: function (labels) {
+            var colorList;
+            colorList = this.colors.concat([]);
+            return colorList.slice(0, labels.length - 1);
+        }
     };
 }());

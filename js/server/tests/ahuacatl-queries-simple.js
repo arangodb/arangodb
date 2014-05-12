@@ -53,6 +53,40 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test filters with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialChars1 : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+
+      data.forEach(function(value) {
+        var actual = getQueryResults("FOR doc IN [ { text: " + JSON.stringify(value) + " } ] FILTER doc.text == " + JSON.stringify(value) + " RETURN doc.text");
+        assertEqual([ value ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test filters with special characters
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialChars2 : function () {
+      var data = [ 
+        "the quick\nbrown fox jumped over\r\nthe lazy dog",
+        "'the \"\\quick\\\n \"brown\\\rfox' jumped",
+        '"the fox"" jumped \\over the \newline \roof"'
+      ];
+
+      data.forEach(function(value) {
+        var actual = getQueryResults("FOR doc IN [ { text: @value } ] FILTER doc.text == @value RETURN doc.text", { value: value });
+        assertEqual([ value ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief range
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -104,7 +104,8 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       _version = "arango";
 
       // convert response body to json
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                        result->getBody().c_str());
 
       if (json) {
         // look up "server" value
@@ -461,11 +462,12 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
     _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
     // got a body
-    if (_httpResult->getBody().str().length() > 0) {
+    StringBuffer& sb = _httpResult->getBody();
+    if (sb.length() > 0) {
       string contentType = _httpResult->getContentType(true);
 
       if (contentType == "application/json") {
-        TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _httpResult->getBody().str().c_str());
+        TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, sb.c_str());
 
         if (js != NULL) {
           // return v8 object
@@ -477,7 +479,9 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
       }
 
       // return body as string
-      v8::Handle<v8::String> result = v8::String::New(_httpResult->getBody().str().c_str(), (int) _httpResult->getBody().str().length());
+      //
+      v8::Handle<v8::String> result = v8::String::New(sb.c_str(), 
+                                                      (int) sb.length());
 
       return result;
     }
@@ -588,8 +592,9 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
     }
 
     // got a body, copy it into the result
-    if (_httpResult->getBody().str().length() > 0) {
-      v8::Handle<v8::String> b = v8::String::New(_httpResult->getBody().str().c_str(), (int) _httpResult->getBody().str().length());
+    StringBuffer& sb = _httpResult->getBody();
+    if (sb.length() > 0) {
+      v8::Handle<v8::String> b = v8::String::New(sb.c_str(), (int) sb.length());
 
       result->Set(v8::String::New("body"), b);
     }

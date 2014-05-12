@@ -38,7 +38,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 AsyncTask::AsyncTask ()
-  : Task(0, "AsyncTask"),
+  : Task("AsyncTask"),
     watcher(0) {
 }
 

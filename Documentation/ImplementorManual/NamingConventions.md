@@ -16,13 +16,13 @@ names conform to the following constraints:
 
 - Database names must only consist of the letters `a` to `z` (both lower and
   upper case allowed), the numbers `0` to `9`, and the underscore (`_`) or 
-  dash (`-`) symbols. 
-  This also means that any non-ASCII database names are not allowed.
+  dash (`-`) symbols
+  This also means that any non-ASCII database names are not allowed
 - Database names must always start with a letter. Database names starting 
   with an underscore are considered to be system databases, and users should 
-  not create or delete those.
-- The maximum allowed length of a database name is 64 bytes.
-- Database names are case-sensitive.
+  not create or delete those
+- The maximum allowed length of a database name is 64 bytes
+- Database names are case-sensitive
 
 Collection Names {#CollectionNames}
 ===================================
@@ -32,14 +32,14 @@ naming constraints are not violated:
 
 - Collection names must only consist of the letters `a` to `z` (both in lower 
   and upper case), the numbers `0` to `9`, and the underscore (`_`) or dash (`-`)
-  symbols. This also means that any non-ASCII collection names are not allowed.
+  symbols. This also means that any non-ASCII collection names are not allowed
 - User-defined collection names must always start with a letter. System collection
-  names must start with an underscore.
+  names must start with an underscore. 
   All collection names starting with an underscore are considered to be system 
   collections that are for ArangoDB's internal use only. System collection names 
-  should not be used by end users for their own collections.
-- The maximum allowed length of a collection name is 64 bytes.
-- Collection names are case-sensitive.
+  should not be used by end users for their own collections
+- The maximum allowed length of a collection name is 64 bytes
+- Collection names are case-sensitive
 
 Document Keys {#DocumentKeys}
 =============================
@@ -48,19 +48,19 @@ Users can define their own keys for documents they save. The document key will
 be saved along with a document in the `_key` attribute. Users can pick key
 values as required, provided that the values conform to the following
 restrictions:
-* the key must be at least 1 byte and at most 254 bytes long. empty keys are 
+- The key must be at least 1 byte and at most 254 bytes long. Empty keys are 
   disallowed when specified (though it may be valid to completely omit the
   `_key` attribute from a document)
-* it must consist of the letters a-z (lower or upper case), the digits 0-9,
+- It must consist of the letters a-z (lower or upper case), the digits 0-9,
   the underscore (_), dash (-), or colon (:) characters only
- * any other characters, especially multi-byte sequences, whitespace or
-   punctuation characters cannot be used inside key values
-* the key must be unique within the collection it is used
+	- Any other characters, especially multi-byte sequences, whitespace or
+	  punctuation characters cannot be used inside key values
+- The key must be unique within the collection it is used
 
 Keys are case-sensitive, i.e. `myKey` and `MyKEY` are considered to be
 different keys.
 
-Specifiying a document key is optional when creating new documents. If no
+Specifying a document key is optional when creating new documents. If no
 document key is specified by the user, ArangoDB will create the document key
 itself as each document is required to have a key.
 

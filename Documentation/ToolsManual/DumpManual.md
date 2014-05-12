@@ -68,4 +68,21 @@ Document data for a collection will be saved in files with name pattern
 `<collection-name>.data.json`. Each line in a data file is a document insertion/update or
 deletion marker, alongside with some meta data.
 
+Starting with Version 2.1 of ArangoDB, the `arangodump` tool also
+supports sharding. Simply point it to one of the coordinators and it
+will behave exactly as described above, working on sharded collections
+in the cluster.
+
+However, as opposed to the single instance situation, this operation 
+does not lock the data in the cluster and can therefore not guarantee
+to dump a consistent snapshot if writing operations happen during the
+dump operation! That is, it is recommended not to perform any data
+modifying operations on the cluster whilst `arangodump` is running.
+
+As above, the output will be one structure description file and one data
+file per sharded collection. Note that the data in the data file is
+sorted first by shards and within each shard by ascending timestamp. The
+structural information of the collection contains the number of shards
+and the shard keys.
+
 @BNAVIGATE_DumpManual

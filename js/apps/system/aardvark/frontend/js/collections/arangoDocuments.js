@@ -84,8 +84,12 @@
 
       queryObj = {
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        options: {
+          fullCount: true
+        }
       };
+
       $.ajax({
         cache: false,
         type: 'POST',
@@ -166,12 +170,7 @@
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState === 4 && xhr.status === 201) {
-            result =  xhr.responseText;
-            try {
-              result =  true;
-            } catch (e) {
-              result =  "Error: " + e;
-            }
+            result =  true;
           } else {
             result =  "Upload error";
           }

@@ -45,6 +45,12 @@
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
+#include "VocBase/index.h"
+
+#ifdef TRI_ENABLE_CLUSTER
+#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterComm.h"
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -142,43 +148,54 @@ Handler::status_t RestReplicationHandler::execute() {
       handleCommandLoggerFollow();
     }
     else if (command == "batch") {
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
 
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
+      }
+      else {
+        handleCommandBatch();
+      }
+#else
       handleCommandBatch();
+#endif
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandInventory();
+      }
+#else
       handleCommandInventory();
+#endif
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleTrampolineCoordinator();
       }
-
+      else {
+        handleCommandDump();
+      }
+#else
       handleCommandDump();
+#endif
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-
       handleCommandRestoreCollection();
     }
     else if (command == "restore-indexes") {
@@ -186,10 +203,6 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-
       handleCommandRestoreIndexes();
     }
     else if (command == "restore-data") {
@@ -197,11 +210,16 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
+#ifdef TRI_ENABLE_CLUSTER
+      if (ServerState::instance()->isCoordinator()) {
+        handleCommandRestoreDataCoordinator();
       }
-
+      else {
+        handleCommandRestoreData();
+      }
+#else
       handleCommandRestoreData();
+#endif
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -264,6 +282,20 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandApplierGetState();
       }
     }
+#ifdef TRI_ENABLE_CLUSTER
+    else if (command == "clusterInventory") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      if (! ServerState::instance()->isCoordinator()) {
+        generateError(HttpResponse::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+      }
+      else {
+        handleCommandClusterInventory();
+      }
+    }
+#endif
     else {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -863,7 +895,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTHEADER{POST /_api/replication/batch,creates a new dump batch}
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// A JSON object with the batch configration.
+/// A JSON object with the batch configuration.
 ///
 /// @RESTDESCRIPTION
 /// Creates a new dump batch and returns the batch's id.
@@ -876,7 +908,10 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// - `id`: the id of the batch
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -884,13 +919,11 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// is returned if the batch was created successfully.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the ttl value is invalid.
+/// is returned if the ttl value is invalid or if `DBserver` attribute
+/// is not specified or illegal on a coordinator.
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +949,10 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// If the batch's ttl can be extended successully, the response is empty.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -928,9 +964,6 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -946,7 +979,10 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -958,9 +994,6 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandBatch () {
@@ -1052,6 +1085,88 @@ void RestReplicationHandler::handleCommandBatch () {
   // we get here if anything above is invalid
   generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward a command in the coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+void RestReplicationHandler::handleTrampolineCoordinator () {
+
+  // First check the DBserver component of the body json:
+  ServerID DBserver = _request->value("DBserver");
+  if (DBserver.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "need \"DBserver\" parameter");
+    return;
+  }
+  
+  string const& dbname = _request->databaseName();
+
+  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  map<string, string> values = _request->values();
+  string params;
+  map<string, string>::iterator i;
+  for (i = values.begin(); i != values.end(); ++i) {
+    if (i->first != "DBserver") {
+      if (params.empty()) {
+        params.push_back('?');
+      }
+      else {
+        params.push_back('&');
+      }
+      params.append(StringUtils::urlEncode(i->first));
+      params.push_back('=');
+      params.append(StringUtils::urlEncode(i->second));
+    }
+  }
+
+  // Set a few variables needed for our work:
+  ClusterComm* cc = ClusterComm::instance();
+
+  // Send a synchronous request to that shard using ClusterComm:
+  ClusterCommResult* res;
+  res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+                        _request->requestType(),
+                        "/_db/" + StringUtils::urlEncode(dbname) + 
+                        _request->requestPath() + params,
+                        string(_request->body(),_request->bodySize()), 
+                        headers, 300.0);
+
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    delete res;
+    generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
+                  "timeout within cluster");
+    return;
+  }
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (res->result == 0 || !res->result->isComplete()) {
+      // there is no result
+      delete res;
+      generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                    "lost connection within cluster");
+      return;
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    // we simply forward the result.
+    // We intentionally fall through here.
+  }
+
+  bool dummy;
+  _response = createResponse(static_cast<HttpResponse::HttpResponseCode>
+                             (res->result->getHttpReturnCode()));
+  _response->setContentType(res->result->getHeaderField("content-type",dummy));
+  _response->body().swap(& (res->result->getBody()));
+  map<string, string> resultHeaders = res->result->getHeaderFields();
+  map<string, string>::iterator it;
+  for (it = resultHeaders.begin(); it != resultHeaders.end(); ++it) {
+    _response->setHeader(it->first, it->second);
+  }
+  delete res;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
@@ -1416,7 +1531,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// Note: on a coordinator, this request must have the URL parameter 
+/// `DBserver` which must be an ID of a DBserver.
+/// The very same request is forwarded synchronously to that DBserver.
+/// It is an error if this attribute is not bound in the coordinator case.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1428,9 +1546,6 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
-///
-/// @RESTRETURNCODE{501}
-/// is returned when this operation is called on a coordinator in a cluster.
 ///
 /// @EXAMPLES
 ///
@@ -1528,6 +1643,122 @@ void RestReplicationHandler::handleCommandInventory () {
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the cluster inventory, only on coordinator
+///
+/// @RESTHEADER{GET /_api/replication/clusterInventory,returns an inventory of collections and indexes}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{includeSystem,boolean,optional}
+/// Include system collections in the result. The default value is `false`.
+///
+/// @RESTDESCRIPTION
+/// Returns the list of collections and indexes available on the cluster.
+///
+/// The response will be a list of JSON hash array, one for each collection,
+/// which contains exactly two keys "parameters" and "indexes". This 
+/// information comes from Plan/Collections/<DB-Name>/* in the agency,
+/// just that the `indexes` attribute there is relocated to adjust it to
+/// the data format of arangodump.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+void RestReplicationHandler::handleCommandClusterInventory () {
+
+  string const& dbName = _request->databaseName();
+  string value;
+  bool found;
+  bool includeSystem = false;
+
+  value = _request->value("includeSystem", found);
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+  
+  AgencyComm _agency;
+  AgencyCommResult result;
+
+  {
+    string prefix("Plan/Collections/");
+    prefix.append(dbName);
+
+    AgencyCommLocker locker("Plan", "READ");
+    if (! locker.successful()) {
+      generateError(HttpResponse::SERVER_ERROR, 
+                    TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
+    }
+    else {
+      result = _agency.getValues(prefix, false);
+      if (! result.successful()) {
+        generateError(HttpResponse::SERVER_ERROR,
+                      TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+      }
+      else {
+        if (! result.parse(prefix + "/", false)) {
+          generateError(HttpResponse::SERVER_ERROR,
+                        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
+        }
+        else {
+          map<string, AgencyCommResultEntry>::iterator it;
+          TRI_json_t json;
+          TRI_InitList2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
+          for (it = result._values.begin(); 
+               it != result._values.end(); ++it) {
+            if (TRI_IsArrayJson(it->second._json)) {
+              TRI_json_t const* sub 
+                  = TRI_LookupArrayJson(it->second._json, "isSystem");
+              if (includeSystem || 
+                  (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
+                TRI_json_t coll;
+                TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &coll, 2);
+                sub = TRI_LookupArrayJson( it->second._json, "indexes");
+                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
+                TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
+                                    "indexes");
+                // This makes a copy to the CORE memory zone:
+                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE, &coll,
+                                     "parameters", it->second._json);
+                TRI_PushBack2ListJson(&json, &coll);
+              }
+            }
+          } 
+
+          // Wrap the result:
+          TRI_json_t wrap;
+          TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &wrap, 3);
+          TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
+          TRI_voc_tick_t tick = TRI_CurrentTickServer();
+          char* tickString = TRI_StringUInt64(tick);
+          char const* stateStatic = "unused";
+          char* state = TRI_DuplicateString2(stateStatic, strlen(stateStatic));
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "state",
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state));
+
+          generateResult(HttpResponse::OK, &wrap);
+          TRI_DestroyJson(TRI_CORE_MEM_ZONE, &wrap);
+        }
+      }
+    }
+  }
+
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON TODO: move
@@ -1703,7 +1934,20 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-  int res = processRestoreCollection(json, overwrite, recycleIds, force, remoteServerId, errorMsg);
+#ifdef TRI_ENABLE_CLUSTER
+  int res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreCollectionCoordinator(json, overwrite, recycleIds,
+                                              force, remoteServerId, errorMsg);
+  }
+  else {
+    res = processRestoreCollection(json, overwrite, recycleIds, force, 
+                                   remoteServerId, errorMsg);
+  }
+#else
+  int res = processRestoreCollection(json, overwrite, recycleIds, force,
+                                     remoteServerId, errorMsg);
+#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1719,6 +1963,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     generateResult(&result);
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO
@@ -1743,7 +1988,17 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
+#ifdef TRI_ENABLE_CLUSTER
+  int res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = processRestoreIndexesCoordinator(json, force, remoteServerId, errorMsg);
+  }
+  else {
+    res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
+  }
+#else
   int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
+#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1886,6 +2141,162 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the structure of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int RestReplicationHandler::processRestoreCollectionCoordinator (
+                 TRI_json_t const* collection,
+                 bool dropExisting,
+                 bool reuseId,
+                 bool force,
+                 TRI_server_id_t remoteServerId,
+                 string& errorMsg) {
+
+  if (! JsonHelper::isArray(collection)) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t* parameters = JsonHelper::getArrayElement(collection, "parameters");
+
+  if (! JsonHelper::isArray(parameters)) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  const string name = JsonHelper::getStringValue(parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  string dbName = _vocbase->_name;
+
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+
+  // drop an existing collection if it exists
+  if (! col->empty()) {
+    if (dropExisting) {
+      int res = ci->dropCollectionCoordinator(dbName, col->id_as_string(),
+                                              errorMsg, 0.0);
+      if (res == TRI_ERROR_FORBIDDEN) {
+        // some collections must not be dropped
+        res = truncateCollectionOnCoordinator(dbName, name);
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate collection (dropping is forbidden): "+
+                     name;
+          return res;
+        }
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "unable to drop collection '" + name + "': " + string(TRI_errno_string(res));
+
+        return res;
+      }
+    }
+    else {
+      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
+
+      errorMsg = "unable to create collection '" + name + "': " + string(TRI_errno_string(res));
+
+      return res;
+    }
+  }
+
+  // now re-create the collection
+  // dig out number of shards:
+  uint64_t numberOfShards = 1;
+  TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, "shards");
+  if (0 != shards && TRI_IsArrayJson(shards)) {
+    numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+  }
+  // We take one shard if "shards" was not given
+  
+  TRI_voc_tick_t new_id_tick = ci->uniqid(1);
+  string new_id = StringUtils::itoa(new_id_tick);
+  TRI_ReplaceArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
+                       TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                              new_id.c_str(), new_id.size()));
+
+  // Now put in the primary and an edge index if needed:
+  TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (indexes == 0) {
+    errorMsg = "out of memory";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // create a dummy primary index
+  TRI_index_t* idx = TRI_CreatePrimaryIndex(0);
+
+  if (idx == 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+    errorMsg = "out of memory";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_json_t* idxJson = idx->json(idx);
+  TRI_FreeIndex(idx);
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+
+  TRI_json_t* type = TRI_LookupArrayJson(parameters, "type");
+  TRI_col_type_e collectionType;
+  if (TRI_IsNumberJson(type)) {
+    collectionType = (TRI_col_type_e) ((int) type->_value._number);
+  }
+  else {
+    errorMsg = "collection type not given or wrong";
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (collectionType == TRI_COL_TYPE_EDGE) {
+    // create a dummy edge index
+    idx = TRI_CreateEdgeIndex(0, new_id_tick);
+
+    if (idx == 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
+      errorMsg = "cannot create edge index";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    idxJson = idx->json(idx);
+    TRI_FreeIndex(idx);
+
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
+
+  int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards, 
+                                            parameters, errorMsg, 0.0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1986,6 +2397,85 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the indexes of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+int RestReplicationHandler::processRestoreIndexesCoordinator (
+                 TRI_json_t const* collection,
+                 bool force,
+                 TRI_server_id_t remoteServerId,
+                 string& errorMsg) {
+
+  if (! JsonHelper::isArray(collection)) {
+    errorMsg = "collection declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+
+  if (! JsonHelper::isArray(parameters)) {
+    errorMsg = "collection parameters declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+
+  if (! JsonHelper::isList(indexes)) {
+    errorMsg = "collection indexes declaration is invalid";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  const size_t n = indexes->_value._objects._length;
+  if (n == 0) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  const string name = JsonHelper::getStringValue(parameters, "name", "");
+
+  if (name.empty()) {
+    errorMsg = "collection name is missing";
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+    // we don't care about deleted collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  string dbName = _vocbase->_name;
+
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+
+  if (col->empty()) {
+    errorMsg = "could not find collection '" + name + "'";
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+  for (size_t i = 0; i < n; ++i) {
+    TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+    TRI_json_t* res_json = 0;
+    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, 
+                     true, IndexComparator, res_json, errorMsg, 3600.0);
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "could not create index: " + string(TRI_errno_string(res));
+      break;
+    }
+  }
+
+  return res;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
@@ -2329,6 +2819,261 @@ void RestReplicationHandler::handleCommandRestoreData () {
     generateResult(&result);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the data of a collection, coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
+  char const* name = _request->value("collection");
+
+  if (name == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  string dbName = _vocbase->_name;
+  string errorMsg;
+
+  // in a cluster, we only look up by name:
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+
+  if (col->empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  // We need to distribute the documents we get over the shards:
+  map<ShardID, ServerID> shardIdsMap = col->shardIds();
+  map<string, size_t> shardTab;
+  vector<string> shardIds;
+  map<ShardID, ServerID>::iterator it;
+  map<string, size_t>::iterator it2;
+  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); it++) {
+    shardTab.insert(make_pair(it->first,shardIds.size()));
+    shardIds.push_back(it->first);
+  }
+  vector<StringBuffer*> bufs;
+  size_t j;
+  for (j = 0; j < shardIds.size(); j++) {
+    bufs.push_back(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
+  }
+
+  const string invalidMsg = string("received invalid JSON data for collection ")
+                            + name;
+
+  char const* ptr = _request->body();
+  char const* end = ptr + _request->bodySize();
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  while (ptr < end) {
+    char const* pos = strchr(ptr, '\n');
+
+    if (pos == 0) {
+      pos = end;
+    }
+    else {
+      *((char*) pos) = '\0';
+    }
+
+    if (pos - ptr > 1) {
+      // found something
+      TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
+
+      if (! JsonHelper::isArray(json)) {
+        if (json != 0) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        }
+
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_CORRUPTED_JSON;
+        break;
+      }
+
+      const char* key       = 0;
+      TRI_json_t const* doc = 0;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+
+      const size_t n = json->_value._objects._length;
+
+      for (size_t i = 0; i < n; i += 2) {
+        TRI_json_t const* element 
+            = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+        if (! JsonHelper::isString(element)) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+          errorMsg = invalidMsg;
+
+          res = TRI_ERROR_HTTP_CORRUPTED_JSON;
+          break;
+        }
+
+        const char* attributeName = element->_value._string.data;
+        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+
+        if (TRI_EqualString(attributeName, "type")) {
+          if (JsonHelper::isNumber(value)) {
+            type = (TRI_replication_operation_e) (int) value->_value._number;
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "key")) {
+          if (JsonHelper::isString(value)) {
+            key = value->_value._string.data;
+          }
+        }
+
+        else if (TRI_EqualString(attributeName, "data")) {
+          if (JsonHelper::isArray(value)) {
+            doc = value;
+          }
+        }
+      }
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+
+      // key must not be 0, but doc can be 0!
+      if (key == 0) {
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_BAD_PARAMETER;
+        break;
+      }
+
+      if (0 != doc && type != MARKER_REMOVE) {
+        ShardID responsibleShard;
+        bool usesDefaultSharding;
+        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
+                                      responsibleShard, usesDefaultSharding);
+        if (res != TRI_ERROR_NO_ERROR) {
+          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+          errorMsg = "error during determining responsible shard";
+          res = TRI_ERROR_INTERNAL;
+          break;
+        }
+        else {
+          it2 = shardTab.find(responsibleShard);
+          if (it2 == shardTab.end()) {
+            TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+            errorMsg = "cannot find responsible shard";
+            res = TRI_ERROR_INTERNAL;
+            break;
+          }
+          else {
+            bufs[it2->second]->appendText(ptr, pos-ptr);
+            bufs[it2->second]->appendText("\n");
+          }
+        }
+      }
+      else if (type == MARKER_REMOVE) {
+        // A remove marker, this has to be appended to all!
+        for (j = 0; j < bufs.size(); j++) {
+          bufs[j]->appendText(ptr, pos-ptr);
+          bufs[j]->appendText("\n");
+        }
+      }
+      else {
+        // How very strange!
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+
+        res = TRI_ERROR_HTTP_BAD_PARAMETER;
+        break;
+      }
+
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    }
+
+    ptr = pos + 1;
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // Set a few variables needed for our work:
+    ClusterComm* cc = ClusterComm::instance();
+
+    // Send a synchronous request to that shard using ClusterComm:
+    ClusterCommResult* result;
+    CoordTransactionID coordTransactionID = TRI_NewTickServer();
+
+    for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
+      map<string, string>* headers = new map<string, string>;
+      it2 = shardTab.find(it->first);
+      if (it2 == shardTab.end()) {
+        errorMsg = "cannot find shard";
+        res = TRI_ERROR_INTERNAL;
+      }
+      else {
+        j = it2->second;
+        result = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                               triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                               "/_db/" + StringUtils::urlEncode(dbName) +
+                               "/_api/replication/restore-data?collection=" +
+                               it->first, 
+                               new string(bufs[j]->c_str(), bufs[j]->length()),
+                               true, headers, NULL, 300.0);
+        delete result;
+      }
+    }
+
+    // Now listen to the results:
+    unsigned int count;
+    unsigned int nrok = 0;
+    for (count = (int) shardIdsMap.size(); count > 0; count--) {
+      result = cc->wait( "", coordTransactionID, 0, "", 0.0);
+      if (result->status == CL_COMM_RECEIVED) {
+        if (result->answer_code == triagens::rest::HttpResponse::OK ||
+            result->answer_code == triagens::rest::HttpResponse::CREATED) {
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                            result->answer->body());
+      
+          if (JsonHelper::isArray(json)) {
+            TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
+            if (TRI_IsBooleanJson(r)) {
+              if (r->_value._boolean) {
+                nrok++;
+              }
+            }
+          }
+
+          if (json != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          }
+        }
+      }
+      delete result;
+    }
+ 
+    if (nrok != shardIdsMap.size()) {
+      errorMsg = "some shard produced an error";
+      res = TRI_ERROR_INTERNAL;
+    }
+  }
+  
+  // Free all the string buffers:
+  for (j = 0; j < shardIds.size(); j++) {
+    delete bufs[j];
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res, errorMsg);
+  }
+
+  TRI_json_t result;
+
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+  generateResult(&result);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps the data of a collection

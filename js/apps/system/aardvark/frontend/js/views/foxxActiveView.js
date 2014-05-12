@@ -21,7 +21,8 @@
 
     events: {
       'click .icon_arangodb_info' : 'showDocu',
-      'click'                      : 'editFoxxDialog'
+      'click .icon_arangodb_settings2' : 'editFoxxDialog',
+      'click .icon' : 'openAppInNewTab'
     },
 
     initialize: function(){
@@ -149,14 +150,20 @@
       }
     },
 
+    openAppInNewTab: function() {
+      var url = window.location.origin + "/_db/_system" + this.model.get("mount");
+      var windowRef = window.open(url, this.model.get("title"));
+      windowRef.focus();
+    },
+
     uninstall: function () {
-      if (!this.model.get("isSystem")) { 
+      if (!this.model.get("isSystem")) {
         this.model.destroy({ wait: true });
         window.modalView.hide();
         this.appsView.reload();
       }
     },
-   
+
     showDocu: function(event) {
       event.stopPropagation();
       window.App.navigate(

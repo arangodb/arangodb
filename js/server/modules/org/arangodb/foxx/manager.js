@@ -509,22 +509,19 @@ function executeAppScript (app, name, mount, prefix) {
   }
 
   if (desc.hasOwnProperty(name)) {
-    var appContext = {
-      name: app._name,
-      version: app._version,
-      appId: app._id,
-      mount: mount,
-      collectionPrefix: prefix,
-      appModule: app.createAppModule(),
-      isDevelopment: devel,
-      isProduction: ! devel,
-      options: app._options,
-      basePath: fs.join(root, app._path)
-    };
+    var appContext = app.createAppContext();
+
+    appContext.mount = mount;
+    appContext.collectionPrefix = prefix;
+    appContext.options = app._options;
+    appContext.basePath = fs.join(root, app._path);
+
+    appContext.isDevelopment = devel;
+    appContext.isProduction = ! devel;
 
     extendContext(appContext, app, root);
 
-    app.loadAppScript(appContext.appModule, desc[name], appContext);
+    app.loadAppScript(appContext, desc[name]);
   }
 }
 
@@ -735,33 +732,29 @@ function routingAalApp (app, mount, options) {
         }
 
         // set up a context for the application start function
-        var context = {
-          name: app._name,                          // app name
-          version: app._version,                    // app version
-          appId: app._id,                           // app identifier
-          mount: mount,                             // global mount
-          prefix: arangodb.normalizeURL("/" + i),   // app mount
-          collectionPrefix: prefix,                 // collection prefix
-          appModule: app.createAppModule(),         // app module
-          options: options,
-          basePath: fs.join(root, app._path),
+        var appContext = app.createAppContext();
 
-          isDevelopment: devel,
-          isProduction: ! devel,
+        appContext.mount = mount; // global mount
+        appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
+        appContext.collectionPrefix = prefix; // collection prefix
+        appContext.options = options;
+        appContext.basePath = fs.join(root, app._path);
 
-          routingInfo: {},
-          foxxes: []
-        };
+        appContext.isDevelopment = devel;
+        appContext.isProduction = ! devel;
 
-        extendContext(context, app, root);
+        appContext.routingInfo = {};
+        appContext.foxxes = [];
 
-        app.loadAppScript(context.appModule, file, context, { transform: transformScript(file) });
+        extendContext(appContext, app, root);
+
+        app.loadAppScript(appContext, file, { transform: transformScript(file) });
 
         // .............................................................................
         // routingInfo
         // .............................................................................
 
-        var foxxes = context.foxxes;
+        var foxxes = appContext.foxxes;
         var u;
 
         for (u = 0;  u < foxxes.length;  ++u) {
@@ -808,14 +801,14 @@ function routingAalApp (app, mount, options) {
   }
   catch (err) {
     console.errorLines(
-      "Cannot compute foxx application routes: %s", String(err.stack || err));
+      "Cannot compute Foxx application routes: %s", String(err.stack || err));
   }
 
   return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scans fetched FOXX applications
+/// @brief scans fetched Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
 function scanDirectory (path) {
@@ -870,7 +863,7 @@ function scanDirectory (path) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scans fetched FOXX applications
+/// @brief scans fetched Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.scanAppDirectory = function () {
@@ -888,10 +881,10 @@ exports.scanAppDirectory = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rescans the FOXX application directory
+/// @brief rescans the Foxx application directory
 /// this function is a trampoline for scanAppDirectory
 /// the shorter function name is only here to keep compatibility with the
-/// client-side foxx manager
+/// client-side Foxx manager
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.rescan = function () {
@@ -899,7 +892,7 @@ exports.rescan = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mounts a FOXX application
+/// @brief mounts a Foxx application
 ///
 /// Input:
 /// * appId: the application identifier
@@ -977,7 +970,7 @@ exports.mount = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a FOXX application
+/// @brief sets up a Foxx application
 ///
 /// Input:
 /// * mount: the mount identifier or path
@@ -1001,7 +994,7 @@ exports.setup = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX application
+/// @brief tears down a Foxx application
 ///
 /// Input:
 /// * mount: the mount path starting with a "/"
@@ -1035,7 +1028,7 @@ exports.teardown = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unmounts a FOXX application
+/// @brief unmounts a Foxx application
 ///
 /// Input:
 /// * key: mount key or mount point
@@ -1068,7 +1061,7 @@ exports.unmount = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief purges a FOXX application
+/// @brief purges a Foxx application
 ///
 /// Input:
 /// * name: application name
@@ -1260,18 +1253,18 @@ exports.appRoutes = function () {
           var r = routingAalApp(app, mount, options);
 
           if (r === null) {
-            throw new Error("Cannot compute the routing table for foxx application '" 
+            throw new Error("Cannot compute the routing table for Foxx application '" 
                             + app._id + "', check the log file for errors!");
           }
 
           routes.push(r);
 
           if (!developmentMode) {
-            console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+            console.debug("Mounted Foxx application '%s' on '%s'", appId, mount);
           }
         }
         catch (err) {
-          console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+          console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
         }
       }
 
@@ -1320,7 +1313,7 @@ exports.developmentRoutes = function () {
         var r = routingAalApp(app, mount, options);
 
         if (r === null) {
-          throw new Error("Cannot compute the routing table for foxx application '" 
+          throw new Error("Cannot compute the routing table for Foxx application '" 
                           + app._id + "', check the log file for errors!");
         }
 

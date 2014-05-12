@@ -206,7 +206,7 @@ TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context)
 
   hint = (TRI_aql_for_hint_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_for_hint_t), false);
   if (hint == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -361,7 +361,6 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
 
 bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_e type;
-  TRI_aql_node_t* node;
   size_t n;
 
   assert(context);
@@ -376,6 +375,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
 
   while (n > 0) {
     TRI_aql_scope_t* scope;
+    TRI_aql_node_t* node;
 
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);
@@ -409,7 +409,7 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
   size_t n;
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 

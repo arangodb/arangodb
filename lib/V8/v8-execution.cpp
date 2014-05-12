@@ -52,6 +52,7 @@ typedef struct js_exec_context_s {
   v8::Isolate* _isolate;
   v8::Persistent<v8::Function> _func;
   v8::Persistent<v8::Object> _arguments;
+  int _error;
 }
 js_exec_context_t;
 
@@ -60,34 +61,56 @@ js_exec_context_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the error code from an execution context
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_GetErrorExecutionContext (TRI_js_exec_context_t const context) {
+  return ((js_exec_context_t const*) context)->_error;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
+TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
+                                                  size_t length) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  js_exec_context_t* ctx;
+  js_exec_context_t* ctx = new js_exec_context_t;
+  ctx->_error = TRI_ERROR_NO_ERROR;
 
   // execute script inside the context
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script),
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script, (int) length),
                                                         v8::String::New("--script--"));
 
   // compilation failed, return
   if (compiled.IsEmpty()) {
-    return 0;
+    ctx->_error = TRI_ERROR_INTERNAL; 
+    return (TRI_js_exec_context_t) ctx;
   }
 
   // compute the function
+  v8::TryCatch tryCatch;
   v8::Handle<v8::Value> val = compiled->Run();
 
-  if (val.IsEmpty()) {
-    return 0;
+  if (tryCatch.HasCaught()) {
+    if (tryCatch.CanContinue()) {
+      ctx->_error = TRI_ERROR_INTERNAL; 
+    }
+    else {
+      ctx->_error = TRI_ERROR_REQUEST_CANCELED; 
+    }
+    return (TRI_js_exec_context_t) ctx;
   }
 
-  ctx = new js_exec_context_t;
+  if (val.IsEmpty()) {
+    ctx->_error = TRI_ERROR_INTERNAL; 
+    return (TRI_js_exec_context_t) ctx;
+  }
 
   ctx->_func = v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(val));
   ctx->_arguments = v8::Persistent<v8::Object>::New(isolate, v8::Object::New());
   ctx->_isolate = isolate;
+  ctx->_error = TRI_ERROR_NO_ERROR;
 
   // return the handle
   return (TRI_js_exec_context_t) ctx;
@@ -102,11 +125,13 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t context) {
 
   ctx = (js_exec_context_t*) context;
 
-  ctx->_func.Dispose(ctx->_isolate);
-  ctx->_func.Clear();
+  if (ctx->_error == TRI_ERROR_NO_ERROR) {
+    ctx->_func.Dispose(ctx->_isolate);
+    ctx->_func.Clear();
 
-  ctx->_arguments.Dispose(ctx->_isolate);
-  ctx->_arguments.Clear();
+    ctx->_arguments.Dispose(ctx->_isolate);
+    ctx->_arguments.Clear();
+  }
 
   delete ctx;
 }
@@ -123,14 +148,30 @@ TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
   js_exec_context_t* ctx;
 
   ctx = (js_exec_context_t*) context;
+
+  assert(ctx->_error == TRI_ERROR_NO_ERROR);
+
   // convert back into a handle
   v8::Persistent<v8::Function> func = ctx->_func;
+
+  v8::TryCatch tryCatch;
 
   // and execute the function
   v8::Handle<v8::Value> args[] = { ctx->_arguments };
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
 
+  if (tryCatch.HasCaught()) {
+    if (tryCatch.CanContinue()) {
+      ctx->_error = TRI_ERROR_INTERNAL;
+    }
+    else {
+      ctx->_error = TRI_ERROR_REQUEST_CANCELED;
+    }
+    return NULL;
+  }
+
   if (result.IsEmpty()) {
+    ctx->_error = TRI_ERROR_INTERNAL;
     return NULL;
   }
 

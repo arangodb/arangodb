@@ -313,6 +313,13 @@
       expect($(green2).text()).toEqual("een");
     
     });
+
+    it("should not create the colour list twice", function() {
+      shaperUI.createColourMappingList();
+      spyOn(document, "createElement");
+      shaperUI.createColourMappingList();
+      expect(document.createElement).not.toHaveBeenCalled();
+    });
     
     
     it('should be able to submit the controls with return', function() {
@@ -409,15 +416,15 @@
           expect($(lblAttrPrefix + "1").length).toEqual(1);
           expect($(lblAttrPrefix + "2").length).toEqual(1);
           expect($("#" + addLabelLineId).length).toEqual(1);
-          $(lblAttrPrefix + "1").attr("value", lbl1);
-          $(lblAttrPrefix + "2").attr("value", lbl2);
+          $(lblAttrPrefix + "1").val(lbl1);
+          $(lblAttrPrefix + "2").val(lbl2);
           $(checkBoxSelector).prop("checked", true);
           helper.simulateMouseEvent("click", addColourLineId);
           expect($(colAttrPrefix + "1").length).toEqual(1);
           expect($(colAttrPrefix + "2").length).toEqual(1);
           expect($("#" + addColourLineId).length).toEqual(1);
-          $(colAttrPrefix + "1").attr("value", col1);
-          $(colAttrPrefix + "2").attr("value", col2);
+          $(colAttrPrefix + "1").val(col1);
+          $(colAttrPrefix + "2").val(col2);
           helper.simulateMouseEvent("click", submitId);
           expect(shaper.changeTo).toHaveBeenCalledWith({
             label: [lbl1, lbl2],
@@ -449,11 +456,11 @@
           expect($(lblAttrPrefix + "5").val()).toEqual("");
           
           expect($("#" + addLabelLineId).length).toEqual(1);
-          $(lblAttrPrefix + "1").attr("value", lbl1);
-          $(lblAttrPrefix + "2").attr("value", lbl2);
-          $(lblAttrPrefix + "3").attr("value", "");
-          $(lblAttrPrefix + "4").attr("value", lbl3);
-          $(lblAttrPrefix + "5").attr("value", lbl4);
+          $(lblAttrPrefix + "1").val(lbl1);
+          $(lblAttrPrefix + "2").val(lbl2);
+          $(lblAttrPrefix + "3").val("");
+          $(lblAttrPrefix + "4").val(lbl3);
+          $(lblAttrPrefix + "5").val(lbl4);
           helper.simulateMouseEvent("click", submitId);
           expect(shaper.changeTo).toHaveBeenCalledWith({
             label: [lbl1, lbl2, lbl3, lbl4],

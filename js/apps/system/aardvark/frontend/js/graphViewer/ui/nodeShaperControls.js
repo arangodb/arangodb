@@ -306,13 +306,13 @@ function NodeShaperControls(list, shaper) {
             selected = $("input[type='radio'][name='colour']:checked").attr("id"),
             labels = [], colours = [];
           lblList.each(function(i, t) {
-            var val = $(t).attr("value");
+            var val = $(t).val();
             if (val !== "") {
               labels.push(val);
             }
           });
           colList.each(function(i, t) {
-            var val = $(t).attr("value");
+            var val = $(t).val();
             if (val !== "") {
               colours.push(val);
             }
@@ -330,7 +330,6 @@ function NodeShaperControls(list, shaper) {
           if (colourDiv === undefined) {
             colourDiv = self.createColourMappingList();
           }
-          
         }
       );
     });

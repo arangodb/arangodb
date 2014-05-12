@@ -28,6 +28,7 @@ PROTO = http
 unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
+	jslint \
 	unittests-config \
 	unittests-boost \
 	unittests-shell-server \
@@ -109,7 +110,6 @@ SERVER_OPT := \
 	--database.maximal-journal-size 1048576 \
 	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
-	--javascript.gc-interval 1 \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
 	--ruby.action-directory @top_srcdir@/mr/actions \
@@ -371,6 +371,7 @@ SHELL_COMMON = \
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-tasks.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \

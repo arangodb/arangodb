@@ -619,7 +619,8 @@ int Syncer::getMasterState (string& errorMsg) {
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                      response->getBody().c_str());
 
     if (JsonHelper::isArray(json)) {
       res = handleStateResponse(json, errorMsg);
@@ -728,8 +729,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   
   if (major < 1 || 
       major > 2 ||
-      (major == 1 && minor < 4) ||
-      (major == 2 && minor > 0)) {
+      (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
     errorMsg = "got incompatible master version" + endpointString + ": '" + versionString + "'";
 
