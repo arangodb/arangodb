@@ -5,7 +5,7 @@
 (function () {
     "use strict";
 
-    describe("arangoDatabase", function () {
+    describe("dashBoardConfig", function () {
 
         var col;
 
@@ -89,7 +89,7 @@
                     residentSize : ["times", "residentSizePercent"],
                     virtualSize : ["times", "virtualSize"],
                     pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
-                    systemUserTime : ["times", "cpuSystemTime", "cpuUserTime"],
+                    systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
                     httpConnections : ["times", "clientConnections"],
                     totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
                     dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
@@ -160,7 +160,7 @@
                     totalTime: {
                         div: "totalTimeChart",
                         header: "Total Time",
-                        labels: ["datetime", "Queue Time", "Request Time", "IO Time"],
+                        labels: [ 'datetime', 'Queue', 'Computation', 'I/O' ],
                         labelsKMG2: false,
                         axes: {
                             y: {
@@ -236,12 +236,12 @@
 
         it("getDefaultConfig", function () {
             var res = col.getDefaultConfig("systemUserTime");
-            expect(res.digitsAfterDecimal).toEqual(2);
+            expect(res.digitsAfterDecimal).toEqual(1);
             expect(res.drawGapPoints).toEqual(true);
             expect(res.fillGraph).toEqual(true);
             expect(res.showLabelsOnHighlight).toEqual(true);
             expect(res.strokeWidth).toEqual(2);
-            expect(res.strokeBorderWidth).toEqual(1);
+            expect(res.strokeBorderWidth).toEqual(0.5);
             expect(res.includeZero).toEqual(true);
             expect(res.highlightCircleSize).toEqual(0);
             expect(res.labelsSeparateLines ).toEqual(true);
@@ -249,13 +249,13 @@
             expect(res.interactionModel).toEqual({});
             expect(res.maxNumberWidth ).toEqual(10);
             expect(res.colors).toEqual([ '#617e2b', '#296e9c' ]);
-            expect(res.xAxisLabelWidth).toEqual("60");
-            expect(res.rightGap).toEqual(10);
+            expect(res.xAxisLabelWidth).toEqual("50");
+            expect(res.rightGap).toEqual(15);
             expect(res.showRangeSelector).toEqual(false);
-            expect(res.rangeSelectorHeight).toEqual(40);
+            expect(res.rangeSelectorHeight).toEqual(50);
             expect(res.rangeSelectorPlotStrokeColor).toEqual('#365300');
-            expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
-            expect(res.pixelsPerLabel).toEqual(60);
+            //expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
+            expect(res.pixelsPerLabel).toEqual(50);
             expect(res.labelsKMG2 ).toEqual(false);
             expect(res.axes).toEqual({
                 x : {
@@ -279,12 +279,12 @@
 
         it("getDetailConfig", function () {
             var res = col.getDetailChartConfig("pageFaults");
-            expect(res.digitsAfterDecimal).toEqual(2);
+            expect(res.digitsAfterDecimal).toEqual(1);
             expect(res.drawGapPoints).toEqual(true);
             expect(res.fillGraph).toEqual(true);
             expect(res.showLabelsOnHighlight).toEqual(true);
             expect(res.strokeWidth).toEqual(2);
-            expect(res.strokeBorderWidth).toEqual(1);
+            expect(res.strokeBorderWidth).toEqual(0.5);
             expect(res.includeZero).toEqual(true);
             expect(res.highlightCircleSize).toEqual(3);
             expect(res.labelsSeparateLines ).toEqual(true);
@@ -292,13 +292,13 @@
             expect(res.interactionModel).toEqual(null);
             expect(res.maxNumberWidth ).toEqual(10);
             expect(res.colors).toEqual([ '#617e2b', '#296e9c' ]);
-            expect(res.xAxisLabelWidth).toEqual("60");
-            expect(res.rightGap).toEqual(10);
+            expect(res.xAxisLabelWidth).toEqual("50");
+            expect(res.rightGap).toEqual(15);
             expect(res.showRangeSelector).toEqual(true);
-            expect(res.rangeSelectorHeight).toEqual(40);
+            expect(res.rangeSelectorHeight).toEqual(50);
             expect(res.rangeSelectorPlotStrokeColor).toEqual('#365300');
-            expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
-            expect(res.pixelsPerLabel).toEqual(60);
+            //expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
+            expect(res.pixelsPerLabel).toEqual(50);
             expect(res.labelsKMG2 ).toEqual(false);
             expect(res.div).toEqual("pageFaultsChart");
             expect(res.header).toEqual("Page Faults");
@@ -310,12 +310,12 @@
 
         it("getDetailConfig with empty labels", function () {
             var res = col.getDetailChartConfig("requestsAsync");
-            expect(res.digitsAfterDecimal).toEqual(2);
+            expect(res.digitsAfterDecimal).toEqual(1);
             expect(res.drawGapPoints).toEqual(true);
             expect(res.fillGraph).toEqual(true);
             expect(res.showLabelsOnHighlight).toEqual(true);
             expect(res.strokeWidth).toEqual(2);
-            expect(res.strokeBorderWidth).toEqual(1);
+            expect(res.strokeBorderWidth).toEqual(0.5);
             expect(res.includeZero).toEqual(true);
             expect(res.highlightCircleSize).toEqual(3);
             expect(res.labelsSeparateLines ).toEqual(true);
@@ -323,13 +323,13 @@
             expect(res.interactionModel).toEqual(null);
             expect(res.maxNumberWidth ).toEqual(10);
             expect(res.colors).toEqual([ '#617e2b' ]);
-            expect(res.xAxisLabelWidth).toEqual("60");
-            expect(res.rightGap).toEqual(10);
+            expect(res.xAxisLabelWidth).toEqual("50");
+            expect(res.rightGap).toEqual(15);
             expect(res.showRangeSelector).toEqual(true);
-            expect(res.rangeSelectorHeight).toEqual(40);
+            expect(res.rangeSelectorHeight).toEqual(50);
             expect(res.rangeSelectorPlotStrokeColor).toEqual('#365300');
-            expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
-            expect(res.pixelsPerLabel).toEqual(60);
+            //expect(res.rangeSelectorPlotFillColor).toEqual('#414a4c');
+            expect(res.pixelsPerLabel).toEqual(50);
             expect(res.labelsKMG2 ).toEqual(true);
             expect(res.legend ).toEqual("always");
         });
