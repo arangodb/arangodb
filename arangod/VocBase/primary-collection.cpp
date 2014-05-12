@@ -480,72 +480,6 @@ static void FreeDatafileInfo (TRI_doc_datafile_info_t* dfi) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the collection
-/// note: the collection lock must be held when calling this function
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
-  TRI_doc_collection_info_t* info;
-  TRI_collection_t* base;
-  size_t i;
-
-  // prefill with 0's to init counters
-  info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
-
-  if (info == NULL) {
-    return NULL;
-  }
-    
-  for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
-    TRI_doc_datafile_info_t* d = static_cast<TRI_doc_datafile_info_t*>(primary->_datafileInfo._table[i]);
-
-    if (d != NULL) {
-      info->_numberAlive        += d->_numberAlive;
-      info->_numberDead         += d->_numberDead;
-      info->_numberTransaction  += d->_numberTransaction; // not used here (only in compaction)
-      info->_numberDeletion     += d->_numberDeletion;
-      info->_numberShapes       += d->_numberShapes;
-      info->_numberAttributes   += d->_numberAttributes;
-
-      info->_sizeAlive          += d->_sizeAlive;
-      info->_sizeDead           += d->_sizeDead;
-      info->_sizeTransaction    += d->_sizeTransaction; // not used here (only in compaction)
-      info->_sizeShapes         += d->_sizeShapes;
-      info->_sizeAttributes     += d->_sizeAttributes;
-    }
-  }
-
-  // add the file sizes for datafiles and journals
-  base = &primary->base;
-  for (i = 0; i < base->_datafiles._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
-
-    info->_datafileSize += (int64_t) df->_maximalSize;
-    ++info->_numberDatafiles;
-  }
-
-  for (i = 0; i < base->_journals._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
-
-    info->_journalfileSize += (int64_t) df->_maximalSize;
-    ++info->_numberJournalfiles;
-  }
-  
-  for (i = 0; i < base->_compactors._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_compactors._buffer[i];
-
-    info->_compactorfileSize += (int64_t) df->_maximalSize;
-    ++info->_numberCompactorfiles;
-  }
-
-  // get information about shape files (hard-coded to 0)
-  info->_shapefileSize    = 0;
-  info->_numberShapefiles = 0;
-
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief size of a primary collection
 ///
 /// the caller must have read-locked the collection!
@@ -582,7 +516,6 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   primary->_numberDocuments    = 0;
   primary->_lastCompaction     = 0.0;
 
-  primary->figures             = Figures;
   primary->size                = Count;
 
 

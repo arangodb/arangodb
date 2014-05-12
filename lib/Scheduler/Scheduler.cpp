@@ -35,10 +35,12 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
@@ -208,7 +210,7 @@ void Scheduler::shutdown () {
   for (set<Task*>::iterator i = taskRegistered.begin();
        i != taskRegistered.end();
        ++i) {
-    LOG_DEBUG("forcefully removing task '%s'", (*i)->getName().c_str());
+    LOG_DEBUG("forcefully removing task '%s'", (*i)->name().c_str());
 
     deleteTask(*i);
   }
@@ -221,9 +223,13 @@ void Scheduler::shutdown () {
 /// @brief list user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::pair<uint64_t, std::string> > Scheduler::getUserTasks () {
-  vector<pair<uint64_t, string> > result;
-  
+TRI_json_t* Scheduler::getUserTasks () {
+  TRI_json_t* json = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == 0) {
+    return 0;
+  }
+
   {
     MUTEX_LOCKER(schedulerLock);
 
@@ -232,36 +238,66 @@ std::vector<std::pair<uint64_t, std::string> > Scheduler::getUserTasks () {
       Task* task = (*i).first;
 
       if (task->isUserDefined()) {
-        result.push_back(make_pair(task->id(), task->getName()));
+        TRI_json_t* obj = task->toJson(); 
+
+        if (obj != 0) {
+          TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
+        }
       }
 
       ++i;
     }
   }
 
-  return result;
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cancel a user task by id
+/// @brief get a single user task
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scheduler::unregisterUserTask (uint64_t id) {
+TRI_json_t* Scheduler::getUserTask (string const& id) {
+  MUTEX_LOCKER(schedulerLock);
+
+  map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+  while (i != task2thread.end()) {
+    Task* task = (*i).first;
+
+    if (task->isUserDefined() && task->id() == id) {
+      return task->toJson(); 
+    }
+
+    ++i;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister and delete a user task by id
+////////////////////////////////////////////////////////////////////////////////
+
+int Scheduler::unregisterUserTask (string const& id) {
+  if (id.empty()) {
+    return TRI_ERROR_TASK_INVALID_ID;
+  }
+
   Task* task = 0;
-  
+ 
   {
     MUTEX_LOCKER(schedulerLock);
 
     map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
     while (i != task2thread.end()) {
-      task = (*i).first;
+      Task const* t = (*i).first;
 
-      if (task->id() == id) {
+      if (t->id() == id) {
         // found the sought task
-        if (! task->isUserDefined()) {
-          return false;
+        if (! t->isUserDefined()) {
+          return TRI_ERROR_TASK_NOT_FOUND;
         }
 
+        task = const_cast<Task*>(t);
         break;
       }
 
@@ -271,26 +307,36 @@ bool Scheduler::unregisterUserTask (uint64_t id) {
 
   if (task == 0) {
     // not found
-    return false;
+    return TRI_ERROR_TASK_NOT_FOUND;
   }
 
-  unregisterTask(task);
-  return true; 
+  return destroyTask(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scheduler::registerTask (Task* task) {
+int Scheduler::registerTask (Task* task) {
   SchedulerThread* thread = 0;
 
-  string const name = task->getName();
+  if (task->isUserDefined() && task->id().empty()) {
+    // user-defined task without id is invalid
+    return TRI_ERROR_TASK_INVALID_ID;
+  }
+
+  string const name = task->name();
   LOG_TRACE("registerTask for task %p (%s)", (void*) task, name.c_str());
 
   {
     size_t n = 0;
     MUTEX_LOCKER(schedulerLock);
+
+    int res = checkInsertTask(task);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
 
     if (multiThreading && ! task->needsMainEventLoop()) {      
       n = (++nextLoop) % nrThreads;
@@ -302,14 +348,18 @@ bool Scheduler::registerTask (Task* task) {
     taskRegistered.insert(task);
   }
 
-  return thread->registerTask(this, task);
+  if (! thread->registerTask(this, task)) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::unregisterTask (Task* task) {
+int Scheduler::unregisterTask (Task* task) {
   SchedulerThread* thread = 0;
 
   {
@@ -318,12 +368,12 @@ void Scheduler::unregisterTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOG_WARNING("unregisterTask called for an unknown task %p (%s)", (void*) task, task->getName().c_str());
+      LOG_WARNING("unregisterTask called for an unknown task %p (%s)", (void*) task, task->name().c_str());
 
-      return;
+      return TRI_ERROR_TASK_NOT_FOUND;
     }
     else {
-      LOG_TRACE("unregisterTask for task %p (%s)", (void*) task, task->getName().c_str());
+      LOG_TRACE("unregisterTask for task %p (%s)", (void*) task, task->name().c_str());
 
       thread = i->second;
 
@@ -336,13 +386,15 @@ void Scheduler::unregisterTask (Task* task) {
   }
 
   thread->unregisterTask(task);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys task
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::destroyTask (Task* task) {
+int Scheduler::destroyTask (Task* task) {
   SchedulerThread* thread = 0;
 
   {
@@ -351,12 +403,12 @@ void Scheduler::destroyTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*) task, task->getName().c_str());
+      LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*) task, task->name().c_str());
 
-      return;
+      return TRI_ERROR_TASK_NOT_FOUND;
     }
     else {
-      LOG_TRACE("destroyTask for task %p (%s)", (void*) task, task->getName().c_str());
+      LOG_TRACE("destroyTask for task %p (%s)", (void*) task, task->name().c_str());
 
       thread = i->second;
 
@@ -369,6 +421,8 @@ void Scheduler::destroyTask (Task* task) {
   }
 
   thread->destroyTask(task);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -376,6 +430,37 @@ void Scheduler::destroyTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::reportStatus () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a task can be inserted
+/// the caller must ensure the schedulerLock is held
+////////////////////////////////////////////////////////////////////////////////
+
+int Scheduler::checkInsertTask (Task const* task) {
+  if (task->isUserDefined()) {
+    // this is a user-defined task
+
+    // now check if there is an id conflict
+    string const id = task->id();
+
+    map<Task*, SchedulerThread*>::const_iterator i = task2thread.begin();
+    while (i != task2thread.end()) {
+      Task const* t = (*i).first;
+
+      if (t->isUserDefined() && t->id() == id) {
+        return TRI_ERROR_TASK_DUPLICATE_ID;
+      }
+
+      ++i;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------

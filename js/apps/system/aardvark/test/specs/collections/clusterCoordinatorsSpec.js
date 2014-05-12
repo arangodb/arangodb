@@ -10,9 +10,25 @@
         var col;
 
         beforeEach(function () {
-            window.App = jasmine.createSpyObj(window.Router,
-                ["getNewRoute", "registerForUpdate",  "addAuth"]);
-            col = new window.ClusterCoordinators();
+          window.App = {
+            addAuth: function() {
+              throw "This should be a spy";
+            },
+            getNewRoute: function() {
+              throw "This should be a spy";
+            },
+            registerForUpdate: function() {
+              throw "This should be a spy";
+            }
+          };
+          spyOn(window.App, "addAuth"); 
+          spyOn(window.App, "getNewRoute"); 
+          spyOn(window.App, "registerForUpdate"); 
+          col = new window.ClusterCoordinators();
+        });
+
+        afterEach(function() {
+          delete window.App;
         });
 
         it("ClusterCoordinators", function () {

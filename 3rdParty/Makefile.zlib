@@ -20,7 +20,9 @@ BUILT_SOURCES += @ZLIB_LIBS@
 	@echo
 
 	mkdir @top_srcdir@/3rdParty/zlib-1.2.7 || true
-	cd @top_srcdir@/3rdParty/zlib-1.2.7 && ./configure 
+
+	cd @top_srcdir@/3rdParty/zlib-1.2.7 && CC="${CC}" CFLAGS="${CFLAGS}" ./configure --static
+
 	cd @top_srcdir@/3rdParty/zlib-1.2.7 && $(MAKE)
 
 	@touch @srcdir@/.zlib-build-@TRI_BITS@

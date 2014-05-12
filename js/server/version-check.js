@@ -341,7 +341,10 @@
 
     // set up the collection _graphs
     addTask("setupGraphs", "setup _graphs collection", function () {
-      return createSystemCollection("_graphs", { waitForSync : true });
+      return createSystemCollection("_graphs", { 
+        waitForSync : true,
+        journalSize: 1024 * 1024 
+      });
     });
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +416,9 @@
 
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
-      return createSystemCollection("_modules");
+      return createSystemCollection("_modules", {
+        journalSize: 1024 * 1024 
+      });
     });
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -423,7 +428,9 @@
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
       // needs to be big enough for assets
-      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
+      return createSystemCollection("_routing", { 
+        journalSize: 32 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +441,9 @@
     addTask("createKickstarterConfiguration",
       "setup _cluster_kickstarter_plans collection", function () {
         //TODO add check if this is the main dispatcher
-      return createSystemCollection("_cluster_kickstarter_plans");
+      return createSystemCollection("_cluster_kickstarter_plans", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,7 +566,9 @@
 
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
-      return createSystemCollection("_aqlfunctions");
+      return createSystemCollection("_aqlfunctions", {
+        journalSize: 4 * 1024 * 1024 
+      });
     });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,7 +655,7 @@
     // create the _statistics collection
     addTask("createStatistics", "setup _statistics collection", function () {
       var name = "_statistics";
-      var result = createSystemCollection(name, { waitForSync : false });
+      var result = createSystemCollection(name, { waitForSync: false });
 
       if (result) {
         var collection = getCollection(name);
@@ -656,6 +667,21 @@
       return result;
     });
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createConfiguration
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _statistics collection
+    addTask("createConfiguration", "setup _configuration collection", function () {
+      var name = "_configuration";
+      var result = createSystemCollection(name, { 
+        waitForSync: true, 
+        journalSize: 1024 * 1024 
+      });
+
+      return result;
+    });
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the upgrade tasks
 ////////////////////////////////////////////////////////////////////////////////
@@ -757,16 +783,17 @@
     return runUpgrade(currentVersion);
   }
 
+  // version match!
   if (lastVersion === currentVersion) {
-    // version match!
     if (internal.upgrade) {
       runUpgrade(currentVersion);
     }
+
     return true;
   }
 
+  // downgrade??
   if (lastVersion > currentVersion) {
-    // downgrade??
     logger.error("Database directory version (" + lastVersion 
                   + ") is higher than server version (" + currentVersion + ").");
 
@@ -778,8 +805,8 @@
     return true;
   }
 
+  // upgrade
   if (lastVersion < currentVersion) {
-    // upgrade
     if (internal.upgrade) {
       return runUpgrade(currentVersion);
     }

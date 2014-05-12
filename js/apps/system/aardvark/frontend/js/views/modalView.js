@@ -13,7 +13,7 @@
     };
   };
 
-  var createTextStub = function(type, label, value, info) {
+  var createTextStub = function(type, label, value, info, placeholder, mandatory) {
     var obj = {
       type: type,
       label: label
@@ -24,6 +24,12 @@
     if (info) {
       obj.info = info;
     }
+    if (placeholder) {
+      obj.placeholder = placeholder;
+    }
+    if (mandatory) {
+      obj.mandatory = mandatory;
+    }
     return obj;
   };
 
@@ -33,11 +39,14 @@
     tableTemplate: templateEngine.createTemplate("modalTable.ejs"),
     el: "#modalPlaceholder",
     contentEl: "#modalContent",
+    hideFooter: false,
     confirm: {
       list: "#modal-delete-confirmation",
       yes: "#modal-confirm-delete",
       no: "#modal-abort-delete"
     },
+
+    enabledHotkey: false,
 
     buttons: {
       SUCCESS: "success",
@@ -64,9 +73,56 @@
       Object.freeze(this.tables);
       var self = this;
       this.closeButton.callback = function() {
-        self.hide(); 
+        self.hide();
       };
-      //this.hide.bind(this);
+    },
+
+    createModalHotkeys: function() {
+      //submit modal
+      $(this.el).bind('keydown', 'ctrl+return', function(){
+        $('.button-success').click();
+      });
+      $("input", $(this.el)).bind('keydown', 'return', function(){
+        $('.button-success').click();
+      });
+      $("select", $(this.el)).bind('keydown', 'return', function(){
+        $('.button-success').click();
+      });
+    },
+
+    createInitModalHotkeys: function() {
+      var self = this;
+      //navigate through modal buttons
+      //left cursor
+      $(this.el).bind('keydown', 'left', function(){
+        self.navigateThroughButtons('left');
+      });
+      //right cursor
+      $(this.el).bind('keydown', 'right', function(){
+        self.navigateThroughButtons('right');
+      });
+
+    },
+
+    navigateThroughButtons: function(direction) {
+      var hasFocus = $('.modal-footer button').is(':focus');
+      if (hasFocus === false) {
+        if (direction === 'left') {
+          $('.modal-footer button').first().focus();
+        }
+        else if (direction === 'right') {
+          $('.modal-footer button').last().focus();
+        }
+      }
+      else if (hasFocus === true) {
+        if (direction === 'left') {
+          $(':focus').prev().focus();
+        }
+        else if (direction === 'right') {
+          $(':focus').next().focus();
+        }
+      }
+
     },
 
     createCloseButton: function(cb) {
@@ -76,7 +132,6 @@
           cb();
       });
     },
-
 
     createSuccessButton: function(title, cb) {
       return createButtonStub(this.buttons.SUCCESS, title, cb);
@@ -107,38 +162,20 @@
     },
 
     createTextEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info);
+      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
     createSelect2Entry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.SELECT2, label, value, info);
+      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
     createPasswordEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.PASSWORD, label, value, info);
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory);
       obj.id = id;
-      if (placeholder) {
-        obj.placeholder = placeholder;
-      }
-      if (mandatory) {
-        obj.mandatory = mandatory;
-      }
       return obj;
     },
 
@@ -168,7 +205,8 @@
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent) {
+    show: function(templateName, title, buttons, tableContent, advancedContent,
+        events) {
       var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
       // Insert close as second from right
@@ -188,7 +226,8 @@
       }
       $(this.el).html(this.baseTemplate.render({
         title: title,
-        buttons: buttons
+        buttons: buttons,
+        hideFooter: this.hideFooter
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
@@ -200,7 +239,7 @@
             $(self.confirm.yes).bind("click", b.callback);
             $(self.confirm.list).css("display", "block");
           });
-          return;  
+          return;
         }
         $("#modalButton" + i).bind("click", b.callback);
       });
@@ -231,8 +270,19 @@
           });
         }
       });//handle select2
+      if (events) {
+          this.events = events;
+          this.delegateEvents();
+      }
 
       $("#modal-dialog").modal("show");
+
+      //enable modal hotkeys after rendering is complete
+      if (this.enabledHotkey === false) {
+        this.createInitModalHotkeys();
+        this.enabledHotkey = true;
+      }
+      this.createModalHotkeys();
     },
 
     hide: function() {

@@ -126,6 +126,9 @@ void ConsoleThread::inner () {
   // run console
   // .............................................................................
 
+  const uint64_t gcInterval = 10;
+  uint64_t nrCommands = 0;
+
   const string pretty = "start_pretty_print();";
   TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), (int) pretty.size()), v8::String::New("(internal)"), false);
 
@@ -134,13 +137,20 @@ void ConsoleThread::inner () {
   console.open(true);
 
   while (! _userAborted) {
-    v8::V8::LowMemoryNotification();
-    while(! v8::V8::IdleNotification()) {
+    if (nrCommands >= gcInterval) {
+      v8::V8::LowMemoryNotification();
+      while(! v8::V8::IdleNotification()) {
+      }
+
+      nrCommands = 0;
     }
 
     char* input = console.prompt("arangod> ");
 
     if (_userAborted) {
+      if (input != 0) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      }
       throw "user aborted";
     }
 
@@ -157,6 +167,7 @@ void ConsoleThread::inner () {
       continue;
     }
 
+    nrCommands++;
     console.addHistory(input);
 
     v8::HandleScope scope;

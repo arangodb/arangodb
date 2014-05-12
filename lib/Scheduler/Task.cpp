@@ -28,6 +28,7 @@
 
 #include "Task.h"
 
+#include "BasicsC/json.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::rest;
@@ -37,7 +38,8 @@ using namespace std;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-Task::Task (uint64_t id, string const& name)
+Task::Task (string const& id, 
+            string const& name)
   : _scheduler(0), 
     _loop(0), 
     _id(id), 
@@ -45,20 +47,64 @@ Task::Task (uint64_t id, string const& name)
     _active(1) {
 }
 
-
-
+Task::Task (string const& name) 
+  : _scheduler(0), 
+    _loop(0), 
+    _id(), 
+    _name(name), 
+    _active(1) {
+}
+  
 Task::~Task () {
+}
+
+// -----------------------------------------------------------------------------
+// public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the task
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Task::toJson () {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->id().c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->name().c_str()));
+
+    this->getDescription(json);
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task is user-defined
+/// note: this function may be overridden
+////////////////////////////////////////////////////////////////////////////////
+
+bool Task::isUserDefined () const {
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow thread to run on slave event loop
+////////////////////////////////////////////////////////////////////////////////
+
+bool Task::needsMainEventLoop () const {
+  return false;
 }
 
 // -----------------------------------------------------------------------------
 // protected methods
 // -----------------------------------------------------------------------------
 
-bool Task::isUserDefined () const {
-  return false;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+/// this does nothing for basic tasks, but derived classes may override it
+////////////////////////////////////////////////////////////////////////////////
 
-bool Task::needsMainEventLoop () const {
-  return false;
+void Task::getDescription (TRI_json_t* json) {
 }
 

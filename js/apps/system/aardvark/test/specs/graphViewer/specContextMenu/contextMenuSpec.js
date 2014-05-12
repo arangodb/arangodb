@@ -2,7 +2,7 @@
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
-/*global document, $*/
+/*global document, $, window*/
 /*global ContextMenu, uiMatchers*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,6 +52,43 @@
           var t = new ContextMenu("myId");
         }
       ).not.toThrow();
+    });
+
+    it("should bind to show on right click", function() {
+      var id = "myId",
+        fakeEvent = "fakeEvent",
+        fakeMenu = {
+          target: {},
+          show: function(){}
+        },
+        fakeBind = {
+          bind: function(evt, cb) {
+            expect(evt).toEqual("contextmenu");
+            cb(fakeEvent);
+          },
+          contextMenu: {
+            create: function() {
+              throw "should be a spy";
+            }
+          }
+        },
+        fakeObj = {fake: "obj"},
+        fakeList = {
+          each: function(cb) {
+            cb.apply(fakeObj);
+          }
+        },
+        conMenu;
+      spyOn($.contextMenu, "create").andCallFake(function() {
+        spyOn(window, "$").andReturn(fakeBind);
+        return fakeMenu;
+      });
+      conMenu = new ContextMenu(id);
+      spyOn(fakeMenu, "show");
+      conMenu.bindMenu(fakeList);
+      expect(window.$).toHaveBeenCalledWith(fakeObj);
+      expect(window.$.callCount).toEqual(1);
+      expect(fakeMenu.show).toHaveBeenCalledWith(undefined, fakeEvent);
     });
 
     describe("set up correctly", function () {

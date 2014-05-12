@@ -52,8 +52,14 @@ var Buffer = require("buffer").Buffer;
 (function () {
   var internal = require("internal");
 
-  if (internal.threadNumber === 0 && typeof internal.definePeriodic === "function") {
-    internal.definePeriodic("statistics-collector", 1, 10, "org/arangodb/statistics", "historian", "_statistics");
+  if (internal.threadNumber === 0 && typeof internal.registerTask === "function") {
+    internal.registerTask({ 
+      id: "statistics-collector", 
+      name: "statistics-collector",
+      offset: 1, 
+      period: 10, 
+      command: "require('org/arangodb/statistics').historian();"
+    });
   }
 }());
 

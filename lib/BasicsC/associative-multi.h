@@ -99,7 +99,8 @@ typedef struct TRI_multi_pointer_entry_s {
                                    // list of all items with the same key
   TRI_multi_pointer_index_t prev;  // index of the data preceding in the linked
                                    // list of all items with the same key
-} TRI_multi_pointer_entry_t;
+} 
+TRI_multi_pointer_entry_t;
 
 typedef struct TRI_multi_pointer_s {
   uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const* key);
@@ -169,6 +170,12 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t*, TRI_multi_pointer_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key

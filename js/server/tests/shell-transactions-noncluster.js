@@ -319,6 +319,7 @@ function transactionCollectionsSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -725,6 +726,7 @@ function transactionOperationsSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1617,6 +1619,7 @@ function transactionBarriersSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1735,8 +1738,8 @@ function transactionGraphSuite () {
       db._drop(cn1);
       db._drop(cn2);
 
-      db._create(cn1);
-      db._createEdgeCollection(cn2);
+      c1 = db._create(cn1);
+      c2 = db._createEdgeCollection(cn2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1755,6 +1758,7 @@ function transactionGraphSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1880,6 +1884,86 @@ function transactionGraphSuite () {
       assertEqual(result.oboyuhh._key, result.rldfnre._key);
       assertEqual("david smith", result.rldfnre.name);
       assertEqual(null, result.rldfnre.$label);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: usage of read-copied documents inside write-transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadWriteDocumentsList : function () {
+      c1.save({ _key: "bar" });
+      c1.save({ _key: "baz" });
+      c2.save(cn1 + "/bar", cn1 + "/baz", { type: "one" });
+      c2.save(cn1 + "/baz", cn1 + "/bar", { type: "two" });
+
+      var obj = {
+        collections: { 
+          write: [ cn2 ]
+        }, 
+        action : function () {
+          var result = [ ];
+
+          result.push(c2.inEdges(cn1 + "/baz"));
+          result.push(c2.inEdges(cn1 + "/bar"));
+
+          c2.save(cn1 + "/foo", cn1 + "/baz", { type: "three" });
+          c2.save(cn1 + "/foo", cn1 + "/bar", { type: "four" });
+
+          result.push(c2.inEdges(cn1 + "/baz"));
+          result.push(c2.inEdges(cn1 + "/bar"));
+          
+          return result;
+        }
+      };
+
+      var sorter = function (l, r) {
+        if (l.type !== r.type) {
+          if (l.type < r.type) {
+            return -1;
+          }
+          return 1;
+        }
+        return 0;
+      };
+
+      var result = TRANSACTION(obj);
+
+      assertEqual(4, result.length);
+      var r = result[0];
+      assertEqual(1, r.length);
+      assertEqual(cn1 + "/bar", r[0]._from);
+      assertEqual(cn1 + "/baz", r[0]._to);
+      assertEqual("one", r[0].type);
+      
+      r = result[1];
+      assertEqual(1, r.length);
+      assertEqual(cn1 + "/baz", r[0]._from);
+      assertEqual(cn1 + "/bar", r[0]._to);
+      assertEqual("two", r[0].type);
+      
+      r = result[2];
+      r.sort(sorter);
+
+      assertEqual(2, r.length);
+      assertEqual(cn1 + "/bar", r[0]._from);
+      assertEqual(cn1 + "/baz", r[0]._to);
+      assertEqual("one", r[0].type);
+      
+      assertEqual(cn1 + "/foo", r[1]._from);
+      assertEqual(cn1 + "/baz", r[1]._to);
+      assertEqual("three", r[1].type);
+
+      r = result[3];
+      r.sort(sorter);
+      
+      assertEqual(cn1 + "/foo", r[0]._from);
+      assertEqual(cn1 + "/bar", r[0]._to);
+      assertEqual("four", r[0].type);
+
+      assertEqual(2, r.length);
+      assertEqual(cn1 + "/baz", r[1]._from);
+      assertEqual(cn1 + "/bar", r[1]._to);
+      assertEqual("two", r[1].type);
     }
 
   };
@@ -1929,6 +2013,7 @@ function transactionRollbackSuite () {
       }
 
       c1 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2788,6 +2873,7 @@ function transactionCountSuite () {
       }
 
       c1 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2964,6 +3050,7 @@ function transactionCrossCollectionSuite () {
       }
 
       c2 = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3242,6 +3329,7 @@ function transactionServerFailuresSuite () {
       }
 
       c = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3257,7 +3345,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
     },
 
@@ -3275,7 +3363,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
     },
 
@@ -3304,7 +3392,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(1, c.count());
@@ -3342,7 +3430,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(100, c.count());
@@ -3365,7 +3453,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(1, c.count());
@@ -3390,7 +3478,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(2, c.count());
@@ -3427,7 +3515,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3463,7 +3551,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3488,7 +3576,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(1, c.count());
@@ -3511,7 +3599,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
       assertEqual(2, c.count());
@@ -3546,7 +3634,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3580,7 +3668,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());
@@ -3626,7 +3714,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(100, c.count());
@@ -3672,7 +3760,7 @@ function transactionServerFailuresSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       assertEqual(2, c.count());

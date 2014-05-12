@@ -367,7 +367,6 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("fill", addLabelColor) // Force a black color
             .attr("stroke", "none"); // Make it readable
           textN.each(function(d) {
-            // var chunks = splitLabel(d._data[label]);
             var chunks = splitLabel(findFirstValue(label, d._data));
             d3.select(this).append("tspan")
               .attr("x", "0")

@@ -11,11 +11,6 @@
 
     initialize: function () {
       var self = this;
-      $.ajax("cluster/amICoordinator", {
-        async: false
-      }).done(function(d) {
-          self.isCoordinator = d;
-        });
     },
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
@@ -37,7 +32,8 @@
 
       this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
         $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
-          model: arango_collection
+          model: arango_collection,
+          collectionsView: this
         }).render().el);
       }, this);
 
@@ -241,7 +237,7 @@
       var collSync = $('#new-collection-sync').val();
       var shards = 1;
       var shardBy = [];
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         shards = $('#new-collection-shards').val();
         if (shards === "") {
           shards = 1;
@@ -280,7 +276,7 @@
         return 0;
       }
 
-      var returnobj = window.arangoCollectionsStore.newCollection(
+      var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
       if (returnobj.status !== true) {
@@ -315,7 +311,7 @@
           [{value: 2, label: "Document"}, {value: 3, label: "Edge"}]
         )
       );
-      if (this.isCoordinator) {
+      if (window.isCoordinator()) {
         tableContent.push(
           window.modalView.createTextEntry(
             "new-collection-shards",

@@ -111,6 +111,9 @@ void DispatcherThread::run () {
         _queue->_monopolizer = this;
       }
 
+      // set running job
+      _queue->_runningJobs.insert(job);
+
       // now release the queue lock (initialise is inside the lock, work outside)
       _queue->_accessQueue.unlock();
 
@@ -185,6 +188,11 @@ void DispatcherThread::run () {
 
         status = Job::status_t(Job::JOB_FAILED);
       }
+
+      // clear running job
+      _queue->_accessQueue.lock();
+      _queue->_runningJobs.erase(job);
+      _queue->_accessQueue.unlock();
 
       // trigger GC
       /* TODO: tick is a no-op. decide whether it should be deleted

@@ -29,6 +29,7 @@
 
 #include "BasicsC/json.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -657,6 +658,59 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
+  TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+  const string name = JsonHelper::getStringValue(collectionJson, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const string cname = JsonHelper::getStringValue(json, "cname", "");
+
+  bool waitForSync = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
+  bool doCompact = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
+  int maximalSize = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+
+  TRI_vocbase_col_t* col = 0;
+
+  if (! cname.empty()) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
+  }
+
+  if (col == 0) {
+    TRI_voc_cid_t cid = getCid(json);
+    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+  }
+
+  if (col == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int res = TRI_UseCollectionVocBase(_vocbase, col);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+      
+  TRI_col_info_t parameters;
+ 
+  // only need to set these three properties as the others cannot be updated on the fly
+  parameters._doCompact   = doCompact;
+  parameters._maximalSize = maximalSize;
+  parameters._waitForSync = waitForSync;
+
+  res = TRI_UpdateCollectionInfo(_vocbase, &col->_collection->base, &parameters);
+
+  TRI_ReleaseCollectionVocBase(_vocbase, col);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -734,6 +788,12 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
     return renameCollection(json);
   }
   
+  else if (type == COLLECTION_CHANGE) {
+    updateTick = true;
+
+    return changeCollection(json);
+  }
+  
   else if (type == INDEX_CREATE) {
     updateTick = true;
 
@@ -772,17 +832,29 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 /// @brief apply the data from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline void mylocalgetline(char const*& p, string& line, char delim) {
+  char const* q = p;
+  while (*p != 0 && *p != delim) {
+    p++;
+  }
+  line.assign(q, p-q);
+  if (*p == delim) {
+    p++;
+  }
+}
+
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
                                 string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
   
-  std::stringstream& data = response->getBody();
+  StringBuffer& data = response->getBody();
+  char const* p = data.c_str();
 
   while (true) {
     string line;
     
-    std::getline(data, line, '\n');
+    mylocalgetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done
@@ -813,7 +885,7 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
       if (ignoreCount == 0) {
         if (line.size() > 128) {
-          errorMsg += ", offending marker: " + line.substr(128) + "...";
+          errorMsg += ", offending marker: " + line.substr(0, 128) + "...";
         }
         else {
           errorMsg += ", offending marker: " + line;;

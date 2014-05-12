@@ -63,23 +63,24 @@ TRI_statistics_list_t;
 typedef struct TRI_request_statistics_s {
   void*   _next;
 
-  double  _readStart;
-  double  _readEnd;
-  double  _queueStart;
-  double  _queueEnd;
-  double  _requestStart;
-  double  _requestEnd;
-  double  _writeStart;
-  double  _writeEnd;
+  double _readStart;
+  double _readEnd;
+  double _queueStart;
+  double _queueEnd;
+  double _requestStart;
+  double _requestEnd;
+  double _writeStart;
+  double _writeEnd;
 
-  double  _receivedBytes;
-  double  _sentBytes;
+  double _receivedBytes;
+  double _sentBytes;
 
   triagens::rest::HttpRequest::HttpRequestType _requestType;
 
-  bool    _async;
-  bool    _tooLarge;
-  bool    _executeError;
+  bool _async;
+  bool _tooLarge;
+  bool _executeError;
+  bool _ignore;
 }
 TRI_request_statistics_t;
 

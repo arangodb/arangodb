@@ -245,7 +245,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEventsLogger : function () {
-      var state, tick;
+      var state;
       
       replication.logger.start();
       state = replication.logger.state().state;
@@ -696,7 +696,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerIncludedSystemCollection : function () {
-      var state, tick, i;
+      var state, tick;
       
       replication.logger.start();
       
@@ -1727,7 +1727,7 @@ function ReplicationLoggerSuite () {
     testLoggerSaveEdge : function () {
       var state, tick;
       
-      var v = db._create(cn);
+      db._create(cn);
       var e = db._createEdgeCollection(cn2);
 
       replication.logger.start();
@@ -1800,7 +1800,7 @@ function ReplicationLoggerSuite () {
     testLoggerDeleteEdge : function () {
       var state, tick;
       
-      var v = db._create(cn);
+      db._create(cn);
       var e = db._createEdgeCollection(cn2);
       
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
@@ -1858,7 +1858,7 @@ function ReplicationLoggerSuite () {
     testLoggerUpdateEdge : function () {
       var state, tick;
       
-      var v = db._create(cn);
+      db._create(cn);
       var e = db._createEdgeCollection(cn2);
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
@@ -1936,7 +1936,7 @@ function ReplicationLoggerSuite () {
     testLoggerReplaceEdge : function () {
       var state, tick;
       
-      var v = db._create(cn);
+      db._create(cn);
       var e = db._createEdgeCollection(cn2);
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
@@ -2014,7 +2014,7 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionEmpty : function () {
       var state, tick;
       
-      var c = db._create(cn);
+      c = db._create(cn);
 
       replication.logger.start();
       
@@ -2112,7 +2112,7 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionRead3 : function () {
       var state, tick;
       
-      var c = db._create(cn);
+      db._create(cn);
 
       replication.logger.start();
       
@@ -2153,7 +2153,7 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionWrite1 : function () {
       var state, tick;
       
-      var c = db._create(cn);
+      db._create(cn);
 
       replication.logger.start();
       
@@ -2252,7 +2252,7 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionWrite3 : function () {
       var state, tick;
       
-      var c = db._create(cn);
+      db._create(cn);
 
       replication.logger.start();
       
@@ -2291,8 +2291,8 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionWrite4 : function () {
       var state, tick;
       
-      var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      db._create(cn);
+      db._create(cn2);
 
       replication.logger.start();
       
@@ -2331,7 +2331,7 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       var c1 = db._create(cn);
-      var c2 = db._create(cn2);
+      db._create(cn2);
 
       replication.logger.start();
       
@@ -3140,7 +3140,7 @@ function ReplicationSyncSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(ReplicationLoggerSuite);
+jsunity.run(ReplicationLoggerSuite);
 jsunity.run(ReplicationApplierSuite);
 jsunity.run(ReplicationSyncSuite);
 

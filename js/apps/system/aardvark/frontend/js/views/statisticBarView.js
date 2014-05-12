@@ -12,9 +12,13 @@
 
         template: templateEngine.createTemplate("statisticBarView.ejs"),
 
+        initialize : function () {
+            this.currentDB = this.options.currentDB;
+        },
+
         render: function () {
             $(this.el).html(this.template.render({
-              isSystem: window.currentDB.get("isSystem")
+              isSystem: this.currentDB.get("isSystem")
             }));
             
             $('img.svg').each(function(){

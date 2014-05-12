@@ -234,8 +234,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ABORT_OOM                                                              \
-  TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);              \
+#define ABORT_OOM                                                                     \
+  TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
   YYABORT;
 
 #define scanner context->_parser->_scanner
@@ -2826,7 +2826,7 @@ yyreduce:
       value = TRI_DoubleString((yyvsp[0].strval));
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
         YYABORT;
       }
       
@@ -2963,7 +2963,7 @@ yyreduce:
 
       value = TRI_Int64String((yyvsp[0].strval));
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
         YYABORT;
       }
 

@@ -9,7 +9,16 @@
         var view, jQueryDummy;
 
         beforeEach(function () {
+            window.App = {
+                navigate: function () {
+                    throw "This should be a spy";
+                }
+            };
             view = new window.DocumentsView();
+        });
+
+        afterEach(function () {
+            delete window.App;
         });
 
         it("assert the basics", function () {
@@ -234,7 +243,7 @@
             };
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
-            view.collection = new window.arangoDocuments({collectionID : view.colid});
+            view.collection = new window.arangoDocuments({collectionID: view.colid});
             view.resetView();
             expect(window.$).toHaveBeenCalledWith("input");
             expect(window.$).toHaveBeenCalledWith("select");
@@ -615,9 +624,8 @@
                 {1: "blub"}
             ];
             expect(view.getFilterContent()).toEqual([
-                { attribute : 'name0', operator : 'operator0', value :
-                { jsonval : 1 } },
-                { attribute : 'name1', operator : 'operator1', value : 'stringval' }
+                { attribute: 'name0', operator: 'operator0', value: { jsonval: 1 } },
+                { attribute: 'name1', operator: 'operator1', value: 'stringval' }
             ]);
             expect(window.$).toHaveBeenCalledWith("#attribute_value0");
             expect(window.$).toHaveBeenCalledWith("#attribute_value1");
@@ -645,23 +653,22 @@
             spyOn(window, "$").andReturn(jQueryDummy);
             spyOn(view, "getFilterContent").andReturn(
                 [
-                    { attribute : 'name0', operator : 'operator0', value :
-                    { jsonval : 1 } },
-                    { attribute : 'name1', operator : 'operator1', value : 'stringval' }
+                    { attribute: 'name0', operator: 'operator0', value: { jsonval: 1 } },
+                    { attribute: 'name1', operator: 'operator1', value: 'stringval' }
                 ]
 
             );
 
             var arangoDocStoreDummy = {
-                    setToFirst: function () {
-                    },
-                    addFilter : function () {
+                setToFirst: function () {
+                },
+                addFilter: function () {
 
-                    },
-                    getDocuments : function () {
+                },
+                getDocuments: function () {
 
-                    }
-                };
+                }
+            };
             spyOn(arangoDocStoreDummy, "setToFirst");
             spyOn(arangoDocStoreDummy, "addFilter");
             spyOn(arangoDocStoreDummy, "getDocuments");
@@ -674,7 +681,7 @@
             expect(view.addDocumentSwitch).toEqual(false);
             expect(view.clearTable).toHaveBeenCalled();
             expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
-                "name0", "operator0", { jsonval : 1 }
+                "name0", "operator0", { jsonval: 1 }
             );
             expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
                 "name1", "operator1", "stringval"
@@ -705,22 +712,22 @@
             expect(window.$).toHaveBeenCalledWith("#filterHeader");
             expect(jQueryDummy.append).toHaveBeenCalledWith(
                 ' <div class="queryline querylineAdd">' +
-                '<input id="attribute_name' + num +
-                '" type="text" placeholder="Attribute name">' +
-                '<select name="operator" id="operator' +
-                num + '" class="filterSelect">' +
-                '    <option value="==">==</option>' +
-                '    <option value="!=">!=</option>' +
-                '    <option value="&lt;">&lt;</option>' +
-                '    <option value="&lt;=">&lt;=</option>' +
-                '    <option value="&gt;=">&gt;=</option>' +
-                '    <option value="&gt;">&gt;</option>' +
-                '</select>' +
-                '<input id="attribute_value' + num +
-                '" type="text" placeholder="Attribute value" ' +
-                'class="filterValue">' +
-                ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                '<i class="icon icon-minus arangoicon"></i></a></div>');
+                    '<input id="attribute_name' + num +
+                    '" type="text" placeholder="Attribute name">' +
+                    '<select name="operator" id="operator' +
+                    num + '" class="filterSelect">' +
+                    '    <option value="==">==</option>' +
+                    '    <option value="!=">!=</option>' +
+                    '    <option value="&lt;">&lt;</option>' +
+                    '    <option value="&lt;=">&lt;=</option>' +
+                    '    <option value="&gt;=">&gt;=</option>' +
+                    '    <option value="&gt;">&gt;</option>' +
+                    '</select>' +
+                    '<input id="attribute_value' + num +
+                    '" type="text" placeholder="Attribute value" ' +
+                    'class="filterValue">' +
+                    ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+                    '<i class="icon icon-minus arangoicon"></i></a></div>');
             expect(view.filters[num]).toEqual(true);
 
         });
@@ -1146,7 +1153,7 @@
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
                 },
-                collectionID : "collection"
+                collectionID: "collection"
             };
 
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(false);
@@ -1199,7 +1206,7 @@
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
                 },
-                collectionID : "collection"
+                collectionID: "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(false);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1272,7 +1279,7 @@
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
                 },
-                collectionID : "collection"
+                collectionID: "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteDocument").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1280,6 +1287,7 @@
 
             spyOn(arangoDocsStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
+            spyOn(view, "drawTable");
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
 
@@ -1356,7 +1364,7 @@
             }, arangoDocsStoreDummy = {
                 getDocuments: function () {
                 },
-                collectionID : "collection"
+                collectionID: "collection"
             };
             spyOn(arangoDocStoreDummy, "deleteEdge").andReturn(true);
             spyOn(window, "arangoDocument").andReturn(arangoDocStoreDummy);
@@ -1366,7 +1374,7 @@
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
-
+            spyOn(view, "drawTable");
             view.reallyDelete();
 
             expect(window.$).toHaveBeenCalledWith("#confirmDeleteBtn");
@@ -1461,7 +1469,7 @@
             view.alreadyClicked = false;
             view.colid = "coll";
             view.collection = {
-                collectionID : "coll"
+                collectionID: "coll"
             };
             expect(view.clicked({currentTarget: {firstChild: "blub"}})).toEqual(undefined);
             expect(view.addDocument).not.toHaveBeenCalled();
@@ -1530,23 +1538,23 @@
                 totalPages: 1,
                 currentPage: 1,
                 documentsCount: 0,
-                size : function () {
+                size: function () {
                     return arangoDocsStoreDummy.models.length;
                 },
-                getLastPageNumber : function () {
+                getLastPageNumber: function () {
                     return arangoDocsStoreDummy.totalPages;
                 },
-                getPage : function () {
+                getPage: function () {
                     return arangoDocsStoreDummy.currentPage;
                 },
-                getTotal : function () {
+                getTotal: function () {
                     return arangoDocsStoreDummy.documentsCount;
                 }
 
             };
             spyOn(view, "clearTable");
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
-            view.collection= new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
             //$(self.table).dataTable().fnAddData(
             view.drawTable();
             expect(window.$).toHaveBeenCalledWith(".dataTables_empty");
@@ -1607,10 +1615,10 @@
                 totalPages: 1,
                 currentPage: 2,
                 documentsCount: 3,
-                size : function () {
+                size: function () {
                     return arangoDocsStoreDummy.models.length;
                 },
-                each : function (cb) {
+                each: function (cb) {
                     arangoDocsStoreDummy.models.forEach(cb);
                 }
 
@@ -1664,8 +1672,8 @@
 
                 };
                 spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
-                view.collectionsStore  = new window.arangoCollections();
-                view.collection = {collectionID : "1"};
+                view.collectionsStore = new window.arangoCollections();
+                view.collection = {collectionID: "1"};
                 spyOn(view, "getIndex");
                 spyOn(view, "initTable");
                 spyOn(view, "breadcrumb");
@@ -1796,30 +1804,30 @@
                 getFilteredDocuments: function () {
 
                 },
-                getPage : function () {
+                getPage: function () {
 
                 },
-                getLastPageNumber : function () {
+                getLastPageNumber: function () {
 
                 },
-                setPage : function () {
+                setPage: function () {
 
                 },
-                getDocuments : function () {
+                getDocuments: function () {
 
                 },
-                size : function () {
+                size: function () {
 
                 },
-                models : [],
-                each : function (cb) {
+                models: [],
+                each: function (cb) {
                     arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
             spyOn(window, "arangoDocuments").andReturn(arangoDocsStoreDummy);
             spyOn(arangoDocsStoreDummy, "getFilteredDocuments");
             spyOn(arangoHelper, "fixTooltips");
-            view.collection= new window.arangoDocuments();
+            view.collection = new window.arangoDocuments();
 
 
             spyOn(view, "getFilterContent").andReturn(
@@ -1830,7 +1838,7 @@
 
             );
             spyOn(view, "clearTable");
-            spyOn(view,"rerender");
+            spyOn(view, "rerender");
             view.colid = 1;
             view.documentsCount = 11;
             view.renderPagination(3, true);
@@ -1868,23 +1876,23 @@
                 getFilteredDocuments: function () {
 
                 },
-                getPage : function () {
+                getPage: function () {
 
                 },
-                getLastPageNumber : function () {
+                getLastPageNumber: function () {
 
                 },
-                setPage : function () {
+                setPage: function () {
 
                 },
-                getDocuments : function () {
+                getDocuments: function () {
 
                 },
-                size : function () {
+                size: function () {
 
                 },
-                models : [],
-                each : function (cb) {
+                models: [],
+                each: function (cb) {
                     arangoDocsStoreDummy.models.forEach(cb);
                 }
             };
@@ -1902,7 +1910,7 @@
 
             );
             spyOn(view, "clearTable");
-            spyOn(view,"rerender");
+            spyOn(view, "rerender");
             view.colid = 1;
             view.documentsCount = 0;
             view.pageid = "1";
@@ -1940,50 +1948,50 @@
 
         it("cutByResolution with string longer than 1024", function () {
             var string = "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890",
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890",
 
-             resultString = "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "12345678901234567890123456789012345678901234567890" +
-                "123456789012345678901234...";
+                resultString = "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "12345678901234567890123456789012345678901234567890" +
+                    "123456789012345678901234...";
 
             expect(view.cutByResolution(string)).toEqual(view.escaped(resultString));
 
@@ -2061,6 +2069,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
             view.collectionsStore = new window.arangoCollections();
@@ -2069,7 +2078,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'cap',
                 size: 1024,
                 byteSize: 2048
@@ -2118,6 +2127,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(view, "checkboxToValue").andCallFake(
                 function (a) {
                     if (a === "#newGeoJson") {
@@ -2139,7 +2149,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'geo',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 geoJson: "newGeoJson",
@@ -2199,6 +2209,8 @@
 
             };
 
+            view.collectionModel = arangoCollectionsDummy;
+
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
             view.collectionsStore = new window.arangoCollections();
@@ -2207,7 +2219,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'hash',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newHashUnique"
@@ -2259,6 +2271,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
@@ -2268,7 +2281,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'fulltext',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 minLength: 100
@@ -2326,6 +2339,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(true);
@@ -2335,7 +2349,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2392,6 +2406,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(false);
@@ -2402,7 +2417,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2462,6 +2477,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "createIndex").andReturn(
@@ -2473,7 +2489,7 @@
 
             expect(jQueryDummy.val).toHaveBeenCalled();
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
-            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith('coll', {
+            expect(arangoCollectionsDummy.createIndex).toHaveBeenCalledWith({
                 type: 'skiplist',
                 fields: ["1", "2", "3", "4", "5", "6"],
                 unique: "newSkiplistUnique"
@@ -2552,7 +2568,7 @@
                 }
 
             };
-
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(true);
             spyOn(arangoHelper, "arangoError");
@@ -2565,7 +2581,7 @@
 
             expect(window.$).toHaveBeenCalledWith("blub");
             expect(window.$).toHaveBeenCalledWith("#indexDeleteModal");
-            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("coll", "lastId");
+            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("lastId");
             expect(jQueryDummy.parent).toHaveBeenCalled();
             expect(jQueryDummy.modal).toHaveBeenCalledWith('hide');
             expect(jQueryDummy.remove).toHaveBeenCalled();
@@ -2594,6 +2610,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
 
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "deleteIndex").andReturn(false);
@@ -2607,7 +2624,7 @@
 
             expect(window.$).not.toHaveBeenCalledWith("blub");
             expect(window.$).toHaveBeenCalledWith("#indexDeleteModal");
-            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("coll", "lastId");
+            expect(arangoCollectionsDummy.deleteIndex).toHaveBeenCalledWith("lastId");
             expect(jQueryDummy.parent).not.toHaveBeenCalled();
             expect(jQueryDummy.modal).toHaveBeenCalledWith('hide');
             expect(jQueryDummy.remove).not.toHaveBeenCalled();
@@ -2672,6 +2689,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(
@@ -2692,12 +2710,12 @@
                 };
                 list.forEach(callBackWraper);
             };
-            view.collection =  {
-                collectionID : "coll"
+            view.collection = {
+                collectionID: "coll"
             };
             view.getIndex();
 
-            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
+            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith();
             expect(view.index).toEqual({
                 indexes: [
                     {id: "abc/def1", type: 'primary', name: "index1"},
@@ -2748,6 +2766,7 @@
                 }
 
             };
+            view.collectionModel = arangoCollectionsDummy;
             spyOn(arangoHelper, "fixTooltips");
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(undefined);
@@ -2759,12 +2778,12 @@
                 list.forEach(callBackWraper);
             };
 
-            view.collection =  {
-                collectionID : "coll"
+            view.collection = {
+                collectionID: "coll"
             };
             view.getIndex();
 
-            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith("coll", true);
+            expect(arangoCollectionsDummy.getIndex).toHaveBeenCalledWith();
             expect(view.index).toEqual(undefined);
             expect(window.$).not.toHaveBeenCalled();
             expect(jQueryDummy.append).not.toHaveBeenCalled();
@@ -2777,7 +2796,8 @@
             spyOn(view, "drawTable");
             spyOn(view, "renderPagination");
             view.collection = {
-                getDocuments : function () {}
+                getDocuments: function () {
+                }
             };
             spyOn(view.collection, "getDocuments");
 
@@ -2805,15 +2825,26 @@
 
         it("setCollectionId", function () {
             view.collection = {
-                setCollection : function () {},
-                getDocuments : function () {}
+                setCollection: function () {
+                },
+                getDocuments: function () {
+                }
             };
+
+            var arangoCollectionsDummy = {
+                get: function () {
+                }
+
+            };
+            view.collectionsStore = arangoCollectionsDummy;
+            spyOn(arangoCollectionsDummy, "get");
             spyOn(view.collection, "setCollection");
             spyOn(view.collection, "getDocuments");
             spyOn(arangoHelper, "collectionApiType").andReturn("blub");
             view.setCollectionId(1, 2);
             expect(view.collection.setCollection).toHaveBeenCalledWith(1);
             expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(1);
+            expect(arangoCollectionsDummy.get).toHaveBeenCalled();
             expect(view.type).toEqual("blub");
             expect(view.pageid).toEqual(2);
             expect(view.collection.getDocuments).toHaveBeenCalledWith(1, 2);
@@ -2822,13 +2853,15 @@
 
         it("renderPaginationElements", function () {
             view.collection = {
-              getTotal: function() {return 5;}
+                getTotal: function () {
+                    return 5;
+                }
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
             jQueryDummy = {
-                length : 45,
-                html : function () {
+                length: 45,
+                html: function () {
 
                 }
             };
@@ -2850,13 +2883,15 @@
 
         it("renderPaginationElements with total = 0", function () {
             view.collection = {
-                getTotal : function () {return 5;}
+                getTotal: function () {
+                    return 5;
+                }
             };
             spyOn(view.collection, "getTotal").andCallThrough();
 
             jQueryDummy = {
-                length : 0,
-                append : function () {
+                length: 0,
+                append: function () {
 
                 }
             };
@@ -2883,7 +2918,7 @@
         it("firstPage and lastPage", function () {
             spyOn(view, "jumpTo");
             view.collection = {
-                getLastPageNumber : function () {
+                getLastPageNumber: function () {
                     return 3;
                 }
             };
@@ -2893,8 +2928,6 @@
             expect(view.jumpTo).toHaveBeenCalledWith(3);
 
         });
-
-
 
 
     });

@@ -77,7 +77,7 @@ typedef enum {
   TRI_IDX_TYPE_HASH_INDEX,
   TRI_IDX_TYPE_EDGE_INDEX,
   TRI_IDX_TYPE_FULLTEXT_INDEX,
-  TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
+  TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, // DEPRECATED and not functional anymore
   TRI_IDX_TYPE_SKIPLIST_INDEX,
   TRI_IDX_TYPE_BITARRAY_INDEX,
   TRI_IDX_TYPE_CAP_CONSTRAINT
@@ -109,7 +109,8 @@ typedef struct TRI_index_s {
   bool _unique;
   bool _ignoreNull;
 
-  TRI_json_t* (*json) (struct TRI_index_s*);
+  size_t (*memory) (struct TRI_index_s const*);
+  TRI_json_t* (*json) (struct TRI_index_s const*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
   
   // .........................................................................................
@@ -398,8 +399,8 @@ void TRI_CopyFieldsVector (TRI_vector_string_t*,
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t*, 
-                                      TRI_vector_t*);
+char const** TRI_FieldListByPathList (TRI_shaper_t const*, 
+                                      TRI_vector_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -598,6 +599,15 @@ void TRI_DestroyBitarrayIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBitarrayIndex (TRI_index_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index comparator, used by the coordinator to detect if two index
+/// contents are the same
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_CLUSTER
+bool IndexComparator (TRI_json_t const* lhs, TRI_json_t const* rhs);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

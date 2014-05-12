@@ -1,18 +1,121 @@
 <script id="dashboardView.ejs" type="text/template">
-<div class="headerBar">
-  <a class="arangoHeader"><%= header %></a>
-</div>
-<div class="contentDiv">
-	<!--
-  <div id="dashboardHeader" class="headerBar">
-      <a class="arangoHeader">Distribution Charts</a>
-   </div>
-	<div id="distributionChartDiv"></div>
-	-->
-	<div class="lineChartDiv" id="requestStatistics"></div>
-	<div class="headerBar">
-      <a class="arangoHeader">System Resources</a>
+  <% var largeChart = function(name, title) { %>
+    <div class="dashboard-large-chart">
+      <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+        <!-- <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div> -->
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar""><%= title %></div>
+    </div>
+  <% } %>
+
+  <% var mediumChart = function(name, title) { %>
+    <div class="dashboard-medium-chart">
+      <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+        <!-- <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div> -->
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar""><%= title %></div>
+    </div>
+  <% } %>
+
+  <% var smallChart = function(name, title) { %>
+    <div class="dashboard-small-chart">
+      <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart">
+          <svg></svg>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
+    </div>
+  <% } %>
+
+  <% var tendency = function(title, name) { %>
+    <div class="dashboard-tendency-container">
+      <div class="dashboard-tendency-chart">
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">sync</div>
+            <div class="dashboard-figure">
+              <span id="syncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">current</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Current"></span>
+          <% } %>
+          </div>
+        </div>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">async</div>
+            <div class="dashboard-figure">
+              <span id="asyncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">15-min-avg</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Average"></span>
+          <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
+    </div>
+  <% } %>
+
+  <div class="headerBar">
+    <a class="arangoHeader">Request Statistics</a>
   </div>
-  <div class="lineChartDiv" id="systemResources"></div>
-</div>
+  <div class="contentDiv">
+    <div class="dashboard-row">
+      <% largeChart("requestsChart", "Requests per Second") %>
+
+      <% tendency("Request Types", "asyncRequests"); %>
+      <% tendency("Number of Client Connections", "clientConnections"); %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)") %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)") %>
+    </div>
+  </div>
+
+  <div class="dashboard-headerbar headerBar">
+    <a class="arangoHeader">System Resources</a>
+  </div>
+
+  <div class="dashboard-row">
+    <% tendency("Number of threads", "numberOfThreads"); %>
+
+    <div class="dashboard-bar-chart-container dashboard-spacer">
+      <div class="dashboard-bar-chart">
+        <div class="dashboard-bar-chart-title">
+          <div class="percentage"></div>
+          <div class="absolut"></div>
+        </div>
+        <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+          <div id="residentSizeChart">
+            <svg></svg>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"">Resident Size</div>
+    </div>
+
+    <% tendency("Virtual Size in GB", "virtualSize"); %>
+  </div>
+  <div class="dashboard-row">
+    <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+    <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
+  </div>
 </script>

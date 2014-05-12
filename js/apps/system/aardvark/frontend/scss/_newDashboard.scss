@@ -1,84 +1,259 @@
-$dashboard-height: 250px;
-$dashboard-padding: 28px;
-
 %dashboard-chart-box {
   @extend %pull-left;
-  border-left: 1px solid $c-black;
-  margin-left: -1px;
-
+  border-left: 0 solid $c-black;
+	
   &:first-child {
-    border-left: 0;
     margin-left: 0;
   }
 }
 
-.dashboard-interior-chart {
-  @extend %pull-left;
-  height: $dashboard-height - $dashboard-padding;
+.detail-chart {
+  @extend %clear-float;
 }
 
 .dashboard-large-chart {
-  @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height;
-  padding-top: $dashboard-padding;
+  margin-bottom: $dashboard-margin;
+  margin-right: 12px;
+  position: relative;
+
+  .dashboard-large-chart-inner {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    background-color: $c-white;
+    border-left: $dashboard-borderwidth solid $c-e1grey;
+    border-right: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
+    padding-top: $dashboard-padding;
+
+    .dashboard-interior-chart {
+      @extend %pull-left;
+      margin-bottom: 0;
+    }
+
+    .dashboard-large-chart-menu {
+      @extend %clear-float;
+      @include border-radius(2px);
+      border: 0 solid $c-halfsemi-transp;
+      color: $c-halfsemi-transp;
+      cursor: pointer;
+      padding: 0 4px;
+      position: absolute;
+      z-index: 1000;
+    }
+
+    .dashboard-large-chart-menu:hover {
+      color: $c-low-transp;
+    }
+  }
+}
+
+
+.dashboard-small-chart {
+  @extend %pull-left;
+  margin-bottom: $dashboard-margin;
+
+  .dashboard-small-chart-inner {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    background-color: $c-white;
+    border-left: $dashboard-borderwidth solid $c-e1grey;
+    border-right: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
+
+    .dashboard-interior-chart {
+      @extend %pull-left;
+
+      .nv-bar rect {
+        fill-opacity: .15;
+        stroke-opacity: 1;
+        stroke-width: 1px;
+      }
+    }
+  }
 }
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height;
+  background-color: $c-white;
+  border-left: $dashboard-borderwidth solid $c-e1grey;
+  border-right: $dashboard-borderwidth solid $c-e1grey;
+  border-top: $dashboard-borderwidth solid $c-e1grey;
+  margin-bottom: $dashboard-margin;
   padding-top: $dashboard-padding;
+  position: relative;
+
+
+  &:first-child {
+    margin-right: 12px;
+  }
+
+  .dashboard-interior-chart {
+    @extend %pull-left;
+    margin-bottom: 0;
+  }
+  
+  .dashboard-medium-chart-menu {
+    @extend %clear-float;
+    @include border-radius(2px);
+    border: 0 solid $c-halfsemi-transp;
+    color: $c-halfsemi-transp;
+    cursor: pointer;
+    padding: 0 4px;
+    position: absolute;
+    z-index: 1000;
+  }
+
+  .dashboard-medium-chart-menu:hover {
+    color: $c-low-transp;
+  }
+
+  .dashboard-medium-chart-inner {
+    @extend %clear-float;
+  }
 }
 
-.dashboard-small-chart {
+
+.dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height;
-  padding-top: $dashboard-padding;
+  margin-bottom: $dashboard-margin;
+
+  .dashboard-tendency-chart {
+    @extend %clear-float;
+    background-color: $c-white;
+    border-left: 5px solid $c-e1grey;
+    border-right: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
+
+    .dashboard-tendency {
+      @extend %pull-left;
+      background-color: $c-white;
+      margin-top: 5px;
+      padding: 0 8px;
+      
+      &:first-child {
+        border-right: 1px solid $c-e1grey;
+      }
+
+      .dashboard-subtitle-bar {
+        @extend %pull-left;
+        border-bottom: 1px solid $c-e1grey;
+        text-align: right;
+      }
+
+      .dashboard-figure {
+        @extend %pull-left;
+        text-align: center;
+      }
+    }
+  }
 }
 
-.dashboard-tendency-chart {
+.dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %pull-left;
-  height: $dashboard-height + $dashboard-padding;
+  margin-bottom: $dashboard-margin;
+
+  .dashboard-bar-chart {
+    @extend %clear-float;
+    background-color: $c-white;
+    border-left: 5px solid $c-e1grey;
+    border-right: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
+
+    .dashboard-bar-chart-title {
+      @extend %pull-left;
+      margin-top: 5px;
+      padding: 0 8px;
+
+      .percentage {
+        @extend %pull-left;
+        font-weight: 400;
+      }
+
+      .absolut {
+        @extend %pull-left;
+        text-align: right;
+      }
+    }
+
+    .dashboard-bar-chart-chart {
+      @extend %pull-left;
+
+      .nv-bar rect {
+        fill-opacity: .15;
+        stroke-opacity: 1;
+        stroke-width: 1px;
+      }
+    }
+  }
 }
 
 .dashboard-legend {
   @extend %pull-left;
-  height: $dashboard-height;
-  width: $legend-width;
+
+  .dashboard-legend-inner {
+    padding: 0 5px;
+  }
+}
+
+.dashboard-sub-bar {
+  @extend %pull-left;
+  background-color: $c-bar-bg;
+  color: $c-white;
+  height: 24px;
+  line-height: 24px;
+  margin: 0;
+  padding: 0 0 0 6px;
+}
+
+.dashboard-spacer {
+  margin: 0 12px;
+}
+
+.headerBar.dashboard-headerbar {
+  margin: 15px 0 10px;
+}
+
+.modal-chart-detail {
+  @extend %pull-left;
+
+  .modal-body {
+    @extend %pull-left;
+  }
+
+  .modal-dashboard-legend {
+    @extend %pull-left;
+
+    .dashboard-legend-inner {
+      padding-left: 20px;
+      padding-top: 20px;
+    }
+  }
+
+  .modal-inner-detail {
+    @extend %pull-left;
+  }
+}
+
+.dashboard-half-height-legend {
+  @extend %pull-left;
 
   .dashboard-legend-inner {
     padding-top: 20px;
   }
 }
 
-.dashboard-half-height-chart {
-  @extend %clear-float;
-  height: ($dashboard-height + $dashboard-padding) / 2;
-}
-
 .dashboard-title-bar {
   background-color: $c-bar-bg;
-  border: {
-    bottom: 1px;
-    bottom-color: $c-black;
-    left: 1px;
-    left-color: $c-black;
-    right: 1px;
-    right-color: $c-black;
-    style: solid;
-    top: 1px;
-    top-color: $c-black;
-  }
   color: $c-white;
-  font-size: 16px;
-  height: 36px;
-  line-height: 36px;
-  margin-left: -1px;
-  margin-right: -1px;
-  text-align: center;
+  font-size: 14.5px;
+  font-weight: 400;
+  height: 30px;
+  line-height: 30px;
+  padding: 0 5px 0 10px;
 
   .dashboard-half-title-bar {
     @extend %pull-left;
@@ -93,33 +268,17 @@ $dashboard-padding: 28px;
   }
 }
 
-.dashboard-subtitle-bar {
-  @extend %pull-left;
-  @extend %dashboard-chart-box;
-  border-bottom: 1px solid $c-black;
-  font-size: 20px;
-  font-weight: bold;
-  height: 36px;
-  line-height: 36px;
-  text-align: center;
-  width: 50%;
-}
-
-.dashboard-tendency {
-  @extend %pull-left;
-  @extend %dashboard-chart-box;
-  font-size: 25px;
-  height: ($dashboard-height + $dashboard-padding) / 2 - 36px - 36px - 2px;
-  position: relative;
-  text-align: center;
-  top: 15%;
-  width: 50%;
-}
-
 .dashboard-row {
   @extend %clear-float;
-  border: 1px solid $c-black;
-  margin-bottom: 5px;
-  margin-left: -1px;
-  margin-right: -1px;
+  margin-bottom: 0;
+  margin-left: 0;
+  margin-right: 0;
 }
+
+.dygraph-axis-label {
+  &.dygraph-axis-label-y, 
+  &.dygraph-axis-label-x {
+    color: $c-darker-grey;
+  }
+}
+

@@ -92,8 +92,13 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Handle<v8::Context> con
                                                              false);
 
   if (tryCatch.HasCaught()) {
-    TRI_LogV8Exception(&tryCatch);
-    return scope.Close(v8::Undefined());
+    if (tryCatch.CanContinue()) {
+      TRI_LogV8Exception(&tryCatch);
+      return scope.Close(v8::Undefined());
+    }
+    else {
+      return scope.Close(result);
+    }
   }
 
   return scope.Close(result);
@@ -123,8 +128,13 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
                               false);
 
   if (tryCatch.HasCaught()) {
-    TRI_LogV8Exception(&tryCatch);
-    return false;
+    if (tryCatch.CanContinue()) {
+      TRI_LogV8Exception(&tryCatch);
+      return false;
+    }
+    else {
+      return false;
+    }
   }
 
   return true;
@@ -136,7 +146,6 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
 
 bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
   v8::HandleScope scope;
-  v8::TryCatch tryCatch;
 
   if (_directory.empty()) {
     return true;
@@ -145,8 +154,9 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
   vector<string> parts = getDirectoryParts();
 
   bool result = true;
+
   for (size_t i = 0; i < parts.size(); i++) {
-    result &= TRI_ExecuteGlobalJavaScriptDirectory(parts.at(i).c_str());
+    result = result && TRI_ExecuteGlobalJavaScriptDirectory(parts.at(i).c_str());
   }
 
   return result;

@@ -39,7 +39,8 @@ namespace triagens {
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    SimpleHttpResult::SimpleHttpResult () {
+    SimpleHttpResult::SimpleHttpResult () 
+      : _resultBody(TRI_UNKNOWN_MEM_ZONE) {
       clear();
     }
 
@@ -62,7 +63,7 @@ namespace triagens {
       _resultBody.clear();
     }
 
-    stringstream& SimpleHttpResult::getBody () {
+    StringBuffer& SimpleHttpResult::getBody () {
       return _resultBody;
     }
 

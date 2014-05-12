@@ -1252,6 +1252,26 @@ static v8::Handle<v8::Value> JS_StatusServerState (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server state
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetClusterAuthentication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getClusterAuthentication()");
+  }
+
+  std::string auth;
+  if (ServerState::instance()->getRole() == ServerState::ROLE_UNDEFINED) {
+    // Only on dispatchers, otherwise this would be a security risk!
+    auth = ServerState::instance()->getAuthentication();
+  }
+
+  return scope.Close(v8::String::New(auth.c_str(), (int) auth.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare to send a request
 ///
 /// this is used for asynchronous as well as synchronous requests.
@@ -1390,7 +1410,9 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
         v8::Handle<v8::Object> details = v8::Object::New();
         details->Set(v8::String::New("code"), v8::Number::New(res->result->getHttpReturnCode()));
         details->Set(v8::String::New("message"), v8::String::New(res->result->getHttpReturnMessage().c_str()));
-        details->Set(v8::String::New("body"), v8::String::New(res->result->getBody().str().c_str(), (int) res->result->getBody().str().length()));
+        details->Set(v8::String::New("body"), 
+                     v8::String::New(res->result->getBody().c_str(),
+                                     (int) res->result->getBody().length()));
 
         r->Set(v8::String::New("details"), details);
         r->Set(v8g->ErrorMessageKey,
@@ -1832,6 +1854,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "setId", JS_SetIdServerState, true);
   TRI_AddMethodVocbase(rt, "setRole", JS_SetRoleServerState, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusServerState);
+  TRI_AddMethodVocbase(rt, "getClusterAuthentication", JS_GetClusterAuthentication);
 
   v8g->ServerStateTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoServerStateCtor", ft->GetFunction(), true);

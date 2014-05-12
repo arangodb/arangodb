@@ -245,6 +245,7 @@ var modalDialogHelper = modalDialogHelper || {};
         i,
         id = idPre + idPost,
         lastId = 1,
+        buttonTh = document.createElement("th"),
         addLineButton = document.createElement("button"),
         input = document.createElement("input"),
         addNewLine = function(content) {
@@ -252,6 +253,7 @@ var modalDialogHelper = modalDialogHelper || {};
           var innerTr = document.createElement("tr"),
             innerLabelTh = document.createElement("th"),
             innerContentTh = document.createElement("th"),
+            innerButtonTh = document.createElement("th"),
             innerInput = document.createElement("input"),
             removeRow = document.createElement("button"),
             lastItem;
@@ -276,14 +278,15 @@ var modalDialogHelper = modalDialogHelper || {};
             table.removeChild(innerTr);
             rows.splice(rows.indexOf(innerTr), 1 );
           };
-          
-          innerContentTh.appendChild(removeRow);
+          innerButtonTh.appendChild(removeRow);
+          innerTr.appendChild(innerButtonTh);
           rows.push(innerTr);
         };
       input.type = "text";
       input.id = id + "_1";
       contentTh.appendChild(input);
-      contentTh.appendChild(addLineButton);
+      buttonTh.appendChild(addLineButton);
+      tr.appendChild(buttonTh);
       addLineButton.onclick = function() {
         addNewLine();
       };
@@ -309,7 +312,7 @@ var modalDialogHelper = modalDialogHelper || {};
           
       // Set Classnames and attributes.
       div.id = idprefix + "modal";
-      div.className = "modal hide fade";
+      div.className = "modal hide fade createModalDialog";
       div.setAttribute("tabindex", "-1");
       div.setAttribute("role", "dialog");
       div.setAttribute("aria-labelledby", "myModalLabel");

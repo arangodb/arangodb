@@ -27,8 +27,10 @@
 
 #include "V8PeriodicTask.h"
 
+#include "BasicsC/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
+#include "V8/v8-conv.h"
 #include "V8Server/V8PeriodicJob.h"
 #include "VocBase/server.h"
 
@@ -44,29 +46,60 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (const string& name,
+V8PeriodicTask::V8PeriodicTask (string const& id, 
+                                string const& name,
                                 TRI_vocbase_t* vocbase,
                                 ApplicationV8* v8Dealer,
                                 Scheduler* scheduler,
                                 Dispatcher* dispatcher,
                                 double offset,
                                 double period,
-                                const string& module,
-                                const string& func,
-                                const string& parameter)
-  : Task(TRI_NewTickServer(), name),
+                                string const& command,
+                                TRI_json_t* parameters)
+  : Task(id, name),
     PeriodicTask(offset, period),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _dispatcher(dispatcher),
-    _module(module),
-    _func(func),
-    _parameter(parameter) {
+    _command(command),
+    _parameters(parameters) {
+
+  assert(vocbase != 0);
+
+  // increase reference counter for the database used
+  TRI_UseVocBase(_vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+V8PeriodicTask::~V8PeriodicTask () {
+  // decrease reference counter for the database used
+  TRI_ReleaseVocBase(_vocbase);
+
+  if (_parameters != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              PeriodicTask methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+void V8PeriodicTask::getDescription (TRI_json_t* json) {
+  PeriodicTask::getDescription(json);
+
+  TRI_json_t* cmd = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
+
+  TRI_json_t* db = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _vocbase->_name);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles the next tick
@@ -76,10 +109,9 @@ bool V8PeriodicTask::handlePeriod () {
   V8PeriodicJob* job = new V8PeriodicJob(
     _vocbase,
     _v8Dealer,
-    _module,
-    _func,
-    _parameter);
-
+    "(function (params) { " + _command + " } )(params);",
+    _parameters);
+    
   _dispatcher->addJob(job);
 
   return true;

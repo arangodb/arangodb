@@ -434,6 +434,11 @@ function COMPILE_REGEX (regex, modifiers) {
         pattern += '\\' + c;
       }
       else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          pattern += '\\\\';
+        }
+
         // literal character
         pattern += c;
       }
@@ -441,7 +446,7 @@ function COMPILE_REGEX (regex, modifiers) {
       escaped = false;
     }
   }
- 
+        
   return new RegExp('^' + pattern + '$', modifiers);
 }
 
@@ -2082,7 +2087,7 @@ function STRING_LIKE (value, regex, caseInsensitive) {
   if (RegexCache[modifiers][regex] === undefined) {
     RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
   }
-  
+        
   try {
     return RegexCache[modifiers][regex].test(value);
   }
@@ -2917,6 +2922,41 @@ function INTERSECTION () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flatten a list of lists
+////////////////////////////////////////////////////////////////////////////////
+
+function FLATTEN (values, maxDepth, depth) {
+  "use strict";
+
+  LIST(values);
+
+  if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL) {
+    maxDepth = 1;
+  }
+  if (TYPEWEIGHT(depth) === TYPEWEIGHT_NULL) {
+    depth = 0;
+  }
+
+  var value, result = [ ];
+  var i, n;
+  var p = function(v) {
+    result.push(v);
+  };
+  
+  for (i = 0, n = values.length; i < n; ++i) {
+    value = values[i];
+    if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+      FLATTEN(value, maxDepth, depth + 1).forEach(p);
+    }
+    else {
+      result.push(value);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3670,7 +3710,36 @@ function SLEEP (duration) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
   }
 
-  INTERNAL.wait(duration);
+  INTERNAL.sleep(duration);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current user
+/// note: this might be null if the query is not executed in a context that
+/// has a user
+////////////////////////////////////////////////////////////////////////////////
+
+function CURRENT_USER () {
+  "use strict";
+
+  var req = INTERNAL.getCurrentRequest();
+
+  if (typeof req === 'object') {
+    return req.user;
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current database name
+/// has a user
+////////////////////////////////////////////////////////////////////////////////
+
+function CURRENT_DATABASE () {
+  "use strict";
+
+  return INTERNAL.db._name();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3688,6 +3757,238 @@ function FAIL (message) {
   }
 
   THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    date functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for date creation
+////////////////////////////////////////////////////////////////////////////////
+
+function MAKE_DATE (args, func) {
+  "use strict";
+   
+  var weight;
+  var i, n = args.length;
+
+  if (n === 1) {
+    // called with one argument only
+    weight = TYPEWEIGHT(args[0]);
+
+    if (weight !== TYPEWEIGHT_NUMBER) {
+      if (weight !== TYPEWEIGHT_STRING) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+      }
+
+      // argument is a string
+
+      // append zulu time specifier if no other present
+      if (! args[0].match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
+          (args[0].match(/-\d+(:\d+)?$/) && ! args[0].match(/[tT ]/))) {
+        args[0] += 'Z';
+      }
+    }
+
+    return new Date(args[0]);
+  }
+
+  // called with more than one argument
+
+  if (n < 3) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, func);
+  }
+
+  for (i = 0; i < n; ++i) {
+    weight = TYPEWEIGHT(args[i]);
+
+    if (weight === TYPEWEIGHT_NULL) {
+      args[i] = 0;
+    }
+    else {
+      if (weight === TYPEWEIGHT_STRING) {
+        args[i] = parseInt(args[i], 10);
+      }
+      else if (weight !== TYPEWEIGHT_NUMBER) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+      }
+
+      if (args[i] < 0) {
+        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
+      }
+    
+      if (i === 1) {
+        // an exception for handling months: months are 0-based in JavaScript,
+        // but 1-based in AQL
+        args[i]--;
+      }
+    }
+  }
+
+  return new Date(Date.UTC.apply(null, args));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of milliseconds since the Unix epoch
+///
+/// this function is evaluated on every call
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_NOW () {
+  "use strict";
+
+  return Date.now();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the timestamp of the date passed (in milliseconds)
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_TIMESTAMP () {
+  "use strict";
+
+  try {
+    return MAKE_DATE(arguments, "DATE_TIMESTAMP").getTime();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO string representation of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_ISO8601 () {
+  "use strict";
+  
+  try {
+    return MAKE_DATE(arguments, "DATE_ISO8601").toISOString();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_DAYOFWEEK (value) {
+  "use strict";
+
+  try {
+    return MAKE_DATE([ value ], "DATE_DAYOFWEEK").getUTCDay();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the year of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_YEAR (value) {
+  "use strict";
+  
+  try {
+    return MAKE_DATE([ value ], "DATE_YEAR").getUTCFullYear();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the month of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_MONTH (value) {
+  "use strict";
+  
+  try {
+    return MAKE_DATE([ value ], "DATE_MONTH").getUTCMonth() + 1;
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the day of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_DAY (value) {
+  "use strict";
+  
+  try {
+    return MAKE_DATE([ value ], "DATE_DAY").getUTCDate();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the hours of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_HOUR (value) {
+  "use strict";
+
+  try {
+    return MAKE_DATE([ value ], "DATE_HOUR").getUTCHours();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the minutes of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_MINUTE (value) {
+  "use strict";
+
+  try {
+    return MAKE_DATE([ value ], "DATE_MINUTE").getUTCMinutes();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the seconds of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_SECOND (value) {
+  "use strict";
+
+  try {
+    return MAKE_DATE([ value ], "DATE_SECOND").getUTCSeconds();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the milliseconds of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_MILLISECOND (value) {
+  "use strict";
+
+  try {
+    return MAKE_DATE([ value ], "DATE_MILLISECOND").getUTCMilliseconds();
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -3947,13 +4248,23 @@ function TRAVERSAL_FUNC (func,
                          direction, 
                          params) {
   "use strict";
+  
+  if (startVertex === 'object' && startVertex.hasOwnProperty('_id')) {
+    startVertex = startVertex._id;
+  }
 
   if (startVertex.indexOf('/') === -1) {
     startVertex = vertexCollection + '/' + startVertex;
   }
   
-  if (endVertex !== undefined && endVertex.indexOf('/') === -1) {
-    endVertex = vertexCollection + '/' + endVertex;
+  if (endVertex !== undefined) {
+    if (endVertex === 'object' && endVertex.hasOwnProperty('_id')) {
+      endVertex = endVertex._id;
+    }
+  
+    if (endVertex.indexOf('/') === -1) {
+      endVertex = vertexCollection + '/' + endVertex;
+    }
   }
 
   vertexCollection = COLLECTION(vertexCollection);
@@ -4203,6 +4514,10 @@ function GRAPH_NEIGHBORS (vertexCollection,
 
   var c = COLLECTION(vertexCollection);
 
+  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
+    vertex = vertex._id;
+  }
+
   if (vertex.indexOf('/') === -1) {
     vertex = vertexCollection + '/' + vertex;
   }
@@ -4331,6 +4646,7 @@ exports.UNION_DISTINCT = UNION_DISTINCT;
 exports.SLICE = SLICE;
 exports.MINUS = MINUS;
 exports.INTERSECTION = INTERSECTION;
+exports.FLATTEN = FLATTEN;
 exports.MAX = MAX;
 exports.MIN = MIN;
 exports.SUM = SUM;
@@ -4363,7 +4679,20 @@ exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;
+exports.CURRENT_DATABASE = CURRENT_DATABASE;
+exports.CURRENT_USER = CURRENT_USER;
 exports.FAIL = FAIL;
+exports.DATE_NOW = DATE_NOW;
+exports.DATE_TIMESTAMP = DATE_TIMESTAMP;
+exports.DATE_ISO8601 = DATE_ISO8601;
+exports.DATE_DAYOFWEEK = DATE_DAYOFWEEK;
+exports.DATE_YEAR = DATE_YEAR;
+exports.DATE_MONTH = DATE_MONTH;
+exports.DATE_DAY = DATE_DAY;
+exports.DATE_HOUR = DATE_HOUR;
+exports.DATE_MINUTE = DATE_MINUTE;
+exports.DATE_SECOND = DATE_SECOND;
+exports.DATE_MILLISECOND = DATE_MILLISECOND;
 
 exports.reload = reloadUserFunctions;
 

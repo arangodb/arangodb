@@ -73,18 +73,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief we'll store deprecated config option values in here
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string DeprecatedPath;
-   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we'll store deprecated config option values in here
-////////////////////////////////////////////////////////////////////////////////
-
-static string DeprecatedPackages;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief command prompt
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -135,10 +123,16 @@ static JSLoader StartupLoader;
 static string StartupModules = "";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path for JavaScript bootstrap files
+/// @brief path for JavaScript files
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief put current directory into module path
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UseCurrentModulePath = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief javascript files to execute
@@ -437,10 +431,8 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("javascript.gc-interval", &GcInterval, "JavaScript request-based garbage collection interval (each x commands)")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("javascript.current-module-directory", &UseCurrentModulePath, "add current directory to module path")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
-    // deprecated options
-    ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
-    ("javascript.package-path", &DeprecatedPackages, "one or more directories separated by semi-colons (deprecated)")
   ;
 
 #ifdef _WIN32
@@ -449,15 +441,9 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   ;
 #endif
   
-  ProgramOptionsDescription deprecatedOptions("DEPRECATED options");
-  deprecatedOptions
-    ("max-upload-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
-  ;
-
   description
     ("chunk-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("prompt", &Prompt, "command prompt")
-    (deprecatedOptions, true)
     (javascript, false)
   ;
 
@@ -491,6 +477,10 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   StartupModules = StartupPath + TRI_DIR_SEPARATOR_STR + "client" + TRI_DIR_SEPARATOR_STR + "modules;" + 
                    StartupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" + 
                    StartupPath + TRI_DIR_SEPARATOR_STR + "node"; 
+
+  if (UseCurrentModulePath) {
+    StartupModules += ";" + FileUtils::currentDirectory();
+  }
 
   // turn on paging automatically if "pager" option is set
   if (options.has("pager") && ! options.has("use-pager")) {
@@ -1288,7 +1278,9 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
     TRI_V8_EXCEPTION_USAGE(scope, "setDatabaseName(<name>)");
   }
 
-  connection->setDatabaseName(TRI_ObjectToString(argv[0]));
+  string const dbName = TRI_ObjectToString(argv[0]);
+  connection->setDatabaseName(dbName);
+  BaseClient.setDatabaseName(dbName);
 
   return scope.Close(v8::True());
 }

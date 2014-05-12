@@ -7,10 +7,10 @@ AQL Examples {#AqlExamples}
 Simple queries {#AqlExamplesSimple}
 ===================================
 
-This page contains some examples for how to write queries in AQL. For better
-understandability, the query results are also included directly below each query.
+This page contains some examples how to write queries in AQL. For better
+understandability the query results are also included directly below each query.
 
-A query that returns a string value. the result string is contained in a list
+Following is a query that returns a string value. The result string is contained in a list
 because the result of every valid query is a list:
 
     RETURN "this will be returned"
@@ -20,7 +20,7 @@ because the result of every valid query is a list:
     ]
 
 
-Here's a query that creates the cross products of two lists, and runs a projection 
+Here is a query that creates the cross products of two lists and runs a projection 
 on it, using a few of AQL's built-in functions:
 
     FOR year in [ 2011, 2012, 2013 ]
@@ -134,11 +134,11 @@ Things to consider when running queries on collections
 Note that all documents created in the two collections will automatically get the
 following server-generated attributes:
 
-`_id`: a unique id, consisting of collection name and a server-side sequence value
+`_id`: An unique id, consisting of collection name and a server-side sequence value
 
-`_key`: the server sequence value
+`_key`: The server sequence value
 
-`_rev`: the document's revision id
+`_rev`: The document's revision id
 
 
 Whenever you run queries on the documents in the two collections, don't be surprised if
@@ -147,7 +147,7 @@ these additional attributes are returned as well.
 Please also note that with real-world data, you might want to create additional
 indexes on the data (left out here for brevity). Adding indexes on attributes that are
 used in `FILTER` statements may considerably speed up queries. Furthermore, instead of
-using attributes such as `id`, `from`, and `to`, you might want to use the built-in
+using attributes such as `id`, `from` and `to`, you might want to use the built-in
 `_id`, `_from` and `to` attributes. Finally, edge collections provide a nice way of
 establishing references / links between documents. These features have been left out here 
 for brevity as well.
@@ -159,7 +159,7 @@ Projections and Filters {#AqlExamplesProjection}
 Returning unaltered documents
 -----------------------------
 
-To return 3 complete documents from collection `users`, the following query can be used:
+To return three complete documents from collection `users`, the following query can be used:
 
     FOR u IN users 
       LIMIT 0, 3
@@ -205,7 +205,7 @@ if no `SORT` clause is used, and you should not rely on the order in such querie
 Projections
 -----------
 
-To return a projection from the collection `users`, use a modified `RETURN` instruction:
+To return a projection from the collection `users` use a modified `RETURN` instruction:
 
     FOR u IN users 
       LIMIT 0, 3
@@ -291,7 +291,7 @@ Relationships are established by using the `from` and `to` attributes in the
 Join tuples
 -----------
 
-We'll start with an SQL-ish result set and return each tuple (user name, friend id) 
+We'll start with a SQL-ish result set and return each tuple (user name, friend id) 
 separately. The AQL query to generate such result is:
 
     FOR u IN users 
@@ -344,7 +344,7 @@ Horizontal lists
 
 Note that in the above result, a user might be returned multiple times. This is the
 SQL way of returning data. If this is not desired, the friends' ids of each user
-can be returned in a horizontal list. This will each user at most once.
+can be returned in a horizontal list. This will return each user at most once.
 
 The AQL query for doing so is:
 
@@ -390,7 +390,7 @@ The AQL query for doing so is:
       } 
     ]
 
-In this query, we're still iterating over the users in the `users` collection, 
+In this query we are still iterating over the users in the `users` collection 
 and for each matching user we are executing a sub-query to create the matching
 list of related users.
 
@@ -618,11 +618,11 @@ the `INTO` clause of a `COLLECT` statement:
 
 We have used the function `LENGTH` (returns the length of a list) here. This is the
 equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`.
-In addition to `LENGTH`, AQL also provides `MAX`, `MIN`, `SUM`, and `AVERAGE` as 
+In addition to `LENGTH` AQL also provides `MAX`, `MIN`, `SUM` and `AVERAGE` as 
 basic aggregation functions.
 
-In AQL, all aggregation functions can be run on lists only. If an aggregation function
-is run on anything that is not a list, an error will be thrown and the query will fail.
+In AQL all aggregation functions can be run on lists only. If an aggregation function
+is run on anything that is not a list, an error will be occure and the query will fail.
 
 Post-filtering aggregated data ("Having")
 -----------------------------------------

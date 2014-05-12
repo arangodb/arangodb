@@ -170,6 +170,7 @@
 
 .output-toolbar {
   border-color: $c-query-output-border;
+  border-top: 0;
   position: relative;
   width: auto;
 
@@ -194,6 +195,8 @@
 }
 
 .editor-label {
+  background-color: #ddd;
+  height: 1px;
   width: 100%;
 
   h6 {
@@ -248,6 +251,16 @@
   z-index: 9999 !important;
 }
 
+#queryContent {
+  .arango-tab a {
+    border-bottom-color: #ddd;
+  }
+
+  .arango-tab .active {
+    border-bottom-color: #fff !important;
+  }
+}
+
 .query-div {
   display: none;
 
@@ -258,5 +271,47 @@
   .icon_arangodb {
     cursor: pointer;
     margin-bottom: 5px;
+  }
+
+  .arango-table {
+    max-width: 100%;
+    table-layout: fixed;
+    width: 100%;
+
+    tbody {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    tr {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .table-cell0 {
+      cursor: pointer;
+      min-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 20%;
+    }
+
+    .table-cell1 {
+      cursor: pointer;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 73%;
+    }
+
+    .table-cell2 {
+      max-width: 40px;
+      min-width: 40px;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 40px;
+    }
   }
 }

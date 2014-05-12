@@ -345,7 +345,7 @@
       'use strict';
 
       base = normalize(base + "/");
-      var path = normalizeArray(relative.split(/[\\\/]+/), false);
+      var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
 
       return base + path;
     };
@@ -355,7 +355,8 @@
       'use strict';
 
       base = normalize(base + "/");
-      var path = normalizeArray(relative.split("/"), false);
+      var path = normalizeArray(relative.split("/"), false).join("/");
+      base = normalize(base + "/");
 
       return base + path;
     };

@@ -1,6 +1,48 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* added server-side periodic task management functions:
+
+  - require("org/arangodb/tasks").register(): registers a periodic task
+  - require("org/arangodb/tasks").unregister(): unregisters and removes a 
+    periodic task
+  - require("org/arangodb/tasks").get(): retrieves a specific tasks or all
+    existing tasks
+
+  the previous undocumented function `internal.definePeriodic` is now
+  deprecated and will be removed in a future release.
+
+* decrease the size of some seldomly used system collections on creation. 
+
+  This will make these collections use less disk space and mapped memory.
+
+* added AQL date functions
+
+* added AQL FLATTEN() and FLATTEN_RECURSIVE() list functions
+
+* added index memory statistics to `db.<collection>.figures()` function
+
+  The `figures` function will now return a sub-document `indexes`, which lists
+  the number of indexes in the `count` sub-attribute, and the total memory
+  usage of the indexes in bytes in the `size` sub-attribute.
+
+* added AQL CURRENT_DATABASE() function
+
+  This function returns the current database's name.
+
+* added AQL CURRENT_USER() function
+
+  This function returns the current user from an AQL query. The current user is the
+  username that was specified in the `Authorization` HTTP header of the request. If
+  authentication is turned off or the query was executed outside a request context,
+  the function will return `null`.
+
+* fixed issue #796: Searching with newline chars broken?
+
+  fixed slightly different handling of backslash escape characters in a few
+  AQL functions. Now handling of escape sequences should be consistent, and 
+  searching for newline characters should work the same everywhere
+
 * added OpenSSL version check for configure
 
   It will report all OpenSSL versions < 1.0.1g as being too old.
@@ -74,8 +116,81 @@ v2.1.0 (XXXX-XX-XX)
 
 * export the sort attribute for graph traversals to the HTTP interface
 
+* add support for arangodump/arangorestore for clusters
 
-v2.0.2 (XXXX-XX-XX)
+
+v2.0.8 (XXXX-XX-XX)
+-------------------
+
+* fixed timeout overflows on 32 bit systems
+
+  this bug has led to problems when select was called with a high timeout
+  value (2000+ seconds) on 32bit systems that don't have a forgiving select
+  implementation. when the call was made on these systems, select failed
+  so no data would be read or sent over the connection
+
+  this might have affected some cluster-internal operations.
+
+* fixed ETCD issues on 32 bit systems
+
+  ETCD was non-functional on 32 bit systems at all. The first call to the
+  watch API crashed it. This was because atomic operations worked on data
+  structures that were not properly aligned on 32 bit systems. 
+
+* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
+  value when called the 2nd time after a .save to the edge collection
+
+
+v2.0.7 (2014-05-05)
+-------------------
+
+* issue #839: Foxx Manager missing "unfetch"
+
+* fixed a race condition at startup
+
+  this fixes undefined behavior in case the logger was involved directly at 
+  startup, before the logger initialization code was called. This should have
+  occurred only for code that was executed before the invocation of main(), 
+  e.g. during ctor calls of statically defined objects.
+
+
+v2.0.6 (2014-04-22)
+-------------------
+
+* fixed issue #835: arangosh doesn't show correct database name
+
+
+
+v2.0.5 (2014-04-21)
+-------------------
+
+* Fixed a caching problem in IE JS Shell
+
+* added cancelation for async jobs
+
+* upgraded to new gyp for V8
+
+* new Windows installer
+
+
+v2.0.4 (2014-04-14)
+-------------------
+
+* fixed cluster authentication front-end issues for Firefox and IE, there are
+  still problems with Chrome
+
+
+v2.0.3 (2014-04-14)
+-------------------
+
+* fixed AQL optimizer bug
+
+* fixed front-end issues
+
+* added password change dialog
+
+
+v2.0.2 (2014-04-06)
 -------------------
 
 * during cluster startup, do not log (somewhat expected) connection errors with
@@ -90,7 +205,7 @@ v2.0.2 (XXXX-XX-XX)
   cluster later
 
 
-v2.0.1 (XXXX-XX-XX)
+v2.0.1 (2014-03-31)
 -------------------
 
 * make ArangoDB not send back a `WWW-Authenticate` header to a client in case the
@@ -120,6 +235,8 @@ v2.0.1 (XXXX-XX-XX)
   some Foxx HTTP responses
 
 * fixed several bugs in web interface dashboard
+
+* fixed issue #783: coffee script not working in manifest file
 
 * fixed issue #783: coffee script not working in manifest file
 
@@ -367,7 +484,13 @@ v2.0.0-rc1 (2014-02-28)
 * added collection status "loading"
 
 
-v1.4.15 (XXXX-XX-XX)
+v1.4.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #826: Replication fails when a collection's configuration changes
+
+
+v1.4.15 (2014-04-19)
 --------------------
 
 * bugfix for AQL query optimiser

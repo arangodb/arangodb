@@ -40,8 +40,7 @@
 /// @brief Select a node height randomly
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TRI_random_height (void)
-{
+static int RandomHeight (void) {
   uint32_t r;
   int height = 1;
   int count;
@@ -60,18 +59,20 @@ static int TRI_random_height (void)
 /// random height is taken.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_node_t* TRI_SkipListAllocNode (TRI_skiplist_t* sl, 
-                                                   int height) {
+static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl, 
+                                               int height) {
   TRI_skiplist_node_t* new;
   new = (TRI_skiplist_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                                             sizeof(TRI_skiplist_node_t),
                                             false);
-  if (NULL == new) return new;
+  if (NULL == new) {
+    return new;
+  }
 
   new->doc = NULL;
 
   if (0 == height) {
-    new->height = TRI_random_height();
+    new->height = RandomHeight();
   }
   else {
     new->height = height;
@@ -79,23 +80,31 @@ static TRI_skiplist_node_t* TRI_SkipListAllocNode (TRI_skiplist_t* sl,
 
   new->next = (TRI_skiplist_node_t**) 
               TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                           sizeof(TRI_skiplist_node_t*)*new->height,
+                           sizeof(TRI_skiplist_node_t*) * new->height,
                            true);
   if (NULL == new->next) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,new);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, new);
     return NULL;
   }
+
+  sl->_memoryUsed += sizeof(TRI_skiplist_node_t) + 
+                     sizeof(TRI_skiplist_node_t*) * new->height;
+
   return new;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free function for a node.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TRI_SkipListFreeNode (TRI_skiplist_node_t* node) {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE,node->next);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE,node);
+static void SkipListFreeNode (TRI_skiplist_t* sl,
+                              TRI_skiplist_node_t* node) {
+  // update memory usage
+  sl->_memoryUsed -= sizeof(TRI_skiplist_node_t) + 
+                     sizeof(TRI_skiplist_node_t*) * node->height;
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node->next);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
 }
 
 //
@@ -272,16 +281,22 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
   TRI_skiplist_t* sl;
 
   sl = (TRI_skiplist_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                      sizeof(TRI_skiplist_t),false);
+                                      sizeof(TRI_skiplist_t), false);
   if (NULL == sl) {
     return NULL;
   }
 
-  sl->start = TRI_SkipListAllocNode(sl,TRI_SKIPLIST_MAX_HEIGHT);
+  // set initial memory usage
+  sl->_memoryUsed = sizeof(TRI_skiplist_t);
+
+  sl->start = SkipListAllocNode(sl, TRI_SKIPLIST_MAX_HEIGHT);
+
   if (NULL == sl->start) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
     return NULL;
   }
+  
+
   sl->start->height = 1;
   sl->start->next[0] = NULL;
 
@@ -294,7 +309,6 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
 
   return sl;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skiplist and all its documents
@@ -311,10 +325,11 @@ void TRI_FreeSkipList (TRI_skiplist_t* sl) {
       sl->free(p->doc);
     }
     next = p->next[0];
-    TRI_SkipListFreeNode(p);
+    SkipListFreeNode(sl, p);
     p = next;
   }
-  TRI_SkipListFreeNode(sl->start);
+
+  SkipListFreeNode(sl, sl->start);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
 }
 
@@ -374,7 +389,8 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
     }
   }
 
-  new = TRI_SkipListAllocNode(sl,0);
+  new = SkipListAllocNode(sl, 0);
+
   if (NULL == new) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -403,7 +419,6 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
 
   return TRI_ERROR_NO_ERROR;
 }
- 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a skiplist
@@ -443,7 +458,7 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
       pos[lev]->next[lev] = next->next[lev];
   }
 
-  TRI_SkipListFreeNode(next);
+  SkipListFreeNode(sl, next);
 
   sl->nrUsed--;
 
@@ -454,10 +469,17 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
 /// @brief returns the number of entries in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t *sl) {
+uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t const* sl) {
   return sl->nrUsed;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_SkipListMemoryUsage (TRI_skiplist_t const* sl) {
+  return sl->_memoryUsed;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up doc in the skiplist using the proper order
@@ -482,7 +504,6 @@ TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
   }
   return next;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less to doc in the preorder
@@ -539,7 +560,6 @@ TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key) {
   // if there is none. doc is in the skiplist iff next != NULL and cmp
   // == 0 and in this case it is stored at the node next.
   return pos[0];
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,5 +581,4 @@ TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl,
   // NULL and cmp == 0 and in this case it is stored at the node next.
   return pos[0];
 }
-
 

@@ -95,7 +95,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
 
   if (region == NULL) {
     // OOM
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return;
   }
@@ -111,7 +111,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, region);
 
-  TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer);
+  TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_PARSE, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
   assert(context);
 
   if (value == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
 
     return false;
   }

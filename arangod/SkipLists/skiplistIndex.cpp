@@ -214,7 +214,6 @@ static int CmpKeyElm (void* sli,
                       void* right) {
   TRI_skiplist_index_key_t* leftKey = static_cast<TRI_skiplist_index_key_t*>(left);
   TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
-  int compareResult;
   TRI_shaper_t* shaper;
   size_t j;
 
@@ -228,9 +227,8 @@ static int CmpKeyElm (void* sli,
   // attributes, therefore we only run the following loop to
   // leftKey->_numFields.
   for (j = 0;  j < leftKey->_numFields;  j++) {
-    compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement,
-                                      j, shaper);
-
+    int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
+    
     if (compareResult != 0) {
       return compareResult;
     }
@@ -243,8 +241,7 @@ static int CmpKeyElm (void* sli,
 /// @brief frees an element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeElm (void* e)
-{
+static void FreeElm (void* e) {
   TRI_skiplist_index_element_t* element = static_cast<TRI_skiplist_index_element_t*>(e);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
@@ -311,7 +308,6 @@ static int SkiplistIndex_freeMethodCall (void* theIndex,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Attempts to determine if there is a next document within an 
 /// interval - without advancing the iterator.
@@ -362,7 +358,6 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Jumps forwards by jumpSize and returns the document
@@ -418,8 +413,6 @@ static TRI_skiplist_index_element_t* SkiplistIteration(
   return (TRI_skiplist_index_element_t*) (iterator->_cursor->doc);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default callback for jumping forward by 1
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,7 +421,6 @@ static TRI_skiplist_index_element_t* SkiplistNextIterationCallback(
                         TRI_skiplist_iterator_t* iterator) {
   return SkiplistIteration(iterator,1);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default callback for jumping forward by jumpSize docs
@@ -445,17 +437,12 @@ static TRI_skiplist_index_element_t* SkiplistNextsIterationCallback(
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup skiplistIndex
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Assigns a static function call to a function pointer used by
 /// the Query Engine, seems not to be used at this stage...
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex_assignMethod(void* methodHandle, 
-                               TRI_index_method_assignment_type_e methodType) {
+int SkiplistIndex_assignMethod (void* methodHandle, 
+                                TRI_index_method_assignment_type_e methodType) {
   switch (methodType) {
 
     case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
@@ -487,7 +474,6 @@ int SkiplistIndex_assignMethod(void* methodHandle,
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a skiplist iterator
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +498,6 @@ void SkiplistIndex_destroy (SkiplistIndex* slIndex) {
   slIndex->skiplist = NULL;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,13 +509,6 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
   SkiplistIndex_destroy(slIndex);
   TRI_Free(TRI_CORE_MEM_ZONE, slIndex);
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -560,15 +538,13 @@ SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
   skiplistIndex->sparse = sparse;
   skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm,CmpKeyElm,skiplistIndex,
                                              FreeElm,unique);
-
   if (skiplistIndex->skiplist == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }
-
+  
   return skiplistIndex;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Locates one or more ranges within the skiplist and returns iterator
@@ -627,7 +603,6 @@ static bool skiplistIndex_findHelperIntervalValid(
   // Since we know that the nodes are not neighbours, we can guarantee
   // at least one document in the interval.
 } 
-
 
 static bool skiplistIndex_findHelperIntervalIntersectionValid (
                     SkiplistIndex* skiplistIndex,
@@ -704,10 +679,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
   TRI_relation_index_operator_t*    relationOperator;
   TRI_logical_index_operator_t*     logicalOperator;
   TRI_skiplist_iterator_interval_t  interval;
-  TRI_skiplist_iterator_interval_t* tempLeftInterval;
-  TRI_skiplist_iterator_interval_t* tempRightInterval;
   TRI_skiplist_node_t*              temp;
-  size_t i, j;
 
   TRI_InitVector(&(leftResult), TRI_UNKNOWN_MEM_ZONE, 
                  sizeof(TRI_skiplist_iterator_interval_t));
@@ -760,8 +732,11 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       SkiplistIndex_findHelper(skiplistIndex,shapeList,
                                logicalOperator->_right,&rightResult);
 
-      for (i = 0; i < leftResult._length; ++i) {
-        for (j = 0; j < rightResult._length; ++j) {
+      for (size_t i = 0; i < leftResult._length; ++i) {
+        for (size_t j = 0; j < rightResult._length; ++j) {
+          TRI_skiplist_iterator_interval_t* tempLeftInterval;
+          TRI_skiplist_iterator_interval_t* tempRightInterval;
+
           tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*) 
                                (TRI_AtVector(&leftResult, i));    
           tempRightInterval =  (TRI_skiplist_iterator_interval_t*) 
@@ -954,8 +929,16 @@ int SkiplistIndex_remove (SkiplistIndex* skiplistIndex,
 /// @brief returns the number of elements in the skip list index
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t SkiplistIndex_getNrUsed(SkiplistIndex* skiplistIndex) {
+uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
   return TRI_SkipListGetNrUsed(skiplistIndex->skiplist);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the memory used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+size_t SkiplistIndex_memoryUsage (SkiplistIndex const* skiplistIndex) {
+  return sizeof(SkiplistIndex) + TRI_SkipListMemoryUsage(skiplistIndex->skiplist);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
