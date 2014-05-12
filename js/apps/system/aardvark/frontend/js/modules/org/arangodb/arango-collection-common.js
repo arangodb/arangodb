@@ -726,7 +726,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ///
 /// @EXAMPLES
 ///
-/// To find all documents which contain the terms @LIT{foo} and @LIT{bar}:
+/// To find all documents which contain the terms @LIT{text} and @LIT{word}:
 ///
 /// @TINYEXAMPLE{simple-query-fulltext,complete match query}
 ////////////////////////////////////////////////////////////////////////////////
