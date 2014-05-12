@@ -24,6 +24,13 @@ result to the client. The client must wait for the server's response before it c
 send additional requests over the connection. For clients that are single-threaded
 or not event-driven, waiting for the full server response may be non-optimal.
 
+Furthermore, please note that even if the client closes the HTTP
+connection, the request running on the server will still continue until
+it is complete and only then notice that the client no longer listens.
+Thus closing the connection does not help to abort a long running query!
+See below under @ref HttpJobAsync and @ref HttpJobPutCancel for details.
+
+
 Fire and Forget {#HttpJobFireForget}
 ------------------------------------
 
@@ -50,6 +57,11 @@ The maximum number of queued tasks is determined by the startup option
 `-scheduler.maximal-queue-size`. If more than this number of tasks are already queued,
 the server will reject the request with an HTTP 500 error.
 
+Finally, please note that it is not possible to cancel such a
+non-blocking request after the fact. If you need to cancel requests,
+use @ref HttpJobAsync and @ref HttpJobPutCancel below.
+
+
 Async Execution and later Result Retrieval {#HttpJobAsync}
 ----------------------------------------------------------
 
@@ -64,7 +76,8 @@ Clients can ask the ArangoDB server via the async jobs API which results are
 ready for retrieval, and which are not. Clients can also use the async jobs API to
 retrieve the original results of an already executed async job by passing it the
 originally returned job id. The server will then return the job result as if the job was 
-executed normally.
+executed normally. Furthermore, clients can cancel running async jobs by
+their job id, see @ref HttpJobPutCancel below.
 
 ArangoDB will keep all results of jobs initiated with the `x-arango-async: store` 
 header. Results are removed from the server only if a client explicitly asks the
@@ -80,6 +93,30 @@ from time to time.
 
 The job queue and the results are kept in memory only on the server, so they might be
 lost in case of a crash.
+
+Cancelling asynchronous jobs {#HttpJobCancel}
+---------------------------------------------
+
+As mentioned above it is possible to cancel an asynchronously running
+job using its job ID. This is done with a PUT request as described in
+@ref HttpJobPutCancel. 
+
+However, a few words of explanation about what happens behind the
+scenes are in order. Firstly, a running async query can internally be
+executed by C++ code or by JavaScript code. For example CRUD operations
+are executed directly in C++, whereas AQL queries and transactions
+are executed by JavaScript code. The job cancellation only works for
+JavaScript code, since the mechanism used is simply to trigger an
+uncatchable exception in the JavaScript thread, which will be caught
+on the C++ level, which in turn leads to the cancellation of the job.
+No result can be retrieved later, since all data about the request is
+discarded.
+
+If you cancel a job running on a coordinator of a cluster (Sharding),
+then only the code running on the coordinator is stopped, there may
+remain tasks within the cluster which have already been distributed to
+the DBservers and it is currently not possible to cancel them as well.
+
 
 Async Execution and Authentication {#HttpJobOrder}
 ==================================================
@@ -227,6 +264,30 @@ is returned if no `job-id` was specified in the request. In this case, no
 @RESTRETURNCODE{404}
 is returned if the job was not found or already deleted or fetched from the job
 result list. In this case, no `x-arango-async-id` HTTP header will be returned.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestJobHandlerPutCancel}
+    var url = "/_api/cursor";
+    var body = '{"query": "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42"}';
+
+    var response = logCurlRequest('POST', url, body, { "x-arango-async": "store" });
+
+    assert(response.code == 202);
+    logRawResponse(response);
+
+    var id = response.headers['x-arango-async-id'];
+    require("internal").wait(1);
+
+    response = logCurlRequest('GET', "/_api/job/pending", "", {});
+    logRawResponse(response);
+
+    response = logCurlRequest('PUT', "/_api/job/"+id+"/cancel", "", {});
+    logRawResponse(response);
+
+    response = logCurlRequest('GET', "/_api/job/pending", "", {});
+    logRawResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
 
 @RESTDONE
 
