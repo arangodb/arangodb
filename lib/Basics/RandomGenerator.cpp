@@ -280,7 +280,7 @@ namespace RandomHelper {
 
     private:
       void fillBuffer () {
-        size_t n = sizeof(buffer);
+        DWORD n = sizeof(buffer);
         BYTE* ptr = reinterpret_cast<BYTE*>(&buffer);
 
         // fill the buffer with random characters
