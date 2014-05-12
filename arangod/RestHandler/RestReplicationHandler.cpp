@@ -2898,7 +2898,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
       const char* key       = 0;
       TRI_json_t const* doc = 0;
-      TRI_replication_operation_e type;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
 
       const size_t n = json->_value._objects._length;
 
