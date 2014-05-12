@@ -21,11 +21,7 @@
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-<<<<<<< HEAD
-  SYS_DEFINE_PERIODIC, SYS_DELETE_PERIODIC, SYS_GET_PERIODIC, SYS_TEST_PORT */
-=======
   SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT */
->>>>>>> 161ac2e427f6cc62d3d79a96b4044327350a8d85
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -787,24 +783,6 @@
   if (typeof SYS_GET_TASK !== "undefined") {
     exports.getTask = SYS_GET_TASK;
     delete SYS_GET_TASK;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletePeriodic
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof SYS_DELETE_PERIODIC !== "undefined") {
-    exports.deletePeriodic = SYS_DELETE_PERIODIC;
-    delete SYS_DELETE_PERIODIC;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getPeriodic
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof SYS_GET_PERIODIC !== "undefined") {
-    exports.getPeriodic = SYS_GET_PERIODIC;
-    delete SYS_GET_PERIODIC;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
