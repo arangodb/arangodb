@@ -80,6 +80,7 @@ WIKI = \
 	NewFeatures13 \
 	NewFeatures14 \
 	NewFeatures20 \
+	NewFeatures21 \
 	RefManual \
 	RefManualArangoErrors \
 	RefManualReplication \
@@ -99,6 +100,7 @@ WIKI = \
 	Upgrading13 \
 	Upgrading14 \
 	Upgrading20 \
+	Upgrading21 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
