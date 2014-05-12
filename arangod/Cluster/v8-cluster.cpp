@@ -755,7 +755,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoClusterInfo (v8::Arguments cons
     TRI_V8_EXCEPTION_USAGE(scope, "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  TRI_shared_ptr<CollectionInfo> ci
+  shared_ptr<CollectionInfo> ci
         = ClusterInfo::instance()->getCollection(TRI_ObjectToString(argv[0]),
                                                  TRI_ObjectToString(argv[1]));
 
@@ -814,7 +814,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
 
   ShardID shardID = TRI_ObjectToString(argv[2]);
 
-  TRI_shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
                                            TRI_ObjectToString(argv[0]),
                                            TRI_ObjectToString(argv[1]));
 
@@ -825,7 +825,7 @@ static v8::Handle<v8::Value> JS_GetCollectionInfoCurrentClusterInfo (v8::Argumen
   result->Set(v8::String::New("id"), v8::String::New(cid.c_str(), (int) cid.size()));
   result->Set(v8::String::New("name"), v8::String::New(name.c_str(), (int) name.size()));
 
-  TRI_shared_ptr<CollectionInfoCurrent> cic
+  shared_ptr<CollectionInfoCurrent> cic
           = ClusterInfo::instance()->getCollectionCurrent(
                                      TRI_ObjectToString(argv[0]), cid);
 

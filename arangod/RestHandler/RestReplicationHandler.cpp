@@ -2184,7 +2184,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
   if (! col->empty()) {
@@ -2454,7 +2454,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     errorMsg = "could not find collection '" + name + "'";
@@ -2840,7 +2840,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

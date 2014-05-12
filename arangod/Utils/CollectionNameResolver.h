@@ -144,7 +144,7 @@ namespace triagens {
 
           // We have to look up the collection info:
           ClusterInfo* ci = ClusterInfo::instance();
-          TRI_shared_ptr<CollectionInfo> cinfo 
+          shared_ptr<CollectionInfo> cinfo 
             = ci->getCollection(DatabaseID(_vocbase->_name),
                                 name);
           if (cinfo->empty()) {
@@ -192,7 +192,7 @@ namespace triagens {
             TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
 
             if (!name.empty()) {
-              TRI_shared_ptr<CollectionInfo> ci
+              shared_ptr<CollectionInfo> ci
                 = ClusterInfo::instance()->getCollection(found->_dbName, name);
               name = ci->name();
             }
@@ -229,7 +229,7 @@ namespace triagens {
           int tries = 0;
 
           while (tries++ < 2) {
-            TRI_shared_ptr<CollectionInfo> ci
+            shared_ptr<CollectionInfo> ci
               = ClusterInfo::instance()->getCollection(_vocbase->_name, 
                              triagens::basics::StringUtils::itoa(cid));
             string name = ci->name();
