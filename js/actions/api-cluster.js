@@ -653,13 +653,13 @@ actions.defineHttp({
 
     if (cluster.isCoordinator() && !req.parameters.hasOwnProperty("DBserver")) {
       filterString += " filter u.clusterId == @serverId";
-      bind["serverId"] = cluster.coordinatorId();
+      bind.serverId = cluster.coordinatorId();
     }
 
     var returnValue = " return u";
     if (figures) {
       returnValue = " return {name: @name, time : u.time, server : {uptime : u.server.uptime} ";
-      bind["name"] = DBserver || "";
+      bind.name = DBserver || "";
 
       var groups = {};
       figures.forEach(function(f) {
