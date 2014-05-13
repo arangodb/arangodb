@@ -295,7 +295,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   }
 
   // create sparse file
-  offset = TRI_LSEEK(fd, maximalSize - 1, SEEK_SET);
+  offset = TRI_LSEEK(fd, (TRI_lseek_t) maximalSize - 1, SEEK_SET);
 
   if (offset == (off_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -367,7 +367,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   datafile->_data = static_cast<char*>(data);
   datafile->_next = (char*)(data) + vocSize;
   datafile->_currentSize = vocSize; 
-  datafile->_maximalSize = maximalSize;
+  datafile->_maximalSize = (TRI_voc_size_t) maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
   datafile->_state = TRI_DF_STATE_CLOSED;
@@ -443,7 +443,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 
     memset(&entry, 0, sizeof(entry));
 
-    entry._position = ptr - datafile->_data;
+    entry._position = (TRI_voc_size_t) (ptr - datafile->_data);
     entry._size = marker->_size;
     entry._tick = marker->_tick;
     entry._type = marker->_type;
@@ -500,7 +500,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
     TRI_PushBackVector(&scan._entries, &entry);
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
-    currentSize += size;
+    currentSize += (TRI_voc_size_t) size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       scan._endPosition = currentSize;
@@ -618,7 +618,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     }
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
-    currentSize += size;
+    currentSize += (TRI_voc_size_t) size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       LOG_DEBUG("found footer, reached end of datafile '%s', current size %lu",
@@ -834,7 +834,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   assert(PageSize >= 256);
 
   // use multiples of page-size
-  maximalSize = ((maximalSize + PageSize - 1) / PageSize) * PageSize;
+  maximalSize = (TRI_voc_size_t) (((maximalSize + PageSize - 1) / PageSize) * PageSize);
 
   // sanity check maximal size
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {

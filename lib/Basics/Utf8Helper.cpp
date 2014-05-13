@@ -106,7 +106,7 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
   // There is no guarantee that this will be the case on all platforms and
   // compilers.
   // ..........................................................................
-  return _coll->compare((const UChar *)left, leftLength, (const UChar *)right, rightLength);
+  return _coll->compare((const UChar*) left, (int32_t) leftLength, (const UChar*) right, (int32_t) rightLength);
 }
 
 void Utf8Helper::setCollatorLanguage (const string& lang) {
@@ -197,7 +197,7 @@ string Utf8Helper::getCollatorCountry () {
 
 string Utf8Helper::toLowerCase (const string& src) {
   int32_t utf8len = 0;
-  char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
+  char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
   if (utf8 == 0) {
     return string("");
   }
@@ -272,7 +272,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 
   utf8_dest = TRI_LowerAsciiStringZ(zone, src);
   if (utf8_dest != 0) {
-    dstLength = strlen(utf8_dest);
+    dstLength = (int32_t) strlen(utf8_dest);
   }
   return utf8_dest;
 }
@@ -283,7 +283,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 
 string Utf8Helper::toUpperCase (const string& src) {
   int32_t utf8len = 0;
-  char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
+  char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
   if (utf8 == 0) {
     return string("");
   }
@@ -358,7 +358,7 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
 
   utf8_dest = TRI_UpperAsciiStringZ(zone, src);
   if (utf8_dest != NULL) {
-    dstLength = strlen(utf8_dest);
+    dstLength = (int32_t) strlen(utf8_dest);
   }
   return utf8_dest;
 }
@@ -468,7 +468,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
       if (chunkLength > maximalLength) {
         chunkLength = maximalLength;
       }
-      utext.extractBetween(start, start + chunkLength, tempUtf16, 0);
+      utext.extractBetween(start, (int32_t) (start + chunkLength), tempUtf16, 0);
 
       size_t utf8WordLength;
       char* utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, chunkLength, &utf8WordLength);
