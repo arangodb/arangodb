@@ -121,9 +121,7 @@
     getStatisticsHistory: function(params) {
       var self = this,
       body = {
-        startDate : params.startDate,
-        endDate   : params.endDate,
-        figures   : params.figures
+        figures: params.figures
       },
       server = params.server,
       addAuth = function(){},
