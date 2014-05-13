@@ -354,12 +354,12 @@
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
 
-      if ($('#new-query-name').hasClass('invalid')){
+      if ($('#new-query-name').hasClass('invalid')) {
         return;
       }
 
       //Heiko: Form-Validator - illegal query name
-      if (saveName.trim() === ''){
+      if (saveName.trim() === '') {
         return;
       }
 
