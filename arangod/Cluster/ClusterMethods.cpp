@@ -802,7 +802,7 @@ int truncateCollectionOnCoordinator ( string const& dbname,
   // Now listen to the results:
   unsigned int count;
   unsigned int nrok = 0;
-  for (count = shards.size(); count > 0; count--) {
+  for (count = (unsigned int) shards.size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK) {

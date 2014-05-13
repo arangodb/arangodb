@@ -64,9 +64,7 @@ namespace triagens {
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {
 
-      // waiting for C++11...
-      _locationRewriter.func = 0;
-      _locationRewriter.data = 0;
+      _locationRewriter = { 0, 0 };
       
       _errorMessage = "";
       _written = 0;

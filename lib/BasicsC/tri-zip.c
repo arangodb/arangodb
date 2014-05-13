@@ -154,7 +154,7 @@ static int ExtractCurrentFile (unzFile uf,
     }
 
     while (true) {
-      int result = unzReadCurrentFile(uf, buffer, bufferSize);
+      int result = unzReadCurrentFile(uf, buffer, (unsigned int) bufferSize);
 
       if (result < 0) {
         fclose(fout);

@@ -385,7 +385,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
-  TRI_CloneMarker(&marker->base, original, baseLength, (TRI_voc_size_t) *totalSize);
+  TRI_CloneMarker(&marker->base, original, (TRI_voc_size_t) baseLength, (TRI_voc_size_t) *totalSize);
   assert(marker->_rid != 0);
   // the new revision must be greater than the old one
 
@@ -545,8 +545,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     position += toSize;
     TRI_CopyString(position, (char*) edge->_fromKey, fromSize);
     
-    edgeMarker->_offsetToKey     = (uint16_t) markerSize + keySize;
-    edgeMarker->_offsetFromKey   = (uint16_t) markerSize + keySize + toSize;
+    edgeMarker->_offsetToKey     = (uint16_t) (markerSize + keySize);
+    edgeMarker->_offsetFromKey   = (uint16_t) (markerSize + keySize + toSize);
     edgeMarker->_fromCid         = edge->_fromCid;
     edgeMarker->_toCid           = edge->_toCid;
   }
@@ -1820,7 +1820,11 @@ static int BeginReadTimed (TRI_primary_collection_t* primary,
   uint64_t waited = 0;
 
   while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary)) {
-    usleep(sleepPeriod);
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
 
     waited += sleepPeriod;
 
@@ -1842,7 +1846,11 @@ static int BeginWriteTimed (TRI_primary_collection_t* primary,
   uint64_t waited = 0;
 
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary)) {
-    usleep(sleepPeriod);
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
 
     waited += sleepPeriod;
 

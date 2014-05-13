@@ -92,6 +92,20 @@
         return;
       }
 
+      //check for invalid query names, if present change the box-shadoq to red
+      // and disable the save functionality
+      if ( saveName.match(/[<>&'"]/g)){
+        $('#new-query-name').css({"webkit-box-shadow" :
+           "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)"});
+        $('#new-query-name').css({"border-color": "rgba(234, 23, 23, 0.8)"});
+        $('#new-query-name').addClass('invalid');
+      } else {
+        $('#new-query-name').css({"webkit-box-shadow" :
+            "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)"});
+        $('#new-query-name').css({"border-color": "rgba(82, 168, 236, 0.8)"});
+        $('#new-query-name').removeClass('invalid');
+      }
+
       var boolTemp = false;
       this.customQueries.some(function(query){
         if( query.name === saveName ){
@@ -339,12 +353,15 @@
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
-      var content = inputEditor.getValue();
 
-      if (saveName.trim() === '') {
-        //Heiko: Form-Validator - illegal query name
+      if ($('#new-query-name').hasClass('invalid'))
         return;
-      }
+
+      //Heiko: Form-Validator - illegal query name
+      if (saveName.trim() === '')
+        return;
+
+      var content = inputEditor.getValue();
 
       //check for already existing entry
       var quit = false;
