@@ -604,7 +604,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[74] =
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*
 
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng; yyextra->_parser->_offset += yyleng;
+#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->_parser->_offset += yyleng;
 
 #define YY_NO_INPUT 1
 
