@@ -928,7 +928,7 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
   ptr = buffer;
 
   while (0 < length) {
-    ssize_t n = TRI_WRITE(fd, ptr, (unsigned int) length);
+    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t) length);
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1147,7 +1147,7 @@ int TRI_CreateLockFile (char const* filename) {
   pid = TRI_CurrentProcessId();
   buf = TRI_StringUInt32(pid);
 
-  rv = TRI_WRITE(fd, buf, strlen(buf));
+  rv = TRI_WRITE(fd, buf, (TRI_write_t) strlen(buf));
 
   if (rv == -1) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);

@@ -996,7 +996,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_doCompact     = true;
   parameter->_isVolatile    = false;
   parameter->_isSystem      = false;
-  parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
+  parameter->_maximalSize   = (TRI_voc_size_t) ((maximalSize / PageSize) * PageSize);
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = (TRI_voc_size_t) PageSize;
   }
@@ -1981,7 +1981,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
         }
 
         // round up to nearest page size
-        actualSize = ((neededSize + PageSize - 1) / PageSize) * PageSize;
+        actualSize = (TRI_voc_size_t) (((neededSize + PageSize - 1) / PageSize) * PageSize);
         written = 0;
 
         // generate the name for the new datafile: datafile-xxx.db.new
