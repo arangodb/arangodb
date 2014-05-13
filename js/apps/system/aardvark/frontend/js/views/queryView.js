@@ -94,15 +94,26 @@
 
       //check for invalid query names, if present change the box-shadoq to red
       // and disable the save functionality
+
+      var dangerCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "border-color" : "rgba(234, 23, 23, 0.8)"
+      };
+
+      var normalCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "border-color" : "rgba(82, 168, 236, 0.8)"
+      };
+
       if ( saveName.match(/[<>&'"]/g)){
-        $('#new-query-name').css({"webkit-box-shadow" :
-           "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)"});
-        $('#new-query-name').css({"border-color": "rgba(234, 23, 23, 0.8)"});
+        $('#new-query-name').css(dangerCss);
         $('#new-query-name').addClass('invalid');
       } else {
-        $('#new-query-name').css({"webkit-box-shadow" :
-            "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)"});
-        $('#new-query-name').css({"border-color": "rgba(82, 168, 236, 0.8)"});
+        $('#new-query-name').css(normalCss);
         $('#new-query-name').removeClass('invalid');
       }
 
@@ -206,6 +217,7 @@
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
       inputEditor.setFontSize("16px");
+      inputEditor.setOptions({fontFamily: "Courier New"});
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
