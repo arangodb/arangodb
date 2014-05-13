@@ -9294,6 +9294,9 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 /// database must explicitly be requested by using the @ref HandlingDatabasesUse
 /// "db._useDatabase" method.
 ///
+/// The @FA{options} attribute currently has no meaning and is reserved for
+/// future use.
+///
 /// The optional @FA{users} attribute can be used to create initial users for
 /// the new database. If specified, it must be a list of user objects. Each user 
 /// object can contain the following attributes:
