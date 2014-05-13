@@ -10,7 +10,7 @@ Upgrading {#Upgrading21Introduction}
 Please read the following sections if you upgrade from a previous version to
 ArangoDB 2.1.
 
-Please note first that a database directory used with ArangoDB 2.0 cannot be used with
+Please note first that a database directory used with ArangoDB 2.1 cannot be used with
 earlier versions (e.g. ArangoDB 2.0) any more. Upgrading a database directory cannot
 be reverted. Therefore please make sure to create a full backup of your existing 
 ArangoDB installation before performing an upgrade.
