@@ -168,6 +168,10 @@
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 
+#define TRI_write_t                     size_t
+#define TRI_read_t                      size_t
+#define TRI_lseek_t                     off_t
+
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,6 +310,10 @@
 #define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+
+#define TRI_write_t                     size_t
+#define TRI_read_t                      size_t
+#define TRI_lseek_t                     off_t
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -463,6 +471,10 @@
 #define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+
+#define TRI_write_t                     size_t
+#define TRI_read_t                      size_t
+#define TRI_lseek_t                     off_t
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -669,6 +681,10 @@ typedef unsigned char bool;
 #define TRI_RMDIR                       _rmdir
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
+
+#define TRI_write_t                     unsigned long
+#define TRI_read_t                      unsigned long
+#define TRI_lseek_t                     long
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 

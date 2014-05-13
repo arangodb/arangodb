@@ -106,7 +106,7 @@ Job::status_t V8PeriodicJob::work () {
     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
     
     // Invoke Function constructor to create function with the given body and no arguments
-    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), _command.size()) };
+    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), (int) _command.size()) };
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
