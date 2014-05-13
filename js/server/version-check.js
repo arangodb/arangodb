@@ -661,7 +661,7 @@
         var collection = getCollection(name);
 
         collection.ensureSkiplist("time");
-        collection.ensureCapConstraint(6 * 60 * 24 * 365); // 1 year (every 10 secs);
+        collection.ensureCapConstraint(6 * 60 * 24 * 30); // approx. 30 days of data
       }
 
       return result;
