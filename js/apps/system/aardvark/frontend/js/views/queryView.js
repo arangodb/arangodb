@@ -96,17 +96,17 @@
       // and disable the save functionality
 
       var dangerCss = {
-        "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-         "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-         "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-         "border-color" : "rgba(234, 23, 23, 0.8)"
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "border-color" : "rgba(234, 23, 23, 0.8)"
       };
 
       var normalCss = {
-        "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-         "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-         "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-         "border-color" : "rgba(82, 168, 236, 0.8)"
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "border-color" : "rgba(82, 168, 236, 0.8)"
       };
 
       if ( saveName.match(/[<>&'"]/g)){
