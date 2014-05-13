@@ -288,7 +288,7 @@ SyncRegion Slots::getSyncRegion () {
       // LOG_INFO("group commit");
 
       // update the region
-      region.size += static_cast<char*>(slot->mem()) - (region.mem + region.size) + slot->size();
+      region.size += (uint32_t) (static_cast<char*>(slot->mem()) - (region.mem + region.size) + slot->size());
       region.lastSlotIndex = slotIndex;
       region.waitForSync |= slot->waitForSync();
     }
