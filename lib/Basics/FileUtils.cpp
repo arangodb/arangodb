@@ -167,7 +167,7 @@ namespace triagens {
         }
 
         while (0 < len) {
-          ssize_t n = TRI_WRITE(fd, ptr, len);
+          ssize_t n = TRI_WRITE(fd, ptr, (unsigned int) len);
 
           if (n < 1) {
             TRI_CLOSE(fd);
@@ -200,7 +200,7 @@ namespace triagens {
         size_t len = content.size();
 
         while (0 < len) {
-          ssize_t n = TRI_WRITE(fd, ptr, len);
+          ssize_t n = TRI_WRITE(fd, ptr, (unsigned int) len);
 
           if (n < 1) {
             TRI_CLOSE(fd);
@@ -234,7 +234,7 @@ namespace triagens {
         size_t len = content.length();
 
         while (0 < len) {
-          ssize_t n = TRI_WRITE(fd, ptr, len);
+          ssize_t n = TRI_WRITE(fd, ptr, (unsigned int) len);
 
           if (n < 1) {
             TRI_CLOSE(fd);
@@ -459,7 +459,7 @@ namespace triagens {
         size_t len = 1000;
         char* current = new char[len];
 
-        while (TRI_GETCWD(current, len) == NULL) {
+        while (TRI_GETCWD(current, (int) len) == NULL) {
           if (errno == ERANGE) {
             len += 1000;
             delete[] current;
