@@ -1,4 +1,3 @@
-module.define("org/arangodb/graph", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
@@ -32,9 +31,14 @@ module.define("org/arangodb/graph", function(exports, module) {
 
 var gp = require("org/arangodb/graph-blueprint");
 
-gp.forEach(function(x) {
-  exports[m] = gp[m];
+
+require("console").warn('module "graph" is deprecated, please use ' +
+                        'module "general-graph" instead');
+
+Object.keys(gp).forEach(function (m) {
+	exports[m] = gp[m];
 });
+
 
 
 // -----------------------------------------------------------------------------
@@ -45,4 +49,3 @@ gp.forEach(function(x) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-});

@@ -413,7 +413,6 @@ exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
-require("org/arangodb/graph/algorithms-common");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
