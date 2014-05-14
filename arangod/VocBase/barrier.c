@@ -153,6 +153,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
 bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,  
                               TRI_barrier_type_e type) {
+  TRI_barrier_t* ptr;
+
   TRI_LockSpin(&container->_lock);
   
   if (type == TRI_BARRIER_ELEMENT) {
@@ -163,7 +165,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
     return hasBarriers;
   }
 
-  TRI_barrier_t* ptr = container->_begin;
+  ptr = container->_begin;
 
   while (ptr != NULL) {
     if (ptr->_type == type) {
