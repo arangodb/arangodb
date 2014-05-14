@@ -976,7 +976,7 @@ function routeRequest (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result of a query as documents
+/// @brief defines an http action handler
 ///
 /// @FUN{actions.defineHttp(@FA{options})}
 ///
