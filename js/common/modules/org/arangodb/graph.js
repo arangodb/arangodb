@@ -36,7 +36,7 @@ require("console").warn('module "graph" is deprecated, please use ' +
                         'module "general-graph" instead');
 
 Object.keys(gp).forEach(function (m) {
-	exports[m] = gp[m];
+  exports[m] = gp[m];
 });
 
 

@@ -32,9 +32,14 @@ module.define("org/arangodb/graph", function(exports, module) {
 
 var gp = require("org/arangodb/graph-blueprint");
 
-gp.forEach(function(x) {
+
+require("console").warn('module "graph" is deprecated, please use ' +
+                        'module "general-graph" instead');
+
+Object.keys(gp).forEach(function (m) {
   exports[m] = gp[m];
 });
+
 
 
 // -----------------------------------------------------------------------------
