@@ -37,7 +37,8 @@
             expect(view.colid).toEqual(0);
             expect(view.colid).toEqual(0);
             expect(view.events).toEqual({
-                "click #saveDocumentButton": "saveDocument"
+                "click #saveDocumentButton": "saveDocument",
+                "dblclick #documentEditor tr" : "addProperty"
             });
         });
 
