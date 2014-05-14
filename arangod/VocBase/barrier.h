@@ -162,6 +162,8 @@ typedef struct TRI_barrier_list_s {
 
   TRI_barrier_t* _begin;
   TRI_barrier_t* _end;
+
+  uint64_t _numBarrierElements;
 }
 TRI_barrier_list_t;
 
