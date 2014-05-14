@@ -666,6 +666,31 @@
 
       return result;
     });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createStatisticsCap
+////////////////////////////////////////////////////////////////////////////////
+
+    // create the _statistics collection
+    addTask("createStatisticsCap", "restrict _statistics collection", function () {
+      var collection = getCollection("_statistics");
+
+      if (! collection) {
+        return false;
+      }
+
+      // find existing cap constraint and drop it
+      collection.getIndexes().forEach(function (idx) {
+        if (idx.type === "cap") {
+          collection.dropIndex(idx.id);
+        }
+      });
+               
+      // re-create proper cap constraint
+      collection.ensureCapConstraint(6 * 60 * 12); // 1/2 day (every 10 secs);
+
+      return true;
+    });
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createConfiguration
