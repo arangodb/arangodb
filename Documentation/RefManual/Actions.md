@@ -813,6 +813,15 @@ should win in this case:
       ]
     });
 
+If you call `next()`, the next specific routing will be used for the
+original URL. Even if you modify the URL in the request object `req`,
+this will not cause the `next()` to jump to the routing defined for
+this next URL. If proceeds occurding the origin URL. However, if you
+use `next(true)`, the routing will stop and request handling is
+started with the new URL. You must ensure that `next(true)` is never
+called without modifying the URL in the request object
+`req`. Otherwise an endless loop will occur.
+
 Application Deployment{#UserManualActionsApplicationDeployment}
 ===============================================================
 
