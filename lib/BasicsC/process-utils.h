@@ -75,14 +75,14 @@ TRI_process_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_EXT_NOT_STARTED = 0, 	// not yet started
-  TRI_EXT_PIPE_FAILED = 1, 	// pipe before start failed
-  TRI_EXT_FORK_FAILED = 2,	// fork failed
-  TRI_EXT_RUNNING = 3,		// running
-  TRI_EXT_NOT_FOUND = 4,	// unknown pid
-  TRI_EXT_TERMINATED = 5,	// process has terminated normally
-  TRI_EXT_ABORTED = 6,		// process has terminated abnormally
-  TRI_EXT_STOPPED = 7,		// process has been stopped
+  TRI_EXT_NOT_STARTED = 0,  // not yet started
+  TRI_EXT_PIPE_FAILED = 1,  // pipe before start failed
+  TRI_EXT_FORK_FAILED = 2,  // fork failed
+  TRI_EXT_RUNNING = 3,      // running
+  TRI_EXT_NOT_FOUND = 4,    // unknown pid
+  TRI_EXT_TERMINATED = 5,   // process has terminated normally
+  TRI_EXT_ABORTED = 6,      // process has terminated abnormally
+  TRI_EXT_STOPPED = 7,      // process has been stopped
 }
 TRI_external_status_e;
 

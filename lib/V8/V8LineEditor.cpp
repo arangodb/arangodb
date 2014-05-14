@@ -297,8 +297,8 @@ static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions
 
 #ifdef TRI_HAVE_LINENOISE
 
-static void AttemptedCompletion(char const* text, linenoiseCompletions * lc) {
-	LinenoiseCompletionGenerator(text, lc);
+static void AttemptedCompletion (char const* text, linenoiseCompletions * lc) {
+  LinenoiseCompletionGenerator(text, lc);
 }
 
 #else
@@ -357,7 +357,7 @@ V8LineEditor::~V8LineEditor () {
 bool V8LineEditor::open (const bool autoComplete) { 
   if (autoComplete) {
 #ifdef TRI_HAVE_LINENOISE
-	  linenoiseSetCompletionCallback(AttemptedCompletion);
+    linenoiseSetCompletionCallback(AttemptedCompletion);
 #else
 
     rl_attempted_completion_function = AttemptedCompletion;
