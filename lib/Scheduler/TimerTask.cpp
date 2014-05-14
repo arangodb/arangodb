@@ -28,6 +28,7 @@
 
 #include "TimerTask.h"
 
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
@@ -52,6 +53,15 @@ TimerTask::~TimerTask () {
 // -----------------------------------------------------------------------------
 // Task methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+void TimerTask::getDescription (TRI_json_t* json) {
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
+}
 
 bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_scheduler = scheduler;

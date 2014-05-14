@@ -31,6 +31,10 @@
 
 #include "Scheduler/Task.h"
 
+extern "C" {
+  struct TRI_json_s;
+}
+
 namespace triagens {
   namespace rest {
 
@@ -48,6 +52,12 @@ namespace triagens {
 
         explicit
         TimerTask (std::string const&, double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getDescription (struct TRI_json_s*);
 
       protected:
 

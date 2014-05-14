@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief periodic V8 job
+/// @brief timed V8 task
 ///
 /// @file
 ///
@@ -25,28 +25,31 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8SERVER_V8PERIODIC_JOB_H
-#define TRIAGENS_V8SERVER_V8PERIODIC_JOB_H 1
+#ifndef TRIAGENS_V8SERVER_V8TIMER_TASK_H
+#define TRIAGENS_V8SERVER_V8TIMER_TASK_H 1
 
-#include "Dispatcher/Job.h"
-#include "BasicsC/json.h"
+#include "Scheduler/TimerTask.h"
+
+#include "VocBase/vocbase.h"
 
 extern "C" {
-  struct TRI_vocbase_s;
+  struct TRI_json_s;
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class V8PeriodicJob
+// --SECTION--                                                 class V8TimerTask
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace rest {
+    class Dispatcher;
+    class Scheduler;
+  }
+
   namespace arango {
     class ApplicationV8;
 
-    class V8PeriodicJob : public rest::Job {
-      private:
-        V8PeriodicJob (V8PeriodicJob const&);
-        V8PeriodicJob& operator= (V8PeriodicJob const&);
+    class V8TimerTask : public rest::TimerTask {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -55,61 +58,56 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new V8 job
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicJob (struct TRI_vocbase_s*,
-                       ApplicationV8*,
-                       std::string const&,
-                       TRI_json_t const*);
+        V8TimerTask (std::string const&,
+                     std::string const&,
+                     TRI_vocbase_t*,
+                     ApplicationV8*,
+                     rest::Scheduler*,
+                     rest::Dispatcher*,
+                     double,
+                     std::string const&,
+                     struct TRI_json_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~V8TimerTask ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Job methods
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a task specific description in JSON format
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void getDescription (struct TRI_json_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the task is user-defined
+////////////////////////////////////////////////////////////////////////////////
+ 
+        bool isUserDefined () const {
+          return true;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PeriodicTask methods
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief handles the timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        const std::string& queue ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t work ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool cancel (bool running);
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void cleanup ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool beginShutdown ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleError (basics::TriagensError const& ex);
+        bool handleTimeout ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -118,19 +116,25 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
+/// @brief system vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationV8* _v8Dealer;
+        arango::ApplicationV8* _v8Dealer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the command to execute
+/// @brief dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::Dispatcher* _dispatcher;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief command to execute
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string const _command;
@@ -139,13 +143,14 @@ namespace triagens {
 /// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t const* _parameters;
+        struct TRI_json_s* _parameters;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cancel flag
+/// @brief creation timestamp
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _canceled;
+        double _created;
+
     };
   }
 }

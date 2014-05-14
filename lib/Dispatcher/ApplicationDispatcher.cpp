@@ -53,8 +53,8 @@ namespace {
   class DispatcherReporterTask : public PeriodicTask {
     public:
       DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
-        : Task("Dispatcher-Reporter"), 
-          PeriodicTask(0.0, reportInterval), 
+        : Task("Dispatcher-Reporter"),
+          PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval), 
           _dispatcher(dispatcher) {
       }
 
