@@ -74,6 +74,11 @@ static void LinkBarrierElement (TRI_barrier_t* element,
     container->_end = element;
   }
 
+  if (element->_type == TRI_BARRIER_ELEMENT) {
+    // increase counter for barrier elements
+    ++container->_numBarrierElements;
+  }
+
   TRI_UnlockSpin(&container->_lock);
 }
 
@@ -109,7 +114,9 @@ void TRI_InitBarrierList (TRI_barrier_list_t* container,
   TRI_InitSpin(&container->_lock);
 
   container->_begin = NULL;
-  container->_end = NULL;
+  container->_end   = NULL;
+
+  container->_numBarrierElements = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,11 +161,17 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
 bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,  
                               TRI_barrier_type_e type) {
-  TRI_barrier_t* ptr;
-
   TRI_LockSpin(&container->_lock);
+  
+  if (type == TRI_BARRIER_ELEMENT) {
+    // shortcut
+    bool hasBarriers = (container->_numBarrierElements > 0);
+    TRI_UnlockSpin(&container->_lock);
 
-  ptr = container->_begin;
+    return hasBarriers;
+  }
+
+  TRI_barrier_t* ptr = container->_begin;
 
   while (ptr != NULL) {
     if (ptr->_type == type) {
@@ -366,6 +379,11 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
   }
   else {
     element->_next->_prev = element->_prev;
+  }
+  
+  if (element->_type == TRI_BARRIER_ELEMENT) {
+    // decrease counter for barrier elements
+    --container->_numBarrierElements;
   }
 
   TRI_UnlockSpin(&container->_lock);
