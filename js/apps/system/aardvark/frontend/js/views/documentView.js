@@ -12,7 +12,8 @@
     template: templateEngine.createTemplate("documentView.ejs"),
 
     events: {
-      "click #saveDocumentButton" : "saveDocument"
+      "click #saveDocumentButton" : "saveDocument",
+      "dblclick #documentEditor tr" : "addProperty"
     },
 
     editor: 0,
@@ -49,6 +50,31 @@
       this.editor = new window.jsoneditor.JSONEditor(container, options);
 
       return this;
+    },
+
+    addProperty : function (e) {
+
+        var node, searchResult;
+        try {
+            node = e.currentTarget.cells[2].childNodes[0].
+                childNodes[0].childNodes[0].childNodes[1].
+                childNodes[0].textContent;
+        } catch (ex) {
+
+        }
+        if (node) {
+            if (node === "object") {
+                return;
+
+            }
+            searchResult = this.editor.node.search(node);
+            searchResult.forEach(function (s) {
+                if (s.elem === "field" ) {
+                    s.node._onInsertAfter(undefined, undefined, "auto");
+                }
+            });
+
+        }
     },
 
     removeReadonlyKeys: function (object) {
