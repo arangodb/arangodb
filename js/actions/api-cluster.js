@@ -658,8 +658,7 @@ actions.defineHttp({
 
     var returnValue = " return u";
     if (figures) {
-      returnValue = " return {name: @name, time : u.time, server : {uptime : u.server.uptime} ";
-      bind.name = DBserver || "";
+      returnValue = " return { time : u.time, server : {uptime : u.server.uptime} ";
 
       var groups = {};
       figures.forEach(function(f) {
