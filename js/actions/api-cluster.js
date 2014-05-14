@@ -677,6 +677,7 @@ actions.defineHttp({
     var myQueryVal = "FOR u in _statistics " + filterString + " LIMIT 240 SORT u.time" + returnValue;
 
     if (!req.parameters.hasOwnProperty("DBserver")) {
+        // query the local statistics collection
         var cursor = internal.AQL_QUERY(myQueryVal, bind);
         res.contentType = "application/json; charset=utf-8";
         if (cursor instanceof Error) {
@@ -685,8 +686,10 @@ actions.defineHttp({
                 "errorMessage": "an error occured"});
         }
         res.responseCode = actions.HTTP_OK;
-        res.body =  JSON.stringify({result : cursor.docs});
-    } else {
+        res.body = JSON.stringify({result : cursor.docs});
+    } 
+    else {
+        // query a remote statistics collection
         var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
         var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
         var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
