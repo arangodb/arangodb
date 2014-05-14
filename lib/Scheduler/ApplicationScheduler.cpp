@@ -210,8 +210,8 @@ static SignalTask* localSignalTask;
   class SchedulerReporterTask : public PeriodicTask {
     public:
       SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
-        : Task("Scheduler-Reporter"), 
-          PeriodicTask(1.0, _reportInterval), 
+        : Task("Scheduler-Reporter"),
+          PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval), 
           _scheduler(scheduler) {
       }
 

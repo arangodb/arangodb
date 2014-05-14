@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief periodic V8 task
+/// @brief timed V8 task
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8PeriodicTask.h"
+#include "V8TimerTask.h"
 
 #include "BasicsC/json.h"
 #include "Dispatcher/Dispatcher.h"
@@ -46,18 +46,17 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (string const& id, 
-                                string const& name,
-                                TRI_vocbase_t* vocbase,
-                                ApplicationV8* v8Dealer,
-                                Scheduler* scheduler,
-                                Dispatcher* dispatcher,
-                                double offset,
-                                double period,
-                                string const& command,
-                                TRI_json_t* parameters)
+V8TimerTask::V8TimerTask (string const& id, 
+                          string const& name,
+                          TRI_vocbase_t* vocbase,
+                          ApplicationV8* v8Dealer,
+                          Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          double offset,
+                          string const& command,
+                          TRI_json_t* parameters)
   : Task(id, name),
-    PeriodicTask(id, offset, period),
+    TimerTask(id, offset),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _dispatcher(dispatcher),
@@ -75,7 +74,7 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::~V8PeriodicTask () {
+V8TimerTask::~V8TimerTask () {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 
@@ -85,15 +84,15 @@ V8PeriodicTask::~V8PeriodicTask () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              PeriodicTask methods
+// --SECTION--                                                 TimerTask methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicTask::getDescription (TRI_json_t* json) {
-  PeriodicTask::getDescription(json);
+void V8TimerTask::getDescription (TRI_json_t* json) {
+  TimerTask::getDescription(json);
 
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
@@ -106,10 +105,10 @@ void V8PeriodicTask::getDescription (TRI_json_t* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles the next tick
+/// @brief handles the timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8PeriodicTask::handlePeriod () {
+bool V8TimerTask::handleTimeout () {
   V8Job* job = new V8Job(
     _vocbase,
     _v8Dealer,
@@ -117,6 +116,9 @@ bool V8PeriodicTask::handlePeriod () {
     _parameters);
     
   _dispatcher->addJob(job);
+
+  // note: this will destroy the task (i.e. ourselves!!)
+  _scheduler->destroyTask(this);
 
   return true;
 }

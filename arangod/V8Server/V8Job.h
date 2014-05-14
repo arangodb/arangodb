@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief periodic V8 job
+/// @brief V8 job
 ///
 /// @file
 ///
@@ -25,159 +25,132 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8PeriodicJob.h"
+#ifndef TRIAGENS_V8SERVER_V8_JOB_H
+#define TRIAGENS_V8SERVER_V8_JOB_H 1
 
+#include "Dispatcher/Job.h"
 #include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8Server/ApplicationV8.h"
-#include "VocBase/vocbase.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace triagens::arango;
+extern "C" {
+  struct TRI_vocbase_s;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       class V8Job
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace arango {
+    class ApplicationV8;
+
+    class V8Job : public rest::Job {
+      private:
+        V8Job (V8Job const&) = delete;
+        V8Job& operator= (V8Job const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicJob::V8PeriodicJob (TRI_vocbase_t* vocbase,
-                              ApplicationV8* v8Dealer,
-                              std::string const& command,
-                              TRI_json_t const* parameters)
-  : Job("V8 Periodic Job"),
-    _vocbase(vocbase),
-    _v8Dealer(v8Dealer),
-    _command(command),
-    _parameters(parameters),
-    _canceled(0) {
-}
+        V8Job (struct TRI_vocbase_s*,
+               ApplicationV8*,
+               std::string const&,
+               TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-Job::JobType V8PeriodicJob::type () {
-  return READ_JOB;
-}
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& V8PeriodicJob::queue () {
-  static const string queue = "STANDARD";
-  return queue;
-}
+        JobType type ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_t V8PeriodicJob::work () {
-  if (_canceled) {
-    return status_t(JOB_DONE);
+        const std::string& queue ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t work ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool cancel (bool running);
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void cleanup ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool beginShutdown ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleError (basics::TriagensError const& ex);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_vocbase_s* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 dealer
+////////////////////////////////////////////////////////////////////////////////
+
+        ApplicationV8* _v8Dealer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the command to execute
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string const _command;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief paramaters
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t const* _parameters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel flag
+////////////////////////////////////////////////////////////////////////////////
+
+        volatile sig_atomic_t _canceled;
+    };
   }
-
-  ApplicationV8::V8Context* context
-    = _v8Dealer->enterContext(_vocbase, 0, true, false);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == 0) {
-    return status_t(JOB_DONE);
-  }
-
-  // now execute the function within this context
-  {
-    v8::HandleScope scope;
-    
-    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
-    
-    // Invoke Function constructor to create function with the given body and no arguments
-    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), (int) _command.size()) };
-    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
-
-    v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
-  
-    if (action.IsEmpty()) {
-      _v8Dealer->exitContext(context);
-      // TODO: adjust exit code??
-      return status_t(JOB_DONE);
-    }
- 
-    v8::Handle<v8::Value> fArgs;
-    if (_parameters != 0) {
-      fArgs = TRI_ObjectJson(_parameters);
-    }
-    else {
-      fArgs = v8::Undefined();
-    }
-    
-    // call the function  
-    v8::TryCatch tryCatch;
-    action->Call(current, 1, &fArgs);
-      
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(&tryCatch);
-      }
-      else {
-        LOG_WARNING("caught non-printable exception in periodic task");
-      }
-    }
-  }
-
-  _v8Dealer->exitContext(context);
-
-  return status_t(JOB_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8PeriodicJob::cancel (bool running) {
-  if (running) {
-    _canceled = 1;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void V8PeriodicJob::cleanup () {
-  delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool V8PeriodicJob::beginShutdown () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void V8PeriodicJob::handleError (TriagensError const& ex) {
-}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

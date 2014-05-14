@@ -46,6 +46,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/V8PeriodicTask.h"
+#include "V8Server/V8TimerTask.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -1215,13 +1216,12 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
     period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
+    
+    if (period <= 0.0) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
+    }
   }
-
   
-  if (period <= 0.0) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
-  }
-
     
   // extract the command
   if (! obj->HasOwnProperty(TRI_V8_SYMBOL("command"))) {
@@ -1246,23 +1246,47 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  // create a new periodic task
-  V8PeriodicTask* task = new V8PeriodicTask(
-      id,
-      name,
-      static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-      GlobalV8Dealer,
-      GlobalScheduler,
-      GlobalDispatcher,
-      offset,
-      period,
-      command,
-      parameters);
+  Task* task;
+
+  if (period > 0.0) {
+    // create a new periodic task
+    task = new V8PeriodicTask(
+        id,
+        name,
+        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
+        GlobalV8Dealer,
+        GlobalScheduler,
+        GlobalDispatcher,
+        offset,
+        period,
+        command,
+        parameters);
+  }
+  else {
+    // create a run-once timer task
+    task = new V8TimerTask(
+        id,
+        name,
+        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
+        GlobalV8Dealer,
+        GlobalScheduler,
+        GlobalDispatcher,
+        offset,
+        command,
+        parameters);
+  }
 
   int res = GlobalScheduler->registerTask(task);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    delete task;
+    if (period > 0.0) {
+      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
+      delete t;
+    }
+    else {
+      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
+      delete t;
+    }
 
     TRI_V8_EXCEPTION(scope, res);
   }
@@ -1326,6 +1350,7 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
   }
 
   TRI_json_t* json;
+
   if (argv.Length() == 1) {
     // get a single task
     string const id = GetTaskId(argv[0]);

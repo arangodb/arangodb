@@ -50,7 +50,9 @@ namespace triagens {
 /// @brief constructs a new task for a given periodic event
 ////////////////////////////////////////////////////////////////////////////////
 
-        PeriodicTask (double offset, double interval);
+        PeriodicTask (std::string const&,
+                      double,
+                      double);
 
       protected:
 
