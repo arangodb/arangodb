@@ -1,6 +1,12 @@
 v1.4.16 (XXXX-XX-XX)
 --------------------
 
+* fixed too eager datafile deletion
+
+  this issue could have caused a crash when the compaction had marked datafiles as obsolete
+  and they were removed while "old" temporary query results still pointed to the old datafile
+  positions
+
 * fixed issue #826: Replication fails when a collection's configuration changes
 
 
