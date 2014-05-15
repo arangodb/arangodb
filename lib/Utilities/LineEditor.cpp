@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using linenoise
+/// @brief implementation of basis class LineEditor
 ///
 /// @file
 ///
@@ -26,15 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineEditor.h"
-
-extern "C" {
-#include <linenoise.h>
-}
+#include "ShellImplementation.h"
+#include "Completer.h"
 
 #include "BasicsC/tri-strings.h"
-#include "BasicsC/files.h"
 
 using namespace std;
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -48,19 +46,20 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
-  : _current(),
-    _historyFilename(history),
-    _state(STATE_NONE) {
+LineEditor::LineEditor(std::string const& history): _history(history) {
+  _shellImpl = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
-  close();
-}
+LineEditor::~LineEditor() {
+  if (_shellImpl) {
+    close();
+    delete _shellImpl;
+  }
+ }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -70,154 +69,60 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
-  linenoiseHistoryLoad(historyPath().c_str());
-
-  _state = STATE_OPENED;
-
-  return true;
+bool LineEditor::open(bool autoComplete) {
+  prepareShell();
+  return _shellImpl->open(autoComplete);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
-  if (_state != STATE_OPENED) {
-    // avoid duplicate saving of history
-    return true;
-  }
-
-  _state = STATE_CLOSED;
-
-  return writeHistory();
+bool LineEditor::close() {
+  prepareShell();
+  return _shellImpl->close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
-  string path;
-
-  // get home directory
-  char* p = TRI_HomeDirectory();
-
-  if (p != 0) {
-    path.append(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p);
-
-    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-      path.push_back(TRI_DIR_SEPARATOR_CHAR);
-    }
-  }
-
-  path.append(_historyFilename);
-
-  return path;
+string LineEditor::historyPath() {
+  prepareShell();
+  return _shellImpl->historyPath();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
-  if (*str == '\0') {
-    return;
-  }
-
-  linenoiseHistoryAdd(str);
+void LineEditor::addHistory(char const* str) {
+  prepareShell();
+  return _shellImpl->addHistory(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
-  linenoiseHistorySave(historyPath().c_str());
-
-  return true;
+bool LineEditor::writeHistory() {
+  prepareShell();
+  return _shellImpl->writeHistory();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    char* result = linenoise(p);
-
-    p = dotdot.c_str();
-
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
-        return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any prompt at the beginning of the line
-    char* originalLine = result;
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call readline
-    TRI_SystemFree(originalLine);
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-  _current.clear();
-
-  return line;
+char* LineEditor::prompt(char const* prompt) {
+  return _shellImpl->prompt(prompt);
 }
-
+void LineEditor::prepareShell() {
+  if (!_shellImpl) {
+    initializeShell();
+  //  assert _shellImpl != 0;
+  }
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -29,8 +29,33 @@
 #define TRIAGENS_V8_V8LINE_EDITOR_H 1
 
 #include "Utilities/LineEditor.h"
+#include "Utilities/Completer.h"
 
 #include <v8.h>
+
+using namespace triagens;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class V8Completer
+// -----------------------------------------------------------------------------
+
+class V8Completer : public Completer {
+
+  enum {
+    NORMAL,             // start
+    NORMAL_1,           // from NORMAL: seen a single /
+    DOUBLE_QUOTE,       // from NORMAL: seen a single "
+    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+    SINGLE_QUOTE,       // from NORMAL: seen a single '
+    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+    MULTI_COMMENT,      // from NORMAL_1: seen a *
+    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+    SINGLE_COMMENT      // from NORMAL_1; seen a /
+  }
+  state;
+
+  virtual bool isComplete(std::string const&, size_t lineno, size_t column);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor
@@ -39,6 +64,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
+
 
 class V8LineEditor : public LineEditor {
   V8LineEditor (LineEditor const&);
@@ -66,23 +92,17 @@ class V8LineEditor : public LineEditor {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
-////////////////////////////////////////////////////////////////////////////////
-
-    bool open (bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
+    
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if line is complete
+/// @brief      creates a concrete Shell with the correct parameter (Completer!!)
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool isComplete (std::string const&, size_t lineno, size_t column);
+protected:
+    virtual void initializeShell();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -95,6 +115,8 @@ class V8LineEditor : public LineEditor {
 ////////////////////////////////////////////////////////////////////////////////
 
     v8::Handle<v8::Context> _context;
+
+    V8Completer _completer;
 };
 
 #endif
