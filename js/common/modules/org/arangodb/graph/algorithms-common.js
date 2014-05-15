@@ -28,13 +28,13 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("org/arangodb/graph");
+var graph = require("org/arangodb/graph-blueprint");
 
 var Graph = graph.Graph;
 var Vertex = graph.Vertex;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       module "org/arangodb/graph"
+// --SECTION--                             module "org/arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
