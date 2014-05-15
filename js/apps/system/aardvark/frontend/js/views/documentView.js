@@ -70,7 +70,7 @@
             this.editor.node.childs[0].focus("field");
           } else {
             this.editor.node.childs[0]._onInsertBefore(undefined, undefined, "auto");
-          } 
+          }
           return;
         }
         searchResult = this.editor.node.search(node);
