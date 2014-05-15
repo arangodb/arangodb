@@ -377,6 +377,8 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
     fprintf(stderr,
             "freeing nil ptr " ZONE_DEBUG_LOCATION 
             ZONE_DEBUG_PARAMS);
+    // crash intentionally
+    assert(false);
   }
 
   // zone->_zid is a uint32_t but we'll decrease by sizeof(uintptr_t) bytes for good alignment everywhere

@@ -469,7 +469,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
   printf("  result shape: %lu\n", (unsigned long) accessor->_shape->_sid);
 
   void const** ops = static_cast<void const**>(accessor->_code);
-  shape = accessor->_shape;
 
   while (true) {
     TRI_shape_ac_bc_e op = static_cast<TRI_shape_ac_bc_e>(*(TRI_shape_ac_bc_e*) ops);

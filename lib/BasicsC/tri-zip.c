@@ -196,7 +196,7 @@ static int UnzipFile (unzFile uf,
                       const char* password) {
   unz_global_info64 gi;
   uLong i;
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
 
   if (unzGetGlobalInfo64(uf, &gi) != UNZ_OK) {
     return TRI_ERROR_INTERNAL;

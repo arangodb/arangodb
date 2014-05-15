@@ -4047,12 +4047,13 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // undefined. Determine if this is the case.
   // ...........................................................................
 
-  supportUndef = false;
   supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
+
   if (supportUndefIndex == NULL || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if index supports undefined values", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
+
   supportUndef = supportUndefIndex->_value._boolean;
 
   // ...........................................................................
@@ -4154,16 +4155,14 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // determine if the hash index is unique or non-unique
-  unique = false;
   bv = TRI_LookupArrayJson(definition, "unique");
 
-  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
-    unique = bv->_value._boolean;
-  }
-  else {
+  if (bv == NULL || bv->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
+
+  unique = bv->_value._boolean;
 
   // Initialise the vector in which we store the fields on which the hashing
   // will be based.
