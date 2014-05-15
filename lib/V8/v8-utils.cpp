@@ -2729,6 +2729,8 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
                              "statusExternal: pid must be given");
   }
   TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
 #else
