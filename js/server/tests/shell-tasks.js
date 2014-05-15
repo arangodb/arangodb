@@ -95,20 +95,6 @@ function TaskSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task without a period
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateTaskNoPeriod : function () {
-      try {
-        tasks.register({ id: "UnitTestsNoPeriod", command: "1+1;" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a task with an invalid period
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -307,21 +293,42 @@ function TaskSuite () {
         command: "2+2;",
         period: 2
       });
+      
+      var task3 = tasks.register({ 
+        id: "UnitTests3", 
+        name: "UnitTests3", 
+        command: "3+3;",
+        offset: 30
+      });
 
       var t = getTasks();
 
-      assertEqual(2, t.length);
+      assertEqual(3, t.length);
       assertEqual(task1.id, t[0].id);
       assertEqual(task1.name, t[0].name);
       assertEqual(task1.type, t[0].type);
+      assertEqual("periodic", t[0].type);
       assertEqual(task1.period, t[0].period);
+      assertEqual(1, t[0].period);
       assertEqual(task1.database, t[0].database);
+      assertEqual("_system", t[0].database);
 
       assertEqual(task2.id, t[1].id);
       assertEqual(task2.name, t[1].name);
       assertEqual(task2.type, t[1].type);
+      assertEqual("periodic", t[1].type);
       assertEqual(task2.period, t[1].period);
+      assertEqual(2, t[1].period);
       assertEqual(task2.database, t[1].database);
+      assertEqual("_system", t[1].database);
+      
+      assertEqual(task3.id, t[2].id);
+      assertEqual(task3.name, t[2].name);
+      assertEqual(task3.type, t[2].type);
+      assertEqual("timed", t[2].type);
+      assertEqual(30, t[2].offset);
+      assertEqual(task3.database, t[2].database);
+      assertEqual("_system", t[2].database);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,6 +388,79 @@ function TaskSuite () {
       
       t = getTasks();
 
+      assertEqual(0, t.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a timer task and run it
+////////////////////////////////////////////////////////////////////////////////
+
+    testTimerTask : function () {
+      db._drop(cn);
+      db._create(cn);
+
+      assertEqual(0, db[cn].count());
+
+      var command = "require('internal').db." + cn + ".save({ value: params });";
+
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: command, 
+        offset: 2,
+        params: 23 
+      });
+
+      assertEqual("UnitTests1", task.id);
+      assertEqual("UnitTests1", task.name);
+      assertEqual("timed", task.type);
+      assertEqual(2, task.offset);
+      assertEqual("_system", task.database);
+
+      internal.wait(7);
+
+      assertEqual(1, db[cn].count());
+      assertEqual(1, db[cn].byExample({ value: 23 }).count());
+
+      // task should have gone by now
+      t = getTasks();
+      assertEqual(0, t.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a timer task and kill it before execution
+////////////////////////////////////////////////////////////////////////////////
+
+    testKillTimerTask : function () {
+      db._drop(cn);
+      db._create(cn);
+
+      assertEqual(0, db[cn].count());
+
+      var command = "require('internal').db." + cn + ".save({ value: params });";
+
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: command, 
+        offset: 10,
+        params: 23 
+      });
+
+      assertEqual("UnitTests1", task.id);
+      assertEqual("UnitTests1", task.name);
+      assertEqual("timed", task.type);
+      assertEqual(10, task.offset);
+      assertEqual("_system", task.database);
+
+      tasks.unregister(task);
+
+      internal.wait(5);
+
+      assertEqual(0, db[cn].count());
+      assertEqual(0, db[cn].byExample({ value: 23 }).count());
+
+      t = getTasks();
       assertEqual(0, t.length);
     },
 
