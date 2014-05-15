@@ -25,7 +25,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LineEditor.h"
+#include "ReadlineShell.h"
+#include "Completer.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -33,9 +34,148 @@
 #include "BasicsC/tri-strings.h"
 
 using namespace std;
+using namespace triagens;
 
+namespace {
+static char WordBreakCharacters[] = {
+    ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
+    '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
+    '\0'
+};
+
+static char* CompletionGenerator (char const* text, int state) {
+  static size_t currentIndex;
+  static vector<string> result;
+
+  // compute the possible completion
+  if (state == 0) {
+    if (! v8::Context::InContext()) {
+      return 0;
+    }
+
+    // locate global object or sub-object
+    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+    string path;
+    char* prefix;
+
+    if (*text != '\0') {
+      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+
+      if (1 < splitted._length) {
+        for (size_t i = 0;  i < splitted._length - 1;  ++i) {
+          v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
+
+          if (! current->Has(name)) {
+            TRI_DestroyVectorString(&splitted);
+            return 0;
+          }
+
+          v8::Handle<v8::Value> val = current->Get(name);
+
+          if (! val->IsObject()) {
+            TRI_DestroyVectorString(&splitted);
+            return 0;
+          }
+
+          current = val->ToObject();
+          path = path + splitted._buffer[i] + ".";
+        }
+
+        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
+      }
+      else {
+        prefix = TRI_DuplicateString(text);
+      }
+
+      TRI_DestroyVectorString(&splitted);
+    }
+    else {
+      prefix = TRI_DuplicateString(text);
+    }
+
+    v8::HandleScope scope;
+
+    // compute all possible completions
+    v8::Handle<v8::Array> properties;
+    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
+
+    if (current->HasOwnProperty(cpl)) {
+      v8::Handle<v8::Value> funcVal = current->Get(cpl);
+
+      if (funcVal->IsFunction()) {
+        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
+        v8::Handle<v8::Value> args;
+        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+
+        if (cpls->IsArray()) {
+          properties = v8::Handle<v8::Array>::Cast(cpls);
+        }
+      }
+    }
+    else {
+      properties = current->GetPropertyNames();
+    }
+
+    // locate
+    if (! properties.IsEmpty()) {
+      const uint32_t n = properties->Length();
+
+      for (uint32_t i = 0;  i < n;  ++i) {
+        v8::Handle<v8::Value> v = properties->Get(i);
+
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+        char const* s = *str;
+
+        if (s != 0 && *s) {
+          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+          string name = path + s + suffix;
+
+          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+            result.push_back(name);
+          }
+        }
+      }
+    }
+
+    currentIndex = 0;
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+  }
+
+  if (currentIndex < result.size()) {
+    return TRI_SystemDuplicateString(result[currentIndex++].c_str());
+  }
+  else {
+    result.clear();
+    return 0;
+  }
+}
+
+
+static char** AttemptedCompletion (char const* text, int start, int end) {
+  char** result;
+
+  result = completion_matches(text, CompletionGenerator);
+  rl_attempted_completion_over = true;
+
+  if (result != 0 && result[0] != 0 && result[1] == 0) {
+    size_t n = strlen(result[0]);
+
+    if (result[0][n - 1] == ')') {
+      result[0][n - 1] = '\0';
+    }
+  }
+
+#if RL_READLINE_VERSION >= 0x0500
+  // issue #289
+  rl_completion_suppress_append = 1;
+#endif
+
+  return result;
+}
+}
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
+// --SECTION--                                               class ReadlineShell
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -46,24 +186,19 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
-  : _current(),
-    _historyFilename(history),
-    _state(STATE_NONE) {
-  rl_initialize();
+ReadlineShell::ReadlineShell(std::string const& history, Completer *completer)
+  : ShellImplementation(history, completer) {
+
+    rl_initialize();
+
+    rl_attempted_completion_function = AttemptedCompletion;
+    rl_completer_word_break_characters = WordBreakCharacters;
 
 #ifndef __APPLE__
   rl_catch_signals = 0;
 #endif  
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-LineEditor::~LineEditor () {
-  close();
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -73,7 +208,7 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool autoComplete) {
+bool ReadlineShell::open(bool autoComplete) {
   if (autoComplete) {
 
     // issue #289: do not append a space after completion
@@ -114,7 +249,7 @@ bool LineEditor::open (bool autoComplete) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
+bool ReadlineShell::close() {
   if (_state != STATE_OPENED) {
     // avoid duplicate saving of history
     return true;
@@ -136,7 +271,7 @@ bool LineEditor::close () {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
+string ReadlineShell::historyPath() {
   string path;
 
   if (getenv("HOME")) {
@@ -153,7 +288,7 @@ string LineEditor::historyPath () {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
+void ReadlineShell::addHistory(char const* str) {
   if (*str == '\0') {
     return;
   }
@@ -177,87 +312,12 @@ void LineEditor::addHistory (char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
+bool ReadlineShell::writeHistory() {
   return (write_history(historyPath().c_str()) == 0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-char* LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-  
-  while (true) {
-    char* result = readline(p);
-
-    p = dotdot.c_str();
-
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
-        return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any prompt at the beginning of the line
-    char* originalLine = result;
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call readline
-    TRI_SystemFree(originalLine);
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-  _current.clear();
-
-  return line;
+char * ReadlineShell::getLine(char const * input) {
+  return readline(input);
 }
 
 // -----------------------------------------------------------------------------
