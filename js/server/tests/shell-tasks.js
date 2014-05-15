@@ -423,7 +423,7 @@ function TaskSuite () {
       internal.wait(15);
 
       assertEqual(1, db[cn].count());
-      assertEqual(1, db[cn].byExample({ value: 23 }).count());
+      assertEqual(1, db[cn].byExample({ value: 23 }).toArray().length);
 
       // task should have gone by now
       t = getTasks();
@@ -461,7 +461,7 @@ function TaskSuite () {
       internal.wait(5);
 
       assertEqual(0, db[cn].count());
-      assertEqual(0, db[cn].byExample({ value: 23 }).count());
+      assertEqual(0, db[cn].byExample({ value: 23 }).toArray().length);
 
       t = getTasks();
       assertEqual(0, t.length);
@@ -499,7 +499,7 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).count() > 0);
+      assertTrue(db[cn].byExample({ value: 23 }).toArray().length > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,8 +536,8 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).count() === 0);
-      assertTrue(db[cn].byExample({ value: 42 }).count() > 0);
+      assertTrue(db[cn].byExample({ value: 23 }).toArray().length === 0);
+      assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
     }
 
   };
