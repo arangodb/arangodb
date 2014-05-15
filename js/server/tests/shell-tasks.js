@@ -407,17 +407,20 @@ function TaskSuite () {
         id: "UnitTests1", 
         name: "UnitTests1", 
         command: command, 
-        offset: 2,
+        offset: 5,
         params: 23 
       });
 
       assertEqual("UnitTests1", task.id);
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
-      assertEqual(2, task.offset);
+      assertEqual(5, task.offset);
       assertEqual("_system", task.database);
+      
+      t = getTasks();
+      assertEqual(1, t.length);
 
-      internal.wait(7);
+      internal.wait(15);
 
       assertEqual(1, db[cn].count());
       assertEqual(1, db[cn].byExample({ value: 23 }).count());
