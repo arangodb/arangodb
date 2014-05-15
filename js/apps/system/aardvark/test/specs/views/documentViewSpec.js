@@ -136,6 +136,252 @@
             expect(view.escaped('&<>"\'')).toEqual("&amp;&lt;&gt;&quot;&#39;");
         });
 
+        it("should addProperty in existing json document", function () {
+
+            var eDummy = {
+                    currentTarget :  {
+                        cells : [
+                            "",
+                            "",
+                            {
+                                childNodes : [
+                                    {
+                                        childNodes : [
+                                            {
+                                                childNodes : [
+                                                    {
+                                                        childNodes : [
+                                                            "",
+                                                            {
+                                                                childNodes : [
+                                                                    {
+                                                                        textContent : "bla"
+
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }, editorDummy  = {
+
+                node : {
+                    search : function () {
+
+                    }
+                }
+
+
+            }, nodeDummy1 =  {elem : "value", node : {_onInsertAfter : function () {}}},
+            nodeDummy2 =  {elem : "field", node : {_onInsertAfter : function () {}}} ;
+            spyOn(editorDummy.node, "search").andReturn([
+                nodeDummy1,
+                nodeDummy2,
+                nodeDummy1
+            ]);
+            spyOn(nodeDummy1.node, "_onInsertAfter");
+            spyOn(nodeDummy2.node, "_onInsertAfter");
+            view.editor = editorDummy;
+
+            view.addProperty(eDummy);
+
+
+            expect(editorDummy.node.search).toHaveBeenCalledWith("bla");
+            expect(nodeDummy1.node._onInsertAfter).not.toHaveBeenCalled();
+            expect(nodeDummy2.node._onInsertAfter).toHaveBeenCalledWith(
+                undefined, undefined, "auto");
+
+        });
+
+
+
+        it("should addProperty in existing json document in first position", function () {
+
+            var eDummy = {
+                    currentTarget :  {
+                        cells : [
+                            "",
+                            "",
+                            {
+                                childNodes : [
+                                    {
+                                        childNodes : [
+                                            {
+                                                childNodes : [
+                                                    {
+                                                        childNodes : [
+                                                            "",
+                                                            {
+                                                                childNodes : [
+                                                                    {
+                                                                        textContent : "object"
+
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }, editorDummy  = {
+
+                    node : {
+                        search : function () {
+
+                        },
+                        childs : [
+                            {
+                                focus : function () {},
+                                _onInsertBefore : function () {
+
+                                }
+                            }
+                        ]
+                    },
+                    get : function () {
+
+                    },
+                    set : function () {
+
+                    }
+
+
+                }, nodeDummy1 =  {elem : "value", _onInsertAfter : function () {}},
+                nodeDummy2 =  {elem : "value", _onInsertAfter : function () {}} ;
+            spyOn(editorDummy.node, "search").andReturn([
+                nodeDummy1,
+                nodeDummy2,
+                nodeDummy1
+            ]);
+            spyOn(nodeDummy1, "_onInsertAfter");
+            spyOn(nodeDummy2, "_onInsertAfter");
+
+            spyOn(editorDummy, "get").andReturn([
+                nodeDummy1,
+                nodeDummy2,
+                nodeDummy1
+            ]);
+
+            spyOn(editorDummy, "set");
+            spyOn(editorDummy.node.childs[0], "_onInsertBefore");
+            spyOn(editorDummy.node.childs[0], "focus");
+
+            view.editor = editorDummy;
+
+            view.addProperty(eDummy);
+
+
+            expect(editorDummy.node.search).not.toHaveBeenCalled();
+            expect(editorDummy.node.childs[0].focus).not.toHaveBeenCalled();
+            expect(editorDummy.node.childs[0]._onInsertBefore).toHaveBeenCalledWith(
+                undefined, undefined, "auto");
+            expect(editorDummy.get).toHaveBeenCalled();
+            expect(editorDummy.set).not.toHaveBeenCalled();
+
+
+        });
+
+
+        it("should addProperty in new json document in first position", function () {
+
+            var eDummy = {
+                    currentTarget :  {
+                        cells : [
+                            "",
+                            "",
+                            {
+                                childNodes : [
+                                    {
+                                        childNodes : [
+                                            {
+                                                childNodes : [
+                                                    {
+                                                        childNodes : [
+                                                            "",
+                                                            {
+                                                                childNodes : [
+                                                                    {
+                                                                        textContent : "object"
+
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }, editorDummy  = {
+
+                    node : {
+                        search : function () {
+
+                        },
+                        childs : [
+                            {
+                                focus : function () {},
+                                _onInsertBefore : function () {
+
+                                }
+                            }
+                        ]
+                    },
+                    get : function () {
+
+                    },
+                    set : function () {
+
+                    }
+
+
+                }, nodeDummy1 =  {elem : "value", _onInsertAfter : function () {}},
+                nodeDummy2 =  {elem : "value", _onInsertAfter : function () {}} ;
+            spyOn(editorDummy.node, "search").andReturn([
+                nodeDummy1,
+                nodeDummy2,
+                nodeDummy1
+            ]);
+            spyOn(nodeDummy1, "_onInsertAfter");
+            spyOn(nodeDummy2, "_onInsertAfter");
+
+            spyOn(editorDummy, "get").andReturn(undefined);
+
+            spyOn(editorDummy, "set");
+            spyOn(editorDummy.node.childs[0], "_onInsertBefore");
+            spyOn(editorDummy.node.childs[0], "focus");
+
+            view.editor = editorDummy;
+
+            view.addProperty(eDummy);
+
+
+            expect(editorDummy.node.search).not.toHaveBeenCalled();
+            expect(editorDummy.node.childs[0].focus).toHaveBeenCalledWith("field");
+            expect(editorDummy.node.childs[0]._onInsertBefore).not.toHaveBeenCalled();
+            expect(editorDummy.get).toHaveBeenCalled();
+            expect(editorDummy.set).toHaveBeenCalledWith({
+                "": ""
+            });
+
+        });
 
     });
 
