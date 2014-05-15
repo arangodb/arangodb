@@ -25,13 +25,21 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
 #include "ReadlineShell.h"
 #include "Completer.h"
+// IMPORTANT: v8-utils.h includes before readline.h
+#include "V8/v8-utils.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
 
 #include "BasicsC/tri-strings.h"
+
+
+#include <vector>
+
+#include <v8.h>
 
 using namespace std;
 using namespace triagens;
@@ -46,7 +54,6 @@ static char WordBreakCharacters[] = {
 static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
   static vector<string> result;
-
   // compute the possible completion
   if (state == 0) {
     if (! v8::Context::InContext()) {
@@ -155,7 +162,7 @@ static char* CompletionGenerator (char const* text, int state) {
 static char** AttemptedCompletion (char const* text, int start, int end) {
   char** result;
 
-  result = completion_matches(text, CompletionGenerator);
+  result = rl_completion_matches(text, CompletionGenerator);
   rl_attempted_completion_over = true;
 
   if (result != 0 && result[0] != 0 && result[1] == 0) {
@@ -238,7 +245,8 @@ bool ReadlineShell::open(bool autoComplete) {
   }
 
   using_history();
-  stifle_history(MAX_HISTORY_ENTRIES);
+  //stifle_history(MAX_HISTORY_ENTRIES);
+  stifle_history(1000);
 
   _state = STATE_OPENED;
 

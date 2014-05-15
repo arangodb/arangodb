@@ -26,30 +26,32 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
 #ifdef _WIN32 
 #include "LinenoiseShell.h"
-#else
-#ifdef TRI_HAVE_LINENOISE
+#elif TRI_HAVE_LINENOISE
 #include "LinenoiseShell.h"
-#endif
-#include "ReadLineShell.h"
+#else
+#include "ReadlineShell.h"
 #endif
 
 #include "ShellImplFactory.h"
+
 using namespace triagens;
 using namespace std;
 
 ShellImplementation * ShellImplFactory::buildShell(string const &  history, Completer * completer) {
 
+
 #ifdef _WIN32 
   //under windows the realine is not compilable
   return new LinenoiseShell(history, completer);
-#else
-#ifdef TRI_HAVE_LINENOISE
+#elif defined TRI_HAVE_LINENOISE
   return new LinenoiseShell(history, completer);
 #else
   return new ReadlineShell(history, completer);
 #endif
-#endif
+
 }
 

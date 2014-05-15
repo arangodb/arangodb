@@ -27,6 +27,8 @@
 
 #include "LinenoiseShell.h"
 
+#include "V8/v8-utils.h"
+
 extern "C" {
 #include <linenoise.h>
 }

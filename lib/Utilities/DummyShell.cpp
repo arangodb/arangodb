@@ -25,15 +25,16 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LineEditor.h"
+#include "DummyShell.h"
 
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
 
 using namespace std;
+using namespace triagentriagens;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
+// --SECTION--                                                  class DummyShell
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -44,7 +45,7 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
+DummyShell::DummyShell (std::string const& history)
   : _current(),
     _historyFilename(history),
     _state(STATE_NONE) {
@@ -54,7 +55,7 @@ LineEditor::LineEditor (std::string const& history)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
+DummyShell::~DummyShell () {
   close();
 }
 
@@ -66,7 +67,7 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
+bool DummyShell::open (bool) {
   _state = STATE_OPENED;
   return true;
 }
@@ -75,7 +76,7 @@ bool LineEditor::open (bool) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
+bool DummyShell::close () {
   _state = STATE_CLOSED;
   return true;
 }
@@ -84,7 +85,7 @@ bool LineEditor::close () {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
+string DummyShell::historyPath () {
   return "";
 }
 
@@ -92,14 +93,14 @@ string LineEditor::historyPath () {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
+void DummyShell::addHistory (char const* str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
+bool DummyShell::writeHistory () {
   return true;
 }
 
@@ -107,7 +108,7 @@ bool LineEditor::writeHistory () {
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt (char const* prompt) {
+char* DummyShell::prompt (char const* prompt) {
   string dotdot;
   char const* p = prompt;
   size_t len1 = strlen(prompt);
