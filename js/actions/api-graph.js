@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-var graph = require("org/arangodb/graph");
+var graph = require("org/arangodb/graph-blueprint");
 var internal = require("internal");
 var arangodb = require("org/arangodb");
 
@@ -343,7 +343,7 @@ function post_graph_graph (req, res) {
 /// get graph by name
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraph}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph";
 ///     var response = logCurlRequest('GET', url);
@@ -359,7 +359,7 @@ function post_graph_graph (req, res) {
 /// get all graphs
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraphs}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     new Graph("graph1", "vertices1", "edges1");
 ///     new Graph("graph2", "vertices2", "edges2");
 ///     var url = "/_api/graph";
@@ -441,7 +441,7 @@ function get_graph_graph (req, res) {
 /// delete graph by name
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteGraph}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph";
 ///     var response = logCurlRequest('DELETE', url);
@@ -548,7 +548,7 @@ function delete_graph_graph (req, res) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateVertex}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph/vertex";
 ///     var response = logCurlRequest('POST', url, {"_key" : "v1", "optional1" : "val1" });
@@ -654,7 +654,7 @@ function post_graph_vertex (req, res, g) {
 /// get vertex properties by name
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertex}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
@@ -741,7 +741,7 @@ function get_graph_vertex (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteVertex}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
@@ -911,7 +911,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeVertex}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
@@ -997,7 +997,7 @@ function put_graph_vertex (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepVertex}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex("v1", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
@@ -1154,7 +1154,7 @@ function process_labels_filter (data, labels, collname) {
 /// Select all vertices
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertices}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex("v1", { "optional1" : "val1" });
 ///     g.addVertex("v2", { "optional1" : "val1" });
@@ -1264,7 +1264,7 @@ function post_graph_all_vertices (req, res, g) {
 /// Select all vertices
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
 ///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
@@ -1290,7 +1290,7 @@ function post_graph_all_vertices (req, res, g) {
 /// Select vertices by direction and property filter
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices2}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
 ///     var v2 = g.addVertex("v2", { "optional1" : "val2" });
@@ -1431,7 +1431,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph/edge";
 ///     g.addVertex("vert1");
@@ -1546,7 +1546,7 @@ function post_graph_edge (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph/edge/edge1";
 ///     var v1 = g.addVertex("vert1");
@@ -1634,7 +1634,7 @@ function get_graph_edge (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
@@ -1809,7 +1809,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
@@ -1897,7 +1897,7 @@ function put_graph_edge (req, res, g) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
@@ -1960,7 +1960,7 @@ function patch_graph_edge (req, res, g) {
 /// Select all edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdges}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
 ///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
@@ -2087,7 +2087,7 @@ function post_graph_all_edges (req, res, g) {
 /// Select all edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexEdges}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
 ///     var v2 = g.addVertex("v2", { "optional1" : "val1" });

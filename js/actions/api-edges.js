@@ -66,7 +66,7 @@ var API = "/_api/edges";
 /// Any direction
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);
@@ -90,7 +90,7 @@ var API = "/_api/edges";
 /// In edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);
@@ -114,7 +114,7 @@ var API = "/_api/edges";
 /// Out edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);
