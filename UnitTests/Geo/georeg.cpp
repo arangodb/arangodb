@@ -1097,7 +1097,7 @@ void runTest (int mode)
         list1 = GeoIndex_PointsWithinRadius(gi,&gcp,9800000.0);
         for(j=0;j<(int) list1->length;j++)  /* delete before freeing list1! */
         {
-            r=GeoIndex_remove(gi,list1->coordinates+j);
+            GeoIndex_remove(gi,list1->coordinates+j);
         }
         gcmass(400+5*i,list1, np[i], hs[i]);
     }
