@@ -2662,11 +2662,15 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
-  if (!obj->Has(pidname)) {
+
+  if (! obj->Has(pidname)) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
                              "statusExternal: pid must be given");
   }
+
   TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
 #else
@@ -2676,6 +2680,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   if (argv.Length() == 2) {
     wait = TRI_ObjectToBoolean(argv[1]);
   }
+
   TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();

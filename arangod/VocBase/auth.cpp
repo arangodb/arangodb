@@ -453,6 +453,8 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     LOG_FATAL_AND_EXIT("collection '_users' cannot be loaded");
   }
 
+  assert(primary != NULL);
+
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
 
@@ -460,7 +462,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  primary->beginRead(primary);
 
   beg = primary->_primaryIndex._table;
   end = beg + primary->_primaryIndex._nrAlloc;

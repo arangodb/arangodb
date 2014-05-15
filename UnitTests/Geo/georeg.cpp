@@ -297,7 +297,7 @@ void runTest (int mode)
 /* mainly for debugging rather than regression     */
 
     gi=GeoIndex_new();
-    i=GeoIndex_hint(gi,10);  /* set it to "robust" mode */
+    GeoIndex_hint(gi,10);  /* set it to "robust" mode */
     for(i=0;i<50;i++)
     {
         gcp.latitude  = 90.0;
@@ -313,7 +313,7 @@ void runTest (int mode)
     gcp.latitude  = 89.9;
     gcp.longitude = -180.0;
     gcp.data = ix + 64;
-    r = GeoIndex_insert(gi,&gcp);
+    GeoIndex_insert(gi,&gcp);
     list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
     gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA"); 
     gicheck(14,gi);
