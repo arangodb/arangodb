@@ -586,13 +586,10 @@ void ApplicationServer::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::wait () {
-  bool running = true;
-
   // wait until we receive a stop signal
-  while (running && _stopping == 0) {
+  while (_stopping == 0) {
     // check the parent and wait for a second
     if (! checkParent()) {
-      running = false;
       break;
     }
 

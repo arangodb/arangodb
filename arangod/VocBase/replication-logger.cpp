@@ -1093,6 +1093,7 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
 
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     dst->_lastLogTick  = 0;
+    dst->_totalEvents  = 0;
     dst->_active       = false;
     return TRI_ERROR_NO_ERROR;
   }
@@ -1108,6 +1109,7 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
   primary = (TRI_primary_collection_t*) col->_collection;
 
   dst->_lastLogTick  = primary->base._info._revision;
+  dst->_totalEvents  = 0;
   dst->_active       = false;
 
   TRI_ReleaseCollectionVocBase(vocbase, col);
@@ -1769,8 +1771,6 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
                                 TRI_replication_logger_state_t* state) {
   int res;
-
-  res = TRI_ERROR_NO_ERROR;
 
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
