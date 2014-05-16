@@ -45,11 +45,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,18 +52,9 @@ RestImportHandler::RestImportHandler (HttpRequest* request)
   : RestVocbaseBaseHandler(request) {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -114,18 +100,24 @@ HttpHandler::status_t RestImportHandler::execute () {
   return status_t(HANDLER_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief extracts the "overwrite" value
 ////////////////////////////////////////////////////////////////////////////////
+
+bool RestImportHandler::extractOverwrite () const {
+  bool found;
+  char const* overwrite = _request->value("overwrite", found);
+
+  if (found) {
+    return StringUtils::boolean(overwrite);
+  }
+
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the "complete" value
@@ -170,9 +162,9 @@ void RestImportHandler::registerError (RestImportResult& result,
 int RestImportHandler::handleSingleDocument (ImportTransactionType& trx, 
                                              TRI_json_t const* json,
                                              string& errorMsg,
-                                             const bool isEdgeCollection,
-                                             const bool waitForSync,
-                                             const size_t i) {
+                                             bool isEdgeCollection,
+                                             bool waitForSync,
+                                             size_t i) {
   if (! TRI_IsArrayJson(json)) {
     errorMsg = positionise(i) + "invalid JSON type (expecting array)";
 
@@ -184,8 +176,8 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {
-    const char* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
-    const char* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
+    char const* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
+    char const* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
 
     if (from == 0 || to == 0) {
       errorMsg = positionise(i) + "missing '_from' or '_to' attribute";
@@ -268,6 +260,11 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 /// If this parameter has a value of `true` or `yes`, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{overwrite,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then all data in the
+/// collection will be removed prior to the import. Note that any existing
+/// index definitions will be preseved.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until documents have been synced to disk before returning.
@@ -535,7 +532,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createFromJson (const string& type) {
+bool RestImportHandler::createFromJson (string const& type) {
   RestImportResult result;
 
   vector<string> const& suffix = _request->suffix();
@@ -547,12 +544,13 @@ bool RestImportHandler::createFromJson (const string& type) {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
-  const bool complete = extractComplete();
+  bool const waitForSync = extractWaitForSync();
+  bool const complete = extractComplete();
+  bool const overwrite = extractOverwrite();
 
   // extract the collection name
   bool found;
-  const string& collection = _request->value("collection", found);
+  string const& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -564,7 +562,7 @@ bool RestImportHandler::createFromJson (const string& type) {
   if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
-  
+
   bool linewise;
 
   if (type == "documents") {
@@ -579,11 +577,11 @@ bool RestImportHandler::createFromJson (const string& type) {
     linewise = true;
 
     // auto detect import type by peeking at first character
-    const char* ptr = _request->body();
-    const char* end = ptr + _request->bodySize();
+    char const* ptr = _request->body();
+    char const* end = ptr + _request->bodySize();
 
     while (ptr < end) {
-      const char c = *ptr;
+      char const c = *ptr;
       if (c == '\r' || c == '\n' || c == '\t' || c == ' ') {
         ptr++;
         continue;
@@ -618,21 +616,31 @@ bool RestImportHandler::createFromJson (const string& type) {
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
+  
+  if (overwrite) {
+    // truncate collection first
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+    trx.truncate(false);
+    
+    if (barrier != 0) {
+      TRI_FreeBarrier(barrier);
+    }
+  }
 
   if (linewise) {
     // each line is a separate JSON document
-    const char* ptr = _request->body();
-    const char* end = ptr + _request->bodySize();
+    char const* ptr = _request->body();
+    char const* end = ptr + _request->bodySize();
     string line;
     size_t i = 0;
 
     while (ptr < end) {
       // read line until done
       i++;
-      const char* pos = strchr(ptr, '\n');
+      char const* pos = strchr(ptr, '\n');
 
       if (pos == 0) {
         line.assign(ptr, (size_t) (end - ptr));
@@ -689,7 +697,7 @@ bool RestImportHandler::createFromJson (const string& type) {
       return false;
     }
   
-    const size_t n = documents->_value._objects._length; 
+    size_t const n = documents->_value._objects._length; 
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&documents->_value._objects, i);
@@ -754,6 +762,11 @@ bool RestImportHandler::createFromJson (const string& type) {
 /// If this parameter has a value of `true` or `yes`, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{overwrite,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then all data in the
+/// collection will be removed prior to the import. Note that any existing
+/// index definitions will be preseved.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until documents have been synced to disk before returning.
@@ -983,12 +996,13 @@ bool RestImportHandler::createFromKeyValueList () {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
-  const bool complete = extractComplete();
+  bool const waitForSync = extractWaitForSync();
+  bool const complete = extractComplete();
+  bool const overwrite = extractOverwrite();
 
   // extract the collection name
   bool found;
-  const string& collection = _request->value("collection", found);
+  string const& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -1003,7 +1017,7 @@ bool RestImportHandler::createFromKeyValueList () {
 
   // read line number (optional)
   int64_t lineNumber = 0;
-  const string& lineNumValue = _request->value("line", found);
+  string const& lineNumValue = _request->value("line", found);
   if (found) {
     lineNumber = StringUtils::int64(lineNumValue);
   }
@@ -1060,13 +1074,19 @@ bool RestImportHandler::createFromKeyValueList () {
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
+  if (overwrite) {
+    // truncate collection first
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+    trx.truncate(false);
+    
+    if (barrier != 0) {
+      TRI_FreeBarrier(barrier);
+    }
+  }
 
   size_t i = (size_t) lineNumber;
 
@@ -1172,7 +1192,7 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
     TRI_json_t* messages = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
     for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
-      const string& msg = result._errors[i];
+      string const& msg = result._errors[i];
       TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
     }
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
@@ -1186,7 +1206,7 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
+TRI_json_t* RestImportHandler::parseJsonLine (string const& line) {
   char* errmsg = 0;
   TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, line.c_str(), &errmsg);
 
@@ -1201,18 +1221,18 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 /// @brief create a JSON object from a line containing a document
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
-                                                 const TRI_json_t* values,
+TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
+                                                 TRI_json_t const* values,
                                                  string& errorMsg,
-                                                 const string& line,
-                                                 const size_t lineNumber) {
+                                                 string const& line,
+                                                 size_t lineNumber) {
 
   if (values->_type != TRI_JSON_LIST) {
     errorMsg = positionise(lineNumber) + "no valid JSON list data";
     return 0;
   }
 
-  const size_t n = keys->_value._objects._length;
+  size_t const n = keys->_value._objects._length;
 
   if (n !=  values->_value._objects._length) {
     errorMsg = positionise(lineNumber) + "wrong number of JSON values";
@@ -1228,8 +1248,8 @@ TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
 
   for (size_t i = 0;  i < n;  ++i) {
 
-    TRI_json_t* key   = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
-    TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&values->_value._objects, i);
+    TRI_json_t const* key   = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
+    TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&values->_value._objects, i));
 
     if (JsonHelper::isString(key) && value->_type > TRI_JSON_NULL) {
       TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);
@@ -1248,7 +1268,7 @@ bool RestImportHandler::checkKeys (TRI_json_t const* keys) {
     return false;
   }
 
-  const size_t n = keys->_value._objects._length;
+  size_t const n = keys->_value._objects._length;
 
   if (n == 0) {
     return false;
@@ -1264,10 +1284,6 @@ bool RestImportHandler::checkKeys (TRI_json_t const* keys) {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
