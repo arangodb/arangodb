@@ -69,6 +69,24 @@ function GeneralGraphCreationSuite() {
 
     },
 
+	  test_undirectedRelationDefinitionWithSingleCollection : function () {
+		  var r;
+
+		  try {
+			  r = graph._undirectedRelationDefinition("relationName", "vertexC1");
+		  }
+		  catch (err) {
+			  console.log("aaaaa", err);
+		  }
+
+		  assertEqual(r, {
+			  collection: "relationName",
+			  from: ["vertexC1"],
+			  to: ["vertexC1"]
+		  });
+
+	  },
+
 	  test_undirectedRelationDefinitionWithMissingName : function () {
 		  var r, exception;
 			try {
@@ -176,6 +194,32 @@ function GeneralGraphCreationSuite() {
 		  }
 
 		  assertEqual(exception, "<toVertexCollections> must be a not empty string or array");
+
+	  },
+
+	  testEdgeDefinitions : function () {
+
+
+		  //with empty args
+		  assertEqual(graph.edgeDefinitions(), []);
+
+		  //with args
+		  assertEqual(graph.edgeDefinitions(
+			  graph._undirectedRelationDefinition("relationName", "vertexC1"),
+			  graph._directedRelationDefinition("relationName",
+				  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
+		  ), [
+			  {
+				  collection: "relationName",
+				  from: ["vertexC1"],
+				  to: ["vertexC1"]
+			  },
+			  {
+				  collection: "relationName",
+				  from: ["vertexC1", "vertexC2"],
+				  to: ["vertexC3", "vertexC4"]
+			  }
+		  ]);
 
 	  }
 
