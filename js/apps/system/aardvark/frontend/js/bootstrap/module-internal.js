@@ -1045,7 +1045,7 @@
 
         printRecursive(object[i], context);
 
-        if (context.emit && context.output.length) {
+        if (context.emit && context.output.length >= context.emit) {
           exports.output(context.output);
           context.output = "";
         }
@@ -1080,7 +1080,6 @@
 
     var useColor = context.useColor;
     var sep = " ";
-    var k;
 
     if (useColor) {
       context.output += colors.COLOR_PUNCTUATION;
@@ -1096,41 +1095,48 @@
 
     context.level = newLevel;
 
-    for (k in object) {
-      if (object.hasOwnProperty(k)) {
-        var val = object[k];
+    var keys = Object.keys(object);
+    var i, n = keys.length;
 
-        if (useColor) {
-          context.output += colors.COLOR_PUNCTUATION;
-        }
+    for (i = 0; i < n; ++i) {
+      var k = keys[i];
+      var val = object[k];
 
-        context.output += sep;
+      if (useColor) {
+        context.output += colors.COLOR_PUNCTUATION;
+      }
 
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
+      context.output += sep;
 
-        printIndent(context);
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
 
-        if (useColor) {
-          context.output += colors.COLOR_INDEX;
-        }
+      printIndent(context);
 
-        context.output += quoteJsonString(k);
+      if (useColor) {
+        context.output += colors.COLOR_INDEX;
+      }
 
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
+      context.output += quoteJsonString(k);
 
-        context.output += " : ";
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
 
-        var path = context.path;
-        context.path += "[" + k + "]";
+      context.output += " : ";
 
-        printRecursive(val, context);
+      var path = context.path;
+      context.path += "[" + k + "]";
 
-        context.path = path;
-        sep = ", ";
+      printRecursive(val, context);
+
+      context.path = path;
+      sep = ", ";
+
+      if (context.emit && context.output.length >= context.emit) {
+        exports.output(context.output);
+        context.output = "";
       }
     }
 
@@ -1184,7 +1190,7 @@
         if (customInspect && typeof value._PRINT === "function") {
           value._PRINT(context);
 
-          if (context.emit) {
+          if (context.emit && context.output.length >= context.emit) {
             exports.output(context.output);
             context.output = "";
           }
@@ -1195,7 +1201,7 @@
         else if (value.__proto__ === Object.prototype) {
           printObject(value, context);
 
-          if (context.emit) {
+          if (context.emit && context.output.length >= context.emit) {
             exports.output(context.output);
             context.output = "";
           }
@@ -1390,7 +1396,7 @@
           customInspect: true,
           limitString: 80,
           useToString: true,
-          emit: true
+          emit: 16384
         };
 
         printRecursive(arguments[i], context);
