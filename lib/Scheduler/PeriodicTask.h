@@ -29,6 +29,7 @@
 #ifndef TRIAGENS_SCHEDULER_PERIODIC_TASK_H
 #define TRIAGENS_SCHEDULER_PERIODIC_TASK_H 1
 
+#include "Basics/Common.h"
 #include "Scheduler/Task.h"
 
 extern "C" {
