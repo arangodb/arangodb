@@ -24,7 +24,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Florian Bartels
+/// @author Florian Bartels, Michael Hackstein
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,7 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 
 var console = require("console");
-var graph = require("org/arangodb/general-graph")
+var graph = require("org/arangodb/general-graph");
 
 var print = arangodb.print;
 
@@ -223,7 +223,6 @@ function GeneralGraphCreationSuite() {
 
 	  }
 
-
 	  /*test_create : function () {
 
 
@@ -242,10 +241,159 @@ function GeneralGraphCreationSuite() {
 
 	  }*/
 
-
-  }
+  };
 
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Simple Queries
+// -----------------------------------------------------------------------------
+
+function GeneralGraphSimpleQueriesSuite() {
+
+  var dropInclExcl = function() {
+    var col = require("internal").db._collection("_graphs");
+    try {
+      col.remove("graph");
+    } catch (e) {
+      return;
+    }
+  };
+
+  var createInclExcl = function() {
+    dropInclExcl();
+    var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
+    var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+    var g = graph._create("graph", [inc, exc]);
+    return g;
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on edges
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictOnEdges: function() {
+      var g = createInclExcl();
+      var incEdge1 = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: true
+        }
+      );
+      var incEdge2 = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: true
+        }
+      );
+      var excEdge = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
+      /*
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 2);
+      assertNotEqual(result.indexOf(incEdge1), -1);
+      assertNotEqual(result.indexOf(incEdge2), -1);
+      assertEqual(result.indexOf(excEdge), -1);
+      */
+      dropInclExcl();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on inEdges
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictOnInEdges: function() {
+      var g = createInclExcl();
+      var excEdge1 = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: false
+        }
+      );
+      var incEdge = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: true
+        }
+      );
+      var excEdge2 = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
+      /*
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 1);
+      assertEqual(result.indexOf(excEdge1), -1);
+      assertNotEqual(result.indexOf(incEdge), -1);
+      assertEqual(result.indexOf(excEdge2), -1);
+      */
+      dropInclExcl();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on outEdges
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictOnOutEdges: function() {
+      var g = createInclExcl();
+      var incEdge = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: true
+        }
+      );
+      var excEdge1 = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: false
+        }
+      );
+      var excEdge2 = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
+      /*
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 1);
+      assertNotEqual(result.indexOf(incEdge), -1);
+      assertEqual(result.indexOf(excEdge1), -1);
+      assertEqual(result.indexOf(excEdge2), -1);
+      */
+      dropInclExcl();
+   },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: filter construct on Edges
+////////////////////////////////////////////////////////////////////////////////
+   
+   test_filterOnEdges: function() {
+
+   }
+
+  };
+
+
+}
+
 
 
 // -----------------------------------------------------------------------------
@@ -257,6 +405,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GeneralGraphCreationSuite);
+jsunity.run(GeneralGraphSimpleQueriesSuite);
 
 return jsunity.done();
 

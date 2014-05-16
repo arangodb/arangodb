@@ -41,45 +41,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute weight
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct attribute_weight_s {
-  TRI_shape_aid_t              _aid;
-  int64_t                      _weight;
-  char*                        _attribute;
-  struct attribute_weight_s*   _next;
-}
-attribute_weight_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute weights
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct attribute_weights_s {
-  attribute_weight_t*          _first;
-  attribute_weight_t*          _last;
-  size_t                       _length;
-}
-attribute_weights_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weighted attribute
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct weighted_attribute_s {
-  TRI_shape_aid_t              _aid;
-  int64_t                      _weight;  
-  TRI_shaped_json_t            _value;
-} 
-weighted_attribute_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection-based shaper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,10 +54,6 @@ typedef struct voc_shaper_s {
 
   TRI_associative_pointer_t    _accessors;
 
-  TRI_vector_pointer_t         _sortedAttributes;
-  TRI_associative_pointer_t    _weightedAttributes;
-  attribute_weights_t          _weights;
-
   TRI_shape_aid_t              _nextAid;
   TRI_shape_sid_t              _nextSid;
 
@@ -108,18 +65,9 @@ typedef struct voc_shaper_s {
 }
 voc_shaper_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute name of a key
@@ -153,191 +101,6 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two attribute strings stored in the attribute marker
-///
-/// returns 0 if the strings are equal
-/// returns < 0 if the left string compares less than the right string
-/// returns > 0 if the left string compares more than the right string
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareNameAttributeWeight (const void* leftItem,
-                                       const void* rightItem) {
-  const attribute_weight_t* l = (const attribute_weight_t*)(leftItem);
-  const attribute_weight_t* r = (const attribute_weight_t*)(rightItem);
-
-  assert(l);
-  assert(r);
-
-  return TRI_compare_utf8(l->_attribute, r->_attribute);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two attribute strings stored in the attribute marker
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareNameAttributeWeightPointer (const void* leftItem,
-                                              const void* rightItem) {
-  const attribute_weight_t* l = *((const attribute_weight_t**)(leftItem));
-  const attribute_weight_t* r = *((const attribute_weight_t**)(rightItem));
-
-  assert(l);
-  assert(r);
-
-  return TRI_compare_utf8(l->_attribute, r->_attribute);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief search for attribute
-///
-/// Performs a binary search on a list of attributes (attribute markers) and
-/// returns the position where a given attribute would be inserted
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t SortedIndexOf (voc_shaper_t* shaper, 
-                              attribute_weight_t* item) {
-  int64_t leftPos;
-  int64_t rightPos;
-  int64_t midPos;
-
-  leftPos  = 0;
-  rightPos = ((int64_t) shaper->_sortedAttributes._length) - 1;
-
-  while (leftPos <= rightPos)  {
-    midPos = (leftPos + rightPos) / 2;
-  
-    int compareResult = CompareNameAttributeWeight(TRI_AtVectorPointer(&(shaper->_sortedAttributes), midPos), (void*) item);
-    if (compareResult < 0) {
-      leftPos = midPos + 1;
-    }
-    else if (compareResult > 0) {
-      rightPos = midPos - 1;
-    }
-    else {
-      // should never happen since we do not allow duplicates here
-      return -1;
-    }
-  }
-  return leftPos; // insert it to the left of this position
-}
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the attribute weight
-///
-/// helper method to store a list of attributes and their corresponding weights.
-////////////////////////////////////////////////////////////////////////////////
-
-static void SetAttributeWeight (voc_shaper_t* shaper,
-                                attribute_weight_t* item,
-                                int64_t* searchResult,
-                                bool* weighted) {
-  int64_t itemWeight;
-  attribute_weight_t* leftItem;  // nearest neighbour items
-  attribute_weight_t* rightItem; // nearest neighbour items
-  const int64_t resolution = 100;
-  void* result;
-
-  *weighted = false;
-
-  assert(item != NULL);
-  assert(shaper != NULL);
-
-  *searchResult = SortedIndexOf(shaper, item);
-
-  if (*searchResult < 0 || 
-      *searchResult > (int64_t) shaper->_sortedAttributes._length) { // oops
-    assert(false);
-    return;
-  }
-
-  switch ( (shaper->_sortedAttributes)._length) {
-    case 0: {
-      item->_weight = 0;
-      *weighted = true;
-      break;
-    }
-
-    case 1: {
-      if (*searchResult == 0) {
-        item->_weight = 0;
-        rightItem = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), 0));
-        rightItem->_weight = resolution;
-      }
-      else {
-        leftItem  = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), 0));
-        leftItem->_weight = 0;
-        item->_weight = resolution;
-      }
-      *weighted = true;
-      break;
-    }
-
-    default: {
-      if (*searchResult == 0) {
-        rightItem = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), 0));
-        item->_weight = rightItem->_weight - resolution;
-        *weighted = true;
-      }
-      else if (*searchResult == (int64_t) (shaper->_sortedAttributes)._length) {
-        leftItem  = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), (shaper->_sortedAttributes)._length - 1));
-        item->_weight = leftItem->_weight + resolution;
-        *weighted = true;
-      }
-      else {
-        leftItem  = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), *searchResult - 1));
-        rightItem = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), *searchResult));
-        itemWeight = (rightItem->_weight + leftItem->_weight) / 2;
-
-        if (leftItem->_weight != itemWeight && 
-            rightItem->_weight != itemWeight) {
-          item->_weight = itemWeight;
-          *weighted = true;
-        }
-      }
-      break;
-    }
-  } // end of switch statement
-
-  result = TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(item->_aid), item, false);
-
-  if (result != NULL) {
-    LOG_ERROR("attribute weight could not be inserted into associative array");
-    *searchResult = -1;
-    return;
-  }
-
-  // ...........................................................................
-  // Obtain the pointer of the weighted attribute structure which is stored
-  // in the associative array. We need to pass this pointer to the Vector Pointer
-  // ...........................................................................
-
-  item = static_cast<attribute_weight_t*>(TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(item->_aid)));
-
-  if (item == NULL) {
-    LOG_ERROR("attribute weight could not be located immediately after insert into associative array");
-    *searchResult = -1;
-    return;
-  }
-
-  TRI_InsertVectorPointer(&(shaper->_sortedAttributes), item, (size_t) (*searchResult));
-}
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the attribute weight
-////////////////////////////////////////////////////////////////////////////////
-
-static void FullSetAttributeWeight (voc_shaper_t* shaper) {
-  int64_t startWeight;
-
-  startWeight = 0;
-
-  for (size_t j = 0; j < shaper->_sortedAttributes._length; ++j) {
-    attribute_weight_t* item = (attribute_weight_t*) TRI_AtVectorPointer(&(shaper->_sortedAttributes), j);
-    item->_weight = startWeight;
-    startWeight += 100;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -368,7 +131,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   char* mem;
   TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
-  TRI_df_attribute_marker_t* markerResult;
   TRI_doc_datafile_info_t* dfi;
   TRI_voc_fid_t fid;
   int res;
@@ -378,8 +140,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   TRI_voc_size_t totalSize;
   void const* p;
   void* f;
-  int64_t searchResult;
-  bool weighted;
 
   assert(name != NULL);
 
@@ -470,47 +230,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   assert(f == NULL);
 
   // ...........................................................................
-  // Each attribute has an associated integer as a weight. This
-  // weight corresponds to the natural ordering of the attribute strings
-  // ...........................................................................
-
-  markerResult = (TRI_df_attribute_marker_t*) result;
-
-  attribute_weight_t* weightedAttribute = static_cast<attribute_weight_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false));
-
-  if (weightedAttribute != NULL) {
-    weightedAttribute->_aid       = markerResult->_aid;
-    weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
-    weightedAttribute->_next      = NULL;
-
-    // ..........................................................................
-    // Save the new attribute weight in the linked list.
-    // ..........................................................................
-
-    if ((s->_weights)._last == NULL) {
-      (s->_weights)._first = weightedAttribute;
-    }
-    else {
-      ((s->_weights)._last)->_next = weightedAttribute;
-    }
-
-    (s->_weights)._last = weightedAttribute;  
-    (s->_weights)._length += 1;
-
-    SetAttributeWeight(s, weightedAttribute, &searchResult, &weighted);
-    assert(searchResult > -1);
-
-    if (! weighted) {  
-      FullSetAttributeWeight(s);
-    }
-  }
-
-  else {
-    LOG_WARNING("FindAttributeByName could not allocate memory, attribute is NOT weighted");
-  }
-
-  // ...........................................................................
   // and release the lock
   // ...........................................................................
 
@@ -565,38 +284,6 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper,
   }
 
   return static_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute weight by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, 
-                                      TRI_shape_aid_t aid) {
-  voc_shaper_t* s = (voc_shaper_t*) shaper;
-  const attribute_weight_t* item;
-
-  item = (const attribute_weight_t*)(TRI_LookupByKeyAssociativePointer(&s->_weightedAttributes, &aid));
-
-  if (item == NULL) {
-    // ........................................................................
-    // return -9223372036854775807L 2^63-1 to indicate that the attribute is
-    // weighted to be the lowest possible
-    // ........................................................................
-    LOG_WARNING("LookupAttributeWeight returned NULL weight");
-    return TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-  }
-
-  if (item->_aid != aid) {
-    // ........................................................................
-    // return -9223372036854775807L 2^63-1 to indicate that the attribute is
-    // weighted to be the lowest possible
-    // ........................................................................
-    LOG_WARNING("LookupAttributeWeight returned an UNDEFINED weight");
-    return TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-  }
-
-  return item->_weight;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,131 +449,6 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares to weighted attributes
-////////////////////////////////////////////////////////////////////////////////
-
-static int AttributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
-  const weighted_attribute_t* l = (const weighted_attribute_t*) leftItem;
-  const weighted_attribute_t* r = (const weighted_attribute_t*) rightItem;
-
-  if (l->_weight < r->_weight) { 
-    return -1; 
-  }
-  if (l->_weight > r->_weight) { 
-    return  1; 
-  }
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free weighted attribute
-///
-/// Helper method to deal with freeing memory associated with the weight 
-/// comparisions.
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
-                                          weighted_attribute_t** rightWeightedList) {
-  if (*leftWeightedList != NULL) {                                         
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, *leftWeightedList);
-    *leftWeightedList = NULL;
-  }  
-
-  if (*rightWeightedList != NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, *rightWeightedList);
-    *rightWeightedList = NULL;
-  }                                           
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of entries
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
-                                            const TRI_shaper_t* shaper, 
-                                            const TRI_shaped_json_t* shapedJson,
-                                            weighted_attribute_t** attributeArray) {
-  char* charShape = (char*)(shape);
-  TRI_shape_size_t fixedEntries;     // the number of entries in the JSON array whose value is of a fixed size
-  TRI_shape_size_t variableEntries;  // the number of entries in the JSON array whose value is not of a known fixed size
-  TRI_shape_size_t j;
-  const TRI_shape_aid_t* aids;
-  const TRI_shape_sid_t* sids;
-  const TRI_shape_size_t* offsets;
-  
-  // .............................................................................
-  // Ensure we return an empty array - in case of funny business below
-  // .............................................................................
-  
-  *attributeArray = NULL;
-  
-  // .............................................................................
-  // Determine the number of fixed sized values
-  // .............................................................................
-  
-  charShape = charShape + sizeof(TRI_shape_t);           
-  fixedEntries = *((TRI_shape_size_t*)(charShape));
-
-  // .............................................................................
-  // Determine the number of variable sized values
-  // .............................................................................
-  
-  charShape = charShape + sizeof(TRI_shape_size_t);
-  variableEntries = *((TRI_shape_size_t*)(charShape));
-
-  // .............................................................................
-  // It may happen that the shaped_json_array is 'empty {}'
-  // .............................................................................
-  
-  if ((fixedEntries + variableEntries) == 0) {
-    return 0;
-  }  
-  
-  // .............................................................................
-  // Allocate memory to hold the attribute information required for comparison
-  // .............................................................................
-  
-  *attributeArray = static_cast<weighted_attribute_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizeof(weighted_attribute_t) * (fixedEntries + variableEntries)), false));
-
-  if (*attributeArray == NULL) {
-    return -1;
-  }
-
-  // .............................................................................
-  // Determine the list of shape identifiers
-  // .............................................................................
-  
-  charShape = charShape + sizeof(TRI_shape_size_t);
-  sids = (const TRI_shape_sid_t*)(charShape);
-  
-  charShape = charShape + (sizeof(TRI_shape_sid_t) * (fixedEntries + variableEntries));
-  aids = (const TRI_shape_aid_t*)(charShape);
-
-  charShape = charShape + (sizeof(TRI_shape_aid_t) * (fixedEntries + variableEntries));
-  offsets = (const TRI_shape_size_t*)(charShape);
-  
-  for (j = 0; j < fixedEntries; ++j) {
-    (*attributeArray)[j]._aid                = aids[j];
-    (*attributeArray)[j]._weight             = shaper->lookupAttributeWeight((TRI_shaper_t*)(shaper),aids[j]);
-    (*attributeArray)[j]._value._sid         = sids[j];
-    (*attributeArray)[j]._value._data.data   = shapedJson->_data.data + offsets[j];
-    (*attributeArray)[j]._value._data.length = (uint32_t) (offsets[j + 1] - offsets[j]);
-  }
-  
-  offsets = (const TRI_shape_size_t*)(shapedJson->_data.data);
-  for (j = 0; j < variableEntries; ++j) {
-    TRI_shape_size_t jj = j + fixedEntries;
-    (*attributeArray)[jj]._aid                = aids[jj];
-    (*attributeArray)[jj]._weight             = shaper->lookupAttributeWeight((TRI_shaper_t*)(shaper),aids[jj]);
-    (*attributeArray)[jj]._value._sid         = sids[jj];
-    (*attributeArray)[jj]._value._data.data   = shapedJson->_data.data + offsets[j];
-    (*attributeArray)[jj]._value._data.length = (uint32_t) (offsets[j + 1] - offsets[j]);
-  }
-
-  return (int) (fixedEntries + variableEntries);  
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the shape id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -960,27 +522,6 @@ static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* 
   TRI_shape_access_t const* rr = static_cast<TRI_shape_access_t const*>(right);
 
   return ll->_sid == rr->_sid && ll->_pid == rr->_pid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Hashes a weighted attribute
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyElementWeightedAttribute (TRI_associative_pointer_t* array, const void* key, const void* element) {
-  TRI_shape_aid_t* aid = (TRI_shape_aid_t*)(key);
-  attribute_weight_t* item = (attribute_weight_t*)(element);
-  return (*aid == item->_aid);
-}
-
-static uint64_t HashKeyWeightedAttribute (TRI_associative_pointer_t* array, const void* key) {
-  TRI_shape_aid_t* aid = (TRI_shape_aid_t*)(key);
-  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*) aid, sizeof(TRI_shape_aid_t));
-}
-
-static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, const void* element) {
-  attribute_weight_t* item = (attribute_weight_t*)(element);
-  TRI_shape_aid_t* aid = &(item->_aid);
-  return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*) aid, sizeof(TRI_shape_aid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1065,13 +606,6 @@ static int InitStep1VocShaper (voc_shaper_t* shaper) {
     return res;
   }
 
-  res = TRI_InitAssociativePointer(&shaper->_weightedAttributes,
-                                   TRI_UNKNOWN_MEM_ZONE,
-                                   HashKeyWeightedAttribute,
-                                   HashElementWeightedAttribute,
-                                   EqualKeyElementWeightedAttribute,
-                                   NULL);
-
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyAssociativePointer(&shaper->_accessors);
     TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
@@ -1094,65 +628,15 @@ static int InitStep2VocShaper (voc_shaper_t* shaper) {
   TRI_InitMutex(&shaper->_attributeLock);
   TRI_InitMutex(&shaper->_accessorLock);
 
-  shaper->_nextAid = 1;
-  shaper->_nextSid = 7; // TODO!!!!!!!!!!!!!!!!!
-
-  // ..........................................................................
-  // Attribute weight
-  // ..........................................................................
-
-  shaper->base.lookupAttributeWeight = LookupAttributeWeight;
-
-  TRI_InitVectorPointer(&shaper->_sortedAttributes, TRI_UNKNOWN_MEM_ZONE);
-
-  // ..........................................................................
-  // We require a place to store the weights -- a linked list is as good as
-  // anything for now. Later try and store in a smart 2D array.
-  // ..........................................................................
-
-  (shaper->_weights)._first  = NULL;
-  (shaper->_weights)._last   = NULL;
-  (shaper->_weights)._length = 0;
+  shaper->_nextAid = 1;                              // id of next attribute to hand out
+  shaper->_nextSid = TRI_FirstCustomShapeIdShaper(); // id of next shape to hand out 
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a shaper
-////////////////////////////////////////////////////////////////////////////////
-
-static int InitStep3VocShaper (voc_shaper_t* shaper) { 
-  // .............................................................................
-  // Sort all the attributes using the attribute string
-  // .............................................................................
-  
-  qsort(shaper->_sortedAttributes._buffer, 
-        shaper->_sortedAttributes._length, 
-        sizeof(attribute_weight_t*), 
-        CompareNameAttributeWeightPointer);
-  
-  
-  // .............................................................................
-  // re-weigh all of the attributes
-  // .............................................................................
-
-  FullSetAttributeWeight(shaper);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shaper
@@ -1203,9 +687,6 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
 
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
-  attribute_weight_t* weightedAttribute;
-  attribute_weight_t* nextWeightedAttribute;
-  size_t i;
 
   assert(shaper != NULL);
 
@@ -1214,8 +695,9 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
   TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
 
-  for (i = 0; i < shaper->_accessors._nrAlloc; ++i) {
+  for (size_t i = 0; i < shaper->_accessors._nrAlloc; ++i) {
     TRI_shape_access_t* accessor = (TRI_shape_access_t*) shaper->_accessors._table[i];
+
     if (accessor != NULL) {
       TRI_FreeShapeAccessor(accessor);
     }
@@ -1224,26 +706,6 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
 
   TRI_DestroyMutex(&shaper->_shapeLock);
   TRI_DestroyMutex(&shaper->_attributeLock);
-
-  // ..........................................................................
-  // Attribute weight
-  // ..........................................................................
-
-  TRI_DestroyVectorPointer(&shaper->_sortedAttributes);
-  TRI_DestroyAssociativePointer(&shaper->_weightedAttributes);
-
-  weightedAttribute = (shaper->_weights)._first;
-  while (weightedAttribute != NULL) {
-    nextWeightedAttribute = weightedAttribute->_next;
-
-    // free attribute name
-    if (weightedAttribute->_attribute != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute->_attribute);
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, weightedAttribute);
-    weightedAttribute = nextWeightedAttribute;
-  }
 
   TRI_DestroyShaper(s);
 }
@@ -1257,27 +719,17 @@ void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shaper, but does not free the pointer
+/// @brief initialise the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVocShaper (TRI_shaper_t* s) {
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
-
-  return InitStep3VocShaper(shaper);
+  // this is a no-op now as there are no attribute weights anymore
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1399,60 +851,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
     shaper->_nextAid = m->_aid + 1;
   }
 
-
-  // .........................................................................
-  // Add the attributes to the 'sorted' vector. These are in random order
-  // at the moment, however they will be sorted once all the attributes
-  // have been loaded into memory.
-  // .........................................................................
-
-  attribute_weight_t* weightedAttribute = static_cast<attribute_weight_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false));
-
-  if (weightedAttribute != NULL) {
-    attribute_weight_t* result;
-
-    weightedAttribute->_aid       = m->_aid;
-    weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
-    weightedAttribute->_attribute = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, (char*) m + sizeof(TRI_df_attribute_marker_t));
-    weightedAttribute->_next      = NULL;
-
-    // ..........................................................................
-    // Save the new attribute weight in the linked list.
-    // ..........................................................................
-
-    if ((shaper->_weights)._last == NULL) {
-      (shaper->_weights)._first = weightedAttribute;
-    }
-    else {
-      ((shaper->_weights)._last)->_next = weightedAttribute;
-    }
-
-    (shaper->_weights)._last = weightedAttribute;
-    (shaper->_weights)._length += 1;
-
-    result = (attribute_weight_t*) TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid), weightedAttribute, false);
-
-    if (result == NULL) {
-      attribute_weight_t* weightedItem = static_cast<attribute_weight_t*>(TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid)));
-
-      if (weightedItem == NULL ||
-          weightedItem->_aid != weightedAttribute->_aid) {
-        LOG_ERROR("attribute weight could not be located immediately after insert into associative array");
-      }
-      else {
-        TRI_PushBackVectorPointer(&shaper->_sortedAttributes, weightedItem);
-      }
-    
-      return TRI_ERROR_NO_ERROR;
-    }
-    
-    LOG_WARNING("weighted attribute could not be inserted into associative array");
-  }
-  else {
-    LOG_WARNING("OpenIterator could not allocate memory, attribute is NOT weighted");
-  }
-  
-  return TRI_ERROR_OUT_OF_MEMORY;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1541,7 +940,154 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper method for recursion for comparison
+/// @brief temporary structure for attributes
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct attribute_entry_s {
+  char*             _attribute;
+  TRI_shaped_json_t _value;
+}
+attribute_entry_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort attribure names
+////////////////////////////////////////////////////////////////////////////////
+  
+static int AttributeNameComparator (void const* lhs,
+                                    void const* rhs) {
+  attribute_entry_t const* l = static_cast<attribute_entry_t const*>(lhs);
+  attribute_entry_t const* r = static_cast<attribute_entry_t const*>(rhs);
+
+  if (l->_attribute == NULL || r->_attribute == NULL) {
+    // error !
+    return -1;
+  }
+
+  return TRI_compare_utf8(l->_attribute, r->_attribute);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a sorted vector of attributes
+////////////////////////////////////////////////////////////////////////////////
+          
+static int FillAttributesVector (TRI_vector_t* vector,
+                                 TRI_shaped_json_t const* shapedJson,
+                                 TRI_shape_t const* shape,
+                                 TRI_shaper_t const* shaper) {
+  
+  TRI_InitVector(vector, TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_entry_t));
+
+  // .............................................................................
+  // Determine the number of fixed sized values
+  // .............................................................................
+  
+  char const* charShape = (char const*) shape;
+
+  charShape = charShape + sizeof(TRI_shape_t);           
+  TRI_shape_size_t fixedEntries = *((TRI_shape_size_t*)(charShape));
+
+  // .............................................................................
+  // Determine the number of variable sized values
+  // .............................................................................
+  
+  charShape = charShape + sizeof(TRI_shape_size_t);
+  TRI_shape_size_t variableEntries = *((TRI_shape_size_t*)(charShape));
+
+  // .............................................................................
+  // It may happen that the shaped_json_array is 'empty {}'
+  // .............................................................................
+  
+  if (fixedEntries + variableEntries == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }  
+  
+  // .............................................................................
+  // Determine the list of shape identifiers
+  // .............................................................................
+  
+  charShape = charShape + sizeof(TRI_shape_size_t);
+  TRI_shape_sid_t const* sids = (TRI_shape_sid_t const*) charShape;
+  
+  charShape = charShape + (sizeof(TRI_shape_sid_t) * (fixedEntries + variableEntries));
+  TRI_shape_aid_t const* aids = (TRI_shape_aid_t const*) charShape;
+
+  charShape = charShape + (sizeof(TRI_shape_aid_t) * (fixedEntries + variableEntries));
+  TRI_shape_size_t const* offsets = (TRI_shape_size_t const*) charShape;
+  
+  for (TRI_shape_size_t i = 0; i < fixedEntries; ++i) {
+    attribute_entry_t attribute;
+
+    char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i]);
+
+    if (a == NULL) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
+
+    if (copy == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    attribute._attribute          = copy;
+    attribute._value._sid         = sids[i];
+    attribute._value._data.data   = shapedJson->_data.data + offsets[i];
+    attribute._value._data.length = (uint32_t) (offsets[i + 1] - offsets[i]);
+
+    TRI_PushBackVector(vector, &attribute);
+  }
+  
+  offsets = (TRI_shape_size_t const*) shapedJson->_data.data;
+
+  for (TRI_shape_size_t i = 0; i < variableEntries; ++i) {
+    attribute_entry_t attribute;
+    
+    char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i + fixedEntries]);
+
+    if (a == NULL) {
+      return TRI_ERROR_INTERNAL;
+    }
+    
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
+
+    if (copy == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    
+    attribute._attribute          = copy;
+    attribute._value._sid         = sids[i + fixedEntries];
+    attribute._value._data.data   = shapedJson->_data.data + offsets[i];
+    attribute._value._data.length = (uint32_t) (offsets[i + 1] - offsets[i]);
+
+    TRI_PushBackVector(vector, &attribute);
+  }
+          
+  // sort the attributes by attribute name
+  qsort(vector->_buffer, TRI_LengthVector(vector), sizeof(attribute_entry_t), AttributeNameComparator);
+          
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a vector of attributes
+////////////////////////////////////////////////////////////////////////////////
+
+static void DestroyAttributesVector (TRI_vector_t* vector) {
+  size_t const n = TRI_LengthVector(vector);
+
+  for (size_t i = 0; i < n; ++i) {
+    attribute_entry_t* entry = static_cast<attribute_entry_t*>(TRI_AtVector(vector, i));
+
+    if (entry->_attribute != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entry->_attribute);
+    }
+  }
+
+  TRI_DestroyVector(vector);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares two shapes
 ///
 /// You must either supply (leftDocument, leftObject) or leftShaped.
 /// You must either supply (rightDocument, rightObject) or rightShaped.
@@ -1566,9 +1112,6 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   TRI_shaped_json_t rightElement;
   char const* ptr;
   int result;
-  size_t listLength;
-  weighted_attribute_t* leftWeightedList;
-  weighted_attribute_t* rightWeightedList;
   
   // left is either a shaped json or a shaped sub object
   if (leftDocument != NULL) {
@@ -1799,6 +1342,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // unfortunately recursion: check the types of all the entries
           size_t leftListLength = *((TRI_shape_length_list_t*) left._data.data);
           size_t rightListLength = *((TRI_shape_length_list_t*) right._data.data);
+          size_t listLength;
           
           // determine the smallest list
           if (leftListLength > rightListLength) {
@@ -1899,137 +1443,54 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
         }
         
         case TRI_SHAPE_ARRAY: {
-
           // ............................................................................  
           // We are comparing a left JSON array with another JSON array on the right
-          // The comparison works as follows:
-          //
-          //   Suppose that leftShape has m key/value pairs and that the 
-          //   rightShape has n key/value pairs
-          //
-          //   Extract the m key aids (attribute identifiers) from the leftShape
-          //   Extract the n key aids (attribute identifiers) from the rightShape
-          //
-          //   Sort the key aids for both the left and right shape
-          //   according to the weight of the key (attribute) 
-          //
-          //   Let lw_j denote the weight of the jth key from the sorted leftShape key list
-          //   and rw_j the corresponding rightShape.
-          //
-          //   If lw_j < rw_j return -1
-          //   If lw_j > rw_j return 1
-          //   If lw_j == rw_j, then we extract the values and compare the values
-          //   using recursion. 
-          //   
-          //   If lv_j < rv_j return -1
-          //   If lv_j > rv_j return 1
-          //   If lv_j == rv_j, then repeat the process with j+1.
           // ............................................................................  
           
           // ............................................................................
-          // generate the left and right lists.
+          // generate the left and right lists sorted by attribute names
           // ............................................................................
 
-          int leftNumWeightedList  = CompareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
-          int rightNumWeightedList = CompareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
+          TRI_vector_t leftSorted;
+          TRI_vector_t rightSorted;
 
-          // ............................................................................
-          // If the left and right both resulted in errors, we return equality for want
-          // of something better.
-          // ............................................................................
-          
-          if ( (leftNumWeightedList < 0) && (rightNumWeightedList < 0) )  { // probably out of memory error        
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return 0;            
-          }
-          
-          // ............................................................................
-          // If the left had an error, we rank the left as the smallest item in the order
-          // ............................................................................
-          
-          if (leftNumWeightedList < 0) { // probably out of memory error        
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return -1; // attempt to compare as low as possible
-          }
-         
-          // ............................................................................
-          // If the right had an error, we rank the right as the largest item in the order
-          // ............................................................................
-          
-          if (rightNumWeightedList < 0) {
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return 1;
+          bool error = false;
+          if (FillAttributesVector(&leftSorted, &left, leftShape, leftShaper) != TRI_ERROR_NO_ERROR) {
+            error = true;
           }
 
-          // ............................................................................
-          // Are we comparing two empty shaped_json_arrays?
-          // ............................................................................
-          
-          if ( (leftNumWeightedList == 0) && (rightNumWeightedList == 0) ) {
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return 0; 
+          if (FillAttributesVector(&rightSorted, &right, rightShape, rightShaper) != TRI_ERROR_NO_ERROR) {
+            error = true;
           }
 
-          // ............................................................................
-          // If the left is empty, then it is smaller than the right, right?
-          // ............................................................................
-
-          if  (leftNumWeightedList == 0) {
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return -1; 
-          }
-         
-          // ............................................................................
-          // ...and the opposite of the above.
-          // ............................................................................
-
-          if  (rightNumWeightedList == 0) {
-            FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
-            return 1; 
-          }
-
-          // ..............................................................................
-          // We now have to sort the left and right weighted list according to attribute weight
-          // ..............................................................................
-
-          qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);
-          qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), AttributeWeightCompareFunction);                         
-
-          // ..............................................................................
-          // check the weight and if equal check the values. Notice that numWeightedList
-          // below MUST be greater or equal to 1.
-          // ..............................................................................
-
-          int numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList : rightNumWeightedList);          
+          size_t const leftLength  = TRI_LengthVector(&leftSorted);
+          size_t const rightLength = TRI_LengthVector(&rightSorted);
+          size_t const numElements = (leftLength < rightLength ? leftLength : rightLength);
           
           result = 0;
 
-          for (int i = 0; i < numWeightedList; ++i) {
-            if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
-              result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);
+          for (size_t i = 0; i < numElements; ++i) {
+            attribute_entry_t const* l = static_cast<attribute_entry_t const*>(TRI_AtVector(&leftSorted, i));
+            attribute_entry_t const* r = static_cast<attribute_entry_t const*>(TRI_AtVector(&rightSorted, i));
+
+            result = TRI_compare_utf8(l->_attribute, r->_attribute);
+
+            if (result != 0) {
               break;
             }
             
             result = TRI_CompareShapeTypes(NULL,
                                            NULL,
-                                           &(leftWeightedList[i]._value),
+                                           &l->_value,
                                            NULL,
                                            NULL,
-                                           &(rightWeightedList[i]._value),
+                                           &r->_value,
                                            leftShaper,
                                            rightShaper);
 
             if (result != 0) { 
               break;
             }  
-            
-            // the attributes are equal now check for the values 
-            /* start oreste debug
-            const char* name = leftShaper->lookupAttributeId(leftShaper,leftWeightedList[i]._aid);
-            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,leftWeightedList[i]._weight,name);
-            const char* name = rightShaper->lookupAttributeId(rightShaper,rightWeightedList[i]._aid);
-            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,rightWeightedList[i]._weight,name);
-            end oreste debug */
           }        
           
           if (result == 0) {
@@ -2038,20 +1499,22 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
             // however one more check to determine if the number of elements in the arrays
             // are equal.
             // ............................................................................
-            if (leftNumWeightedList < rightNumWeightedList) {
+            if (leftLength < rightLength) {
               result = -1;
             }
-            else if (leftNumWeightedList > rightNumWeightedList) {
+            else if (leftLength > rightLength) {
               result = 1;
             }
           }
-          
-          
-          // ..............................................................................
-          // Deallocate any memory for the comparisions and return the result
-          // ..............................................................................
-          
-          FreeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
+
+          // clean up
+          DestroyAttributesVector(&leftSorted);
+          DestroyAttributesVector(&rightSorted);
+
+          if (error) {
+            return -1;
+          }
+
           return result;
         }
       } // end of switch (rightType) 
@@ -2061,10 +1524,6 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   assert(false);
   return 0; //shut the vc++ up
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
