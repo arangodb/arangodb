@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
+
 var console = require("console");
 var graph = require("org/arangodb/general-graph");
 
@@ -76,8 +77,7 @@ function GeneralGraphCreationSuite() {
 			  r = graph._undirectedRelationDefinition("relationName", "vertexC1");
 		  }
 		  catch (err) {
-			  console.log("aaaaa", err);
-		  }
+			}
 
 		  assertEqual(r, {
 			  collection: "relationName",
@@ -223,6 +223,24 @@ function GeneralGraphCreationSuite() {
 
 	  }
 
+	  /*test_create : function () {
+
+
+		  var a = graph._create(
+			  "bla3",
+			  graph.edgeDefinitions(
+			    graph._undirectedRelationDefinition("relationName", "vertexC1"),
+			    graph._directedRelationDefinition("relationName",
+				  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+			    )
+		    )
+		  );
+		  assertTrue(true);
+
+
+
+	  }*/
+
   };
 
 }
@@ -321,6 +339,7 @@ function GeneralGraphSimpleQueriesSuite() {
     }
 
   };
+
 
 }
 
