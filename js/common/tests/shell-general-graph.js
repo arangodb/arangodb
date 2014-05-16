@@ -252,7 +252,12 @@ function GeneralGraphCreationSuite() {
 function GeneralGraphSimpleQueriesSuite() {
 
   var dropInclExcl = function() {
-    require("internal").db._collection("_graphs").remove("graph");
+    var col = require("internal").db._collection("_graphs");
+    try {
+      col.remove("graph");
+    } catch (e) {
+      return;
+    }
   };
 
   var createInclExcl = function() {
@@ -271,21 +276,27 @@ function GeneralGraphSimpleQueriesSuite() {
 
     test_restrictOnEdges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save({
-        _from: "v1/1",
-        _to:"v2/1",
-        included: true
-      });
-      var incEdge2 = g.included.save({
-        _from: "v1/2",
-        _to:"v1/1",
-        included: true
-      });
-      var excEdge = g.excluded.save({
-        _from: "v1/1",
-        _to:"v3/1",
-        included: false
-      });
+      var incEdge1 = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: true
+        }
+      );
+      var incEdge2 = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: true
+        }
+      );
+      var excEdge = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
       /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 2);
@@ -296,23 +307,33 @@ function GeneralGraphSimpleQueriesSuite() {
       dropInclExcl();
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on inEdges
+////////////////////////////////////////////////////////////////////////////////
+
     test_restrictOnInEdges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save({
-        _from: "v1/1",
-        _to:"v2/1",
-        included: false
-      });
-      var incEdge2 = g.included.save({
-        _from: "v1/2",
-        _to:"v1/1",
-        included: true
-      });
-      var excEdge = g.excluded.save({
-        _from: "v1/1",
-        _to:"v3/1",
-        included: false
-      });
+      var excEdge1 = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: false
+        }
+      );
+      var incEdge = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: true
+        }
+      );
+      var excEdge2 = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
       /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 1);
@@ -323,23 +344,33 @@ function GeneralGraphSimpleQueriesSuite() {
       dropInclExcl();
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on outEdges
+////////////////////////////////////////////////////////////////////////////////
+
     test_restrictOnOutEdges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save({
-        _from: "v1/1",
-        _to:"v2/1",
-        included: true
-      });
-      var incEdge2 = g.included.save({
-        _from: "v1/2",
-        _to:"v1/1",
-        included: false
-      });
-      var excEdge = g.excluded.save({
-        _from: "v1/1",
-        _to:"v3/1",
-        included: false
-      });
+      var incEdge = g.included.save(
+        "v1/1",
+        "v2/1",
+        {
+          included: true
+        }
+      );
+      var excEdge1 = g.included.save(
+        "v1/2",
+        "v1/1",
+        {
+          included: false
+        }
+      );
+      var excEdge2 = g.excluded.save(
+        "v1/1",
+        "v3/1",
+        {
+          included: false
+        }
+      );
       /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 1);
@@ -349,10 +380,14 @@ function GeneralGraphSimpleQueriesSuite() {
       */
       dropInclExcl();
    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: filter construct on Edges
+////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnEdges: function() {
 
-   },
+   }
 
   };
 
