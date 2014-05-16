@@ -31,7 +31,9 @@
 
 var arangodb = require("org/arangodb"),
 	ArangoCollection = arangodb.ArangoCollection,
-	db = arangodb.db;
+	db = arangodb.db,
+  _ = require("underscore");
+
 
 
 // -----------------------------------------------------------------------------
@@ -185,9 +187,7 @@ var _create = function (graphName, edgeDefinitions) {
 
 	var gdb = db._collection("_graphs"),
 		g,
-		graphAlreadyExists = true,
-		createdCollections = []
-	;
+		graphAlreadyExists = true;
 
 	if (gdb === null) {
 		throw "_graphs collection does not exist.";
@@ -213,15 +213,15 @@ var _create = function (graphName, edgeDefinitions) {
 		throw "graph " + graphName + " already exists.";
 	}
 
+  var vertexCollections = {};
+  var edgeCollections = {};
 	edgeDefinitions.forEach(function (e) {
 		e.from.concat(e.to).forEach(function (v) {
-			if (findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT)) {
-				createdCollections.push(v);
-			}
-		});
-		if (findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE)) {
-			createdCollections.push(e.collection);
-		}
+			findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
+      vertexCollections[v] = db[v];
+    });
+		findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
+    edgeCollections[e] = db[e];
 	});
 
 	gdb.save({
@@ -229,7 +229,7 @@ var _create = function (graphName, edgeDefinitions) {
 		'_key' : graphName
 	});
 
-	return new Graph(graphName, edgeDefinitions);
+	return new Graph(graphName, edgeDefinitions, vertexCollections, edgeCollections);
 
 };
 
@@ -239,22 +239,30 @@ var _create = function (graphName, edgeDefinitions) {
 /// @brief load a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-var Graph = function(graphName, edgeDefinitions) {
-
+var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
+  this.vertexCollections = vertexCollections;
+  this.edgeCollections = edgeCollections;
+  this.edgeDefinitions = edgeDefinitions;
 };
 
 var _graph = function() {
   return new Graph();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all edge collections of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype.edgeCollections = function() {
-  //testdummy
-  return [require("internal").db.w3];
+  return _.values(this.edgeCollections);
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all vertex collections of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype.vertexCollections = function() {
-  //testdummy
-  return [require("internal").db.a, require("internal").db.b];
+  return _.values(this.vertexCollections);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
