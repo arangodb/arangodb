@@ -1,3 +1,15 @@
+v2.2.0 (XXXX-XX-XX)
+-------------------
+
+* removed sorting of attribute names for use in a collection's shaper
+
+  sorting attribute names was done on document insert to keep attributes 
+  of a collection in sorted order for faster comparisons. The sort order
+  of attributes was only used in one particular and unlikey case, so it
+  was removed. Collections with many different attribute names should 
+  benefit from this change by faster inserts and slightly less memory usage.
+
+
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
