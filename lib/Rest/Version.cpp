@@ -38,8 +38,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 
-
-#include <v8.h>
 #include <openssl/ssl.h>
 
 using namespace triagens::rest;
@@ -62,7 +60,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 void Version::initialise () {
-  if (Values.size() > 0) {
+  if (! Values.empty()) {
     return;
   }
 
@@ -122,7 +120,11 @@ std::string Version::getServerVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getV8Version () {
-  return v8::V8::GetVersion();
+#ifdef TRI_V8_VERSION
+  return std::string(TRI_V8_VERSION);
+#else
+  return std::string("");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
