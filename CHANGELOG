@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* issue #862: added `--overwrite` option to arangoimp
+
 * prevent buffering of long print results in arangosh's and arangod's print
   command
 
